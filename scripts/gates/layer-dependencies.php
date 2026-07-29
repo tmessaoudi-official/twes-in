@@ -33,6 +33,16 @@ const FORBIDDEN_BY_LAYER = [
  */
 const DOMAIN_VENDOR_ALLOWLIST = [];
 
+/**
+ * Layers that must contain code, not merely exist.
+ *
+ * Only Domain today: Application has no use cases yet in Wave 0, and a gate that demanded them would be
+ * scheduling work rather than checking it. Add a layer here as soon as it acquires code, because an empty
+ * layer is otherwise indistinguishable from a passing one — which is how "api/src/Domain was renamed"
+ * reads as a clean gate run.
+ */
+const REQUIRED_NON_EMPTY_LAYERS = ['Domain'];
+
 /*
  * Note on what counts as "third-party": a reference with no backslash left after the leading one is a
  * GLOBAL symbol — `\LogicException`, `\sprintf`, `\DateTimeImmutable`, `\DivisionByZeroError`. Those are
@@ -62,16 +72,31 @@ function main(): int
 
     $violations = [];
     $filesChecked = 0;
+    $perLayer = [];
 
     foreach (FORBIDDEN_BY_LAYER as $layer => $forbidden) {
         $layerDir = SRC . '/' . $layer;
 
+        // A DECLARED layer that is not on disk is a gate blinded, not a layer to skip. The total-count
+        // guard below is not enough on its own — it is a total, so with two layers configured, deleting or
+        // renaming api/src/Domain outright still left Application's files counted and the gate green. That
+        // is the exact scenario the guard was added for, so it is checked per layer.
         if (!is_dir($layerDir)) {
+            $violations[] = sprintf(
+                'the %s layer is declared in this gate but api/src/%s does not exist, so nothing in it was '
+                . 'checked. Update FORBIDDEN_BY_LAYER if the layer moved.',
+                $layer,
+                $layer,
+            );
+
             continue;
         }
 
+        $perLayer[$layer] = 0;
+
         foreach (phpFilesIn($layerDir) as $file) {
             ++$filesChecked;
+            ++$perLayer[$layer];
             $references = referencedNamespacesIn($file);
 
             foreach ($references as $reference => $line) {
@@ -100,6 +125,19 @@ function main(): int
         }
     }
 
+    // Present but empty. Only Domain is required to hold code today: Application legitimately has no use
+    // cases yet in Wave 0, and failing on that would be a gate demanding work rather than checking it. This
+    // list is what must grow as the tiers land — an empty layer that SHOULD have code is invisible
+    // otherwise, which is how "Domain/ was emptied" reads as a pass.
+    foreach (REQUIRED_NON_EMPTY_LAYERS as $layer) {
+        if (0 === ($perLayer[$layer] ?? 0)) {
+            $violations[] = sprintf(
+                'api/src/%s holds no PHP, so the layer this gate exists to police was not inspected at all.',
+                $layer,
+            );
+        }
+    }
+
     if ([] !== $violations) {
         fwrite(\STDERR, "layer-dependencies: FAIL\n\n");
 
@@ -112,18 +150,12 @@ function main(): int
         return 1;
     }
 
-    // A gate that inspected nothing must not report OK — its siblings hard-fail in this state, and this
-    // one printed "OK — 0 file(s)" after a directory rename, which is a green gate that checked nothing.
-    if (0 === $filesChecked) {
-        fwrite(\STDERR, sprintf(
-            "layer-dependencies: FAIL — inspected 0 files. Expected PHP under %s. Were the layer "
-            . "directories renamed or moved?\n",
-            implode(', ', array_map(static fn(string $l): string => 'api/src/' . $l, array_keys(FORBIDDEN_BY_LAYER))),
-        ));
-
-        return 1;
-    }
-
+    // No total-count guard here, deliberately, and this is a correction rather than an omission. There was
+    // one — "inspected 0 files" — and mutation testing showed it had become unreachable once the two
+    // per-layer checks above landed: with any layer configured, a missing directory fails as missing and an
+    // emptied Domain fails as empty, so the total can no longer reach zero. Deleting the guard left the
+    // suite at 214/214, which is the definition of a check that cannot fail. Keeping it would mean shipping
+    // dead code that reads like a safety net. The per-layer checks are the guard, and both are covered.
     fwrite(\STDOUT, sprintf(
         "layer-dependencies: OK — %d file(s) in %s respect the inward-only rule.\n",
         $filesChecked,

@@ -68,14 +68,36 @@ final readonly class Rate
     /**
      * Digits allowed before the decimal point.
      *
-     * `profit_rate` is `NUMERIC(15,12)`: twelve fraction decimals leave exactly three integer digits, so
-     * a rate of 1000 (100 000 %) cannot be stored. Bounded here rather than discovered at INSERT, for the
-     * same reason `Money::MAX_INTEGER_DIGITS` exists — and this is the asymmetry a round found: the money
-     * half was guarded and the rate half was not, while `withCost()` makes a *derived* rate the authored
-     * value, so an unstorable one is reachable from an ordinary edit (a one-millime cost with a typed
-     * price of 1000.000 derives 999999).
+     * `profit_rate` is `NUMERIC(27,12)`: twelve fraction decimals plus fifteen integer digits, matching
+     * `Money::MAX_INTEGER_DIGITS` so that any rate derivable from two representable amounts fits.
+     *
+     * **Fifteen, not three** — and the correction matters more than the number. Three was chosen to match a
+     * `NUMERIC(15,12)` column, and a review showed the column was simply too narrow: `withCost()` turns a
+     * *derived* rate into the authored one, and a one-millime cost with a typed price of 1000.000 derives
+     * 999999 — four integer digits from two entirely ordinary amounts for a 3-decimal currency. Worse, that
+     * bound was reached from `profitRate()`, a **read accessor**, so an aggregate that constructed and
+     * persisted perfectly legally threw on every subsequent read of its rate. A getter that throws on
+     * valid stored state is a 500 on a product page, not a validation error.
+     *
+     * The bound is kept as a sanity guard rather than removed — a rate of 10^15 is a typo, not a margin —
+     * but it is now wide enough that the *derived* path cannot reach it from any pair of amounts a
+     * `NUMERIC(19,4)` column can hold, and {@see PriceCalculator::profitRateFromNet()} returns null rather
+     * than throwing if it somehow does.
      */
-    public const int MAX_INTEGER_DIGITS = 3;
+    public const int MAX_INTEGER_DIGITS = 15;
+
+    /**
+     * Whether a fraction is small enough to be a `Rate`.
+     *
+     * Exists so the derived path can *ask* instead of catching: a computed rate that will not fit is a
+     * null (an empty field), while a rate the user typed too large is a refusal. Same bound, two very
+     * different obligations, and only a question can serve both.
+     */
+    public static function canHoldFraction(string $fraction): bool
+    {
+        return Decimal::isWellFormed($fraction)
+            && Decimal::integerDigits($fraction) <= self::MAX_INTEGER_DIGITS;
+    }
 
     /** @param string $fraction canonical decimal string at exactly FRACTION_SCALE decimals */
     private function __construct(private string $fraction)

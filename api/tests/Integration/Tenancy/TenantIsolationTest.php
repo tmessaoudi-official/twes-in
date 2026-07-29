@@ -25,6 +25,15 @@ use Twes\Infrastructure\Tenancy\TenantId;
  *
  * A cross-tenant read is a reportable data breach, so the standard here is higher than "the happy path
  * works": the suite also proves the guard is load-bearing by removing it and watching data leak.
+ *
+ * **Two connections, and the split is the point.** An earlier version of this suite ran everything on one
+ * role that also owned the probe table — and admitted it in a comment ("the application connects as the
+ * owner") while infra/README.md required the opposite. A review proved what that costs: the connection
+ * the suite certified as unable to bypass row-level security could disable the policy or `TRUNCATE` the
+ * table in one statement, so every assertion here was made against a role that could step around the
+ * thing being asserted. So `$connection` is now the restricted **runtime** role and `$owner` is the
+ * separate **owning** role that migrations use; the runtime role holds DML and nothing more. The roles are
+ * provisioned by scripts/dev/provision-test-database.sh, which explains what each one makes testable.
  */
 #[CoversClass(PostgresRowLevelSecurityIsolation::class)]
 final class TenantIsolationTest extends TestCase
@@ -34,11 +43,16 @@ final class TenantIsolationTest extends TestCase
     private const string TENANT_A = '01926b3c-0000-7000-8000-00000000000a';
     private const string TENANT_B = '01926b3c-0000-7000-8000-00000000000b';
 
+    /** The restricted runtime role: DML only, owns nothing, holds no TRUNCATE. */
     private \PDO $connection;
+
+    /** The owning role: creates the table and its policy, exactly as a migration would. */
+    private \PDO $owner;
 
     protected function setUp(): void
     {
         $this->connection = self::connect();
+        $this->owner = self::connectAsOwner();
         $this->createProbeTable();
     }
 
@@ -47,8 +61,8 @@ final class TenantIsolationTest extends TestCase
         // Guarded because PHPUnit runs tearDown even when setUp called markTestSkipped, and an
         // unguarded dereference turns nine intended skips into nine type errors that name the wrong
         // file — hiding the one message an operator needs ("no PostgreSQL server reachable").
-        if (isset($this->connection)) {
-            $this->connection->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+        if (isset($this->owner)) {
+            $this->owner->exec('DROP TABLE IF EXISTS ' . self::TABLE);
         }
     }
 
@@ -115,14 +129,15 @@ final class TenantIsolationTest extends TestCase
      */
     public function testRemovingTheIsolationLeaksEveryTenantsRows(): void
     {
-        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
+        // Disabled by the OWNER, because the runtime role cannot — which is itself asserted, below.
+        $this->owner->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
 
         try {
             $this->connection->beginTransaction();
             $leaked = $this->fetchAllLabels();
             $this->connection->rollBack();
         } finally {
-            $this->connection->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
+            $this->owner->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
         }
 
         self::assertSame(
@@ -307,11 +322,275 @@ final class TenantIsolationTest extends TestCase
     {
         $isolation = new PostgresRowLevelSecurityIsolation();
 
-        // Does not throw. A superuser or BYPASSRLS role would make every assertion above vacuous while
-        // leaving the policies visibly in place, so this is checked rather than assumed.
-        $isolation->assertConnectionCannotBypassPolicies($this->connection);
+        // Returns the number of policed tables it inspected rather than nothing. The earlier version of
+        // this test called the method and then declared expectNotToPerformAssertions(), which meant a
+        // check that had silently stopped looking at anything was indistinguishable from a safe role —
+        // and a review proved it: replacing the whole privilege query with `SELECT false, false` left this
+        // test green. Asserting the count makes the SQL load-bearing.
+        self::assertSame(
+            1,
+            $isolation->assertConnectionCannotBypassPolicies($this->connection),
+            'The check must report the probe table it inspected. Zero would mean it certified a '
+            . 'connection against no policy at all.',
+        );
+    }
 
-        $this->expectNotToPerformAssertions();
+    /**
+     * The refusal branch, live, against a real `BYPASSRLS` connection.
+     *
+     * Previously this branch existed only as a pure predicate over hand-written array rows, so the *query*
+     * feeding it was asserted by nothing — a review replaced it with `SELECT false AS rolsuper, false AS
+     * rolbypassrls` and the whole suite stayed green. `twes_bypass` exists solely to close that.
+     */
+    public function testAConnectionWhoseRoleHasBypassRlsIsRefused(): void
+    {
+        $privileged = self::connectAs('TWES_TEST_DB_BYPASS_USER', 'TWES_TEST_DB_BYPASS_PASSWORD');
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/superuser or has BYPASSRLS/');
+
+        new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($privileged);
+    }
+
+    /**
+     * Reachability: the privilege is not held, it is one `SET ROLE` away.
+     *
+     * `twes_member` reads `rolsuper = f, rolbypassrls = f` in its own `pg_roles` row, so the naive
+     * `rolname = current_user` check this class started with accepted it — and then `SET ROLE twes_bypass`
+     * reached every tenant. This is the round-3 fix, which until now had no test at all: reverting the
+     * predicate to a single-row lookup left the suite green.
+     */
+    public function testAConnectionThatCanReachBypassRlsBySetRoleIsRefused(): void
+    {
+        $member = self::connectAs('TWES_TEST_DB_MEMBER_USER', 'TWES_TEST_DB_MEMBER_PASSWORD');
+
+        // The precondition, asserted rather than assumed: the role's own attributes are harmless. Without
+        // this, a mis-provisioned twes_member with BYPASSRLS of its own would make the test pass for the
+        // wrong reason and prove nothing about reachability.
+        $own = $member->query(
+            'SELECT rolsuper OR rolbypassrls AS privileged FROM pg_roles WHERE rolname = current_user',
+        );
+        self::assertNotFalse($own);
+        self::assertNotContains(
+            $own->fetchColumn(),
+            [true, 't', '1'],
+            'twes_member must hold no privilege of its own, or this test proves nothing about SET ROLE.',
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/one SET ROLE/');
+
+        new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($member);
+    }
+
+    /**
+     * The same reachability, but from `session_user` while `current_user` looks harmless.
+     *
+     * PostgreSQL authorises `SET ROLE` against the **session** user, so a connection that arrives with
+     * `current_user` already changed — `options='-c role=…'` in the DSN needs no application code and is
+     * the same shape as the tenant-pinning bypass this class already defends against — can reach every
+     * role the session user is a member of, while a predicate over `current_user` enumerates a strictly
+     * smaller set. Here `current_user` is `twes` (a member of nothing) and `session_user` is `twes_member`
+     * (a member of `twes_bypass`), which is exactly the state that fooled the previous predicate.
+     */
+    public function testAConnectionWhoseSessionUserCanReachBypassRlsIsRefused(): void
+    {
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        if (!\is_string($runtimeRole)) {
+            self::markTestSkipped('TWES_TEST_DB_USER must be set.');
+        }
+
+        $switched = self::connectAs(
+            'TWES_TEST_DB_MEMBER_USER',
+            'TWES_TEST_DB_MEMBER_PASSWORD',
+            "options='-c role=" . $runtimeRole . "'",
+        );
+
+        $whoami = $switched->query('SELECT current_user, session_user');
+        self::assertNotFalse($whoami);
+        /** @var array{current_user: string, session_user: string} $identities */
+        $identities = $whoami->fetch(\PDO::FETCH_ASSOC);
+
+        // The precondition the finding turns on: the two differ. If the DSN option were ignored they would
+        // be equal, the current_user predicate would already catch it, and the test would pass vacuously.
+        self::assertNotSame(
+            $identities['session_user'],
+            $identities['current_user'],
+            'The DSN role option did not take effect, so this test would pass without exercising the '
+            . 'session_user path at all.',
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/one SET ROLE/');
+
+        new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($switched);
+    }
+
+    /**
+     * Bypass #0, live: owning the policed table is enough, with no privileged attribute anywhere.
+     *
+     * The owner is neither a superuser nor `BYPASSRLS` — both checks accept it — and it can still reach
+     * every tenant in two statements. `FORCE ROW LEVEL SECURITY` does not help: it stops an owner
+     * *skipping* policies, not *removing* them. This is the P0 a review found, so the proof runs in both
+     * directions: the check refuses the owner, and the escalation it warns about genuinely works.
+     */
+    public function testTheRoleThatOwnsAPolicedTableIsRefused(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $attributes = $this->owner->query(
+            'SELECT rolsuper OR rolbypassrls AS privileged FROM pg_roles WHERE rolname = current_user',
+        );
+        self::assertNotFalse($attributes);
+        self::assertNotContains(
+            $attributes->fetchColumn(),
+            [true, 't', '1'],
+            'The owning role must hold no privileged attribute, or this test would prove nothing beyond '
+            . 'the attribute check that already existed.',
+        );
+
+        try {
+            $isolation->assertConnectionCannotBypassPolicies($this->owner);
+            self::fail('A connection owning a policed table must be refused.');
+        } catch (\RuntimeException $exception) {
+            self::assertMatchesRegularExpression('/reach around/', $exception->getMessage());
+            self::assertStringContainsString(self::TABLE, $exception->getMessage());
+        }
+
+        // And the escalation is real, not theoretical: one statement from the owner and the policy is gone.
+        $this->owner->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
+
+        try {
+            $statement = $this->owner->query('SELECT count(*) FROM ' . self::TABLE);
+            self::assertNotFalse($statement);
+            self::assertSame(3, (int) $statement->fetchColumn(), 'Every tenant is now visible.');
+        } finally {
+            $this->owner->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
+        }
+    }
+
+    /**
+     * The runtime role must be unable to do what the owner just did.
+     *
+     * The other half of the P0: the check refusing the owner is only useful if the role it *accepts* truly
+     * cannot reach the same escalation. Both attempts must be refused by the server, not by convention.
+     */
+    public function testTheRuntimeRoleCannotDisableOrTruncateThePolicedTable(): void
+    {
+        foreach ([
+            'DISABLE ROW LEVEL SECURITY' => 'ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY',
+            'TRUNCATE' => 'TRUNCATE ' . self::TABLE,
+        ] as $what => $sql) {
+            try {
+                $this->connection->exec($sql);
+                self::fail('The runtime role must not be able to ' . $what . '.');
+            } catch (\PDOException $exception) {
+                // 42501 insufficient_privilege. Asserted on the SQLSTATE rather than the message, which is
+                // localised, and rather than on "it threw" — a syntax error would also throw.
+                self::assertSame(
+                    '42501',
+                    $exception->getCode(),
+                    $what . ' must fail with insufficient_privilege, not: ' . $exception->getMessage(),
+                );
+            }
+        }
+    }
+
+    /**
+     * A policed table `ENABLE`d without `FORCE` leaves its owner exempt, so the check refuses it.
+     *
+     * This is the one violation reachable without any role misconfiguration at all — a migration that ran
+     * `ENABLE ROW LEVEL SECURITY` and forgot the second statement. `policySqlFor()` emits both, which is
+     * why it exists; this proves the check would catch a migration that did not use it.
+     */
+    public function testAPolicedTableThatIsNotForcedIsRefused(): void
+    {
+        $this->owner->exec('ALTER TABLE ' . self::TABLE . ' NO FORCE ROW LEVEL SECURITY');
+
+        try {
+            PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+            self::fail('A policed table that is not FORCEd must be refused.');
+        } catch (\RuntimeException $exception) {
+            self::assertMatchesRegularExpression('/ENABLEd but not FORCEd/', $exception->getMessage());
+        } finally {
+            $this->owner->exec('ALTER TABLE ' . self::TABLE . ' FORCE ROW LEVEL SECURITY');
+        }
+    }
+
+    /**
+     * A database where nothing is policed is refused, not reported clean.
+     *
+     * The same vacuity that made a gate print OK after inspecting zero files: with no policed table this
+     * connection is subject to no policy, which is the state the check exists to rule out rather than a
+     * clean bill of health.
+     */
+    public function testTheCheckRefusesToCertifyADatabaseWithNoPolicedTable(): void
+    {
+        $this->owner->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/no isolation to be subject to/');
+
+        PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+    }
+
+    /**
+     * `bind()`'s pre-write check, which had no test: deleting it left the suite green.
+     *
+     * A tenant pinned in the DSN survives every COMMIT, so without this check the *first* bind succeeds on
+     * a connection whose unbound statements silently read someone else's tenant.
+     */
+    public function testBindingOnAConnectionCarryingAPinnedTenantIsRefused(): void
+    {
+        $pinned = self::connect("options='-c " . PostgresRowLevelSecurityIsolation::TENANT_SETTING . '=' . self::TENANT_B . "'");
+        $pinned->beginTransaction();
+
+        try {
+            new PostgresRowLevelSecurityIsolation()->bind($pinned, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_A),
+            ));
+            self::fail('bind() must refuse a connection that already carries a tenant id.');
+        } catch (\RuntimeException $exception) {
+            self::assertMatchesRegularExpression('/Refusing to bind/', $exception->getMessage());
+        } finally {
+            $pinned->rollBack();
+        }
+    }
+
+    /**
+     * Rebinding inside one transaction is refused, and the message says so rather than blaming a DSN.
+     *
+     * From inside a transaction a transaction-local write and a session-scope one read identically, so the
+     * pre-write check cannot tell them apart and a second `bind()` trips it. Refusing is right — statements
+     * already executed under the first tenant would share an atomic unit with statements under the second —
+     * but the message previously asserted the value "can only have come from somewhere else", which is
+     * false in exactly this case and sent the reader hunting a DSN option that was not there.
+     */
+    public function testRebindingWithinOneTransactionIsRefusedWithAnAccurateMessage(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+
+        try {
+            $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_B),
+            ));
+            self::fail('A second bind() inside one transaction must be refused.');
+        } catch (\RuntimeException $exception) {
+            self::assertMatchesRegularExpression(
+                '/already bound a tenant/',
+                $exception->getMessage(),
+                'The message must name rebinding as a cause. Blaming only a DSN option sends the reader '
+                . 'looking for something that is not there.',
+            );
+        } finally {
+            $this->connection->rollBack();
+        }
     }
 
     /**
@@ -393,6 +672,55 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * The three ways a policed table can be reached around, as a pure function over catalogue rows.
+     *
+     * The live tests above prove the query and the wiring; this pins the classification itself, including
+     * the `t`/`f` string spellings, which are the difference between a violation and a clean bill.
+     */
+    public function testThePolicedTableViolationPredicateClassifiesEveryReachableShape(): void
+    {
+        $safe = [
+            'table' => 'public.invoices',
+            'owner' => 'twes_owner',
+            'owner_reachable' => 'f',
+            'can_truncate' => 'f',
+            'forced' => 't',
+        ];
+
+        self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([$safe]));
+
+        $owned = PostgresRowLevelSecurityIsolation::policedTableViolations(
+            [['owner_reachable' => 't'] + $safe],
+        );
+        self::assertCount(1, $owned);
+        self::assertStringContainsString('owned by twes_owner', $owned[0]);
+
+        $truncatable = PostgresRowLevelSecurityIsolation::policedTableViolations(
+            [['can_truncate' => true] + $safe],
+        );
+        self::assertCount(1, $truncatable);
+        self::assertStringContainsString('TRUNCATEd', $truncatable[0]);
+
+        $unforced = PostgresRowLevelSecurityIsolation::policedTableViolations(
+            [['forced' => false] + $safe],
+        );
+        self::assertCount(1, $unforced);
+        self::assertStringContainsString('not FORCEd', $unforced[0]);
+
+        // Every problem reported, not just the first: an operator fixing one at a time needs to see all
+        // three, and a `return` where a `[] =` belongs would hide two of them.
+        self::assertCount(3, PostgresRowLevelSecurityIsolation::policedTableViolations(
+            [['owner_reachable' => 't', 'can_truncate' => 't', 'forced' => 'f'] + $safe],
+        ));
+
+        // And every table, not just the first row.
+        self::assertCount(2, PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['table' => 'public.a', 'owner_reachable' => 't'] + $safe,
+            ['table' => 'public.b', 'can_truncate' => 't'] + $safe,
+        ]));
+    }
+
+    /**
      * `TRUNCATE` removes EVERY tenant's rows, not just the bound tenant's.
      *
      * The earlier version of this test counted rows while still bound to tenant A, so a policy-scoped
@@ -404,21 +732,26 @@ final class TenantIsolationTest extends TestCase
     {
         $isolation = new PostgresRowLevelSecurityIsolation();
 
-        $this->connection->beginTransaction();
-        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+        // Run from the OWNER, because the runtime role no longer holds TRUNCATE — which is the conclusion
+        // this test exists to justify, and is asserted directly by
+        // testTheRuntimeRoleCannotDisableOrTruncateThePolicedTable. What is demonstrated here is *why* that
+        // REVOKE matters: a bound session, scoped to tenant A by a policy that is present and forced, still
+        // erases tenant B.
+        $this->owner->beginTransaction();
+        $isolation->bind($this->owner, InMemoryTenantContext::forTenant(
             TenantId::fromString(self::TENANT_A),
         ));
-        $this->connection->exec('TRUNCATE ' . self::TABLE);
-        $this->connection->commit();
+        $this->owner->exec('TRUNCATE ' . self::TABLE);
+        $this->owner->commit();
 
         // With the policy off, so other tenants' rows are visible if any survived.
-        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
+        $this->owner->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
 
         try {
-            $statement = $this->connection->query('SELECT count(*) FROM ' . self::TABLE);
+            $statement = $this->owner->query('SELECT count(*) FROM ' . self::TABLE);
             $total = false === $statement ? null : $statement->fetchColumn();
         } finally {
-            $this->connection->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
+            $this->owner->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
         }
 
         self::assertSame(
@@ -431,14 +764,38 @@ final class TenantIsolationTest extends TestCase
 
     // ------------------------------------------------------------------ fixture
 
+    /** The restricted runtime role — the one every isolation assertion is made against. */
     private static function connect(string $extraDsn = ''): \PDO
     {
+        return self::connectAs('TWES_TEST_DB_USER', 'TWES_TEST_DB_PASSWORD', $extraDsn);
+    }
+
+    /** The owning role, standing in for a migration. Must not be reachable from the runtime role. */
+    private static function connectAsOwner(): \PDO
+    {
+        return self::connectAs('TWES_TEST_DB_OWNER_USER', 'TWES_TEST_DB_OWNER_PASSWORD');
+    }
+
+    /**
+     * A connection as one of the four provisioned roles.
+     *
+     * Parameterised by env var name rather than taking credentials, so a test naming a role it needs gets
+     * the same skip message as everything else when the database is not provisioned — see
+     * scripts/dev/provision-test-database.sh, and CLAUDE.md § "Quality gate" for the variables.
+     */
+    private static function connectAs(string $userVariable, string $passwordVariable, string $extraDsn = ''): \PDO
+    {
         $dsn = getenv('TWES_TEST_DSN');
-        $user = getenv('TWES_TEST_DB_USER');
-        $password = getenv('TWES_TEST_DB_PASSWORD');
+        $user = getenv($userVariable);
+        $password = getenv($passwordVariable);
 
         if (!\is_string($dsn) || !\is_string($user) || !\is_string($password)) {
-            self::markTestSkipped('TWES_TEST_DSN, TWES_TEST_DB_USER and TWES_TEST_DB_PASSWORD must be set.');
+            self::markTestSkipped(\sprintf(
+                'TWES_TEST_DSN, %s and %s must be set. Run scripts/dev/provision-test-database.sh as a '
+                . 'superuser to create the roles the tenancy proof needs.',
+                $userVariable,
+                $passwordVariable,
+            ));
         }
 
         try {
@@ -452,7 +809,7 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
-     * Builds the table, its policy and its rows.
+     * Builds the table, its policy and its rows — as the OWNING role, exactly as a migration would.
      *
      * A probe table rather than a domain entity, because Wave 0 has no entities yet — it proves the
      * *mechanism*. Each later wave owes its own proof that its own tables carry the policy; that is a
@@ -460,32 +817,51 @@ final class TenantIsolationTest extends TestCase
      */
     private function createProbeTable(): void
     {
-        $this->connection->exec('DROP TABLE IF EXISTS ' . self::TABLE);
-        $this->connection->exec(
+        $this->owner->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+
+        // PRIMARY KEY (company_id, id), not a bare `id`: referential-integrity and uniqueness checks run
+        // with row security BYPASSED, so a single-column key on tenant-owned data is an existence oracle
+        // for another tenant's rows. policySqlFor()'s docblock states that requirement, and a review
+        // pointed out that this fixture — the canonical emitter's own witness — did not satisfy it.
+        $this->owner->exec(
             'CREATE TABLE ' . self::TABLE . ' (
-                id         integer PRIMARY KEY,
                 company_id uuid NOT NULL,
-                label      text NOT NULL
+                id         integer NOT NULL,
+                label      text NOT NULL,
+                PRIMARY KEY (company_id, id)
             )',
         );
 
-        // ENABLE alone leaves the table's owner exempt, and the application connects as the owner.
-        // FORCE is what closes that, and every migration enabling RLS must do both.
-        // From the canonical emitter, not hand-written: the test must exercise the exact SQL that
-        // migrations will run, or it proves something no production table has.
+        // ENABLE alone leaves the table's owner exempt. FORCE is what closes that, and every migration
+        // enabling RLS must do both. From the canonical emitter, not hand-written: the test must exercise
+        // the exact SQL that migrations will run, or it proves something no production table has.
         foreach (PostgresRowLevelSecurityIsolation::policySqlFor(self::TABLE) as $statement) {
-            $this->connection->exec($statement);
+            $this->owner->exec($statement);
+        }
+
+        // The runtime role gets DML and deliberately not TRUNCATE. Granted explicitly rather than relying
+        // on the ALTER DEFAULT PRIVILEGES the provisioning script sets, so that a database provisioned
+        // slightly differently still runs the suite it is supposed to run.
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        if (\is_string($runtimeRole)) {
+            $this->owner->exec(\sprintf(
+                'GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO %s',
+                self::TABLE,
+                $runtimeRole,
+            ));
+            $this->owner->exec('REVOKE TRUNCATE ON ' . self::TABLE . ' FROM ' . $runtimeRole);
         }
 
         // Seeded with RLS off, since seeding spans both tenants by definition.
-        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
-        $insert = $this->connection->prepare(
+        $this->owner->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
+        $insert = $this->owner->prepare(
             'INSERT INTO ' . self::TABLE . ' (id, company_id, label) VALUES (?, ?, ?)',
         );
         $insert->execute([1, self::TENANT_A, 'a-one']);
         $insert->execute([2, self::TENANT_A, 'a-two']);
         $insert->execute([3, self::TENANT_B, 'b-one']);
-        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
+        $this->owner->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
     }
 
     /** @return list<string> */

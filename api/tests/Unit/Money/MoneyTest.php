@@ -188,6 +188,63 @@ final class MoneyTest extends TestCase
         Money::of('1.000', Currency::of('TND'))->plus(Money::of('1.00', Currency::of('EUR')));
     }
 
+    /**
+     * EVERY cross-currency guard, not just addition's.
+     *
+     * A review found `ratioTo()` and `compareTo()` guarded but untested: removing either left the suite
+     * green, and `100.000 TND` then compared **equal** to `100.00 EUR` — the two amounts share a digit
+     * string and differ only in scale and meaning. `compareTo()` is the worse of the two, because it
+     * underpins `isLessThan()`/`isGreaterThan()`, which is what payment application will use to decide
+     * whether an invoice is settled: a TND invoice would read as paid by a EUR payment of the same numeral.
+     *
+     * @param callable(Money, Money): mixed $operation
+     */
+    #[DataProvider('operationsThatMustRefuseAForeignCurrency')]
+    public function testEveryCrossCurrencyOperationIsRefused(callable $operation): void
+    {
+        $this->expectException(CurrencyMismatch::class);
+
+        $operation(
+            Money::of('100.000', Currency::of('TND')),
+            Money::of('100.00', Currency::of('EUR')),
+        );
+    }
+
+    /** @return iterable<string, array{callable}> */
+    public static function operationsThatMustRefuseAForeignCurrency(): iterable
+    {
+        yield 'plus' => [static fn(Money $a, Money $b): Money => $a->plus($b)];
+        yield 'minus' => [static fn(Money $a, Money $b): Money => $a->minus($b)];
+        yield 'ratioTo' => [
+            static fn(Money $a, Money $b): string => $a->ratioTo($b, 12, RoundingMode::HalfUp),
+        ];
+        yield 'compareTo' => [static fn(Money $a, Money $b): int => $a->compareTo($b)];
+
+        // The predicates, because they delegate to compareTo and a future refactor could stop doing so.
+        yield 'isLessThan' => [static fn(Money $a, Money $b): bool => $a->isLessThan($b)];
+        yield 'isGreaterThan' => [static fn(Money $a, Money $b): bool => $a->isGreaterThan($b)];
+    }
+
+    /**
+     * `equals()` is the deliberate exception: it answers false rather than throwing.
+     *
+     * "Is 100 TND the same money as 100 EUR" has a definite answer, and it is no. Asserted so that the
+     * asymmetry with `compareTo()` is a documented decision rather than an oversight a later reader
+     * "fixes" in either direction.
+     */
+    public function testEqualsAnswersFalseAcrossCurrenciesRatherThanThrowing(): void
+    {
+        self::assertFalse(
+            Money::of('100.000', Currency::of('TND'))->equals(Money::of('100.00', Currency::of('EUR'))),
+        );
+
+        // And the same numeral in the same currency is equal, so the guard above is not just returning
+        // false for everything.
+        self::assertTrue(
+            Money::of('100.000', Currency::of('TND'))->equals(Money::of('100.000', Currency::of('TND'))),
+        );
+    }
+
     public function testLargeAmountsDoNotOverflow(): void
     {
         // 64-bit integers top out near 9.22e18; NUMERIC(19,4) does not. Arbitrary precision is the

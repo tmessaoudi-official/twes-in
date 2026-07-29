@@ -119,6 +119,12 @@ final readonly class ProductPricing
      *
      * Note the precision in that condition. A rate the user *typed* is defined even on a zero cost —
      * nothing is being divided — so it is returned as entered. Only a derived one can be undefined.
+     *
+     * **This accessor does not throw**, and that is a promise rather than an accident: a review found it
+     * raising `InvalidRate` for a product that had constructed and persisted perfectly legally (a
+     * one-millime cost with a typed price of 1000.000), which is a 500 on a product page rather than a
+     * validation error. `PriceCalculator::profitRateFromNet()` reports an unrepresentable derived rate as
+     * null, through the same channel as an undefined one, because both mean "no rate to display".
      */
     public function profitRate(RoundingMode $mode): ?Rate
     {

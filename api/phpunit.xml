@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+    This file is part of twes-in.
+
+    (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+
+    SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<!--
     Four suites, deliberately separate rather than one `tests/` bag, because each answers a
     different question and each has a different cost:
 
@@ -44,9 +51,25 @@
 
     <php>
         <ini name="error_reporting" value="-1"/>
-        <!-- Integration suite target. Overridden by the real environment in CI. -->
+        <!--
+            Integration suite target. Overridden by the real environment in CI, and these defaults are
+            throwaway local values.
+
+            FOUR roles, not one. The tenancy proof is only worth something against the topology production
+            uses: a role that owns the policed tables can remove their policies or TRUNCATE them in one
+            statement, so a suite provisioned with a single role certifies a connection that could step
+            around the thing being certified. The other two exist so the refusal branches can be proven
+            against real privileged connections instead of only through pure predicates. What each one is
+            for is documented in scripts/dev/provision-test-database.sh, which creates them.
+        -->
         <env name="TWES_TEST_DSN" value="pgsql:host=127.0.0.1;port=5432;dbname=twes_in_test"/>
         <env name="TWES_TEST_DB_USER" value="twes"/>
         <env name="TWES_TEST_DB_PASSWORD" value="twes"/>
+        <env name="TWES_TEST_DB_OWNER_USER" value="twes_owner"/>
+        <env name="TWES_TEST_DB_OWNER_PASSWORD" value="twes_owner"/>
+        <env name="TWES_TEST_DB_BYPASS_USER" value="twes_bypass"/>
+        <env name="TWES_TEST_DB_BYPASS_PASSWORD" value="twes_bypass"/>
+        <env name="TWES_TEST_DB_MEMBER_USER" value="twes_member"/>
+        <env name="TWES_TEST_DB_MEMBER_PASSWORD" value="twes_member"/>
     </php>
 </phpunit>

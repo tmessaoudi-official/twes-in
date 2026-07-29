@@ -55,9 +55,17 @@ final readonly class PriceCalculator
     /**
      * The profit rate implied by a cost and a net price: `(net - cost) / cost`.
      *
-     * **Null when the cost is zero**, because the rate is then mathematically undefined rather than
-     * zero. A zero would claim the item is sold at cost; an exception would block a legitimate edit.
-     * The form shows an empty field, and callers must handle the null rather than coalesce it.
+     * **Null in two cases, both meaning "there is no rate to show", never "the rate is zero":**
+     *
+     *  - **The cost is zero**, so the rate is mathematically undefined. A zero would claim the item is sold
+     *    at cost; an exception would block a legitimate edit. The form shows an empty field.
+     *  - **The result is too large to be a `Rate`.** Only reachable from an absurd pair now that the bound
+     *    matches `Money`'s own, but returning null keeps the promise that matters: this is called from
+     *    `ProductPricing::profitRate()`, a read accessor, and a getter must not throw on state that was
+     *    persisted legally. A review found exactly that — a 1-millime cost with a typed price of 1000.000
+     *    constructed fine and then threw on every read.
+     *
+     * Callers must handle the null rather than coalesce it; `??  Rate::zero()` is the bug this guards.
      */
     public function profitRateFromNet(Money $cost, Money $net, RoundingMode $mode): ?Rate
     {
@@ -65,9 +73,15 @@ final readonly class PriceCalculator
             return null;
         }
 
-        return Rate::fromFraction(
-            $net->minus($cost)->ratioTo($cost, Rate::FRACTION_SCALE, $mode),
-        );
+        $fraction = $net->minus($cost)->ratioTo($cost, Rate::FRACTION_SCALE, $mode);
+
+        // Asked, not caught. Catching InvalidRate here would also swallow a malformed or over-precise
+        // value, which are programming errors in this class rather than conditions to report as "no rate".
+        if (!Rate::canHoldFraction($fraction)) {
+            return null;
+        }
+
+        return Rate::fromFraction($fraction);
     }
 
     /**

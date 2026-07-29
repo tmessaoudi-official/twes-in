@@ -47,7 +47,10 @@ use Twes\Infrastructure\Tenancy\Exception\NoCurrentTenant;
  *     `ALTER TABLE ... DISABLE ROW LEVEL SECURITY`, or add `CREATE POLICY ... USING (true)`, in one
  *     statement — and `TRUNCATE` is never subject to row security at any privilege level. So the runtime
  *     role must **not own** the tenant-owned tables and must not hold `TRUNCATE` on them. Migrations run
- *     as a separate, owning role. This is an infrastructure requirement, recorded in infra/README.md.
+ *     as a separate, owning role. This is an infrastructure requirement, recorded in infra/README.md —
+ *     and, since a round found this control asserted in prose while the code checked only the two role
+ *     attributes below, it is now also checked, by
+ *     {@see self::assertPolicedTablesAreBeyondThisRolesReach()}.
  *  1. **A superuser connection.** RLS never applies to superusers. The application role must not be
  *     one, and `assertConnectionCannotBypassPolicies()` exists to prove it.
  *  2. **The table's owner.** RLS is skipped for the owner unless the table also has
@@ -75,7 +78,10 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     /**
      * @throws NoCurrentTenant if no tenant is bound — binding "no tenant" is refused rather than
      *                         leaving the session unscoped
-     * @throws \RuntimeException if not inside a transaction, where SET LOCAL would have no effect
+     * @throws \RuntimeException if not inside a transaction, where SET LOCAL would have no effect; if the
+     *                           connection already carries a tenant id; or if this transaction has already
+     *                           bound one — rebinding within a transaction is refused, see
+     *                           {@see self::assertSessionTenantIsUnset()}
      */
     public function bind(\PDO $connection, TenantContext $context): void
     {
@@ -98,8 +104,10 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         // success, because a transaction-local write shadows the pin until COMMIT restores it. Checking
         // here covers the DSN pin, PGOPTIONS, and any later writer, at the cost of one cheap query.
         //
-        // Read outside this transaction's own write: PostgreSQL restores the session value on COMMIT, so
-        // what matters is what the session held when this transaction began.
+        // What this read CANNOT distinguish, stated because an earlier version of this comment claimed it
+        // could: from inside a transaction, a value written transaction-locally and a value written at
+        // session scope look identical. So a second bind() in the same transaction is refused too — see
+        // assertSessionTenantIsUnset() for why that is the right way round.
         self::assertSessionTenantIsUnset($connection);
 
         $expected = $context->tenantId()->toString();
@@ -193,18 +201,31 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * superuser or a `BYPASSRLS` role sees every tenant while every policy remains in place and every
      * test that only checks the happy path still passes. Call this at boot, and in CI.
      *
-     * @throws \RuntimeException if the role can bypass policies
+     * Three separate questions, because a round found this method answering only the first and being
+     * named as though it answered all of them: can a reachable role bypass policies *by attribute*, can
+     * this role reach *around* the policies on the tables themselves (ownership, `TRUNCATE`), and is a
+     * tenant already pinned on the connection.
+     *
+     * @return int the number of policed tables inspected, so a caller can see the check had subject
+     *             matter; zero is refused rather than reported
+     *
+     * @throws \RuntimeException if the role can bypass policies, reach around them, or arrives pinned
      */
-    public function assertConnectionCannotBypassPolicies(\PDO $connection): void
+    public function assertConnectionCannotBypassPolicies(\PDO $connection): int
     {
-        // EVERY REACHABLE ROLE, not just current_user. `rolsuper` and `rolbypassrls` are not inherited, so
-        // a role that is a *member* of a superuser, BYPASSRLS or table-owning role reads f/f in its own
-        // pg_roles row, passes a naive check, and then reaches those privileges with one `SET ROLE`. That
-        // precondition is not exotic: infra/README.md mandates a separate owning migration role, and the
-        // ordinary way to wire that in one container is to grant it to the runtime role.
+        // EVERY REACHABLE ROLE, and reachable from SESSION_USER — not current_user. Two corrections, both
+        // from findings. First: `rolsuper` and `rolbypassrls` are not inherited, so a role that is a
+        // *member* of a superuser or BYPASSRLS role reads f/f in its own pg_roles row, passes a naive
+        // check, and then reaches those privileges with one `SET ROLE`. Second, subtler: PostgreSQL
+        // authorises `SET ROLE` against **session_user**, so on a connection where current_user has
+        // already been changed — `options='-c role=…'` in the DSN, or `ALTER ROLE … SET role`, neither
+        // needing any application code — a predicate over current_user enumerates a strictly smaller set
+        // than the connection can actually reach. Both are unioned: current_user for what is held right
+        // now, session_user for what one statement can reach.
         $statement = $connection->query(
             'SELECT bool_or(rolsuper) AS rolsuper, bool_or(rolbypassrls) AS rolbypassrls '
-            . 'FROM pg_roles WHERE pg_has_role(current_user, oid, \'MEMBER\')',
+            . 'FROM pg_roles WHERE pg_has_role(session_user, oid, \'MEMBER\') '
+            . "OR pg_has_role(current_user, oid, 'MEMBER')",
         );
 
         if (false === $statement) {
@@ -236,7 +257,128 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             );
         }
 
+        $policedTables = self::assertPolicedTablesAreBeyondThisRolesReach($connection);
+
         self::assertNoTenantPinnedOnTheConnection($connection);
+
+        return $policedTables;
+    }
+
+    /**
+     * Prove that this role cannot reach *around* the policies rather than through them.
+     *
+     * The two attributes checked above are not the whole of bypass #0, and this is the hole a round found:
+     * a role that is neither a superuser nor `BYPASSRLS` can still see every tenant in two statements if it
+     * **owns** a policed table (`SET ROLE owner; ALTER TABLE … DISABLE ROW LEVEL SECURITY`), or erase every
+     * tenant's rows in one if it holds **TRUNCATE**, which is never subject to row security at any
+     * privilege level. `FORCE ROW LEVEL SECURITY` does not help with either: it stops an owner *skipping*
+     * policies, not *removing* them.
+     *
+     * The table set is derived from the catalogue rather than passed in, deliberately: any table with RLS
+     * enabled is by definition tenant-owned, so a table added by a later wave is covered the day it is
+     * created and cannot be forgotten from a list. `has_table_privilege` already accounts for privileges
+     * held via role membership, and `pg_has_role` on the owner covers reaching ownership by `SET ROLE`
+     * from either current_user or session_user, for the same reason as above.
+     *
+     * @return int the number of policed tables inspected
+     *
+     * @throws \RuntimeException if any policed table is reachable, or if no table is policed at all
+     */
+    public static function assertPolicedTablesAreBeyondThisRolesReach(\PDO $connection): int
+    {
+        $statement = $connection->query(
+            'SELECT n.nspname || \'.\' || c.relname AS "table", o.rolname AS owner, '
+            . "pg_has_role(session_user, c.relowner, 'MEMBER') "
+            . "OR pg_has_role(current_user, c.relowner, 'MEMBER') AS owner_reachable, "
+            . "has_table_privilege(current_user, c.oid, 'TRUNCATE') AS can_truncate, "
+            . 'c.relforcerowsecurity AS forced '
+            . 'FROM pg_class c '
+            . 'JOIN pg_roles o ON o.oid = c.relowner '
+            . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
+            . "WHERE c.relrowsecurity AND c.relkind = 'r' "
+            . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+            . 'ORDER BY 1',
+        );
+
+        if (false === $statement) {
+            throw new \RuntimeException('Could not inspect the policed tables.');
+        }
+
+        /** @var list<array{table: string, owner: string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string}> $tables */
+        $tables = $statement->fetchAll(\PDO::FETCH_ASSOC);
+
+        // A check with no subject matter must not report success — the same vacuity that made a gate print
+        // OK after inspecting zero files. If nothing is policed then this connection is subject to no
+        // policy at all, which is the state this method exists to rule out, not a clean bill of health.
+        if ([] === $tables) {
+            throw new \RuntimeException(
+                'No table in this database has row-level security enabled, so there is no isolation to be '
+                . 'subject to and this check would otherwise pass vacuously. Run the migrations first; if '
+                . 'they have run, no tenant-owned table is carrying its policy.',
+            );
+        }
+
+        $violations = self::policedTableViolations($tables);
+
+        if ([] !== $violations) {
+            throw new \RuntimeException(
+                'This connection can reach around the row-level security policies rather than through '
+                . 'them, so isolation is not in force however correct the policies are: '
+                . implode('; ', $violations)
+                . '. Migrations must run as a separate owning role, that role must not be granted to the '
+                . 'runtime role, and TRUNCATE must be revoked — see infra/README.md.',
+            );
+        }
+
+        return \count($tables);
+    }
+
+    /**
+     * Which policed tables this role can reach around, given the catalogue rows.
+     *
+     * Pure, for the same reason {@see self::roleCanBypassPolicies()} is: the interesting branches need
+     * privileges the runtime role must never hold, so they are unit-testable here and separately proven
+     * live against the real catalogue by the integration suite.
+     *
+     * @param list<array{table: string, owner: string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string}> $tables
+     *
+     * @return list<string> one human-readable violation per problem found, empty when the role is safe
+     */
+    public static function policedTableViolations(array $tables): array
+    {
+        $violations = [];
+
+        foreach ($tables as $table) {
+            if (self::isTrue($table['owner_reachable'])) {
+                $violations[] = \sprintf(
+                    '%s is owned by %s, which this connection can reach (DISABLE ROW LEVEL SECURITY, or a '
+                    . 'USING (true) policy, is then one statement away)',
+                    $table['table'],
+                    $table['owner'],
+                );
+            }
+
+            if (self::isTrue($table['can_truncate'])) {
+                $violations[] = \sprintf(
+                    '%s can be TRUNCATEd by this connection, which removes every tenant\'s rows and is '
+                    . 'never subject to row security',
+                    $table['table'],
+                );
+            }
+
+            // Not a bypass this role holds, but a policy that exempts its own owner — worth refusing here
+            // because this is the one place that reads relforcerowsecurity, and a migration that ENABLEd
+            // without FORCEing has left the owning role exempt on that table.
+            if (!self::isTrue($table['forced'])) {
+                $violations[] = \sprintf(
+                    '%s has row-level security ENABLEd but not FORCEd, so its owner is exempt from its own '
+                    . 'policies',
+                    $table['table'],
+                );
+            }
+        }
+
+        return $violations;
     }
 
     /**
@@ -289,9 +431,22 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * The in-transaction form of the pinned-tenant check, for use from `bind()`.
      *
      * `bind()` necessarily runs inside a transaction, where the public check refuses to answer. What is
-     * checked here is narrower and sufficient: at the moment `bind()` is called it has not yet written, so
-     * a non-empty value can only have come from somewhere else — a DSN option, `PGOPTIONS`, or a
-     * session-scope write by other code. `''` and NULL are both "no tenant", exactly as above.
+     * checked here is narrower, and an earlier version of this docblock called it "sufficient", which was
+     * false in two ways a round proved:
+     *
+     *  - **It cannot tell where the value came from.** From inside a transaction, a transaction-local
+     *    write and a session-scope one read identically, so a *second* `bind()` in the same transaction
+     *    trips this check as well. That is refused deliberately rather than tolerated — switching tenant
+     *    inside one transaction would leave statements already executed under the first tenant in the same
+     *    atomic unit as statements under the second — but the message must not blame a DSN option for it.
+     *  - **It can be masked.** Anything able to run `set_config(…, '', true)` before `bind()` hides a live
+     *    session pin behind a transaction-local empty string, and the pin returns on COMMIT. That actor
+     *    could equally bind itself to any tenant directly, so it buys them nothing; the honest statement
+     *    is that this guard raises the cost of the fourth bypass rather than closing it. Closing it needs
+     *    a re-check when the connection is *released*, which needs a connection lifecycle this wave has
+     *    no ORM to hook — recorded as owed in docs/plans/build-waves.plan.md (R4-3).
+     *
+     * `''` and NULL are both "no tenant", exactly as above.
      *
      * @throws \RuntimeException if a tenant id is already present
      */
@@ -307,9 +462,12 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         }
 
         throw new \RuntimeException(\sprintf(
-            'Refusing to bind: %s already reads "%s" before this binding was written, so something else on '
-            . 'this connection set it — a DSN option, PGOPTIONS, or a session-scope write. On COMMIT that '
-            . 'value returns and unbound statements would silently read that tenant.',
+            'Refusing to bind: %s already reads "%s". Either this transaction has already bound a tenant — '
+            . 'rebinding inside one transaction is refused, because statements already executed under the '
+            . 'first tenant would share an atomic unit with statements under the second; commit and open a '
+            . 'new transaction per tenant — or something else on this connection set it (a DSN option, '
+            . 'PGOPTIONS, a session-scope write), in which case that value returns on COMMIT and unbound '
+            . 'statements would silently read that tenant.',
             self::TENANT_SETTING,
             \is_string($existing) ? $existing : get_debug_type($existing),
         ));

@@ -256,7 +256,7 @@ check them, each proven to fail on an injected violation before being trusted:
 | `layer-dependencies.php` | inward-only dependencies, **and** the domain's zero-Composer-dependency rule |
 | `no-ambient-calls-in-domain.php` | no clock, randomness, environment or I/O in `Domain/` |
 | `no-orm-attributes-in-domain.sh` | no `#[ORM\` or any Doctrine reference under `Domain/` |
-| `spdx-headers.sh` | licensing invariant 8(c), on every source file |
+| `spdx-headers.sh` | licensing invariant 8(c), on every source file — **and that the search roots COVER every tracked source file**, which is the direction that was missing when `api/phpunit.xml` sat unscanned with no identifier |
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
 
@@ -421,13 +421,24 @@ downloads the PHPUnit and php-cs-fixer phars against pinned SHA-256 hashes. The 
 database prerequisites** are:
 
 ```
-createuser --createdb twes           # must be NEITHER superuser NOR BYPASSRLS — row-level security
-createdb   --owner=twes twes_in_test # does not apply to either, so the suite would silently pass
-psql -c "ALTER ROLE twes PASSWORD 'twes'"
+sudo -u postgres bash scripts/dev/provision-test-database.sh
 ```
 
-Overridden in CI by `TWES_TEST_DSN`, `TWES_TEST_DB_USER` and `TWES_TEST_DB_PASSWORD`; the defaults in
-`api/phpunit.xml` are throwaway local values. With no database reachable the integration suite **fails**
+**FOUR roles, not one, and the script explains why each one exists** — this replaced three `createuser`
+lines after round 4 found a **P0** in what they produced. A single role that owns the tenant-owned tables
+can `ALTER TABLE … DISABLE ROW LEVEL SECURITY` or `TRUNCATE` them in one statement (`FORCE` stops an owner
+*skipping* policies, not *removing* them), so every isolation assertion was being made against a connection
+that could step around the thing being asserted — and the suite proved it, running both statements on the
+connection it had just certified as unable to bypass. The roles are: `twes` (restricted runtime, owns
+nothing, no `TRUNCATE`), `twes_owner` (owns the tables, **never granted to `twes`** — that grant is the
+ordinary convenience wiring that reopens the whole bypass), `twes_bypass` (`BYPASSRLS`, so the refusal
+branch can be proven live rather than only through a pure predicate) and `twes_member` (harmless attributes
+of its own but a *member* of `twes_bypass`, so privileges reached by `SET ROLE` — including from
+`session_user` while `current_user` looks clean — are proven refused).
+
+Overridden in CI by `TWES_TEST_DSN` plus a user/password pair per role
+(`TWES_TEST_DB_{USER,OWNER_USER,BYPASS_USER,MEMBER_USER}` and their `_PASSWORD` counterparts); the defaults
+in `api/phpunit.xml` are throwaway local values. With no database reachable the integration suite **fails**
 rather than passing — deliberately, since a green run that silently skipped the tenancy proof is the
 worst outcome available.
 
@@ -508,7 +519,18 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   detection are indistinguishable otherwise — and **a test fixture that omits an input makes every
   assertion about that input vacuous while the suite stays green.** Both are the same shape as the
   handoff-hook failure already recorded above, which is why they belong here rather than in a plan.
-- **2026-07-29 — GitHub egress is restricted to THIS repository, so `composer install` cannot run.**
+- **2026-07-29 — GitHub egress is restricted to THIS repository, so `composer install` cannot run — and
+  Composer MISREPORTS the reason as authentication.** Composer needs no GitHub credentials for public
+  packages; it receives a policy `403` on a URL it expects to be readable and concludes *"Could not
+  authenticate against github.com"*, which sends a reader looking for a token that was never required.
+  [Verified: `repo.packagist.org/p2/symfony/uid.json` → **200**, while `api.github.com`, `codeload.github.com`
+  and `github.com` → **403** with `"GitHub access to this repository is not enabled for this session"`.] The
+  remedy is the **environment's network policy**, not a credential: a wider-egress environment installs with
+  no authentication at all. The `403` body names an `add_repo` tool; it is not exposed in this session's tool
+  list. Note also that **Packagist metadata IS reachable**, so a package's declared licence can be verified
+  from `repo.packagist.org/p2/<vendor>/<pkg>.json` before adding it — remembering that the v2 format is
+  *minified*, inheriting any absent field from the previous version entry, so a naive read shows
+  `license: null`.
   Every Composer `dist` URL for a GitHub-hosted package is `api.github.com`, `codeload.github.com` or
   `github.com`, and all three return **403** with *"GitHub access to this repository is not enabled for
   this session"*. [Verified: `curl -o /dev/null -w '%{http_code}'` against a `symfony/uid` zipball on all
@@ -534,6 +556,27 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   **nothing rather than everything** — that fail-closed direction is the whole design and
   `TenantIsolationTest` asserts it directly, alongside a test that disables the policy and watches every
   tenant leak. When Doctrine lands, the filter becomes a second layer, not the only one.
+- **2026-07-29 — a control asserted in prose and enforced nowhere is not a control, and round 4 found the
+  most expensive instance of it.** `assertConnectionCannotBypassPolicies()` read two role attributes and was
+  named as though it answered the whole question. Bypass #0 — *the runtime role must not own the policed
+  tables, and must not hold `TRUNCATE`* — was written in that same class's docblock, in `infra/README.md`,
+  and in this file, and **checked by nothing**. A role that is neither superuser nor `BYPASSRLS` was
+  therefore certified while being two statements from every tenant's data. The compounding failure is the
+  one to remember: **the test suite demonstrated the bypass while certifying against it**, running
+  `DISABLE ROW LEVEL SECURITY` and `TRUNCATE` on the very connection it had just certified, with a fixture
+  comment admitting *"the application connects as the owner"* against the requirement that it must not. When
+  a document states a security precondition, grep for the code that enforces it before believing it — and
+  provision the test environment to match production's topology, because a fixture that cannot express the
+  dangerous shape cannot detect it.
+- **2026-07-29 — a fix is not delivered until a MUTANT proves it load-bearing.** Rounds 1–3 each closed real
+  findings and each closed them without the test that pins the fix, so round 4 found three of round 3's four
+  tenancy fixes revertible with the suite still green — and the round-3 record contained a bracketed
+  `[Verified against live roles]` that was a one-off manual run no fresh clone could reproduce. A passing
+  suite after a fix proves nothing; the fix must be **reverted** and the suite must go **red**. Round 4's
+  eighteen closures are each backed by a re-run mutant recorded in `build-waves.plan.md`. Corollary already
+  learned twice and now three times: **assert on the message, not just a non-zero exit or a green run** — and
+  strip ANSI before grepping a test runner's output, because `phpunit.xml` forces colour and `^OK \(` never
+  matches, which fooled a reviewer's harness in round 3 and my own in round 4.
 - **2026-07-29 — money is never a float.** Recorded here on day zero because it is unfixable later.
   Upstream stores amounts as floats on models and reaches for `bcmath` only in places; its own tax
   helper mixes `BcMath::mul` with native float arithmetic in adjacent methods, and skips rounding

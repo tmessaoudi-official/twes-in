@@ -1,7 +1,8 @@
 # mobile — Flutter client
 
-**Not built yet. Lands in Wave 11** (`docs/plans/build-waves.plan.md`). Mobile is built first; desktop
-later.
+**Not built yet. Lands in Wave 11** (`docs/plans/build-waves.plan.md`). Mobile ships first in the
+sequence, but **all six targets — Android, iOS, Linux, Windows, macOS and Web — are in scope for Wave 11**
+(developer ruling, 2026-07-29); desktop is not deferred to some later wave. Sequencing is not scope.
 
 Pinned on landing: Flutter **3.44.8**, Dart **3.12.2** — the current stable channel
 [Verified 2026-07-29 against Flutter's release manifest: `stable` is 3.44.8 / Dart 3.12.2, released

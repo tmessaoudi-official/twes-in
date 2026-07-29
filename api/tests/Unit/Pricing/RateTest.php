@@ -137,22 +137,60 @@ final class RateTest extends TestCase
     /**
      * A rate whose magnitude cannot be stored.
      *
-     * `profit_rate` is `NUMERIC(15,12)` — twelve fraction decimals leave only THREE integer digits — and
-     * `Rate` bounded the scale but never the magnitude. A one-millime cost with a typed price of 1000.000
-     * derives a rate of 999999, which `withCost` then makes the authored value, so it is what Wave 1 must
-     * persist: `ERROR: numeric field overflow`. `Money` has had exactly this guard since round 1.
+     * `profit_rate` is `NUMERIC(27,12)` — twelve fraction decimals plus fifteen integer digits, matching
+     * `Money::MAX_INTEGER_DIGITS`. The bound was THREE, to match a `NUMERIC(15,12)` column, and a review
+     * showed the column was the thing that was wrong: `withCost()` makes a derived rate the authored one,
+     * and a one-millime cost with a typed price of 1000.000 derives 999999 — four integer digits from two
+     * entirely ordinary amounts. The bound stays as a sanity guard (10^15 is a typo, not a margin) but is
+     * now wide enough that no representable pair of amounts can reach it.
      */
     public function testARateTooLargeForItsColumnIsRefused(): void
     {
         $this->expectException(InvalidRate::class);
-        $this->expectExceptionMessageMatches('/NUMERIC\\(15,12\\)/');
+        $this->expectExceptionMessageMatches('/NUMERIC\\(27,12\\)/');
 
-        Rate::fromFraction('1000');
+        Rate::fromFraction('1000000000000000');
     }
 
     public function testTheLargestStorableRateIsAccepted(): void
     {
-        self::assertSame('99999.9999999999', Rate::fromFraction('999.999999999999')->percentage());
+        self::assertSame(
+            '99999999999999900.0000000000',
+            Rate::fromFraction('999999999999999')->percentage(),
+        );
+    }
+
+    /**
+     * The bound must not refuse what the old, narrower one did — this is the regression the widening is for.
+     *
+     * 999999 is `(1000.000 - 0.001) / 0.001` to a hair: a one-millime cost with a one-dinar price. Both
+     * amounts are legal for the default 3-decimal currency, and under the old bound of three integer digits
+     * every read of this product's rate threw.
+     */
+    public function testTheRateDerivedFromAOneMillimeCostIsAcceptedRatherThanRefused(): void
+    {
+        $rate = Rate::fromFraction('999999.000000000000');
+
+        self::assertSame('99999900.0000000000', $rate->percentage());
+    }
+
+    /**
+     * `canHoldFraction()` is the question the derived path asks instead of catching.
+     *
+     * Catching `InvalidRate` there would also swallow malformed and over-precise values, which are
+     * programming errors in `PriceCalculator` rather than conditions to report to a user as "no rate".
+     */
+    public function testCanHoldFractionAnswersForTheBoundaryAndForMalformedInput(): void
+    {
+        self::assertTrue(Rate::canHoldFraction('999999999999999'));
+        self::assertTrue(Rate::canHoldFraction('-999999999999999'));
+        self::assertFalse(Rate::canHoldFraction('1000000000000000'));
+        self::assertFalse(Rate::canHoldFraction('-1000000000000000'));
+
+        // Malformed is not "too large", and must answer false rather than reaching integerDigits() with
+        // something it cannot parse.
+        self::assertFalse(Rate::canHoldFraction(''));
+        self::assertFalse(Rate::canHoldFraction('1e3'));
     }
 
     public function testAMalformedFractionIsRefused(): void

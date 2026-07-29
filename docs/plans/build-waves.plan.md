@@ -249,7 +249,9 @@ completeness:
   fraction decimals leave only **three** integer digits. A one-millime cost with a typed price of 1000.000
   derives 999999, which `withCost` makes the *authored* value: `ERROR: numeric field overflow`. `Money` had
   had this guard since round 1; the money half was fixed and the rate half created in the same session.
-  Now `Rate::MAX_INTEGER_DIGITS = 3` in the constructor.
+  Now `Rate::MAX_INTEGER_DIGITS = 3` in the constructor. — **SUPERSEDED at round 4: the bound was right in
+  kind and wrong in size, and it was reached from a READ ACCESSOR. Now 15, column `NUMERIC(27,12)`, and an
+  unrepresentable derived rate is reported as `null` rather than thrown. See R4-4.**
 - **The `SET ROLE` bypass.** `rolsuper` and `rolbypassrls` are **not inherited**, so a role that is a
   *member* of a privileged or table-owning role read `f`/`f`, passed the check, and reached full
   cross-tenant read/write with one `SET ROLE`. And the precondition was created **by this session** —
@@ -301,8 +303,71 @@ Also still open from round 2: **R2-12** (savepoint rollback reverts the GUC — 
 **R2-13** (`new (expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` evade the
 ambient gate) and **R2-14** (the >1e9 boundary, pinned but real).
 
-**Round 4 is owed. Wave 0 remains uncertified** — MAXIMAL needs two *consecutive* clean rounds and no round
-has yet been clean. Do not start Wave 1.
+### Certification round 4 — 21 findings including a P0, NOT clean
+
+Frozen at `f57910b`. Three lenses. The counts across the loop are 48 → 26 → 20 → **21**, and the *source*
+shifted in a way the raw count hides: **round 4's most serious findings are in code round 3 itself wrote.**
+The completeness lens named the pattern precisely — *"each round's fixes land without the test that pins
+them"* — and it is the diagnosis this record exists to preserve, because it is a process defect rather than a
+code defect. `CLAUDE.md` § "Quality gate" already requires a failing test *first* for money, tax and state
+transitions; round 4's remedy extends that to **every fix**, and the evidence standard for a fix is now a
+**killed mutant**, not a passing suite.
+
+**The P0, and why it matters more than its one row suggests.**
+`assertConnectionCannotBypassPolicies()` read exactly two catalogue attributes, `rolsuper` and
+`rolbypassrls`, and was named as though it answered the whole question. It did not: a role that is neither —
+so **accepted** by the check — reaches every tenant in two statements if it **owns** a policed table
+(`SET ROLE owner; ALTER TABLE … DISABLE ROW LEVEL SECURITY`), or erases every tenant's rows in one if it
+holds **TRUNCATE**. `FORCE ROW LEVEL SECURITY` does not help: it stops an owner *skipping* policies, not
+*removing* them. Bypass #0 was listed in the class's own docblock and enforced nowhere.
+
+Worse, the suite *demonstrated* the bypass while certifying against it: `TenantIsolationTest` ran
+`DISABLE ROW LEVEL SECURITY` and `TRUNCATE` on the very connection it certified as unable to bypass, and a
+comment in its fixture admitted *"the application connects as the owner"* against `infra/README.md`'s
+requirement that it must not. Every isolation assertion in Wave 0 was therefore made against a role that
+could step around the thing being asserted.
+
+| # | Finding | Severity | Status |
+|---|---|---|---|
+| R4-1 | **The bypass check ignored table ownership and `TRUNCATE`** — the P0 above. | **P0** | **CLOSED.** `assertPolicedTablesAreBeyondThisRolesReach()` derives the table set from the catalogue (`relrowsecurity`), so a table added by a later wave is covered the day it is created and cannot be forgotten from a list, and refuses on reachable ownership, `TRUNCATE`, **or** RLS enabled without `FORCE`. Zero policed tables is refused, not reported clean. |
+| R4-2 | **The reachability predicate named the wrong role.** `pg_has_role(current_user, …)` — but PostgreSQL authorises `SET ROLE` against **session_user**, so a connection arriving with `current_user` already changed (`options='-c role=…'` in the DSN, or `ALTER ROLE … SET role`, neither needing application code) enumerated a strictly smaller set than it could reach. | **P1** | **CLOSED.** Unioned over both `session_user` and `current_user`. |
+| R4-3 | **Three of round 3's four tenancy fixes had ZERO coverage; the fourth was asserted message-blind.** Reverting the `pg_has_role` predicate, deleting `bind()`'s pre-write check, or replacing the whole privilege query with `SELECT false, false` each left `OK (17 tests, 23 assertions)`. The bracketed `[Verified against live roles]` in round 3's record was a one-off manual run no fresh clone could reproduce. | **P1** | **CLOSED.** The integration suite now runs against the **real four-role topology** (`scripts/dev/provision-test-database.sh`): a restricted runtime role, a separate owning role, a `BYPASSRLS` role and a role that *reaches* one by `SET ROLE`. 17 → **27 tests, 56 assertions**, and **nine mutants proven killed** — each fix individually reverted, suite red, control green either side. |
+| R4-4 | **`Rate::MAX_INTEGER_DIGITS = 3` made a READ ACCESSOR throw on legally-persisted state.** `ProductPricing::fromNetPrice(0.001 TND, 1000.000 TND)` constructs and persists fine (`authored_by = net_price`, `profit_rate` NULL) and then every read of its rate raised `InvalidRate` — a 500 on a product page, not a validation error. The column was the thing that was wrong. | **P1** | **CLOSED.** Bound widened to 15 (matching `Money`), column `NUMERIC(27,12)`, and `PriceCalculator::profitRateFromNet()` **asks** `Rate::canHoldFraction()` and returns `null` — the same channel as an undefined rate — rather than throwing. Still reachable at the extremes of a 4-decimal currency, so it has a witness rather than being dead code. |
+| R4-5 | **The caller's `RoundingMode` was discardable at SIX of nine entry points with no detection.** All six hard-coded to `HalfUp` at once → `OK (251 tests, 1247 assertions)` while eight probes gave wrong money, and `RoundingMode::Unnecessary` became a silent rounding at three of them, inverting its one guarantee. Every class tested *what* it computed; nothing tested that the policy it was handed was the policy it used — and `ProductPricing`'s tests called `PriceCalculator` directly, so they never proved forwarding at all. | **P1** | **CLOSED.** `RoundingModeIsForwardedTest` asserts the property across **all eleven** mode-taking entry points, twice each (two modes must diverge with exact literals; `Unnecessary` must refuse). **Nine mutants proven killed.** |
+| R4-6 | **`eval()` bypassed the ambient gate completely** — `T_EVAL`, not `T_STRING`, so it was in `BANNED_FUNCTIONS`, advertised by `--dump-rules` as enforced, skipped **by name** in the generated loop, and matched by no branch. One `eval` evaded every ban in the table simultaneously. | **P1** | **CLOSED.** Own branch, own case. |
+| R4-7 | **The round-3 vacuity fix reached one gate of three.** `no-ambient-calls` and `no-orm-attributes` — the two gates enforcing the domain-purity P0s, reading the *same* input — still printed "does not exist yet, nothing to check" and exited **0**. Relocating `api/src/Domain` left both unchecked with `gate:architecture` green. And the fix itself had no meta-case: deleting it kept 183/183. | **P1** | **CLOSED.** Both gates now fail on an absent *or* empty domain, `layer-dependencies` checks **per layer** (its total-count guard was blind to one layer of two disappearing), and there are six meta-cases. Its own total-count guard was then found **unreachable** and deleted rather than kept as dead code posing as a check. |
+| R4-8 | **`spdx-headers.sh` could not see `api/`'s own files.** `xml` is in scope but `api/` is not a root, so the set complement was unscanned — and `api/phpunit.xml` was sitting in it with **no SPDX identifier**, a live licensing-invariant-8(c) miss, while the gate reported OK. The generated cases proved every listed root *is* scanned; nothing proved the roots *cover every file*. | **P1** | **CLOSED.** The missing inventory direction is now asserted against `git ls-files`, the header added, and the meta-fixture is a real git work tree so the coverage path is actually exercised rather than taking its not-a-work-tree branch in every case. |
+| R4-9 | **`isLastDigitOdd` reached with one of five odd digits.** Deleting `'3'`, `'5'`, `'7'` or `'9'` left the suite green; each turns half-even into half-down for a fifth of all ties. | **P1** | **CLOSED.** All ten last digits, expectations computed independently in Python's `decimal`. Five mutants killed. |
+| R4-10 | **`Decimal::divide`'s divisor sign normalisation was uncovered.** Deleting it left the suite green while five of seven modes gave wrong answers and one produced a fatal `ValueError` from the string `'--0.000'`. | **P1** | **CLOSED.** Twelve cases across both sign combinations, including the directed modes, which a magnitude-only implementation gets exactly backwards. |
+| R4-11 | **Cross-currency guards on `ratioTo`/`compareTo` untested.** `100.000 TND` compared **equal** to `100.00 EUR`; `compareTo` underpins the predicates payment application will use to decide whether an invoice is settled. | **P1** | **CLOSED.** Every cross-currency operation, plus `equals()`'s deliberate answer-false asymmetry asserted as a decision. |
+| R4-12 | **The one-multiplication rationale was a comment nothing asserted.** The two forms are provably identical under half-up and diverge only under **half-even** — the default of most accounting configurations. | **P2** | **CLOSED.** Both forms written out in the test, divergence asserted. |
+| R4-13 | **`bind()`'s docblock and error message asserted something false.** A second `bind()` in one transaction trips the pre-write check — from inside a transaction a transaction-local write and a session-scope one read identically — and the message blamed "a DSN option, PGOPTIONS, or a session-scope write", sending the reader hunting something that was not there. The private helper's docblock called the check "sufficient" while the public one explicitly denied that same sufficiency. | **P2** | **CLOSED.** Rebinding is refused deliberately (statements under two tenants must not share an atomic unit), the message names both causes, and the guard's real limit is stated rather than overclaimed. |
+| R4-14 | **`test-gates.sh` covered 41 of 97 banned functions by name, so 56 were deletable at 183/183** — generating a case from the rule data means deleting an entry deletes its own case. | **P2** | **CLOSED structurally.** Committed **minimum sizes** per rule set (`assert_at_least`), which closes the class for every future entry rather than for whichever names a reviewer happened to enumerate. |
+| R4-15 | **`use function time as now;` renamed a banned function past both gates.** The imported name is followed by `as`, not `(`, so the "only an actual call counts" rule skipped it, and the alias is in no denylist. | **P2** | **CLOSED.** Checked at the import, where the real name is still written down; grouped imports covered by the same walk; a legitimate `use function bcadd` asserted not to trip. |
+| R4-16 | **`'\time'` — a backslash-prefixed string callable — passed.** The string branch did not strip the backslash; the qualified-name branch eighteen lines away did. | **P2** | **CLOSED.** |
+| R4-17 | **`no-orm-attributes-in-domain.sh` had no `--dump-rules`**, so five of its eight patterns had no generated coverage. | **P2** | **CLOSED.** Each pattern now ships a paired sample line that must trip it — a test cannot derive a matching sample from a grep regex, so the gate declares one — with a self-check that the two arrays cannot drift. |
+| R4-18 | **`bind()`'s pre-write check is defeated by a transaction-local `''`** masking a live session pin, which returns on COMMIT. | **P2** | **OPEN, documented.** The actor able to do this can bind itself to any tenant directly, so it buys them nothing; the honest remediation is a re-check on connection *release*, which needs a connection lifecycle this wave has no ORM to hook. Stated in the code rather than overclaimed. **Owed at Wave 1.** |
+| R4-19 | The probe table used `id integer PRIMARY KEY`, i.e. the canonical emitter's own witness did not satisfy the composite-key rule its docblock states. | **P2** | **CLOSED.** `PRIMARY KEY (company_id, id)`. |
+| R4-20 | `mobile/README.md` still said "desktop later" against `VISION.md` — the **sixth** recurrence of correcting a statement somewhere other than where it is made. | **P2** | **CLOSED** in place. |
+| R4-21 | The `pg_has_role` fix could not be tested with the existing single-role provisioning, and that constraint was recorded nowhere. | **P1** | **CLOSED.** `scripts/dev/provision-test-database.sh` provisions the four roles and documents what each one makes testable; `CLAUDE.md` § "Quality gate" points at it. |
+
+**Also closed in passing:** R2-14 (the >1e9 rate-precision boundary) is now exercised by
+`RoundingModeIsForwardedTest`'s `withCost` case, where a 12th-decimal rate difference is what decides the
+third decimal of the price.
+
+**Still open and honestly so:** **R2-12** (savepoint rollback reverts the GUC — unreachable until Doctrine),
+**R2-13** (`new (expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` evade the ambient
+gate), **R3-2** (`Decimal::divide` working-scale sweep), **R3-3** (`scaleOf` survives by luck of consumer
+shape), **R4-18** above, and the composite-key schema gate — **P0 at the first Wave 1 migration**.
+
+**Round 5 is owed, and it is the last before `CLAUDE.md`'s five-round cap.** Wave 0 remains uncertified:
+MAXIMAL needs two *consecutive* clean rounds and no round has been clean. Do not start Wave 1. Note that the
+bundle-integration precedent for stopping at five **does not apply** — it excluded code waves explicitly, and
+R4-1 through R4-12 are code.
+
+**The standing rule this round produced, which outlives it:** a fix is not delivered until a *mutant* proves
+the fix load-bearing. Reverting it must turn the suite red. Round 4 closed 18 findings and every one of them
+is backed by a re-run mutant, recorded above.
 
 ### Original scope, for reference — HISTORICAL, read the tables above for what is true
 
@@ -350,7 +415,7 @@ wave that writes the migration with no record of it):
 | Column | Type | Why |
 |---|---|---|
 | `cost` | `NUMERIC(19,4)` | never a float; see `CLAUDE.md` § Gotchas |
-| `profit_rate` | `NUMERIC(15,12)` nullable | 12 fraction decimals — `Rate::FRACTION_SCALE`. Null when the price was the authored field |
+| `profit_rate` | `NUMERIC(27,12)` nullable | 12 fraction decimals (`Rate::FRACTION_SCALE`) plus 15 integer digits (`Rate::MAX_INTEGER_DIGITS`, matching `Money`'s). **Widened from `NUMERIC(15,12)` at round 4**: three integer digits was too narrow, and a one-millime cost with a typed price of 1000.000 derives 999999. Null when the price was the authored field |
 | `net_price` | `NUMERIC(19,4)` nullable | null when the rate was the authored field |
 | `authored_by` | non-null enum `('profit_rate','net_price')` | **the load-bearing one.** Without it both fields look equally real and the derived one gets rebuilt from a rounded copy — see `pricing-and-documents.plan.md` § F4 |
 

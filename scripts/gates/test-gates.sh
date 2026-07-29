@@ -45,6 +45,13 @@ fresh_fixture() {
   cp "$REPO_ROOT"/api/composer.lock "$WORK/repo/api/"
   cp "$REPO_ROOT"/THIRD-PARTY-NOTICES.md "$WORK/repo/"
 
+  # A GIT WORK TREE, because spdx-headers.sh asks git which files exist in order to prove its search roots
+  # COVER every source file — the inventory direction that was missing when `api/phpunit.xml` sat unscanned
+  # with no licence identifier. Without `git init` here that half of the gate would take its
+  # not-a-work-tree branch in every case below, which is the same vacuity as a fixture omitting an input:
+  # every assertion about coverage would pass without exercising it.
+  git -C "$WORK/repo" init -q
+
   cat > "$WORK/repo/api/src/Domain/Probe/Clean.php" <<'PHP'
 <?php
 
@@ -350,6 +357,51 @@ fresh_fixture
 AMBIENT_RULES="$(cd "$WORK/repo" && php scripts/gates/no-ambient-calls-in-domain.php --dump-rules)"
 LAYER_RULES="$(cd "$WORK/repo" && php scripts/gates/layer-dependencies.php --dump-rules)"
 SPDX_RULES="$(cd "$WORK/repo" && bash scripts/gates/spdx-headers.sh --dump-rules)"
+ORM_RULES="$(cd "$WORK/repo" && bash scripts/gates/no-orm-attributes-in-domain.sh --dump-rules)"
+
+# assert_at_least <description> <actual> <committed minimum>
+#
+# WHY A COUNT AND NOT ONLY NAMES. The named baseline below closes "an entry is present but not enforced"
+# and, for the entries it names, "an entry was deleted". It cannot close deletion for the entries it does
+# NOT name — and a review measured that residue exactly: the baseline names 41 of 97 banned functions, so
+# 56 were still deletable with the suite reporting 183/183, because generating a case from the rule data
+# means deleting an entry deletes its own case. A committed SIZE closes that for every entry, including
+# every entry added in future, which enumerating names never will. Raising a number here is a deliberate
+# act; a shrink is a failure.
+assert_at_least() {
+  local description="$1" actual="$2" minimum="$3"
+
+  if (( actual >= minimum )); then
+    printf '  ok   — %s (%d >= %d)\n' "$description" "$actual" "$minimum"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — %s: %d, committed minimum %d. A rule was deleted; deleting it also deleted its own generated case, which is why the count is asserted.\n' \
+      "$description" "$actual" "$minimum"
+    failed=$((failed + 1))
+  fi
+}
+
+# count_rules <json> <python expression over `r`>
+count_rules() {
+  printf '%s' "$1" | python3 -c "import json,sys; r=json.load(sys.stdin); print($2)"
+}
+
+assert_at_least "ambient: BANNED_FUNCTIONS has not shrunk" \
+  "$(count_rules "$AMBIENT_RULES" "len(r['functions'])")" 97
+assert_at_least "ambient: BANNED_VARIABLES has not shrunk" \
+  "$(count_rules "$AMBIENT_RULES" "len(r['variables'])")" 9
+assert_at_least "ambient: BANNED_INSTANTIATIONS has not shrunk" \
+  "$(count_rules "$AMBIENT_RULES" "len(r['instantiations'])")" 2
+assert_at_least "layers: forbidden pairs have not shrunk" \
+  "$(count_rules "$LAYER_RULES" "sum(len(v) for v in r['layers'].values())")" 5
+assert_at_least "orm: forbidden patterns have not shrunk" \
+  "$(count_rules "$ORM_RULES" "len(r['patterns'])")" 8
+assert_at_least "spdx: search roots have not shrunk" \
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 11
+assert_at_least "spdx: individually-listed files have not shrunk" \
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 2
+assert_at_least "spdx: extensions have not shrunk" \
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 8
 
 # The names whose loss would matter most, per category. Not exhaustive by design — exhaustive would
 # duplicate the gate — but every entry here is one a reviewer named or one whose absence is a known
@@ -372,6 +424,8 @@ assert_contains "layers: every forbidden pair survives" "$LAYER_RULES" \
 assert_contains "spdx: every search root survives" "$SPDX_RULES" \
   api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test scripts
 assert_contains "spdx: every extension survives" "$SPDX_RULES" php ts dart sh xml sql yaml yml
+assert_contains "spdx: the individually-listed files survive" "$SPDX_RULES" \
+  api/phpunit.xml api/.php-cs-fixer.dist.php
 
 echo "== GENERATED: every banned FUNCTION must actually fire =="
 while read -r name; do
@@ -406,6 +460,66 @@ assert_gate 'fires on require' no-ambient-calls-in-domain.php 1 'require is ambi
 
 fresh_fixture; inject '    public function f(): mixed { return `id`; }'
 assert_gate 'fires on the backtick operator' no-ambient-calls-in-domain.php 1 'backtick operator is ambient'
+
+# eval is T_EVAL, the same family as T_EXIT — and it was in BANNED_FUNCTIONS, advertised by --dump-rules
+# as enforced, skipped by name in the generated loop above, and matched by no branch at all. One eval
+# evaded every ban in the table simultaneously.
+fresh_fixture; inject '    public function f(): mixed { return eval("return time() . getenv(\"HOME\");"); }'
+assert_gate 'fires on eval' no-ambient-calls-in-domain.php 1 'eval is ambient'
+
+echo "== the EVASIONS a review found: alternative spellings of a banned call =="
+# '\time' is a valid callable — PHP strips the leading backslash — and the string branch did not, while
+# the qualified-name branch eighteen lines away did.
+fresh_fixture; inject '    public function f(): mixed { $g = "\\time"; return $g(); }'
+assert_gate 'fires on a backslash-prefixed string callable' no-ambient-calls-in-domain.php 1 'string callable'
+
+fresh_fixture; inject '    public function f(): array { return array_map("\\getenv", ["HOME"]); }'
+assert_gate 'fires on a backslash-prefixed callable in array_map' no-ambient-calls-in-domain.php 1 "'getenv' as a string callable"
+
+# `use function time as now;` — the imported name is followed by `as`, not `(`, so the "only an actual
+# call counts" rule skipped it, and the alias is in no denylist. Written at file scope, so inject() (which
+# writes inside a class body) cannot be used.
+fresh_fixture
+printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\nuse function time as now;\n\nfinal class Sneaky { public function f(): int { return now(); } }\n' \
+  > "$WORK/repo/api/src/Domain/Probe/Sneaky.php"
+assert_gate 'fires on use function time as now' no-ambient-calls-in-domain.php 1 'use function time is ambient'
+
+fresh_fixture
+printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\nuse function Foo\\{time, getenv};\n\nfinal class Sneaky {}\n' \
+  > "$WORK/repo/api/src/Domain/Probe/Sneaky.php"
+assert_gate 'fires on a GROUPED use function import' no-ambient-calls-in-domain.php 1 'use function getenv is ambient'
+
+# The other direction: a legitimate `use function` must not be flagged, or the rule above is unusable.
+fresh_fixture
+printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\nuse function bcadd;\n\nfinal class Sneaky { public function f(): string { return bcadd("1", "2", 3); } }\n' \
+  > "$WORK/repo/api/src/Domain/Probe/Sneaky.php"
+assert_gate 'does NOT fire on use function bcadd' no-ambient-calls-in-domain.php 0
+
+echo "== VACUITY: a gate that inspected nothing must not report OK =="
+# Round 3 fixed exactly this in layer-dependencies.php and left its two siblings — reading the SAME input
+# — printing "does not exist yet, nothing to check" and exiting 0. Relocating api/src/Domain would have
+# left both domain-purity P0s unchecked with composer gate:architecture still green. The fix in that one
+# gate also had no case of its own: deleting it kept the suite at 183/183.
+for gate in layer-dependencies.php no-ambient-calls-in-domain.php no-orm-attributes-in-domain.sh; do
+  fresh_fixture
+  rm -rf "$WORK/repo/api/src/Domain"
+  assert_gate "refuses to pass with Domain/ ABSENT: ${gate%%.*}" "$gate" 1
+
+  fresh_fixture
+  find "$WORK/repo/api/src/Domain" -name '*.php' -delete
+  assert_gate "refuses to pass with Domain/ EMPTY: ${gate%%.*}" "$gate" 1
+done
+
+echo "== SPDX: the search roots must be proven to COVER every source file =="
+# The set complement, which nothing checked: `api/phpunit.xml` had no identifier and the gate reported OK,
+# because api/ itself is not a root and so both files at its top level were invisible.
+fresh_fixture
+printf '# no header\n' > "$WORK/repo/api/uncovered-by-any-root.sh"
+assert_gate 'catches a source file under NO search root' spdx-headers.sh 1 'under NO search root'
+
+fresh_fixture
+printf '<?xml version="1.0"?>\n<phpunit/>\n' > "$WORK/repo/api/phpunit.xml"
+assert_gate 'checks the individually-listed api/phpunit.xml' spdx-headers.sh 1 'api/phpunit.xml'
 
 echo "== GENERATED: every banned SUPERGLOBAL must actually fire =="
 while read -r name; do
@@ -457,6 +571,20 @@ while read -r extension; do
   printf 'no licence header here\n' > "$WORK/repo/api/src/unlicensed.${extension}"
   assert_gate "scans *.${extension}" spdx-headers.sh 1 "unlicensed.${extension}"
 done < <(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | tr ' ' '\n')
+
+echo "== GENERATED: every forbidden DOCTRINE pattern must actually fire =="
+# Three of eight patterns were covered by hand. The gate now pairs each pattern with a line that must trip
+# it — a test cannot derive a matching sample from a grep regex, so the gate declares one.
+while IFS= read -r sample; do
+  fresh_fixture
+  printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\n%s\n\nfinal class Coupled {}\n' \
+    "$sample" > "$WORK/repo/api/src/Domain/Probe/Coupled.php"
+  assert_gate "fires on ${sample}" no-orm-attributes-in-domain.sh 1 'no-orm-attributes: FAIL'
+done < <(printf '%s' "$ORM_RULES" | python3 -c "
+import json,sys
+for p in json.load(sys.stdin)['patterns']:
+    print(p)
+")
 
 echo "== GENERATED: the licence gate must read BOTH lock sections and EVERY package =="
 for section in packages packages-dev; do

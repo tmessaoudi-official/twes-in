@@ -288,6 +288,99 @@ final class DecimalTest extends TestCase
         yield 'thousands separator' => ['1,000', false];
     }
 
+    /**
+     * Half-even ties on EVERY odd last digit, not just one.
+     *
+     * `isLastDigitOdd()` tests membership of ['1','3','5','7','9'] and a review found only ONE of the five
+     * exercised: deleting '3', '5', '7' or '9' from that list left the whole suite green, and each deletion
+     * silently turns half-even into half-down for a fifth of all ties. The witness for '9' is
+     * `0.019 / 2 = 0.0095`, which must round to 0.010 (up, because 9 is odd) and not 0.009.
+     *
+     * Every expectation here was computed independently in Python's `decimal` module rather than by hand —
+     * a hand-computed literal is its own source of error, which this suite has already learned once.
+     */
+    #[DataProvider('halfEvenTiesOnEachLastDigit')]
+    public function testHalfEvenRoundsAwayFromAnOddDigitAndTowardsAnEvenOne(
+        string $dividend,
+        string $expected,
+    ): void {
+        self::assertSame(
+            $expected,
+            Decimal::divide($dividend, '2', 3, RoundingMode::HalfEven),
+            'A tie whose truncated last digit is odd must round away from it, for all five odd digits.',
+        );
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function halfEvenTiesOnEachLastDigit(): iterable
+    {
+        // dividend / 2 is an exact tie at scale 3; the digit before the trailing 5 is the one under test.
+        yield 'odd 1 rounds to 2' => ['0.003', '0.002'];
+        yield 'odd 3 rounds to 4' => ['0.007', '0.004'];
+        yield 'odd 5 rounds to 6' => ['0.011', '0.006'];
+        yield 'odd 7 rounds to 8' => ['0.015', '0.008'];
+        yield 'odd 9 rounds to 10' => ['0.019', '0.010'];
+
+        // The even digits must round DOWN. Without these the cases above would also pass on a mutant that
+        // always rounded ties up, so half of this provider exists to deny that escape.
+        yield 'even 0 stays' => ['0.001', '0.000'];
+        yield 'even 2 stays' => ['0.005', '0.002'];
+        yield 'even 4 stays' => ['0.009', '0.004'];
+        yield 'even 6 stays' => ['0.013', '0.006'];
+        yield 'even 8 stays' => ['0.017', '0.008'];
+    }
+
+    /**
+     * A NEGATIVE divisor, which nothing exercised.
+     *
+     * `divide()` strips the sign from both operands and reapplies it once. A review deleted the divisor's
+     * half of that normalisation and the suite stayed green — while five of seven rounding modes then gave a
+     * wrong answer and one produced a fatal `ValueError: bccomp(): Argument #1 is not well-formed`, from the
+     * string `'--0.000'` the un-normalised path builds.
+     */
+    #[DataProvider('divisionsWithNegativeOperands')]
+    public function testDivisionNormalisesTheSignOfBothOperands(
+        string $dividend,
+        string $divisor,
+        RoundingMode $mode,
+        string $expected,
+    ): void {
+        self::assertSame($expected, Decimal::divide($dividend, $divisor, 3, $mode));
+    }
+
+    /** @return iterable<string, array{string, string, RoundingMode, string}> */
+    public static function divisionsWithNegativeOperands(): iterable
+    {
+        yield 'negative divisor, exact' => ['1.000', '-2', RoundingMode::Unnecessary, '-0.500'];
+        yield 'negative dividend, exact' => ['-1.000', '2', RoundingMode::Unnecessary, '-0.500'];
+        yield 'both negative, exact' => ['-1.000', '-2', RoundingMode::Unnecessary, '0.500'];
+
+        // Ties, where the mode is applied to the MAGNITUDE and the sign reapplied afterwards. Note the
+        // half-even and half-down results are plain '0.000': negative zero has one spelling here.
+        yield 'negative divisor, half-up tie' => ['0.001', '-2', RoundingMode::HalfUp, '-0.001'];
+        yield 'negative divisor, half-even tie' => ['0.001', '-2', RoundingMode::HalfEven, '0.000'];
+        yield 'negative divisor, half-down tie' => ['0.001', '-2', RoundingMode::HalfDown, '0.000'];
+
+        // The DIRECTED modes are defined on the number line, not on the magnitude, so a negative quotient
+        // separates them: Floor goes towards -inf and Ceiling towards +inf, which is the pair a
+        // magnitude-only implementation gets exactly backwards.
+        yield 'negative quotient, floor' => ['0.001', '-3', RoundingMode::Floor, '-0.001'];
+        yield 'negative quotient, ceiling' => ['0.001', '-3', RoundingMode::Ceiling, '0.000'];
+        yield 'negative quotient, down' => ['0.001', '-3', RoundingMode::Down, '0.000'];
+        yield 'negative quotient, up' => ['0.001', '-3', RoundingMode::Up, '-0.001'];
+
+        // Non-tie remainders in both signs, so a mutant that only mishandles ties is not enough.
+        yield 'both negative, two thirds' => ['-2.000', '-3', RoundingMode::HalfUp, '0.667'];
+        yield 'mixed signs, two thirds' => ['2.000', '-3', RoundingMode::HalfUp, '-0.667'];
+    }
+
+    /** Unnecessary must still refuse a rounding when a sign is involved. */
+    public function testUnnecessaryRefusesARoundingRegardlessOfSign(): void
+    {
+        self::assertNull(Decimal::divide('1.000', '-3', 3, RoundingMode::Unnecessary));
+        self::assertNull(Decimal::divide('-1.000', '3', 3, RoundingMode::Unnecessary));
+    }
+
     public function testNegativeZeroHasExactlyOneSpelling(): void
     {
         // Every entry point must normalise, or two spellings of zero break every equality downstream.

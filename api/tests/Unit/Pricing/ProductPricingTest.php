@@ -19,6 +19,7 @@ use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Exception\InvalidCost;
+use Twes\Domain\Pricing\PriceCalculator;
 use Twes\Domain\Pricing\PricedBy;
 use Twes\Domain\Pricing\ProductPricing;
 use Twes\Domain\Pricing\Rate;
@@ -303,5 +304,88 @@ final class ProductPricingTest extends TestCase
     private function money(string $amount): Money
     {
         return Money::of($amount, Currency::of(self::TND));
+    }
+
+    /**
+     * `cost x (1 + rate)` is ONE multiplication, and that is a correctness claim, not a style preference.
+     *
+     * `PriceCalculator::netFromCost()` carries the comment "one multiplication, not `cost + (cost x rate)`
+     * — the two-step form rounds twice and can land a millime away from this", and a review found nothing
+     * asserting it. The two forms are provably identical under half-up, which is why a casual test would
+     * miss the difference entirely; they diverge under **half-even**, and half-even is the default rounding
+     * of most accounting configurations.
+     *
+     * The witness, at the default 3-decimal currency:
+     *
+     *     one step:  0.001 x 1.5   = 0.0015  -> half-even -> 0.002   (tie, last digit 1 is odd)
+     *     two steps: 0.001 x 0.5   = 0.0005  -> half-even -> 0.000   (tie, last digit 0 is even)
+     *                0.001 + 0.000 = 0.001                            <- a millime short
+     *
+     * So the two-step form loses the entire margin on this line. Multiply that by a document's worth of
+     * lines and it is a wrong total on a legal document.
+     */
+    public function testTheNetPriceIsOneMultiplicationRatherThanCostPlusMargin(): void
+    {
+        $tnd = Currency::of('TND');
+        $cost = Money::of('0.001', $tnd);
+        $rate = Rate::fromPercentage('50');
+
+        $oneStep = new PriceCalculator()->netFromCost($cost, $rate, RoundingMode::HalfEven);
+
+        // The two-step form, written out here precisely so the divergence is visible in the test rather
+        // than asserted as a bare literal.
+        $twoStep = $cost->plus($cost->multipliedBy($rate->fraction(), RoundingMode::HalfEven));
+
+        self::assertSame('0.002', $oneStep->amount(), 'The single multiplication keeps the millime.');
+        self::assertSame('0.001', $twoStep->amount(), 'The two-step form rounds twice and loses it.');
+        self::assertFalse(
+            $oneStep->equals($twoStep),
+            'If these agree, this test has stopped witnessing the double-rounding it exists to forbid — '
+            . 'choose operands where the two forms genuinely diverge.',
+        );
+
+        // And ProductPricing must use the one-step form too, since it delegates here.
+        self::assertSame(
+            '0.002',
+            ProductPricing::fromProfitRate($cost, $rate)->netPrice(RoundingMode::HalfEven)->amount(),
+        );
+    }
+
+    /**
+     * A derived rate too large to be a `Rate` is reported as null, NOT thrown from the accessor.
+     *
+     * This is the far end of the finding that widened `Rate::MAX_INTEGER_DIGITS` from 3 to 15. Widening
+     * fixed the *reachable* case (a one-millime cost with a one-dinar price), but the bound is still a
+     * bound, and it is still reachable — just only from the extremes of `Money`'s own range. CLF has four
+     * decimals, so the smallest positive amount is 0.0001 and the largest is 999999999999999.9999; their
+     * ratio needs nineteen integer digits.
+     *
+     * The obligation is the same at both ends: `profitRate()` is a READ ACCESSOR on an aggregate that
+     * constructed and persisted legally, so it must answer "there is no rate to show" rather than raising.
+     * Null already carries that meaning for a zero cost, and the form renders an empty field either way.
+     */
+    public function testADerivedRateBeyondTheStorableBoundIsNullRatherThanAThrow(): void
+    {
+        $clf = Currency::of('CLF');
+        $cost = Money::of('0.0001', $clf);
+        $net = Money::of('999999999999999.9999', $clf);
+
+        // The precondition, asserted so this test cannot quietly stop exercising the bound: the ratio really
+        // does exceed what a Rate can hold.
+        $fraction = $net->minus($cost)->ratioTo($cost, Rate::FRACTION_SCALE, RoundingMode::HalfUp);
+        self::assertFalse(
+            Rate::canHoldFraction($fraction),
+            'This pair no longer exceeds the bound, so the test proves nothing. Widen the operands.',
+        );
+
+        self::assertNull(
+            new PriceCalculator()->profitRateFromNet($cost, $net, RoundingMode::HalfUp),
+            'An unrepresentable derived rate is reported, not raised.',
+        );
+
+        // And through the aggregate, which is where a throw would surface as a 500 on a product page.
+        self::assertNull(
+            ProductPricing::fromNetPrice($cost, $net)->profitRate(RoundingMode::HalfUp),
+        );
     }
 }

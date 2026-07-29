@@ -173,10 +173,20 @@ exit(main());
 
 function main(): int
 {
+    // A gate that inspected nothing must not report OK. This one printed "does not exist yet, nothing to
+    // check" — written when api/src/Domain genuinely did not exist — and kept printing it after the domain
+    // landed, so renaming or relocating the directory leaves the two P0s this gate enforces silently
+    // unchecked while composer gate:architecture stays green. Its twin, layer-dependencies.php, was fixed
+    // for exactly this and this gate was not: same defect, same input, one gate apart.
     if (!is_dir(DOMAIN)) {
-        fwrite(\STDOUT, "no-ambient-calls: api/src/Domain does not exist yet, nothing to check.\n");
+        fwrite(\STDERR, sprintf(
+            "no-ambient-calls: FAIL — %s does not exist, so nothing was checked. If the domain layer moved, "
+            . "update DOMAIN in this gate; if it has genuinely not been created yet, this gate is what "
+            . "should tell you so rather than passing.\n",
+            relative(DOMAIN),
+        ));
 
-        return 0;
+        return 1;
     }
 
     $violations = [];
@@ -195,6 +205,16 @@ function main(): int
         }
 
         fwrite(\STDERR, "\nSee CLAUDE.md, \"Architecture\": the domain layer is pure.\n");
+
+        return 1;
+    }
+
+    // The second empty state: the directory exists but holds no PHP. Same reasoning as above.
+    if (0 === $filesChecked) {
+        fwrite(\STDERR, sprintf(
+            "no-ambient-calls: FAIL — inspected 0 files. %s exists but contains no PHP.\n",
+            relative(DOMAIN),
+        ));
 
         return 1;
     }
@@ -248,9 +268,55 @@ function inspect(string $file): array
             continue;
         }
 
+        // `use function time as now;` then `now()`. The import renames a banned function, and neither gate
+        // saw it: the imported name `time` is followed by `as` or `;` rather than `(`, so the "only an
+        // actual call counts" rule below skipped it, and the *alias* is an ordinary T_STRING that is in no
+        // denylist. Checked at the import, which is the one place the real name is still written down.
+        if ($token->is(\T_USE)) {
+            $afterUse = nextMeaningfulToken($tokens, $index);
+
+            if (null !== $afterUse && $afterUse->is(\T_FUNCTION)) {
+                // Everything up to the statement's `;`, so grouped imports — `use function A\{time, date};`
+                // — are covered by the same walk rather than needing their own branch.
+                for ($cursor = $index + 1; $cursor < $count && ';' !== $tokens[$cursor]->text; ++$cursor) {
+                    if (!$tokens[$cursor]->is([\T_STRING, \T_NAME_QUALIFIED, \T_NAME_FULLY_QUALIFIED])) {
+                        continue;
+                    }
+
+                    // The basename: `use function Foo\Bar\time` imports Foo\Bar\time, which is not PHP's
+                    // time() — but the domain has no `Foo\Bar` to import from, so a namespaced import is
+                    // already a third-party reference and layer-dependencies.php is the gate for that.
+                    $parts = explode('\\', strtolower($tokens[$cursor]->text));
+                    $imported = end($parts);
+
+                    if (isset(BANNED_FUNCTIONS[$imported])) {
+                        $violations[] = describe(
+                            $file,
+                            $tokens[$cursor]->line,
+                            'use function ' . $imported,
+                            BANNED_FUNCTIONS[$imported] . '; importing it under another name does not '
+                            . 'change what it does',
+                        );
+                    }
+                }
+            }
+
+            continue;
+        }
+
         // exit and die are language constructs, not T_STRING function names.
         if ($token->is([\T_EXIT])) {
             $violations[] = describe($file, $token->line, strtolower($token->text), BANNED_FUNCTIONS['exit']);
+
+            continue;
+        }
+
+        // eval is the same class of miss, and the worst of them: it tokenizes as T_EVAL, so the denylist
+        // never saw it, while `--dump-rules` advertised it as enforced. One eval evades every ban in the
+        // table at once — `eval('return time() . getenv("HOME") . file_get_contents("/etc/passwd");')` was
+        // passing this gate. It gets its own branch for the same reason T_EXIT does.
+        if ($token->is([\T_EVAL])) {
+            $violations[] = describe($file, $token->line, 'eval', BANNED_FUNCTIONS['eval']);
 
             continue;
         }
@@ -283,7 +349,11 @@ function inspect(string $file): array
         // $f = 'time'; $f();  array_map('time', …);  \Closure::fromCallable('time').
         // Flagged rather than resolved — the domain has no legitimate reason to name one of these.
         if ($token->is(\T_CONSTANT_ENCAPSED_STRING)) {
-            $literal = strtolower(trim($token->text, "'\""));
+            // ltrim the backslash as well as the quotes. `'\time'` is a valid callable — PHP resolves it by
+            // stripping the leading backslash — and writing it that way is natural style, not only an
+            // evasion: `array_map('\getenv', …)` reads as deliberate global-namespace qualification. The
+            // qualified-name branch below already did this; the string branch did not, eighteen lines apart.
+            $literal = strtolower(ltrim(trim($token->text, "'\""), '\\'));
 
             if (isset(BANNED_FUNCTIONS[$literal])) {
                 $violations[] = describe(
