@@ -44,6 +44,12 @@ fresh_fixture() {
   cp "$REPO_ROOT"/api/composer.json "$WORK/repo/api/"
   cp "$REPO_ROOT"/api/composer.lock "$WORK/repo/api/"
   cp "$REPO_ROOT"/THIRD-PARTY-NOTICES.md "$WORK/repo/"
+  # The documents that STATE the licensing rule, so the case below can check they agree with the gate that
+  # ENFORCES it. Round 6 found the gate permitting nine identifiers while both documents said five "and
+  # nothing else" — a licensing decision taken as a build fix.
+  cp "$REPO_ROOT"/CLAUDE.md "$REPO_ROOT"/LICENSING.md "$WORK/repo/"
+  mkdir -p "$WORK/repo/.claude/agents"
+  cp "$REPO_ROOT"/.claude/agents/completeness-reviewer.md "$WORK/repo/.claude/agents/"
   # The Angular tier's manifest AND lock. Omitting either would make every npm-licence assertion below
   # vacuous while the suite stayed green -- exactly the defect already recorded for api/composer.json.
   mkdir -p "$WORK/repo/admin"
@@ -768,6 +774,34 @@ for extension in html scss css js; do
   mkdir -p "$WORK/repo/admin/src"
   printf 'no licence header here\n' > "$WORK/repo/admin/src/unlicensed.${extension}"
   assert_gate "scans admin/src/*.${extension}" spdx-headers.sh 1 "unlicensed.${extension}"
+done
+
+echo "== the licensing rule must be stated the same way everywhere it is stated =="
+# THE DRIFT THAT ACTUALLY HAPPENED. The gate was widened from five identifiers to nine without amending
+# CLAUDE.md invariant 8(a), LICENSING.md or the reviewer charter — so a session following CLAUDE.md had to
+# refuse a dependency the gate accepted, and a reviewer following its own charter had to file a P0 against
+# the gate. Four artefacts, one rule: this case makes disagreement fail rather than wait for a review.
+for document in CLAUDE.md LICENSING.md .claude/agents/completeness-reviewer.md; do
+  fresh_fixture
+  missing=()
+
+  while read -r licence; do
+    grep -qF -- "$licence" "$WORK/repo/${document}" || missing+=("$licence")
+  done < <(printf '%s' "$LICENCE_RULES" | python3 -c "
+import json,sys
+r = json.load(sys.stdin)
+for l in r['permissive'] + r['build_time_data']:
+    print(l)
+")
+
+  if (( ${#missing[@]} == 0 )); then
+    printf '  ok   — %s states every licence identifier the gate enforces\n' "$document"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — %s does not mention: %s. The gate enforces a rule this document does not state; amend both, or they disagree.\n' \
+      "$document" "${missing[*]}"
+    failed=$((failed + 1))
+  fi
 done
 
 echo

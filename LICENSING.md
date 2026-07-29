@@ -40,8 +40,16 @@ contributors; **one is required before accepting the first external patch.** Mer
 contribution without it silently forecloses the commercial licence for that file.
 
 **2. Every dependency must be PERMISSIVE — not merely AGPL-compatible.** Record each one in
-`THIRD-PARTY-NOTICES.md` with its licence *before* adding it. The permitted set is **MIT, Apache-2.0,
-BSD-2/3-Clause, ISC** and nothing else.
+`THIRD-PARTY-NOTICES.md` with its licence *before* adding it. For anything we **distribute**, the permitted
+set is exactly nine identifiers (developer ruling, 2026-07-29): **MIT, Apache-2.0, BSD-2-Clause,
+BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0** — every one non-copyleft *and* imposing no
+obligation that could survive into a commercial sublicence. A **dev-only** dependency may additionally carry
+**CC-BY-4.0** or **CC-BY-3.0**, and only as build-time reference data that never reaches the shipped
+artifact; those impose attribution, which is why they are quarantined rather than added to the list above.
+
+Enforced by `scripts/gates/dependency-licences.php`, which keeps the two lists separate and asserts a
+**maximum** on each — so widening either is a deliberate edit here and in `CLAUDE.md` § "Licensing
+invariants" 8(a), not a build fix.
 
 The distinction matters and is easy to get wrong: a dependency must be conveyable under **both** of our
 branches. A GPL-3.0-or-later or AGPL-3.0 library is fine for the AGPL branch and **fatal to the

@@ -122,8 +122,30 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    § "Three obligations", the third is its § "Notices"; that file's third obligation (AGPL binds *us*
    too once we distribute) is not restated here because it constrains distribution rather than
    day-to-day code: **(a)** every dependency must be
-   **permissive — MIT, Apache-2.0, BSD-2/3-Clause or ISC, and nothing else** — and recorded in
-   `THIRD-PARTY-NOTICES.md` in the same change that adds it. **"AGPL-compatible" is the wrong test**:
+   **permissive**, and recorded in `THIRD-PARTY-NOTICES.md` in the same change that adds it. The permitted
+   set is **exactly nine identifiers for anything we DISTRIBUTE** (developer ruling, 2026-07-29, after a
+   certification round found the gate enforcing more than this invariant allowed): **MIT, Apache-2.0,
+   BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0.** Every one is non-copyleft AND
+   imposes no obligation that could survive into a commercial sublicence, which is the test that matters
+   rather than "is it open source". The four beyond the original five were each argued on merit, not adopted
+   for convenience: **0BSD** is Zero-clause BSD — permissive with *no* attribution requirement at all, and
+   the only one of the four that a **runtime** dependency actually needs (`tslib`, TypeScript's own helper
+   library, unavoidable in an Angular build); **MIT-0** is MIT with the notice requirement removed;
+   **CC0-1.0** is a public-domain dedication, so there is no licence to comply with; **BlueOak-1.0.0** is
+   OSI-approved and written as a modern MIT/BSD replacement that also grants patent rights.
+
+   **A DEV-ONLY dependency may additionally carry `CC-BY-4.0` or `CC-BY-3.0`**, and that exception is narrow
+   on purpose. Those are Creative Commons *content* licences: no copyleft, so they do not threaten the
+   commercial branch, but they do impose **attribution** — and this project has already refused a dependency
+   for exactly that reason (invariant 3: `admin-portal`'s Attribution Assurance License). They are permitted
+   only where no obligation can attach, i.e. build-time reference *data* absent from the shipped artifact
+   (`caniuse-lite`, `spdx-exceptions`). If either ever appears as a **runtime** dependency the nine-identifier
+   list applies and `scripts/gates/dependency-licences.php` fails — which is why the gate keeps two lists
+   rather than one wider one, and asserts a **MAXIMUM** on each.
+
+   Adding an identifier to either list is a **licensing decision under invariant 10**, not a build fix: amend
+   this paragraph, `LICENSING.md`, the reviewer charter and the gate together, or the four disagree — which is
+   precisely what round 6 found. **"AGPL-compatible" is the wrong test**:
    a GPL/AGPL/LGPL dependency satisfies our AGPL branch and *kills the commercial one*, because a third
    party's copyleft code cannot be relicensed to a customer buying an escape from source disclosure. A
    needed copyleft-only library is an `ask-human` decision, never a silent one;
@@ -588,6 +610,18 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   **nothing rather than everything** — that fail-closed direction is the whole design and
   `TenantIsolationTest` asserts it directly, alongside a test that disables the policy and watches every
   tenant leak. When Doctrine lands, the filter becomes a second layer, not the only one.
+- **2026-07-29 — NEVER record a coverage gap as an impossibility. I did it twice in one round and both were
+  refuted in minutes.** Closing round 5 I disclosed two residues and, in each case, explained them with a
+  claim that they *could not* be tested: `bind()`'s read-back throw "would need PostgreSQL to lie about its
+  own `set_config` return value", and the single-half `session_user`/`current_user` mutants were "equivalent
+  mutants". Round 6 killed both. PDO substitutes the statement class natively, so a nine-line `PDOStatement`
+  subclass drives the read-back branch on a real connection; and "equivalent mutant" means **no input
+  distinguishes it**, which was true of the `current_user` halves and false of the load-bearing `session_user`
+  halves — the distinguishing input needed only the DSN `options='-c role=…'` trick already used elsewhere in
+  the same file and roles the fixture already provisioned. **An admitted gap gets re-tried; a documented
+  impossibility gets read once and never re-tested**, so the false claim is the more expensive artifact. Say
+  "not covered, here is what it would take" and never "cannot be covered" unless the obstacle is a law of
+  the system rather than the limit of the afternoon.
 - **2026-07-29 — a control asserted in prose and enforced nowhere is not a control, and round 4 found the
   most expensive instance of it.** `assertConnectionCannotBypassPolicies()` read two role attributes and was
   named as though it answered the whole question. Bypass #0 — *the runtime role must not own the policed

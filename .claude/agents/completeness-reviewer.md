@@ -77,8 +77,12 @@ other two is the default failure mode here, not an unusual one.
    locale's users.
 8. **Licensing and third-party notices — this project is dual-licensed, so a dependency is a legal
    act.** If the change adds or bumps any dependency (`composer.json`, `package.json`, `pubspec.yaml`
-   and their lock files): is each one **permissive** — MIT, Apache-2.0, BSD-2/3-Clause, ISC — and is
-   each recorded in `THIRD-PARTY-NOTICES.md` **in this same change**? A GPL, AGPL, LGPL or MPL
+   and their lock files): is each one **permissive** and recorded in `THIRD-PARTY-NOTICES.md` **in this
+   same change**? Permissive for anything DISTRIBUTED means exactly: MIT, Apache-2.0, BSD-2-Clause,
+   BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0. A **dev-only** dependency may also carry
+   CC-BY-4.0 or CC-BY-3.0, but only as build-time data that is never shipped — those impose attribution.
+   The authoritative list is `CLAUDE.md` § "Licensing invariants" 8(a); if it and the gate disagree, that
+   disagreement is itself the finding. A GPL, AGPL, LGPL or MPL
    dependency is a **P0**, not a style note: it satisfies the AGPL branch and destroys the commercial
    branch, which is the whole point of the licence (`LICENSING.md`). "AGPL-compatible" is the wrong
    test — check for *permissive*. Also verify new source files carry
