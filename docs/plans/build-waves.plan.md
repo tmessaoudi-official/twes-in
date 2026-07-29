@@ -38,6 +38,11 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-29 16:20] FOUND: **`qossmic/deptrac` is abandoned** in favour of `deptrac/deptrac`
   [Verified: packagist reports `abandoned: deptrac/deptrac`]. This plan and `CLAUDE.md` both said
   "deptrac" generically; the obvious package is the dead one.
+- [2026-07-29 17:10] RULED: **the Flutter client ships all six targets** — Android, iOS, Linux, Windows,
+  macOS and Web (developer instruction). Consequence recorded because it is structural, not a flag: builds
+  cannot be cross-compiled, so CI is a three-runner matrix and a release is six artifacts from three
+  machines. Flutter stays on **stable**, currently 3.44.8 / Dart 3.12.2 [Verified against Flutter's release
+  manifest]. **Flutter Web overlaps the Angular admin and is the one target still open.**
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
@@ -281,9 +286,19 @@ idempotency**, refunds, SCA.
 **In:** view and pay, unauthenticated by link. **Treated as hostile surface:** unguessable expiring
 tokens, rate limiting, and no field rendered that should not be.
 
-## Wave 11 — Flutter client
+## Wave 11 — Flutter client — all six targets
 
-**In:** written from scratch, 100% ours (licensing invariant 3). Mobile first; native desktop later.
+**In:** written from scratch, 100% ours (licensing invariant 3). **Android · iOS · Linux · Windows ·
+macOS · Web** (developer ruling, 2026-07-29). Flutter **3.44.8** / Dart **3.12.2**, the current stable.
+
+Mobile is built first, but the six-target shape is designed in from the start rather than retrofitted,
+because it changes two things structurally: **CI is a three-runner matrix** (you cannot cross-compile —
+Windows needs Windows, iOS and macOS need a Mac), and every platform capability the client needs has six
+implementations. `mobile/README.md` enumerates both, plus the signing and distribution costs.
+
+**Open, and it needs a ruling before this wave starts:** whether **Flutter Web** actually ships, given the
+Angular admin (Wave 8) already serves the browser. Two web front ends is two implementations of every
+screen. See the question raised at the end of Wave 0's certification round.
 
 ## Wave 12 — Infra & CI
 
