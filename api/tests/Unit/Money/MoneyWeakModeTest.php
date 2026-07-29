@@ -36,6 +36,9 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
+use Twes\Domain\Pricing\Exception\InvalidRate;
+use Twes\Domain\Pricing\Rate;
+use Twes\Domain\Shared\RoundingMode;
 
 #[CoversClass(Money::class)]
 final class MoneyWeakModeTest extends TestCase
@@ -92,5 +95,117 @@ final class MoneyWeakModeTest extends TestCase
     public function testAnIntegerStillWorksFromAWeakModeCaller(): void
     {
         self::assertSame('100.000', Money::of(100, Currency::of('TND'))->amount());
+    }
+
+    /**
+     * EVERY money-path parameter, not just `Money::of()`.
+     *
+     * Round 1 found this defect, fixed it on ONE of five sites, and left four. Round 5 proved what that cost:
+     * a bare `string|int` union coerces a weak-mode caller's float to int, so
+     *
+     *     Money::of('10.000', TND)->multipliedBy(1.5, HalfUp)   ->  10.000   (should be 15.000)
+     *     Rate::fromFraction(0.30)                              ->  0%       (should be 30%)
+     *
+     * Both silently, behind an `E_DEPRECATED` that this container's default `error_reporting` does not even
+     * print. `Rate::fromFraction(0.30)` returning zero is the worst of them: it is the F4 defect the whole
+     * `authored_by` design exists to eliminate, reintroduced through a different door.
+     *
+     * Table-driven over ALL of them, so the next parameter added to a money path is a visibly missing row
+     * rather than a silent gap — which is exactly how four sites survived four certification rounds.
+     *
+     * @param callable(float): mixed $call
+     */
+    #[DataProvider('everyMoneyPathParameter')]
+    public function testEveryMoneyPathParameterRefusesAFloatFromAWeakModeCaller(
+        string $description,
+        callable $call,
+        string $expectedException,
+    ): void {
+        // A float that is NOT a whole number, deliberately: 2.0 coerces to int losslessly and emits no
+        // diagnostic at all, so a suite written with integral values would pass against the unfixed code.
+        try {
+            $result = $call(1.5);
+        } catch (\Throwable $thrown) {
+            self::assertInstanceOf($expectedException, $thrown, $description);
+            self::assertStringContainsString('float', $thrown->getMessage(), $description);
+
+            return;
+        }
+
+        self::fail(\sprintf(
+            '%s accepted the float 1.5 and returned %s instead of refusing it. A weak-mode caller has '
+            . 'silently truncated it to 1.',
+            $description,
+            \is_object($result) ? get_class($result) : var_export($result, true),
+        ));
+    }
+
+    /** @return iterable<string, array{string, callable, class-string<\Throwable>}> */
+    public static function everyMoneyPathParameter(): iterable
+    {
+        $tnd = Currency::of('TND');
+
+        yield 'Money::of' => [
+            'Money::of',
+            static fn(float $f): mixed => Money::of($f, $tnd),
+            InvalidMoneyAmount::class,
+        ];
+        yield 'Money::multipliedBy' => [
+            'Money::multipliedBy',
+            static fn(float $f): mixed => Money::of('10.000', $tnd)->multipliedBy($f, RoundingMode::HalfUp),
+            InvalidMoneyAmount::class,
+        ];
+        yield 'Money::dividedBy' => [
+            'Money::dividedBy',
+            static fn(float $f): mixed => Money::of('10.000', $tnd)->dividedBy($f, RoundingMode::HalfUp),
+            InvalidMoneyAmount::class,
+        ];
+        yield 'Rate::fromPercentage' => [
+            'Rate::fromPercentage',
+            static fn(float $f): mixed => Rate::fromPercentage($f),
+            InvalidRate::class,
+        ];
+        yield 'Rate::fromFraction' => [
+            'Rate::fromFraction',
+            static fn(float $f): mixed => Rate::fromFraction($f),
+            InvalidRate::class,
+        ];
+    }
+
+    /**
+     * The signatures themselves, by reflection — a second, independent guard.
+     *
+     * The test above proves each parameter refuses a float TODAY. This proves the mechanism that makes the
+     * refusal reachable: a `float` arm on the union. Without it the refusal is unreachable because PHP
+     * coerces before the method body runs, so a future "tidy the signature" edit that narrows the union back
+     * to `string|int` would make every case above pass for the wrong reason — the float would become an int
+     * before any guard could see it, and nothing would throw at all... except that the value would be wrong.
+     * Reflection catches that; behaviour alone cannot.
+     */
+    public function testEveryMoneyPathSignatureAcceptsFloatSoThatItCanRefuseIt(): void
+    {
+        foreach ([
+            [Money::class, 'of', 'amount'],
+            [Money::class, 'multipliedBy', 'factor'],
+            [Money::class, 'dividedBy', 'divisor'],
+            [Rate::class, 'fromPercentage', 'percentage'],
+            [Rate::class, 'fromFraction', 'fraction'],
+        ] as [$class, $method, $parameter]) {
+            $type = (string) (new \ReflectionMethod($class, $method))->getParameters()[0]->getType();
+
+            self::assertStringContainsString(
+                'float',
+                $type,
+                \sprintf(
+                    '%s::%s($%s) is typed "%s". Without a float arm the guard inside is unreachable: PHP '
+                    . 'coerces the float to int before the body runs, so a wrong number is produced with no '
+                    . 'exception at all.',
+                    $class,
+                    $method,
+                    $parameter,
+                    $type,
+                ),
+            );
+        }
     }
 }

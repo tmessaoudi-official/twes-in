@@ -170,8 +170,17 @@ final readonly class Money
      * @throws InvalidMoneyAmount if the factor is malformed, or rounding is needed under
      *                            RoundingMode::Unnecessary
      */
-    public function multipliedBy(string|int $factor, RoundingMode $mode): self
+    public function multipliedBy(string|int|float $factor, RoundingMode $mode): self
     {
+        // The float arm exists to REFUSE, exactly as in of(). Widening the union is what makes the refusal
+        // reachable: with a bare `string|int`, PHP's union coercion prefers int, so a weak-mode caller's
+        // 1.5 silently became 1 behind an E_DEPRECATED notice that a production error handler swallows.
+        // Round 1 fixed of() and left this; round 5 proved the consequence — multipliedBy(1.5) on 10.000
+        // returned 10.000 instead of 15.000, with no error anywhere.
+        if (\is_float($factor)) {
+            throw InvalidMoneyAmount::floatRefused($factor);
+        }
+
         $value = (string) $factor;
 
         if (!Decimal::isWellFormed($value)) {
@@ -195,8 +204,17 @@ final readonly class Money
      *                            RoundingMode::Unnecessary
      * @throws \DivisionByZeroError
      */
-    public function dividedBy(string|int $divisor, RoundingMode $mode): self
+    public function dividedBy(string|int|float $divisor, RoundingMode $mode): self
     {
+        // The float arm exists to REFUSE, exactly as in of(). Widening the union is what makes the refusal
+        // reachable: with a bare `string|int`, PHP's union coercion prefers int, so a weak-mode caller's
+        // 1.5 silently became 1 behind an E_DEPRECATED notice that a production error handler swallows.
+        // Round 1 fixed of() and left this; round 5 proved the consequence — multipliedBy(1.5) on 10.000
+        // returned 10.000 instead of 15.000, with no error anywhere.
+        if (\is_float($divisor)) {
+            throw InvalidMoneyAmount::floatRefused($divisor);
+        }
+
         $value = (string) $divisor;
 
         if (!Decimal::isWellFormed($value)) {

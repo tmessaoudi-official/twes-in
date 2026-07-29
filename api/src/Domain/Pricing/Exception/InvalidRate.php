@@ -39,6 +39,26 @@ final class InvalidRate extends \InvalidArgumentException
         ));
     }
 
+    /**
+     * A float arrived where a decimal string belongs.
+     *
+     * Mirrors {@see \Twes\Domain\Money\Exception\InvalidMoneyAmount::floatRefused()} deliberately: a rate
+     * is as unforgiving as an amount, and 19.99 % is exactly as unrepresentable in binary floating point as
+     * 19.99 TND. Round 5 found `fromFraction(0.30)` returning a rate of ZERO from a weak-mode caller,
+     * because a `string|int` union coerces to int and 0.30 becomes 0.
+     */
+    public static function floatRefused(float $rate): self
+    {
+        return new self(\sprintf(
+            'Refusing the float %s as a rate. Binary floating point cannot represent most decimal '
+            . 'fractions, so a float has already lost precision before it arrives here — and a rate is '
+            . 'multiplied by a money amount, so that loss becomes a wrong number on a legal document. '
+            . 'Pass a decimal string instead: Rate::fromPercentage(\'%s\').',
+            var_export($rate, true),
+            var_export($rate, true),
+        ));
+    }
+
     public static function tooPrecise(string $value): self
     {
         return new self(\sprintf(

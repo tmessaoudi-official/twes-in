@@ -71,5 +71,8 @@
         <env name="TWES_TEST_DB_BYPASS_PASSWORD" value="twes_bypass"/>
         <env name="TWES_TEST_DB_MEMBER_USER" value="twes_member"/>
         <env name="TWES_TEST_DB_MEMBER_PASSWORD" value="twes_member"/>
+        <env name="TWES_TEST_DB_REPLICATOR_USER" value="twes_replicator"/>
+        <env name="TWES_TEST_DB_REPLICATOR_PASSWORD" value="twes_replicator"/>
+        <env name="TWES_TEST_DB_TRUNCATOR_ROLE" value="twes_truncator"/>
     </php>
 </phpunit>

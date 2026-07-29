@@ -112,8 +112,17 @@ final readonly class Rate
      *
      * @throws InvalidRate if malformed, or too precise to hold without rounding
      */
-    public static function fromPercentage(string|int $percentage): self
+    public static function fromPercentage(string|int|float $percentage): self
     {
+        // REFUSE a float, and note the widened union is what makes the refusal reachable at all — see
+        // Money::multipliedBy() for the mechanism. This one is the most dangerous of the four sites round 5
+        // found: with a bare `string|int`, fromFraction(0.30) coerced to int 0 and returned a rate of
+        // ZERO, so a 30% margin silently became 0%. That is precisely the defect the authored_by design and
+        // the 12-decimal rate exist to prevent, arriving through a different door.
+        if (\is_float($percentage)) {
+            throw InvalidRate::floatRefused($percentage);
+        }
+
         $value = (string) $percentage;
 
         if (!Decimal::isWellFormed($value)) {
@@ -134,8 +143,17 @@ final readonly class Rate
      *
      * @throws InvalidRate if malformed, or too precise to hold without rounding
      */
-    public static function fromFraction(string|int $fraction): self
+    public static function fromFraction(string|int|float $fraction): self
     {
+        // REFUSE a float, and note the widened union is what makes the refusal reachable at all — see
+        // Money::multipliedBy() for the mechanism. This one is the most dangerous of the four sites round 5
+        // found: with a bare `string|int`, fromFraction(0.30) coerced to int 0 and returned a rate of
+        // ZERO, so a 30% margin silently became 0%. That is precisely the defect the authored_by design and
+        // the 12-decimal rate exist to prevent, arriving through a different door.
+        if (\is_float($fraction)) {
+            throw InvalidRate::floatRefused($fraction);
+        }
+
         $value = (string) $fraction;
 
         if (!Decimal::isWellFormed($value)) {

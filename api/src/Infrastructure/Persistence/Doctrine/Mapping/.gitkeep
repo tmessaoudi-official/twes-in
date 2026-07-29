@@ -1,0 +1,8 @@
+Git cannot track an empty directory, so this file exists to make the directory real in a fresh clone.
+
+Not cosmetic. `scripts/gates/layer-dependencies.php` refuses to pass when a layer declared in
+FORBIDDEN_BY_LAYER is absent from disk — deliberately, because a renamed or missing layer would otherwise be
+reported as clean. Without this file `api/src/Application` existed only in the author's working tree, so that
+gate exited 0 locally and 1 from every fresh clone and CI runner. Certification round 5 found it, and it was
+round 1's very first finding recurring verbatim: the remedy then was `.gitkeep` in `api/tests/{E2E,Functional}`
+and it was not applied to the directory a later gate started requiring.

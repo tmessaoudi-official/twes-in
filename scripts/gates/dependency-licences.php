@@ -468,7 +468,7 @@ function npmPackages(string $lockPath): array
             'name' => $path,
             'license' => match (true) {
                 null === $licence => [],
-                \is_string($licence) => [$licence],
+                is_string($licence) => [$licence],
                 default => $licence,
             },
             'dev' => true === ($package['dev'] ?? false),
