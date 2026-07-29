@@ -1,17 +1,17 @@
 {
-  "$schema": "./pricing-vectors.schema.json",
   "version": 1,
-  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift — producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file is a completeness-reviewer P0.",
+  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift \u2014 producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file is a completeness-reviewer P0.",
   "rules": {
     "net_from_cost": "net = cost * (1 + profit_rate)",
     "rate_from_net": "profit_rate = (net - cost) / cost, undefined when cost is zero",
     "vat_from_net": "vat = net * vat_rate  -- the VAT base is ALWAYS the net, never the cost",
-    "gross": "gross = net + vat"
+    "gross": "gross = net + vat",
+    "vat_rounding": "VAT is grouped by rate and rounded ONCE per rate group on the summed base -- not per line and then summed. The two orders differ by a millime on some inputs, and the document_totals cases below include one where they diverge specifically so a tier that gets this wrong cannot pass."
   },
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
     "rates": "Percentage strings, canonicalised to exactly 4 decimal places. The underlying fraction carries 6 decimals, so 30% is the fraction 0.300000 and the percentage string \"30.0000\".",
-    "rounding": "half_up on every amount and every rate, unless a case overrides it. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties.",
+    "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error."
   },
   "cases": [
@@ -22,7 +22,11 @@
       "cost": "100.000",
       "profit_rate": "30",
       "vat_rate": "19",
-      "expected": { "net": "130.000", "vat": "24.700", "gross": "154.700" }
+      "expected": {
+        "net": "130.000",
+        "vat": "24.700",
+        "gross": "154.700"
+      }
     },
     {
       "id": "eur-two-decimals",
@@ -31,7 +35,11 @@
       "cost": "100.00",
       "profit_rate": "30",
       "vat_rate": "20",
-      "expected": { "net": "130.00", "vat": "26.00", "gross": "156.00" }
+      "expected": {
+        "net": "130.00",
+        "vat": "26.00",
+        "gross": "156.00"
+      }
     },
     {
       "id": "jpy-zero-decimals",
@@ -40,7 +48,11 @@
       "cost": "1000",
       "profit_rate": "30",
       "vat_rate": "10",
-      "expected": { "net": "1300", "vat": "130", "gross": "1430" }
+      "expected": {
+        "net": "1300",
+        "vat": "130",
+        "gross": "1430"
+      }
     },
     {
       "id": "tnd-repeating-decimal",
@@ -49,7 +61,11 @@
       "cost": "100.000",
       "profit_rate": "33.3333",
       "vat_rate": "19",
-      "expected": { "net": "133.333", "vat": "25.333", "gross": "158.666" }
+      "expected": {
+        "net": "133.333",
+        "vat": "25.333",
+        "gross": "158.666"
+      }
     },
     {
       "id": "tnd-exact-rounding-tie",
@@ -58,7 +74,11 @@
       "cost": "0.010",
       "profit_rate": "0",
       "vat_rate": "5",
-      "expected": { "net": "0.010", "vat": "0.001", "gross": "0.011" }
+      "expected": {
+        "net": "0.010",
+        "vat": "0.001",
+        "gross": "0.011"
+      }
     },
     {
       "id": "tnd-zero-cost",
@@ -67,7 +87,11 @@
       "cost": "0.000",
       "profit_rate": "30",
       "vat_rate": "19",
-      "expected": { "net": "0.000", "vat": "0.000", "gross": "0.000" }
+      "expected": {
+        "net": "0.000",
+        "vat": "0.000",
+        "gross": "0.000"
+      }
     },
     {
       "id": "tnd-negative-profit-rate",
@@ -76,7 +100,11 @@
       "cost": "100.000",
       "profit_rate": "-20",
       "vat_rate": "19",
-      "expected": { "net": "80.000", "vat": "15.200", "gross": "95.200" }
+      "expected": {
+        "net": "80.000",
+        "vat": "15.200",
+        "gross": "95.200"
+      }
     },
     {
       "id": "tnd-zero-vat-exempt",
@@ -85,7 +113,11 @@
       "cost": "100.000",
       "profit_rate": "30",
       "vat_rate": "0",
-      "expected": { "net": "130.000", "vat": "0.000", "gross": "130.000" }
+      "expected": {
+        "net": "130.000",
+        "vat": "0.000",
+        "gross": "130.000"
+      }
     },
     {
       "id": "tnd-millime-precision",
@@ -94,7 +126,11 @@
       "cost": "12.345",
       "profit_rate": "30",
       "vat_rate": "19",
-      "expected": { "net": "16.049", "vat": "3.049", "gross": "19.098" }
+      "expected": {
+        "net": "16.049",
+        "vat": "3.049",
+        "gross": "19.098"
+      }
     }
   ],
   "edit_directions": [
@@ -105,7 +141,9 @@
       "currency": "TND",
       "cost": "100.000",
       "profit_rate": "30",
-      "expected": { "net_price": "130.000" }
+      "expected": {
+        "net_price": "130.000"
+      }
     },
     {
       "id": "edit-net-recomputes-rate",
@@ -114,7 +152,9 @@
       "currency": "TND",
       "cost": "100.000",
       "net_price": "140.000",
-      "expected": { "profit_rate": "40.0000" }
+      "expected": {
+        "profit_rate": "40.0000"
+      }
     },
     {
       "id": "edit-net-lower-recomputes-rate",
@@ -123,7 +163,9 @@
       "currency": "TND",
       "cost": "100.000",
       "net_price": "125.000",
-      "expected": { "profit_rate": "25.0000" }
+      "expected": {
+        "profit_rate": "25.0000"
+      }
     },
     {
       "id": "edit-cost-preserves-rate",
@@ -132,7 +174,9 @@
       "currency": "TND",
       "cost": "110.000",
       "profit_rate": "30",
-      "expected": { "net_price": "143.000" }
+      "expected": {
+        "net_price": "143.000"
+      }
     },
     {
       "id": "edit-net-below-cost-gives-negative-rate",
@@ -141,7 +185,9 @@
       "currency": "TND",
       "cost": "100.000",
       "net_price": "80.000",
-      "expected": { "profit_rate": "-20.0000" }
+      "expected": {
+        "profit_rate": "-20.0000"
+      }
     },
     {
       "id": "edit-net-equal-to-cost-gives-zero-rate",
@@ -150,7 +196,9 @@
       "currency": "TND",
       "cost": "100.000",
       "net_price": "100.000",
-      "expected": { "profit_rate": "0.0000" }
+      "expected": {
+        "profit_rate": "0.0000"
+      }
     },
     {
       "id": "edit-net-with-zero-cost-leaves-rate-undefined",
@@ -159,7 +207,9 @@
       "currency": "TND",
       "cost": "0.000",
       "net_price": "50.000",
-      "expected": { "profit_rate": null }
+      "expected": {
+        "profit_rate": null
+      }
     },
     {
       "id": "edit-net-produces-repeating-rate",
@@ -168,7 +218,9 @@
       "currency": "TND",
       "cost": "3.000",
       "net_price": "10.000",
-      "expected": { "profit_rate": "233.3333" }
+      "expected": {
+        "profit_rate": "233.3333"
+      }
     }
   ],
   "document_totals": [
@@ -177,15 +229,108 @@
       "why": "The worked delivery-note consolidation from the spec, end to end. The stamp duty of 0.100 TND is a fixed document-scope charge, not a VAT rate and not a special case in code -- and it is unrepresentable in a two-decimal currency.",
       "currency": "TND",
       "lines": [
-        { "quantity": "10", "unit_net": "12.000", "line_net": "120.000" },
-        { "quantity": "5", "unit_net": "12.500", "line_net": "62.500" },
-        { "quantity": "2", "unit_net": "85.000", "line_net": "170.000" }
+        {
+          "quantity": "10",
+          "unit_net": "12.000",
+          "line_net": "120.000"
+        },
+        {
+          "quantity": "5",
+          "unit_net": "12.500",
+          "line_net": "62.500"
+        },
+        {
+          "quantity": "2",
+          "unit_net": "85.000",
+          "line_net": "170.000"
+        }
       ],
       "subtotal_net": "352.500",
       "vat_rate": "19",
       "vat": "66.975",
-      "fixed_charges": [{ "label": "stamp_duty", "amount": "0.100" }],
-      "expected": { "total": "419.575" }
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "419.575"
+      }
+    },
+    {
+      "id": "vat-rounding-order-diverges",
+      "why": "THE case that pins the rounding ORDER rather than the formula. Rounding VAT once on the summed base gives 0.005; rounding per line and summing gives 0.004. The shipped consolidated-invoice case cannot tell these apart because all its lines share one rate, so a tier that rounds per line passed it with a wrong document total. This one fails.",
+      "currency": "TND",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        }
+      ],
+      "subtotal_net": "0.026",
+      "vat_rate": "19",
+      "vat": "0.005",
+      "vat_if_rounded_per_line_which_is_WRONG": "0.004",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.031"
+      }
+    },
+    {
+      "id": "multi-rate-vat-breakdown-with-stamp-duty",
+      "why": "Lines at different VAT rates, which is the normal Tunisian and French case and which the single-rate cases could not exercise at all. Each rate group is summed first, then rounded once. Also pins that a fixed document charge is NOT part of any VAT base.",
+      "currency": "TND",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit_net": "10.000",
+          "line_net": "30.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "2",
+          "unit_net": "7.500",
+          "line_net": "15.000",
+          "vat_rate": "7"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.333",
+          "line_net": "1.333",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "46.333",
+      "vat_by_rate": [
+        {
+          "rate": "19",
+          "base": "31.333",
+          "vat": "5.953"
+        },
+        {
+          "rate": "7",
+          "base": "15.000",
+          "vat": "1.050"
+        }
+      ],
+      "vat": "7.003",
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "53.436"
+      }
     }
-  ]
+  ],
+  "schema": "No JSON Schema yet \u2014 owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation."
 }

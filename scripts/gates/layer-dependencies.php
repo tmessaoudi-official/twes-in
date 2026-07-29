@@ -2,21 +2,9 @@
 <?php
 
 /*
- * Gate: dependencies point inward, and the domain has no vendor dependencies.
+ * This file is part of twes-in.
  *
- * Why it exists: clean architecture's one rule is that inner layers know nothing of outer ones.
- * `Domain` knows nothing; `Application` knows `Domain`; `Infrastructure` and `UI` know both. A single
- * outward `use` inverts that, and nothing about the code will look wrong afterwards — which is exactly
- * why it needs a machine to notice.
- *
- * What breaks without it: the domain stops being independently testable and stops being the part that
- * outlives the framework around it. In a billing system that is the part holding the money arithmetic,
- * the tax rules and the state transitions.
- *
- * Why a tokenizer rather than grep: grep matches `use` inside a comment, a string or a heredoc, and
- * misses a fully-qualified reference written inline. PHP's own tokenizer sees what the compiler sees.
- * `deptrac` covers the same ground with more features; it cannot be installed in this environment
- * (every Composer dist URL is blocked by egress policy) and this gate does not depend on it.
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -82,7 +70,7 @@ function main(): int
             foreach ($references as $reference => $line) {
                 foreach ($forbidden as $forbiddenPrefix) {
                     if (str_starts_with($reference, $forbiddenPrefix . '\\')) {
-                        $violations[] = \sprintf(
+                        $violations[] = sprintf(
                             '%s:%d — %s references %s, which is outward. Dependencies point inward only.',
                             relative($file),
                             $line,
@@ -93,7 +81,7 @@ function main(): int
                 }
 
                 if ('Domain' === $layer && isDisallowedVendorReference($reference)) {
-                    $violations[] = \sprintf(
+                    $violations[] = sprintf(
                         '%s:%d — Domain references the third-party namespace %s. The domain layer has '
                         . 'no Composer dependencies; see DOMAIN_VENDOR_ALLOWLIST in this gate.',
                         relative($file),
@@ -117,7 +105,7 @@ function main(): int
         return 1;
     }
 
-    fwrite(\STDOUT, \sprintf(
+    fwrite(\STDOUT, sprintf(
         "layer-dependencies: OK — %d file(s) in %s respect the inward-only rule.\n",
         $filesChecked,
         implode(', ', array_keys(FORBIDDEN_BY_LAYER)),
@@ -142,7 +130,7 @@ function referencedNamespacesIn(string $file): array
 
     $tokens = \PhpToken::tokenize($source);
     $references = [];
-    $count = \count($tokens);
+    $count = count($tokens);
 
     for ($index = 0; $index < $count; ++$index) {
         $token = $tokens[$index];

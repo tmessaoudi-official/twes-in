@@ -83,10 +83,14 @@ final class MoneyTest extends TestCase
     public function testItRefusesAFloatOutright(): void
     {
         // Accepting a float would make every guarantee in this class a lie: 0.1 is not 0.1.
-        $this->expectException(\TypeError::class);
+        //
+        // Asserted here for completeness, but note that THIS FILE CANNOT PROVE THE INTERESTING CASE.
+        // It declares strict_types, so a float argument never reaches Money at all. The dangerous
+        // caller is a weak-mode one, where PHP would coerce 19.99 to 19 — see MoneyWeakModeTest.
+        $this->expectException(InvalidMoneyAmount::class);
+        $this->expectExceptionMessageMatches('/float/');
 
-        /** @phpstan-ignore-next-line intentionally wrong type */
-        Money::of(0.1, Currency::of('TND')); // @phpstan-ignore-line
+        Money::of(0.1, Currency::of('TND'));
     }
 
     #[DataProvider('malformedAmounts')]
@@ -145,10 +149,39 @@ final class MoneyTest extends TestCase
     {
         // 64-bit integers top out near 9.22e18; NUMERIC(19,4) does not. Arbitrary precision is the
         // reason this class stores a decimal string rather than scaled integer minor units.
-        $big = Money::of('999999999999999.9999', Currency::of('CLF'));
+        //
+        // 15 integer digits is exactly what NUMERIC(19,4) holds, so this is the largest representable
+        // amount rather than an arbitrary big number.
+        $largest = Money::of('999999999999999.9999', Currency::of('CLF'));
 
-        self::assertSame('999999999999999.9999', $big->amount());
-        self::assertSame('1999999999999999.9998', $big->plus($big)->amount());
+        self::assertSame('999999999999999.9999', $largest->amount());
+        self::assertSame('999999999999998.9999', $largest->minus(Money::of('1', Currency::of('CLF')))->amount());
+    }
+
+    /**
+     * The range is enforced in the domain, not left to the database.
+     *
+     * A value that passes domain validation and then fails on INSERT surfaces mid-transaction, far from
+     * the code that produced it — which breaks the same "fails loudly rather than being laundered"
+     * promise that strict scale checking exists to keep.
+     */
+    public function testAnAmountTooLargeForTheMoneyColumnIsRefused(): void
+    {
+        $this->expectException(InvalidMoneyAmount::class);
+        $this->expectExceptionMessageMatches('/NUMERIC\\(19,4\\)/');
+
+        Money::of('1000000000000000', Currency::of('CLF'));
+    }
+
+    public function testAdditionThatOverflowsTheMoneyColumnIsRefused(): void
+    {
+        // The guard has to hold on results too, not only on construction: two representable amounts can
+        // sum to an unrepresentable one.
+        $largest = Money::of('999999999999999.9999', Currency::of('CLF'));
+
+        $this->expectException(InvalidMoneyAmount::class);
+
+        $largest->plus($largest);
     }
 
     // ---------------------------------------------------------------- rounding

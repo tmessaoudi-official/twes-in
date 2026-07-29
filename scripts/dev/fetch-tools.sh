@@ -24,6 +24,12 @@
 # The hashes are the point. A phar downloaded without verification is arbitrary code from the network,
 # and this repository's whole licensing position depends on knowing the provenance of what it runs.
 # Update a hash only alongside a deliberate version bump.
+#
+# Note the URLs. PHPUnit's is VERSION-PINNED (phpunit-12.5.33.phar), not the moving `phpunit-12.phar`:
+# with a moving URL, the next 12.5.x release turns a fresh clone's setup into a hard failure whose own
+# message says not to fix it by updating the hash. php-cs-fixer publishes no versioned URL on that host
+# (php-cs-fixer-v3.95.17.phar is a 404), so for that one the moving URL is forced and a version bump will
+# surface here as a mismatch — which is the correct place for it to surface.
 
 set -euo pipefail
 
@@ -33,7 +39,7 @@ readonly TOOLS_DIR="$REPO_ROOT/api/tools/bin"
 
 # name|url|sha256
 readonly -a TOOLS=(
-  "phpunit-12.phar|https://phar.phpunit.de/phpunit-12.phar|c8af6400e0cd81da027e2b4d6387733983f1f97f64fe80ae639c84b421e9cd55"
+  "phpunit-12.phar|https://phar.phpunit.de/phpunit-12.5.33.phar|c8af6400e0cd81da027e2b4d6387733983f1f97f64fe80ae639c84b421e9cd55"
   "php-cs-fixer.phar|https://cs.symfony.com/download/php-cs-fixer-v3.phar|918b9cc56969d4aa8a8d3e6520a9872b7491614e9b1d4387fb44c9b5f8717ba0"
 )
 

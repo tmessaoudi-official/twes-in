@@ -2,21 +2,9 @@
 <?php
 
 /*
- * Gate: the domain layer reads no clock, no randomness, no environment and no filesystem.
+ * This file is part of twes-in.
  *
- * Why it exists as a SEPARATE gate from layer-dependencies.php: those two rules look alike and are
- * detected in completely different ways. A framework dependency arrives as a `use` statement, so an
- * import check finds it. `time()`, `random_int()`, `getenv()` and `file_get_contents()` are **bare
- * function calls with no import at all** — an import check is blind to every one of them.
- *
- * What breaks without it: a domain that reads the clock cannot be tested at a date, so nobody writes
- * the test for the invoice that is due tomorrow. A domain that reads randomness cannot be tested
- * reproducibly. A domain that reads the environment behaves differently in production than in the suite
- * that proved it correct. Time and identity come in through a port — Domain\Shared\Clock and
- * Domain\Shared\IdGenerator — and the adapters live in Infrastructure/.
- *
- * `bcadd` and friends are deliberately NOT banned: they are pure, deterministic, and the reason the
- * domain needs no arbitrary-precision package.
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -37,6 +25,16 @@ const BANNED_FUNCTIONS = [
     'strtotime' => 'parse at the boundary, in UI/ or Infrastructure/',
     'date_create' => 'inject Domain\\Shared\\Clock',
     'checkdate' => 'validate at the boundary',
+    'gmdate' => 'inject Domain\\Shared\\Clock, then format in UI/',
+    'getdate' => 'inject Domain\\Shared\\Clock',
+    'localtime' => 'inject Domain\\Shared\\Clock',
+    'gmmktime' => 'inject Domain\\Shared\\Clock',
+    'idate' => 'inject Domain\\Shared\\Clock',
+    'strftime' => 'inject Domain\\Shared\\Clock, then format in UI/',
+    'date_default_timezone_get' => 'the domain works in UTC and does not ask',
+    'date_default_timezone_set' => 'the domain never mutates global state',
+    'date_create_immutable' => 'inject Domain\\Shared\\Clock',
+    'date_create_from_format' => 'parse at the boundary',
 
     // ---- randomness
     'rand' => 'inject Domain\\Shared\\IdGenerator',
@@ -46,6 +44,10 @@ const BANNED_FUNCTIONS = [
     'uniqid' => 'inject Domain\\Shared\\IdGenerator',
     'shuffle' => 'a domain rule must not depend on ordering luck',
     'array_rand' => 'a domain rule must not depend on ordering luck',
+    'lcg_value' => 'inject Domain\\Shared\\IdGenerator',
+    'mt_srand' => 'the domain never seeds a generator',
+    'srand' => 'the domain never seeds a generator',
+    'bin2hex' => 'only reached here via random_bytes; generate identifiers in Infrastructure/',
 
     // ---- the environment
     'getenv' => 'configuration is injected, never read',
@@ -81,6 +83,30 @@ const BANNED_FUNCTIONS = [
     'extract' => 'no dynamic symbol creation',
     'eval' => 'no dynamic code',
     'compact' => 'use an explicit array or a value object',
+
+    // Indirect invocation. These are how every ban above is evaded in one step, so they are banned
+    // outright in Domain/ rather than analysed: a domain rule has no legitimate need to call a function
+    // chosen at runtime, and allowing it would make this gate advisory.
+    'call_user_func' => 'call the function directly so this gate can see it',
+    'call_user_func_array' => 'call the function directly so this gate can see it',
+    'func_get_args' => 'declare the parameters explicitly',
+];
+
+/**
+ * Superglobals. NOT function calls and NOT imports, so neither this gate's original token check nor
+ * layer-dependencies.php could see them — `$_SERVER['REQUEST_TIME']` is an ambient clock read and
+ * `$_ENV` is ambient configuration, and both passed every gate.
+ */
+const BANNED_VARIABLES = [
+    '$_ENV' => 'configuration is injected, never read',
+    '$_SERVER' => 'the request belongs to UI/; REQUEST_TIME is also an ambient clock read',
+    '$_GET' => 'the request belongs to UI/',
+    '$_POST' => 'the request belongs to UI/',
+    '$_REQUEST' => 'the request belongs to UI/',
+    '$_COOKIE' => 'the request belongs to UI/',
+    '$_FILES' => 'the request belongs to UI/',
+    '$_SESSION' => 'the request belongs to UI/',
+    '$GLOBALS' => 'the domain has no global state',
 ];
 
 /** Classes whose *instantiation* reads the clock, even though naming the type is fine. */
@@ -119,7 +145,7 @@ function main(): int
         return 1;
     }
 
-    fwrite(\STDOUT, \sprintf(
+    fwrite(\STDOUT, sprintf(
         "no-ambient-calls: OK — %d domain file(s) read no clock, randomness, environment or filesystem.\n",
         $filesChecked,
     ));
@@ -138,15 +164,57 @@ function inspect(string $file): array
     }
 
     $tokens = \PhpToken::tokenize($source);
-    $count = \count($tokens);
+    $count = count($tokens);
     $violations = [];
 
     for ($index = 0; $index < $count; ++$index) {
         $token = $tokens[$index];
 
+        if ($token->is(\T_VARIABLE) && isset(BANNED_VARIABLES[$token->text])) {
+            $violations[] = describe($file, $token->line, $token->text, BANNED_VARIABLES[$token->text]);
+
+            continue;
+        }
+
+        // `new $className()` — a dynamic instantiation defeats the BANNED_INSTANTIATIONS check below,
+        // and there is no way to know statically what it builds. The domain constructs its own types by
+        // name, so this is banned rather than resolved.
+        if ($token->is(\T_VARIABLE)) {
+            $previous = previousMeaningfulToken($tokens, $index);
+
+            if (null !== $previous && $previous->is(\T_NEW)) {
+                $violations[] = describe(
+                    $file,
+                    $token->line,
+                    'new ' . $token->text,
+                    'a dynamically-named class cannot be checked; name the class directly',
+                );
+            }
+
+            continue;
+        }
+
         // exit and die are language constructs, not T_STRING function names.
         if ($token->is([\T_EXIT])) {
             $violations[] = describe($file, $token->line, strtolower($token->text), BANNED_FUNCTIONS['exit']);
+
+            continue;
+        }
+
+        // A banned name inside a quoted string is a callable in every practical case:
+        // $f = 'time'; $f();  array_map('time', …);  \Closure::fromCallable('time').
+        // Flagged rather than resolved — the domain has no legitimate reason to name one of these.
+        if ($token->is(\T_CONSTANT_ENCAPSED_STRING)) {
+            $literal = strtolower(trim($token->text, "'\""));
+
+            if (isset(BANNED_FUNCTIONS[$literal])) {
+                $violations[] = describe(
+                    $file,
+                    $token->line,
+                    "'" . $literal . "' as a string callable",
+                    BANNED_FUNCTIONS[$literal],
+                );
+            }
 
             continue;
         }
@@ -194,7 +262,7 @@ function inspect(string $file): array
 
 function describe(string $file, int $line, string $what, string $reason): string
 {
-    return \sprintf('%s:%d — %s is ambient. %s.', relative($file), $line, $what, $reason);
+    return sprintf('%s:%d — %s is ambient. %s.', relative($file), $line, $what, $reason);
 }
 
 /** @param list<\PhpToken> $tokens */
@@ -212,7 +280,7 @@ function previousMeaningfulToken(array $tokens, int $index): ?\PhpToken
 /** @param list<\PhpToken> $tokens */
 function nextMeaningfulToken(array $tokens, int $index): ?\PhpToken
 {
-    $count = \count($tokens);
+    $count = count($tokens);
 
     for ($cursor = $index + 1; $cursor < $count; ++$cursor) {
         if (!$tokens[$cursor]->is([\T_WHITESPACE, \T_COMMENT, \T_DOC_COMMENT])) {

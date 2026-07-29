@@ -24,14 +24,18 @@ if [[ ! -d "$DOMAIN" ]]; then
   exit 0
 fi
 
-# Two spellings of the same mistake: the imported short form and the fully-qualified one.
+# Every spelling of the same mistake. The leading-backslash forms matter: `#[\Doctrine\ORM\Mapping\Entity]`
+# is the canonical fully-qualified attribute and an earlier version of this gate missed it entirely while
+# its own comment claimed to cover it.
 readonly -a FORBIDDEN=(
   '#\[ORM\\'
-  '#\[Doctrine\\ORM\\'
-  'use Doctrine\\ORM\\Mapping'
-  'use Doctrine\\DBAL'
-  'use Doctrine\\Common'
-  'use Doctrine\\Persistence'
+  '#\[\\\?Doctrine\\ORM\\'
+  '#\[\\\?Doctrine\\DBAL\\'
+  'use Doctrine\\'
+  'use \\Doctrine\\'
+  '\\Doctrine\\ORM\\'
+  '\\Doctrine\\DBAL\\'
+  'Doctrine\\ORM\\Mapping'
 )
 
 found=0

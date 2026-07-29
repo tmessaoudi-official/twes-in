@@ -48,9 +48,17 @@ final class PricingVectorsTest extends TestCase
         $vectors = self::vectors();
 
         self::assertSame(1, $vectors['version']);
+
+        // At least one document case must declare the per-line figure, or nothing pins the ORDER in
+        // which VAT is rounded — which is the one rounding decision the spec actually rules.
+        $pinsRoundingOrder = array_filter(
+            $vectors['document_totals'],
+            static fn(array $case): bool => isset($case['vat_if_rounded_per_line_which_is_WRONG']),
+        );
+        self::assertNotEmpty($pinsRoundingOrder, 'No case distinguishes per-line from per-document VAT rounding.');
         self::assertGreaterThanOrEqual(9, \count($vectors['cases']));
         self::assertGreaterThanOrEqual(8, \count($vectors['edit_directions']));
-        self::assertGreaterThanOrEqual(1, \count($vectors['document_totals']));
+        self::assertGreaterThanOrEqual(3, \count($vectors['document_totals']));
     }
 
     #[DataProvider('pricingCases')]
@@ -113,36 +121,52 @@ final class PricingVectorsTest extends TestCase
         $currencyObject = Currency::of($currency);
         $costMoney = Money::of($cost, $currencyObject);
 
-        if (null !== $expectedNet) {
-            self::assertNotNull($profitRate, "case {$id} must supply a profit_rate");
+        // Branch on WHICH FIELD THE USER EDITED, because that is the ruled behaviour under test.
+        // Branching on which expectation happens to be present instead — as an earlier version did —
+        // makes `edited_field` inert: `edit-cost-preserves-rate` and `edit-profit-rate-recomputes-net`
+        // then execute identical code, and the ruling that a cost change preserves the rate and moves
+        // the price is asserted nowhere. Replacing every edited_field with garbage left the suite green.
+        switch ($editedField) {
+            case 'profit_rate':
+            case 'cost':
+                // Both directions recompute the net FROM the rate. That is the whole content of the
+                // cost-edit ruling: the rate survives and the price moves.
+                self::assertNotNull($profitRate, "case {$id} edits {$editedField} and must supply a profit_rate");
+                self::assertNotNull($expectedNet, "case {$id} edits {$editedField} and must expect a net_price");
 
-            $net = $calculator->netFromCost(
-                $costMoney,
-                Rate::fromPercentage($profitRate),
-                RoundingMode::HalfUp,
-            );
+                $net = $calculator->netFromCost(
+                    $costMoney,
+                    Rate::fromPercentage($profitRate),
+                    RoundingMode::HalfUp,
+                );
 
-            self::assertSame($expectedNet, $net->amount(), "net_price, case {$id} (edited {$editedField})");
+                self::assertSame($expectedNet, $net->amount(), "net_price, case {$id}");
 
-            return;
+                break;
+
+            case 'net_price':
+                self::assertNotNull($netPrice, "case {$id} edits net_price and must supply one");
+
+                $rate = $calculator->profitRateFromNet(
+                    $costMoney,
+                    Money::of($netPrice, $currencyObject),
+                    RoundingMode::HalfUp,
+                );
+
+                if ($rateIsExpectedToBeUndefined) {
+                    self::assertNull($rate, "case {$id}: a zero cost leaves the rate undefined, not zero");
+
+                    break;
+                }
+
+                self::assertNotNull($rate, "case {$id}");
+                self::assertSame($expectedRate, $rate->percentage(), "profit_rate, case {$id}");
+
+                break;
+
+            default:
+                self::fail("case {$id} has an unrecognised edited_field \"{$editedField}\"");
         }
-
-        self::assertNotNull($netPrice, "case {$id} must supply a net_price");
-
-        $rate = $calculator->profitRateFromNet(
-            $costMoney,
-            Money::of($netPrice, $currencyObject),
-            RoundingMode::HalfUp,
-        );
-
-        if ($rateIsExpectedToBeUndefined) {
-            self::assertNull($rate, "case {$id}: a zero cost leaves the rate undefined, not zero");
-
-            return;
-        }
-
-        self::assertNotNull($rate, "case {$id}");
-        self::assertSame($expectedRate, $rate->percentage(), "profit_rate, case {$id}");
     }
 
     /**
@@ -170,9 +194,16 @@ final class PricingVectorsTest extends TestCase
     }
 
     /**
-     * The end-to-end document case: line totals, a VAT rate over the subtotal, and Tunisia's fixed
-     * stamp duty — which is a document-scope charge in the generic charge model, never a special case
-     * in code, and unrepresentable in a two-decimal currency.
+     * Document totals end to end: line totals, VAT grouped by rate, and fixed charges.
+     *
+     * Two things this pins that the formula alone does not. **The rounding ORDER** — VAT is rounded once
+     * per rate group on the summed base, not per line and then summed; the two differ by a millime on
+     * some inputs and a case in the fixture is built so they diverge. And **that a fixed document charge
+     * is not part of any VAT base** — Tunisia's stamp duty is added after VAT, not taxed.
+     *
+     * @param list<array<string, string>> $lines
+     * @param list<array<string, string>> $fixedCharges
+     * @param list<array<string, string>> $vatByRate
      */
     #[DataProvider('documentTotalCases')]
     public function testDocumentTotalsMatchTheSharedVectors(
@@ -180,15 +211,19 @@ final class PricingVectorsTest extends TestCase
         string $currency,
         array $lines,
         string $expectedSubtotal,
-        string $vatRate,
+        ?string $singleVatRate,
+        array $vatByRate,
         string $expectedVat,
         array $fixedCharges,
         string $expectedTotal,
+        ?string $wrongPerLineVat,
     ): void {
         $currencyObject = Currency::of($currency);
         $calculator = new PriceCalculator();
 
         $subtotal = Money::zero($currencyObject);
+        /** @var array<string, Money> $baseByRate */
+        $baseByRate = [];
 
         foreach ($lines as $line) {
             $lineNet = Money::of($line['unit_net'], $currencyObject)
@@ -197,14 +232,56 @@ final class PricingVectorsTest extends TestCase
             self::assertSame($line['line_net'], $lineNet->amount(), "line net, case {$id}");
 
             $subtotal = $subtotal->plus($lineNet);
+
+            $rate = $line['vat_rate'] ?? $singleVatRate;
+            self::assertNotNull($rate, "case {$id}: every line needs a VAT rate");
+
+            // Accumulate the BASE per rate. Rounding happens once, after this loop.
+            $baseByRate[$rate] = ($baseByRate[$rate] ?? Money::zero($currencyObject))->plus($lineNet);
         }
 
         self::assertSame($expectedSubtotal, $subtotal->amount(), "subtotal, case {$id}");
 
-        $vat = $calculator->vat($subtotal, Rate::fromPercentage($vatRate), RoundingMode::HalfUp);
+        $vat = Money::zero($currencyObject);
+
+        foreach ($baseByRate as $rate => $base) {
+            $groupVat = $calculator->vat($base, Rate::fromPercentage((string) $rate), RoundingMode::HalfUp);
+            $vat = $vat->plus($groupVat);
+
+            foreach ($vatByRate as $expectedGroup) {
+                if ($expectedGroup['rate'] === (string) $rate) {
+                    self::assertSame($expectedGroup['base'], $base->amount(), "base for rate {$rate}, case {$id}");
+                    self::assertSame($expectedGroup['vat'], $groupVat->amount(), "vat for rate {$rate}, case {$id}");
+                }
+            }
+        }
+
         self::assertSame($expectedVat, $vat->amount(), "vat, case {$id}");
 
-        $total = $subtotal->plus($vat);
+        // Where the fixture supplies it, prove the naive order gives a DIFFERENT answer — otherwise the
+        // case above would pass under either order and pin nothing.
+        if (null !== $wrongPerLineVat) {
+            $perLine = Money::zero($currencyObject);
+
+            foreach ($lines as $line) {
+                $rate = $line['vat_rate'] ?? $singleVatRate;
+                self::assertNotNull($rate);
+                $perLine = $perLine->plus($calculator->vat(
+                    Money::of($line['line_net'], $currencyObject),
+                    Rate::fromPercentage($rate),
+                    RoundingMode::HalfUp,
+                ));
+            }
+
+            self::assertSame($wrongPerLineVat, $perLine->amount(), "per-line VAT, case {$id}");
+            self::assertNotSame(
+                $expectedVat,
+                $perLine->amount(),
+                "case {$id} claims the two rounding orders diverge, but they agree — so it pins nothing.",
+            );
+        }
+
+        $total = $calculator->grossFromNet($subtotal, $vat);
 
         foreach ($fixedCharges as $charge) {
             $total = $total->plus(Money::of($charge['amount'], $currencyObject));
@@ -213,7 +290,12 @@ final class PricingVectorsTest extends TestCase
         self::assertSame($expectedTotal, $total->amount(), "total, case {$id}");
     }
 
-    /** @return iterable<string, array{string, string, array, string, string, string, array, string}> */
+    /**
+     * @return iterable<string, array{
+     *     string, string, list<array<string, string>>, string, ?string, list<array<string, string>>,
+     *     string, list<array<string, string>>, string, ?string
+     * }>
+     */
     public static function documentTotalCases(): iterable
     {
         foreach (self::vectors()['document_totals'] as $case) {
@@ -222,10 +304,12 @@ final class PricingVectorsTest extends TestCase
                 $case['currency'],
                 $case['lines'],
                 $case['subtotal_net'],
-                $case['vat_rate'],
+                $case['vat_rate'] ?? null,
+                $case['vat_by_rate'] ?? [],
                 $case['vat'],
                 $case['fixed_charges'],
                 $case['expected']['total'],
+                $case['vat_if_rounded_per_line_which_is_WRONG'] ?? null,
             ];
         }
     }

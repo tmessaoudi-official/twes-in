@@ -21,11 +21,21 @@ readonly -a SEARCH_ROOTS=(
   "api/src"
   "api/tests"
   "api/tools"
+  "api/config"
+  "api/bin"
+  "api/public"
+  "api/migrations"
   "admin/src"
   "mobile/lib"
   "mobile/test"
   "scripts"
 )
+
+# How far into a file the header may appear. Without a bound, a file that merely MENTIONS the identifier
+# in a comment far down passes — which an earlier version of this gate did. 40 lines is generous enough
+# for a file whose header comment explains WHY it exists (house style here), and still far short of
+# anywhere a licence line could hide.
+readonly HEADER_WINDOW=40
 
 missing=0
 checked=0
@@ -40,13 +50,15 @@ for root in "${SEARCH_ROOTS[@]}"; do
   while IFS= read -r -d '' file; do
     checked=$((checked + 1))
 
-    if ! grep -qF "$EXPECTED" "$file"; then
+    if ! head -n "$HEADER_WINDOW" "$file" | grep -qF "$EXPECTED"; then
       printf 'MISSING SPDX header: %s\n' "${file#"$REPO_ROOT"/}" >&2
       missing=$((missing + 1))
     fi
   done < <(find "$REPO_ROOT/$root" \
     -type f \
-    \( -name '*.php' -o -name '*.ts' -o -name '*.dart' -o -name '*.sh' \) \
+    \( -name '*.php' -o -name '*.ts' -o -name '*.dart' -o -name '*.sh' \
+       -o -name '*.xml' -o -name '*.sql' -o -name '*.yaml' -o -name '*.yml' \) \
+    -not -name '*.xlf' \
     -not -path '*/vendor/*' \
     -not -path '*/node_modules/*' \
     -print0)

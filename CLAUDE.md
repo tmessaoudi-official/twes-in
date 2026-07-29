@@ -19,10 +19,11 @@ own statically-typed PHP-inspired language — is **vision, not a target**: the 
 nothing here is built for it. Do not treat it as a requirement, do not design around its unknowns, and
 do not defer a decision waiting for it. See `VISION.md`.
 
-Status: **greenfield.** As of 2026-07-29 this repo contains the Claude bundle, planning documents, the
-licence and notices (`LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`), `README.md` and `VISION.md` —
-and **no application code**. Anything below describing the stack is the *target*, not the present. Read
-`docs/plans/*.plan.md` for where the build actually is.
+Status: **Wave 0 landed** (2026-07-29). `api/` holds a framework-free `Domain/` (money, pricing) and
+`Infrastructure/` (tenancy, clock, identifiers), four PHPUnit suites, and six gates in `scripts/gates/`
+with their own test suite. **Not yet built:** the Symfony application, Doctrine, PHPStan/deptrac (all
+blocked — see § Gotchas on GitHub egress), and the `admin/`, `mobile/` and `infra/` tiers. Anything below
+describing those is the *target*. Read `docs/plans/build-waves.plan.md` for where the build actually is.
 
 ## Routing
 
@@ -381,7 +382,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
 | **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate | **Runs** |
-| **Licensing** | `scripts/gates/dependency-licences.php` — permissive-only, over `api/composer.lock` | **Runs** |
+| **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, `axe-core` a11y, locale key-parity, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
 | Flutter client | `flutter analyze`, `flutter test`, semantics/a11y tests, golden or real screenshots, the shared pricing vectors | Wave 11 — `mobile/README.md` |
@@ -403,8 +404,19 @@ cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check
 
 **Tooling setup in a fresh container** (nothing here is installed by default): PHP 8.5.8 and
 PostgreSQL 18.4 come from the sury.org and PGDG apt repositories; `bash scripts/dev/fetch-tools.sh`
-downloads the PHPUnit and php-cs-fixer phars against pinned SHA-256 hashes. The integration suite needs
-a reachable Postgres and skips loudly rather than passing when there is none.
+downloads the PHPUnit and php-cs-fixer phars against pinned SHA-256 hashes. The **integration suite's
+database prerequisites** are:
+
+```
+createuser --createdb twes           # must be NEITHER superuser NOR BYPASSRLS — row-level security
+createdb   --owner=twes twes_in_test # does not apply to either, so the suite would silently pass
+psql -c "ALTER ROLE twes PASSWORD 'twes'"
+```
+
+Overridden in CI by `TWES_TEST_DSN`, `TWES_TEST_DB_USER` and `TWES_TEST_DB_PASSWORD`; the defaults in
+`api/phpunit.xml` are throwaway local values. With no database reachable the integration suite **fails**
+rather than passing — deliberately, since a green run that silently skipped the tenancy proof is the
+worst outcome available.
 
 **Four test suites, deliberately separate** (`api/phpunit.xml`): `unit` (pure domain, no kernel, no
 database), `integration` (real PostgreSQL — the tenancy policy, column fidelity), `functional` (HTTP

@@ -44,11 +44,19 @@ disallowed-tools: AskUserQuestion
      `## Decisions Log`). On any conflict with a delta above, CLAUDE.md wins.
   7. THREE TOOLCHAINS, NONE OF THEM BUILT YET. twes-in is a Symfony (PHP) REST API + an Angular
      admin front end + a Flutter mobile/desktop app, over Postgres, with Docker Compose for local
-     dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
-     `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
-     two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
-     application code), `.claude/`, `scripts/claude-bootstrap/`, and `.gitignore` (which is where
-     `/var`, `/qa-shots/` and the reference-clone guards these deltas rely on are declared). So: never hardcode a build, test
+     dev. **Wave 0 landed on 2026-07-29**, so there IS a source tree now — but only part of one, and
+     the shape matters: `api/src/Domain/` (money, pricing — framework-free, zero Composer
+     dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,
+     UUIDv7), four PHPUnit suites under `api/tests/`, and six gates in `scripts/gates/` with their own
+     `test-gates.sh`. **Still absent:** the Symfony application, Doctrine, PHPStan and deptrac (every
+     Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `admin/`,
+     `mobile/` and `infra/` tiers, which are README stubs listing the tests and enforcers they owe.
+     The repo also holds `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`,
+     `THIRD-PARTY-NOTICES.md`, four plan files under `docs/plans/` (one mandatory reading before any
+     application code), `docs/spec/pricing-vectors.json`, `.claude/`,
+     `scripts/claude-bootstrap/`, and `.gitignore`. Run the API tier with
+     `cd api && php tools/bin/phpunit-12.phar`; the gates are plain PHP and bash and need nothing
+     installed. So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
@@ -132,7 +140,7 @@ for M in composer.json package.json pubspec.yaml; do find "$TARGET" -maxdepth 3 
 
 Summarize the tech stack in one sentence and **name which stacks are present**: the Symfony (PHP) REST API, the Angular admin front end, the Flutter app — plus Postgres and Docker Compose for local dev. Pass this to each agent as `PROJECT_TYPE`. Where a stack exists, read its manifest for the real script names instead of assuming them (`composer.json` scripts and `vendor/bin/*`; `package.json` scripts; `pubspec.yaml` plus `flutter analyze` / `flutter test`).
 
-**Greenfield degradation — required.** If a stack is absent, say so in one line and let its agents report on what exists rather than on what it would contain. On 2026-07-29 **no** stack is present — what exists is `CLAUDE.md`, `README.md`, `VISION.md`, the licence files, two authoritative plan files under `docs/plans/`, `.claude/` and `scripts/claude-bootstrap/`. In that state a legitimate `/inspect` run reports on the shell hooks, the skill and agent definitions, the licensing and architecture rules, and the plan files' internal consistency — and states plainly that there is no application code yet. Do not synthesise findings, coverage maps or drift for files that do not exist — an invented P1 is worse than an empty table.
+**Greenfield degradation — required.** If a stack is absent, say so in one line and let its agents report on what exists rather than on what it would contain. On 2026-07-29 Wave 0 landed a PARTIAL stack: the API tier's `Domain/` and `Infrastructure/` exist with four PHPUnit suites, and `scripts/gates/` holds six gates plus `test-gates.sh`. The Symfony application, Doctrine, PHPStan, deptrac and both client tiers do not. So a legitimate `/inspect` run reports on what exists and states plainly what does not — it must NOT report an empty tree, and it must NOT skip the API tier.
 
 ## Step 2: Spawn Analysis Agents
 

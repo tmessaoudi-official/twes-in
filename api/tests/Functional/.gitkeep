@@ -1,0 +1,6 @@
+This suite is declared in phpunit.xml and has no tests yet — Wave 0 has no HTTP surface to exercise.
+
+This file exists because git does not track empty directories, and PHPUnit exits 2 with
+"Test directory not found" when a declared suite's directory is absent. Without it the whole
+suite is unrunnable from a fresh clone while passing in a working tree that still has the
+untracked directory. Delete this file when the first test lands here.

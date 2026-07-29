@@ -73,7 +73,9 @@ allowlist. Direct requirements:
 | `friendsofphp/php-cs-fixer` | v3.95.17 | MIT | style gate | composer.lock |
 | `phpstan/phpstan` | 2.2.6 | MIT | static analysis (owed — cannot install) | composer.lock |
 | `deptrac/deptrac` | 4.7.1 | MIT | layer fitness (owed — cannot install). **`qossmic/deptrac` is ABANDONED** in favour of this package | composer.lock + packagist `abandoned` field |
-| `symfony/browser-kit` · `css-selector` · `process` | v8.1.x | MIT | functional and e2e suites | composer.lock |
+| `symfony/browser-kit` | v8.1.1 | MIT | functional suite — HTTP through the kernel | composer.lock |
+| `symfony/css-selector` | v8.1.0 | MIT | functional suite — assertions against markup | composer.lock |
+| `symfony/process` | v8.1.0 | MIT | e2e suite — booting a real server | composer.lock |
 
 **PHP extensions, not packages, so they carry no notice obligation but are hard requirements:**
 `bcmath` (the domain's exact decimal arithmetic — see `CLAUDE.md` § "Architecture" for why this replaced

@@ -4,8 +4,9 @@ The full build, sliced into waves, with a **certification review by the three le
 boundary** (developer ruling, 2026-07-29). Written before Wave 1 starts so the shape is clear and
 scope arrives deliberately rather than by accident.
 
-**Nothing here is implemented.** Read `reimplementation-strategy.plan.md` first — it holds the
-licensing invariants, the pinned stack and the tenancy design this plan assumes.
+**Wave 0 has landed in part; everything from Wave 1 on is unimplemented.** Read
+`reimplementation-strategy.plan.md` first — it holds the licensing invariants and the pinned stack. Note
+that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
 
@@ -66,9 +67,10 @@ spent partly because the tree changed under the reviewer.
 
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
-Delivered and verified: **112 tests, 958 assertions green**; six architecture/licensing gates, each
-proven to fail on an injected violation before being trusted; the tenancy invariant proven against a
-real PostgreSQL 18.4 server, including a test that removes the guard and watches every tenant leak.
+Delivered and verified, **after certification round 1** (see below): **172 tests, 1084 assertions
+green** and **33 gate tests green**; six architecture/licensing gates, each proven to fail on an injected
+violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
+removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
 
 | Delivered | Where |
 |---|---|
@@ -105,7 +107,56 @@ Two scope changes made deliberately rather than silently:
   one failure mode that makes the whole mitigation worthless. The `Product` entity and the endpoints stay
   in Wave 1.
 
-### Original scope, for reference
+### Certification round 1 — 48 findings, and what remains owed
+
+The MAXIMAL panel ran against frozen commit `8639de8` and returned **48 findings** (16 security,
+12 correctness, 20 completeness). That is recorded as a number rather than smoothed over, because the
+count is the argument for the panel existing. The three most serious were not style:
+
+1. **The suite was unrunnable from a fresh clone.** `api/tests/Functional` and `api/tests/E2E` are
+   declared in `phpunit.xml` and git cannot track empty directories, so PHPUnit exited 2 and **zero
+   tests ran** — while passing in the author's tree, which still had the untracked directories.
+   *Fixed:* `.gitkeep` in both, and a fresh-clone check is now part of the wave's evidence.
+2. **`Decimal::divide`'s rounding had no coverage, and two wrong-money mutants survived the suite.**
+   Deleting the exact tie test still gave `OK`, while `0.001/2` returned `0.000` and `2.000/3` returned
+   `0.666`. *Fixed:* `DecimalTest.php`, written case by case to kill specific mutants; all five now die.
+3. **The fail-closed tenancy claim was true only on a virgin connection.** After one `set_config`, the
+   custom GUC's reset value is the empty string, not NULL — so a naive policy raises a cast error on the
+   next unbound query instead of returning zero rows, and every test passed because `setUp()` opens a
+   fresh connection. *Fixed:* `nullif(..., '')` in the canonical policy, `bind()` reads the value back
+   rather than trusting it, and a test exercises a **reused** connection.
+
+Also fixed in the same round: `Money::of()` silently coerced a float to an int from any weak-mode caller
+(`19.99` became `19.000`) — now refused explicitly, and proved by a deliberately non-strict test file that
+**guards its own premise**, because `php-cs-fixer` added `declare(strict_types=1)` to it twice while every
+test stayed green. Six gate bypasses (`gmdate()`, `$_ENV`, `$_SERVER`, string callables,
+`new $dynamicClass()`, `#[\Doctrine\ORM\Mapping\Entity]`). No gate had any test — now
+`scripts/gates/test-gates.sh`, 33 cases. A magnitude guard on `Money`, since `NUMERIC(19,4)` holds 15
+integer digits and nothing checked. Three missing ISO 4217 codes. `FrozenClock` silently violated its
+port's UTC contract when given an offset — a **one-day** shift. The licensing gate never checked
+`THIRD-PARTY-NOTICES.md` although `CLAUDE.md` said it did. The fixture could not distinguish per-line from
+per-document VAT rounding, and `edited_field` was inert. Stale supersession claims in `README.md`,
+`CLAUDE.md`, `reimplementation-strategy.plan.md`, 11 skills and 3 reviewer agents.
+
+**Owed, and deliberately not closed in this round** — each is real, none is a blocker for the wave's
+seams, and all are recorded so they cannot be mistaken for done:
+
+| Owed | Why it is not closed here |
+|---|---|
+| **Composite tenant keys as a schema rule, mechanically checked.** PostgreSQL performs referential-integrity and uniqueness checks with row security BYPASSED, so a single-column FK lets one tenant delete another's rows and a bare unique constraint is an existence oracle. | Documented in `policySqlFor()` and in `tenancy-security-reviewer`, but there is no table yet to check. **Becomes a P0 with the first Wave 1 migration** — a gate asserting every `company_id` table has `relrowsecurity AND relforcerowsecurity`, a policy, and composite keys must land with it. |
+| **A non-owner runtime database role, without `TRUNCATE`.** `FORCE` stops an owner skipping policies, not removing them; `TRUNCATE` is never subject to RLS. | Infrastructure, not code — belongs with `infra/` (Wave 12) and is recorded in its README. The behaviour is pinned by a test so nobody mistakes RLS for protection against it. |
+| **The rate-quantisation question.** `Rate` holds 6 fraction decimals, and the ruled cost-edit direction recomputes the net *from that rate*, so at large magnitudes it loses money: cost `1000000.000` with a typed net of `1000000.500` stores `0.0001%`, and a cost rise to `1100000.000` yields `1100001.100` where exact is `1100000.550`. | **Needs a developer ruling, not a fix.** The spec says both "the stored authority is `net_price`, never re-derive from a rounded rate" and "editing cost preserves the rate", and the second requires the re-derivation the first forbids. See the question raised at the end of this round. |
+| **`netFromCost` differs from the spec's written formula under `HalfEven`.** One multiplication vs `cost + (cost × rate)` diverge when the tie parity flips. | Identical under the ruled `half_up` (160,000 pairs, 0 divergences). The one-step form is the better arithmetic; the plan's formula line should be amended to match rather than the code changed — folded into the pricing spec next round. |
+| **PHPStan and deptrac configuration.** No `phpstan.neon`, no `deptrac.yaml`, and `composer gate` names `gate:static` with neither a config nor paths. | Both are uninstallable here, so a config would be untested. Lands with `composer install`. |
+| **The i18n catalogues have no consumer.** Nine keys in three locales; every message the code emits is still a hardcoded English literal. | There is no HTTP layer to translate for. Lands with the RFC 9457 error shape, together with a reverse gate (a key used in code but absent from a catalogue). |
+| **Locale-aware formatting and its own test vectors.** Wave 0's scope named it; no formatter exists. | Needs a rendering surface to be meaningful. Moves to Wave 4 (PDF) and Wave 8 (admin), where `TND`'s three decimals can actually be seen to be right. |
+| **A JSON Schema for `pricing-vectors.json`.** | The `$schema` key pointed at a file that did not exist and has been removed rather than left dangling. Worth writing when the second consumer (Angular) lands and the shape stops moving. |
+
+### Original scope, for reference — HISTORICAL, read the tables above for what is true
+
+*Kept verbatim as the record of what this wave set out to do. Where it differs from the tables above,
+the tables above are correct: notably it specifies a "default-on Doctrine filter", which was superseded
+by row-level security, and `deptrac`/PHPStan, which could not be installed.*
 
 **In:** repo skeleton (`api/`, `admin/`, `mobile/`, `infra/`) · Symfony 8.1.1 on PHP 8.5.8 · the
 hexagonal layer layout · **`Money` value object** over `NUMERIC(19,4)` with explicit rounding on every

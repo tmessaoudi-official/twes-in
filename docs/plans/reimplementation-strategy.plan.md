@@ -33,7 +33,14 @@ clones; figures are labelled accordingly.
 - [2026-07-29 10:55] NOTED: "keep the Flutter app unchanged" therefore means **the greenfield Symfony API must become a bug-for-bug reimplementation of Invoice Ninja's v5 API** — none of the constraints above is how anyone would design an API in 2026. The recommended alternative is to fork the Flutter client's transport layer (`web_client.dart` + models, ~500 LOC of Dart) and let the backend be designed properly. **OPEN — see Question 2.**
 - [2026-07-29 11:00] NOTED: `pages/documents` in the React app (13,523 LOC, 133 referencing files) depends on `@docuninja/builder2.0`, a **pre-built React component package** (e-signature/blueprint builder). There is no source to translate and no Angular equivalent. It is out of scope, not effort. **OPEN — see Question 4.**
 - [2026-07-29 11:05] NOTED: PDF preview is nearly free on the client (`InvoiceViewer.tsx` is 138 LOC — it POSTs to `/api/v1/live_preview` and puts the returned bytes in an iframe) but that implies a real backend feature: rendering a PDF for an **unsaved** entity.
-- [2026-07-29 11:10] AGREED: three foundational choices are made **now**, on day zero, because all three are unfixable later and all three are things upstream got wrong. (1) Money is integer minor units or a decimal type, never float. (2) Tenancy scoping is a **default-on** Doctrine filter, never an opt-in helper. (3) Permissions are Symfony Voters over a real `role_permissions` table, never substring matching on a string column. Recorded in `CLAUDE.md` § Gotchas.
+- [2026-07-29 11:10] AGREED: three foundational choices are made **now**, on day zero, because all three are unfixable later and all three are things upstream got wrong. (1) Money is integer minor units or a decimal type, never float. (2) Tenancy scoping is a **default-on** Doctrine filter, never an opt-in helper.
+  **SUPERSEDED 2026-07-29 by Wave 0, both halves — the requirements stand, the mechanisms changed.**
+  (1) is now a decimal string over `bcmath` in our own `Money`, because scaled integers overrun PHP's
+  integer range for `NUMERIC(19,4)` and a decimal *library* proved unnecessary; `Domain/` therefore has
+  zero Composer dependencies. (2) is now **PostgreSQL row-level security**, because a Doctrine filter
+  only scopes queries the ORM builds and is bypassed by a native query, a migration, a reporting job or
+  `psql` — it cannot deliver the "forgetting is impossible" property that motivated it. See
+  `CLAUDE.md` § Gotchas and `build-waves.plan.md` § "Decisions Log". (3) Permissions are Symfony Voters over a real `role_permissions` table, never substring matching on a string column. Recorded in `CLAUDE.md` § Gotchas.
 - [2026-07-29 11:15] AGREED: this plan file is the record of truth; it is committed. Four questions remain OPEN for the developer and are listed at the end. No work beyond the Claude bundle proceeds until Questions 1 and 2 are ruled.
 
 ---
@@ -73,14 +80,14 @@ Two things must be separated, and the whole design follows from that:
 | Concern | Mode A — shared DB | Mode B — DB per tenant |
 |---|---|---|
 | Which tenant is this request? | identical — one `TenantContext`, resolved once per request | identical |
-| How is the data isolated? | a Doctrine filter, **enabled by default**, adds `company_id = :tenant` to every query | the *connection* points at that tenant's database; no `company_id` needed |
+| How is the data isolated? | **SUPERSEDED — see the Decisions Log entry above.** A PostgreSQL **row-level security** policy, applied by the server to every statement; `company_id = nullif(current_setting('twes.tenant_id', true), '')::uuid`. A Doctrine filter becomes a second layer when Doctrine lands, never the only one. | the *connection* points at that tenant's database; no `company_id` needed |
 
 So one port, `TenantContext` (who), and one strategy, `TenantIsolationStrategy` (how). `Domain/` and
 `Application/` depend on **neither** — they never mention `company_id` and never touch a connection.
 Only `Infrastructure/` implements the two adapters, and `config/` picks one:
 
 ```
-TWES_TENANCY_MODE=shared          # Mode A: one DB, default-on filter
+TWES_TENANCY_MODE=shared          # Mode A: one DB, row-level security (NOT a Doctrine filter — superseded)
 TWES_TENANCY_MODE=database        # Mode B: one DB per tenant, connection resolved per request
 ```
 
@@ -102,7 +109,7 @@ usually hides this:
 1. **Build the seam from day one.** `TenantContext` + `TenantIsolationStrategy` land in Wave 1. This is
    cheap now and is the part that would be expensive to retrofit, because retrofitting means finding
    every query written under the old assumption.
-2. **Implement Mode A only, at first.** Default-on filter, `company_id` on every tenant-owned table.
+2. **Implement Mode A only, at first.** Row-level security (superseded the default-on filter), `company_id` on every tenant-owned table.
 3. **Implement Mode B when a real customer needs it** — the provisioning workflow and per-tenant
    migration runner are a wave of their own, and building them before anyone needs them means
    maintaining and testing two modes with only one in use.

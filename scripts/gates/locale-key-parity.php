@@ -2,18 +2,9 @@
 <?php
 
 /*
- * Gate: every locale carries exactly the same set of translation keys.
+ * This file is part of twes-in.
  *
- * Why it exists: a missing key does not crash anything. Symfony's translator falls back to echoing the
- * key itself, so the failure surfaces as `error.invoice.already_paid` printed on a customer's invoice —
- * discovered by the customer, not by the suite. twes-in ships French, Arabic and English from the first
- * version (France and Tunisia both go live in Wave 5), so three catalogues have to move together.
- *
- * What breaks without it: catalogues drift one key at a time, and the locale nobody on the team reads
- * is the one that rots. Arabic is that locale here.
- *
- * This is the API tier's catalogues. The Angular admin's and the Flutter client's are checked the same
- * way when those tiers land; see OWED below.
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -58,7 +49,7 @@ function main(): int
     foreach ($domains as $domain => $byLocale) {
         foreach (REQUIRED_LOCALES as $locale) {
             if (!isset($byLocale[$locale])) {
-                $problems[] = \sprintf('domain "%s" has no %s catalogue.', $domain, $locale);
+                $problems[] = sprintf('domain "%s" has no %s catalogue.', $domain, $locale);
             }
         }
 
@@ -81,13 +72,13 @@ function main(): int
             sort($missing);
 
             foreach ($missing as $key) {
-                $problems[] = \sprintf('domain "%s", locale "%s": missing key "%s".', $domain, $locale, $key);
+                $problems[] = sprintf('domain "%s", locale "%s": missing key "%s".', $domain, $locale, $key);
             }
 
             $duplicates = array_values(array_diff_assoc($keys, array_unique($keys)));
 
             foreach ($duplicates as $key) {
-                $problems[] = \sprintf('domain "%s", locale "%s": duplicate key "%s".', $domain, $locale, $key);
+                $problems[] = sprintf('domain "%s", locale "%s": duplicate key "%s".', $domain, $locale, $key);
             }
         }
     }
@@ -105,12 +96,12 @@ function main(): int
     $total = 0;
 
     foreach ($domains as $byLocale) {
-        $total += \count(reset($byLocale) ?: []);
+        $total += count(reset($byLocale) ?: []);
     }
 
-    fwrite(\STDOUT, \sprintf(
+    fwrite(\STDOUT, sprintf(
         "locale-key-parity: OK — %d domain(s), %d key(s) each, across %s.\n",
-        \count($domains),
+        count($domains),
         $total,
         implode('/', REQUIRED_LOCALES),
     ));
@@ -132,7 +123,7 @@ function discoverDomains(): array
 
         // Symfony's convention is <domain>.<locale>.xlf.
         if (1 !== preg_match('/\A(?<domain>.+)\.(?<locale>[a-z]{2}(?:_[A-Z]{2})?)\z/', $name, $matches)) {
-            fwrite(\STDERR, \sprintf(
+            fwrite(\STDERR, sprintf(
                 "locale-key-parity: FAIL — \"%s\" is not named <domain>.<locale>.xlf.\n",
                 basename($path),
             ));
@@ -153,7 +144,7 @@ function keysIn(string $path): array
     libxml_use_internal_errors($previous);
 
     if (false === $document) {
-        fwrite(\STDERR, \sprintf("locale-key-parity: FAIL — %s is not valid XML.\n", basename($path)));
+        fwrite(\STDERR, sprintf("locale-key-parity: FAIL — %s is not valid XML.\n", basename($path)));
         exit(1);
     }
 

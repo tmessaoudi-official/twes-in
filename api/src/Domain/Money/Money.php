@@ -43,26 +43,55 @@ final readonly class Money
     private function __construct(
         private string $amount,
         private Currency $currency,
-    ) {}
+    ) {
+        // Checked HERE and not only in of(), so it holds for RESULTS too: two representable amounts can
+        // sum to an unrepresentable one, and every operation funnels through this constructor.
+        if (Decimal::integerDigits($amount) > self::MAX_INTEGER_DIGITS) {
+            throw InvalidMoneyAmount::outOfRange($amount);
+        }
+    }
 
     /**
-     * The amount must be exactly representable in the currency.
+     * Number of digits allowed before the decimal point.
      *
-     * Accepts a decimal string or an integer — never a float. A float argument is a `TypeError`,
-     * because 0.1 is not 0.1 in binary floating point and accepting one would make every guarantee
-     * above untrue.
+     * Money columns are `NUMERIC(19,4)` — 19 significant digits with 4 after the point, so 15 before
+     * it. Enforced here rather than left to the database, because a value that passes domain validation
+     * and then explodes at the persistence boundary is exactly the "corrupt data fails loudly" promise
+     * broken: the failure arrives far from the code that caused it, mid-transaction, with no context.
+     */
+    public const int MAX_INTEGER_DIGITS = 15;
+
+    /**
+     * The amount must be exactly representable in the currency, and fit the money column.
+     *
+     * Accepts a decimal string or an integer. **A float is refused explicitly** — `float` is in the
+     * signature only so that it can be rejected with a clear message. Leaving it out would be worse
+     * than useless: PHP's union coercion prefers `int`, so from any caller without
+     * `declare(strict_types=1)` a `string|int` signature turns `19.99` into `19` behind a `Deprecated`
+     * notice that a production error handler swallows — silently making a 19.99 TND line 19.000 TND.
      *
      * Trailing zeroes beyond the currency's scale are fine (`0.1000` in TND is `0.100`); they lose
      * nothing. A significant digit beyond it is refused.
      *
-     * @throws InvalidMoneyAmount if malformed, or not representable in this currency
+     * @throws InvalidMoneyAmount if a float, malformed, out of range, or not representable in this
+     *                            currency
      */
-    public static function of(string|int $amount, Currency $currency): self
+    public static function of(string|int|float $amount, Currency $currency): self
     {
+        if (\is_float($amount)) {
+            throw InvalidMoneyAmount::floatRefused($amount);
+        }
+
         $value = (string) $amount;
 
         if (!Decimal::isWellFormed($value)) {
             throw InvalidMoneyAmount::malformed($value);
+        }
+
+        // Checked before rescaling as well as in the constructor, so the message names the value the
+        // caller actually passed rather than its normalised form.
+        if (Decimal::integerDigits($value) > self::MAX_INTEGER_DIGITS) {
+            throw InvalidMoneyAmount::outOfRange($value);
         }
 
         $normalised = Decimal::rescale($value, $currency->scale(), RoundingMode::Unnecessary);

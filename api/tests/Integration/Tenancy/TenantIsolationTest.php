@@ -44,7 +44,12 @@ final class TenantIsolationTest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->connection->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+        // Guarded because PHPUnit runs tearDown even when setUp called markTestSkipped, and an
+        // unguarded dereference turns nine intended skips into nine type errors that name the wrong
+        // file — hiding the one message an operator needs ("no PostgreSQL server reachable").
+        if (isset($this->connection)) {
+            $this->connection->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+        }
     }
 
     // ------------------------------------------------------------------ the guarantee
@@ -169,6 +174,128 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
+
+    /**
+     * The case an earlier version of this suite could not see, and the reason the policy uses `nullif`.
+     *
+     * Every other test here gets a fresh connection from setUp, so "unbound" means "never bound". In
+     * production a connection is reused, and after one `set_config` the GUC's reset value is the empty
+     * string rather than NULL — so a naive policy raises SQLSTATE 22P02 on the next unbound query
+     * instead of returning zero rows. This binds, commits, and then queries unbound on the SAME
+     * connection: it must still see nothing, and must not error.
+     */
+    public function testAReusedConnectionStillFailsClosedAfterAPreviousBinding(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+        $this->connection->commit();
+
+        // Same connection, no binding — exactly what the next request off a pool would do.
+        $this->connection->beginTransaction();
+        $setting = $this->connection->query(
+            "SELECT current_setting('" . PostgresRowLevelSecurityIsolation::TENANT_SETTING . "', true)",
+        );
+        $reset = false === $setting ? null : $setting->fetchColumn();
+        $labels = $this->fetchAllLabels();
+        $this->connection->rollBack();
+
+        self::assertSame(
+            '',
+            $reset,
+            'If this is NULL, PostgreSQL changed its custom-GUC reset behaviour and the nullif in the '
+            . 'policy is no longer load-bearing — check before removing it.',
+        );
+        self::assertSame([], $labels, 'A reused, unbound connection must see nothing — and must not error.');
+    }
+
+    public function testBindingIsVerifiedRatherThanAssumed(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+
+        $statement = $this->connection->query(
+            "SELECT current_setting('" . PostgresRowLevelSecurityIsolation::TENANT_SETTING . "', true)",
+        );
+        $actual = false === $statement ? null : $statement->fetchColumn();
+
+        $this->connection->rollBack();
+
+        self::assertSame(self::TENANT_A, $actual);
+    }
+
+    public function testATenantCannotDeleteAnotherTenantsRow(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+
+        $affected = $this->connection->exec("DELETE FROM " . self::TABLE . " WHERE label = 'b-one'");
+
+        $this->connection->rollBack();
+
+        self::assertSame(0, $affected);
+    }
+
+    /**
+     * The WITH CHECK half of the policy: a tenant must not be able to hand its own row to another
+     * tenant, which would be data exfiltration by UPDATE rather than by SELECT.
+     */
+    public function testATenantCannotReassignItsOwnRowToAnotherTenant(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+
+        try {
+            $this->expectException(\PDOException::class);
+            $this->connection->exec(
+                'UPDATE ' . self::TABLE . " SET company_id = '" . self::TENANT_B . "' WHERE label = 'a-one'",
+            );
+        } finally {
+            $this->connection->rollBack();
+        }
+    }
+
+    /**
+     * Documents a real limitation rather than a guarantee.
+     *
+     * `TRUNCATE` is **never** subject to row-level security, at any privilege level — it is gated only
+     * by the TRUNCATE privilege. So the runtime role must not hold it, which is an infrastructure
+     * control and not something this class can enforce. This test pins the behaviour so that nobody
+     * later mistakes RLS for protection against it.
+     */
+    public function testTruncateIsNotProtectedByRowLevelSecurityWhichIsWhyTheRoleMustNotHoldIt(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+
+        $this->connection->exec('TRUNCATE ' . self::TABLE);
+        $remaining = $this->connection->query('SELECT count(*) FROM ' . self::TABLE);
+        $count = false === $remaining ? null : $remaining->fetchColumn();
+
+        $this->connection->rollBack();
+
+        self::assertSame(0, (int) $count, 'TRUNCATE bypasses RLS. REVOKE TRUNCATE from the runtime role.');
+    }
+
     // ------------------------------------------------------------------ fail-closed behaviour
 
     public function testBindingWithoutATenantIsRefused(): void
@@ -244,8 +371,6 @@ final class TenantIsolationTest extends TestCase
      */
     private function createProbeTable(): void
     {
-        $setting = PostgresRowLevelSecurityIsolation::TENANT_SETTING;
-
         $this->connection->exec('DROP TABLE IF EXISTS ' . self::TABLE);
         $this->connection->exec(
             'CREATE TABLE ' . self::TABLE . ' (
@@ -257,13 +382,11 @@ final class TenantIsolationTest extends TestCase
 
         // ENABLE alone leaves the table's owner exempt, and the application connects as the owner.
         // FORCE is what closes that, and every migration enabling RLS must do both.
-        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
-        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' FORCE ROW LEVEL SECURITY');
-        $this->connection->exec(
-            'CREATE POLICY tenant_isolation ON ' . self::TABLE . "
-                USING      (company_id = current_setting('{$setting}', true)::uuid)
-                WITH CHECK (company_id = current_setting('{$setting}', true)::uuid)",
-        );
+        // From the canonical emitter, not hand-written: the test must exercise the exact SQL that
+        // migrations will run, or it proves something no production table has.
+        foreach (PostgresRowLevelSecurityIsolation::policySqlFor(self::TABLE) as $statement) {
+            $this->connection->exec($statement);
+        }
 
         // Seeded with RLS off, since seeding spans both tenants by definition.
         $this->connection->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');

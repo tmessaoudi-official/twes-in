@@ -64,7 +64,17 @@ return new PhpCsFixer\Config()
     ])
     ->setFinder(
         new PhpCsFixer\Finder()
-            ->in([__DIR__ . '/src', __DIR__ . '/tests'])
+            ->in([__DIR__ . '/src', __DIR__ . '/tests', __DIR__ . '/../scripts/gates'])
+            // MoneyWeakModeTest deliberately omits declare(strict_types=1) — that absence IS the test,
+            // since it reproduces the weak-mode caller where a float was silently coerced to an int.
+            // The declare_strict_types rule would destroy it, and the test would still pass while
+            // proving nothing.
+            //
+            // A filter callback rather than notPath()/notName(): both of those were silently ignored
+            // here. And the file asserts the property itself, in
+            // testThisFileIsNotInStrictTypesModeBecauseThatIsTheWholePoint — which is what actually
+            // caught it, twice. Treat this line as the convenience and that test as the guarantee.
+            ->filter(static fn(\SplFileInfo $file): bool => 'MoneyWeakModeTest.php' !== $file->getFilename())
             ->append([__FILE__]),
     )
     ->setCacheFile(__DIR__ . '/var/php-cs-fixer.cache');

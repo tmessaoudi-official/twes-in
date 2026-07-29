@@ -24,9 +24,19 @@ final class FrozenClock implements Clock
 {
     private function __construct(private \DateTimeImmutable $now) {}
 
+    /**
+     * The timezone argument to DateTimeImmutable is IGNORED whenever the string carries its own
+     * offset, so `at('2026-07-29T23:00:00-05:00')` would otherwise report 2026-07-29 while the UTC
+     * instant is 2026-07-30 — a one-day shift, on a clock whose readings drive due dates, VAT period
+     * boundaries and month-end rollover. Converting after construction is what makes the Clock port's
+     * "implementations must return UTC" contract actually hold.
+     */
     public static function at(string $instant): self
     {
-        return new self(new \DateTimeImmutable($instant, new \DateTimeZone('UTC')));
+        return new self(
+            new \DateTimeImmutable($instant, new \DateTimeZone('UTC'))
+                ->setTimezone(new \DateTimeZone('UTC')),
+        );
     }
 
     public function now(): \DateTimeImmutable

@@ -41,8 +41,7 @@
 # api/var/ holds the PHPUnit cache and the php-cs-fixer cache. Note /var (Claude runtime state)
 # above is a different directory and already ignored.
 /api/var/
-/var/cache/
-/var/log/
+# (No /var/cache/ or /var/log/ entries: /var above already ignores that whole tree.)
 .env.local
 .env.*.local
 .php-cs-fixer.cache

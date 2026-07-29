@@ -69,7 +69,8 @@ final readonly class Currency
         'XPF' => 0, // CFP franc
 
         // ---- two decimals. The majority — listed explicitly so it is never a fallback.
-        'AED' => 2, 'ALL' => 2, 'AMD' => 2, 'ANG' => 2, 'AOA' => 2, 'ARS' => 2,
+        'AED' => 2, 'AFN' => 2, 'ALL' => 2, 'AMD' => 2, 'ANG' => 2, 'AOA' => 2,
+        'ARS' => 2,
         'AUD' => 2, 'AWG' => 2, 'AZN' => 2, 'BAM' => 2, 'BBD' => 2, 'BDT' => 2,
         'BGN' => 2, 'BMD' => 2, 'BND' => 2, 'BOB' => 2, 'BRL' => 2, 'BSD' => 2,
         'BTN' => 2, 'BWP' => 2, 'BYN' => 2, 'BZD' => 2, 'CAD' => 2, 'CDF' => 2,
@@ -89,8 +90,9 @@ final readonly class Currency
         'SGD' => 2, 'SHP' => 2, 'SLE' => 2, 'SOS' => 2, 'SRD' => 2, 'SSP' => 2,
         'STN' => 2, 'SVC' => 2, 'SYP' => 2, 'SZL' => 2, 'THB' => 2, 'TJS' => 2,
         'TMT' => 2, 'TOP' => 2, 'TRY' => 2, 'TTD' => 2, 'TWD' => 2, 'TZS' => 2,
-        'UAH' => 2, 'USD' => 2, 'UYU' => 2, 'UZS' => 2, 'VES' => 2, 'WST' => 2,
-        'XCD' => 2, 'YER' => 2, 'ZAR' => 2, 'ZMW' => 2, 'ZWG' => 2,
+        'UAH' => 2, 'USD' => 2, 'UYU' => 2, 'UZS' => 2, 'VED' => 2, 'VES' => 2,
+        'WST' => 2, 'XCD' => 2, 'XCG' => 2, 'YER' => 2, 'ZAR' => 2, 'ZMW' => 2,
+        'ZWG' => 2,
     ];
 
     private function __construct(

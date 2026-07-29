@@ -2,20 +2,9 @@
 <?php
 
 /*
- * Gate: every dependency is permissively licensed.
+ * This file is part of twes-in.
  *
- * Why it exists, and why "AGPL-compatible" is the WRONG test. twes-in is AGPL-3.0-or-later **plus a
- * commercial licence** (LICENSING.md). A GPL/AGPL/LGPL dependency satisfies the AGPL branch perfectly
- * and **destroys the commercial one**: a third party's copyleft code cannot be relicensed to a customer
- * who is buying an escape from source disclosure. So the test is permissive-only — MIT, Apache-2.0,
- * BSD-2-Clause, BSD-3-Clause, ISC — and nothing else.
- *
- * What breaks without it: one `composer require` during a rushed afternoon quietly removes the ability
- * to sell this software, and nobody notices until a lawyer reads the dependency tree. A habit will not
- * catch that. This will.
- *
- * A genuinely needed copyleft-only library is a decision for the developer to make explicitly — see
- * CLAUDE.md, licensing invariant 8(a) — never a silent one.
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
  *
  * SPDX-License-Identifier: AGPL-3.0-or-later
  */
@@ -34,6 +23,15 @@ const PERMISSIVE = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC'];
 const LOCK_FILES = [
     'Symfony API' => '/api/composer.lock',
 ];
+
+/**
+ * The notices file every dependency must appear in — licensing invariant 8(a).
+ *
+ * Only DIRECT requirements are checked by name. Transitive ones are covered by the aggregate licence
+ * count that file carries for the whole locked tree; enumerating 106 rows by hand would rot on the first
+ * `composer update`, whereas a direct requirement is a deliberate choice somebody made and must record.
+ */
+const NOTICES = '/THIRD-PARTY-NOTICES.md';
 
 /** Lock files owed by tiers that do not exist yet, so the gap stays visible. */
 const OWED = [
@@ -63,7 +61,7 @@ function main(): int
             $licences = $package['license'];
 
             if ([] === $licences) {
-                $offending[] = \sprintf('%s: %s declares NO licence.', $tier, $package['name']);
+                $offending[] = sprintf('%s: %s declares NO licence.', $tier, $package['name']);
 
                 continue;
             }
@@ -72,15 +70,47 @@ function main(): int
             // simply take that one. A package offering only copyleft options is not.
             $permissive = array_values(array_filter(
                 $licences,
-                static fn (string $licence): bool => \in_array($licence, PERMISSIVE, true),
+                static fn(string $licence): bool => in_array($licence, PERMISSIVE, true),
             ));
 
             if ([] === $permissive) {
-                $offending[] = \sprintf(
+                $offending[] = sprintf(
                     '%s: %s is %s — not permissive.',
                     $tier,
                     $package['name'],
                     implode(' OR ', $licences),
+                );
+            }
+        }
+    }
+
+    // Licensing invariant 8(a): recorded in THIRD-PARTY-NOTICES.md "in the same change that adds it".
+    // CLAUDE.md's Licensing gate row promises this check; an earlier version of this gate did not make it,
+    // so a new permissive dependency could land with no notices row and the gate still reported OK.
+    $noticesPath = REPO_ROOT . NOTICES;
+
+    if (!is_file($noticesPath)) {
+        fwrite(\STDERR, "dependency-licences: FAIL — " . NOTICES . " is missing.\n");
+
+        return 1;
+    }
+
+    $notices = file_get_contents($noticesPath);
+
+    if (false === $notices) {
+        fwrite(\STDERR, "dependency-licences: FAIL — could not read " . NOTICES . ".\n");
+
+        return 1;
+    }
+
+    foreach (directRequirements() as $tier => $names) {
+        foreach ($names as $name) {
+            if (!str_contains($notices, $name)) {
+                $offending[] = sprintf(
+                    '%s: %s is a DIRECT requirement but does not appear in %s.',
+                    $tier,
+                    $name,
+                    ltrim(NOTICES, '/'),
                 );
             }
         }
@@ -120,12 +150,50 @@ function main(): int
         return 1;
     }
 
-    fwrite(\STDOUT, \sprintf(
+    fwrite(\STDOUT, sprintf(
         "dependency-licences: OK — %d package(s) all permissively licensed.\n",
         $checked,
     ));
 
     return 0;
+}
+
+/**
+ * Direct requirements per tier, read from the manifest rather than the lock.
+ *
+ * Only direct ones: the notices file records these individually and the full tree in aggregate.
+ *
+ * @return array<string, list<string>>
+ */
+function directRequirements(): array
+{
+    $manifestPath = REPO_ROOT . '/api/composer.json';
+
+    if (!is_file($manifestPath)) {
+        return [];
+    }
+
+    $raw = file_get_contents($manifestPath);
+
+    if (false === $raw) {
+        return [];
+    }
+
+    /** @var array{require?: array<string, string>, 'require-dev'?: array<string, string>} $manifest */
+    $manifest = json_decode($raw, true, 512, \JSON_THROW_ON_ERROR);
+
+    $names = [];
+
+    foreach ([...array_keys($manifest['require'] ?? []), ...array_keys($manifest['require-dev'] ?? [])] as $name) {
+        // Platform requirements (php, ext-*, lib-*) are not packages and carry no notice obligation.
+        if ('php' === $name || str_starts_with($name, 'ext-') || str_starts_with($name, 'lib-')) {
+            continue;
+        }
+
+        $names[] = $name;
+    }
+
+    return [] === $names ? [] : ['Symfony API' => $names];
 }
 
 /**

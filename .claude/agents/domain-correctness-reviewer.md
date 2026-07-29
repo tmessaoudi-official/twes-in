@@ -29,8 +29,15 @@ is a wrong number on a legal document, an unbalanced ledger, and in the EU a com
 ## Attack surface — work these in order, with evidence
 
 1. **Float contamination.** Grep the diff for `float`, `double`, `/`, `*` applied to money. Money must
-   be integer minor units or `BRICK`-style decimal (PHP `BCMath`/`Decimal`, Postgres `NUMERIC`), never
-   IEEE-754. A single `(float)` cast on a money path is a P0. Check the Doctrine column types too:
+   be a decimal string over `bcmath` in our own `Money` value object, stored in Postgres `NUMERIC(19,4)`
+   — **not** integer minor units and **not** a decimal library; both were rejected in Wave 0, so
+   `Domain/` has zero Composer dependencies. All rounding lives in one place,
+   `Domain\Shared\Decimal::applyRounding()`, and never in IEEE-754.
+   Two things to check that a float grep will not find: `Money::of()` must reject a `float` argument
+   explicitly rather than relying on the caller's `strict_types` (a `string|int` union silently coerces
+   `19.99` to `19` from a weak-mode caller), and every new `divide`/`ratioTo` path needs a test that
+   would FAIL if the tie logic were deleted — mutation-checking that is cheap and was how the gap in
+   Wave 0's own suite was found. A single `(float)` cast on a money path is a P0. Check the Doctrine column types too:
    `type="float"` on an amount column is the same bug one layer down.
 2. **Rounding order.** Line-level vs document-level rounding produce different totals, and tax
    authorities specify which. Find where rounding happens and prove the order is deliberate and

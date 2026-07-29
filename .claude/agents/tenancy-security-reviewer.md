@@ -30,10 +30,29 @@ un-leak a client list, and a cross-tenant read is a reportable data breach under
 
 1. **Every new query is a tenancy question.** For each query, repository method, DQL string, QueryBuilder
    chain or raw SQL in the diff: is it scoped to the current tenant? Find the mechanism the project
-   uses (Doctrine filter, a trait, a listener) and prove this query goes through it. The dangerous
-   shapes: `find()`/`findOneBy(['id' => $id])` by primary key alone (an ID from another tenant
-   resolves), `createQueryBuilder` without the scoping `where`, native SQL that bypasses the filter
-   entirely, and anything with `disableFilter` / `->getFilters()->disable(`.
+   uses. **As of Wave 0 it is PostgreSQL row-level security**, not a Doctrine filter: policies emitted by
+   `PostgresRowLevelSecurityIsolation::policySqlFor()` and bound per transaction with `set_config`. A
+   Doctrine filter, when it lands, is a second layer and never the only one — so "the filter scopes it"
+   is not an answer on its own.
+
+   Check FOUR things on every tenant-owned table, because each fails silently and independently:
+   **(1)** `ENABLE ROW LEVEL SECURITY`; **(2)** `FORCE ROW LEVEL SECURITY` — without it the table's owner
+   is exempt from its own policies; **(3)** a policy carrying BOTH `USING` and `WITH CHECK`, and using
+   `nullif(current_setting(...), '')` — a bare `current_setting(...)::uuid` raises a cast error instead of
+   returning zero rows on any reused connection, because the GUC's reset value is the empty string rather
+   than NULL; **(4)** `PRIMARY KEY (company_id, id)`, with every foreign key and every unique constraint
+   spanning **both** columns. That last one is not stylistic: PostgreSQL performs referential-integrity
+   and uniqueness checks with row security **bypassed**, so a single-column FK lets one tenant delete
+   another tenant's rows through an ordinary policy-passing `DELETE`, and a bare `UNIQUE (invoice_number)`
+   is an existence oracle for another tenant's invoice numbers.
+
+   Also confirm the runtime role **neither owns** the tenant-owned tables **nor holds TRUNCATE**: `FORCE`
+   stops an owner skipping policies but not removing them, and `TRUNCATE` is never subject to row
+   security at any privilege level.
+
+   The dangerous query shapes: `find()`/`findOneBy(['id' => $id])` by primary key alone (an ID from
+   another tenant resolves), `createQueryBuilder` without a scoping `where`, native SQL, and anything with
+   `disableFilter` / `->getFilters()->disable(`.
 2. **IDOR on every route.** Any endpoint taking an ID from the request: prove that fetching it
    enforces ownership, not merely existence. A `404` and a `403` are both acceptable; a `200` is a
    breach. Check nested resources especially — `/invoices/{id}/payments` may scope the invoice and

@@ -16,6 +16,30 @@ use Twes\Domain\Money\Currency;
 
 final class InvalidMoneyAmount extends \InvalidArgumentException
 {
+    public static function floatRefused(float $amount): self
+    {
+        return new self(\sprintf(
+            'Refusing the float %s as a money amount. Binary floating point cannot represent most '
+            . 'decimal fractions — 0.1 is not 0.1 — so a float has already lost precision before it '
+            . 'arrives here. Pass a decimal string instead: Money::of(\'%s\', ...).',
+            var_export($amount, true),
+            // var_export gives the shortest round-tripping form, which is the closest honest rendering
+            // of what the caller actually had.
+            var_export($amount, true),
+        ));
+    }
+
+    public static function outOfRange(string $amount): self
+    {
+        return new self(\sprintf(
+            'Amount "%s" has more than %d digits before the decimal point, so it does not fit a '
+            . 'NUMERIC(19,4) money column. Refused here rather than at the database boundary, where '
+            . 'the failure would surface mid-transaction with no context.',
+            $amount,
+            \Twes\Domain\Money\Money::MAX_INTEGER_DIGITS,
+        ));
+    }
+
     public static function malformed(string $amount): self
     {
         return new self(\sprintf(

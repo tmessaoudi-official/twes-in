@@ -85,12 +85,21 @@ other two is the default failure mode here, not an unusual one.
    `SPDX-License-Identifier: AGPL-3.0-or-later`, per licensing invariant 8(c). Do not take a
    `composer.json` licence field on trust when the package's own `LICENSE` file is readable.
 
-9. **Architecture rules are conventions until tooling lands — check them by hand, and say you did.**
+9. **Architecture rules are enforced by gates as of Wave 0 — so check the GATES, not just the code.**
    `CLAUDE.md` § "Architecture" assigns P0 to: a framework `use` in `Domain/`, ambient
    `time()`/`random_int()`/`getenv()`/`file_get_contents()` in `Domain/`, `#[ORM\` under `Domain/`, and
-   any outward `use` from `Domain/` to `Application/`/`Infrastructure/`/`UI/`. `deptrac` and the PHPStan
-   banned-function rule are **not yet implemented**, so until they are, this lens *is* the enforcement.
-   Grep for each explicitly rather than assuming a tool caught it.
+   any outward `use` from `Domain/` to `Application/`/`Infrastructure/`/`UI/`. Six gates in
+   `scripts/gates/` now check these, and `scripts/gates/test-gates.sh` checks the gates.
+
+   Your job shifted accordingly: **do not assume a gate caught something — run it, and try to slip past
+   it.** Every gate is a static check with a blind spot, and Wave 0's own gates passed `gmdate()`,
+   `$_ENV`, `$_SERVER`, string callables, `new $dynamicClass()` and `#[\Doctrine\ORM\Mapping\Entity]`
+   until a round found them. A gate that cannot fail is a false assurance worse than no gate, so a new
+   gate arriving without a case in `test-gates.sh` is a finding in itself.
+
+   `deptrac` and PHPStan remain uninstallable (Composer dist URLs are blocked by egress policy) and are
+   defence in depth that has not arrived — noted so their absence is not mistaken for a gap in coverage
+   the gates already provide.
 
 10. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
    with a `## Decisions Log`. If this change resolved a design decision, is it recorded there, in the

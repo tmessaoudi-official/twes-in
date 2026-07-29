@@ -3,9 +3,10 @@
 An invoicing and billing platform — **Symfony** REST API, **Angular** admin web client, and a
 **Flutter** client for mobile with native desktop support planned, over **PostgreSQL**.
 
-> **Status: greenfield.** As of 2026-07-29 this repository contains planning documents, licensing, and
-> the Claude Code tooling bundle. **There is no application code yet.** Everything below describes the
-> target, not the present. Start with `docs/plans/reimplementation-strategy.plan.md`.
+> **Status: early.** Wave 0 has landed — the `Money` value object, the profit-rate arithmetic, the
+> multi-tenant isolation seam, and six architecture/licensing gates, under `api/`. The Symfony
+> application itself, Doctrine and the two client tiers do **not** exist yet. Read
+> `docs/plans/build-waves.plan.md` for exactly what is and is not built.
 
 ## Licence — dual
 
@@ -55,8 +56,13 @@ calculation. See `docs/plans/reimplementation-strategy.plan.md` § "Pinned stack
 Doctrine, no I/O and no ambient clock or randomness inside `Domain/`, and Doctrine mapping in XML rather
 than attributes on entities. Money is a first-class value object carrying its currency's own
 decimal scale, with an explicit rounding mode on every lossy operation — never a float, and never a
-2-decimal assumption, because the default currency (TND) has **three**. Multi-tenant scoping is a **default-on** Doctrine
-filter, so it cannot be forgotten. See [CLAUDE.md § "Architecture"](CLAUDE.md).
+2-decimal assumption, because the default currency (TND) has **three**. The arithmetic is `bcmath`, so
+`Domain/` has **zero Composer dependencies** — enforced by a gate, not by convention.
+
+Multi-tenant scoping is **PostgreSQL row-level security**, applied by the server to every statement
+whatever issued it — a Doctrine filter would be bypassed by a native query, a migration or a `psql`
+session. An unbound connection sees **nothing**, not everything. See
+[CLAUDE.md § "Architecture"](CLAUDE.md).
 
 ## Repository map
 
@@ -68,7 +74,10 @@ filter, so it cannot be forgotten. See [CLAUDE.md § "Architecture"](CLAUDE.md).
 | `docs/plans/build-waves.plan.md` | The wave-by-wave build plan and what is deliberately out of scope. |
 | `docs/plans/pricing-and-documents.plan.md` | Profit-rate pricing, delivery notes, and the generic charge model. |
 | `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
-| `api/` · `admin/` · `mobile/` · `infra/` | The four tiers — **not yet created**. Symfony API, Angular admin, Flutter client, and deployment written from scratch. |
+| `api/` | The Symfony API. **Wave 0 landed**: `Domain/` (money, pricing), `Infrastructure/` (tenancy, clock, ids), four test suites. No HTTP layer or Doctrine yet. |
+| `admin/` · `mobile/` · `infra/` | Angular admin (Wave 8), Flutter client (Wave 11), deployment written from scratch (Wave 12). Each README lists the tests and enforcers it owes as gate conditions. |
+| `scripts/gates/` | The six architecture and licensing gates, plus their own test suite. |
+| `docs/spec/pricing-vectors.json` | The pricing arithmetic every tier tests against, so three implementations cannot drift. |
 | `.claude/` | Repo-native Claude Code skills and reviewer agents, read in place. |
 | `scripts/claude-bootstrap/` | The reasoning framework, installed into an ephemeral `~/.claude` at session start. |
 

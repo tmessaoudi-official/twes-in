@@ -54,6 +54,17 @@ final class Decimal
         return false === $dot ? 0 : \strlen($value) - $dot - 1;
     }
 
+    /** Digits before the decimal point, ignoring sign and leading zeroes. */
+    public static function integerDigits(string $value): int
+    {
+        $magnitude = ltrim($value, '-');
+        $dot = strpos($magnitude, '.');
+        $integerPart = false === $dot ? $magnitude : substr($magnitude, 0, $dot);
+        $significant = ltrim($integerPart, '0');
+
+        return '' === $significant ? 1 : \strlen($significant);
+    }
+
     public static function add(string $left, string $right, int $scale): string
     {
         return self::normaliseZero(bcadd($left, $right, $scale));
