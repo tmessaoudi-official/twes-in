@@ -53,8 +53,9 @@ calculation. See `docs/plans/reimplementation-strategy.plan.md` § "Pinned stack
 
 **TDD, DDD, hexagonal and clean architecture**, with a **framework-free domain layer**: no Symfony, no
 Doctrine, no I/O and no ambient clock or randomness inside `Domain/`, and Doctrine mapping in XML rather
-than attributes on entities. Money is a first-class value object in integer minor units with an explicit
-rounding mode on every lossy operation — never a float. Multi-tenant scoping is a **default-on** Doctrine
+than attributes on entities. Money is a first-class value object carrying its currency's own
+decimal scale, with an explicit rounding mode on every lossy operation — never a float, and never a
+2-decimal assumption, because the default currency (TND) has **three**. Multi-tenant scoping is a **default-on** Doctrine
 filter, so it cannot be forgotten. See [CLAUDE.md § "Architecture"](CLAUDE.md).
 
 ## Repository map
