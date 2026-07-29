@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\PriceCalculator;
+use Twes\Domain\Pricing\ProductPricing;
 use Twes\Domain\Pricing\Rate;
 use Twes\Domain\Shared\RoundingMode;
 
@@ -32,6 +33,7 @@ use Twes\Domain\Shared\RoundingMode;
  */
 #[CoversClass(PriceCalculator::class)]
 #[CoversClass(Rate::class)]
+#[CoversClass(ProductPricing::class)]
 final class PricingVectorsTest extends TestCase
 {
     private const string VECTORS = __DIR__ . '/../../../../docs/spec/pricing-vectors.json';
@@ -59,6 +61,7 @@ final class PricingVectorsTest extends TestCase
         self::assertGreaterThanOrEqual(9, \count($vectors['cases']));
         self::assertGreaterThanOrEqual(8, \count($vectors['edit_directions']));
         self::assertGreaterThanOrEqual(3, \count($vectors['document_totals']));
+        self::assertGreaterThanOrEqual(4, \count($vectors['authored_field']));
     }
 
     #[DataProvider('pricingCases')]
@@ -310,6 +313,94 @@ final class PricingVectorsTest extends TestCase
                 $case['fixed_charges'],
                 $case['expected']['total'],
                 $case['vat_if_rounded_per_line_which_is_WRONG'] ?? null,
+            ];
+        }
+    }
+
+    /**
+     * The authored-field rule, which is the one place a rounding decision can silently delete profit.
+     *
+     * Each case types one field, checks the derived one, then changes the cost and checks what carried
+     * forward. Two of them are the exact failures that motivated the design: one millime of profit on a
+     * 10,000 TND product, and 0.500 TND on a million.
+     *
+     * @param array<string, string|null> $expected
+     * @param array<string, string|null> $expectedAfter
+     */
+    #[DataProvider('authoredFieldCases')]
+    public function testTheAuthoredFieldIsNeverRecomputed(
+        string $id,
+        string $currency,
+        string $authoredBy,
+        string $cost,
+        ?string $profitRate,
+        ?string $netPrice,
+        array $expected,
+        string $thenCostBecomes,
+        array $expectedAfter,
+    ): void {
+        $currencyObject = Currency::of($currency);
+        $costMoney = Money::of($cost, $currencyObject);
+
+        $pricing = match ($authoredBy) {
+            'net_price' => ProductPricing::fromNetPrice(
+                $costMoney,
+                Money::of($netPrice ?? self::fail("case {$id} needs a net_price"), $currencyObject),
+            ),
+            'profit_rate' => ProductPricing::fromProfitRate(
+                $costMoney,
+                Rate::fromPercentage($profitRate ?? self::fail("case {$id} needs a profit_rate")),
+            ),
+            default => self::fail("case {$id} has an unrecognised authored_by \"{$authoredBy}\""),
+        };
+
+        self::assertSame(
+            $authoredBy,
+            $pricing->authoredBy()->value,
+            "case {$id}: authorship must be what the fixture says was typed",
+        );
+
+        $this->assertPricingMatches($pricing, $expected, "{$id} (before the cost change)");
+
+        $moved = $pricing->withCost(Money::of($thenCostBecomes, $currencyObject), RoundingMode::HalfUp);
+
+        $this->assertPricingMatches($moved, $expectedAfter, "{$id} (after the cost change)");
+    }
+
+    /** @param array<string, string|null> $expected */
+    private function assertPricingMatches(ProductPricing $pricing, array $expected, string $context): void
+    {
+        foreach ($expected as $field => $want) {
+            $got = match ($field) {
+                'net_price' => $pricing->netPrice(RoundingMode::HalfUp)->amount(),
+                'profit_rate' => $pricing->profitRate(RoundingMode::HalfUp)?->percentage(),
+                'authored_by' => $pricing->authoredBy()->value,
+                default => self::fail("unknown expected field \"{$field}\" in {$context}"),
+            };
+
+            self::assertSame($want, $got, "{$field}, {$context}");
+        }
+    }
+
+    /**
+     * @return iterable<string, array{
+     *     string, string, string, string, ?string, ?string, array<string, string|null>, string,
+     *     array<string, string|null>
+     * }>
+     */
+    public static function authoredFieldCases(): iterable
+    {
+        foreach (self::vectors()['authored_field'] as $case) {
+            yield $case['id'] => [
+                $case['id'],
+                $case['currency'],
+                $case['authored_by'],
+                $case['cost'],
+                $case['profit_rate'] ?? null,
+                $case['net_price'] ?? null,
+                $case['expected'],
+                $case['then_cost_becomes'],
+                $case['expected_after'],
             ];
         }
     }

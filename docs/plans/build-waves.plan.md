@@ -42,7 +42,19 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   macOS and Web (developer instruction). Consequence recorded because it is structural, not a flag: builds
   cannot be cross-compiled, so CI is a three-runner matrix and a release is six artifacts from three
   machines. Flutter stays on **stable**, currently 3.44.8 / Dart 3.12.2 [Verified against Flutter's release
-  manifest]. **Flutter Web overlaps the Angular admin and is the one target still open.**
+  manifest]. Flutter Web was left open in this entry and **RESOLVED by the 17:40 ruling below: it ships, and
+  twes-in offers two admin interfaces.**
+- [2026-07-29 17:40] RULED: **the profit-rate fix is BOTH parts, combined** (developer ruling). A product
+  persists `authored_by` — `profit_rate` or `net_price` — and the typed field is never recomputed; **and**
+  `Rate` carries 12 fraction decimals (10 on the percentage) instead of 6. Precision moves the boundary,
+  authorship removes it. This closes the contradiction between "the stored authority is `net_price`" and
+  "editing cost preserves the rate": the rate implied by a typed pair is what carries forward, so
+  authorship transfers to the rate. Verified on both motivating cases — a millime of profit on 10,000 TND
+  and 0.500 on a million — and pinned for all three tiers in `pricing-vectors.json` § `authored_field`.
+- [2026-07-29 17:40] RULED: **Flutter Web ships — twes-in offers two admin interfaces**, Flutter and
+  Angular, the same shape Invoice Ninja offers with Flutter and React (developer instruction). Accepted
+  cost: every admin screen exists twice. The public client portal stays Angular/server-rendered, because an
+  unauthenticated link opened on mobile data is a different requirement from an admin console.
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
@@ -72,7 +84,7 @@ spent partly because the tree changed under the reviewer.
 
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
-Delivered and verified, **after certification round 1** (see below): **172 tests, 1084 assertions
+Delivered and verified, **after certification round 1** (see below): **176 tests, 1103 assertions
 green** and **33 gate tests green**; six architecture/licensing gates, each proven to fail on an injected
 violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
 removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
@@ -296,9 +308,21 @@ because it changes two things structurally: **CI is a three-runner matrix** (you
 Windows needs Windows, iOS and macOS need a Mac), and every platform capability the client needs has six
 implementations. `mobile/README.md` enumerates both, plus the signing and distribution costs.
 
-**Open, and it needs a ruling before this wave starts:** whether **Flutter Web** actually ships, given the
-Angular admin (Wave 8) already serves the browser. Two web front ends is two implementations of every
-screen. See the question raised at the end of Wave 0's certification round.
+**RULED 2026-07-29: Flutter Web ships too — twes-in offers TWO admin interfaces, Flutter and Angular.**
+Deliberately the same shape as Invoice Ninja, which offers a Flutter client and a React one; ours are
+Flutter and Angular.
+
+The cost is accepted, not hidden: **every admin screen exists twice**, once in Dart and once in
+TypeScript, forever. Two consequences follow and both are load-bearing rather than incidental:
+
+1. **The API contract and the shared fixtures matter more, not less.** They are the only thing keeping two
+   independent front ends numerically and behaviourally consistent. Both tiers consume
+   `docs/spec/pricing-vectors.json`, and a contract change that does not reach both is a
+   `completeness-reviewer` P0.
+2. **The public client portal (Wave 10) stays server-rendered or Angular, NOT Flutter Web.** Different
+   requirement, not a preference: the portal is unauthenticated, public, opened from an e-mail link by
+   someone who may be on a phone on mobile data, and Flutter Web ships a large bundle before it renders
+   anything. "Two admin interfaces" is a choice about the admin, and the portal is not an admin surface.
 
 ## Wave 12 — Infra & CI
 

@@ -6,11 +6,12 @@
     "rate_from_net": "profit_rate = (net - cost) / cost, undefined when cost is zero",
     "vat_from_net": "vat = net * vat_rate  -- the VAT base is ALWAYS the net, never the cost",
     "gross": "gross = net + vat",
-    "vat_rounding": "VAT is grouped by rate and rounded ONCE per rate group on the summed base -- not per line and then summed. The two orders differ by a millime on some inputs, and the document_totals cases below include one where they diverge specifically so a tier that gets this wrong cannot pass."
+    "vat_rounding": "VAT is grouped by rate and rounded ONCE per rate group on the summed base -- not per line and then summed. The two orders differ by a millime on some inputs, and the document_totals cases below include one where they diverge specifically so a tier that gets this wrong cannot pass.",
+    "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE \u2014 and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate."
   },
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
-    "rates": "Percentage strings, canonicalised to exactly 4 decimal places. The underlying fraction carries 6 decimals, so 30% is the fraction 0.300000 and the percentage string \"30.0000\".",
+    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format \u2014 clients format for the locale; this is the canonical value so cross-tier comparison is exact.",
     "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error."
   },
@@ -153,7 +154,7 @@
       "cost": "100.000",
       "net_price": "140.000",
       "expected": {
-        "profit_rate": "40.0000"
+        "profit_rate": "40.0000000000"
       }
     },
     {
@@ -164,7 +165,7 @@
       "cost": "100.000",
       "net_price": "125.000",
       "expected": {
-        "profit_rate": "25.0000"
+        "profit_rate": "25.0000000000"
       }
     },
     {
@@ -186,7 +187,7 @@
       "cost": "100.000",
       "net_price": "80.000",
       "expected": {
-        "profit_rate": "-20.0000"
+        "profit_rate": "-20.0000000000"
       }
     },
     {
@@ -197,7 +198,7 @@
       "cost": "100.000",
       "net_price": "100.000",
       "expected": {
-        "profit_rate": "0.0000"
+        "profit_rate": "0.0000000000"
       }
     },
     {
@@ -213,13 +214,13 @@
     },
     {
       "id": "edit-net-produces-repeating-rate",
-      "why": "Pins the RATE's own rounding, which is separate from the amount's. 7/3 at 6 fraction decimals is 2.333333, so the percentage string is 233.3333.",
+      "why": "Pins the RATE's own rounding, which is separate from the amount's. 7/3 does not terminate, so at 12 fraction decimals it is 2.333333333333 and the percentage string is 233.3333333333. This is the case that proves the rate has its own scale and its own rounding, independent of any currency.",
       "edited_field": "net_price",
       "currency": "TND",
       "cost": "3.000",
       "net_price": "10.000",
       "expected": {
-        "profit_rate": "233.3333"
+        "profit_rate": "233.3333333333"
       }
     }
   ],
@@ -332,5 +333,72 @@
       }
     }
   ],
-  "schema": "No JSON Schema yet \u2014 owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation."
+  "schema": "No JSON Schema yet \u2014 owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",
+  "authored_field": [
+    {
+      "id": "authored-net-survives-a-cost-change",
+      "why": "THE case that motivated storing the authored field. One millime of profit on a 10,000 TND product. With a 6-decimal rate this displayed 0.0000% and the millime vanished on the next cost change. The typed price is never rebuilt from a derived rate, and 12 decimals hold the implied rate exactly, so it survives.",
+      "currency": "TND",
+      "authored_by": "net_price",
+      "cost": "10000.000",
+      "net_price": "10000.001",
+      "expected": {
+        "profit_rate": "0.0000100000"
+      },
+      "then_cost_becomes": "10001.000",
+      "expected_after": {
+        "net_price": "10001.001",
+        "authored_by": "profit_rate"
+      }
+    },
+    {
+      "id": "authored-net-large-amount-survives-a-cost-change",
+      "why": "The same defect at scale: 0.500 TND of profit on a million. A 6-decimal rate produced 1100001.100 where the exact answer is 1100000.550 \u2014 0.550 TND out, against the customer.",
+      "currency": "TND",
+      "authored_by": "net_price",
+      "cost": "1000000.000",
+      "net_price": "1000000.500",
+      "expected": {
+        "profit_rate": "0.0000500000"
+      },
+      "then_cost_becomes": "1100000.000",
+      "expected_after": {
+        "net_price": "1100000.550",
+        "authored_by": "profit_rate"
+      }
+    },
+    {
+      "id": "authored-rate-is-exact-and-preserved",
+      "why": "The ruled default direction. A typed rate is exact, and a cost change preserves it while the price moves \u2014 never the reverse, which would let the rate silently absorb a cost rise and erode the margin.",
+      "currency": "TND",
+      "authored_by": "profit_rate",
+      "cost": "100.000",
+      "profit_rate": "30",
+      "expected": {
+        "net_price": "130.000"
+      },
+      "then_cost_becomes": "110.000",
+      "expected_after": {
+        "net_price": "143.000",
+        "profit_rate": "30.0000000000",
+        "authored_by": "profit_rate"
+      }
+    },
+    {
+      "id": "authored-net-with-zero-cost-keeps-the-typed-price",
+      "why": "With a zero cost the rate is undefined, so there is nothing to preserve. The typed price is kept unchanged rather than invented from a rate that does not exist.",
+      "currency": "TND",
+      "authored_by": "net_price",
+      "cost": "0.000",
+      "net_price": "50.000",
+      "expected": {
+        "profit_rate": null
+      },
+      "then_cost_becomes": "10.000",
+      "expected_after": {
+        "net_price": "50.000",
+        "authored_by": "net_price"
+      }
+    }
+  ]
 }

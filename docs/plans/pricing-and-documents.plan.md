@@ -60,6 +60,47 @@ Worked, `cost = 100.000 TND`, `profit_rate = 30%`, `vat_rate = 19%`:
 The trap this avoids: VAT is 24.700, not `100 × 0.19 = 19.000`. The VAT base is the net (130), never
 the cost.
 
+### RULED 2026-07-29 — store WHICH field was typed, **and** carry 12 decimals on the rate
+
+Both fixes, together, because they solve different halves of the same defect (developer ruling: *"can we
+combine option 1 and 2"*). They are complementary rather than redundant: **precision moves the boundary,
+authorship removes it.**
+
+**The defect they fix.** Cost `10 000.000 TND`, typed price `10 000.001` — one millime of profit. The true
+rate is `0.0000001`, which needs **seven** decimals; the rate was stored with six, so it rounded to zero.
+The form then displayed `0.0000 %` for a product sold above cost, and the moment the cost changed the
+price was rebuilt from that zero and the millime was **deleted**. At scale: `1 000 000.000` cost with a
+typed price of `1 000 000.500`, cost rising to `1 100 000.000`, produced `1 100 001.100` where the exact
+answer is `1 100 000.550` — `0.550 TND` out, and in that direction the customer overpays.
+
+**Part 1 — `authored_by`, persisted on the product.** Either `profit_rate` or `net_price`. The typed field
+is stored exactly as entered and is **never recomputed**; only the other one is derived, for display, with
+no authority. `Domain/Pricing/ProductPricing.php` enforces it and there is no way to construct one without
+declaring which field was typed.
+
+**Part 2 — `Rate::FRACTION_SCALE` is 12**, percentage 10. Both motivating cases are then exact:
+
+| cost | typed price | derived rate | cost becomes | price becomes |
+|---|---|---|---|---|
+| `10 000.000` | `10 000.001` | `0.0000100000 %` | `10 001.000` | **`10 001.001`** — the millime survives |
+| `1 000 000.000` | `1 000 000.500` | `0.0000500000 %` | `1 100 000.000` | **`1 100 000.550`** — exact |
+
+**What a cost change does, precisely.** The **rate** is preserved and the **price** moves — unchanged from
+the original ruling, and the reason is unchanged too: holding the price instead would let the rate absorb
+every cost rise and erode the margin unnoticed. When the *price* was the typed field, the rate implied by
+the typed pair is what carries forward, so **authorship transfers to the rate**. That is the honest
+outcome: a price typed against the old cost is no longer a statement about the new one, whereas the margin
+accepted still is.
+
+One case has no rate to preserve — a **zero old cost**, where the rate is undefined. The typed price is
+then kept unchanged rather than invented from a rate that does not exist.
+
+Ten decimals on the percentage is **not a display format.** Clients format for the locale; that string is
+the canonical value, so comparing a rate across PHP, TypeScript and Dart stays an exact string comparison.
+
+Pinned for all three tiers by the `authored_field` section of `docs/spec/pricing-vectors.json`, including
+both worked examples above and the zero-cost case.
+
 ### Bidirectional editing — last-edited-wins
 
 Three linked fields. Editing any one recomputes the dependent one, so the displayed rate can never

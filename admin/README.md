@@ -1,5 +1,12 @@
 # admin — Angular web client
 
+> **twes-in ships TWO admin interfaces** (developer ruling, 2026-07-29): this Angular one and the Flutter
+> client's web build — the same shape Invoice Ninja offers with Flutter and React. Every admin screen
+> therefore exists twice, in TypeScript and in Dart. That is an accepted cost, and it is why the API
+> contract and `docs/spec/pricing-vectors.json` are load-bearing: they are the only thing keeping two
+> independent front ends consistent. **The public client portal (Wave 10) is this tier's job, not
+> Flutter's** — an unauthenticated link opened on mobile data cannot afford a large bundle.
+
 **Not built yet. Lands in Wave 8** (`docs/plans/build-waves.plan.md`), on top of the API contract that
 Wave 7 pins.
 
