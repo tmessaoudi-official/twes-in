@@ -10,6 +10,15 @@ and a **Flutter** mobile/desktop client, over **PostgreSQL**. It is a **clean-ro
 inspired by Invoice Ninja** — never a fork, never a port. That distinction is legal, not stylistic,
 and § "Licensing invariants" below is the most important section in this file.
 
+It is intended to run **both as the developer's own internal invoicing and as a product sold to
+others**, so ELv2's hosted-service prohibition genuinely bites and clean-room is mandatory rather than
+merely preferable. twes-in is **AGPL-3.0-or-later plus a commercial licence** (`LICENSING.md`).
+
+A future rewrite of the core in [phorj](https://github.com/tmessaoudi-official/phorj) — the developer's
+own statically-typed PHP-inspired language — is **vision, not a target**: the language is unfinished and
+nothing here is built for it. Do not treat it as a requirement, do not design around its unknowns, and
+do not defer a decision waiting for it. See `VISION.md`.
+
 Status: **greenfield.** As of 2026-07-29 this repo contains the Claude bundle and planning docs only —
 no application code yet. Anything below describing the stack is the *target*, not the present. Read
 `docs/plans/*.plan.md` for where the build actually is.
@@ -61,14 +70,14 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    observable behaviour. Functionality, interfaces, data formats and programming techniques are not
    copyrightable — expression is. Work from what the system *does*, and write the *how* yourself.
 
-3. **The Flutter client is the one exception, and it is a deliberate one.** `invoiceninja/admin-portal`
-   is under the **Attribution Assurance License** [Verified: read `/tmp/xxx/in-flutter/LICENSE.txt`] —
-   permissive, but it requires, on **every launch**, a prominent display (splash screen or banner) of
-   the author's name (*Hillel Coren*), professional identification (*Invoice Ninja*) and URL
-   (*https://www.invoiceninja.com*), plus retention of the licence text in documentation and source.
-   If any Flutter code is reused, **that attribution ships and is never removed** — it is the price of
-   the licence, and stripping it is a breach, not a branding decision. Reusing it also means honouring
-   its API contract; see § "The API contract is a hard constraint".
+3. **There is no exception. The Flutter client is written from scratch too** (developer ruling,
+   2026-07-29: *"I want my own version that is 100% mine, same for all the rest"*). This closed the
+   one loophole the earlier plan carried. `invoiceninja/admin-portal` is under the **Attribution
+   Assurance License** [Verified: read `/tmp/xxx/in-flutter/LICENSE.txt`], which would have required —
+   on **every launch**, forever — a prominent display of *Hillel Coren* / *Invoice Ninja* /
+   *invoiceninja.com*. Writing our own client means that duty never attaches. **Do not reuse
+   admin-portal code "just for the transport layer"**: the obligation follows the code, not the
+   quantity of it, and reintroducing it would also drag back the API contract we are now free of.
 
 4. **Never reproduce, disable, or reimplement a licence-key or branding gate.** ELv2 forbids
    circumventing licence-key functionality, and upstream gates its own branding removal behind a paid
@@ -94,20 +103,100 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    GPL-2.0 and obliges source disclosure for the derivative. Deployment topology is an *idea* (php-fpm +
    nginx + db + redis + queue worker + scheduler) and free to reuse; the files are not. Write our own.
 
-8. **When a licensing question is genuinely unclear, STOP and ask in plain text.** Do not resolve a
-   licence question by picking the convenient reading. This is a one-way door — Rule 18's
-   `[Speculative]` grade is not good enough to build on.
+8. **twes-in itself is AGPL-3.0-or-later plus a commercial licence**, copyright wholly
+   Takieddine MESSAOUDI (developer ruling, 2026-07-29: open source, but sellable by the author). Three
+   consequences that bind day-to-day work, detailed in `LICENSING.md`: **(a)** every dependency must be
+   AGPL-3.0-compatible and recorded in `THIRD-PARTY-NOTICES.md` in the same change that adds it —
+   `GPL-2.0-only` is **not** compatible (and on `invoiceninja/dockerfiles`, whose GPL version is
+   ambiguous for want of a per-file notice, we take the conservative reading, not the convenient one);
+   **(b)** copyright must stay wholly owned or the commercial licence dies,
+   so no outside contribution may be merged without a CLA (none exists yet — one is required before the
+   first external patch); **(c)** new source files carry
+   `SPDX-License-Identifier: AGPL-3.0-or-later`, machine-readable, never a pasted paragraph.
 
-## The API contract is a hard constraint
+9. **All branding is ours and configurable from day one** (developer ruling, 2026-07-29). No upstream
+   name, logo, asset, colour or copy anywhere. Deployment starts as Docker-only with no public domain,
+   so hostname, product name, logo and e-mail identity are **configuration, never hardcoded** — a
+   later public deployment must be a config change, not a code change. There is no white-label "gate"
+   to build, because there is no vendor branding to gate: contrast upstream, which put its own logo on
+   generated PDFs behind a paid plan.
 
-The Flutter client is intended to be kept. That makes the API contract **load-bearing in a way a
-greenfield backend usually is not**: a shipped mobile client updates on app-store timelines, not ours.
-Whatever the contract ends up being, it is pinned by tests and versioned deliberately, and a change to
-a field name, an enum value, an envelope shape, an error format or an auth header is a **breaking
+10. **When a licensing question is genuinely unclear, STOP and ask in plain text.** Do not resolve a
+    licence question by picking the convenient reading. This is a one-way door — Rule 18's
+    `[Speculative]` grade is not good enough to build on.
+
+## The API contract is ours to design — and still load-bearing
+
+Because all three clients are ours, **the contract is designed, not inherited.** None of Invoice
+Ninja's shape is binding: no unix-second integers, no `double` money, no `_method=put` multipart, no
+`per_page=999999`, no two mandatory version headers whose absence crashes the client. Design it the way
+a 2026 API should be designed, and record it in
+`docs/plans/reimplementation-strategy.plan.md` once.
+
+It remains load-bearing for a different reason: **a shipped mobile client updates on app-store
+timelines, not ours.** Once the Flutter app is in a store, the contract is effectively frozen for
+anyone who hasn't updated. So it is pinned by contract tests and versioned deliberately, and a change
+to a field name, an enum value, an envelope shape, an error format or an auth header is a **breaking
 change with a migration plan**, never an incidental edit. `completeness-reviewer` treats an API change
-that does not reach every client tier as a P0. The concrete constraints (auth scheme, response
-envelope, ID format, date formats, pagination, error shape) belong in
-`docs/plans/reimplementation-strategy.plan.md`, decided once and recorded there.
+that does not reach every client tier — API, OpenAPI spec, Angular, Flutter — as a P0.
+
+## Architecture — DDD, hexagonal, clean
+
+Developer ruling, 2026-07-29: **TDD, DDD, hexagonal and clean architecture**, "really
+structured/scalable and flawless and exemplary". That directive is the whole justification and it needs
+no other — a billing domain is exactly the case these patterns exist for, because the rules that matter
+(money arithmetic, tax, state transitions) are the part that must be testable in isolation and must
+outlive every framework decision around them.
+
+One consequence worth naming, but **not a reason for any of these rules**: a framework-free domain
+would also be the part that survives a future rewrite in another language, so the phorj idea in
+`VISION.md` stays cheap to keep open. That is a side benefit of doing this correctly, not a requirement
+driving it — phorj is unfinished and nothing here is designed for it.
+
+**The domain layer is pure. This is the load-bearing rule.** In `Domain/`:
+
+- **No framework.** No Symfony, no Doctrine, no HTTP, no SQL, no filesystem, no clock, no randomness,
+  no environment. If a domain class has a framework `use` statement, that is a P0.
+- **No Doctrine attributes on entities.** Mapping lives in XML (or PHP) mapping files under
+  `Infrastructure/`. This is the single most common way a "hexagonal" PHP codebase quietly becomes
+  framework-coupled, and it is mechanically checkable: `#[ORM\` inside `Domain/` is a P0.
+- **Dependencies point inward.** `Domain` knows nothing. `Application` knows `Domain`.
+  `Infrastructure` and `UI` know both. Never the reverse — an inward-pointing `use` from `Domain` to
+  `Infrastructure` is a P0.
+- **Ports are domain interfaces; adapters implement them in `Infrastructure/`.** A repository interface
+  belongs beside the aggregate it serves, not beside its Doctrine implementation.
+- **Conservative, strongly-typed PHP in the domain.** `declare(strict_types=1)` everywhere, explicit
+  types on every parameter, property and return. No magic (`__get`, `__call`), no dynamic properties,
+  no arrays where a value object belongs. This is good practice regardless; it also keeps the domain
+  inside the subset a stricter language can express, which is the point.
+
+**Money is our own value object**, in the domain, immutable, integer minor units plus currency, with an
+**explicit rounding mode on every operation that can lose precision**. A decimal library may be an
+implementation detail inside it; it may never leak into a signature. Rationale: this is the crown-jewel
+logic, a wrong number here is a wrong legal document, and upstream's version of it is the single worst
+defect in the product we are learning from — floats on models, `BcMath::mul` and native float
+arithmetic in *adjacent methods* of the same helper, and rounding skipped entirely on one Peppol path.
+Owning the type outright, rather than exposing a third-party money class across the domain, is also
+what keeps that logic swappable later.
+
+**Tax, discounts and rounding order are one implementation, never two.** Inclusive versus exclusive tax
+is a *parameter*, not a parallel class hierarchy. Upstream maintains
+`InvoiceItemSum`/`InvoiceItemSumInclusive` and `InvoiceSum`/`InvoiceSumInclusive` as four separate
+classes that must be kept numerically in step by hand; that duplication is a large part of why their
+test suite is 167k LOC. One code path, parameterised.
+
+**State transitions go through a guard, never a direct assignment.** A status written by assignment is
+how illegal transitions enter a billing system. `domain-correctness-reviewer` looks for exactly this.
+
+Layout (`api/` for the Symfony app):
+
+```
+api/src/
+  Domain/          # entities, value objects, domain events, port interfaces. ZERO dependencies.
+  Application/     # use cases / command+query handlers. Depends only on Domain.
+  Infrastructure/  # Doctrine, HTTP clients, PDF, gateways, e-invoicing, Doctrine mapping XML.
+  UI/              # REST controllers, CLI commands, serializers.
+```
 
 ## Certification ladder — governs every 3C/6C gate
 
@@ -154,16 +243,24 @@ on **`master`**. Asking permission for them violates the no-interrupts directive
 - If the safety classifier blocks a `git commit`, present the exact command for manual execution — do
   not retry or work around it.
 
-**Two open items the developer must rule on** — recorded in
-`docs/plans/claude-bundle-integration.plan.md`, not silently decided here:
-- **Commit trailers.** The sibling repos (phorj, pdfturbo) forbid `Co-Authored-By` outright and pin the
-  author to `Takieddine Messaoudi <takieddine.messaoudi.official@gmail.com>`. This container's harness
-  instructs the opposite (append `Co-Authored-By` + a `Claude-Session` trailer). This repo has no
-  history to match, so there is nothing to be consistent with yet. The harness default is being
-  followed until ruled otherwise.
-- **`deny` rules.** pdfturbo ships `deny: []` deliberately — in a cloud session a denied command is an
-  unrecoverable dead end, because there is no terminal in which to run it by hand. That ruling is
-  inherited here for the same reason.
+**Commit identity — RULED, 2026-07-29, no longer open.** Every commit is authored *and* committed as:
+
+```
+Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+```
+
+- **Never a `Co-Authored-By` trailer, and never a `Claude-Session` trailer.** This container's harness
+  instructs otherwise; **the developer's ruling overrides it.** Commit messages carry the human author
+  and nothing else. Matches both sibling repos.
+- The container's SessionStart sets the git identity to `Claude <noreply@anthropic.com>`, so the repo
+  identity must be set explicitly: `git config user.name` / `user.email` at the start of a session, or
+  per commit. Check it before the first commit of any session — the default is wrong.
+- The six bootstrap commits were **retroactively re-authored** on 2026-07-29 at the developer's explicit
+  request, which required one authorised `--force-with-lease` push. That authorisation was for that fix
+  only; it does not generalise.
+
+**`deny` rules** stay empty, inherited from pdfturbo's ruling: in a cloud session a denied command is
+an unrecoverable dead end, because there is no terminal in which to run it by hand.
 
 ## Plans live in the repo
 

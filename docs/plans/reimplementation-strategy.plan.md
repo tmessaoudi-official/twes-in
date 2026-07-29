@@ -38,6 +38,22 @@ clones; figures are labelled accordingly.
 
 ---
 
+## Rulings of 2026-07-29 — the four open questions are CLOSED
+
+All four blocking questions were answered by the developer. Recorded here verbatim in effect, because
+each one changed the plan.
+
+- [2026-07-29 12:40] RULED **Q1 — purpose: both (a) internal AND (b) a product sold to others**, plus a showcase for the phorj language later. Consequence, and it is the important one: **ELv2's hosted-service prohibition genuinely applies**, so forking Invoice Ninja is not merely inadvisable, it is **foreclosed**. Clean-room becomes mandatory rather than recommended. The earlier "get a legal read on internal-vs-third-party" caveat is resolved by the answer being *both* — the stricter reading governs.
+- [2026-07-29 12:40] RULED **Q2 — the Flutter client is written from scratch.** Developer: *"I want my own version that is 100% mine, same for all the rest."* This is **stricter than my own recommendation** (I proposed forking admin-portal's ~500-LOC transport layer) and it is the better call: it removes the Attribution Assurance License obligation entirely instead of accepting a smaller dose of it. Superseded: every earlier note about honouring upstream's contract, the two mandatory version headers, `built_value` strictness, `per_page=999999`, `_method=put`. **None of that binds us any more.**
+- [2026-07-29 12:40] RULED **Q3 — no upstream branding, and no AAL obligation** (it cannot attach: no admin-portal code is reused). Deployment is **Docker-only with no public domain for now**; a later public host must be a **configuration change, not a code change**. Hostname, product name, logo, images and e-mail identity are all config. Everything is 100% ours.
+- [2026-07-29 12:40] RULED **Q4 — e-signature is not in scope** (implied by "100% mine": the DocuNinja path was only ever attractive as a pre-built React package, and it is now excluded on both grounds — no source to own, and no Angular path).
+- [2026-07-29 12:40] RULED **Q5 — licence: AGPL-3.0-or-later + a commercial licence**, copyright wholly Takieddine MESSAOUDI. Satisfies the stated requirement (*"opensource but that I can sell on my own too"*): AGPL §13 closes the SaaS hole that plain GPL leaves open, so no competitor can host a closed fork, while sole copyright ownership is what makes selling commercial licences possible. Rejected: MIT/Apache (gives away the position being sold), GPL-3.0 (no network clause), ELv2/BUSL (not open source — and ELv2 is the very thing making upstream unusable). Full reasoning and the three obligations in `LICENSING.md`.
+- [2026-07-29 12:40] RULED **Q6 — commit identity**: author and committer are `Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>`, **no `Co-Authored-By`, no `Claude-Session`**. This **overrides the container harness**, which instructs the opposite. The six existing bootstrap commits were retroactively re-authored at the developer's explicit request (one authorised `--force-with-lease`; tree content verified byte-identical before and after).
+- [2026-07-29 12:40] RULED **architecture: TDD + DDD + hexagonal + clean**, "really structured/scalable and flawless and exemplary". Treated as a hard invariant on its own merits: a billing domain is the canonical case for these patterns, because money arithmetic, tax rules and state transitions must be testable in isolation and must outlive every framework decision around them.
+- [2026-07-29 12:55] CORRECTION (developer, same session): **phorj is VISION, not a target** — *"the phorj is not for now! it's in the vision! i did not finish the language."* My earlier entry called the phorj rewrite "the most consequential technical fact in this document" and used it as the justification for the framework-free domain. **That was wrong on both counts** and is retracted: an unfinished language cannot justify a current constraint, and had I left it standing, the architecture rule would have looked unjustified the moment phorj slipped. The rule stands on the developer's explicit DDD/hexagonal/clean directive and on its own merits for a billing domain — money, tax and state transitions must be testable in isolation and must outlive the framework around them. phorj-portability is a **free side effect** of doing that correctly, recorded in `VISION.md` and explicitly barred from influencing any decision.
+- [2026-07-29 12:40] AGREED: concrete, mechanically-checkable architecture rules pinned in `CLAUDE.md` § "Architecture": no framework `use` in `Domain/`, **Doctrine mapping in XML not attributes** (the usual way a "hexagonal" PHP codebase quietly becomes framework-coupled), dependencies point inward only, our own `Money` value object with explicit rounding on every lossy operation, one parameterised tax implementation rather than two hierarchies, state transitions behind guards, conservative strongly-typed PHP.
+- [2026-07-29 12:40] AGREED: Flutter is for **mobile and native desktop** (the native-OS support is a stated later goal), which is why it stays in the plan at all rather than being dropped in favour of the Angular app.
+
 ## Pinned stack — verified 2026-07-29, not recalled
 
 Every figure below was fetched from the authoritative source on 2026-07-29. Re-verify before bumping;
@@ -118,6 +134,12 @@ not depend on that answer.
 
 ## Should you do what you are proposing? A direct answer
 
+> **Superseded in part, 2026-07-29.** The recommendation below stands and was accepted; the three
+> challenges are kept because their *reasoning* still applies, but Challenge 2 was resolved more
+> strictly than proposed (the Flutter client is written from scratch, not forked) and Challenge 3
+> (fork-and-adapt) is now **foreclosed** by the Q1 ruling, not merely a trade-off. Read them as the
+> record of why the plan is shaped this way, not as live options.
+
 **Recommendation: yes to a clean-room Symfony + Angular build — but at roughly a tenth of the scope
 you are implicitly describing, and with the Flutter decision reopened.**
 
@@ -195,31 +217,25 @@ verified oracle for the calculation logic. Write your own tests from the behavio
 
 ---
 
-## Four open questions for the developer
+## The four questions — all CLOSED, 2026-07-29
 
-These are ruled by you, not by me, and Questions 1 and 2 block application work.
+They were open when this document was first written and are recorded as resolved in the Decisions Log
+above. Kept here in summary because the *answers* changed the plan, and a reader arriving later needs
+to know which earlier text is superseded.
 
-**Question 1 — what is this for?** Internal invoicing for your own entities, a product you intend to
-offer to others, or a compliance vehicle for French e-invoicing? The answer decides whether forking
-is even permitted (ELv2's hosted-service clause), and whether building at all is the right move.
-*My lean: state the intended deployment model explicitly before any code, because it is the one input
-that can invalidate the plan outright.*
+| # | Question | Ruling | What it superseded |
+|---|---|---|---|
+| 1 | What is this for? | **Internal *and* a product**, plus a phorj showcase later | ELv2's hosted-service clause applies → forking is **foreclosed**, not merely inadvisable. The "get a legal read" caveat resolves to the stricter reading. |
+| 2 | Flutter: keep / fork transport / drop? | **Written from scratch** | *Stricter than my recommendation.* Every constraint upstream's client imposed — two mandatory version headers, `double` money, unix-second dates, `per_page=999999`, `_method=put`, ~97 bulk verbs — **no longer binds.** |
+| 3 | Attribution splash acceptable? | **Moot** — no AAL code reused | The launch-time attribution duty never attaches. Branding is 100% ours and config-driven. |
+| 4 | E-signature in scope? | **No** | The DocuNinja React-island problem disappears. |
 
-**Question 2 — the Flutter app: keep unchanged, fork the transport layer, or drop?** *My
-recommendation is fork the transport layer* (~500 LOC of Dart) so the API can be designed properly,
-because pinning a greenfield backend to a 2018 contract costs far more than 500 lines of Dart. Keeping
-it unchanged is viable but means the API is no longer yours to design. Dropping it means no mobile
-client until you build one.
+Two further rulings landed at the same time: **licence** (AGPL-3.0-or-later + commercial, see
+`LICENSING.md`) and **architecture** (TDD/DDD/hexagonal/clean, justified by the billing domain itself —
+see `CLAUDE.md` § "Architecture"; a later phorj rewrite is `VISION.md` material and drives nothing).
 
-**Question 3 — does the Attribution Assurance License's launch-time splash survive review?** If any
-Flutter code is reused, *"Hillel Coren / Invoice Ninja / invoiceninja.com"* must be prominently
-displayed on **every launch**, forever. That is the licence's price and it is not negotiable while the
-code is reused. If that is unacceptable, the Flutter app must be written from scratch — which changes
-the answer to Question 2.
-
-**Question 4 — is e-signature in scope?** If yes, Angular is the wrong target for that one module: it
-depends on a pre-built React package with no source and no Angular equivalent, so it would mean a
-React island inside an Angular app. Better to know now than to discover it late.
+**Net effect: nothing external constrains the design any more.** The remaining difficulty is entirely
+domain difficulty — money arithmetic, tax rules, e-invoicing, and holding scope.
 
 ---
 
@@ -228,9 +244,9 @@ React island inside an Angular app. Better to know now than to discover it late.
 | Phase | Deliverable | Status |
 |---|---|---|
 | 0 | Claude bundle + this strategy document | built |
-| 1 | Questions 1 and 2 ruled by the developer | **awaiting developer** |
-| 2 | API contract decided and written down (auth, envelope, IDs, dates, money, pagination, errors) | blocked on Q1+Q2 |
-| 3 | Domain skeleton: money type, tenancy filter, Voter permissions, first migrations | blocked on Q2 |
+| 1 | All six rulings taken (purpose, Flutter, branding, e-signature, licence, commit identity) + `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md` | built |
+| 2 | API contract designed and written down (auth, envelope, IDs, dates, money, pagination, errors) — **ours to design now** | unblocked, next |
+| 3 | Domain skeleton: `Money` value object, default-on tenancy filter, Voter permissions, first migrations, hexagonal layout | unblocked |
 | 4 | Invoice/Quote/Credit/Payment + the calculation kernel, TDD from the first commit | pending |
 | 5 | PDF rendering + one template + `live_preview` for unsaved entities | pending |
 | 6 | Factur-X + Peppol BIS FR | pending |
