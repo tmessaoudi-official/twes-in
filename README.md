@@ -42,7 +42,7 @@ copyrightable expression. The rules that keep it that way are in
 | Tier | Pinned |
 |---|---|
 | API | PHP **8.5.8**, Symfony **8.1.1** |
-| Admin | Angular **22.0.8**, Node **24.18.0 LTS** |
+| Admin | Angular **22.0.8**, Node **26.5.0** |
 | Client | Flutter **3.44.8**, Dart **3.12.2** — mobile now, native desktop planned |
 | Database | PostgreSQL **18.4** |
 
@@ -64,7 +64,9 @@ filter, so it cannot be forgotten. See [CLAUDE.md § "Architecture"](CLAUDE.md).
 | `CLAUDE.md` | The rules for how code is delivered here — quality gates, licensing invariants, architecture. |
 | `VISION.md` | Direction that is explicitly **not** a commitment. |
 | `LICENSING.md` · `THIRD-PARTY-NOTICES.md` | The dual licence and every dependency's licence. |
+| `docs/plans/build-waves.plan.md` | The wave-by-wave build plan and what is deliberately out of scope. |
 | `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
+| `api/` · `admin/` · `mobile/` · `infra/` | The four tiers — **not yet created**. Symfony API, Angular admin, Flutter client, and deployment written from scratch. |
 | `.claude/` | Repo-native Claude Code skills and reviewer agents, read in place. |
 | `scripts/claude-bootstrap/` | The reasoning framework, installed into an ephemeral `~/.claude` at session start. |
 

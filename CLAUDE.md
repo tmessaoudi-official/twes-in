@@ -199,7 +199,20 @@ test suite is 167k LOC. One code path, parameterised.
 **State transitions go through a guard, never a direct assignment.** A status written by assignment is
 how illegal transitions enter a billing system. `domain-correctness-reviewer` looks for exactly this.
 
-Layout (`api/` for the Symfony app):
+**Repository layout — monorepo** (developer ruling, 2026-07-29). Four top-level tiers, so one commit
+can change the API and every consumer together; that is what makes the API-contract rule enforceable
+at all:
+
+```
+api/          # Symfony REST API (layout below)
+admin/        # Angular admin web client
+mobile/       # Flutter client — mobile now, native desktop later
+infra/        # Dockerfiles, compose, deployment. WRITTEN FROM SCRATCH — never copied from
+              # invoiceninja/dockerfiles, which is GPL-2.0 (licensing invariant 7).
+docs/plans/   # plans, each with its own Decisions Log
+```
+
+Inside the API:
 
 ```
 api/src/
@@ -241,6 +254,16 @@ breach. Neither is caught by a passing test suite alone, and neither is confined
 **The one carve-out is mechanical, not a judgement call:** if `git diff --name-only` touches no
 application source, STANDARD is enough — one reviewer, three lenses in a single pass, one clean round.
 Docs, `CLAUDE.md` and planning-file edits qualify. Anything touching application code does not.
+
+**Wave boundaries always get MAXIMAL** (developer ruling, 2026-07-29). Every wave in
+`docs/plans/build-waves.plan.md` ends in a full panel round against a **frozen commit** — freeze first,
+because a round run on a moving tree cannot count toward the two-clean requirement. **Recorded honestly:
+the bundle-integration work ran five rounds (11, 9, 22, 18 findings, then a fifth) and never reached two
+consecutive clean rounds.** That was accepted as documented risk and the loop was stopped by ruling, not
+by convergence — the counts reflected a widening search rather than worsening code, and every finding
+was in documentation with no application code in existence. Do not cite that as precedent for stopping
+a *code* wave early: the reason the panel exists is that a wrong number is a wrong legal document and a
+cross-tenant read is a reportable breach, and neither is caught by a green test suite.
 
 Availability chain: reviewer subagents → (if subagents are unavailable) three distinct-lens self-passes
 **with mandatory disclosure that certification was self-graded**. Never silently skip a gate. The
@@ -296,6 +319,9 @@ goes to `var/claude/**`, which is gitignored.
 Current plans:
 - `docs/plans/reimplementation-strategy.plan.md` — the build-vs-fork analysis, licensing findings,
   scope decisions, and the target architecture. **Read this before writing any application code.**
+- `docs/plans/build-waves.plan.md` — the wave-by-wave build plan. **Every wave ends in a MAXIMAL
+  certification round against a frozen commit**; a wave is not done until its gate is green and the
+  panel converges. Read this before starting any wave.
 - `docs/plans/claude-bundle-integration.plan.md` — how this bundle got here and what was rejected.
 
 Root documents that are **not** plans and are not governed by the `docs/` boundary rule, because each is

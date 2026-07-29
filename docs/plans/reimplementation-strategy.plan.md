@@ -55,6 +55,65 @@ the plan.
 - [2026-07-29 12:40] AGREED: concrete, mechanically-checkable architecture rules pinned in `CLAUDE.md` § "Architecture": no framework `use` in `Domain/`, **Doctrine mapping in XML not attributes** (the usual way a "hexagonal" PHP codebase quietly becomes framework-coupled), dependencies point inward only, our own `Money` value object with explicit rounding on every lossy operation, one parameterised tax implementation rather than two hierarchies, state transitions behind guards, conservative strongly-typed PHP.
 - [2026-07-29 12:40] AGREED: Flutter is for **mobile and native desktop** (the native-OS support is a stated later goal), which is why it stays in the plan at all rather than being dropped in favour of the Angular app.
 
+- [2026-07-29 13:40] RULED (developer, overriding the 12:10 correction): **Node 26.5.0**, not 24 LTS. Angular 22.0.8 explicitly supports it (`engines.node` includes `>=26.0.0`) [Verified: npm registry], and 26 is even-numbered so it enters LTS around 2026-10 — before this could ship. The accepted trade, recorded so it is not a surprise: until then it is a Current line, taking breaking changes and losing support earlier than an LTS would. Pin the exact patch in `.nvmrc` and CI; a Node bump is always deliberate.
+- [2026-07-29 13:40] RULED **Decision 4 — money**: our own `Money` value object over Postgres `NUMERIC(19,4)`, four decimals so unit prices and tax rates keep sub-cent precision even when totals round to cents. Never a float, never a bare int in a domain signature.
+- [2026-07-29 13:40] RULED **Decision 5 — monorepo**, and the developer caught an omission I had made: **`infra/` belongs in the layout too.** Four tiers — `api/`, `admin/`, `mobile/`, `infra/`. My earlier layout listed only the Symfony internals and buried Docker in a late phase, which would have left the deployment tier without a home in the tree it is versioned with. Recorded in `CLAUDE.md` § "Architecture". `infra/` is **written from scratch** — never copied from `invoiceninja/dockerfiles` (GPL-2.0, licensing invariant 7).
+- [2026-07-29 13:40] RULED **Decision 3 — build in WAVES**, with a full plan written first so the shape is clear, and a **certification review with the three lenses at every wave boundary**. Recorded in `docs/plans/build-waves.plan.md`. The developer also has feature changes and additions to fold in — those are gathered before Wave 1 rather than guessed.
+- [2026-07-29 13:40] RULED **Decision 1 — sequence**: run the 5th certification round, then stop the documentation loop and start building. The ladder's two-consecutive-clean requirement is **explicitly not met** and will not be pursued further on documentation; that is an accepted, recorded risk, not an oversight. From here the panel is pointed at application code, where a wrong number is a wrong legal document.
+- [2026-07-29 13:45] OPEN **Decision 2 — tenancy**: the developer asked for **both** modes — one shared database with tenant scoping, *and* database-per-tenant — selectable by clear, scalable configuration. Feasible, and hexagonal architecture is precisely what makes it so; see § "Tenancy — two modes behind one seam" for the design, the cost, and my recommendation on sequencing.
+
+## Tenancy — two modes behind one seam
+
+The developer asked whether both models can be supported by configuration rather than picking one.
+**Yes — and hexagonal architecture is exactly what makes it possible**, because tenancy is an
+*infrastructure* concern. The domain never asks which mode is running.
+
+Two things must be separated, and the whole design follows from that:
+
+| Concern | Mode A — shared DB | Mode B — DB per tenant |
+|---|---|---|
+| Which tenant is this request? | identical — one `TenantContext`, resolved once per request | identical |
+| How is the data isolated? | a Doctrine filter, **enabled by default**, adds `company_id = :tenant` to every query | the *connection* points at that tenant's database; no `company_id` needed |
+
+So one port, `TenantContext` (who), and one strategy, `TenantIsolationStrategy` (how). `Domain/` and
+`Application/` depend on **neither** — they never mention `company_id` and never touch a connection.
+Only `Infrastructure/` implements the two adapters, and `config/` picks one:
+
+```
+TWES_TENANCY_MODE=shared          # Mode A: one DB, default-on filter
+TWES_TENANCY_MODE=database        # Mode B: one DB per tenant, connection resolved per request
+```
+
+**What genuinely costs more by supporting both** — stated plainly, because "just make it configurable"
+usually hides this:
+
+- **Migrations.** Mode A runs them once. Mode B runs them **once per tenant**, which needs a
+  `tenant:migrate --all` command with per-tenant success/failure reporting, and a story for a tenant
+  that fails halfway.
+- **Tenant provisioning.** Mode B has to create a database, run migrations and seed it — a real
+  workflow, not a row insert.
+- **Cross-tenant queries.** Any admin view or aggregate report that spans tenants is trivial in A and
+  requires fan-out in B.
+- **Test surface roughly doubles** for the integration layer: every isolation test must run under both
+  modes, or one mode silently rots.
+
+**My recommendation on sequencing** (not on the goal — the goal is both):
+
+1. **Build the seam from day one.** `TenantContext` + `TenantIsolationStrategy` land in Wave 1. This is
+   cheap now and is the part that would be expensive to retrofit, because retrofitting means finding
+   every query written under the old assumption.
+2. **Implement Mode A only, at first.** Default-on filter, `company_id` on every tenant-owned table.
+3. **Implement Mode B when a real customer needs it** — the provisioning workflow and per-tenant
+   migration runner are a wave of their own, and building them before anyone needs them means
+   maintaining and testing two modes with only one in use.
+
+The invariant that makes step 3 safe: **nothing outside `Infrastructure/` may ever mention `company_id`
+or a connection name.** If that holds, Mode B is additive. If it leaks, the seam was decorative.
+`tenancy-security-reviewer` treats a `company_id` reference in `Domain/` or `Application/` as a P0 for
+this reason. **Consequence to accept:** in Mode A, `company_id` is a real column on real tables —
+`Infrastructure/` mapping and migrations do name it. The rule bans it from the *inner* layers, not from
+the database.
+
 ## Pinned stack — verified 2026-07-29, not recalled
 
 Every figure below was fetched from the authoritative source on 2026-07-29. Re-verify before bumping;
@@ -67,14 +126,14 @@ do not trust this table once it is more than a few weeks old.
 | Angular | **22.0.8** | 22.0.8 (`next` is 22.1.0-rc.0) | [Verified: npm `@angular/core` dist-tags.] |
 | Flutter | **3.44.8** | 3.44.8 stable (2026-07-23) | [Verified: `releases_linux.json` `current_release.stable`.] Pinned via `.fvmrc`/CI, not floated. |
 | Dart | **3.12.2** | 3.12.2 | [Verified: same release entry, `dart_sdk_version`; corroborated by the Dart stable channel `VERSION` file.] Ships with the pinned Flutter — pin the Flutter version and Dart follows. |
-| Node | **24.18.0 LTS "Krypton"** | 26.5.0, but **Current, not LTS** | [Verified: `nodejs.org/dist/index.json` → v26.5.0 `lts: false`; v24.18.0 `lts: "Krypton"`. Angular 22 engines are `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0`, so both work.] LTS chosen because this system handles money and CI reproducibility matters more than novelty. Node 26 is even-numbered so it enters LTS around 2026-10; bump then, deliberately, not by default. |
+| Node | **26.5.0** | 26.5.0 (Current, not yet LTS) | [Verified: `nodejs.org/dist/index.json` → v26.5.0, `lts: false`, released 2026-07-08, bundles npm 11.17.0; Angular 22.0.8 `engines.node` = `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0`, so 26.5.0 is explicitly supported.] **Developer ruling, overriding my recommendation of 24 LTS.** The trade, stated so it is not a surprise later: 26 is *Current*, so it receives breaking changes and drops out of support sooner than an LTS line would. It is even-numbered, so it enters LTS around **2026-10** — before this project could plausibly ship — which is what makes the override reasonable rather than reckless. Until then, pin the exact patch in `.nvmrc` and CI and treat a Node bump as a deliberate change, never an automatic one. |
 | PostgreSQL | **18.4** | 18.4, EOL 2030-11-14 | [Verified: `endoflife.date/api/postgresql.json`.] Longest support runway; `NUMERIC` is the money column type. |
 
 ### Decisions Log (stack)
 
 - [2026-07-29 12:10] AGREED: PHP **8.5.8**, Symfony **8.1**, Angular **22.0.8**, PostgreSQL **18.4**. Confirms the developer's proposal in all four cases.
 - [2026-07-29 12:10] CORRECTION (developer proposed "Symfony 8.x… maybe 8.2"): the latest *released* Symfony is **8.1.1**. `8.2` appears in `maintained_versions` because it is the in-development branch; `symfony_versions.next = 8.2.0` confirms it is unreleased. Pinning 8.2 would mean tracking an unreleased branch on a project whose whole point is being stricter than upstream — which pinned two dependencies to `dev-main`/`dev-master` on its critical path and is one of the mistakes we are explicitly not repeating.
-- [2026-07-29 12:10] CORRECTION (developer proposed "node 26 latest"): 26.5.0 *is* the latest and Angular 22 does support it, but it is **Current, not LTS** — v24.18.0 "Krypton" is the LTS. Pinned **24 LTS**, with a dated note to reconsider when 26 enters LTS (~2026-10). "Latest" and "what a billing system should run" are different questions.
+- [2026-07-29 12:10] CORRECTION (developer proposed "node 26 latest"), **SUPERSEDED at 13:40 — see below**: 26.5.0 *is* the latest and Angular 22 does support it, but it is Current, not LTS. I pinned 24 LTS on the grounds that "latest" and "what a billing system should run" are different questions.
 - [2026-07-29 12:10] AGREED: exact versions are pinned in `.nvmrc`, `composer.json` `config.platform.php`, and the Docker base images — not floated with `^`. A reproducible build is a precondition for trusting a money calculation.
 
 ## What the licences actually permit
