@@ -446,21 +446,31 @@ database prerequisites** are:
 sudo -u postgres bash scripts/dev/provision-test-database.sh
 ```
 
-**FOUR roles, not one, and the script explains why each one exists** — this replaced three `createuser`
+**SEVEN roles, not one, and the script explains why each one exists** — this replaced three `createuser`
 lines after round 4 found a **P0** in what they produced. A single role that owns the tenant-owned tables
 can `ALTER TABLE … DISABLE ROW LEVEL SECURITY` or `TRUNCATE` them in one statement (`FORCE` stops an owner
 *skipping* policies, not *removing* them), so every isolation assertion was being made against a connection
 that could step around the thing being asserted — and the suite proved it, running both statements on the
-connection it had just certified as unable to bypass. The roles are: `twes` (restricted runtime, owns
-nothing, no `TRUNCATE`), `twes_owner` (owns the tables, **never granted to `twes`** — that grant is the
-ordinary convenience wiring that reopens the whole bypass), `twes_bypass` (`BYPASSRLS`, so the refusal
-branch can be proven live rather than only through a pure predicate) and `twes_member` (harmless attributes
-of its own but a *member* of `twes_bypass`, so privileges reached by `SET ROLE` — including from
-`session_user` while `current_user` looks clean — are proven refused).
+connection it had just certified as unable to bypass. Each role exists to make one refusal branch provable against a real
+connection: `twes` (restricted runtime, owns nothing, no `TRUNCATE`, `NOREPLICATION`), `twes_owner` (owns the
+tables, **never granted to `twes`** — that grant is the ordinary convenience wiring that reopens the whole
+bypass), `twes_bypass` (`BYPASSRLS`), `twes_member` (harmless attributes of its own but a *member* of
+`twes_bypass`, proving privileges reached by `SET ROLE`, including from `session_user` while `current_user`
+looks clean), `twes_replicator` (`REPLICATION` — which reads the whole cluster through `pg_basebackup` with
+row security never involved), `twes_truncator` (granted to the runtime role **`WITH INHERIT FALSE`**, the
+shape `has_table_privilege` cannot see) and `twes_probe_owner` (granted to the owner **`WITH ADMIN OPTION`**,
+so a test can own a table with a role the runtime role can *reach* but not *inherit*).
 
-Overridden in CI by `TWES_TEST_DSN` plus a user/password pair per role
-(`TWES_TEST_DB_{USER,OWNER_USER,BYPASS_USER,MEMBER_USER}` and their `_PASSWORD` counterparts); the defaults
-in `api/phpunit.xml` are throwaway local values. With no database reachable the integration suite **fails**
+**The principle, learned the hard way:** a fixture that cannot express a dangerous shape cannot detect it.
+Every role after the first two was added because a certification round proved a real breach that the previous
+topology made untestable.
+
+Overridden in CI by `TWES_TEST_DSN` plus, for the four login roles, a user/password pair
+(`TWES_TEST_DB_{USER,OWNER_USER,BYPASS_USER,MEMBER_USER,REPLICATOR_USER}` and their `_PASSWORD`
+counterparts). The two NOLOGIN probe roles are named by `TWES_TEST_DB_TRUNCATOR_ROLE` and
+`TWES_TEST_DB_PROBE_OWNER_ROLE` — no password, because nothing connects as them. `TWES_TEST_DB_SUPERUSER`
+and its password are optional and used only to grant a predefined role inside one test; without them those
+cases skip rather than fail. The defaults in `api/phpunit.xml` are throwaway local values. With no database reachable the integration suite **fails**
 rather than passing — deliberately, since a green run that silently skipped the tenancy proof is the
 worst outcome available.
 

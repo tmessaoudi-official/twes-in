@@ -261,7 +261,29 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // is what makes it convincing, and the same credentials walk out with every tenant's data.
             // Round 5 proved it by recovering both tenants' rows out of a base backup taken with a role this
             // check had just certified as "actually subject to row-level security".
-            . 'bool_or(rolreplication) AS rolreplication '
+            . 'bool_or(rolreplication) AS rolreplication, '
+            // PREDEFINED ROLES, and this is the REPLICATION finding's twin rather than a lesser cousin.
+            // PostgreSQL's `pg_*` roles are ordinary pg_roles rows with all three attributes FALSE, so
+            // membership in one is invisible to an attribute check. Round 6 proved two of them reach superuser:
+            // `pg_execute_server_program` runs `COPY (…) TO PROGRAM`, which executes as the postgres OS user
+            // and hands back a superuser connection over the local socket; `pg_write_server_files` writes
+            // arbitrary files as that same user. Both were certified CLEAN, with correctly-policed SQL
+            // throughout — the same shape that made the REPLICATION verdict convincing.
+            //
+            // ANY `pg_*` membership is refused rather than an enumerated two, deliberately: a future
+            // PostgreSQL adding a predefined role is then covered on the day it exists, and a runtime role
+            // has no business holding any of them. Monitoring needs belong on a separate role. Note this
+            // also catches `pg_database_owner`, which is implicitly held by a database's owner — a connection
+            // that owns the database is already refused for owning its tables, so that is not a new failure.
+            . "(SELECT string_agg(pr.rolname, ', ' ORDER BY pr.rolname) FROM pg_roles pr "
+            // `pg_database_owner` is excluded, and precisely: membership in it is granted IMPLICITLY to
+            // whoever owns the current database, and it confers no capability that reaches around row
+            // security — no file access, no program execution, no attribute. Refusing it would report every
+            // owner connection under the wrong heading and bury the real finding, which is that the
+            // connection owns TABLES. Every other pg_* role stays refused.
+            . "WHERE pr.rolname LIKE 'pg\\_%' AND pr.rolname <> 'pg_database_owner' "
+            . "AND (pg_has_role(session_user, pr.oid, 'MEMBER') "
+            . "OR pg_has_role(current_user, pr.oid, 'MEMBER'))) AS predefined_roles "
             . 'FROM pg_roles WHERE pg_has_role(session_user, oid, \'MEMBER\') '
             . "OR pg_has_role(current_user, oid, 'MEMBER')",
         );
@@ -270,7 +292,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not inspect the current database role.');
         }
 
-        /** @var array{rolsuper: bool|string, rolbypassrls: bool|string}|false $role */
+        /** @var array{rolsuper: bool|string, rolbypassrls: bool|string, rolreplication: bool|string, predefined_roles: string|null}|false $role */
         $role = $statement->fetch(\PDO::FETCH_ASSOC);
 
         if (false === $role) {
@@ -284,6 +306,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 'Could not determine the privileges reachable from the current role. Refusing rather than '
                 . 'assuming they are safe.',
             );
+        }
+
+        if (\is_string($role['predefined_roles'] ?? null) && '' !== $role['predefined_roles']) {
+            throw new \RuntimeException(\sprintf(
+                'This connection can reach the predefined role(s) %s. Those carry none of the three role '
+                . 'attributes checked above, so they look harmless — but pg_execute_server_program runs '
+                . 'programs as the postgres OS user (and thence a superuser connection over the local '
+                . 'socket), and pg_write_server_files writes arbitrary files as that user. Row-level '
+                . 'security is not involved in either. A runtime role must be a member of no pg_* role; '
+                . 'monitoring and maintenance needs belong on a separate role.',
+                $role['predefined_roles'],
+            ));
         }
 
         if (self::roleCanBypassPolicies($role)) {
@@ -327,15 +361,32 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     public static function assertPolicedTablesAreBeyondThisRolesReach(\PDO $connection): int
     {
         $statement = $connection->query(
-            'SELECT n.nspname || \'.\' || c.relname AS "table", o.rolname AS owner, '
+            // The SUBJECT set is "policed tables, plus every partition of a policed partitioned parent".
+            //
+            // That second arm is not a refinement, it closes a permanent blind spot: a PARTITION of a policed
+            // parent carries `relrowsecurity = f` of its own, and RLS on a parent does NOT police direct
+            // access to a partition — `SELECT * FROM invoices_2026` bypasses the parent's policy entirely.
+            // Round 5 added `relkind = 'p'` so the parent was inspected; round 6 proved that no relkind list
+            // can ever reach the partitions, because they are excluded by the RLS flag rather than by kind.
+            // Tenant A could read, overwrite and delete tenant B's rows through one while this check reported
+            // clean. `pg_partition_tree` returns no rows for a plain table, hence the UNION rather than a
+            // single expression.
+            'WITH policed AS ('
+            . '  SELECT c.oid FROM pg_class c '
+            . "  WHERE c.relrowsecurity AND c.relkind IN ('r', 'p')"
+            . '), subject AS ('
+            . '  SELECT oid FROM policed'
+            . '  UNION'
+            . '  SELECT t.relid FROM policed p, pg_partition_tree(p.oid) t WHERE t.relid IS NOT NULL'
+            . ') '
+            . 'SELECT n.nspname || \'.\' || c.relname AS "table", o.rolname AS owner, '
             . "pg_has_role(session_user, c.relowner, 'MEMBER') "
             . "OR pg_has_role(current_user, c.relowner, 'MEMBER') AS owner_reachable, "
             // TRUNCATE by REACHABILITY, not by inheritance. `has_table_privilege` resolves privileges the
             // way PostgreSQL applies them *now* — inheritably — while `SET ROLE` is authorised by
             // MEMBERSHIP. A grant made `WITH INHERIT FALSE` (the PG16+ way to say "hold this deliberately,
             // not by default") is therefore invisible to has_table_privilege and one statement away from
-            // the privilege. Round 5 erased both tenants through exactly that gap, with
-            // current_user == session_user throughout, so no DSN trick was even needed. aclexplode is used
+            // the privilege. Round 5 erased both tenants through exactly that gap. aclexplode is used
             // because it exposes the grantee, which is the thing membership has to be tested against;
             // grantee 0 is PUBLIC.
             . 'EXISTS (SELECT 1 FROM aclexplode(c.relacl) a '
@@ -343,26 +394,33 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . "OR pg_has_role(session_user, a.grantee, 'MEMBER') "
             . "OR pg_has_role(current_user, a.grantee, 'MEMBER'))) AS can_truncate, "
             . 'c.relforcerowsecurity AS forced, '
-            // THE POLICY EXPRESSION, not merely the two flags. ENABLE + FORCE + `USING (true)` satisfied
-            // every earlier check while isolating nothing — a clean verdict on a table readable and
-            // writable across tenants. So every policy must reference the tenant GUC; one that does not is
-            // either a mistake or a deliberate hole, and both must fail. A table with RLS enabled and no
-            // policy at all denies everything, which is fail-closed, so it is counted rather than refused.
-            . '(SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid) AS policies, '
-            . '(SELECT count(*) FROM pg_policy p WHERE p.polrelid = c.oid '
-            . 'AND coalesce(pg_get_expr(p.polqual, p.polrelid), \'\') LIKE '
-            . '\'%\' || ' . \sprintf("'%s'", self::TENANT_SETTING) . ' || \'%\') AS scoped_policies '
-            . 'FROM pg_class c '
+            . 'c.relrowsecurity AS rls_enabled, '
+            . "c.relispartition AS is_partition, "
+            // EVERY POLICY, both halves of it, as text — rather than a count computed in SQL.
+            //
+            // Two defects round 6 proved, both in the version that counted in SQL. It read `polqual` (the
+            // USING clause) and never `polwithcheck`, so a policy with a scoped USING and `WITH CHECK (true)`
+            // was certified clean and permitted a cross-tenant INSERT — PostgreSQL only reuses USING as a
+            // write check for UPDATE and INSERT ... RETURNING, so a plain INSERT is guarded by WITH CHECK
+            // alone. And it matched with `LIKE '%twes.tenant_id%'`, which proves a policy MENTIONS the
+            // setting rather than isolates by it: `USING (scoped OR current_setting('twes.support_mode') =
+            // 'on')` passed, and setting a custom GUC needs no privilege at all, so the unprivileged runtime
+            // role flipped it and read every tenant. The same match also REFUSED correct policies.
+            //
+            // So the expressions come back as text and are compared in PHP against the exact rendering
+            // policySqlFor() produces. See policyExpressionIsCanonical().
+            . 'coalesce(('
+            . '  SELECT json_agg(json_build_object('
+            . "    'qual', pg_get_expr(p2.polqual, p2.polrelid),"
+            . "    'check', pg_get_expr(p2.polwithcheck, p2.polrelid),"
+            . "    'permissive', p2.polpermissive"
+            . '  )) FROM pg_policy p2 WHERE p2.polrelid = c.oid'
+            . "), '[]') AS policies "
+            . 'FROM subject s '
+            . 'JOIN pg_class c ON c.oid = s.oid '
             . 'JOIN pg_roles o ON o.oid = c.relowner '
             . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
-            // 'p' AS WELL AS 'r'. A PARTITIONED table carries relkind='p' and relrowsecurity=t (its
-            // partitions carry f), so `relkind = 'r'` dropped it from the set entirely — ownership,
-            // TRUNCATE, FORCE and the non-vacuity count all skipped it. Round 5 read and wrote every
-            // tenant's rows through a policed partitioned table that this check reported as clean. Verified
-            // that 'p' is the ONLY gap: views and materialised views cannot carry RLS at all
-            // (ALTER TABLE ... ENABLE ROW LEVEL SECURITY is rejected on relkind='v').
-            . "WHERE c.relrowsecurity AND c.relkind IN ('r', 'p') "
-            . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+            . "WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') "
             . 'ORDER BY 1',
         );
 
@@ -400,13 +458,64 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
+     * The exact `USING`/`WITH CHECK` expression a correct policy renders to, for a given tenant column.
+     *
+     * PostgreSQL normalises a policy expression when it stores it, and `pg_get_expr()` renders that
+     * normalised form **deterministically** — the canonical policy comes back byte-identical on every run.
+     * That is what makes an exact comparison possible, and an exact comparison is the only thing that works
+     * here: round 6 defeated a substring test (`LIKE '%twes.tenant_id%'`) in both directions at once, with
+     * `USING (scoped OR current_setting('twes.support_mode') = 'on')` passing while an unprivileged role
+     * flipped that second GUC and read every tenant, and with correct policies being refused for spelling the
+     * setting name differently.
+     *
+     * Comparing to this makes {@see self::policySqlFor()} the single source of truth it already claims to be
+     * rather than a suggestion. The trade is stated plainly: if a future PostgreSQL changes how it renders
+     * this expression, every policed table is reported as unscoped. That fails CLOSED and the integration
+     * suite asserts the canonical policy passes, so such a change breaks the build loudly on the first run —
+     * which is the correct direction for a control whose failure mode is a silent cross-tenant read.
+     */
+    public static function canonicalPolicyExpression(string $tenantColumn = 'company_id'): string
+    {
+        return \sprintf(
+            "(%s = (NULLIF(current_setting('%s'::text, true), ''::text))::uuid)",
+            $tenantColumn,
+            self::TENANT_SETTING,
+        );
+    }
+
+    /**
+     * Whether one rendered expression is the canonical tenant predicate.
+     *
+     * NULL is accepted, and that is not laxity: a per-command policy legitimately has one half unset —
+     * `FOR INSERT` carries only `WITH CHECK`, so its `polqual` is NULL, and `FOR ALL` may omit `WITH CHECK`,
+     * in which case PostgreSQL reuses `USING` as the write check. The caller rejects the case where BOTH
+     * halves are NULL, which is the only combination that means "this policy constrains nothing".
+     *
+     * The column name is the sole degree of freedom, extracted from the expression itself and required to be
+     * a plain identifier — so `USING (true OR company_id = …)` cannot pass by containing the canonical form
+     * as a substring, because the whole expression must equal it.
+     */
+    public static function policyExpressionIsCanonical(?string $expression): bool
+    {
+        if (null === $expression) {
+            return true;
+        }
+
+        if (1 !== preg_match('/^\(([a-z_][a-z0-9_]*) = /', $expression, $matches)) {
+            return false;
+        }
+
+        return $expression === self::canonicalPolicyExpression($matches[1]);
+    }
+
+    /**
      * Which policed tables this role can reach around, given the catalogue rows.
      *
      * Pure, for the same reason {@see self::roleCanBypassPolicies()} is: the interesting branches need
      * privileges the runtime role must never hold, so they are unit-testable here and separately proven
      * live against the real catalogue by the integration suite.
      *
-     * @param list<array{table: string, owner: string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string, policies: int|string, scoped_policies: int|string}> $tables
+     * @param list<array{table: string, owner: string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string, rls_enabled: bool|string, is_partition: bool|string, policies: string}> $tables
      *
      * @return list<string> one human-readable violation per problem found, empty when the role is safe
      */
@@ -432,9 +541,21 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 );
             }
 
-            // Not a bypass this role holds, but a policy that exempts its own owner — worth refusing here
-            // because this is the one place that reads relforcerowsecurity, and a migration that ENABLEd
-            // without FORCEing has left the owning role exempt on that table.
+            // A PARTITION of a policed parent with row-level security switched off on itself. The parent's
+            // policy does not cover direct access to the partition, so this is a full cross-tenant read and
+            // write — round 6 demonstrated all three of read, overwrite and delete through one.
+            if (!self::isTrue($table['rls_enabled'])) {
+                $violations[] = \sprintf(
+                    '%s is a partition of a policed table but has no row-level security of its own, and a '
+                    . "parent's policy does NOT cover direct access to a partition — every tenant's rows are "
+                    . 'readable and writable through it',
+                    $table['table'],
+                );
+
+                // Nothing below can be judged: an unpoliced relation has no policies to inspect.
+                continue;
+            }
+
             if (!self::isTrue($table['forced'])) {
                 $violations[] = \sprintf(
                     '%s has row-level security ENABLEd but not FORCEd, so its owner is exempt from its own '
@@ -443,24 +564,43 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 );
             }
 
-            // THE POLICY EXPRESSION. Both flags can be set and the policy can still isolate nothing:
-            // `USING (true)` passed every earlier version of this check while allowing cross-tenant reads
-            // AND writes. Any policy whose qualifier does not mention the tenant setting is a hole,
-            // whether it was added by mistake or on purpose, so the comparison is "every policy is
-            // scoped", not "at least one is".
-            $policies = (int) $table['policies'];
-            $scoped = (int) $table['scoped_policies'];
+            /** @var list<array{qual: string|null, check: string|null, permissive: bool}> $policies */
+            $policies = json_decode($table['policies'], true, 512, \JSON_THROW_ON_ERROR);
 
-            if ($policies > $scoped) {
-                $violations[] = \sprintf(
-                    '%s carries %d polic%s that never reference %s, so row-level security is enabled and '
-                    . 'forced while isolating nothing (a USING (true) policy looks identical to a correct '
-                    . 'one in pg_class)',
-                    $table['table'],
-                    $policies - $scoped,
-                    1 === $policies - $scoped ? 'y' : 'ies',
-                    self::TENANT_SETTING,
-                );
+            foreach ($policies as $policy) {
+                // RESTRICTIVE policies are ANDed, so an unscoped one only ever narrows access and cannot be
+                // a bypass. PERMISSIVE policies are ORed, which is what makes a single unscoped one fatal.
+                if (!self::isTrue($policy['permissive'])) {
+                    continue;
+                }
+
+                if (null === $policy['qual'] && null === $policy['check']) {
+                    $violations[] = \sprintf(
+                        '%s carries a policy that constrains neither reads nor writes',
+                        $table['table'],
+                    );
+
+                    continue;
+                }
+
+                // BOTH halves. Reading only `USING` certified a policy with `WITH CHECK (true)` as clean and
+                // permitted a cross-tenant INSERT: PostgreSQL reuses USING as a write check for UPDATE and
+                // INSERT ... RETURNING, but a plain INSERT is guarded by WITH CHECK alone.
+                foreach (['qual' => 'USING', 'check' => 'WITH CHECK'] as $half => $clause) {
+                    if (self::policyExpressionIsCanonical($policy[$half])) {
+                        continue;
+                    }
+
+                    $violations[] = \sprintf(
+                        '%s has a policy whose %s clause is not the canonical tenant predicate: %s. Emit '
+                        . 'policies with policySqlFor() — mentioning %s is not the same as isolating by it, '
+                        . 'and an OR branch beside it reopens the whole table',
+                        $table['table'],
+                        $clause,
+                        (string) $policy[$half],
+                        self::TENANT_SETTING,
+                    );
+                }
             }
         }
 

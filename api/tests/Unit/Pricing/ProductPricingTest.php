@@ -453,4 +453,51 @@ final class ProductPricingTest extends TestCase
 
         self::assertSame('11000000.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
     }
+
+    /**
+     * The representability boundary, pinned from BOTH sides — the `>` / `>=` mutant survived a 264-mutant
+     * sweep of the whole domain as its only real survivor.
+     *
+     * The guard must test the **rounded** product, because that is what the `Money` constructor receives and
+     * rounding can carry an extra integer digit. The witness is round 6's: an exact product of
+     * `999999999999999.999999999` is fifteen digits and was accepted, while its rounded value is
+     * `1000000000000000.000` — sixteen — so `netPrice()` threw for five of seven modes on an aggregate that
+     * had already persisted.
+     *
+     * `RoundingMode::Up` is the worst case over all seven modes, which is what makes a mode-less guard sound.
+     */
+    public function testTheRepresentabilityBoundaryIsExactOnBothSides(): void
+    {
+        $tnd = Currency::of('TND');
+
+        // JUST OVER: exact product fits in 15 digits, rounded product does not. Must be refused.
+        try {
+            ProductPricing::fromProfitRate(
+                Money::of('999999999999000.000', $tnd),
+                Rate::fromFraction('0.000000000001'),
+            );
+            self::fail(
+                'A pair whose ROUNDED product needs 16 integer digits must be refused — the exact product '
+                . 'fitting is not enough, because rounding carries.',
+            );
+        } catch (InvalidCost $refused) {
+            self::assertStringContainsString('net price', $refused->getMessage());
+        }
+
+        // EXACTLY ON: the largest product that fits. 999999999999999.999 is 15 integer digits and needs no
+        // rounding at all, so it must be ACCEPTED — this is the assertion that catches a guard one digit too
+        // strict, which nothing pinned before.
+        $onTheBoundary = ProductPricing::fromProfitRate(Money::of('999999999999999.999', $tnd), Rate::zero());
+
+        self::assertSame(
+            '999999999999999.999',
+            $onTheBoundary->netPrice(RoundingMode::Up)->amount(),
+            'The largest representable net price must be accepted, under the worst-case rounding mode.',
+        );
+
+        // And every other mode agrees, since nothing is being rounded.
+        foreach ([RoundingMode::HalfUp, RoundingMode::HalfEven, RoundingMode::Down, RoundingMode::Floor] as $mode) {
+            self::assertSame('999999999999999.999', $onTheBoundary->netPrice($mode)->amount(), $mode->name);
+        }
+    }
 }

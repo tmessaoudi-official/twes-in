@@ -162,4 +162,25 @@ final class CurrencyTest extends TestCase
             self::assertLessThanOrEqual(4, Currency::of($code)->scale());
         }
     }
+
+    /**
+     * Two currencies that share a scale are still different currencies.
+     *
+     * `equals()` is the single guard behind every cross-currency refusal in the domain, and it can be changed
+     * from comparing CODES to comparing SCALES with the whole suite green — because every other inequality
+     * assertion in the suite pairs TND with EUR, which differ in both. Under that mutant, adding USD to EUR
+     * succeeds.
+     */
+    public function testCurrenciesSharingAScaleAreNotEqual(): void
+    {
+        $eur = Currency::of('EUR');
+        $usd = Currency::of('USD');
+
+        self::assertSame($eur->scale(), $usd->scale(), 'precondition: both are 2-decimal');
+        self::assertFalse($eur->equals($usd));
+        self::assertFalse($usd->equals($eur));
+
+        // And a currency equals itself, so the guard is not simply returning false.
+        self::assertTrue($eur->equals(Currency::of('EUR')));
+    }
 }

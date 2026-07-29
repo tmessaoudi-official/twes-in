@@ -75,7 +75,19 @@ final readonly class ProductPricing
         // right here: a *rate* that cannot be derived is legitimately absent, so null is the honest answer —
         // but a *price* always exists, so there is nothing to report and the invalid combination must simply
         // not be constructible.
-        $product = Decimal::multiplyExact($cost->amount(), $profitRate->markupMultiplier());
+        // The ROUNDED product, not the exact one — because that is what the `Money` constructor will receive,
+        // and rounding can CARRY an extra integer digit. Round 6 found the exact-product version still
+        // reachable at the one boundary the guard exists for: a cost of 999999999999000.000 at a rate of
+        // 0.0000000001 % has an exact product of 999999999999999.999999999 — fifteen digits, accepted — whose
+        // rounded value is 1000000000000000.000, sixteen digits, so `netPrice()` threw for five of the seven
+        // rounding modes on an aggregate that had constructed and persisted.
+        //
+        // `RoundingMode::Up` is the worst case over every mode, which is what makes this sound despite
+        // `fromProfitRate()` taking no mode: it rounds furthest from zero, so if the result fits under Up it
+        // fits under all seven. Bounding by the worst case is why this method does not need to know which mode
+        // a later `netPrice()` call will use.
+        $exact = Decimal::multiplyExact($cost->amount(), $profitRate->markupMultiplier());
+        $product = Decimal::rescale($exact, $cost->currency()->scale(), RoundingMode::Up) ?? $exact;
 
         if (Decimal::integerDigits($product) > Money::MAX_INTEGER_DIGITS) {
             throw InvalidCost::netPriceWouldNotBeRepresentable($cost, $profitRate, $product);

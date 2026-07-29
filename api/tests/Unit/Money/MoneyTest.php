@@ -210,6 +210,36 @@ final class MoneyTest extends TestCase
         );
     }
 
+    /**
+     * The SAME-SCALE pair, which is what actually pins `Currency::equals()`.
+     *
+     * Every currency-inequality assertion in this suite used TND vs EUR — which differ in scale *and* in
+     * code — so replacing `$this->code === $other->code` with `$this->scale === $other->scale` left the
+     * entire suite green, and under that mutant `EUR 100.00 + USD 100.00 = 200.00 EUR`. The fix that closed
+     * the earlier cross-currency finding chose the operand set that let this survive; a two-decimal pair is
+     * the only thing that separates the two properties.
+     *
+     * `Currency::equals()` is the sole guard behind `Money::assertSameCurrency` (and therefore `plus`,
+     * `minus`, `compareTo`, `isLessThan`, `isGreaterThan`, `ratioTo`), `Money::equals`,
+     * `ProductPricing::fromNetPrice` and `ProductPricing::withCost` — they all go undefended together.
+     *
+     * @param callable(Money, Money): mixed $operation
+     */
+    #[DataProvider('operationsThatMustRefuseAForeignCurrency')]
+    public function testEveryCrossCurrencyOperationIsRefusedForCurrenciesSharingAScale(callable $operation): void
+    {
+        // EUR and USD are both 2-decimal, so scale cannot distinguish them — only the code can.
+        self::assertSame(
+            Currency::of('EUR')->scale(),
+            Currency::of('USD')->scale(),
+            'This test is only meaningful while these two share a scale.',
+        );
+
+        $this->expectException(CurrencyMismatch::class);
+
+        $operation(Money::of('100.00', Currency::of('EUR')), Money::of('100.00', Currency::of('USD')));
+    }
+
     /** @return iterable<string, array{callable}> */
     public static function operationsThatMustRefuseAForeignCurrency(): iterable
     {
@@ -236,6 +266,11 @@ final class MoneyTest extends TestCase
     {
         self::assertFalse(
             Money::of('100.000', Currency::of('TND'))->equals(Money::of('100.00', Currency::of('EUR'))),
+        );
+
+        // And for two currencies that SHARE a scale, where only the code differs.
+        self::assertFalse(
+            Money::of('100.00', Currency::of('EUR'))->equals(Money::of('100.00', Currency::of('USD'))),
         );
 
         // And the same numeral in the same currency is equal, so the guard above is not just returning

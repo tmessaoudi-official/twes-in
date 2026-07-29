@@ -114,8 +114,8 @@ other two is the default failure mode here, not an unusual one.
 
 - Read CLAUDE.md's *current* text before asserting a doc row is unmet — the author may have updated
   it in this very diff.
-- Where the repo is still greenfield and a tier genuinely does not exist yet (no Angular app, no
-  Flutter app), that is not a finding — but say explicitly which tiers you checked and which do not
+- Where the repo is still greenfield and a tier genuinely does not exist yet (on 2026-07-29 that is `infra/`
+  ONLY — `admin/` and `mobile/` are scaffolded and green on their own toolchains, so their dimensions apply), that is not a finding — but say explicitly which tiers you checked and which do not
   yet exist, so the CLEAN verdict is not read as broader than it is.
 - Every claim you make carries its grade: `[Verified: ran …, output …]` or `[Inferred: …]`. A
   completeness finding is cheap to state and expensive to be wrong about, so hold yourself to the

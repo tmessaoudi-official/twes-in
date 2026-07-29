@@ -383,14 +383,20 @@ LICENCE_RULES="$(cd "$WORK/repo" && php scripts/gates/dependency-licences.php --
 # every entry added in future, which enumerating names never will. Raising a number here is a deliberate
 # act; a shrink is a failure.
 assert_at_least() {
-  local description="$1" actual="$2" minimum="$3"
+  local description="$1" actual="$2" minimum="$3" reported="${4:-$2}"
 
   if (( actual >= minimum )); then
-    printf '  ok   — %s (%d >= %d)\n' "$description" "$actual" "$minimum"
+    printf '  ok   — %s (%d >= %d)\n' "$description" "$reported" "$minimum"
     passed=$((passed + 1))
   else
-    printf '  FAIL — %s: %d, committed minimum %d. A rule was deleted; deleting it also deleted its own generated case, which is why the count is asserted.\n' \
-      "$description" "$actual" "$minimum"
+    # The message must not diagnose the opposite cause. When this helper is used as a MAXIMUM the caller
+    # passes an arithmetic complement, so `$actual` is not the set's size and "a rule was deleted" is exactly
+    # backwards — a rule was ADDED. The fourth argument carries the number a human should be told about, and
+    # the wording covers both directions. Round 6 filed this: a check that fires while pointing the
+    # maintainer in the wrong direction is the same shape as the log line that said "kept" two lines before
+    # clobbering the file.
+    printf '  FAIL — %s (reported %d, threshold %d). A rule set changed size. If it SHRANK, a rule was deleted and its generated case went with it; if it GREW past a maximum, a rule was added that needs a deliberate decision, not a build fix.\n' \
+      "$description" "$reported" "$minimum"
     failed=$((failed + 1))
   fi
 }
@@ -418,7 +424,7 @@ assert_at_least "spdx: individually-listed files have not shrunk" \
 # A MAXIMUM, uniquely: every entry here removes a directory from the header requirement, so this list
 # growing is the failure mode, not shrinking. assert_at_least with a negated count is the same assertion.
 excluded_count="$(printf '%s' "$SPDX_RULES" | sed -n 's/^excluded //p' | wc -w)"
-assert_at_least "spdx: the exclusion list has not GROWN beyond 6" "$((12 - excluded_count))" 6
+assert_at_least "spdx: the exclusion list has not GROWN beyond 6" "$((12 - excluded_count))" 6 "$excluded_count"
 assert_at_least "spdx: extensions have not shrunk" \
   "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 12
 
@@ -439,9 +445,10 @@ assert_at_least "licences: lock files have not shrunk" \
 # permits a class of dependency, and a copyleft one satisfies the AGPL branch while killing the commercial
 # one. Nine today; raising this number is a licensing decision and must be a deliberate edit to this file.
 permissive_count="$(count_rules "$LICENCE_RULES" "len(r['permissive'])")"
-assert_at_least "licences: PERMISSIVE has not GROWN beyond 9" "$((18 - permissive_count))" 9
+assert_at_least "licences: PERMISSIVE has not GROWN beyond 9" "$((18 - permissive_count))" 9 "$permissive_count"
+build_time_count="$(count_rules "$LICENCE_RULES" "len(r['build_time_data'])")"
 assert_at_least "licences: the build-time-data exception has not GROWN beyond 2" \
-  "$((4 - $(count_rules "$LICENCE_RULES" "len(r['build_time_data'])")))" 2
+  "$((4 - build_time_count))" 2 "$build_time_count"
 
 echo "== GENERATED: every permissive identifier must actually be ACCEPTED =="
 # The other direction from the copyleft cases: an identifier on the list that the gate rejects anyway is a

@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Twes\Tests\Integration\Tenancy;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Infrastructure\Tenancy\Exception\NoCurrentTenant;
 use Twes\Infrastructure\Tenancy\InMemoryTenantContext;
@@ -564,6 +565,90 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * Membership in a PREDEFINED role is refused — the `REPLICATION` finding's twin.
+     *
+     * PostgreSQL's `pg_*` roles are ordinary `pg_roles` rows with `rolsuper`, `rolbypassrls` and
+     * `rolreplication` all false, so an attribute check cannot see them. Round 6 proved two reach superuser:
+     * `pg_execute_server_program` runs `COPY (…) TO PROGRAM` as the postgres OS user and thence a superuser
+     * connection over the local socket, and `pg_write_server_files` writes arbitrary files as that user. All
+     * fourteen predefined roles were certified CLEAN, with correctly-policed SQL throughout.
+     *
+     * Granted and revoked inside the test via the superuser-provisioned owner connection, so the runtime role
+     * is left exactly as provisioned.
+     */
+    #[DataProvider('predefinedRolesThatMustBeRefused')]
+    public function testMembershipInAPredefinedRoleIsRefused(string $predefinedRole): void
+    {
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        if (!\is_string($runtimeRole)) {
+            self::markTestSkipped('TWES_TEST_DB_USER must be set.');
+        }
+
+        // GRANTed by a superuser, which the owner is not — so this needs its own connection. Skipped rather
+        // than failed when unavailable: the pure-predicate coverage below still applies.
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('No superuser connection available to grant a predefined role.');
+        }
+
+        $granter->exec('GRANT ' . $predefinedRole . ' TO ' . $runtimeRole);
+
+        try {
+            new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($this->connection);
+            self::fail($predefinedRole . ' must be refused.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString($predefinedRole, $exception->getMessage());
+            self::assertStringContainsString('predefined role', $exception->getMessage());
+        } finally {
+            $granter->exec('REVOKE ' . $predefinedRole . ' FROM ' . $runtimeRole);
+        }
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function predefinedRolesThatMustBeRefused(): iterable
+    {
+        // The two with a PROVEN path to superuser, plus three that are merely broad — because the rule is
+        // "no pg_* membership at all" rather than an enumerated blocklist, so a future PostgreSQL adding one
+        // is covered on the day it exists.
+        yield 'pg_execute_server_program' => ['pg_execute_server_program'];
+        yield 'pg_write_server_files' => ['pg_write_server_files'];
+        yield 'pg_read_all_data' => ['pg_read_all_data'];
+        yield 'pg_write_all_data' => ['pg_write_all_data'];
+        yield 'pg_monitor' => ['pg_monitor'];
+    }
+
+    /**
+     * `pg_database_owner` is NOT refused, and that exclusion is deliberate rather than an oversight.
+     *
+     * Membership in it is granted implicitly to whoever owns the current database, and it confers no
+     * capability that reaches around row security. Refusing it would report every owner connection under the
+     * wrong heading and bury the real finding — that the connection owns tables.
+     */
+    public function testPgDatabaseOwnerIsNotTreatedAsAPredefinedRoleViolation(): void
+    {
+        $attributes = $this->owner->query(
+            "SELECT pg_has_role(current_user, 'pg_database_owner', 'MEMBER') AS reaches",
+        );
+        self::assertNotFalse($attributes);
+        self::assertContains(
+            $attributes->fetchColumn(),
+            [true, 't', '1'],
+            'The owner must reach pg_database_owner, or this test proves nothing about the exclusion.',
+        );
+
+        try {
+            new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($this->owner);
+            self::fail('The owner is still refused, for owning tables.');
+        } catch (\RuntimeException $exception) {
+            // Refused for the RIGHT reason: ownership, not predefined-role membership.
+            self::assertStringContainsString('reach around', $exception->getMessage());
+            self::assertStringNotContainsString('predefined role', $exception->getMessage());
+        }
+    }
+
+    /**
      * The runtime role must be unable to do what the owner just did.
      *
      * The other half of the P0: the check refusing the owner is only useful if the role it *accepts* truly
@@ -979,6 +1064,200 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * The `session_user` term on the OWNERSHIP and TRUNCATE axes, which I wrongly called untestable.
+     *
+     * I recorded the single-half mutants as "equivalent mutants because the tests run with
+     * `current_user == session_user`". That is true of the **`current_user`** halves — they are logically
+     * redundant, since `SET ROLE` requires membership and `pg_has_role` is transitive. It is **false** of the
+     * `session_user` halves, which are the load-bearing ones, and a reviewer distinguished them in one `psql`
+     * call using roles this fixture already provisions.
+     *
+     * The distinguishing shape: connect as the runtime role with `options='-c role=twes_truncator'`, so
+     * `current_user` is `twes_truncator` (a member of nothing) while `session_user` is the runtime role (a
+     * member of the probe owner). Deleting the `session_user` term then reports clean while the connection is
+     * one `SET ROLE` from the table's owner.
+     *
+     * The lesson is the finding: **a documented impossibility gets read once and never re-tested**, so
+     * claiming one is more expensive than admitting a gap. "Equivalent mutant" means *no input distinguishes
+     * it* — a much stronger claim than "the inputs I tried did not".
+     */
+    public function testOwnershipAndTruncateAreCheckedAgainstSessionUserNotOnlyCurrentUser(): void
+    {
+        $probeOwner = getenv('TWES_TEST_DB_PROBE_OWNER_ROLE');
+        $truncator = getenv('TWES_TEST_DB_TRUNCATOR_ROLE');
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        if (!\is_string($probeOwner) || !\is_string($truncator) || !\is_string($runtimeRole)) {
+            self::markTestSkipped('The probe-owner, truncator and runtime role names must all be set.');
+        }
+
+        $owned = self::TABLE . '_session_user_probe';
+
+        $this->owner->exec('GRANT ' . $probeOwner . ' TO ' . $runtimeRole . ' WITH INHERIT FALSE');
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $owned);
+        $this->owner->exec(
+            'CREATE TABLE ' . $owned . ' (company_id uuid NOT NULL, id integer NOT NULL, '
+            . 'PRIMARY KEY (company_id, id))',
+        );
+
+        try {
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($owned) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            $this->owner->exec('ALTER TABLE ' . $owned . ' OWNER TO ' . $probeOwner);
+
+            // current_user CHANGED by the DSN, so the two differ — this is the whole point.
+            $switched = self::connect("options='-c role=" . $truncator . "'");
+
+            $identities = $switched->query(
+                'SELECT current_user, session_user, '
+                . "pg_has_role(session_user, '" . $probeOwner . "', 'MEMBER') AS session_reaches, "
+                . "pg_has_role(current_user, '" . $probeOwner . "', 'MEMBER') AS current_reaches",
+            );
+            self::assertNotFalse($identities);
+            /** @var array{current_user: string, session_user: string, session_reaches: bool|string, current_reaches: bool|string} $row */
+            $row = $identities->fetch(\PDO::FETCH_ASSOC);
+
+            // All three preconditions asserted, because each one failing would make this pass vacuously.
+            self::assertNotSame($row['session_user'], $row['current_user'], 'the DSN role option took effect');
+            self::assertContains($row['session_reaches'], [true, 't', '1'], 'session_user reaches the owner');
+            self::assertNotContains(
+                $row['current_reaches'],
+                [true, 't', '1'],
+                'current_user does NOT — so only the session_user term can catch this.',
+            );
+
+            // TRUNCATE on the SAME axis. Granted on the ordinary probe table — owned by twes_owner, which is
+            // NOT reachable — so the only thing that can flag it is the TRUNCATE term, and only its
+            // session_user half, since current_user reaches nothing.
+            $this->owner->exec('GRANT TRUNCATE ON ' . self::TABLE . ' TO ' . $probeOwner);
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($switched);
+                self::fail('An owner reachable only from session_user must be refused.');
+            } catch (\RuntimeException $exception) {
+                $message = $exception->getMessage();
+
+                self::assertStringContainsString('owned by ' . $probeOwner, $message, 'ownership axis');
+                self::assertStringContainsString(
+                    self::TABLE . ' can be TRUNCATEd',
+                    $message,
+                    'TRUNCATE axis — reachable only from session_user, so only that term can catch it.',
+                );
+            } finally {
+                $this->owner->exec('REVOKE TRUNCATE ON ' . self::TABLE . ' FROM ' . $probeOwner);
+            }
+        } finally {
+            try {
+                $this->owner->exec('SET ROLE ' . $probeOwner);
+                $this->owner->exec('DROP TABLE IF EXISTS ' . $owned);
+            } finally {
+                $this->owner->exec('RESET ROLE');
+                $this->owner->exec('DROP TABLE IF EXISTS ' . $owned);
+                $this->owner->exec('REVOKE ' . $probeOwner . ' FROM ' . $runtimeRole);
+            }
+        }
+    }
+
+    /**
+     * A real PARTITION of a policed parent, which is the case my own previous test did not create.
+     *
+     * The test that closed R5-3 built a partitioned parent with **zero partitions**, so the interesting
+     * relation never existed. Round 6 showed why that matters: a partition carries `relrowsecurity = f` of its
+     * own and a parent's policy does **not** cover direct access to it, so `SELECT * FROM invoices_2026`
+     * bypasses the policy entirely — tenant A could read, overwrite and delete tenant B's rows through one
+     * while the check reported clean. No `relkind` list can ever reach them, because they are excluded by the
+     * RLS flag rather than by kind; the inspected set has to walk `pg_partition_tree`.
+     */
+    public function testAPartitionOfAPolicedParentIsInspectedAndRefusedWhenUnpoliced(): void
+    {
+        $parent = self::TABLE . '_parted';
+        $partition = $parent . '_a';
+
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $parent . ' CASCADE');
+        $this->owner->exec(
+            'CREATE TABLE ' . $parent . ' (company_id uuid NOT NULL, id integer NOT NULL, '
+            . 'PRIMARY KEY (company_id, id)) PARTITION BY LIST (company_id)',
+        );
+
+        try {
+            $this->owner->exec(
+                'CREATE TABLE ' . $partition . ' PARTITION OF ' . $parent
+                . " FOR VALUES IN ('" . self::TENANT_A . "')",
+            );
+
+            // Policy on the PARENT only — the natural, and wrong, thing a migration does.
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($parent) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            // The precondition: PostgreSQL really does leave the partition unpoliced.
+            $flags = $this->connection->query(
+                'SELECT relrowsecurity FROM pg_class WHERE relname = \'' . $partition . '\'',
+            );
+            self::assertNotFalse($flags);
+            self::assertNotContains(
+                $flags->fetchColumn(),
+                [true, 't', '1'],
+                'The partition must be unpoliced, or this test is not about the blind spot.',
+            );
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+                self::fail('An unpoliced partition of a policed parent must be refused.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString($partition, $exception->getMessage());
+                self::assertStringContainsString('no row-level security of its own', $exception->getMessage());
+            }
+
+            // And the correct configuration — the policy on the partition too — must be ACCEPTED, or the
+            // check would forbid partitioning outright rather than requiring it be done properly.
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($partition) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            self::assertSame(
+                4,
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection),
+                'Two probe tables, the partitioned parent and its partition — all four inspected.',
+            );
+        } finally {
+            $this->owner->exec('DROP TABLE IF EXISTS ' . $parent . ' CASCADE');
+        }
+    }
+
+    /**
+     * `bind()`'s read-back THROW, not just its comparison — the residue I wrongly called impossible.
+     *
+     * I recorded that provoking a mismatch "would need PostgreSQL to lie about its own `set_config` return
+     * value". A reviewer refuted that in nine lines: PDO substitutes the statement class natively, so a
+     * `PDOStatement` subclass whose `fetchColumn()` returns something else drives the branch on a real
+     * connection against the real query. The lesson is bigger than the two lines — **a documented
+     * impossibility gets read once and never re-tested**, so claiming one is more expensive than admitting a
+     * gap.
+     */
+    public function testBindRaisesWhenTheReadBackDisagrees(): void
+    {
+        LyingStatement::reset();
+        $lying = self::connect();
+        $lying->setAttribute(\PDO::ATTR_STATEMENT_CLASS, [LyingStatement::class]);
+        $lying->beginTransaction();
+
+        try {
+            new PostgresRowLevelSecurityIsolation()->bind($lying, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_A),
+            ));
+            self::fail('bind() must refuse when the value it reads back is not the value it wrote.');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('did not take effect', $exception->getMessage());
+            self::assertStringContainsString(LyingStatement::WRONG_VALUE, $exception->getMessage());
+        } finally {
+            $lying->rollBack();
+        }
+    }
+
+    /**
      * `ENABLE` + `FORCE` + a policy that isolates nothing is refused, live.
      *
      * Both flags satisfied and a policy present named exactly what a migration would name it — and
@@ -1002,7 +1281,7 @@ final class TenantIsolationTest extends TestCase
             PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
             self::fail('A USING (true) policy must be refused.');
         } catch (\RuntimeException $exception) {
-            self::assertStringContainsString('never reference', $exception->getMessage());
+            self::assertStringContainsString('not the canonical tenant predicate', $exception->getMessage());
         } finally {
             $this->owner->exec('DROP POLICY IF EXISTS tenant_isolation ON ' . self::TABLE);
 
@@ -1018,21 +1297,25 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
-     * The three ways a policed table can be reached around, as a pure function over catalogue rows.
+     * Every way a policed table can be reached around, as a pure function over catalogue rows.
      *
-     * The live tests above prove the query and the wiring; this pins the classification itself, including
-     * the `t`/`f` string spellings, which are the difference between a violation and a clean bill.
+     * The live tests prove the query and the wiring; this pins the classification, including the `t`/`f`
+     * string spellings that are the difference between a violation and a clean bill.
      */
     public function testThePolicedTableViolationPredicateClassifiesEveryReachableShape(): void
     {
+        $canonical = PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
         $safe = [
             'table' => 'public.invoices',
             'owner' => 'twes_owner',
             'owner_reachable' => 'f',
             'can_truncate' => 'f',
             'forced' => 't',
-            'policies' => 1,
-            'scoped_policies' => 1,
+            'rls_enabled' => 't',
+            'is_partition' => 'f',
+            'policies' => json_encode([
+                ['qual' => $canonical, 'check' => $canonical, 'permissive' => true],
+            ], \JSON_THROW_ON_ERROR),
         ];
 
         self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([$safe]));
@@ -1055,37 +1338,92 @@ final class TenantIsolationTest extends TestCase
         self::assertCount(1, $unforced);
         self::assertStringContainsString('not FORCEd', $unforced[0]);
 
-        // A policy that isolates NOTHING while both flags are set. `USING (true)` is indistinguishable from
-        // a correct policy in pg_class, which is why the expression has to be read: round 5 got a clean
-        // verdict on a table that was readable AND writable across tenants.
-        $unscoped = PostgresRowLevelSecurityIsolation::policedTableViolations(
-            [['policies' => 2, 'scoped_policies' => 1] + $safe],
+        // A PARTITION of a policed parent with RLS off on itself: a parent's policy does not cover direct
+        // access to a partition, so this is a full cross-tenant read AND write.
+        $unpoliced = PostgresRowLevelSecurityIsolation::policedTableViolations(
+            [['rls_enabled' => 'f', 'is_partition' => 't'] + $safe],
         );
-        self::assertCount(1, $unscoped);
-        self::assertStringContainsString('never reference twes.tenant_id', $unscoped[0]);
+        self::assertCount(1, $unpoliced, 'and nothing further, since an unpoliced relation has no policies');
+        self::assertStringContainsString('no row-level security of its own', $unpoliced[0]);
 
-        // Plural, because an operator reading "1 policies" learns the message was never exercised.
-        $twoUnscoped = PostgresRowLevelSecurityIsolation::policedTableViolations(
-            [['policies' => 3, 'scoped_policies' => 1] + $safe],
-        );
-        self::assertStringContainsString('2 policies', $twoUnscoped[0]);
+        // ---- the policy EXPRESSION, both halves ------------------------------------------------------
+        // WITH CHECK (true) with a correct USING. PostgreSQL reuses USING as a write check for UPDATE and
+        // INSERT ... RETURNING only, so a plain INSERT is guarded by WITH CHECK alone — this shape permitted
+        // a cross-tenant INSERT while every flag said "policed".
+        $writeHole = PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode(
+                [['qual' => $canonical, 'check' => 'true', 'permissive' => true]],
+                \JSON_THROW_ON_ERROR,
+            )] + $safe,
+        ]);
+        self::assertCount(1, $writeHole);
+        self::assertStringContainsString('WITH CHECK', $writeHole[0]);
 
-        // A table with RLS enabled and NO policy denies everything, which is fail-closed, so it is not a
-        // violation. Asserted so a future "policies must be >= 1" edit is a deliberate change of direction.
-        self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations(
-            [['policies' => 0, 'scoped_policies' => 0] + $safe],
-        ));
+        // An OR escape hatch on a SECOND custom GUC. Setting a custom GUC needs no privilege, so the
+        // unprivileged runtime role flips it and reads every tenant — and the expression does mention
+        // twes.tenant_id, which is why a substring test passed it.
+        $escapeHatch = $canonical . " OR (current_setting('twes.support_mode'::text, true) = 'on'::text)";
+        $hatched = PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode(
+                [['qual' => $escapeHatch, 'check' => $canonical, 'permissive' => true]],
+                \JSON_THROW_ON_ERROR,
+            )] + $safe,
+        ]);
+        self::assertCount(1, $hatched);
+        self::assertStringContainsString('not the canonical tenant predicate', $hatched[0]);
 
-        // Every problem reported, not just the first: an operator fixing one at a time needs to see all
-        // four, and a `return` where a `[] =` belongs would hide three of them.
-        self::assertCount(4, PostgresRowLevelSecurityIsolation::policedTableViolations(
-            [['owner_reachable' => 't', 'can_truncate' => 't', 'forced' => 'f', 'policies' => 1, 'scoped_policies' => 0] + $safe],
-        ));
+        // `USING (true)` outright.
+        self::assertCount(1, PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode(
+                [['qual' => 'true', 'check' => $canonical, 'permissive' => true]],
+                \JSON_THROW_ON_ERROR,
+            )] + $safe,
+        ]));
 
-        // And every table, not just the first row.
-        self::assertCount(2, PostgresRowLevelSecurityIsolation::policedTableViolations([
-            ['table' => 'public.a', 'owner_reachable' => 't'] + $safe,
-            ['table' => 'public.b', 'can_truncate' => 't'] + $safe,
+        // A policy constraining NEITHER half.
+        $vacuous = PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode(
+                [['qual' => null, 'check' => null, 'permissive' => true]],
+                \JSON_THROW_ON_ERROR,
+            )] + $safe,
+        ]);
+        self::assertCount(1, $vacuous);
+        self::assertStringContainsString('constrains neither', $vacuous[0]);
+
+        // ---- and the shapes that must be ACCEPTED, or the check is unusable --------------------------
+        // A per-command PAIR: FOR SELECT carries only USING, FOR INSERT only WITH CHECK. Reading one half
+        // and demanding it be non-null falsely REFUSED this correct configuration.
+        self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode([
+                ['qual' => $canonical, 'check' => null, 'permissive' => true],
+                ['qual' => null, 'check' => $canonical, 'permissive' => true],
+            ], \JSON_THROW_ON_ERROR)] + $safe,
+        ]), 'A per-command policy pair is correct and must not be refused.');
+
+        // A RESTRICTIVE policy is ANDed, so an unscoped one only narrows access and cannot be a bypass.
+        self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode([
+                ['qual' => $canonical, 'check' => $canonical, 'permissive' => true],
+                ['qual' => 'true', 'check' => null, 'permissive' => false],
+            ], \JSON_THROW_ON_ERROR)] + $safe,
+        ]), 'A RESTRICTIVE policy narrows access; it is not a hole.');
+
+        // A different tenant column is legitimate — policySqlFor() takes one — so the column name is the
+        // only degree of freedom the comparison allows.
+        self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['policies' => json_encode([[
+                'qual' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression('tenant_id'),
+                'check' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression('tenant_id'),
+                'permissive' => true,
+            ]], \JSON_THROW_ON_ERROR)] + $safe,
+        ]));
+
+        // Every problem reported, not just the first.
+        self::assertCount(4, PostgresRowLevelSecurityIsolation::policedTableViolations([
+            ['owner_reachable' => 't', 'can_truncate' => 't', 'forced' => 'f', 'policies' => json_encode(
+                [['qual' => 'true', 'check' => $canonical, 'permissive' => true]],
+                \JSON_THROW_ON_ERROR,
+            )] + $safe,
         ]));
     }
 
@@ -1137,6 +1475,31 @@ final class TenantIsolationTest extends TestCase
     private static function connect(string $extraDsn = ''): \PDO
     {
         return self::connectAs('TWES_TEST_DB_USER', 'TWES_TEST_DB_PASSWORD', $extraDsn);
+    }
+
+    /**
+     * A superuser connection, or null.
+     *
+     * Only used to grant and revoke a predefined role inside a test — the owner role cannot, deliberately.
+     * Returns null rather than skipping the whole suite, because every other test must run without it.
+     */
+    private static function superuserConnection(): ?\PDO
+    {
+        $dsn = getenv('TWES_TEST_DSN');
+        $user = getenv('TWES_TEST_DB_SUPERUSER');
+        $password = getenv('TWES_TEST_DB_SUPERUSER_PASSWORD');
+
+        if (!\is_string($dsn) || !\is_string($user) || '' === $user) {
+            return null;
+        }
+
+        try {
+            return new \PDO($dsn, $user, \is_string($password) ? $password : null, [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]);
+        } catch (\PDOException) {
+            return null;
+        }
     }
 
     /** The owning role, standing in for a migration. Must not be reachable from the runtime role. */
@@ -1261,5 +1624,44 @@ final class TenantIsolationTest extends TestCase
         $labels = $statement->fetchAll(\PDO::FETCH_COLUMN);
 
         return $labels;
+    }
+}
+
+/**
+ * A `PDOStatement` that reports a different value than the one written.
+ *
+ * Exists solely to drive `bind()`'s read-back mismatch branch, which I had recorded as unreachable. PDO's
+ * `ATTR_STATEMENT_CLASS` substitutes this natively, so the statement still executes against a real
+ * PostgreSQL connection — only what `fetchColumn()` reports is changed.
+ *
+ * The `protected` no-arg constructor is PDO's requirement for a substituted statement class.
+ */
+final class LyingStatement extends \PDOStatement
+{
+    public const string WRONG_VALUE = 'a-different-tenant';
+
+    /**
+     * Lies on the SECOND read only.
+     *
+     * `bind()` reads the setting twice: once BEFORE writing, to refuse a connection that already carries a
+     * tenant, and once after, to verify the write took. Lying on the first makes `bind()` refuse for the
+     * *other* reason and the read-back branch is never reached — which is what happened on the first attempt
+     * at this test, and is a neat illustration of why "it threw" is not the same as "the branch ran".
+     */
+    private static int $reads = 0;
+
+    protected function __construct() {}
+
+    public static function reset(): void
+    {
+        self::$reads = 0;
+    }
+
+    public function fetchColumn(int $column = 0): mixed
+    {
+        ++self::$reads;
+
+        // First read: the pre-write check. Report "no tenant" so bind() proceeds to write.
+        return 1 === self::$reads ? '' : self::WRONG_VALUE;
     }
 }

@@ -41,6 +41,19 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!--
+    THE ENGINE'S FONT FALLBACK IS PINNED TO OUR OWN ORIGIN, and that is a GDPR control, not a tuning knob.
+    Vendoring Roboto closed the Roboto fetch and nothing more: Flutter Web's engine downloads NOTO fallback
+    fonts for any script the bundled fonts do not cover, from a base URL compiled into the shipped bundle
+    whose default is `https://fonts.gstatic.com/s/`. Roboto carries no Arabic, and `ar` is a first-class
+    locale here (see api/translations/messages.ar.xlf) — so rendering one Arabic string reintroduces exactly
+    the third-party transfer the vendoring was supposed to end. Certification round 6 measured it: 0 gstatic
+    requests with Latin text, 13 with Arabic, from the same build.
+    Setting the base URL to a same-origin path means the engine 404s locally instead of reaching Google.
+    OWED at Wave 11: self-host the Noto fallback fonts under this path before shipping any Arabic UI, and
+    record their licence in THIRD-PARTY-NOTICES.md — Noto is OFL-1.1, which is NOT on this project's
+    permissive list, so that is a licensing decision to make deliberately rather than by `flutter build`.
+  -->
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
