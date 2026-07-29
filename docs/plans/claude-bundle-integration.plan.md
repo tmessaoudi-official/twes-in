@@ -81,3 +81,14 @@ a mechanical guarantee phorj lacks.
 - **`.claude/settings.json` being writable is an observed property of this container**, not a
   guarantee. If a future session finds `Write` denied, the relay in
   `scripts/claude-bootstrap/apply-pending-settings.sh` is the documented path.
+- **The stray `claude/hello-3g42jj` branch still exists on the remote, and is still the repo's
+  default branch.** `master` is pushed and carries all the work; the local stray was deleted; the
+  remote delete was **refused**. [Verified: `git push origin --delete claude/hello-3g42jj` →
+  `HTTP 403 Forbidden` from the git relay; `git remote show origin` → `HEAD branch:
+  claude/hello-3g42jj`.] Two sufficient causes, and both may apply: GitHub refuses to delete a
+  repository's default branch, and the agent proxy's README documents a 403 as an organization
+  policy denial to be **reported, not worked around**. No MCP tool exposes changing the default
+  branch, so this needs the developer, in GitHub repo settings: set the default branch to `master`,
+  then delete `claude/hello-3g42jj`. Nothing is at risk in the meantime — the two branches point at
+  the same commits up to `49fbfe5` — but until the default is flipped, a fresh clone lands on the
+  stray branch and will be missing every commit after it.
