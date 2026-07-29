@@ -38,6 +38,26 @@ clones; figures are labelled accordingly.
 
 ---
 
+## Pinned stack — verified 2026-07-29, not recalled
+
+Every figure below was fetched from the authoritative source on 2026-07-29. Re-verify before bumping;
+do not trust this table once it is more than a few weeks old.
+
+| Component | Pinned | Latest available | Why this one |
+|---|---|---|---|
+| PHP | **8.5.8** | 8.5.8 (2026-07-02) | [Verified: `php.net/releases`.] Latest stable, and above Symfony 8.1's floor. |
+| Symfony | **8.1** (8.1.1) | 8.1.1 stable; 8.2.0 is `next`, unreleased | [Verified: `symfony.com/releases.json` → `symfony_versions.stable = 8.1.1`, `next = 8.2.0`, `lts = 7.4.14`.] **Not "8.2"** — that branch is maintained-in-development, not released. Requires PHP ≥ 8.4.1 [Verified: packagist `symfony/framework-bundle` v8.1.1 `require.php`]. |
+| Angular | **22.0.8** | 22.0.8 (`next` is 22.1.0-rc.0) | [Verified: npm `@angular/core` dist-tags.] |
+| Node | **24.18.0 LTS "Krypton"** | 26.5.0, but **Current, not LTS** | [Verified: `nodejs.org/dist/index.json` → v26.5.0 `lts: false`; v24.18.0 `lts: "Krypton"`. Angular 22 engines are `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0`, so both work.] LTS chosen because this system handles money and CI reproducibility matters more than novelty. Node 26 is even-numbered so it enters LTS around 2026-10; bump then, deliberately, not by default. |
+| PostgreSQL | **18.4** | 18.4, EOL 2030-11-14 | [Verified: `endoflife.date/api/postgresql.json`.] Longest support runway; `NUMERIC` is the money column type. |
+
+### Decisions Log (stack)
+
+- [2026-07-29 12:10] AGREED: PHP **8.5.8**, Symfony **8.1**, Angular **22.0.8**, PostgreSQL **18.4**. Confirms the developer's proposal in all four cases.
+- [2026-07-29 12:10] CORRECTION (developer proposed "Symfony 8.x… maybe 8.2"): the latest *released* Symfony is **8.1.1**. `8.2` appears in `maintained_versions` because it is the in-development branch; `symfony_versions.next = 8.2.0` confirms it is unreleased. Pinning 8.2 would mean tracking an unreleased branch on a project whose whole point is being stricter than upstream — which pinned two dependencies to `dev-main`/`dev-master` on its critical path and is one of the mistakes we are explicitly not repeating.
+- [2026-07-29 12:10] CORRECTION (developer proposed "node 26 latest"): 26.5.0 *is* the latest and Angular 22 does support it, but it is **Current, not LTS** — v24.18.0 "Krypton" is the LTS. Pinned **24 LTS**, with a dated note to reconsider when 26 enters LTS (~2026-10). "Latest" and "what a billing system should run" are different questions.
+- [2026-07-29 12:10] AGREED: exact versions are pinned in `.nvmrc`, `composer.json` `config.platform.php`, and the Docker base images — not floated with `^`. A reproducible build is a precondition for trusting a money calculation.
+
 ## What the licences actually permit
 
 The four repos are **not** under one licence. This is the most consequential finding in the whole
