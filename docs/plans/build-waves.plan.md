@@ -55,6 +55,13 @@ PHPUnit · **the architecture-fitness tooling that `CLAUDE.md` currently records
 for the inward-only rule, a PHPStan banned-function rule for ambient `time()`/`random_int()`/`getenv()`
 in `Domain/`, and grep gates for `#[ORM\` under `Domain/` and for the SPDX header.
 
+**Also in Wave 0, because the developer ruled them first-version and they are cross-cutting:** the
+**i18n/l10n scaffolding** (locale catalogues with mechanically-checked key parity, locale-aware
+formatting that honours each currency's own scale) and the **a11y harness** (`axe-core` in the admin
+gate, semantics tests for Flutter). Both are cheap now and expensive to retrofit across every screen
+and template later. `docs/spec/pricing-vectors.json` also lands here — the shared arithmetic fixture all
+three tiers test against.
+
 **Out:** any entity beyond what the money and tenancy tests need. No invoices yet.
 
 **Acceptance:** `Money` arithmetic is exhaustively tested including repeating decimals and a
