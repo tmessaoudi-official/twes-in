@@ -6,8 +6,11 @@
 > code?* If not, it belongs in `docs/`, not here.
 
 twes-in is an invoicing / billing platform: a **Symfony REST API**, an **Angular admin web client**,
-and a **Flutter** mobile/desktop client, over **PostgreSQL**. It is a **clean-room reimplementation
-inspired by Invoice Ninja** — never a fork, never a port. That distinction is legal, not stylistic,
+and a **Flutter** client for all six targets — Android, iOS, Linux, Windows, macOS and Web — over
+**PostgreSQL**. The Flutter Web build is a **second admin interface** alongside `admin/`, so twes-in ships
+two of them, deliberately.
+
+It is a **clean-room reimplementation inspired by Invoice Ninja** — never a fork, never a port. That distinction is legal, not stylistic,
 and § "Licensing invariants" below is the most important section in this file.
 
 It is intended to run **both as the developer's own internal invoicing and as a product sold to
@@ -385,7 +388,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, `axe-core` a11y, locale key-parity, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
-| Flutter client | `flutter analyze`, `flutter test`, semantics/a11y tests, golden or real screenshots, the shared pricing vectors | Wave 11 — `mobile/README.md` |
+| Flutter client | `flutter analyze`, `flutter test`, semantics/a11y tests, golden or real screenshots at a **desktop** window size as well as a phone one, the shared pricing vectors, **and a build of all six targets** — Android, iOS, Linux, Windows, macOS, Web. Builds cannot be cross-compiled, so that is three CI runners; the matrix is in `build-waves.plan.md` § Wave 12 | Wave 11 — `mobile/README.md` |
 | Infra | `docker compose config`, `bash -n` on every shell script | Wave 12 — `infra/README.md` |
 
 **The one command to run the API tier's gate**, once Composer works, is `composer gate` — it chains

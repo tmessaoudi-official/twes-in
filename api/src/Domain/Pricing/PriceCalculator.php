@@ -29,6 +29,12 @@ use Twes\Domain\Shared\RoundingMode;
  *     client-supplied trio which does not reconcile. All three are pinned to
  *     `docs/spec/pricing-vectors.json`.
  *
+ * **This is the single home of these four formulas.** {@see ProductPricing} decides which field is
+ * authoritative and delegates the arithmetic here; nothing else recomputes it. A certification round found
+ * the net-from-rate and rate-from-net formulas duplicated across both classes, driven from two different
+ * fixture sections with nothing asserting they agreed — the exact drift `CLAUDE.md` § Architecture forbids
+ * with "one implementation, never two". If a fifth caller needs one of these, it calls this class.
+ *
  * Stateless: it holds no configuration, so the rounding mode is a parameter on every operation rather
  * than a property. Rounding policy belongs to the company that issues the document, and passing it in
  * at the call site is what keeps that configurable without a second code path.

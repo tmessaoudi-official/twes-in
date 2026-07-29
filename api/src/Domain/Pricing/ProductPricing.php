@@ -103,7 +103,11 @@ final readonly class ProductPricing
 
         $rate = $this->authoredRate ?? throw new \LogicException('Authored rate is missing.');
 
-        return $this->cost->multipliedBy($rate->markupMultiplier(), $mode);
+        // Delegated, not reimplemented. An earlier version open-coded this and `profitRate()` below, so the
+        // same two formulas existed twice in Domain/ with nothing asserting they agreed — against
+        // CLAUDE.md § Architecture, "one implementation, never two". This class owns AUTHORSHIP; the
+        // arithmetic has exactly one home.
+        return new PriceCalculator()->netFromCost($this->cost, $rate, $mode);
     }
 
     /**
@@ -122,15 +126,11 @@ final readonly class ProductPricing
             return $this->authoredRate;
         }
 
-        if ($this->cost->isZero()) {
-            return null;
-        }
-
         $netPrice = $this->authoredNetPrice ?? throw new \LogicException('Authored net price is missing.');
 
-        return Rate::fromFraction(
-            $netPrice->minus($this->cost)->ratioTo($this->cost, Rate::FRACTION_SCALE, $mode),
-        );
+        // Delegated for the same reason as netPrice() above — including the zero-cost null, which lives in
+        // PriceCalculator so both entry points cannot disagree about it.
+        return new PriceCalculator()->profitRateFromNet($this->cost, $netPrice, $mode);
     }
 
     /**

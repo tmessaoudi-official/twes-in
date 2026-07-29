@@ -42,7 +42,9 @@ disallowed-tools: AskUserQuestion
      gate, and the in-repo plan home (`docs/plans/<topic>.plan.md`, each plan carrying its own
      `## Decisions Log`). On any conflict with a delta above, CLAUDE.md wins.
   7. THREE TOOLCHAINS, NONE OF THEM BUILT YET. twes-in is a Symfony (PHP) REST API + an Angular
-     admin front end + a Flutter mobile/desktop app, over Postgres, with Docker Compose for local
+     admin front end + a Flutter client for all six targets
+     (Android, iOS, Linux, Windows, macOS, Web — its Web build is a SECOND admin interface alongside
+     the Angular one), over Postgres, with Docker Compose for local
      dev. **Wave 0 landed on 2026-07-29**, so there IS a source tree now — but only part of one, and
      the shape matters: `api/src/Domain/` (money, pricing — framework-free, zero Composer
      dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,

@@ -206,12 +206,26 @@ the round-2 reports, and none should be closed without one:
 | R2-16 | The pricing plan's `## Decisions Log` had no entry for the ruling that rewrote its own subject; `Money::negated`/`absolute`/`isPositive` and `Decimal::compare` have no direct tests. | **P3** — **PARTLY CLOSED.** `Money::negated`/`absolute`/`isPositive` and `Decimal::compare` now have direct tests, and the min-scale mutant dies. The pricing plan's Decisions Log entry was added. |
 
 **Ten of the sixteen rows above are now CLOSED**, including the P0 and three of the four P1s, each with a
-mutation or a live-database reproduction proving the fix holds. Still open: **R2-6** (the profit-rate
-formula exists twice in `Domain/` — an agreement test now pins them together, but unification is owed),
-**R2-9** (the six-target ruling still has no mechanical home in CI or the Flutter gate row), **R2-10**
-(`authored_by` has not reached Wave 1's scope), **R2-12** (savepoint rollback reverts the GUC — not
-reachable until Doctrine), **R2-13** (`new (expr)()` and `DateTimeImmutable::createFromFormat()` evade the
-ambient-call gate) and **R2-14** (the >1e9 boundary, now pinned by a test but still a real limit).
+mutation or a live-database reproduction proving the fix holds. **R2-6, R2-9 and R2-10 are now closed too**, so thirteen
+of sixteen are done:
+
+- **R2-6 — CLOSED by unification, not by a test.** `ProductPricing` now *delegates* both formulas to
+  `PriceCalculator`, which is marked as their single home; `ProductPricing` owns authorship and no
+  arithmetic. [Verified: `grep -c 'markupMultiplier\|ratioTo'` → 0 in `ProductPricing`, 2 in
+  `PriceCalculator`.] The agreement test stays as a regression guard.
+- **R2-9 — CLOSED.** Wave 12 now carries the three-runner release matrix with what each runner needs, plus
+  the four database controls and the owed schema gate; `CLAUDE.md`'s Flutter gate row names a build of all
+  six targets and a desktop-sized golden; the header and all eleven skill banners say six targets and two
+  admin interfaces.
+- **R2-10 — CLOSED.** Wave 1's scope now names the `Product` entity and specifies its four pricing columns
+  with types, including `authored_by` as non-null, plus the composite-key and RLS requirements every
+  tenant-owned table in that wave must carry.
+
+Still open, and each is genuinely not-now rather than deferred by convenience: **R2-12** (a savepoint
+rollback reverts the GUC — unreachable until Doctrine introduces nested transactions, and the fix belongs
+with the code that creates the exposure), **R2-13** (`new (expr)()` and
+`DateTimeImmutable::createFromFormat()` evade the ambient-call gate) and **R2-14** (the >1e9 rate-precision
+boundary, now pinned by a test but still a real limit).
 
 **Round 3 must therefore run, and a clean round 3 alone still would not certify Wave 0** — the MAXIMAL
 tier needs *two consecutive* clean rounds. Do not start Wave 1 before that.
@@ -250,10 +264,26 @@ precisely because they are unfixable later.
 
 ## Wave 1 — Client & the invoice core
 
-**In:** Client (+ contacts) · Invoice with line items · the **calculation kernel** (line totals,
-discounts, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive tax
-is a *flag*, never a parallel class hierarchy · invoice state machine behind a **transition guard**, no
+**In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
+totals, discounts, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
+tax is a *flag*, never a parallel class hierarchy · invoice state machine behind a **transition guard**, no
 status written by assignment · numbering with per-tenant counters.
+
+**The `product` table's pricing columns are already decided, so its migration has no choices to make**
+(recorded here because a certification round found this specified only in the pricing plan, leaving the
+wave that writes the migration with no record of it):
+
+| Column | Type | Why |
+|---|---|---|
+| `cost` | `NUMERIC(19,4)` | never a float; see `CLAUDE.md` § Gotchas |
+| `profit_rate` | `NUMERIC(15,12)` nullable | 12 fraction decimals — `Rate::FRACTION_SCALE`. Null when the price was the authored field |
+| `net_price` | `NUMERIC(19,4)` nullable | null when the rate was the authored field |
+| `authored_by` | non-null enum `('profit_rate','net_price')` | **the load-bearing one.** Without it both fields look equally real and the derived one gets rebuilt from a rounded copy — see `pricing-and-documents.plan.md` § F4 |
+
+Every tenant-owned table in this wave also carries `company_id`, `PRIMARY KEY (company_id, id)`, foreign
+keys and unique constraints on **both** columns, and the three RLS statements from
+`PostgresRowLevelSecurityIsolation::policySqlFor()`. Not stylistic: FK and uniqueness checks run with row
+security bypassed, so a single-column FK lets one tenant delete another's rows.
 
 **Out:** quotes, credits, payments, PDF, e-invoicing.
 
@@ -375,6 +405,23 @@ TypeScript, forever. Two consequences follow and both are load-bearing rather th
 
 **In:** `infra/` written from scratch — Dockerfiles, compose, deployment. CI mirroring the quality
 gate tier by tier, every job commented with why it exists and what breaks without it.
+
+**The Flutter release matrix, which is the one part of this wave that is not a choice.** Builds cannot be
+cross-compiled, so the six ruled targets need three runners and a release is six artifacts:
+
+| Runner | Builds | Also needs |
+|---|---|---|
+| `ubuntu-latest` | Linux · Android · Web | GTK dev headers; Android SDK; a Play Console registration |
+| `windows-latest` | Windows | a code-signing certificate, or every user sees a SmartScreen warning |
+| `macos-latest` | macOS · iOS | an Apple Developer membership; notarisation as well as signing |
+
+**Also in:** the **database controls** `infra/README.md` enumerates, because RLS does not cover them and
+none is enforceable from application code — a non-superuser **and non-owner** application role,
+`REVOKE TRUNCATE`, and a connection string carrying no pre-set `twes.tenant_id`. A migration role that
+owns the tables, separate from the runtime role. And the **schema gate** owed since Wave 0: every table
+with a tenant column must have `ENABLE` + `FORCE ROW LEVEL SECURITY`, a policy with `USING` and
+`WITH CHECK`, and composite keys — that one becomes a P0 the moment Wave 1 writes its first migration, so
+it may well need to land earlier than this wave.
 
 **Note:** the *topology* (php-fpm + nginx + db + redis + queue + scheduler + headless Chrome) is an
 idea and free to reuse; upstream's **files** are GPL-2.0 and must never be copied.
