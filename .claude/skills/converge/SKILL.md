@@ -30,11 +30,10 @@ disallowed-tools: AskUserQuestion
      `/converge`). `.claude/agents/` exists but is EMPTY on 2026-07-29, so those names are lens
      briefs you spawn with, not files you can read. Self-grading is the last resort and MUST be
      disclosed as self-graded.
-  3. REPORTS GO TO `var/claude/…` in the repo — intended to be gitignored (`/var`), survives
+  3. REPORTS GO TO `var/claude/…` in the repo — gitignored via `/var`, survives
      compaction inside the session, never committed. NOT `~/.claude/projects/…`: that is wiped when
-     the container is reclaimed, so a report written there is lost. Caveat found while adapting: this
-     repo has NO `.gitignore` yet (2026-07-29), so `/var` must be added to one before a commit —
-     until then these reports are merely untracked, not ignored, and must never be `git add`ed.
+     the container is reclaimed, so a report written there is lost. Never `git add` a report regardless
+     — being ignored is what keeps them out of history, not what makes staging them harmless.
   4. `--scope=global|both` IS REMOVED wherever it appears: `~/.claude/` in this container is
      GENERATED from repo files by `scripts/claude-bootstrap/install.sh`, so auditing it audits a copy.
   5. ≤5 concurrent subagents (10 caused ~50% rate-limit failures upstream). Every pipeline agent
@@ -87,7 +86,7 @@ Runs a structured multi-angle convergence loop. **Autonomous by default in twes-
     1. **`domain-correctness-reviewer`** — correctness + regression, aimed at what twes-in can silently get *wrong*: money and tax arithmetic (rounding point, rounding mode, minor-unit vs float, multi-currency and the rate stored on the document), invoice/quote/credit state machines and their transition guards, payment application (partial, over-payment, refund, gateway-webhook replay), and DB migration safety including the down path.
     2. **`tenancy-security-reviewer`** — security + multi-tenant isolation + payment/PII safety: every query, aggregate, export, file fetch and background job carrying its tenant filter; authn/authz on API and client-portal routes; gateway secrets, card tokens and PII never reaching logs, exceptions or fixtures; webhook signature verification and idempotency. A plausible cross-tenant read is P0, not a smell.
     3. **`completeness-reviewer`** — completeness + blast radius + **API-contract coverage across the three stacks**: a change to the Symfony API's response shape, field type, enum value, error code or pagination contract is incomplete until the Angular admin and the Flutter client are accounted for (updated, or the change shown to be additive). Docs, fixtures and tests count as part of the radius.
-    This is the tier project `CLAUDE.md` mandates at every 3C/6C gate, all task sizes. `.claude/agents/` is empty on 2026-07-29, so these three names are lens briefs you spawn subagents with — not agent files to read.
+    This is the tier project `CLAUDE.md` mandates at every 3C/6C gate, all task sizes. All three exist as real agent definitions in `.claude/agents/` — spawn them by name via the Agent tool rather than re-describing their charter in a prompt, so the panel's attack surfaces stay in one place.
   - `3C`: pre-implementation-style angles (expanding-context, adversarial, blast-radius)
   - `6C`: pre-completion-style angles (expanding-context on result, failure modes, callers/docs)
   - `custom`: angles provided via `--angles`
