@@ -309,6 +309,170 @@ fresh_fixture
 rm "$WORK/repo/api/composer.lock"
 assert_gate 'refuses to pass when no lock file was inspected' dependency-licences.php 1
 
+
+# ============================================================================================
+# GENERATED CASES — driven from each gate's own rule data via `--dump-rules`.
+#
+# Round 3 showed why hand-picked cases are not enough: 60 of 71 banned names, 7 of 9 superglobals,
+# two of three forbidden layer pairs, most SEARCH_ROOTS and most extensions could all be deleted
+# with this suite still reporting 37/37, because it pinned THE FIXTURE'S INSTANCES rather than the
+# RULE SETS.
+#
+# Generating cases from the rule data fixes "present but not enforced". It does NOT fix "entry
+# deleted" — removing a rule would remove its own generated case. So there are two mechanisms, and
+# both are needed:
+#
+#   1. BASELINE assertions below: each rule set must be a SUPERSET of a committed list. Deleting an
+#      entry fails here. Adding one is free, and adding one to the baseline is a deliberate act.
+#   2. GENERATED cases: one execution per entry currently present, proving it actually fires.
+# ============================================================================================
+
+# assert_contains <description> <haystack> <needle...>
+assert_contains() {
+  local description="$1" haystack="$2"; shift 2
+  local missing=()
+
+  for needle in "$@"; do
+    printf '%s' "$haystack" | grep -qF -- "\"$needle\"" || printf '%s' "$haystack" | grep -qwF -- "$needle" || missing+=("$needle")
+  done
+
+  if (( ${#missing[@]} == 0 )); then
+    printf '  ok   — %s\n' "$description"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — %s (absent from the gate: %s)\n' "$description" "${missing[*]}"
+    failed=$((failed + 1))
+  fi
+}
+
+echo "== BASELINE: rule sets must not shrink =="
+fresh_fixture
+AMBIENT_RULES="$(cd "$WORK/repo" && php scripts/gates/no-ambient-calls-in-domain.php --dump-rules)"
+LAYER_RULES="$(cd "$WORK/repo" && php scripts/gates/layer-dependencies.php --dump-rules)"
+SPDX_RULES="$(cd "$WORK/repo" && bash scripts/gates/spdx-headers.sh --dump-rules)"
+
+# The names whose loss would matter most, per category. Not exhaustive by design — exhaustive would
+# duplicate the gate — but every entry here is one a reviewer named or one whose absence is a known
+# class of defect.
+assert_contains "ambient: the clock family survives" "$AMBIENT_RULES" \
+  time microtime hrtime date gmdate getdate strftime gettimeofday mktime strtotime date_create_immutable
+assert_contains "ambient: the randomness family survives" "$AMBIENT_RULES" \
+  rand mt_rand random_int random_bytes uniqid str_shuffle openssl_random_pseudo_bytes
+assert_contains "ambient: the environment family survives" "$AMBIENT_RULES" \
+  getenv putenv ini_get get_cfg_var filter_input getopt php_sapi_name getcwd
+assert_contains "ambient: the I/O family survives" "$AMBIENT_RULES" \
+  file_get_contents file_put_contents fopen readfile opendir mkdir touch curl_init stream_socket_client
+assert_contains "ambient: command execution survives" "$AMBIENT_RULES" \
+  shell_exec exec system passthru proc_open popen
+assert_contains "ambient: superglobals survive" "$AMBIENT_RULES" \
+  '$_ENV' '$_SERVER' '$_GET' '$_POST' '$_REQUEST' '$_COOKIE' '$_FILES' '$_SESSION' '$GLOBALS'
+assert_contains "ambient: clock instantiations survive" "$AMBIENT_RULES" DateTime DateTimeImmutable
+assert_contains "layers: every forbidden pair survives" "$LAYER_RULES" \
+  'Twes\\Application' 'Twes\\Infrastructure' 'Twes\\UI'
+assert_contains "spdx: every search root survives" "$SPDX_RULES" \
+  api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test scripts
+assert_contains "spdx: every extension survives" "$SPDX_RULES" php ts dart sh xml sql yaml yml
+
+echo "== GENERATED: every banned FUNCTION must actually fire =="
+while read -r name; do
+  fresh_fixture
+  inject "    public function f(): mixed { return ${name}(1); }"
+  assert_gate "fires on ${name}()" no-ambient-calls-in-domain.php 1 "${name}()"
+done < <(printf '%s' "$AMBIENT_RULES" | python3 -c "
+import json,sys
+rules = json.load(sys.stdin)
+# exit/die are language constructs with their own branch, and 'random' is a namespace not a callable.
+skip = {'exit', 'die', 'eval', 'random'}
+for n in rules['functions']:
+    if n not in skip:
+        print(n)
+")
+
+echo "== the LANGUAGE CONSTRUCTS, which cannot be generated as name() calls =="
+# exit/die/include/require and the backtick are not T_STRING, so each has its own branch in the gate and
+# each needs its own case. Round 3 proved it: disabling the T_EXIT branch kept the whole suite green,
+# because the generated function cases skip these names by construction.
+fresh_fixture; inject '    public function f(): void { exit(1); }'
+assert_gate 'fires on exit' no-ambient-calls-in-domain.php 1 'exit is ambient'
+
+fresh_fixture; inject '    public function f(): void { die("no"); }'
+assert_gate 'fires on die' no-ambient-calls-in-domain.php 1 'die is ambient'
+
+fresh_fixture; inject '    public function f(): mixed { return include "/etc/hosts"; }'
+assert_gate 'fires on include' no-ambient-calls-in-domain.php 1 'include is ambient'
+
+fresh_fixture; inject '    public function f(): mixed { return require "/etc/hosts"; }'
+assert_gate 'fires on require' no-ambient-calls-in-domain.php 1 'require is ambient'
+
+fresh_fixture; inject '    public function f(): mixed { return `id`; }'
+assert_gate 'fires on the backtick operator' no-ambient-calls-in-domain.php 1 'backtick operator is ambient'
+
+echo "== GENERATED: every banned SUPERGLOBAL must actually fire =="
+while read -r name; do
+  fresh_fixture
+  inject "    public function f(): mixed { return ${name}['x'] ?? null; }"
+  assert_gate "fires on ${name}" no-ambient-calls-in-domain.php 1 "${name}"
+done < <(printf '%s' "$AMBIENT_RULES" | python3 -c "
+import json,sys
+for n in json.load(sys.stdin)['variables']:
+    print(n)
+")
+
+echo "== GENERATED: every banned INSTANTIATION must actually fire =="
+while read -r name; do
+  fresh_fixture
+  inject "    public function f(): mixed { return new \\${name}(); }"
+  assert_gate "fires on new ${name}" no-ambient-calls-in-domain.php 1 "new ${name}"
+done < <(printf '%s' "$AMBIENT_RULES" | python3 -c "
+import json,sys
+for n in json.load(sys.stdin)['instantiations']:
+    print(n)
+")
+
+echo "== GENERATED: every forbidden LAYER PAIR must actually fire =="
+while read -r layer prefix; do
+  fresh_fixture
+  target="${prefix//\\//}"
+  mkdir -p "$WORK/repo/api/src/${layer}/Probe"
+  printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\%s\\Probe;\n\nuse %s\\Probe\\Leaked;\n\nfinal class Leak { public function f(): string { return Leaked::class; } }\n' \
+    "$layer" "$prefix" > "$WORK/repo/api/src/${layer}/Probe/Leak.php"
+  assert_gate "fires on ${layer} -> ${prefix}" layer-dependencies.php 1 "references ${prefix}"
+done < <(printf '%s' "$LAYER_RULES" | python3 -c "
+import json,sys
+for layer, prefixes in json.load(sys.stdin)['layers'].items():
+    for p in prefixes:
+        print(layer, p)
+")
+
+echo "== GENERATED: every SPDX search root and extension must actually be scanned =="
+while read -r root; do
+  fresh_fixture
+  mkdir -p "$WORK/repo/${root}"
+  printf '# no licence header here\n' > "$WORK/repo/${root}/unlicensed.sh"
+  assert_gate "scans ${root}" spdx-headers.sh 1 "${root}/unlicensed.sh"
+done < <(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | tr ' ' '\n')
+
+while read -r extension; do
+  fresh_fixture
+  printf 'no licence header here\n' > "$WORK/repo/api/src/unlicensed.${extension}"
+  assert_gate "scans *.${extension}" spdx-headers.sh 1 "unlicensed.${extension}"
+done < <(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | tr ' ' '\n')
+
+echo "== GENERATED: the licence gate must read BOTH lock sections and EVERY package =="
+for section in packages packages-dev; do
+  for position in 0 -1; do
+    fresh_fixture
+    python3 - "$WORK/repo/api/composer.lock" "$section" "$position" <<'PYLOCK'
+import json, sys, pathlib
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d[sys.argv[2]][int(sys.argv[3])]['license'] = ['GPL-3.0-or-later']
+p.write_text(json.dumps(d, indent=4))
+PYLOCK
+    where=$([[ "$position" == "0" ]] && echo first || echo last)
+    assert_gate "catches copyleft on the ${where} ${section} entry" dependency-licences.php 1 'not permissive'
+  done
+done
+
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"
 [[ "$failed" -eq 0 ]]

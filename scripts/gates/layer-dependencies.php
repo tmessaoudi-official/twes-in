@@ -43,6 +43,13 @@ const DOMAIN_VENDOR_ALLOWLIST = [];
  * alternative high enough, that this is the deliberate trade.
  */
 
+/* See no-ambient-calls-in-domain.php for why: one generated case per (layer, forbidden prefix) pair. */
+if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
+    echo json_encode(['layers' => FORBIDDEN_BY_LAYER], \JSON_THROW_ON_ERROR), "\n";
+
+    exit(0);
+}
+
 exit(main());
 
 function main(): int

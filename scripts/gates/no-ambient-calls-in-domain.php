@@ -154,6 +154,21 @@ const BANNED_INSTANTIATIONS = [
     'DateTimeImmutable' => 'inject Domain\\Shared\\Clock; naming the type is fine, constructing it is not',
 ];
 
+/*
+ * `--dump-rules` prints this gate's rule data as JSON so scripts/gates/test-gates.sh can generate one
+ * execution case per entry. Without it the meta-suite hand-picked a handful of names and pinned those,
+ * which meant 60 of 71 entries could be deleted with the suite still reporting 37/37.
+ */
+if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
+    echo json_encode([
+        'functions' => array_keys(BANNED_FUNCTIONS),
+        'variables' => array_keys(BANNED_VARIABLES),
+        'instantiations' => array_keys(BANNED_INSTANTIATIONS),
+    ], \JSON_THROW_ON_ERROR), "\n";
+
+    exit(0);
+}
+
 exit(main());
 
 function main(): int

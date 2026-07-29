@@ -85,7 +85,7 @@ spent partly because the tree changed under the reviewer.
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
 Delivered and verified, **after certification rounds 1, 2 and 3** (see below): **251 tests, 1247
-assertions green** and **37 gate tests green**; six architecture/licensing gates, each proven to fail on an injected
+assertions green** and **183 gate tests green**; six architecture/licensing gates, each proven to fail on an injected
 violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
 removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
 
@@ -289,11 +289,11 @@ completeness:
   comment and `reimplementation-strategy.plan.md` no longer call desktop "planned" or "later"; the pricing
   plan's "Nothing here is implemented" is corrected.
 
-**Owed from round 3 — three rows, and they are why round 4 must run:**
+**Owed from round 3.** R3-1 is closed (below); R3-2 and R3-3 remain, and they are why round 4 must run:
 
 | # | Finding | Severity |
 |---|---|---|
-| R3-1 | **`test-gates.sh` pins the fixture's instances, not the rule sets.** Seven neuterings each keep 37/37 — dropping `packages-dev` from the licence merge, slicing the package list to one, dropping two of three forbidden layers, deleting the `DateTime` row, disabling the `T_EXIT` branch, and two `SEARCH_ROOTS`/extension reductions. The last hides a header-less `.orm.xml`, which is exactly what Wave 1 must produce. Remedy is structural: drive the cases from the gates' own data — one per `BANNED_*` entry, one per `FORBIDDEN_BY_LAYER` pair, a fixture member per root and per extension, and a `packages-dev` case. | **P2** |
+| R3-1 | ~~**`test-gates.sh` pins the fixture's instances, not the rule sets.**~~ **CLOSED, structurally.** Each gate now answers `--dump-rules` with its own rule data, and the meta-suite uses it two ways, because one alone is insufficient: **generated cases** — one execution per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section — prove every present rule fires; and a **committed baseline** asserts each rule set is a *superset* of a named list, because generating cases from the data means deleting an entry would delete its own case. 37 → **183 cases**. All seven demonstrated neuterings now fail, plus two more found while building it: disabling the `T_EXIT` branch kept the suite green (the generated cases skip `exit`/`die` by construction), and so did disabling the `include`/`require` and backtick branches — so those five language constructs have explicit cases. [Verified: nine neuterings re-run individually, each reported.] Original finding: Seven neuterings each keep 37/37 — dropping `packages-dev` from the licence merge, slicing the package list to one, dropping two of three forbidden layers, deleting the `DateTime` row, disabling the `T_EXIT` branch, and two `SEARCH_ROOTS`/extension reductions. The last hides a header-less `.orm.xml`, which is exactly what Wave 1 must produce. Remedy is structural: drive the cases from the gates' own data — one per `BANNED_*` entry, one per `FORBIDDEN_BY_LAYER` pair, a fixture member per root and per extension, and a `packages-dev` case. | **P2** |
 | R3-2 | **`Decimal::divide`'s working-scale `max()` term is only partly covered.** A case with a 15-decimal dividend was added, but the term deserves a systematic sweep across dividend/divisor/target-scale combinations rather than one example. | **P3** |
 | R3-3 | **`Decimal::scaleOf` survives a mutant returning garbage for every dotless value.** Now has direct tests, but the reviewer's point stands: it survived by *luck of consumer shape*, and the next consumer — a formatter, or a `NUMERIC(19,4)` decimal-count check in the Doctrine type — would break silently. | **P3** |
 

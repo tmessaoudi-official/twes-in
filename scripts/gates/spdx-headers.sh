@@ -37,9 +37,26 @@ readonly -a SEARCH_ROOTS=(
 # anywhere a licence line could hide.
 readonly HEADER_WINDOW=40
 
+# See no-ambient-calls-in-domain.php for why: one generated case per root and per extension.
+readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml)
+
+if [[ "${1:-}" == "--dump-rules" ]]; then
+  printf 'roots %s\n' "${SEARCH_ROOTS[*]}"
+  printf 'extensions %s\n' "${EXTENSIONS[*]}"
+  exit 0
+fi
+
 missing=0
 checked=0
 skipped_roots=()
+
+# Built from EXTENSIONS so the dump and the search can never disagree.
+find_extension_args=()
+for extension in "${EXTENSIONS[@]}"; do
+  (( ${#find_extension_args[@]} )) && find_extension_args+=(-o)
+  find_extension_args+=(-name "*.${extension}")
+done
+readonly find_extension_args
 
 for root in "${SEARCH_ROOTS[@]}"; do
   if [[ ! -d "$REPO_ROOT/$root" ]]; then
@@ -56,8 +73,7 @@ for root in "${SEARCH_ROOTS[@]}"; do
     fi
   done < <(find "$REPO_ROOT/$root" \
     -type f \
-    \( -name '*.php' -o -name '*.ts' -o -name '*.dart' -o -name '*.sh' \
-       -o -name '*.xml' -o -name '*.sql' -o -name '*.yaml' -o -name '*.yml' \) \
+    \( "${find_extension_args[@]}" \) \
     -not -name '*.xlf' \
     -not -path '*/vendor/*' \
     -not -path '*/node_modules/*' \
