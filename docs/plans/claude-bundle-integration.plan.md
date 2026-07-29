@@ -1,0 +1,82 @@
+# Claude bundle integration Plan
+
+Bring the developer's Claude Code setup into this repo in the form that works in a **cloud
+container**, modelled on the two already-container-adapted ports in
+[`pdfturbo`](https://github.com/tmessaoudi-official/pdfturbo) and
+[`phorj`](https://github.com/tmessaoudi-official/phorj).
+
+pdfturbo was the primary source: it is the newer port, it had already removed a credential-leak
+vector present in the earlier one, and it carries `disallowed-tools: AskUserQuestion` on every skill —
+a mechanical guarantee phorj lacks.
+
+---
+
+## Decisions Log
+
+- [2026-07-29 08:45] AGREED: the integration targets the **repo**, not `~/.claude`. Cloud sessions load the repo's `CLAUDE.md`, `.claude/{settings.json,skills,agents}` and load **none** of `~/.claude/`, which is a fresh empty directory every session. Anything the framework needs there has to travel in the repo and be reinstalled at session start.
+- [2026-07-29 08:50] AGREED: source of truth is **pdfturbo's port**, with phorj consulted for the pieces pdfturbo lacks (its `hooks/test-precompact-handoff.sh`, and its numbered-invariants CLAUDE.md shape). Not the raw machine bundle — the ports already carry the container adaptations.
+- [2026-07-29 08:55] AGREED: `install.sh` is ported **one-directional only** (`cp -u` three docs into `~/.claude`, create `var/claude/`). phorj's copy also ran `cp -R /root/.claude /root/.claude.json` into its working tree at every SessionStart, with a commented-out `git push --force-with-lease` beneath it. `~/.claude.json` holds the OAuth account, `userID` and `machineID`, and the working tree is one `git add -A` from history. Not reproduced. `/claude-bundle/` is gitignored as a belt-and-braces guard.
+- [2026-07-29 09:00] AGREED: `AskUserQuestion` is **forbidden project-wide** — it times out in this container, so a question asked that way can hang the turn and vanish. Every question is plain text: context + minimal example + numbered options + recommended first with its reason + a visible escape, then STOP. Every skill declares `disallowed-tools: AskUserQuestion`. Honest limit: that binds per-turn and clears on the next user message.
+- [2026-07-29 09:05] AGREED: **12 skills**, pdfturbo's set unchanged in roster — `ask-human`, `converge`, `sweep`, `expanding-context`, `sleuth`, `inspect`, `gaps`, `aggregate-findings`, `pre-commit`, `handoff`, `retrospective`, `forge`. phorj's `cross-check` is not imported (it validates formal specs against Jira; neither exists here).
+- [2026-07-29 09:10] AGREED: **three reviewer agents**, one per certification lens, renamed and re-chartered for this domain rather than copied: `domain-correctness-reviewer` (money arithmetic, tax, state machines, migrations), `tenancy-security-reviewer` (multi-tenant isolation, auth, payment/PII safety), `completeness-reviewer` (evidence actually delivered, and the change reaching all three client tiers). pdfturbo's names (`export-fidelity-reviewer`, `safety-promises-reviewer`) describe a PDF editor's promises and would have been theatre here.
+- [2026-07-29 09:15] AGREED: certification tier is **MAXIMAL by default** — three lenses, two consecutive fully-clean rounds, any finding resets the counter, cap 5 then ask. Rationale specific to this domain: a wrong number is a wrong legal document and a cross-tenant read is a reportable data breach, and neither is caught by a green test suite. The one carve-out is mechanical: no application source in `git diff --name-only` → STANDARD.
+- [2026-07-29 09:20] AGREED: **zero `deny` rules**, inheriting pdfturbo's developer ruling. In a cloud session a denied command is an unrecoverable dead end — there is no terminal in which to run it by hand. The control is discipline, recorded in `CLAUDE.md` § "Git autonomy".
+- [2026-07-29 09:25] AGREED: **plans live in the repo** at `docs/plans/<topic>.plan.md`, each with its own `## Decisions Log`. The container is reclaimed and only committed state survives, so an out-of-repo plan file is never the record of truth.
+- [2026-07-29 11:20] FOUND — **deviation from pdfturbo's documented behaviour**: `.claude/settings.json` is **writable by Claude in this container.** pdfturbo documents it as classifier-blocked and ships a `settings.json.pending` + `apply-pending-settings.sh` relay for the developer to apply locally. Here the direct `Write` **succeeded**. [Verified: the `Write` call returned success and the file is tracked in `git status`.] So no pending file was created and none exists. AGREED: keep `apply-pending-settings.sh` anyway — the restriction is environment-dependent, may reappear without notice, and the script is inert when there is no pending file (prints "Nothing to apply", exits 0). Recorded in `CLAUDE.md` § Gotchas so a future session does not conclude the block is gone permanently.
+- [2026-07-29 11:25] FOUND+FIXED: the bulk project-name rename (`pdfturbo` → `twes-in`, `PDFTURBO_` → `TWES_`) left **four passages that were still factually about a PDF editor** while now claiming to describe this project. Rule 6's visual-evidence amendment referenced `npm run test:browser`, jsdom-vs-canvas, and `exportPipeline.ts`'s raster path; the Large-task plan gate referenced a `SCHEMA_VERSION` ceiling. A mechanical rename produces text that *reads* adapted without *being* adapted — the more dangerous failure, because nothing looks wrong. Rewritten: the visual-evidence amendment now names this project's three real rendered surfaces (Angular admin, Flutter client, generated PDF documents) with the specific way each fails invisibly, and the plan gate now names the real one-way doors (a documented invariant, a licensing boundary, the API contract the Flutter client depends on).
+- [2026-07-29 11:30] FOUND+FIXED: Rule 10 in the global framework carried a **direct contradiction with this container's harness** — it pinned the commit author to `Takieddine Messaoudi <takieddine.messaoudi.official@gmail.com>` and forbade a `Co-Authored-By` trailer outright, while the harness instructs the opposite. Both are imperative; both cannot be honoured silently. AGREED: recorded as an **OPEN RULING** in Rule 10 and in `CLAUDE.md` § "Git autonomy", following the harness default until the developer rules. The sibling repos' rule earned its place because their history has zero such trailers; this repo has no history to be consistent with yet, so there is nothing to preserve — which is what makes deferring it safe rather than lazy.
+- [2026-07-29 11:35] AGREED: the distinctive addition for this project is `CLAUDE.md` § **"Licensing invariants"** — eight numbered rules making the clean-room boundary a hard gate rather than an intention. The sibling repos have no analogue because neither is derived from someone else's source-available product. This is the one section that, if violated, changes what this repository legally *is*, so it lives in `CLAUDE.md` (where Claude must read it) and not in `docs/`.
+
+---
+
+## Formal Plan
+
+| Phase | Deliverable | Status |
+|---|---|---|
+| 1 | `scripts/claude-bootstrap/` — `install.sh` (one-directional), `README.md`, `apply-pending-settings.sh`, `CLAUDE-global.md`, `THINKING.md`, `BLAST-RADIUS.md`, `hooks/{log-helpers,precompact-handoff,test-precompact-handoff}.sh` | built |
+| 2 | `.claude/skills/` × 12, container-adapted + re-grounded on this domain, each with `disallowed-tools: AskUserQuestion` | built |
+| 3 | `.claude/agents/` × 3 — one per certification lens, re-chartered for a billing domain | built |
+| 4 | `CLAUDE.md` — Routing / Questions are plain text / **Licensing invariants** / API contract / Certification ladder / Git autonomy / Plans / Quality gate / Gotchas | built |
+| 5 | `.claude/settings.json` — `defaultMode: auto`, `deny: []`, the two bootstrap hooks (written directly; no relay needed here) | built |
+| 6 | `.gitignore` — Claude block, reference-clone guards, three-stack ignores | built |
+| 7 | `docs/plans/reimplementation-strategy.plan.md` — the licensing findings and build-vs-fork analysis | built |
+| 8 | Developer rules the two open items (commit trailers; and Questions 1–4 in the strategy plan) | **awaiting developer** |
+
+### Rejected, with reasons
+
+- **Hooks from the machine bundle** — the upstream set is one of: an interrupt (the ask-human gates,
+  the question guard), a hard deadlock (`advisor-completion-guard` needs a tool that does not exist
+  here), terminal-only output nobody can see in a web session (statusline, banner, context-bar,
+  git-status, subagent-status), or writes to a filesystem that evaporates (`edit-log`,
+  `session-remember`). Two hooks are registered: SessionStart install, PreCompact handoff.
+- **Repo-local `PostToolUse` lint hooks** — pdfturbo wires `oxlint-on-write.sh` and
+  `locale-sync-check.sh`. Both are good patterns (`jq` the payload from stdin, early `exit 0` guard,
+  `exit 2` + stderr so Claude fixes it in the same turn), and the equivalents here would be a
+  PHP-CS-Fixer/PHPStan hook and a translation-key-parity hook. **Deferred, not rejected**: there is no
+  source tree and no toolchain to lint yet, and a hook pointing at an absent binary is worse than no
+  hook. Add them with the first application code.
+- **`.mcp.json` / MCP servers** — none in either sibling repo, nothing this project needs yet.
+- **`cross-check` skill** — validates formal specs against Jira. Neither exists here.
+- **A CI workflow** — deliberately not written yet. There is nothing to build or test, and a workflow
+  that runs no real gate is a green tick that means nothing. `CLAUDE.md` § "Quality gate" records the
+  per-tier commands to wire when each stack lands.
+- **phorj's `.editorconfig` / toolchain pinning / git hooks** — all stack-specific (Rust). The
+  *patterns* (tracked hooks via `core.hooksPath`, tiered fast/slow gates, a `test-*.sh` companion for
+  every script) are worth reproducing per-stack once there is a stack.
+
+### Known limits carried into the result
+
+- **New skills need one session restart.** Claude Code watches an existing `.claude/skills/` live, but
+  a newly created top-level skills directory is not watched until the CLI restarts. The `CLAUDE.md`
+  sections bind immediately; the slash commands appear next session.
+- **`allow` rules are inert in cloud sessions** — they need an accepted workspace-trust dialog a cloud
+  session never shows (`Ignoring N permissions.allow entries … this workspace has not been trusted`).
+  They work locally. `defaultMode` is what takes effect.
+- **`disallowed-tools` binds per-turn**, not per-session — it clears on the next user message, so
+  outside a skill the plain-text-question discipline is unenforced.
+- **No `deny` rules at all**, by ruling — nothing mechanically prevents a force-push.
+- **The quality gate is empty** because there is no code. That is stated in `CLAUDE.md` rather than
+  papered over with commands that do not exist.
+- **`.claude/settings.json` being writable is an observed property of this container**, not a
+  guarantee. If a future session finds `Write` denied, the relay in
+  `scripts/claude-bootstrap/apply-pending-settings.sh` is the documented path.

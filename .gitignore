@@ -1,0 +1,66 @@
+# ── Editors / OS ───────────────────────────────────────────────────────────────
+/.idea
+/.vscode
+.DS_Store
+
+# ── Claude Code local state ────────────────────────────────────────────────────
+/.claude/settings.local.json
+/.claude/worktrees
+# Claude runtime state: var/claude/{handoff,reports,sleuth,inspections,gaps,forge,memory,logs}
+# written by the PreCompact hook and the review skills. Throwaway by design — survives
+# compaction inside a session, dies with the container, never committed.
+/var
+# Belt-and-braces: never commit a copy of ~/.claude or ~/.claude.json. Those hold the
+# OAuth account, userID and machineID. scripts/claude-bootstrap/install.sh is one-directional
+# (repo → ~/.claude) precisely so this directory is never created; the rule is here anyway.
+/claude-bundle/
+# Backups left by scripts/claude-bootstrap/apply-pending-settings.sh — never commit one.
+/.claude/settings.json.bak.*
+# NOT ignored, deliberately: scripts/claude-bootstrap/settings.json.pending. Claude cannot
+# write .claude/settings.json (classifier-blocked), so it commits the change there for the
+# developer to apply locally with apply-pending-settings.sh, which deletes it on success.
+
+# ── Reference clones — NEVER commit these ──────────────────────────────────────
+# The upstream study clones (Invoice Ninja et al.) live in /tmp/xxx and are read-only
+# references. This project is a clean-room reimplementation: upstream code must never
+# enter this tree, because Invoice Ninja's backend and web UI are Elastic-License-2.0
+# and copying them in would make this repo a derivative work. See
+# docs/plans/reimplementation-strategy.plan.md § Licensing.
+/reference/
+/upstream/
+/vendor-reference/
+
+# ── PHP / Symfony ──────────────────────────────────────────────────────────────
+/vendor/
+/var/cache/
+/var/log/
+/.env.local
+/.env.*.local
+/.php-cs-fixer.cache
+/.phpunit.result.cache
+/phpstan.cache
+
+# ── Node / Angular ─────────────────────────────────────────────────────────────
+node_modules/
+/dist/
+/.angular/
+/coverage/
+*.tsbuildinfo
+
+# ── Flutter ────────────────────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+/build/
+*.iml
+
+# ── Local QA / visual-evidence screenshots — never committed (binary, ad-hoc) ──
+# NOTE: because these are gitignored AND the cloud container is reclaimed, a screenshot
+# left here is evidence nobody will see — deliver it with SendUserFile in the same turn.
+/qa-shots/
+
+# ── Secrets ────────────────────────────────────────────────────────────────────
+# Payment-gateway and e-invoicing credentials never belong in git.
+*.pem
+*.p12
+/config/jwt/
