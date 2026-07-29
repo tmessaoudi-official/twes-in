@@ -175,8 +175,34 @@ Upstream reached ~344k lines of backend PHP over twelve years; matching that is 
 The waves above are roughly **18–30 person-months**. Every item above is deferrable and none is
 forgotten.
 
+## Developer feature additions (2026-07-29)
+
+Baseline behaviour is *"what Invoice Ninja does"* — legitimate, because behaviour and functionality are
+not copyrightable; only expression is (licensing invariant 2). These four are **additions or
+modifications on top of that baseline**, to be specced in detail when their wave starts.
+
+**F1 — Merge several invoices of the same client into one.** Same client is a hard precondition.
+Detailed spec at Wave 2 (shared document machinery). *Open decision: which invoice states may be
+merged — see below.*
+
+**F2 — Create an invoice from a quote, if one does not already exist.** One-to-one link, so converting
+twice does not silently produce a second invoice; the second attempt returns the existing one.
+Wave 2.
+
+**F3 — Create a delivery note from an invoice while the invoice is still a draft.** Draft-only is a
+deliberate constraint from the developer. *Open decision: separate document type or a rendering — see
+below.* Wave 2, or Wave 4 if it turns out to be a rendering concern.
+
+**F4 — Profit rate on the product, so the selling price is computed from cost + profit rate + VAT.**
+This is the most arithmetic-sensitive addition in the list and has **no upstream behaviour to inherit**
+— it is genuinely new, so every rule for it is ours to decide. Wave 1, alongside the calculation
+kernel, because it feeds line pricing. Non-negotiable regardless of the open decisions: the **computed
+selling price is snapshotted onto the invoice line** at issue time. A later change to a product's cost
+or profit rate must never retroactively alter an issued document.
+
 ## Awaiting the developer
 
-**Feature changes and additions.** The developer has changes to this baseline and features to add.
-Until those are folded in, the wave list is provisional past Wave 0 — Wave 0's seams are
-scope-independent, so it can start regardless.
+Five open decisions, listed in the session brief: the profit-rate formula (markup vs margin), which
+invoice states may be merged, whether a delivery note is its own document type, whether multi-currency
+is in the first release, and the VAT rounding point. **Wave 0 is unaffected by all five** — its seams
+are scope-independent — so it can start before they are answered.
