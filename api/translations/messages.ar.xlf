@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Arabic. Tunisia is a first-wave jurisdiction and TND is the default currency, so this is a shipped
+  catalogue. Arabic is also why RTL is in scope from Wave 0: it reaches the Angular admin, the Flutter
+  client AND the generated PDF documents, and bidirectional text with Arabic glyph shaping inside a
+  generated PDF is the single most underestimated item in this project's i18n scope. It must be proven
+  with a rendered document, never asserted.
+-->
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="ar" datatype="plaintext" original="twes-in">
+    <body>
+      <trans-unit id="1" resname="error.validation_failed">
+        <source>error.validation_failed</source>
+        <target>البيانات المُرسلة غير صالحة.</target>
+      </trans-unit>
+      <trans-unit id="2" resname="error.not_found">
+        <source>error.not_found</source>
+        <target>المورد المطلوب غير موجود.</target>
+      </trans-unit>
+      <trans-unit id="3" resname="error.tenant_required">
+        <source>error.tenant_required</source>
+        <target>هذا الطلب غير مرتبط بأي شركة.</target>
+      </trans-unit>
+      <trans-unit id="4" resname="error.internal">
+        <source>error.internal</source>
+        <target>حدث خطأ داخلي.</target>
+      </trans-unit>
+      <trans-unit id="5" resname="money.amount_not_representable">
+        <source>money.amount_not_representable</source>
+        <target>لا يمكن تمثيل المبلغ {amount} بدقة بعملة {currency}.</target>
+      </trans-unit>
+      <trans-unit id="6" resname="money.currency_unknown">
+        <source>money.currency_unknown</source>
+        <target>العملة {code} غير مدعومة.</target>
+      </trans-unit>
+      <trans-unit id="7" resname="money.currency_mismatch">
+        <source>money.currency_mismatch</source>
+        <target>لا يمكن الجمع بين مبالغ بعملتي {left} و {right} دون سعر صرف.</target>
+      </trans-unit>
+      <trans-unit id="8" resname="pricing.rate_too_precise">
+        <source>pricing.rate_too_precise</source>
+        <target>النسبة {rate} تحتوي على خانات عشرية أكثر مما يمكن تخزينه.</target>
+      </trans-unit>
+      <trans-unit id="9" resname="pricing.profit_rate_undefined">
+        <source>pricing.profit_rate_undefined</source>
+        <target>نسبة الربح غير معرّفة عندما تكون الكلفة صفراً.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

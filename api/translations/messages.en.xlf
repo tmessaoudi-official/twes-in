@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  English source catalogue. Keys are stable identifiers (resname); the text is what changes.
+  Every locale under this directory must carry exactly this key set — scripts/gates/locale-key-parity.php
+  fails the build otherwise, because a missing key is printed verbatim onto a customer's invoice rather
+  than raising anything.
+-->
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="en" datatype="plaintext" original="twes-in">
+    <body>
+      <trans-unit id="1" resname="error.validation_failed">
+        <source>error.validation_failed</source>
+        <target>The submitted data is not valid.</target>
+      </trans-unit>
+      <trans-unit id="2" resname="error.not_found">
+        <source>error.not_found</source>
+        <target>The requested resource does not exist.</target>
+      </trans-unit>
+      <trans-unit id="3" resname="error.tenant_required">
+        <source>error.tenant_required</source>
+        <target>This request is not associated with a company.</target>
+      </trans-unit>
+      <trans-unit id="4" resname="error.internal">
+        <source>error.internal</source>
+        <target>Something went wrong on our side.</target>
+      </trans-unit>
+      <trans-unit id="5" resname="money.amount_not_representable">
+        <source>money.amount_not_representable</source>
+        <target>The amount {amount} cannot be expressed exactly in {currency}.</target>
+      </trans-unit>
+      <trans-unit id="6" resname="money.currency_unknown">
+        <source>money.currency_unknown</source>
+        <target>The currency {code} is not supported.</target>
+      </trans-unit>
+      <trans-unit id="7" resname="money.currency_mismatch">
+        <source>money.currency_mismatch</source>
+        <target>Amounts in {left} and {right} cannot be combined without an exchange rate.</target>
+      </trans-unit>
+      <trans-unit id="8" resname="pricing.rate_too_precise">
+        <source>pricing.rate_too_precise</source>
+        <target>The rate {rate} has more decimal places than can be stored.</target>
+      </trans-unit>
+      <trans-unit id="9" resname="pricing.profit_rate_undefined">
+        <source>pricing.profit_rate_undefined</source>
+        <target>The profit rate is undefined while the cost is zero.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

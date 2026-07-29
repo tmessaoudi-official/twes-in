@@ -12,6 +12,8 @@
 # the framework's own adaptation note ("Rule 13 observability writes to var/claude/logs/"), which had
 # been corrected in the prose while the code kept the old path. Nothing but the test harness sets
 # OBS_LOG, so this default is what actually runs.
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
 
 umask 077  # hook-created files are owner-only
 

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Four suites, deliberately separate rather than one `tests/` bag, because each answers a
+    different question and each has a different cost:
+
+      unit        pure PHP, no kernel, no database. The domain's arithmetic and invariants.
+      integration real PostgreSQL. Proves what the *database* does — column fidelity, tenant scoping.
+      functional  the application's HTTP surface through the kernel.
+      e2e         a really-booted server, spoken to over the wire.
+
+    Running `phpunit` with no suite filter runs all four; CI and the local gate both do that.
+-->
+<phpunit
+    bootstrap="tests/bootstrap.php"
+    cacheDirectory="var/phpunit"
+    colors="true"
+    failOnRisky="true"
+    failOnWarning="true"
+    beStrictAboutOutputDuringTests="true"
+    displayDetailsOnTestsThatTriggerWarnings="true"
+    displayDetailsOnTestsThatTriggerErrors="true"
+    displayDetailsOnPhpunitDeprecations="true"
+>
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="functional">
+            <directory>tests/Functional</directory>
+        </testsuite>
+        <testsuite name="e2e">
+            <directory>tests/E2E</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+
+    <php>
+        <ini name="error_reporting" value="-1"/>
+        <!-- Integration suite target. Overridden by the real environment in CI. -->
+        <env name="TWES_TEST_DSN" value="pgsql:host=127.0.0.1;port=5432;dbname=twes_in_test"/>
+        <env name="TWES_TEST_DB_USER" value="twes"/>
+        <env name="TWES_TEST_DB_PASSWORD" value="twes"/>
+    </php>
+</phpunit>

@@ -23,6 +23,8 @@
 # data at risk: unreadable stdin (falls through to a git-only handoff, which is logged), and the two
 # `rm -f`/cleanup lines.
 # Note the deliberate absence of `set -e`: an aborting shell here would be the failure mode.
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

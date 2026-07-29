@@ -18,6 +18,25 @@ licensing invariants, the pinned stack and the tenancy design this plan assumes.
 - [2026-07-29 13:40] AGREED: **Wave 0 exists and is not optional.** The seams decided in it — money
   type, tenancy strategy, ID format, error shape, layer boundaries — are the ones that cannot be
   retrofitted without touching everything. Every later wave assumes them.
+- [2026-07-29 16:20] RULED: **tests and code-quality enforcers in every tier, not just the API**
+  (developer instruction). The API landed four suites — unit, integration, functional, e2e — plus six
+  gates. The client tiers do not exist yet, so their equivalents are written into `admin/README.md`,
+  `mobile/README.md` and `infra/README.md` as **gate conditions of their own waves**, which is what stops
+  them being an afterthought.
+- [2026-07-29 16:20] RULED: **the domain layer has zero Composer dependencies.** Arithmetic is `bcmath`,
+  a PHP extension. Scaled integers were rejected because `NUMERIC(19,4)` overruns PHP's integer range,
+  and `brick/math` because it is unnecessary once bcmath is exact. Rounding — which bcmath does not do —
+  is implemented once in `Domain/Shared/Decimal` and tested across all eight modes including negative
+  ties. This resolved a genuine contradiction in `CLAUDE.md`, which asserted both "ZERO dependencies" and
+  "a decimal library may be an implementation detail".
+- [2026-07-29 16:20] RULED: **tenant isolation is PostgreSQL row-level security**, superseding the
+  default-on Doctrine filter this plan originally specified. Same requirement — forgetting must be
+  impossible — but a filter is bypassed by native queries, migrations and `psql`, and a server-side policy
+  is not. The filter becomes a second layer when Doctrine lands. Rationale and the three ways RLS can be
+  silently defeated: `CLAUDE.md` § Gotchas.
+- [2026-07-29 16:20] FOUND: **`qossmic/deptrac` is abandoned** in favour of `deptrac/deptrac`
+  [Verified: packagist reports `abandoned: deptrac/deptrac`]. This plan and `CLAUDE.md` both said
+  "deptrac" generically; the obvious package is the dead one.
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
@@ -45,7 +64,48 @@ spent partly because the tree changed under the reviewer.
 
 ---
 
-## Wave 0 — Foundations (the seams that cannot be retrofitted)
+## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
+
+Delivered and verified: **112 tests, 958 assertions green**; six architecture/licensing gates, each
+proven to fail on an injected violation before being trusted; the tenancy invariant proven against a
+real PostgreSQL 18.4 server, including a test that removes the guard and watches every tenant leak.
+
+| Delivered | Where |
+|---|---|
+| `Money` + `Currency` + `Decimal` + `RoundingMode` | `api/src/Domain/{Money,Shared}/` — bcmath, zero Composer dependencies, all eight rounding modes with negative ties |
+| `Rate` + `PriceCalculator` (the F4 arithmetic) | `api/src/Domain/Pricing/` |
+| `docs/spec/pricing-vectors.json` **with a live consumer** | `api/tests/Unit/Pricing/PricingVectorsTest.php` |
+| Tenancy seam + shared-DB mode | `api/src/Infrastructure/Tenancy/` — PostgreSQL row-level security |
+| `Clock` + `IdGenerator` ports, UUIDv7 adapter | `api/src/Domain/Shared/`, `api/src/Infrastructure/Shared/` |
+| Six fitness gates | `scripts/gates/` |
+| Four-suite test taxonomy | `api/phpunit.xml` — unit · integration · functional · e2e |
+| FR/AR/EN catalogues + parity gate | `api/translations/` |
+| Tier skeletons with their owed gates written down | `admin/`, `mobile/`, `infra/` READMEs |
+
+**NOT delivered, and why — this is the honest half of the entry.** GitHub egress in the development
+container is restricted by organisation policy to this repository alone, so every Composer `dist` URL
+returns 403 and `composer install` cannot run (`CLAUDE.md` § Gotchas has the verification). That blocks:
+
+- the **Symfony application itself** — kernel, HTTP layer, the RFC 9457 error shape, `bin/console`;
+- **Doctrine** — ORM mapping in XML, the migration that creates the RLS policies, `schema:validate`,
+  and the Doctrine filter that becomes isolation's second layer;
+- **PHPStan and deptrac**, whose phars ship only from GitHub releases.
+
+`api/composer.lock` is committed and fully pinned, so the next session with reachable dist URLs runs
+`composer install` and continues. These items are **Wave 0's remainder, not Wave 1's scope** — Wave 1
+must not start until they land, because the calculation kernel needs persistence to be meaningful.
+
+Two scope changes made deliberately rather than silently:
+
+- **The a11y harness moved to Waves 8 and 11.** `axe-core` needs an Angular app and semantics tests need
+  a Flutter app; building either now front-runs its wave. Both are written into those tiers' READMEs as
+  **gate conditions**, so they cannot arrive as an afterthought.
+- **The F4 profit-rate arithmetic came forward from Wave 1.** It is pure `Money`/`Rate` work, and
+  landing `pricing-vectors.json` without a consumer would have left the cross-tier fixture untested — the
+  one failure mode that makes the whole mitigation worthless. The `Product` entity and the endpoints stay
+  in Wave 1.
+
+### Original scope, for reference
 
 **In:** repo skeleton (`api/`, `admin/`, `mobile/`, `infra/`) · Symfony 8.1.1 on PHP 8.5.8 · the
 hexagonal layer layout · **`Money` value object** over `NUMERIC(19,4)` with explicit rounding on every

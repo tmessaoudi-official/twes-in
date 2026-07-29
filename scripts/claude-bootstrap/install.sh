@@ -14,6 +14,8 @@
 #
 # The repo-native skills (.claude/skills/*) and agents (.claude/agents/*) need NO install — Claude
 # Code reads them in place from the clone.
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
 set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

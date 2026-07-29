@@ -182,7 +182,21 @@ driving it — phorj is unfinished and nothing here is designed for it.
   inside the subset a stricter language can express, which is the point.
 
 **Money is our own value object**, in the domain, immutable, carrying an amount plus its currency, with
-an **explicit rounding mode on every operation that can lose precision**.
+an **explicit rounding mode on every operation that can lose precision**. Built in Wave 0:
+`api/src/Domain/Money/Money.php`, with `Currency` holding each currency's ISO 4217 scale and refusing an
+unknown code rather than assuming two decimals.
+
+**The domain's arithmetic is `bcmath`, and `Domain/` therefore has literally zero Composer
+dependencies** (ruled Wave 0, 2026-07-29 — this resolves what used to be a contradiction in this file,
+where the layout comment said "ZERO dependencies" while this paragraph contemplated a decimal library).
+`bcmath` is a PHP *extension*, so using it adds no package. Two alternatives were rejected on merit:
+**scaled integers**, because `NUMERIC(19,4)` reaches 10^19 when scaled to ten-thousandths and PHP's
+integers silently become floats past 9.22×10^18 — an intermediate product overflows far sooner;
+and **`brick/math`**, which is MIT and perfectly good, but unnecessary once bcmath is doing the exact
+arithmetic. What bcmath does *not* provide is rounding — every bcmath function truncates — so all of
+it lives in `Domain/Shared/Decimal::applyRounding()`, written once and tested exhaustively across all
+eight modes including negative ties. `scripts/gates/layer-dependencies.php` enforces the zero-dependency
+rule with an empty allowlist; adding an entry is an argument to be made in a commit message.
 
 **The default currency is TND, which has THREE decimal places** (1 dinar = 1000 millimes), so **a
 2-decimal assumption is a bug for the default currency, not an edge case**. No `round($x, 2)`, no
@@ -229,14 +243,29 @@ api/src/
   UI/              # REST controllers, CLI commands, serializers.
 ```
 
-**Enforcement is NOT yet in place, and that must not be glossed.** The P0s above are currently
-*conventions asserted in prose* — there is no source tree, and no tool in this repo checks any of them.
-A reviewer agent reading "that is a P0" would otherwise assume the panel catches it, and it does not.
-**Landing with the first `api/` scaffold, in the same change:** `deptrac` (or `phpat`) for the
-layer-dependency rules, a PHPStan banned-function rule for ambient clock/random/env, and a grep gate
-for `#[ORM\` under `Domain/` and for the SPDX header required by licensing invariant 8(c). Until those
-exist, § "Quality gate" carries the gap explicitly and the architecture rules are enforced by review
-alone.
+**Enforcement landed in Wave 0.** The P0s above are no longer prose — six gates in `scripts/gates/`
+check them, each proven to fail on an injected violation before being trusted:
+
+| Gate | Enforces |
+|---|---|
+| `layer-dependencies.php` | inward-only dependencies, **and** the domain's zero-Composer-dependency rule |
+| `no-ambient-calls-in-domain.php` | no clock, randomness, environment or I/O in `Domain/` |
+| `no-orm-attributes-in-domain.sh` | no `#[ORM\` or any Doctrine reference under `Domain/` |
+| `spdx-headers.sh` | licensing invariant 8(c), on every source file |
+| `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
+| `locale-key-parity.php` | every locale carries the same key set |
+
+The two layer gates are **separate on purpose, and merging them would be a mistake**: a framework
+dependency arrives as a `use` statement and an import check finds it, but `time()`, `random_int()`,
+`getenv()` and `file_get_contents()` are bare function calls with **no import at all** — an import check
+is blind to every one of them. Both use PHP's own tokenizer rather than `grep`, so a `use` inside a
+comment or a string is not a false positive.
+
+**Still owed, and deliberately not deleted from this table:** `deptrac` and `PHPStan`. Both are MIT and
+both are in `api/composer.json`; neither can be installed in this container, because every Composer
+`dist` URL is a GitHub host and GitHub egress is restricted by organisation policy to this repository
+alone (see § Gotchas). They are defence in depth on top of the gates above, not a substitute for them —
+the gates run on plain PHP and need nothing installed.
 
 ## Certification ladder — governs every 3C/6C gate
 
@@ -345,21 +374,42 @@ a conventional root-level artifact readers and tooling expect to find there:
 
 ## Quality gate
 
-There is no application code yet, so there is no gate to run — and **that is a fact to state, not a
-row to skip**. When a stack lands, its gate is defined here in the same change, and "green" means all
-of them, per tier:
+The API tier's gate exists and runs. The client tiers' gates land with those tiers, and their rows stay
+here so that landing them is **visibly owed** — do not delete a row to make the table look green.
 
-| Tier | Green means (define on landing) |
-|---|---|
-| Symfony API | `composer validate`, `vendor/bin/phpstan` (max level), `vendor/bin/php-cs-fixer --dry-run`, `vendor/bin/phpunit`, `bin/console doctrine:schema:validate`, `bin/console lint:container` |
-| **Architecture fitness** | `vendor/bin/deptrac` (or `phpat`) for the inward-only layer rules; a PHPStan banned-function rule for ambient `time()`/`random_int()`/`getenv()`/`file_get_contents()` in `Domain/`; a grep gate for `#[ORM\` under `Domain/`. **Not yet implemented** — see § "Architecture". |
-| **Licensing** | Every dependency permissive and present in `THIRD-PARTY-NOTICES.md`; SPDX header on every source file. **Not yet implemented** — a script, not a human habit, because a habit will not survive a rushed `composer require`. |
-| Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, an **a11y check** (`axe-core`), **locale key-parity** across every shipped locale, and the shared pricing vectors |
-| Flutter client | `flutter analyze`, `flutter test` — including semantics/a11y tests and the shared pricing vectors |
-| Infra | `docker compose config`, `bash -n` on every shell script |
+| Tier | Green means | State |
+|---|---|---|
+| Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
+| **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate | **Runs** |
+| **Licensing** | `scripts/gates/dependency-licences.php` — permissive-only, over `api/composer.lock` | **Runs** |
+| Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
+| Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, `axe-core` a11y, locale key-parity, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
+| Flutter client | `flutter analyze`, `flutter test`, semantics/a11y tests, golden or real screenshots, the shared pricing vectors | Wave 11 — `mobile/README.md` |
+| Infra | `docker compose config`, `bash -n` on every shell script | Wave 12 — `infra/README.md` |
 
-**The two "not yet implemented" rows are the honest state, not filler.** They exist as rows so that
-landing them is visibly owed. Do not delete a row to make the table look green.
+**The one command to run the API tier's gate**, once Composer works, is `composer gate` — it chains
+`gate:licences`, `gate:architecture`, `gate:static`, `gate:style`, `gate:mapping` and `gate:test`. Until
+then, `gate:architecture` and `gate:licences` are plain PHP and run today with no dependencies at all:
+
+```
+bash  scripts/gates/no-orm-attributes-in-domain.sh
+php   scripts/gates/layer-dependencies.php
+php   scripts/gates/no-ambient-calls-in-domain.php
+bash  scripts/gates/spdx-headers.sh
+php   scripts/gates/locale-key-parity.php
+php   scripts/gates/dependency-licences.php
+cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check
+```
+
+**Tooling setup in a fresh container** (nothing here is installed by default): PHP 8.5.8 and
+PostgreSQL 18.4 come from the sury.org and PGDG apt repositories; `bash scripts/dev/fetch-tools.sh`
+downloads the PHPUnit and php-cs-fixer phars against pinned SHA-256 hashes. The integration suite needs
+a reachable Postgres and skips loudly rather than passing when there is none.
+
+**Four test suites, deliberately separate** (`api/phpunit.xml`): `unit` (pure domain, no kernel, no
+database), `integration` (real PostgreSQL — the tenancy policy, column fidelity), `functional` (HTTP
+through the kernel) and `e2e` (a really-booted server). `functional` and `e2e` are empty until there is
+an HTTP surface to exercise.
 
 Derive the real command names from `composer.json` / `package.json` / `pubspec.yaml` rather than
 trusting the table above — a command written in prose drifts from the one that exists.
@@ -413,16 +463,47 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   Two consequences: **push promptly after committing**, and if the hook does fire, treat its
   instruction as superseded by § "Git autonomy" — the developer's ruling wins over harness machinery.
   This is the Stop half of the same conflict whose SessionStart half is recorded in § "Git autonomy".
+- **2026-07-29 — GitHub egress is restricted to THIS repository, so `composer install` cannot run.**
+  Every Composer `dist` URL for a GitHub-hosted package is `api.github.com`, `codeload.github.com` or
+  `github.com`, and all three return **403** with *"GitHub access to this repository is not enabled for
+  this session"*. [Verified: `curl -o /dev/null -w '%{http_code}'` against a `symfony/uid` zipball on all
+  three hosts → 403, 403, 403; `$HTTPS_PROXY/__agentproxy/status` shows `recentRelayFailures: []`, so it
+  is policy and not a transient failure.] Consequences, all of them acted on rather than worked around:
+  **(a)** `api/composer.lock` is committed and fully pinned, so a session with reachable dist URLs needs
+  only `composer install`; **(b)** PHPUnit and php-cs-fixer publish official phars from `phar.phpunit.de`
+  and `cs.symfony.com`, which *are* reachable — `scripts/dev/fetch-tools.sh` fetches them against pinned
+  SHA-256 hashes; **(c)** the six architecture and licensing gates are written in plain PHP and bash
+  precisely so they need nothing installed; **(d)** PHPStan and deptrac ship phars only from GitHub
+  releases, so they stay owed. Do **not** resolve this by pointing Composer at a third-party mirror —
+  that is a provenance decision this project cannot make casually, given § "Licensing invariants".
+- **2026-07-29 — tenant isolation is PostgreSQL row-level security, not (only) a Doctrine filter.**
+  The plan called for a default-on Doctrine filter, and the requirement behind it was that forgetting it
+  must be *impossible*. A filter cannot deliver that: it scopes queries the ORM builds, and a native
+  query, a raw DQL fragment, a migration, a reporting job or a `psql` session all bypass it. An RLS
+  policy is applied by the server to every statement whatever issued it. Three things silently defeat it
+  and all three are checked, not assumed: a **superuser or `BYPASSRLS`** role (RLS never applies —
+  `PostgresRowLevelSecurityIsolation::assertConnectionCannotBypassPolicies()`), the **table's owner**
+  unless the table also has `FORCE ROW LEVEL SECURITY`, and a **session-scoped `SET`** on a pooled
+  connection, which is why binding uses transaction-local `set_config(..., true)`. The policy compares
+  against `current_setting('twes.tenant_id', true)`, which is NULL when unset, so an unbound session sees
+  **nothing rather than everything** — that fail-closed direction is the whole design and
+  `TenantIsolationTest` asserts it directly, alongside a test that disables the policy and watches every
+  tenant leak. When Doctrine lands, the filter becomes a second layer, not the only one.
 - **2026-07-29 — money is never a float.** Recorded here on day zero because it is unfixable later.
   Upstream stores amounts as floats on models and reaches for `bcmath` only in places; its own tax
   helper mixes `BcMath::mul` with native float arithmetic in adjacent methods, and skips rounding
-  entirely on one path when Peppol is enabled. [Verified: read `app/Helpers/Invoice/Taxer.php`.] Use
-  integer minor units or a decimal money type (`brick/money`) and Postgres `NUMERIC` from the first
-  migration. A `float` on a money column is a P0 for `domain-correctness-reviewer`.
+  entirely on one path when Peppol is enabled. [Verified: read `app/Helpers/Invoice/Taxer.php`.] A
+  `float` on a money column, or anywhere near an amount, is a P0 for `domain-correctness-reviewer`.
+  **Resolved in Wave 0** — and note the earlier suggestion here of "integer minor units or `brick/money`"
+  was superseded: it is a decimal string over `bcmath`, in our own `Money`, with `NUMERIC(19,4)` columns.
+  See § "Architecture" for why both alternatives were rejected on merit. `Money::of()` rejects a `float`
+  argument as a `TypeError` by signature, which is the cheapest possible enforcement of this rule.
 - **2026-07-29 — tenancy scoping must be default-on.** Upstream's `company_id` scope is an *opt-in*
   Eloquent scope every query has to remember, with no global enforcement. [Verified: read
-  `app/Models/BaseModel.php:115`; a search for a global-scope registration found none.] Use a Doctrine
-  filter that is enabled by default so forgetting is impossible, not a helper that must be called.
+  `app/Models/BaseModel.php:115`; a search for a global-scope registration found none.] Forgetting must
+  be impossible, never merely discouraged. **How that requirement is actually met is the RLS entry
+  above** — which supersedes this entry's original prescription of a default-on Doctrine filter, because
+  a filter is bypassed by native queries, migrations and `psql`.
 
 ## Git & CI
 

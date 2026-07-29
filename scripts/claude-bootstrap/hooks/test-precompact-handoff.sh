@@ -2,6 +2,8 @@
 # Test suite for precompact-handoff.sh.
 # The hook is a PreCompact hook: it must ALWAYS exit 0 (a non-zero exit would block compaction),
 # and it must produce a deterministic handoff without any network/LLM call.
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -34,14 +34,27 @@
 /vendor-reference/
 
 # ── PHP / Symfony ──────────────────────────────────────────────────────────────
+# Paths are tier-qualified: the API lives in api/, so a root-anchored /vendor/ would match
+# nothing. Both forms are kept — the root ones in case a tool is ever run from the repo root.
 /vendor/
+/api/vendor/
+# api/var/ holds the PHPUnit cache and the php-cs-fixer cache. Note /var (Claude runtime state)
+# above is a different directory and already ignored.
+/api/var/
 /var/cache/
 /var/log/
-/.env.local
-/.env.*.local
-/.php-cs-fixer.cache
-/.phpunit.result.cache
-/phpstan.cache
+.env.local
+.env.*.local
+.php-cs-fixer.cache
+.phpunit.result.cache
+phpstan.cache
+
+# Standalone tool phars, fetched and SHA-256-verified by scripts/dev/fetch-tools.sh.
+# Not committed: they are ~10 MB of third-party binary, and the script plus its pinned hashes is
+# the reproducible record. Run that script after cloning, or `composer install` once Composer's
+# dist URLs are reachable — see the script's header for why they currently are not.
+/api/tools/bin/*.phar
+/api/tools/bin/*.download
 
 # ── Node / Angular ─────────────────────────────────────────────────────────────
 node_modules/

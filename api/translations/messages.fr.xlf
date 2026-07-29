@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- French. France is a first-wave jurisdiction, so this catalogue is shipped, not a placeholder. -->
+<xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
+  <file source-language="en" target-language="fr" datatype="plaintext" original="twes-in">
+    <body>
+      <trans-unit id="1" resname="error.validation_failed">
+        <source>error.validation_failed</source>
+        <target>Les données envoyées ne sont pas valides.</target>
+      </trans-unit>
+      <trans-unit id="2" resname="error.not_found">
+        <source>error.not_found</source>
+        <target>La ressource demandée n'existe pas.</target>
+      </trans-unit>
+      <trans-unit id="3" resname="error.tenant_required">
+        <source>error.tenant_required</source>
+        <target>Cette requête n'est associée à aucune société.</target>
+      </trans-unit>
+      <trans-unit id="4" resname="error.internal">
+        <source>error.internal</source>
+        <target>Une erreur interne est survenue.</target>
+      </trans-unit>
+      <trans-unit id="5" resname="money.amount_not_representable">
+        <source>money.amount_not_representable</source>
+        <target>Le montant {amount} ne peut pas être exprimé exactement en {currency}.</target>
+      </trans-unit>
+      <trans-unit id="6" resname="money.currency_unknown">
+        <source>money.currency_unknown</source>
+        <target>La devise {code} n'est pas prise en charge.</target>
+      </trans-unit>
+      <trans-unit id="7" resname="money.currency_mismatch">
+        <source>money.currency_mismatch</source>
+        <target>Des montants en {left} et en {right} ne peuvent pas être combinés sans taux de change.</target>
+      </trans-unit>
+      <trans-unit id="8" resname="pricing.rate_too_precise">
+        <source>pricing.rate_too_precise</source>
+        <target>Le taux {rate} comporte trop de décimales pour être enregistré.</target>
+      </trans-unit>
+      <trans-unit id="9" resname="pricing.profit_rate_undefined">
+        <source>pricing.profit_rate_undefined</source>
+        <target>Le taux de marge est indéfini lorsque le coût est nul.</target>
+      </trans-unit>
+    </body>
+  </file>
+</xliff>

@@ -1,0 +1,97 @@
+{
+    "name": "tmessaoudi-official/twes-in-api",
+    "description": "twes-in REST API — invoicing and billing. Clean-room reimplementation, no upstream code.",
+    "type": "project",
+    "license": "AGPL-3.0-or-later",
+    "authors": [
+        {
+            "name": "Takieddine MESSAOUDI",
+            "email": "takieddine.messaoudi.official@gmail.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ext-bcmath": "*",
+        "ext-ctype": "*",
+        "ext-iconv": "*",
+        "ext-mbstring": "*",
+        "ext-pdo": "*",
+        "ext-simplexml": "*",
+        "doctrine/dbal": "^4.4",
+        "doctrine/doctrine-bundle": "^3.3",
+        "doctrine/doctrine-migrations-bundle": "^4.0",
+        "doctrine/orm": "^3.6",
+        "symfony/console": "8.1.*",
+        "symfony/dotenv": "8.1.*",
+        "symfony/framework-bundle": "8.1.*",
+        "symfony/runtime": "8.1.*",
+        "symfony/translation": "8.1.*",
+        "symfony/uid": "8.1.*",
+        "symfony/yaml": "8.1.*"
+    },
+    "require-dev": {
+        "deptrac/deptrac": "^4.7",
+        "friendsofphp/php-cs-fixer": "^3.90",
+        "phpstan/phpstan": "^2.2",
+        "phpunit/phpunit": "^12.5",
+        "symfony/browser-kit": "8.1.*",
+        "symfony/css-selector": "8.1.*",
+        "symfony/process": "8.1.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Twes\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Twes\\Tests\\": "tests/",
+            "Twes\\Tools\\PHPStan\\": "tools/phpstan/src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "symfony/runtime": true
+        },
+        "platform": {
+            "php": "8.5.8"
+        },
+        "sort-packages": true
+    },
+    "scripts": {
+        "gate": [
+            "@gate:licences",
+            "@gate:architecture",
+            "@gate:static",
+            "@gate:style",
+            "@gate:mapping",
+            "@gate:test"
+        ],
+        "gate:architecture": [
+            "bash ../scripts/gates/no-orm-attributes-in-domain.sh",
+            "@php ../scripts/gates/layer-dependencies.php",
+            "@php ../scripts/gates/no-ambient-calls-in-domain.php",
+            "bash ../scripts/gates/spdx-headers.sh",
+            "@php ../scripts/gates/locale-key-parity.php"
+        ],
+        "gate:licences": "@php ../scripts/gates/dependency-licences.php",
+        "gate:mapping": [
+            "bin/console lint:container",
+            "bin/console doctrine:schema:validate --skip-sync"
+        ],
+        "gate:static": "vendor/bin/phpstan analyse --no-progress",
+        "gate:style": "vendor/bin/php-cs-fixer check --diff",
+        "gate:test": "vendor/bin/phpunit"
+    },
+    "scripts-descriptions": {
+        "gate": "Run the API tier's full quality gate. Green means every step, not most of them.",
+        "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies.",
+        "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md).",
+        "gate:mapping": "Validate the service container and the Doctrine mapping without touching a database.",
+        "gate:static": "PHPStan at max level, including the banned-ambient-function rule for Domain/.",
+        "gate:style": "Check coding style without modifying files.",
+        "gate:test": "Run every PHPUnit suite: unit, integration, functional, e2e."
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

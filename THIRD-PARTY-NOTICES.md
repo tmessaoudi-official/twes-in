@@ -46,10 +46,49 @@ shortcut for the hard domain problems (Factur-X, UBL, Peppol, XAdES, HTML→PDF)
 
 ## PHP / Symfony (API)
 
-_No dependencies yet — the API is not scaffolded._
+Locked in `api/composer.lock` as of Wave 0, 2026-07-29. **Not yet installed** — GitHub egress in the
+development container is restricted to this repository, so Composer cannot fetch dist archives
+(`CLAUDE.md` § Gotchas). The lock is committed and fully pinned, so `composer install` on a network that
+can reach them needs no other change.
+
+The full locked tree is **52 runtime + 54 dev packages**, distributed **MIT ×82, BSD-3-Clause ×23,
+Apache-2.0 ×1** — every one permissive. That is not a claim from inspection: it is checked on every gate
+run by `scripts/gates/dependency-licences.php`, which reads the lock and fails on anything outside the
+allowlist. Direct requirements:
 
 | Package | Version | Licence | Purpose | Verified |
 |---|---|---|---|---|
+| `symfony/framework-bundle` | v8.1.2 | MIT | the framework | composer.lock |
+| `symfony/console` | v8.1.2 | MIT | CLI commands | composer.lock |
+| `symfony/runtime` | v8.1.0 | MIT | front-controller bootstrap | composer.lock |
+| `symfony/dotenv` | v8.1.2 | MIT | environment loading | composer.lock |
+| `symfony/yaml` | v8.1.2 | MIT | configuration | composer.lock |
+| `symfony/translation` | v8.1.1 | MIT | i18n — FR/AR/EN catalogues | composer.lock |
+| `symfony/uid` | v8.1.0 | MIT | UUIDv7 (adapter written by hand meanwhile — see below) | composer.lock |
+| `doctrine/orm` | 3.6.7 | MIT | persistence, mapped in XML not attributes | composer.lock |
+| `doctrine/dbal` | 4.4.4 | MIT | database abstraction | composer.lock |
+| `doctrine/doctrine-bundle` | 3.3.1 | MIT | Symfony integration — **3.x is the first line supporting Symfony 8** | composer.lock |
+| `doctrine/doctrine-migrations-bundle` | 4.0.0 | MIT | schema migrations, incl. the RLS policies | composer.lock |
+| `phpunit/phpunit` | 12.5.33 | BSD-3-Clause | all four test suites | composer.lock |
+| `friendsofphp/php-cs-fixer` | v3.95.17 | MIT | style gate | composer.lock |
+| `phpstan/phpstan` | 2.2.6 | MIT | static analysis (owed — cannot install) | composer.lock |
+| `deptrac/deptrac` | 4.7.1 | MIT | layer fitness (owed — cannot install). **`qossmic/deptrac` is ABANDONED** in favour of this package | composer.lock + packagist `abandoned` field |
+| `symfony/browser-kit` · `css-selector` · `process` | v8.1.x | MIT | functional and e2e suites | composer.lock |
+
+**PHP extensions, not packages, so they carry no notice obligation but are hard requirements:**
+`bcmath` (the domain's exact decimal arithmetic — see `CLAUDE.md` § "Architecture" for why this replaced
+a decimal *library*), `pdo_pgsql`, `mbstring`, `intl`, `simplexml`, `ctype`, `iconv`.
+
+**Two tools are fetched as vendor-official phars rather than via Composer**, because Composer's dist URLs
+are blocked and these two publish from their own domains: PHPUnit from `phar.phpunit.de` and php-cs-fixer
+from `cs.symfony.com`. `scripts/dev/fetch-tools.sh` verifies both against pinned SHA-256 hashes — an
+unverified phar is arbitrary code from the network, which this project's licensing position cannot
+tolerate. Same licences as the table above; the phars are not committed.
+
+**One dependency deliberately NOT taken:** `brick/math` (MIT, and a fine library). `Money` uses `bcmath`
+instead, which keeps `Domain/` at literally zero Composer dependencies — enforced by
+`scripts/gates/layer-dependencies.php` with an empty allowlist. Recorded here because "we considered it
+and chose not to" is more useful to a future reader than silence.
 
 **This file is the SSOT for anticipated dependencies.** `CLAUDE.md` invariant 6 and
 `docs/plans/reimplementation-strategy.plan.md` also name candidate libraries; where they differ, this
