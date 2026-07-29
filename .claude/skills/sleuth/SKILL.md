@@ -25,9 +25,9 @@ disallowed-tools: AskUserQuestion
   2. NO `advisor()` HERE — the tool does not exist in this environment. Independent certification =
      fresh-context read-only reviewer subagents, run as the three twes-in lenses
      (`domain-correctness-reviewer`, `tenancy-security-reviewer`, `completeness-reviewer` — see
-     `/converge`). `.claude/agents/` exists but is EMPTY on 2026-07-29, so those names are lens
-     briefs you spawn with, not files you can read. Self-grading is the last resort and MUST be
-     disclosed as self-graded.
+     `/converge`). All three are REAL agent definitions in `.claude/agents/` — spawn them by name
+     via the Agent tool rather than re-describing their charter inline, so each lens's attack surface
+     stays in one place. Self-grading is the last resort and MUST be disclosed as self-graded.
   3. REPORTS GO TO `var/claude/…` in the repo — gitignored via `/var`, survives
      compaction inside the session, never committed. NOT `~/.claude/projects/…`: that is wiped when
      the container is reclaimed, so a report written there is lost. Never `git add` a report regardless
@@ -37,16 +37,18 @@ disallowed-tools: AskUserQuestion
   5. ≤5 concurrent subagents (10 caused ~50% rate-limit failures upstream). Every pipeline agent
      writes its raw output to `var/claude/<stage>/raw/` BEFORE returning — autocompact fires at 80%
      here and in-conversation results do not survive it.
-  6. PROJECT RULES WIN on any conflict: `/home/user/twes-in/CLAUDE.md` — the deploy gate, the
-     certification ladder, the git-autonomy override, and the in-repo plan home
-     (`docs/plans/<topic>.plan.md`, each plan carrying its own `## Decisions Log`). Honest note:
-     that CLAUDE.md does NOT exist yet (2026-07-29). Until it lands, these deltas plus the repo
-     conventions ARE the rules — never cite a CLAUDE.md section as if you had read it.
+  6. PROJECT RULES WIN on any conflict: `/home/user/twes-in/CLAUDE.md`. It EXISTS and is
+     authoritative — READ IT. It carries the licensing invariants, the certification ladder, the
+     git-autonomy override, the architecture rules (hexagonal, framework-free `Domain/`), the quality
+     gate, and the in-repo plan home (`docs/plans/<topic>.plan.md`, each plan carrying its own
+     `## Decisions Log`). On any conflict with a delta above, CLAUDE.md wins.
   7. THREE TOOLCHAINS, NONE OF THEM BUILT YET. twes-in is a Symfony (PHP) REST API + an Angular
      admin front end + a Flutter mobile/desktop app, over Postgres, with Docker Compose for local
-     dev. On 2026-07-29 the repo holds only `.claude/`, `scripts/claude-bootstrap/` and an empty
-     `docs/plans/` — there is no `src/` tree of any kind. So: never hardcode a build, test or lint
-     command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
+     dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
+     `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
+     two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
+     application code), `.claude/` and `scripts/claude-bootstrap/`. So: never hardcode a build, test
+     or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
      for the app — verify, do not assume). When the stack a step needs is absent, say so and skip
@@ -151,9 +153,10 @@ git -C "$TARGET" log --oneline -5 2>/dev/null || true
 
 Summarize: tech stack, project type, primary language(s), and **which of the three stacks are present**
 (Symfony API / Angular admin / Flutter app). Pass as `PROJECT_CONTEXT` to each agent. If none of them is
-present yet — the state on 2026-07-29, where the repo holds only `.claude/`, `scripts/claude-bootstrap/`
-and an empty `docs/plans/` — say so plainly, run the agents over what does exist (shell hooks, skill
-definitions, config), and do not invent findings about application code that has not been written.
+present yet — the state on 2026-07-29 — say so plainly, run the agents over what does exist (shell
+hooks, skill and agent definitions, config, and the two plan files under `docs/plans/`, which carry
+every ruling in the project), and do not invent findings about application code that has not been
+written.
 
 ## Step 2: Spawn Investigation Agents
 

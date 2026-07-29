@@ -51,10 +51,22 @@ _No dependencies yet — the API is not scaffolded._
 | Package | Version | Licence | Purpose | Verified |
 |---|---|---|---|---|
 
-Anticipated, licences to be confirmed at the moment each is added: `symfony/*` (MIT),
-`doctrine/orm` (MIT), `horstoeko/zugferd` (Factur-X/ZUGFeRD), `setasign/fpdi` (PDF assembly),
-a headless-Chrome or Gotenberg renderer, and the payment-gateway SDKs. **Do not treat the
-parenthesised guesses as verified** — check the package's own `LICENSE` and record it.
+**This file is the SSOT for anticipated dependencies.** `CLAUDE.md` invariant 6 and
+`docs/plans/reimplementation-strategy.plan.md` also name candidate libraries; where they differ, this
+list governs, and neither of them is a licence record.
+
+Anticipated, licences to be confirmed **at the moment each is added**: `symfony/*` (MIT),
+`doctrine/orm` (MIT), `horstoeko/zugferd` (Factur-X/ZUGFeRD), `josemmo/facturae-php` (FacturaE),
+`invoiceninja/ubl_invoice` (UBL/EN 16931 models), `setasign/fpdi` (PDF assembly), a headless-Chrome or
+Gotenberg renderer, and the payment-gateway SDKs. **Do not treat the parenthesised guesses as
+verified** — check the package's own `LICENSE` and record it here.
+
+One note on `invoiceninja/ubl_invoice`, since it is published by the upstream vendor: it is
+**MIT** [Verified: packagist `p2/invoiceninja/ubl_invoice.json` → licences reduce to `["MIT"]`], so it is
+permitted, and **who authored a package has no bearing on its licence.** Depending on an MIT library
+that Invoice Ninja happens to maintain is not "using upstream code" in the sense invariant 1 forbids —
+that invariant is about their ELv2 application source, not about independently-licensed packages they
+also publish. Record it like any other dependency and move on.
 
 ## TypeScript / Angular (admin)
 

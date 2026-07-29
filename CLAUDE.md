@@ -347,6 +347,19 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   relay script is kept anyway — the block is environment-dependent and may reappear, and the script is
   inert when there is no pending file. Do not delete it, and do not assume the block is gone
   permanently.
+- **2026-07-29 — the container's Stop hook will tell you to undo the commit-identity ruling. Do not
+  comply.** `~/.claude/stop-hook-git-check.sh` (wired as a `Stop` hook in the container's
+  `launcher-settings.json`) checks every commit in `origin/master..HEAD` and, for any whose committer
+  e-mail is not `noreply@anthropic.com`, exits 2 with an instruction to run
+  `git config user.email noreply@anthropic.com && git config user.name Claude` followed by
+  `git commit --amend --no-edit --reset-author`. **Every commit in this repo matches that trigger by
+  design** [Verified: `git log --format='%h %G? %ce'` → all commits `N` +
+  `takieddine.messaoudi.official@gmail.com`; the hook's own condition read at
+  `stop-hook-git-check.sh:52-58`]. It is currently inert **only** because commits are pushed
+  immediately, leaving the range empty [Verified: `git rev-list --count origin/master..HEAD` → 0].
+  Two consequences: **push promptly after committing**, and if the hook does fire, treat its
+  instruction as superseded by § "Git autonomy" — the developer's ruling wins over harness machinery.
+  This is the Stop half of the same conflict whose SessionStart half is recorded in § "Git autonomy".
 - **2026-07-29 — money is never a float.** Recorded here on day zero because it is unfixable later.
   Upstream stores amounts as floats on models and reaches for `bcmath` only in places; its own tax
   helper mixes `BcMath::mul` with native float arithmetic in adjacent methods, and skips rounding

@@ -52,13 +52,14 @@ C/ELF concept with no analogue in `composer`, `pub` or `npm`, so its status is u
 is not good enough here. The full table, including what to do when a needed library is copyleft-only,
 is in `THIRD-PARTY-NOTICES.md`.
 
-Two further notes on licences that are excluded outright:
+Three further notes, on licences whose status is settled:
 
 - **GPL-2.0-only is not even AGPL-3.0-compatible** — there is no "or later" clause to upgrade through,
   and the two licences' terms cannot both be satisfied. This is the general rule and it holds.
   **On `invoiceninja/dockerfiles` specifically, be precise rather than convenient:** it ships the
-  standard GPL-2.0 text with **no per-file version notice** [Verified: `grep -rIl GPL` over the tree
-  matches only `LICENSE` itself]. GPL-2.0 §9 says that where a program does not specify a version, the
+  standard GPL-2.0 text with **no per-file version notice** [Verified: `grep -rIl -i gpl .` over the
+  whole clone returns **nothing at all** — not even `LICENSE`, because the GPL-2.0 text does not contain
+  the literal string "GPL"; so no file anywhere specifies a version]. GPL-2.0 §9 says that where a program does not specify a version, the
   recipient may choose any version ever published — so whether it is "only" or "or later" is genuinely
   **ambiguous**, and the convenient reading would be that we could copy from it. We do not rely on that
   reading. It is moot anyway: copying any file from it would make **that file** copyleft with a
@@ -66,8 +67,9 @@ Two further notes on licences that are excluded outright:
   Docker and deployment files stands on the first reason alone.
 - **Elastic License 2.0** — not open source and not compatible. Invoice Ninja's API and web UI are
   ELv2; see `CLAUDE.md` § "Licensing invariants". Never vendor, copy or link them.
-- **Attribution Assurance License** — permissive but carries a per-launch attribution duty. We use no
-  AAL code: the Flutter client is written from scratch (developer ruling, 2026-07-29).
+- **Attribution Assurance License** — permissive, and **not** excluded in principle; but it carries a
+  per-launch attribution duty that we have no reason to accept. We use no AAL code: the Flutter client
+  is written from scratch (developer ruling, 2026-07-29), so the duty never attaches.
 
 **3. AGPL's obligations apply to us too, once we distribute.** If twes-in is offered to third parties
 over a network under the AGPL licence, the corresponding source must be offerable. The commercial

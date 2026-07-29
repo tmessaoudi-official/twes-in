@@ -165,7 +165,7 @@ What actually applies here:
 - Structured implementation plan: files to modify (exact paths), ordered steps, acceptance criteria
 - Risk mitigation and rollback procedure
 - Apply the plan gate from the Task Categorization Protocol (**state and proceed** — see the table; the upstream wait/hard-stop is removed for twes-in)
-- **Subagents**: emit the plan as plaintext in the conversation *before* Phase 5 so the parent can relay it. Never start Phase 5 inside a subagent until the parent confirms the user approved.
+- **Subagents**: emit the plan as plaintext in the conversation *before* Phase 5 so the parent can relay it. (Upstream additionally blocked Phase 5 inside a subagent "until the parent confirms the user approved" — that gate is **removed here**, consistent with the line above: there is no approval step left to wait on. Announce and proceed.)
 - **Scaled restatement gate (mandatory at all sizes)**: Before Phase 5, confirm shared understanding — format scales to risk:
     - **Small**: implicit — "state what + where in one sentence" already satisfies this; no stop needed.
     - **Medium**: one line at the top of the plan: *"My understanding: [goal in one sentence]."* Then build — no wait. The restatement is there so a misread is visible in the transcript and cheap to correct mid-flight, not to gate the work.
@@ -264,7 +264,7 @@ Provide verification instructions scaled to task size:
 
 "Public interface" means anything a human or agent would use or depend on: CLI flags, public functions, env vars, slash commands, hook behavior, agent routing rules, documented workflows.
 
-**Visual evidence (conditional — extends the Coverage dimension).** For any change with a **rendered/visual surface** — UI, canvas, a rendered document/page, a styled component, anything a user looks at — passing tests are NOT sufficient Coverage evidence on their own. You MUST capture and present a **before AND after screenshot** of the *actual rendered result*. Headless/jsdom assertions prove logic, not appearance — a feature can pass every assertion and still render broken (wrong layout, invisible element, CSS regression). To produce the evidence: run the real app (e.g. the dev server with the relevant `VITE_FEATURE_*` / build flag enabled) or drive a real browser (Playwright / Claude-in-Chrome), reproduce the change, and screenshot both states. **Non-visual changes are exempt** (bash, infra, libraries, APIs, pure logic) — state *"no visual surface"* in one line. This is a sub-clause of Coverage, not a fifth always-on dimension; when it applies, green tests without screenshots are an incomplete gate.
+**Visual evidence (conditional — extends the Coverage dimension).** For any change with a **rendered/visual surface** — UI, canvas, a rendered document/page, a styled component, anything a user looks at — passing tests are NOT sufficient Coverage evidence on their own. You MUST capture and present a **before AND after screenshot** of the *actual rendered result*. Headless/jsdom assertions prove logic, not appearance — a feature can pass every assertion and still render broken (wrong layout, invisible element, CSS regression). To produce the evidence: run the real app (`ng serve` for the Angular admin, `flutter run` with any `--dart-define` flag, or the API's dev server for a generated PDF) or drive a real browser (Playwright / Claude-in-Chrome), reproduce the change, and screenshot both states. **Non-visual changes are exempt** (bash, infra, libraries, APIs, pure logic) — state *"no visual surface"* in one line. This is a sub-clause of Coverage, not a fifth always-on dimension; when it applies, green tests without screenshots are an incomplete gate.
 
 > **twes-in container amendment — CAPTURED IS NOT DELIVERED.** The upstream wording has a hole here.
 > `/qa-shots/` is **gitignored** and the container is **reclaimed** — so a screenshot written to disk
@@ -365,7 +365,7 @@ not count. Required evidence: measured timing, captured log output, stack trace,
    **Confidence requirement**: the root cause must reach [Verified] grade (Rule 18 — evidence grade) — directly confirmed with measured, observed, reproducible evidence — before implementing any fix. "It should work" or "probably X" is [Inferred] at best; that is not sufficient for a fix. If investigation is
 blocked (no reproducer, no access, no tooling), say so explicitly and stop rather than patching around the unknown. See Rule 18 (evidence grade) for the evidence-grade format applied to all substantive outputs beyond fixes.
 
-15. **Loop is mandatory for iterative work.** When a task involves polling external state, waiting for a condition, recurring checks, background monitoring, or any "keep doing X" signal — invoke the `loop` skill before proceeding. Never handle iteration inline when `loop` applies. This is non-negotiable.
+15. **Iterative work needs an explicit mechanism — but there is no `loop` skill here.** Upstream made invoking a `loop` skill "non-negotiable"; that skill exists in neither `.claude/skills/` nor `~/.claude/skills/` [Verified: `ls .claude/skills | grep -c loop` → 0; no `*loop*` under `~/.claude/skills/`], and a mandate pointing at absent machinery is worse than none. What applies instead, when a task involves polling external state, waiting on a condition, recurring checks or any "keep doing X" signal: use the harness's own facilities — a background `Bash` command that exits when the condition is met (one notification), or `Monitor` for per-occurrence events — and never a foreground `sleep` poll. If the host does provide a `/loop` command in a given session, prefer it.
 Trigger words that signal `loop` is needed: *"keep doing"*, *"monitor"*, *"every X minutes/seconds"*, *"until it"*, *"poll for"*, *"watch for"*, *"check repeatedly"*, *"keep trying"*, *"continuously"*, *"recurring"*.
 
 16. **Phase tracking is mandatory — no silent transitions.** Every task (not a pure information answer) must make phase progression visible and verifiable:
@@ -394,7 +394,7 @@ Trigger words that signal `loop` is needed: *"keep doing"*, *"monitor"*, *"every
 
    **Plan location — SETTLED for twes-in, no sentinel and no question**: `repo`. Plans live at `docs/plans/<topic>.plan.md`, each carrying its own `## Decisions Log` — because the container is reclaimed and only committed state survives. The `~/.claude/projects/<slug>/plan-location` sentinel described upstream does not exist here and must not be created; an out-of-repo plan file is explicitly NOT the record of truth. There is no separate roadmap SSOT or decision register in this repo: the plan file is the plan, and anything ruled that outlives it graduates into a `CLAUDE.md` § Gotchas entry.
 
-   **Naming**: Derive `<topic>` from the task description at Phase 0/1. Announce the plan location early: *"Plan file: `<path>/<topic>.plan.md`"* where `<path>` is `docs/plans/` (repo) or `~/.claude/projects/<slug>/plans/` (global).
+   **Naming**: Derive `<topic>` from the task description at Phase 0/1. Announce the plan location early: *"Plan file: `docs/plans/<topic>.plan.md`"*. That is the only valid location here — the out-of-repo `~/.claude/projects/<slug>/plans/` option upstream offered is forbidden, per the paragraph above.
 
    **Lifecycle — non-negotiable:**
 
@@ -460,8 +460,7 @@ state survives the container.
 
 *Full pre-flight blast-radius checks and state-sensitive context gates: `~/.claude/BLAST-RADIUS.md`*
 
-Commands in the `deny` list **must never be run by Claude** — present them for manual execution only.
-Commands in the `ask` list are prompted — Claude must propose backup + rollback before asking for confirmation.
+**Neither tier exists in this container.** `.claude/settings.json` has `defaultMode`, `allow` and `deny: []` — no `ask` key, and nothing in `deny` [Verified: `jq '.permissions|keys'` → `["allow","defaultMode","deny"]`]. That is deliberate (project CLAUDE.md § "Git autonomy": a denied command is an unrecoverable dead end in a cloud session), so **nothing mechanically stops a destructive command — the discipline below IS the control.** Where upstream said "commands in the `deny` list must never be run", read: the classes of command enumerated below must never be run, and must be presented for manual execution instead. Where it said "commands in the `ask` list are prompted", read: propose backup + rollback and ask in plain text *yourself*, because no prompt will appear.
 
 **Before executing an ask-tier command OR presenting a deny-tier command, always emit:**
 
@@ -488,7 +487,7 @@ Commands in the `ask` list are prompted — Claude must propose backup + rollbac
 - **Structured** — tables/bullets for comparisons, clear organization
 - **Framework-aware** — name mental models briefly when applying them
 - **Status markers** — every design discussion must close with an explicit status line. No exceptions:
-    - Discussion only, no code written: `STATUS: Designed — not yet implemented. Say go to build.`
+    - Discussion only, no code written: `STATUS: Designed — not yet implemented.` (Upstream appended *"Say go to build."*; that is removed — a bare "say go" is exactly what "Presenting options and decisions" forbids. If a choice remains, enumerate it per `ask-human`; if none does, just build it.)
     - Code committed to git: `STATUS: Committed — <short-sha>`
     Never let a design session end without one of these. The user should never have to ask "did we implement that?"
 - **Evidence grade** — see Rule 18 (evidence grade): every plan step, decision, option, or factual claim the user might act on must carry an explicit grade (Verified / Inferred / Unverified / Speculative) with its evidence basis stated inline.
@@ -513,10 +512,10 @@ When asking the user to choose between approaches or giving options:
 description of intent, not a literal output script. The plain-text question protocol applies without exception — and note the inversion versus upstream: here, plain text IS the required form, not the thing to be replaced.
 
 **Execution mode recommendation**: When presenting subagent-driven vs inline execution options, recommend based on the specific plan — never copy a skill's hardcoded "(recommended)" label:
-- Recommend **Subagent-Driven** when: 6+ independent tasks, no classifier-blocked files involved (CLAUDE.md, settings.json are HARD BLOCKs for subagents too)
+- Recommend **Subagent-Driven** when: 6+ independent tasks, no classifier-blocked files involved (upstream listed CLAUDE.md and settings.json as HARD BLOCKs; **neither is blocked in this container** — both were written directly, see CLAUDE.md § Gotchas — so treat this as a caution to re-test, not a standing fact)
 - Recommend **Inline** when: ≤5 tasks, tightly sequential steps, edits target classifier-blocked files, or no parallelism benefit
 
 ## Global Skills Reference
 
-**Skills here are REPO-NATIVE** under `.claude/skills/` — read in place, nothing installed, no `~/.claude/refs/SKILLS.md` and no `~/.claude/skills/`. **`ls .claude/skills/` is the authoritative list** — never restate a count in prose, it drifts. As built: `/ask-human` (the plain-text question protocol), `/converge` (the certification ladder, mechanised), `/sweep` (Phase 6 diff review), `/expanding-context` (Phase 1/3C widening), `/sleuth` (behavioural bug hunt + output-path-divergence lens K), `/inspect` (10-lens health), `/gaps` (incompleteness), `/forge` (adversarial design critic), `/aggregate-findings` (cross-stage dedup), `/pre-commit` (evidence table), `/handoff`, `/retrospective`. Anything else named in this framework (`/mega-analysis`, `/audit`, `/bootstrap`, `/templatize`, `/memory-*`, `/adapt-project`, `/skill-audit`, `/recent`, `/expand`, `/cross-check`, `/qa-sweep`, `/validate-infra`, `/loop` as a global) is **NOT installed here** — `/loop` is provided by the host instead.
+**This project's skills are REPO-NATIVE** under `.claude/skills/` — read in place, nothing installed, and there is no `~/.claude/refs/SKILLS.md`. **`ls .claude/skills/` is the authoritative list of THIS PROJECT's skills** — never restate a count in prose, it drifts. Note that `~/.claude/skills/` is **not** empty: the host installs its own set there [Verified: `ls ~/.claude/skills | wc -l` → 40], so the full set available in a session is the union of both, and the host's may change without notice. Never assume a host skill exists without checking, and never assume the repo set is everything. As built: `/ask-human` (the plain-text question protocol), `/converge` (the certification ladder, mechanised), `/sweep` (Phase 6 diff review), `/expanding-context` (Phase 1/3C widening), `/sleuth` (behavioural bug hunt + output-path-divergence lens K), `/inspect` (10-lens health), `/gaps` (incompleteness), `/forge` (adversarial design critic), `/aggregate-findings` (cross-stage dedup), `/pre-commit` (evidence table), `/handoff`, `/retrospective`. Anything else named in this framework (`/mega-analysis`, `/audit`, `/bootstrap`, `/templatize`, `/memory-*`, `/adapt-project`, `/skill-audit`, `/recent`, `/expand`, `/cross-check`, `/qa-sweep`, `/validate-infra`, `/loop` as a global) is **NOT installed here** — `/loop` is provided by the host instead.
 

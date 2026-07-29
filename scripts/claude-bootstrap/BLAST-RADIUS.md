@@ -38,7 +38,7 @@ pgrep -a pattern      # verify matches before pkill -f pattern
 
 ### Protected paths — never auto-delete / never bundle
 
-> **twes-in container note (2026-07-27):** none of the machinery in this section exists here —
+> **twes-in container note (2026-07-29):** none of the machinery in this section exists here —
 > there is no `~/.claude/state/`, no `~/.claude/hooks/`, no bash firewall, and **no `deny` or `ask`
 > tier at all** (the settings are allow-list only, by the developer's ruling: in a cloud session a
 > `deny` rule is an unrecoverable dead end, because there is no terminal in which to run the command
@@ -60,13 +60,16 @@ pgrep -a pattern      # verify matches before pkill -f pattern
 >    genuinely irreversible actions are the outward-facing ones (force-push, `npm publish`, a deploy).
 >    Weight your caution accordingly: be relaxed about local state, strict about anything that leaves.
 
-`~/.claude/state/` and `~/.claude/projects/<slug>/state/` hold **persistent safety sentinels**: the
-bypass toggles (`ask-human-gate-bypass`, `ask-bash-firewall-bypass`, `ask-human-question-guard-bypass`)
-and the persistent `autonomous-3c-bypass`. They are removed ONLY by deliberate user action — each
-create/delete is `ask`-gated in `settings.json` AND matched by the firewall `danger_patterns`
-substring. No cleanup/sweep may delete them (`claude-cleanup.sh` enforces a `*/state/*` guard in
-`_cc_act`/`_cc_act_dir`) and no bundle may ship them (the export pipeline never copies `state/` and
-asserts against leakage at build time).
+**None of that sentinel machinery exists here** — restating the banner above because this paragraph is
+where a reader would otherwise assume protection. Upstream, `~/.claude/state/` and
+`~/.claude/projects/<slug>/state/` held persistent safety sentinels (`ask-human-gate-bypass`,
+`ask-bash-firewall-bypass`, `ask-human-question-guard-bypass`, `autonomous-3c-bypass`), each
+`ask`-gated in `settings.json`, matched by a bash-firewall `danger_patterns` substring, and guarded
+against deletion by `claude-cleanup.sh`. In this container **none of those paths, tiers, hooks or
+scripts is present** [Verified: `ls ~/.claude/state ~/.claude/hooks` → both absent;
+`jq '.permissions|keys' .claude/settings.json` → `["allow","defaultMode","deny"]`, no `ask`]. There is
+therefore nothing to protect and nothing protecting you: **no bypass can be toggled, and no mechanism
+prevents a destructive command.** The discipline in this file is the only control.
 
 ---
 
@@ -151,14 +154,16 @@ asserts against leakage at build time).
 | `pip install --upgrade pkg` | Can break pinned transitive deps elsewhere in the env | Complex dependency graph |
 | `apt-get upgrade` | Can upgrade kernel, restart services, break running programs | Any non-throwaway system |
 
-### Config Artifact Updates — Manual Registries
+### Config Artifact Updates — NOT APPLICABLE HERE
 
-These registries are **not auto-synced** — adding a file or plugin does not update them. Missing entries cause silent omissions at bundle/install time. Check after every new command or plugin.
+Upstream this section listed manual registries to keep in step when adding a skill, plugin or bin
+script — `_CE_GENERIC_SKILLS` and `_CE_ORIGIN_ONLY_FILES` in
+`~/.claude/bin/lib/claude-export/config/defaults.sh`, a `plugins/marketplaces/local/` tree, and an
+`/audit` Agent I backstop to catch drift between them.
 
-| Trigger | Registry to update | File |
-|---------|--------------------|------|
-| New `~/.claude/skills/*/SKILL.md` created | `_CE_GENERIC_SKILLS` — add the entry | `~/.claude/bin/lib/claude-export/config/defaults.sh` |
-| New local plugin or skill created under `plugins/marketplaces/local/` | Review `_CE_EXCLUDES` scope — `"plugins/"` blocks the whole tree | Same file |
-| New `~/.claude/bin/` script created that should travel with a bundle | `_CE_GENERIC_SKILLS` or `_CE_ORIGIN_ONLY_FILES` depending on portability | Same file |
-
-**Automated backstop**: `/audit` Agent I surfaces drift between `defaults.sh` and `~/.claude/skills/`. Run after any sprint that creates skills or plugins — it is the canary that catches what manual review misses.
+**None of it exists here** [Verified: `ls ~/.claude/bin` → absent; `/audit` is listed as not installed
+in `CLAUDE-global.md` § "Global Skills Reference"]. There is no bundle-export pipeline and no registry
+to keep in sync: this project's skills and agents are read in place from `.claude/`, so adding one
+requires no registry entry at all. The only real coupling is that a **newly created** top-level
+`.claude/skills/` directory is not watched until the CLI restarts — see
+`scripts/claude-bootstrap/README.md` § "Known limits".

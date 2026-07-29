@@ -16,7 +16,7 @@ clones; figures are labelled accordingly.
 - [2026-07-29 09:00] AGREED: the four upstream repos are **studied, never forked into this tree**. Clones live at `/tmp/xxx/**` and `.gitignore` blocks `/reference/`, `/upstream/`, `/vendor-reference/`.
 - [2026-07-29 09:30] FOUND: the four repos carry **three different licences**, not one. `invoiceninja` (API) and `ui` (React) are **Elastic License 2.0**; `admin-portal` (Flutter) is the **Attribution Assurance License**; `dockerfiles` is **GPL-2.0**. [Verified: read all four LICENSE files directly.] Any plan that treats "Invoice Ninja's licence" as a single thing is wrong.
 - [2026-07-29 09:30] FOUND: ELv2 permits derivative works, modification and distribution. Its three limitations are (1) no providing the software to third parties **as a hosted or managed service** offering a substantial set of its features, (2) no circumventing licence-key functionality, (3) no removing licensing/copyright notices. It is source-available, **not** open source, and not OSI-approved.
-- [2026-07-29 09:35] FOUND: **2379 of 2441** PHP files in the API carry an explicit ELv2 copyright header, and **1540 of 1641** `.ts`/`.tsx` files in the web UI carry the equivalent. The reference is by URL (`@license https://www.elastic.co/licensing/elastic-license`), not by the literal string "Elastic License" — so a **naive** text search for the licence name finds 1 file, not 2379. [Verified: `grep -rIl "Elastic License" app/ | wc -l` → 1; `grep -rIl "elastic-license" app/ | wc -l` → 2379.] Whether a real scanner (ScanCode et al.) would miss it is **[Inferred: no scanner was run; mature scanners do match ELv2 by URL]** — the safe conclusion is only that the encumbrance is easy to under-count by hand.
+- [2026-07-29 09:35] FOUND: **2379 of 2441** PHP files in the API carry an explicit ELv2 copyright header, and roughly **1540 of 1641** `.ts`/`.tsx` files in the web UI carry the equivalent (the exact count moves with the glob used — 1541 counting from the repo root, 1539 restricted to `src/`; treat it as ~94%, not a precise figure). The reference is by URL (`@license https://www.elastic.co/licensing/elastic-license`), not by the literal string "Elastic License" — so a **naive** text search for the licence name finds 1 file, not 2379. [Verified: `grep -rIl "Elastic License" app/ | wc -l` → 1; `grep -rIl "elastic-license" app/ | wc -l` → 2379.] Whether a real scanner (ScanCode et al.) would miss it is **[Inferred: no scanner was run; mature scanners do match ELv2 by URL]** — the safe conclusion is only that the encumbrance is easy to under-count by hand.
 - [2026-07-29 09:40] AGREED: **clean-room reimplementation, not a port.** Translating PHP/Laravel into PHP/Symfony is a derivative work — a translation is not an independent creation. Build from the OpenAPI contract, the schema shape, and the public standards; never from upstream source. Recorded as an invariant in `CLAUDE.md` § "Licensing invariants".
 - [2026-07-29 09:40] NOTED (the useful paradox): the ~4% of the React app that is *technically* portable (interfaces, enums, constants) is precisely the part that carries per-file ELv2 headers, while the 96% that is React view code is the part we have no reason to copy. **The clean-room path is simultaneously the legally cleaner and the technically better one.** That alignment is why this decision is easy.
 - [2026-07-29 09:45] FOUND: upstream gates its own branding removal behind a paid white-label plan — `Account::FEATURE_WHITE_LABEL` / `FEATURE_REMOVE_CREATED_BY` → `isPaid()` controls whether the vendor logo appears on generated PDFs and emails. [Verified: read `app/Models/Account.php:246-307`, `app/Utils/Helpers.php:32-42`.] **That is the licence-key functionality ELv2 clause 2 protects.** A fork that strips it is a clear breach; a clean-room build never has it. This is the single sharpest argument against forking.
@@ -213,10 +213,16 @@ Realistic estimate for the *in* list: **18–30 person-months.** The two irreduc
 and tax arithmetic (small in LOC, large in edge cases, and where correctness is legally binding) and
 e-invoicing (large in LOC, but heavily assisted by framework-agnostic libraries).
 
-One genuinely free asset worth taking: the React repo's `tests/unit/` (8 files, 1,931 LOC) tests
-exactly the invoice-sum and rounding helpers. Those are *test cases* — expected inputs and outputs,
-i.e. behaviour, not expression — and reading them as a specification for your own tests gives you a
-verified oracle for the calculation logic. Write your own tests from the behaviour they describe.
+One asset worth *reading* — and the word "free" was wrong here, so it is corrected: the React repo's
+`tests/unit/` (8 files, 1,931 LOC) exercises exactly the invoice-sum and rounding helpers, so it
+describes the arithmetic edge cases someone already paid to discover. **But two of those eight files
+carry an explicit ELv2 copyright header** [Verified: `head -8` on each → `helpers.test.ts` and
+`helpers/invoice-number.test.ts` both contain `elastic-license`], so they are not "free" in any sense
+and calling them that resolved a licensing question conveniently — exactly what invariant 8 forbids, and
+the opposite of how the same argument was resolved for the i18n corpus two entries above. The usable
+part is the *behaviour* they describe: expected inputs and outputs are facts, not expression. **Read
+them as a specification, write your own tests, copy nothing** — including from the six unheadered
+files, since the repo-level ELv2 grant covers those too.
 
 ---
 

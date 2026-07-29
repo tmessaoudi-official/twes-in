@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Apply a pending .claude/settings.json change that Claude cannot write itself.
 #
-# WHY THIS EXISTS: Claude Code's safety classifier blocks Claude from writing `.claude/settings.json`
+# WHY THIS EXISTS: in some environments Claude Code's safety classifier blocks Claude from writing
+# `.claude/settings.json`. NOT IN THIS CONTAINER as of 2026-07-29 — the direct write succeeded and the
+# file is tracked (see CLAUDE.md § Gotchas), so this script is currently DORMANT and exits 0 with
+# "Nothing to apply". It is kept because the restriction is environment-dependent and may reappear.
 # (self-modification of its own permission surface). In a remote container the developer has no
 # terminal either, so the hand-over has to travel through the repo: Claude commits
 # `settings.json.pending`, the developer pulls, runs THIS script on their machine, and pushes the

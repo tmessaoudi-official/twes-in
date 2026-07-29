@@ -19,7 +19,7 @@ twes-in is **dual-licensed**:
 
 Copyright © Takieddine MESSAOUDI. Read **[LICENSING.md](LICENSING.md)** before adding a dependency or
 accepting a contribution — the dual licence imposes two rules that are easy to break by accident:
-**dependencies must be permissive** (MIT / Apache-2.0 / BSD / ISC — *not* merely "AGPL-compatible", since
+**dependencies must be permissive** (MIT / Apache-2.0 / BSD-2-Clause / BSD-3-Clause / ISC — *not* merely "AGPL-compatible", since
 a copyleft dependency would destroy the commercial branch), and **no outside contribution can be merged
 without a CLA**. Every dependency is recorded in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
@@ -41,7 +41,7 @@ copyrightable expression. The rules that keep it that way are in
 
 | Tier | Pinned |
 |---|---|
-| API | PHP **8.5.8**, Symfony **8.1** |
+| API | PHP **8.5.8**, Symfony **8.1.1** |
 | Admin | Angular **22.0.8**, Node **24.18.0 LTS** |
 | Client | Flutter **3.44.8**, Dart **3.12.2** — mobile now, native desktop planned |
 | Database | PostgreSQL **18.4** |
