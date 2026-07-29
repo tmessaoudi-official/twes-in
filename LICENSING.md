@@ -39,11 +39,22 @@ permissive grant (a CLA), or it cannot be included. There is no CLA yet because 
 contributors; **one is required before accepting the first external patch.** Merging a
 contribution without it silently forecloses the commercial licence for that file.
 
-**2. Every dependency must be AGPL-3.0-compatible.** Record each one in `THIRD-PARTY-NOTICES.md`
-with its licence *before* adding it. Notably:
+**2. Every dependency must be PERMISSIVE — not merely AGPL-compatible.** Record each one in
+`THIRD-PARTY-NOTICES.md` with its licence *before* adding it. The permitted set is **MIT, Apache-2.0,
+BSD-2/3-Clause, ISC** and nothing else.
 
-- **Apache-2.0, MIT, BSD, ISC** — compatible. These cover essentially every library this project needs.
-- **GPL-2.0-only is NOT compatible with AGPL-3.0** — there is no "or later" clause to upgrade through,
+The distinction matters and is easy to get wrong: a dependency must be conveyable under **both** of our
+branches. A GPL-3.0-or-later or AGPL-3.0 library is fine for the AGPL branch and **fatal to the
+commercial one** — we cannot relicense a third party's copyleft code to a customer who is buying an
+escape from source disclosure. The same reasoning that makes obligation 1 necessary for contributions
+makes this necessary for dependencies. `LGPL` is excluded too: its "dynamic linking" safe harbour is a
+C/ELF concept with no analogue in `composer`, `pub` or `npm`, so its status is unsettled, and unsettled
+is not good enough here. The full table, including what to do when a needed library is copyleft-only,
+is in `THIRD-PARTY-NOTICES.md`.
+
+Two further notes on licences that are excluded outright:
+
+- **GPL-2.0-only is not even AGPL-3.0-compatible** — there is no "or later" clause to upgrade through,
   and the two licences' terms cannot both be satisfied. This is the general rule and it holds.
   **On `invoiceninja/dockerfiles` specifically, be precise rather than convenient:** it ships the
   standard GPL-2.0 text with **no per-file version notice** [Verified: `grep -rIl GPL` over the tree
@@ -71,12 +82,19 @@ Source files carry an SPDX identifier rather than a licence header block:
 ```
 
 `SPDX-FileCopyrightText: Takieddine MESSAOUDI` accompanies it where a copyright line is wanted. A
-short identifier is machine-readable and does not rot the way a pasted paragraph does — and note that
-Invoice Ninja's own headers reference their licence **by URL**, which is precisely why text-matching
-licence scanners miss 2379 files' worth of ELv2 encumbrance. Ours must be scannable.
+short identifier is machine-readable and does not rot the way a pasted paragraph does. Invoice Ninja's
+own headers reference their licence **by URL** rather than by name, which makes their encumbrance easy
+to under-count by hand — a naive search for "Elastic License" across their `app/` finds 1 file, the URL
+finds 2379. [Inferred: no licence scanner was run here; mature scanners do match ELv2 by URL, so this is
+an argument about hand-checking, not about tooling.] Ours should be unambiguous either way.
 
 ## What this file is not
 
-Not legal advice. Two points genuinely warrant a lawyer before the first commercial licence is sold or
-the first outside contribution is accepted: the CLA's exact wording, and whether the intended hosting
-arrangement triggers AGPL §13 for us as well as for others.
+Not legal advice. Three points genuinely warrant a lawyer, in the order they are likely to bite:
+
+1. **The dual-licence dependency policy** — this is the one that bites *first*, because it is triggered
+   by an ordinary `composer require`. Whether a given copyleft or LGPL library actually forecloses the
+   commercial branch in our packaging model deserves a real opinion, not the conservative rule of thumb
+   used above. Until then the rule of thumb governs: permissive only.
+2. **The CLA's exact wording**, before accepting the first outside contribution.
+3. **Whether the intended hosting arrangement triggers AGPL §13 for us**, as well as for others.

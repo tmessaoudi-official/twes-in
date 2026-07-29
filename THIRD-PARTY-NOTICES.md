@@ -4,22 +4,41 @@ Every third-party dependency of twes-in, with its licence, recorded **before** i
 audited afterwards. This file is a deliverable, not a formality: twes-in is dual-licensed
 (`LICENSING.md`), and dual licensing fails the moment an incompatible dependency enters the tree.
 
-## The rule
+## The rule: PERMISSIVE DEPENDENCIES ONLY
 
-Before adding any dependency: establish its licence, confirm it is **AGPL-3.0-compatible**, and add a
-row here in the same change. A dependency with no row is a `completeness-reviewer` finding.
+Before adding any dependency: establish its licence, confirm it is **permissive**, and add a row here
+in the same change.
 
-**Compatible:** Apache-2.0, MIT, BSD-2/3-Clause, ISC, LGPL (via dynamic linking), GPL-3.0-or-later,
-AGPL-3.0.
+**Permitted:** **MIT · Apache-2.0 · BSD-2-Clause · BSD-3-Clause · ISC**. That is the whole list.
 
-**Incompatible — never add:**
+**The test is NOT "AGPL-compatible"** — and getting this wrong is how the commercial licence dies.
+twes-in is dual-licensed (`LICENSING.md`), so every dependency must be conveyable under **both**
+branches. A copyleft dependency satisfies the AGPL branch and **fails the commercial one**: we cannot
+relicense a third party's copyleft code to a customer who is specifically buying an escape from
+source-disclosure obligations. `LICENSING.md` states this principle for *contributions* — copyright
+must stay wholly owned — and it applies with equal force to *dependencies*.
+
+So the following are **excluded even though they are AGPL-compatible**:
+
+| Licence | Compatible with AGPL branch? | Why still excluded |
+|---|---|---|
+| **GPL-3.0-or-later** | Yes | Cannot be conveyed under the commercial branch. |
+| **AGPL-3.0** | Yes | Same. |
+| **LGPL** (any version) | Usually | The familiar "dynamic linking" safe harbour is a C/ELF concept. PHP `require`, Dart `pub` and npm have **no dynamic-linking boundary**, so whether importing an LGPL library forms a derivative is unsettled — and unsettled is not good enough for the commercial branch. Excluded until a lawyer says otherwise. |
+| **MPL-2.0** | Yes | File-level copyleft; the per-file reciprocity still binds a commercial licensee. Ask before considering. |
+
+**Never, under either branch:**
 
 | Licence | Why |
 |---|---|
-| **GPL-2.0-only** | No "or later" clause, so it cannot be upgraded to AGPL-3.0. Note on `invoiceninja/dockerfiles`: it carries GPL-2.0 text with no per-file version notice, so "only" vs "or later" is ambiguous under GPL-2.0 §9 — we do not rely on the convenient reading, and copying from it is excluded on the independent ground that the copied file becomes copyleft either way. See `LICENSING.md`. |
+| **GPL-2.0-only** | No "or later" clause, so not even AGPL-compatible. On `invoiceninja/dockerfiles`: it carries GPL-2.0 text with no per-file version notice, so "only" vs "or later" is ambiguous under GPL-2.0 §9 — we take the conservative reading, and copying is excluded anyway because the copied file becomes copyleft either way. See `LICENSING.md`. |
 | **Elastic License 2.0** | Not open source; forbids hosted-service provision. Invoice Ninja's API and web UI. |
 | **BUSL / SSPL / "source-available"** | Not open source; incompatible with AGPL redistribution. |
 | Anything unlicensed or licence-unclear | Absence of a licence means no grant at all. |
+
+If a genuinely necessary library is copyleft-only, that is an **`ask-human` decision**, not a judgement
+call: the options are find a permissive equivalent, isolate it behind a process boundary, or accept a
+documented limit on the commercial branch. Never resolve it silently.
 
 Note that **using the same library upstream uses is not copying upstream** — these packages have
 their own independent licences and no relationship to Invoice Ninja's. That is the legitimate

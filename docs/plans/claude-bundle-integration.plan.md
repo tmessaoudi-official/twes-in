@@ -28,7 +28,7 @@ a mechanical guarantee phorj lacks.
 - [2026-07-29 12:45] DONE: the six bootstrap commits were **retroactively re-authored** at the developer's explicit request, via `git filter-branch` (author + committer rewritten, both Claude trailers stripped from the messages) followed by one authorised `--force-with-lease` push. [Verified: `git diff --stat refs/original/refs/heads/master master` was **empty** — tree content byte-identical before and after, only metadata changed; `git log --format='%(trailers:only)' | grep -i claude` returns nothing.] Note the `--force-with-lease` first failed with `stale info` because `filter-branch` also rewrites `refs/remotes/origin/*`, making the lease compare against a rewritten tracking ref; fixed by `git fetch` then passing the real remote SHA as an explicit lease. **The force-push authorisation was for this fix only and does not generalise** — `CLAUDE.md` § "Git autonomy" still forbids it otherwise.
 - [2026-07-29 11:30] FOUND+FIXED: Rule 10 in the global framework carried a **direct contradiction with this container's harness** — it pinned the commit author to `Takieddine Messaoudi <takieddine.messaoudi.official@gmail.com>` and forbade a `Co-Authored-By` trailer outright, while the harness instructs the opposite. Both are imperative; both cannot be honoured silently. AGREED: recorded as an **OPEN RULING** in Rule 10 and in `CLAUDE.md` § "Git autonomy", following the harness default until the developer rules. The sibling repos' rule earned its place because their history has zero such trailers; this repo has no history to be consistent with yet, so there is nothing to preserve — which is what makes deferring it safe rather than lazy.
 - [2026-07-29 11:50] AGREED (developer, explicit): **`master` is the only branch.** Work is committed and pushed directly to it; no feature, topic or `claude/*` branches. This **overrides the harness prompt** that designated `claude/hello-3g42jj` for this session — the harness names a branch per session, and that instruction is superseded by this standing ruling. Recorded in `CLAUDE.md` § "Git autonomy" and § "Git & CI", and in global Rule 10, so a future session does not re-follow the harness default. The three bundle commits were moved to `master` unchanged (same SHAs, `master` created at the existing tip — no history rewritten) and the stray branch deleted. Matches the sibling repos, which are both single-branch (`master`) single-developer.
-- [2026-07-29 11:35] AGREED: the distinctive addition for this project is `CLAUDE.md` § **"Licensing invariants"** — eight numbered rules making the clean-room boundary a hard gate rather than an intention. The sibling repos have no analogue because neither is derived from someone else's source-available product. This is the one section that, if violated, changes what this repository legally *is*, so it lives in `CLAUDE.md` (where Claude must read it) and not in `docs/`.
+- [2026-07-29 11:35] AGREED: the distinctive addition for this project is `CLAUDE.md` § **"Licensing invariants"** — numbered rules making the clean-room boundary a hard gate rather than an intention (eight at the time of this entry; ten after the 12:40 licence and branding rulings — `grep -cE '^[0-9]+\. \*\*' CLAUDE.md's invariants section is the count, never a number written here). The sibling repos have no analogue because neither is derived from someone else's source-available product. This is the one section that, if violated, changes what this repository legally *is*, so it lives in `CLAUDE.md` (where Claude must read it) and not in `docs/`.
 
 ---
 
@@ -84,14 +84,18 @@ a mechanical guarantee phorj lacks.
 - **`.claude/settings.json` being writable is an observed property of this container**, not a
   guarantee. If a future session finds `Write` denied, the relay in
   `scripts/claude-bootstrap/apply-pending-settings.sh` is the documented path.
-- **The stray `claude/hello-3g42jj` branch still exists on the remote, and is still the repo's
-  default branch.** `master` is pushed and carries all the work; the local stray was deleted; the
-  remote delete was **refused**. [Verified: `git push origin --delete claude/hello-3g42jj` →
-  `HTTP 403 Forbidden` from the git relay; `git remote show origin` → `HEAD branch:
-  claude/hello-3g42jj`.] Two sufficient causes, and both may apply: GitHub refuses to delete a
-  repository's default branch, and the agent proxy's README documents a 403 as an organization
-  policy denial to be **reported, not worked around**. No MCP tool exposes changing the default
-  branch, so this needs the developer, in GitHub repo settings: set the default branch to `master`,
-  then delete `claude/hello-3g42jj`. Nothing is at risk in the meantime — the two branches point at
-  the same commits up to `49fbfe5` — but until the default is flipped, a fresh clone lands on the
-  stray branch and will be missing every commit after it.
+- **RESOLVED 2026-07-29 13:20 — the branch situation is clean; the earlier entry here was wrong.**
+  The remote now has **only** `master`, and `HEAD` resolves to it. [Verified: `git ls-remote` →
+  exactly two lines, `HEAD` and `refs/heads/master`, both `915cfc8`. No `claude/hello-3g42jj`.]
+  Nothing is required of the developer — an earlier version of this entry told them to flip the
+  default branch and delete the stray, and that instruction was **obsolete when written**.
+  **Why it was wrong, because the mechanism is worth knowing:** `git push origin --delete` did return
+  `HTTP 403`, but the branch is nonetheless gone server-side — so the 403 was not proof of failure.
+  What kept the branch *looking* alive locally was `refs/remotes/origin/claude/hello-3g42jj`, a stale
+  tracking ref that `filter-branch` had itself **rewritten** to `59a324a` — a commit that never
+  existed on the remote at all. `git branch -r` and `git remote show origin` both read from that
+  stale ref, so both lied. The lesson generalises: after a history rewrite, **never trust
+  `git branch -r` or `git remote show`** — only `git ls-remote`, which queries the server. The stale
+  ref and the three `refs/original/*` backups have been pruned.
+  The same superseded entry also cited `49fbfe5` as the shared tip; that is a **pre-rewrite** SHA and
+  is not an ancestor of `master`, so the "missing every commit after it" warning was doubly void.

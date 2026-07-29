@@ -16,7 +16,7 @@ clones; figures are labelled accordingly.
 - [2026-07-29 09:00] AGREED: the four upstream repos are **studied, never forked into this tree**. Clones live at `/tmp/xxx/**` and `.gitignore` blocks `/reference/`, `/upstream/`, `/vendor-reference/`.
 - [2026-07-29 09:30] FOUND: the four repos carry **three different licences**, not one. `invoiceninja` (API) and `ui` (React) are **Elastic License 2.0**; `admin-portal` (Flutter) is the **Attribution Assurance License**; `dockerfiles` is **GPL-2.0**. [Verified: read all four LICENSE files directly.] Any plan that treats "Invoice Ninja's licence" as a single thing is wrong.
 - [2026-07-29 09:30] FOUND: ELv2 permits derivative works, modification and distribution. Its three limitations are (1) no providing the software to third parties **as a hosted or managed service** offering a substantial set of its features, (2) no circumventing licence-key functionality, (3) no removing licensing/copyright notices. It is source-available, **not** open source, and not OSI-approved.
-- [2026-07-29 09:35] FOUND: **2379 of 2441** PHP files in the API carry an explicit ELv2 copyright header, and **1540 of 1641** `.ts`/`.tsx` files in the web UI carry the equivalent. The reference is by URL (`@license https://www.elastic.co/licensing/elastic-license`), not by the literal string "Elastic License" — **text-matching licence scanners will miss it.** Do not rely on automated scanning.
+- [2026-07-29 09:35] FOUND: **2379 of 2441** PHP files in the API carry an explicit ELv2 copyright header, and **1540 of 1641** `.ts`/`.tsx` files in the web UI carry the equivalent. The reference is by URL (`@license https://www.elastic.co/licensing/elastic-license`), not by the literal string "Elastic License" — so a **naive** text search for the licence name finds 1 file, not 2379. [Verified: `grep -rIl "Elastic License" app/ | wc -l` → 1; `grep -rIl "elastic-license" app/ | wc -l` → 2379.] Whether a real scanner (ScanCode et al.) would miss it is **[Inferred: no scanner was run; mature scanners do match ELv2 by URL]** — the safe conclusion is only that the encumbrance is easy to under-count by hand.
 - [2026-07-29 09:40] AGREED: **clean-room reimplementation, not a port.** Translating PHP/Laravel into PHP/Symfony is a derivative work — a translation is not an independent creation. Build from the OpenAPI contract, the schema shape, and the public standards; never from upstream source. Recorded as an invariant in `CLAUDE.md` § "Licensing invariants".
 - [2026-07-29 09:40] NOTED (the useful paradox): the ~4% of the React app that is *technically* portable (interfaces, enums, constants) is precisely the part that carries per-file ELv2 headers, while the 96% that is React view code is the part we have no reason to copy. **The clean-room path is simultaneously the legally cleaner and the technically better one.** That alignment is why this decision is easy.
 - [2026-07-29 09:45] FOUND: upstream gates its own branding removal behind a paid white-label plan — `Account::FEATURE_WHITE_LABEL` / `FEATURE_REMOVE_CREATED_BY` → `isPaid()` controls whether the vendor logo appears on generated PDFs and emails. [Verified: read `app/Models/Account.php:246-307`, `app/Utils/Helpers.php:32-42`.] **That is the licence-key functionality ELv2 clause 2 protects.** A fork that strips it is a clear breach; a clean-room build never has it. This is the single sharpest argument against forking.
@@ -38,10 +38,11 @@ clones; figures are labelled accordingly.
 
 ---
 
-## Rulings of 2026-07-29 — the four open questions are CLOSED
+## Rulings of 2026-07-29 — every open question is CLOSED
 
-All four blocking questions were answered by the developer. Recorded here verbatim in effect, because
-each one changed the plan.
+Seven rulings were taken: the four blocking questions (purpose, Flutter, branding, e-signature) plus
+licence, commit identity and architecture. Recorded here verbatim in effect, because each one changed
+the plan.
 
 - [2026-07-29 12:40] RULED **Q1 — purpose: both (a) internal AND (b) a product sold to others**, plus a showcase for the phorj language later. Consequence, and it is the important one: **ELv2's hosted-service prohibition genuinely applies**, so forking Invoice Ninja is not merely inadvisable, it is **foreclosed**. Clean-room becomes mandatory rather than recommended. The earlier "get a legal read on internal-vs-third-party" caveat is resolved by the answer being *both* — the stricter reading governs.
 - [2026-07-29 12:40] RULED **Q2 — the Flutter client is written from scratch.** Developer: *"I want my own version that is 100% mine, same for all the rest."* This is **stricter than my own recommendation** (I proposed forking admin-portal's ~500-LOC transport layer) and it is the better call: it removes the Attribution Assurance License obligation entirely instead of accepting a smaller dose of it. Superseded: every earlier note about honouring upstream's contract, the two mandatory version headers, `built_value` strictness, `per_page=999999`, `_method=put`. **None of that binds us any more.**
@@ -217,7 +218,7 @@ verified oracle for the calculation logic. Write your own tests from the behavio
 
 ---
 
-## The four questions — all CLOSED, 2026-07-29
+## The four blocking questions — all CLOSED, 2026-07-29
 
 They were open when this document was first written and are recorded as resolved in the Decisions Log
 above. Kept here in summary because the *answers* changed the plan, and a reader arriving later needs
@@ -244,7 +245,7 @@ domain difficulty — money arithmetic, tax rules, e-invoicing, and holding scop
 | Phase | Deliverable | Status |
 |---|---|---|
 | 0 | Claude bundle + this strategy document | built |
-| 1 | All six rulings taken (purpose, Flutter, branding, e-signature, licence, commit identity) + `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md` | built |
+| 1 | All seven rulings taken (purpose, Flutter, branding, e-signature, licence, commit identity, architecture) + `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`, `VISION.md`, `README.md` | built |
 | 2 | API contract designed and written down (auth, envelope, IDs, dates, money, pagination, errors) — **ours to design now** | unblocked, next |
 | 3 | Domain skeleton: `Money` value object, default-on tenancy filter, Voter permissions, first migrations, hexagonal layout | unblocked |
 | 4 | Invoice/Quote/Credit/Payment + the calculation kernel, TDD from the first commit | pending |

@@ -75,11 +75,28 @@ other two is the default failure mode here, not an unusual one.
    locale, or a hardcoded literal? A hardcoded string in a template is a finding even when it is
    English and the default locale is English — it is the class of bug that only surfaces for another
    locale's users.
-8. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
+8. **Licensing and third-party notices — this project is dual-licensed, so a dependency is a legal
+   act.** If the change adds or bumps any dependency (`composer.json`, `package.json`, `pubspec.yaml`
+   and their lock files): is each one **permissive** — MIT, Apache-2.0, BSD-2/3-Clause, ISC — and is
+   each recorded in `THIRD-PARTY-NOTICES.md` **in this same change**? A GPL, AGPL, LGPL or MPL
+   dependency is a **P0**, not a style note: it satisfies the AGPL branch and destroys the commercial
+   branch, which is the whole point of the licence (`LICENSING.md`). "AGPL-compatible" is the wrong
+   test — check for *permissive*. Also verify new source files carry
+   `SPDX-License-Identifier: AGPL-3.0-or-later`, per licensing invariant 8(c). Do not take a
+   `composer.json` licence field on trust when the package's own `LICENSE` file is readable.
+
+9. **Architecture rules are conventions until tooling lands — check them by hand, and say you did.**
+   `CLAUDE.md` § "Architecture" assigns P0 to: a framework `use` in `Domain/`, ambient
+   `time()`/`random_int()`/`getenv()`/`file_get_contents()` in `Domain/`, `#[ORM\` under `Domain/`, and
+   any outward `use` from `Domain/` to `Application/`/`Infrastructure/`/`UI/`. `deptrac` and the PHPStan
+   banned-function rule are **not yet implemented**, so until they are, this lens *is* the enforcement.
+   Grep for each explicitly rather than assuming a tool caught it.
+
+10. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
    with a `## Decisions Log`. If this change resolved a design decision, is it recorded there, in the
    same change? An unrecorded ruling will be re-litigated by the next session — that is the cost, and
    it is why this row is on the gate.
-9. **Scope honesty.** Does the change do *less* than its message claims, or more? A commit titled
+11. **Scope honesty.** Does the change do *less* than its message claims, or more? A commit titled
    `fix: rounding on invoice totals` that also refactors the repository layer has an undisclosed
    blast radius. Equally: a `TODO`, a stub, a `throw new \LogicException('not implemented')`, or a
    feature flag left off — if the change advertises a capability that is not reachable, say so.

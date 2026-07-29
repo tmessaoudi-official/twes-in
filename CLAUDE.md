@@ -106,9 +106,11 @@ These are not guidelines. Breaking one changes what this repository legally *is*
 8. **twes-in itself is AGPL-3.0-or-later plus a commercial licence**, copyright wholly
    Takieddine MESSAOUDI (developer ruling, 2026-07-29: open source, but sellable by the author). Three
    consequences that bind day-to-day work, detailed in `LICENSING.md`: **(a)** every dependency must be
-   AGPL-3.0-compatible and recorded in `THIRD-PARTY-NOTICES.md` in the same change that adds it —
-   `GPL-2.0-only` is **not** compatible (and on `invoiceninja/dockerfiles`, whose GPL version is
-   ambiguous for want of a per-file notice, we take the conservative reading, not the convenient one);
+   **permissive — MIT, Apache-2.0, BSD-2/3-Clause or ISC, and nothing else** — and recorded in
+   `THIRD-PARTY-NOTICES.md` in the same change that adds it. **"AGPL-compatible" is the wrong test**:
+   a GPL/AGPL/LGPL dependency satisfies our AGPL branch and *kills the commercial one*, because a third
+   party's copyleft code cannot be relicensed to a customer buying an escape from source disclosure. A
+   needed copyleft-only library is an `ask-human` decision, never a silent one;
    **(b)** copyright must stay wholly owned or the commercial licence dies,
    so no outside contribution may be merged without a CLA (none exists yet — one is required before the
    first external patch); **(c)** new source files carry
@@ -155,14 +157,19 @@ driving it — phorj is unfinished and nothing here is designed for it.
 
 **The domain layer is pure. This is the load-bearing rule.** In `Domain/`:
 
-- **No framework.** No Symfony, no Doctrine, no HTTP, no SQL, no filesystem, no clock, no randomness,
-  no environment. If a domain class has a framework `use` statement, that is a P0.
+- **No framework, and no ambient I/O.** No Symfony, no Doctrine, no HTTP, no SQL, no filesystem. Also
+  **no clock, no randomness, no environment** — time and randomness are injected through a port
+  (`ClockInterface`, an ID generator), never read ambiently. Note the detection differs by kind, which
+  is why they are listed separately: a framework dependency shows up as a `use` statement, but
+  `time()`, `random_int()`, `getenv()`, `file_get_contents()` and `date()` are **bare function calls
+  with no `use` at all** — so a `use`-grep does not see them. Both are P0; the second needs a
+  banned-function rule (PHPStan) rather than an import check.
 - **No Doctrine attributes on entities.** Mapping lives in XML (or PHP) mapping files under
   `Infrastructure/`. This is the single most common way a "hexagonal" PHP codebase quietly becomes
-  framework-coupled, and it is mechanically checkable: `#[ORM\` inside `Domain/` is a P0.
+  framework-coupled. Detection is a plain grep — `#[ORM\` anywhere under `Domain/` is a P0.
 - **Dependencies point inward.** `Domain` knows nothing. `Application` knows `Domain`.
-  `Infrastructure` and `UI` know both. Never the reverse — an inward-pointing `use` from `Domain` to
-  `Infrastructure` is a P0.
+  `Infrastructure` and `UI` know both. Never the reverse — an **outward**-pointing `use` from `Domain`
+  to `Infrastructure`, `UI` or `Application` is a P0.
 - **Ports are domain interfaces; adapters implement them in `Infrastructure/`.** A repository interface
   belongs beside the aggregate it serves, not beside its Doctrine implementation.
 - **Conservative, strongly-typed PHP in the domain.** `declare(strict_types=1)` everywhere, explicit
@@ -197,6 +204,15 @@ api/src/
   Infrastructure/  # Doctrine, HTTP clients, PDF, gateways, e-invoicing, Doctrine mapping XML.
   UI/              # REST controllers, CLI commands, serializers.
 ```
+
+**Enforcement is NOT yet in place, and that must not be glossed.** The P0s above are currently
+*conventions asserted in prose* — there is no source tree, and no tool in this repo checks any of them.
+A reviewer agent reading "that is a P0" would otherwise assume the panel catches it, and it does not.
+**Landing with the first `api/` scaffold, in the same change:** `deptrac` (or `phpat`) for the
+layer-dependency rules, a PHPStan banned-function rule for ambient clock/random/env, and a grep gate
+for `#[ORM\` under `Domain/` and for the SPDX header required by licensing invariant 8(c). Until those
+exist, § "Quality gate" carries the gap explicitly and the architecture rules are enforced by review
+alone.
 
 ## Certification ladder — governs every 3C/6C gate
 
@@ -278,6 +294,16 @@ Current plans:
   scope decisions, and the target architecture. **Read this before writing any application code.**
 - `docs/plans/claude-bundle-integration.plan.md` — how this bundle got here and what was rejected.
 
+Root documents that are **not** plans and are not governed by the `docs/` boundary rule, because each is
+a conventional root-level artifact readers and tooling expect to find there:
+- `README.md` — the entry point: what this is, the dual licence, the clean-room relationship to
+  Invoice Ninja, the pinned stack.
+- `VISION.md` — direction that is explicitly **not** a commitment. Nothing in it may be cited as a
+  reason to defer a decision or to design around an unknown. The phorj rewrite lives here.
+- `LICENSING.md` — the dual licence and the three obligations it creates. **Read before adding any
+  dependency.**
+- `THIRD-PARTY-NOTICES.md` — every dependency and its licence, recorded in the change that adds it.
+
 ## Quality gate
 
 There is no application code yet, so there is no gate to run — and **that is a fact to state, not a
@@ -287,9 +313,14 @@ of them, per tier:
 | Tier | Green means (define on landing) |
 |---|---|
 | Symfony API | `composer validate`, `vendor/bin/phpstan` (max level), `vendor/bin/php-cs-fixer --dry-run`, `vendor/bin/phpunit`, `bin/console doctrine:schema:validate`, `bin/console lint:container` |
+| **Architecture fitness** | `vendor/bin/deptrac` (or `phpat`) for the inward-only layer rules; a PHPStan banned-function rule for ambient `time()`/`random_int()`/`getenv()`/`file_get_contents()` in `Domain/`; a grep gate for `#[ORM\` under `Domain/`. **Not yet implemented** — see § "Architecture". |
+| **Licensing** | Every dependency permissive and present in `THIRD-PARTY-NOTICES.md`; SPDX header on every source file. **Not yet implemented** — a script, not a human habit, because a habit will not survive a rushed `composer require`. |
 | Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production` |
 | Flutter client | `flutter analyze`, `flutter test` |
 | Infra | `docker compose config`, `bash -n` on every shell script |
+
+**The two "not yet implemented" rows are the honest state, not filler.** They exist as rows so that
+landing them is visibly owed. Do not delete a row to make the table look green.
 
 Derive the real command names from `composer.json` / `package.json` / `pubspec.yaml` rather than
 trusting the table above — a command written in prose drifts from the one that exists.
