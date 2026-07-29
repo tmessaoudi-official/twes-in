@@ -49,7 +49,8 @@ disallowed-tools: AskUserQuestion
      dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
      `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
      two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
-     application code), `.claude/` and `scripts/claude-bootstrap/`. So: never hardcode a build, test
+     application code), `.claude/`, `scripts/claude-bootstrap/`, and `.gitignore` (which is where
+     `/var`, `/qa-shots/` and the reference-clone guards these deltas rely on are declared). So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
@@ -243,7 +244,12 @@ Where `<status>` is one of:
     1. "Continue — incorporate and retry (Recommended)"
     2. "Continue autonomously — run rest of loop silently (no more ask-human calls)"
     3. "Escalate — surface to user and stop"
+    4. "None of these / challenge the premise — e.g. the finding is not real, the lens is
+        mis-scoped, or the scope should be narrowed. Say so and I will re-run differently."
   ```
+  Option 4 is REQUIRED, not optional garnish: `ask-human` § "The five required parts" and
+  `CLAUDE.md` § "Questions are plain text" both mandate a visible escape on every option set, and a
+  template that omits it is the thing sessions will copy.
   - If "Continue": go to Step 2
   - If "Continue autonomously": set `autonomous = true`, go to Step 2
   - If "Escalate": go to Step 5 (cap escalation)
@@ -295,6 +301,9 @@ Options:
   2. "Rerun autonomously — N more cycles"           → restart Step 1 with autonomous = true
   3. "Decompose — split task and converge each part"
   4. "Escalate manually — I will review and decide"
+  5. "None of these / challenge the premise"        → e.g. accept the remaining findings as
+     documented risk, drop the clean-round requirement for this scope, or stop the loop entirely
+     because the artefact is not worth further rounds. State which, and I will record it."
 ```
 
 Wait for direction. This is the only guaranteed ask-human call in autonomous mode.

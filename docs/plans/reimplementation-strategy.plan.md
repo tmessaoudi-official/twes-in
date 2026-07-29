@@ -85,7 +85,7 @@ study, and it is routinely got wrong.
 | Repo | Licence | Fork & modify? | Deploy internally? | Offer as a service to third parties? | Obligation you cannot drop |
 |---|---|---|---|---|---|
 | `invoiceninja` (Laravel API) | **Elastic License 2.0** | Yes | Yes | **No** | Keep notices; never circumvent the licence key |
-| `ui` (React admin) | **Elastic License 2.0** | Yes | Yes | **No** | Same — 1540/1641 files carry a header |
+| `ui` (React admin) | **Elastic License 2.0** | Yes | Yes | **No** | Same — ~94% of its 1641 `.ts`/`.tsx` files carry a header (see the Decisions Log for why an exact count is not quotable) |
 | `admin-portal` (Flutter) | **Attribution Assurance License** | Yes | Yes | Yes | **Attribution splash on every launch** |
 | `dockerfiles` | **GPL-2.0** | Yes | Yes | Yes | Copyleft: derivative files stay GPL-2.0, source disclosed |
 

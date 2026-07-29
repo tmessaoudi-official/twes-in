@@ -6,16 +6,16 @@
 # yet committable. This writes it to a gitignored file in the repo so the post-compaction context can
 # read it back.
 #
-# Adapted from the developer's bundle hook (`claude-setup-global-20260722`) per J.3's ruling
-# ("write to a scratch handoff file … never auto-commit"). Three deliberate differences:
+# Adapted from the developer's bundle hook (`claude-setup-global-20260722`): write to a scratch
+# handoff file, never auto-commit. Three deliberate differences:
 #   1. DETERMINISTIC BY DEFAULT — no LLM call. The upstream hook shelled out to `claude -p` (Haiku)
 #      on every compaction; here that spends the same weekly quota the developer is rationing, and it
 #      fails whenever the API is unreachable. Everything below is derived from `git` + the transcript
 #      with `jq`. Opt into an LLM narrative with TWES_HANDOFF_LLM=1.
 #   2. WRITES INTO THE REPO (`var/claude/handoff/`, gitignored) — not `~/.claude/projects/<slug>/`,
 #      which is wiped when the container is reclaimed.
-#   3. NO statusline/banner writes (J.3 ruled the statusline OUT — its `~/.claude/run/` sentinels do
-#      not exist here).
+#   3. NO statusline/banner writes — the statusline and its `~/.claude/run/` sentinels do not exist
+#      in this container (rejected in `docs/plans/claude-bundle-integration.plan.md`).
 #
 # CONTRACT: a PreCompact hook must never block compaction, so this script ALWAYS exits 0. That is the
 # hook contract, not error suppression — every failure path still logs a reason via log_obs.
@@ -163,7 +163,15 @@ cursor_block() {
   exit 0
 }
 
-cp -f "$ARCHIVE" "$LATEST" 2>/dev/null || log_obs WARN precompact-handoff "could not refresh $LATEST"
+# A handoff a human wrote by hand outranks an auto-generated one. `/handoff` documents appending
+# `<!-- manual -->` to claim latest.md; that promise was inert until 2026-07-29 — this hook overwrote
+# it unconditionally, so following the documented ritual silently lost the note at the next
+# compaction. The archive copy is always written, so nothing is lost either way.
+if [[ -f "$LATEST" ]] && grep -q '<!-- manual -->' "$LATEST" 2>/dev/null; then
+  log_obs INFO precompact-handoff "latest.md is manual — kept; auto handoff is at $ARCHIVE"
+else
+  cp -f "$ARCHIVE" "$LATEST" 2>/dev/null || log_obs WARN precompact-handoff "could not refresh $LATEST"
+fi
 
 # ── Optional LLM narrative — OFF by default, see header note 1 ─────────────────────────────────
 if [[ "${TWES_HANDOFF_LLM:-0}" == "1" && -n "$TRANSCRIPT" && -f "$TRANSCRIPT" ]]; then

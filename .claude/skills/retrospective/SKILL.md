@@ -47,7 +47,8 @@ disallowed-tools: AskUserQuestion
      dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
      `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
      two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
-     application code), `.claude/` and `scripts/claude-bootstrap/`. So: never hardcode a build, test
+     application code), `.claude/`, `scripts/claude-bootstrap/`, and `.gitignore` (which is where
+     `/var`, `/qa-shots/` and the reference-clone guards these deltas rely on are declared). So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
@@ -128,7 +129,6 @@ For each of these lenses, ask the question and answer honestly — skip any wher
 
 **Compute current project slug:**
 ```bash
-CURRENT_SLUG=$(echo "${CLAUDE_PROJECT_DIR:-$PWD}" | sed 's|^/|-|; s|/|-|g')
 ```
 
 **Index scan** — read the memory indices, text only, no full file reads:
@@ -200,9 +200,10 @@ Two things this does NOT license:
 
 ---
 
-## Step 4: Save confirmed entries
+## Step 4: Save the entries
 
-For each confirmed entry (all, or the numbered subset the user approved):
+For each entry (Step 3 writes them all — there is no approval gate here; the no-interrupts directive
+removed it, and reporting after the fact is the substitute):
 
 - If it's about **the project** (a quirk, a hidden dep, a workaround): save to `project_*.md` memory
 - If it's about **how to collaborate** (a preference revealed, an approach that worked well): save to `feedback_*.md` memory

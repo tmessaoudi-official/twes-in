@@ -241,7 +241,7 @@ Provide verification instructions scaled to task size:
 4. **Propose sub-agents proactively** — when a specialist agent would improve quality or speed. Use `isolation: "worktree"` in the Agent tool when a task risks polluting the working tree (large refactor, experimental change, anything you'd want to throw away if it goes wrong) — the worktree is auto-cleaned if the agent makes no changes.
 
  **LLM-heavy parallel agent cap**: When spawning multiple LLM-backed agents in a single message (analysis, vision, audit sweeps), cap at ≤5 concurrent agents. Empirically: 10 concurrent LLM agents causes ~50% rate-limit failures;
-5 concurrent agents is the proven safe ceiling. When a skill uses 10 agents (inspect, sleuth, gaps, vision), group adjacent domains into combined prompts rather than splitting to 10 individual agents.
+5 concurrent agents is the proven safe ceiling. When a skill defines 10 agents (`inspect`, `sleuth`, `gaps`, and `inspect --vision`), the remedy those skills use — and the one to follow — is to keep the 10 distinct lenses and **batch them 5 + 5**, not to merge prompts. Merging loses lens independence, which is the point of having ten.
 
 **Explore agent is read-only**: `subagent_type: "Explore"` cannot call the Write tool. When pipeline agents (inspect, sleuth, gaps, vision sweeps) need to persist output to disk, use `subagent_type: "general-purpose"` instead. Use Explore only when findings will be returned as conversation text and a parent/synthesis agent (general-purpose) handles all file writes.
 
@@ -376,10 +376,11 @@ Trigger words that signal `loop` is needed: *"keep doing"*, *"monitor"*, *"every
    - **Small tasks — compact skip block**: Small tasks skip phases 0, 1, 2, 3, 3L, 4, 7. Instead of individual skip lines (which get omitted in practice), emit one compact block immediately after the sequence declaration: `Skipped: 0 (no prior context) | 1 (obvious approach) | 2 (no unknowns) | 3/3L/4 (n/a for Small) | 7 (single-file fix)` — adjust reasons to match the actual task. Replaces individual skip markers for Small tasks only.
    - **No exceptions**: applies to all task sizes including Small. The user must be able to verify the workflow is being followed at any point in the conversation.
 
-17. **Persist plans and decisions — no exceptions, no deferrals.** Every session involving agreed decisions or a formal plan must maintain a durable plan file in the location determined by the per-project sentinel `~/.claude/projects/<slug>/plan-location` (content: `repo` | `global`). This file survives `/compact`, session resets, and context compression — it lives on disk, not in memory.
+17. **Persist plans and decisions — no exceptions, no deferrals.** Every session involving agreed decisions or a formal plan must maintain a durable plan file at **`docs/plans/<topic>.plan.md` in the repo** — settled, with no sentinel and no question (upstream chose the location via a `plan-location` sentinel; that mechanism does not exist here and must not be created). This file survives `/compact`, session resets, and context compression — it lives on disk, not in memory.
 
-   - **`repo`** → `docs/plans/<topic>.plan.md` in the working repo (team-visible, git-trackable)
-   - **`global`** → `~/.claude/projects/<slug>/plans/<topic>.plan.md` (machine-local, Claude-private)
+   - `docs/plans/<topic>.plan.md` in the working repo — git-trackable, and the only valid location.
+     (Upstream also offered `~/.claude/projects/<slug>/plans/` as a "global" option; that path is
+     **forbidden here** — the container is reclaimed, so an out-of-repo plan is not a record at all.)
 
    **File structure:**
    ```markdown
@@ -508,7 +509,7 @@ When asking the user to choose between approaches or giving options:
 - **Zero exceptions — no bare "say go" shortcuts**: *"say 'go' to proceed"*, *"say yes to continue"*, *"shall I implement?"*, *"let me know if you want me to…"* are all questions, and each must come with the options and a recommendation. This applies to status confirmations, plan approvals, phase gates and casual check-ins alike. If it implies a choice, enumerate the choice.
     - **Only PARTIALLY enforced here.** The upstream `ask-human-question-guard.sh` Stop hook is ruled OUT (it would double-gate against the container's own Stop hooks), so the framework's claim that bare-`?` endings are "mechanically caught" is false in this environment. What IS mechanical: every repo skill declares `disallowed-tools: AskUserQuestion`, removing the tool from the pool while that skill is active — but the grant clears on the next user message, so outside a skill nothing will stop you. The discipline is yours.
 
-**Skill execution handoffs**: When any skill instructs you to "offer a choice" or "ask which approach" (e.g., the writing-plans execution handoff) — translate that into an `ask-human` skill invocation. Skill template text is a
+**Skill execution handoffs**: When any skill instructs you to "offer a choice" or "ask which approach" (for example a skill whose template text says "offer the user a choice") — translate that into an `ask-human` skill invocation. Skill template text is a
 description of intent, not a literal output script. The plain-text question protocol applies without exception — and note the inversion versus upstream: here, plain text IS the required form, not the thing to be replaced.
 
 **Execution mode recommendation**: When presenting subagent-driven vs inline execution options, recommend based on the specific plan — never copy a skill's hardcoded "(recommended)" label:

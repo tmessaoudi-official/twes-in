@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Test suite for precompact-handoff.sh (DEC-354).
+# Test suite for precompact-handoff.sh.
 # The hook is a PreCompact hook: it must ALWAYS exit 0 (a non-zero exit would block compaction),
 # and it must produce a deterministic handoff without any network/LLM call.
 set -uo pipefail
@@ -143,11 +143,51 @@ check "exit 0 on empty stdin" "$RC" "0"
 run_hook 'not json at all'
 check "exit 0 on malformed stdin" "$RC" "0"
 
-# ── 4. It must never write outside the handoff dir, and never stage/commit ───────────
+# ── 4. It must never stage/commit, and must not write outside the handoff dir ────────
+# The section heading used to claim both and assert only the first; the write-location claim was also
+# FALSE (the optional LLM path mktemps under /tmp). Both are now asserted, and the /tmp use is
+# acknowledged as the one allowed exception rather than silently contradicting the heading.
 if grep -qE 'git (add|commit|push)' "$HOOK"; then
-  bad "hook must never stage, commit or push (J.3: never auto-commit)"
+  bad "hook must never stage, commit or push"
 else
   ok "hook never stages, commits or pushes"
+fi
+
+# Writes are confined to $HANDOFF_DIR, with one disclosed exception: the opt-in LLM narrative
+# mktemps a prompt file under /tmp and removes it. Assert there is no OTHER outside write.
+outside=$(grep -nE '^[^#]*>[[:space:]]*"?/(tmp|etc|usr|var/log)' "$HOOK" | grep -v mktemp || true)
+if [[ -n "$outside" ]]; then
+  bad "hook writes outside the handoff dir: $outside"
+else
+  ok "no writes outside the handoff dir (bar the disclosed mktemp prompt)"
+fi
+
+# ── 5. A hand-written latest.md marked `<!-- manual -->` must survive a compaction ───
+# /handoff documents this marker as claiming latest.md. Until 2026-07-29 nothing implemented it, so
+# following the documented ritual lost the note at the next auto-compaction.
+rm -rf "$TMP/out"; mkdir -p "$TMP/out"
+printf 'MY HAND-WRITTEN STATE\n<!-- manual -->\n' > "$TMP/out/latest.md"
+run_hook "$(printf '{"transcript_path":"%s","cwd":"%s","session_id":"manual-test"}' "$TRANSCRIPT" "$TMP")"
+check "exit 0 with a manual latest.md present" "$RC" "0"
+if grep -q 'MY HAND-WRITTEN STATE' "$TMP/out/latest.md"; then
+  ok "manual latest.md is preserved, not overwritten"
+else
+  bad "manual latest.md was CLOBBERED — the documented <!-- manual --> marker is inert"
+fi
+if ls "$TMP/out"/handoff-*.md >/dev/null 2>&1; then
+  ok "auto handoff still written to its own archive file"
+else
+  bad "no archive copy written — the auto handoff was lost instead"
+fi
+
+# And the converse: without the marker, latest.md IS refreshed.
+rm -rf "$TMP/out"; mkdir -p "$TMP/out"
+printf 'stale auto content\n' > "$TMP/out/latest.md"
+run_hook "$(printf '{"transcript_path":"%s","cwd":"%s","session_id":"auto-test"}' "$TRANSCRIPT" "$TMP")"
+if grep -q 'stale auto content' "$TMP/out/latest.md"; then
+  bad "unmarked latest.md was NOT refreshed — the guard is too broad"
+else
+  ok "unmarked latest.md is refreshed as before"
 fi
 
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"

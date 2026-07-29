@@ -46,7 +46,7 @@ other two is the default failure mode here, not an unusual one.
    supported locales, the PDF templates, the tiers above. A fix applied to `Invoice` and not to
    `Quote` and `Credit` is a P1, and this is the single most common finding on this lens — the
    author fixes the instance they were looking at.
-3. **Evidence genuinely produced, not asserted.** For each of CLAUDE.md Rule 6's four dimensions,
+3. **Evidence genuinely produced, not asserted.** For each of the global framework's Rule 6 four dimensions (`scripts/claude-bootstrap/CLAUDE-global.md` § 6 — project `CLAUDE.md` is section-structured and has no numbered rules),
    find the actual artefact:
    - **Coverage** — was the test *run*? Find the pasted runner output with test names and counts. A
      test that was written but not executed does not satisfy this row. Re-run it yourself.

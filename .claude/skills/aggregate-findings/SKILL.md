@@ -3,7 +3,7 @@ name: aggregate-findings
 spotlight: true
 description: Cross-stage synthesis of review reports — deduplicates findings that appear across /inspect, /sleuth, /gaps, /sweep and /inspect --vision runs. Produces one prioritized master list with cross-references instead of N separate reports. Use after running two or more of those skills.
 user-invocable: true
-args: "[--run=N] [--project=slug] [--top=N]"
+args: "[--top=N] [--since=<date>]"
 side-effects: Writes a consolidated report to var/claude/reports/aggregate-<date>.md (gitignored; never committed)
 disallowed-tools: AskUserQuestion
 ---
@@ -49,7 +49,8 @@ disallowed-tools: AskUserQuestion
      dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
      `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
      two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
-     application code), `.claude/` and `scripts/claude-bootstrap/`. So: never hardcode a build, test
+     application code), `.claude/`, `scripts/claude-bootstrap/`, and `.gitignore` (which is where
+     `/var`, `/qa-shots/` and the reference-clone guards these deltas rely on are declared). So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`

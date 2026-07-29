@@ -1,6 +1,6 @@
 ---
 name: pre-commit
-description: Use before every git commit — analyses staged changes for blast-radius, produces the four-dimension evidence table (Coverage, Docs, Config, Blast radius) from CLAUDE.md Rule 6, then presents the exact git commit command for manual execution.
+description: Use before every git commit — analyses staged changes for blast-radius, produces the four-dimension evidence table (Coverage, Docs, Config, Blast radius) from the global framework's Rule 6, then presents the exact git commit command for manual execution.
 user-invocable: true
 args: "[--message=<draft-message>]"
 disallowed-tools: AskUserQuestion
@@ -47,7 +47,8 @@ disallowed-tools: AskUserQuestion
      dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
      `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
      two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
-     application code), `.claude/` and `scripts/claude-bootstrap/`. So: never hardcode a build, test
+     application code), `.claude/`, `scripts/claude-bootstrap/`, and `.gitignore` (which is where
+     `/var`, `/qa-shots/` and the reference-clone guards these deltas rely on are declared). So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
@@ -167,7 +168,7 @@ Parse `--message=<text>` from args if provided. Otherwise derive a draft from th
 - One imperative-mood subject line (≤72 chars): what changed and the functional reason
 - Optionally 1-3 short bullet lines for non-obvious context
 
-**Never append `Co-Authored-By: Claude`** or any Claude attribution (CLAUDE.md Rule 10).
+**Never append `Co-Authored-By: Claude`**, any Claude attribution, or a `Claude-Session` trailer — author and committer are `Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>` (project `CLAUDE.md` § "Git autonomy", where this was RULED; restated in the global framework's Rule 10).
 
 ---
 

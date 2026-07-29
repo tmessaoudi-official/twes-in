@@ -47,7 +47,8 @@ disallowed-tools: AskUserQuestion
      dev. As of 2026-07-29 there is **no `src/` tree of any kind** — what the repo does hold is
      `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`,
      two plan files under `docs/plans/` (both authoritative — one is mandatory reading before any
-     application code), `.claude/` and `scripts/claude-bootstrap/`. So: never hardcode a build, test
+     application code), `.claude/`, `scripts/claude-bootstrap/`, and `.gitignore` (which is where
+     `/var`, `/qa-shots/` and the reference-clone guards these deltas rely on are declared). So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
      (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
@@ -92,7 +93,6 @@ Use `--quick` (agents A, F, H only — debt markers, test gaps, error handling; 
 # There is no --scope here (adaptation delta 4): one pass over $TARGET, which is either the
 # explicit --target path or the project root.
 TARGET="${target_arg:-${CLAUDE_PROJECT_DIR:-$PWD}}"
-PROJECT_SLUG=$(echo "$TARGET" | sed 's|^/|-|; s|/|-|g')
 REPO_ROOT="${CLAUDE_PROJECT_DIR:-$PWD}"
 GAPS_DIR="$REPO_ROOT/var/claude/gaps"
 mkdir -p "$GAPS_DIR"
@@ -195,16 +195,21 @@ Spawn ONE agent to reflect on this command's own definition using the just-saved
 
 Show: Executive summary, full NOW table, Quick Wins table, counts of SOON/LATER.
 
-**Ask in PLAIN TEXT** (per `/ask-human` — `AskUserQuestion` is forbidden here) and STOP:
+**Close with a non-blocking offer** (twes-in adaptation — no interrupts, matching `/sleuth`,
+`/inspect` and `/forge`). Report the findings, state that nothing was changed, and offer the next
+steps — then END THE TURN. Do **not** block on a question: the report is the deliverable, and the
+developer picks up from it whenever they choose.
 
 ```
 N gaps found (Now: X | Soon: Y | Later: Z). Nothing has been changed — every finding above is
 a proposal.
 
-1. Fix specific gaps (recommended) — name the IDs, e.g. `G1, G3`.
+Say the word and I can:
+1. Fix specific gaps (recommended, cheapest first) — name the IDs, e.g. `G1, G3`.
 2. Show all Soon items.
 3. Show one category in full — name it, e.g. `category B`.
-4. Nothing — close the report.
+4. None of these / challenge the premise — if a "gap" is deliberate, say so and I will record it
+   as intentional rather than re-report it next run.
 ```
 
 *Never auto-fills anything. The user decides what to close.*
