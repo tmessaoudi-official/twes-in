@@ -540,6 +540,38 @@ TypeScript, forever. Two consequences follow and both are load-bearing rather th
    someone who may be on a phone on mobile data, and Flutter Web ships a large bundle before it renders
    anything. "Two admin interfaces" is a choice about the admin, and the portal is not an admin surface.
 
+## Scaffolding findings — 2026-07-29, from screenshotting the builds rather than running the tests
+
+Both client tiers were scaffolded with their official generators on 2026-07-29 (see each tier's README).
+Capturing the required before/after visual evidence found **two defects that every automated check passed**,
+which is the clearest justification of `CLAUDE.md`'s visual-evidence rule the project has produced so far.
+
+**1. Flutter web fetched Roboto from `fonts.gstatic.com` at runtime — a GDPR exposure, not a packaging
+detail.** `flutter analyze` clean, `flutter test` green, `flutter build web` successful, and the page rendered
+**a blank surface**: the theme painted, the widget tree built, and no text appeared. [Verified: a headless
+Chromium load of the release build issued exactly one external request, to
+`https://fonts.gstatic.com/s/roboto/v32/…woff2`.] Three consequences, worst first: every page load sends the
+visitor's IP to Google, which LG München I (3 O 17493/20) held to be an unlawful transfer without consent —
+and this product targets EU invoicing, so its own client leaking client IPs is indefensible; no network means
+no text; and Playwright's `networkidle` never fires, making any screenshot test flaky by construction.
+**Fixed** by vendoring Roboto (Apache-2.0, 3 weights) and declaring it in `pubspec.yaml`. The release build
+now issues **zero** external requests. **Owed at Wave 11:** a test that fails if the built web bundle
+references any external origin — the fix is only durable if a future dependency cannot silently reintroduce
+one.
+
+**2. `.wasm` must be served as `application/wasm`, or CanvasKit never initialises.** Serving the build through
+a default `python3 -m http.server` left the app stuck at Flutter's typography-measurement bootstrap with no
+`flt-glass-pane` and no canvas — because `WebAssembly.instantiateStreaming` rejects any other MIME type, and
+it does so without a console error. **Owed at Wave 12:** the nginx (or equivalent) config must set
+`application/wasm` for `.wasm`, and the infra gate must assert it. A wrong MIME type here is a blank
+application in production with a green CI.
+
+Also decided while scaffolding, and worth recording because it constrains Wave 11 rather than this commit:
+**app bundle identifiers are compile-time and are NOT covered by the branding config seam.** `com.twesin` is a
+placeholder; no domain is owned yet. It must be set to a reverse-DNS name actually controlled **before any
+store submission**, because changing it after publication means a new listing and losing every installed user.
+That is a Wave 11 gate condition.
+
 ## Wave 12 — Infra & CI
 
 **In:** `infra/` written from scratch — Dockerfiles, compose, deployment. CI mirroring the quality

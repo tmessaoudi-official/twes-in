@@ -177,3 +177,43 @@ licences that impose attribution, and this project has already refused a depende
 (licensing invariant 3 — `admin-portal`'s Attribution Assurance License). They are permitted only as
 **build-time reference data absent from the shipped artifact**, and the gate fails if either ever appears as
 a runtime dependency.
+
+## Flutter client (`mobile/pubspec.yaml`)
+
+Scaffolded with the official generator (`flutter create --platforms=android,ios,linux,macos,windows,web`)
+on Flutter **3.44.8** / Dart **3.12.2** — the current stable channel, matching this tier's pin.
+
+| Package | Constraint | Licence | Scope |
+|---|---|---|---|
+| `flutter` | SDK | BSD-3-Clause | runtime |
+| `cupertino_icons` | `^1.0.8` | MIT | runtime |
+| `flutter_test` | SDK | BSD-3-Clause | dev |
+| `flutter_lints` | `^6.0.0` | BSD-3-Clause | dev |
+| Roboto (font, bundled binary) | 3 weights, vendored | Apache-2.0 | runtime asset |
+
+**Roboto is vendored as a binary asset** under `mobile/assets/fonts/`, with its Apache-2.0 licence text kept
+beside it as `Roboto-LICENSE.txt`. Copied from the Flutter SDK's own `bin/cache/artifacts/material_fonts`,
+which is where Flutter ships it. Three weights (regular, medium, bold) rather than all seventeen. **Why
+vendored rather than fetched is a GDPR decision** — see `mobile/pubspec.yaml`, which states it in full.
+
+[Verified 2026-07-29: `cupertino_icons` 1.0.9's licence text is "The MIT License (MIT)", (c) Vladimir
+Kharlampidi, read from `pub.dev/packages/cupertino_icons/license`; `flutter_lints` 6.0.0 and the Flutter SDK
+both carry the Flutter Authors' three-clause BSD text, with all three clauses present.]
+
+**`mobile/pubspec.lock` carries NO licence field** — unlike `composer.lock` and npm's `lockfileVersion 3`,
+which both record one per entry. [Verified: `grep -c license mobile/pubspec.lock` → 0.] That is a real
+limitation and it is stated rather than papered over: the licences above were each read from pub.dev by hand,
+and `scripts/gates/dependency-licences.php` can therefore only check that every **direct** pub dependency
+appears in this file, not that its licence is permissive. The 23 transitive entries are the Dart and Flutter
+SDK's own first-party packages (`async`, `collection`, `meta`, `matcher`, `stack_trace`, `vm_service`,
+`leak_tracker`, `sky_engine` and similar), published by `dart.dev`/`flutter.dev` under BSD-3-Clause; adding
+any pub dependency from outside that set requires reading its licence and adding a row here in the same
+change. **Owed:** a licence check for this tier that does not depend on a field pub does not publish — the
+options are a build-time `flutter pub deps --json` walk plus a cached licence map, or vendoring the
+`LICENSE` files. Recorded in `docs/plans/build-waves.plan.md`.
+
+**The generated per-platform scaffolding under `mobile/{android,ios,linux,macos,windows,web}` is Flutter's
+own template output** (SDK: BSD-3-Clause) and is deliberately **excluded from the SPDX header requirement**
+by `scripts/gates/spdx-headers.sh`. Stamping our copyright and `AGPL-3.0-or-later` onto upstream's template
+files would assert copyright over their work, which is the opposite of what licensing invariant 8(c) exists
+to achieve. `mobile/lib` and `mobile/test` are ours and do carry headers.

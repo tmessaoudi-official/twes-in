@@ -38,6 +38,28 @@ readonly -a SEARCH_ROOTS=(
 readonly -a SEARCH_FILES=(
   "api/phpunit.xml"
   "api/.php-cs-fixer.dist.php"
+  "mobile/pubspec.yaml"
+  "mobile/analysis_options.yaml"
+)
+
+# Paths excluded from the header requirement, and this list needs its reason stated because "the gate
+# complained" is not one.
+#
+# `flutter create` generates per-platform scaffolding — Android manifests and resource XML, Gradle files,
+# Xcode and CMake project files, the web index. That output is Flutter's own template content (the SDK is
+# BSD-3-Clause), it is regenerated and migrated by Flutter's tooling, and stamping OUR copyright plus
+# `AGPL-3.0-or-later` onto it would be **asserting copyright over upstream's work** — the opposite of what
+# licensing invariant 8(c) is for. So they are excluded on provenance grounds, not for convenience, and the
+# Flutter SDK's own licence is recorded in THIRD-PARTY-NOTICES.md instead.
+#
+# `mobile/lib` and `mobile/test` are NOT excluded: that is our code and it carries headers.
+readonly -a EXCLUDED_FROM_HEADERS=(
+  "mobile/android"
+  "mobile/ios"
+  "mobile/linux"
+  "mobile/macos"
+  "mobile/windows"
+  "mobile/web"
 )
 
 # How far into a file the header may appear. Without a bound, a file that merely MENTIONS the identifier
@@ -52,6 +74,7 @@ readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml)
 if [[ "${1:-}" == "--dump-rules" ]]; then
   printf 'roots %s\n' "${SEARCH_ROOTS[*]}"
   printf 'files %s\n' "${SEARCH_FILES[*]}"
+  printf 'excluded %s\n' "${EXCLUDED_FROM_HEADERS[*]}"
   printf 'extensions %s\n' "${EXTENSIONS[*]}"
   exit 0
 fi
@@ -125,6 +148,7 @@ if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   # `api/phpunit.xml.bak`. The dots are escaped for the same reason.
   file_pattern="$(IFS='|'; printf '%s' "${SEARCH_FILES[*]}")"
   file_pattern="${file_pattern//./\\.}"
+  excluded_pattern="$(IFS='|'; printf '%s' "${EXCLUDED_FROM_HEADERS[*]}")"
 
   uncovered=()
   while IFS= read -r file; do
@@ -133,6 +157,7 @@ if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     | grep -E "\.(${extension_pattern})$" \
     | grep -Ev "^(${root_pattern})/" \
     | grep -Ev "^(${file_pattern})$" \
+    | grep -Ev "^(${excluded_pattern})/" \
     | grep -v '\.xlf$' || true)
 
   if (( ${#uncovered[@]} > 0 )); then

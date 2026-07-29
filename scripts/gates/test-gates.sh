@@ -49,6 +49,11 @@ fresh_fixture() {
   mkdir -p "$WORK/repo/admin"
   cp "$REPO_ROOT"/admin/package.json "$WORK/repo/admin/"
   cp "$REPO_ROOT"/admin/package-lock.json "$WORK/repo/admin/"
+  # The Flutter manifest. Its lock carries no licence field (see the gate's OWED entry), so the notices
+  # check is the ONLY examination this tier's dependencies get -- which makes covering it more important
+  # here than for the tiers that also have a licence check.
+  mkdir -p "$WORK/repo/mobile"
+  cp "$REPO_ROOT"/mobile/pubspec.yaml "$WORK/repo/mobile/"
 
   # A GIT WORK TREE, because spdx-headers.sh asks git which files exist in order to prove its search roots
   # COVER every source file — the inventory direction that was missing when `api/phpunit.xml` sat unscanned
@@ -406,7 +411,12 @@ assert_at_least "orm: forbidden patterns have not shrunk" \
 assert_at_least "spdx: search roots have not shrunk" \
   "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 11
 assert_at_least "spdx: individually-listed files have not shrunk" \
-  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 2
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 4
+
+# A MAXIMUM, uniquely: every entry here removes a directory from the header requirement, so this list
+# growing is the failure mode, not shrinking. assert_at_least with a negated count is the same assertion.
+excluded_count="$(printf '%s' "$SPDX_RULES" | sed -n 's/^excluded //p' | wc -w)"
+assert_at_least "spdx: the exclusion list has not GROWN beyond 6" "$((12 - excluded_count))" 6
 assert_at_least "spdx: extensions have not shrunk" \
   "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 8
 
@@ -432,7 +442,12 @@ assert_contains "spdx: every search root survives" "$SPDX_RULES" \
   api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test scripts
 assert_contains "spdx: every extension survives" "$SPDX_RULES" php ts dart sh xml sql yaml yml
 assert_contains "spdx: the individually-listed files survive" "$SPDX_RULES" \
-  api/phpunit.xml api/.php-cs-fixer.dist.php
+  api/phpunit.xml api/.php-cs-fixer.dist.php mobile/pubspec.yaml mobile/analysis_options.yaml
+# The EXCLUSION list is the one place where growth is dangerous rather than harmless: every entry added is a
+# directory the header requirement stops applying to. Pinned by name AND by maximum size, so widening it is
+# a deliberate edit to this file rather than a quiet one to the gate.
+assert_contains "spdx: the exclusion list is exactly the Flutter platform dirs" "$SPDX_RULES" \
+  mobile/android mobile/ios mobile/linux mobile/macos mobile/windows mobile/web
 
 echo "== GENERATED: every banned FUNCTION must actually fire =="
 while read -r name; do
@@ -527,6 +542,19 @@ assert_gate 'catches a source file under NO search root' spdx-headers.sh 1 'unde
 fresh_fixture
 printf '<?xml version="1.0"?>\n<phpunit/>\n' > "$WORK/repo/api/phpunit.xml"
 assert_gate 'checks the individually-listed api/phpunit.xml' spdx-headers.sh 1 'api/phpunit.xml'
+
+# The exclusion must be NARROW: a header-less file under an excluded Flutter platform directory is fine
+# (it is upstream's generated template, and stamping our copyright on it would be the actual error), but a
+# header-less file in our own mobile/lib is not.
+fresh_fixture
+mkdir -p "$WORK/repo/mobile/android/app/src/main/res/values"
+printf '<resources/>\n' > "$WORK/repo/mobile/android/app/src/main/res/values/styles.xml"
+assert_gate 'ignores generated Flutter platform scaffolding' spdx-headers.sh 0
+
+fresh_fixture
+mkdir -p "$WORK/repo/mobile/lib"
+printf '// no header\nvoid main() {}\n' > "$WORK/repo/mobile/lib/unlicensed.dart"
+assert_gate 'still requires a header in our own mobile/lib' spdx-headers.sh 1 'mobile/lib/unlicensed.dart'
 
 echo "== GENERATED: every banned SUPERGLOBAL must actually fire =="
 while read -r name; do
@@ -662,6 +690,26 @@ d['dependencies']['acme-undocumented-widget'] = '^1.0.0'
 p.write_text(json.dumps(d))
 PYNPM
 assert_gate 'catches a direct npm dependency absent from the notices' dependency-licences.php 1 'acme-undocumented-widget'
+
+echo "== the PUB path: pubspec.yaml direct dependencies against the notices =="
+fresh_fixture
+python3 - "$WORK/repo/mobile/pubspec.yaml" <<'PYPUB'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('  cupertino_icons:', '  acme_unrecorded_pkg: ^1.0.0\n  cupertino_icons:', 1))
+PYPUB
+assert_gate 'catches a pub dependency absent from the notices' dependency-licences.php 1 'acme_unrecorded_pkg'
+
+# The parser must not read pubspec.yaml's TOP-LEVEL `flutter:` block (assets, fonts, uses-material-design)
+# as a dependency section. If it did, every asset key would be demanded in the notices and the gate would be
+# unusable the moment this tier declares its first font.
+fresh_fixture
+python3 - "$WORK/repo/mobile/pubspec.yaml" <<'PYPUB'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().rstrip() + '\n\nflutter:\n  uses-material-design: true\n  assets:\n  fonts:\n')
+PYPUB
+assert_gate 'does NOT treat the top-level flutter: block as dependencies' dependency-licences.php 0
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

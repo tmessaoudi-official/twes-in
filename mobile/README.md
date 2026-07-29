@@ -1,8 +1,44 @@
 # mobile — Flutter client
 
-**Not built yet. Lands in Wave 11** (`docs/plans/build-waves.plan.md`). Mobile ships first in the
-sequence, but **all six targets — Android, iOS, Linux, Windows, macOS and Web — are in scope for Wave 11**
-(developer ruling, 2026-07-29); desktop is not deferred to some later wave. Sequencing is not scope.
+**Scaffolded, not built. The client lands in Wave 11** (`docs/plans/build-waves.plan.md`). Mobile ships first
+in the sequence, but **all six targets — Android, iOS, Linux, Windows, macOS and Web — are in scope for Wave
+11** (developer ruling, 2026-07-29); desktop is not deferred to some later wave. Sequencing is not scope.
+
+**Scaffolded with the official generator, never by hand** (developer ruling, 2026-07-29):
+
+```
+flutter create --project-name twes_in --org com.twesin \
+  --platforms=android,ios,linux,macos,windows,web mobile
+```
+
+Flutter **3.44.8** / Dart **3.12.2** — the current stable channel, matching this file's pin. All six platform
+directories exist from the first commit, so no target is a retrofit.
+
+Three departures from what `flutter create` emitted, each deliberate:
+
+1. **The counter demo is gone**, replaced by a minimal shell. It is not our code and not the client.
+2. **The product name is injected** (`lib/branding.dart`), never a literal — licensing invariant 9 requires a
+   later public deployment to be a config change, not a code change. It matters more here than on the web
+   tier: a value baked into a store build cannot change without shipping a binary and waiting for review. A
+   test asserts that overriding `Branding` changes what renders.
+3. **`analysis_options.yaml` adds the three `strict-*` analyser flags** that the template leaves off, plus
+   nine lints. `strict-casts` is the one that earns its place in this domain: JSON from the API arrives as
+   `dynamic`, and `final Money total = json['total']` compiling by accident is how a wrong amount reaches a
+   document.
+
+**Roboto is vendored, not fetched, and that is a GDPR decision** — `pubspec.yaml` states it in full. Flutter
+web's CanvasKit renderer downloads Roboto from `fonts.gstatic.com` when no font asset is declared, which sends
+every visitor's IP to Google (LG München I, 3 O 17493/20 held that unlawful without consent) and renders
+nothing at all offline. Found by screenshotting the build; `flutter analyze`, `flutter test` and
+`flutter build web` were all green while the page rendered blank.
+
+**`--org com.twesin` is a PLACEHOLDER.** Bundle identifiers are compile-time and are *not* covered by the
+branding seam. No domain is owned yet, and this must be set to a reverse-DNS name actually controlled
+**before any store submission** — changing it after publication means a new listing and losing every
+installed user. A Wave 11 gate condition.
+
+Current state: `flutter analyze` clean, `flutter test` 2 passing, `flutter build web --release
+--no-web-resources-cdn` produces a bundle that makes **zero** external requests.
 
 Pinned on landing: Flutter **3.44.8**, Dart **3.12.2** — the current stable channel
 [Verified 2026-07-29 against Flutter's release manifest: `stable` is 3.44.8 / Dart 3.12.2, released

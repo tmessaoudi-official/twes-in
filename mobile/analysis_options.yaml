@@ -1,0 +1,47 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Flutter's own recommended lint set, PLUS the three analyser strictness flags it leaves off by default.
+#
+# `flutter create` emits `include: package:flutter_lints/flutter.yaml` and nothing else. That is the right
+# baseline — it is upstream's recommendation and it tracks the SDK — but the three `strict-*` options below
+# are documented Dart analyser settings that the default template does not enable, and each closes a hole
+# that would otherwise reach a money path:
+#
+#   strict-casts       an implicit downcast from `dynamic` stops being silent. JSON from the API arrives as
+#                      dynamic, and `final Money total = json['total']` compiling by accident is exactly how
+#                      a wrong amount reaches a document.
+#   strict-raw-types   a bare `List` or `Map` must say what it holds.
+#   strict-inference   a type the analyser cannot infer must be written down rather than becoming dynamic.
+#
+# Turning these on now costs a few annotations. Turning them on after the client is built means fixing
+# hundreds of call sites, which is why nobody does it later.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-raw-types: true
+    strict-inference: true
+  errors:
+    # A TODO left in a billing client is a defect, not a note. Warning rather than error so it does not
+    # block local iteration, but it is visible in `flutter analyze` output, which is a gate condition.
+    todo: warning
+
+linter:
+  rules:
+    # Not in flutter_lints, and each one is here for a reason that shows up in this domain specifically.
+    - always_declare_return_types
+    - avoid_dynamic_calls
+    - avoid_slow_async_io
+    - cancel_subscriptions
+    - close_sinks
+    # Money and rates cross the wire as strings and must be compared exactly; == on a double is the class
+    # of bug CLAUDE.md § Gotchas records as unfixable later.
+    - avoid_double_and_int_checks
+    - prefer_final_locals
+    - unawaited_futures
+    - use_super_parameters

@@ -92,7 +92,15 @@ const NOTICES = '/THIRD-PARTY-NOTICES.md';
  * permissive list, and this gate still reported OK.
  */
 const OWED = [
-    'Flutter client' => '/mobile/pubspec.lock (Wave 11)',
+    // NOT "Wave 11" — the tier is scaffolded and its lock file exists. The real reason is narrower and
+    // worth stating exactly: pubspec.lock records no licence field at all, unlike composer.lock and npm's
+    // lockfileVersion 3, which both carry one per entry. So there is nothing here for this gate to read,
+    // and the Flutter tier's licences are verified by hand into THIRD-PARTY-NOTICES.md instead. Closing
+    // this properly needs a `flutter pub deps --json` walk with a cached licence map, or vendored LICENSE
+    // files; either is a design decision, not a one-line fix. See build-waves.plan.md.
+    'Flutter client' => 'mobile/pubspec.lock records NO licence field, so per-package licences cannot be '
+        . 'read from it; the direct dependencies are checked against THIRD-PARTY-NOTICES.md below and their '
+        . 'licences are recorded there by hand',
 ];
 
 exit(main());
@@ -274,7 +282,67 @@ function directRequirements(): array
         $tiers['Angular admin'] = $npmNames;
     }
 
+    // And the Flutter tier. This is the ONLY check available for it — see OWED for why — which makes it
+    // more load-bearing here than elsewhere, not less: a pub dependency added without a notices row is
+    // otherwise entirely unexamined.
+    $pubNames = pubDirectRequirements(REPO_ROOT . '/mobile/pubspec.yaml');
+
+    if ([] !== $pubNames) {
+        $tiers['Flutter client'] = $pubNames;
+    }
+
     return $tiers;
+}
+
+/**
+ * The direct dependencies a pubspec.yaml declares.
+ *
+ * Parsed with a deliberately small YAML reader rather than a library, because the domain layer's
+ * zero-dependency rule does not apply to gate scripts but the *installability* rule does: these gates run
+ * on plain PHP with nothing installed, which is what makes them work in this container at all.
+ *
+ * The shape being read is fixed and shallow — `dependencies:` and `dev_dependencies:` each followed by
+ * two-space-indented keys — so a full parser would buy nothing. An SDK dependency (`flutter: {sdk: flutter}`)
+ * still counts: it is a dependency with a licence, and it belongs in the notices.
+ *
+ * @return list<string>
+ */
+function pubDirectRequirements(string $manifestPath): array
+{
+    if (!is_file($manifestPath)) {
+        return [];
+    }
+
+    $raw = file_get_contents($manifestPath);
+
+    if (false === $raw) {
+        return [];
+    }
+
+    $names = [];
+    $inSection = false;
+
+    foreach (explode("\n", $raw) as $line) {
+        if (preg_match('/^(dependencies|dev_dependencies):\s*$/', $line)) {
+            $inSection = true;
+
+            continue;
+        }
+
+        // Any other top-level key ends the section. Checked BEFORE the entry match, or `flutter:` at the
+        // top level (the SDK config block) would be read as a dependency of the preceding section.
+        if (preg_match('/^[a-zA-Z_]/', $line)) {
+            $inSection = false;
+
+            continue;
+        }
+
+        if ($inSection && preg_match('/^  ([a-z_][a-z_0-9]*):/', $line, $matches)) {
+            $names[] = $matches[1];
+        }
+    }
+
+    return array_values(array_unique($names));
 }
 
 /**
