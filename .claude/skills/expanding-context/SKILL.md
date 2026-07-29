@@ -27,9 +27,11 @@ disallowed-tools: AskUserQuestion
      `/converge`). `.claude/agents/` exists but is EMPTY on 2026-07-29, so those names are lens
      briefs you spawn with, not files you can read. Self-grading is the last resort and MUST be
      disclosed as self-graded.
-  3. REPORTS GO TO `var/claude/…` in the repo — gitignored (`/var`), survives compaction inside the
-     session, never committed. NOT `~/.claude/projects/…`: that is wiped when the container is
-     reclaimed, so a report written there is lost.
+  3. REPORTS GO TO `var/claude/…` in the repo — intended to be gitignored (`/var`), survives
+     compaction inside the session, never committed. NOT `~/.claude/projects/…`: that is wiped when
+     the container is reclaimed, so a report written there is lost. Caveat found while adapting: this
+     repo has NO `.gitignore` yet (2026-07-29), so `/var` must be added to one before a commit —
+     until then these reports are merely untracked, not ignored, and must never be `git add`ed.
   4. `--scope=global|both` IS REMOVED wherever it appears: `~/.claude/` in this container is
      GENERATED from repo files by `scripts/claude-bootstrap/install.sh`, so auditing it audits a copy.
   5. ≤5 concurrent subagents (10 caused ~50% rate-limit failures upstream). Every pipeline agent

@@ -30,9 +30,11 @@ disallowed-tools: AskUserQuestion
      `/converge`). `.claude/agents/` exists but is EMPTY on 2026-07-29, so those names are lens
      briefs you spawn with, not files you can read. Self-grading is the last resort and MUST be
      disclosed as self-graded.
-  3. REPORTS GO TO `var/claude/…` in the repo — gitignored (`/var`), survives compaction inside the
-     session, never committed. NOT `~/.claude/projects/…`: that is wiped when the container is
-     reclaimed, so a report written there is lost.
+  3. REPORTS GO TO `var/claude/…` in the repo — intended to be gitignored (`/var`), survives
+     compaction inside the session, never committed. NOT `~/.claude/projects/…`: that is wiped when
+     the container is reclaimed, so a report written there is lost. Caveat found while adapting: this
+     repo has NO `.gitignore` yet (2026-07-29), so `/var` must be added to one before a commit —
+     until then these reports are merely untracked, not ignored, and must never be `git add`ed.
   4. `--scope=global|both` IS REMOVED wherever it appears: `~/.claude/` in this container is
      GENERATED from repo files by `scripts/claude-bootstrap/install.sh`, so auditing it audits a copy.
   5. ≤5 concurrent subagents (10 caused ~50% rate-limit failures upstream). Every pipeline agent
@@ -73,7 +75,7 @@ disallowed-tools: AskUserQuestion
 # /aggregate-findings
 
 ## When to use
-Run after **two or more** of `/inspect`, `/sleuth`, `/gaps`, `/sweep`, `/inspect --vision` have produced reports, to synthesize them into one deduplicated, prioritized master list. (`/mega-analysis` was NOT imported — the 2026-07-27 integration — so there is no umbrella run to key off: the stage set is simply whatever reports exist under `var/claude/`.)
+Run after **two or more** of `/inspect`, `/sleuth`, `/gaps`, `/sweep`, `/inspect --vision` have produced reports, to synthesize them into one deduplicated, prioritized master list. (`/mega-analysis` was imported by neither the pdfturbo port nor this twes-in adaptation, so there is no umbrella run to key off: the stage set is simply whatever reports exist under `var/claude/`.)
 
 ## Flags
 - `--top=N` — show only the top N unique findings (default: all)
@@ -103,7 +105,7 @@ Read each file and pass to Step 2.
 Spawn exactly 3 agents with the full report content:
 
 ### Agent 1: Deduplication detector
-Prompt: "You are given N stage reports from this project's review skills. Your job is to identify findings that appear in 2 or more stage reports — these are the highest-confidence issues. For each cross-stage finding, list: the finding name/ID, which stages mention it, what each stage says (noting any contradictions), and a deduplicated one-sentence summary. Output as a markdown table. Only report findings that appear in ≥2 stages."
+Prompt: "You are given N stage reports from this project's review skills — a Symfony REST API, an Angular admin front end and a Flutter app in one repo, so the same underlying defect is often reported once per stack and must be collapsed. Your job is to identify findings that appear in 2 or more stage reports — these are the highest-confidence issues. For each cross-stage finding, list: the finding name/ID, which stages mention it, what each stage says (noting any contradictions), and a deduplicated one-sentence summary. Output as a markdown table. Only report findings that appear in ≥2 stages."
 
 ### Agent 2: Priority ranker
 Prompt: "You are given N stage reports from this project's review skills. Your job is to produce a single master priority list of ALL unique findings (not cross-stage-only), ranked by: (1) severity (P0/High before P1/Med), (2) fix cost (Quick before Long), (3) breadth of impact. Remove exact duplicates. Format: numbered list with severity badge, one-line description, estimated fix time, and which stage it came from. Cap at 50 entries."
