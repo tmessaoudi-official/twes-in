@@ -76,7 +76,10 @@ readonly HEADER_WINDOW=40
 # welcome page with it) and carried no identifier, sitting beside a `.ts` sibling that did.
 #
 # `html`, `scss` and `css` are Angular's authored template and style types. `js` covers `eslint.config.js` and
-# any future build script. Deliberately still absent: `json` (no comment syntax, so a header is impossible),
+# any future build script. Deliberately still absent: `json` (no COMMENT syntax — but note that is not the same as no identifier: `api/composer.json` and
+# `admin/package.json` both have a `license` FIELD that Composer and npm define for exactly this, which is
+# machine-readable in the sense invariant 8(c) asks for. Checking that field is owed, not impossible; saying
+# "impossible" is what stops it being re-examined),
 # `md` (prose, covered by the repo's own licence), and `ttf`/`ico` (binaries — their licences are recorded in
 # THIRD-PARTY-NOTICES.md instead, which is where a vendored font's Apache-2.0 grant belongs).
 readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js)

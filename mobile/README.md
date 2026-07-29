@@ -37,8 +37,19 @@ branding seam. No domain is owned yet, and this must be set to a reverse-DNS nam
 **before any store submission** — changing it after publication means a new listing and losing every
 installed user. A Wave 11 gate condition.
 
-Current state: `flutter analyze` clean, `flutter test` 2 passing, `flutter build web --release
---no-web-resources-cdn` produces a bundle that makes **zero** external requests.
+Current state: `flutter analyze` clean, then **`flutter build web --release --no-web-resources-cdn` and only
+then `flutter test`** — 4 passing. That order matters: two tests read `build/web`, and reversed they skip while
+the suite still reports success.
+
+The bundle makes **zero** external requests, including with Arabic text — which the Roboto vendoring alone did
+NOT achieve. Flutter Web's engine downloads Noto fallback fonts for any script the bundled fonts do not cover,
+from a URL compiled into the bundle defaulting to `fonts.gstatic.com`; measured, the same build issued 0 gstatic
+requests with Latin text and 13 with Arabic. `web/flutter_bootstrap.js` pins that origin. **Consequence to be
+honest about:** with the origin pinned and no Noto self-hosted yet, an Arabic glyph makes the engine retry a
+same-origin 404 at roughly 30 requests per second for the lifetime of the page, and the glyphs never render.
+That is a per-client flood against our own origin rather than a leak to Google — the right trade, and not a
+finished state. Self-hosting Noto before any Arabic UI ships is the real fix, and it needs an OFL-1.1
+licensing decision.
 
 Pinned on landing: Flutter **3.44.8**, Dart **3.12.2** — the current stable channel
 [Verified 2026-07-29 against Flutter's release manifest: `stable` is 3.44.8 / Dart 3.12.2, released
@@ -107,7 +118,7 @@ for the transport layer": the obligation follows the code, not the quantity of i
 | **Consumes `docs/spec/pricing-vectors.json`** | Third of the three implementations of the same money formula. This fixture is the only thing stopping them drifting. |
 | `flutter analyze` clean | |
 | Every dependency permissive, in `THIRD-PARTY-NOTICES.md` | `scripts/gates/dependency-licences.php` reserves a row for `mobile/pubspec.lock`. |
-| **A test that fails if the built web bundle references ANY external origin** | The Roboto fix is only durable if a future dependency cannot silently reintroduce a CDN fetch. Flutter Web's default build pulled Roboto from `fonts.gstatic.com`, which sends every visitor's IP to Google — LG München I, 3 O 17493/20 held that an unlawful transfer without consent — and rendered *nothing* offline while `analyze`, `test` and `build` were all green. Grep the built `build/web` for `https://` origins and fail on any that is not ours. |
+| ~~A test that fails if the built web bundle references ANY external origin~~ **DELIVERED** — `test/no_external_origin_test.dart` | And the specification above was **refuted while implementing it**: grepping `build/web` for `https://` flags 16 legitimate hosts on a clean build (licence text, XML namespaces, spec URLs), so that test would have been deleted the first time somebody needed to ship. It asserts the two things that actually matter instead — the engine's `fontFallbackBaseUrl` is same-origin, and CanvasKit is bundled locally. **It reads `build/web`, so `flutter build` must run BEFORE `flutter test`** or both cases skip and the suite still reports success. |
 | **Release builds must be signed with OUR key, never the debug key** | `flutter create` scaffolds `signingConfig = signingConfigs.getByName("debug")` behind a TODO. The Android debug keystore is a fixed, published key, so a debug-signed artifact can be re-signed by anyone and accepted as an update to the same app. Play rejects debug-signed uploads; direct APK and desktop distribution — which this tier contemplates — does not. Now read from `android/key.properties`, and the release build **fails** when that file is absent rather than falling back. |
 | **The API token belongs in the platform keystore, never in preferences** | `flutter_secure_storage` or the platform equivalent. This was stated in prose in this file and gated by nothing, which is the same failure the a11y row calls out: a control asserted and never measured is not a control. Assert it — a test that fails if a token-shaped value reaches `SharedPreferences`. |
 | **A real reverse-DNS bundle identifier** | `com.twesin` is a placeholder for a domain nobody owns. Compile-time, so it is *not* covered by the branding config seam, and changing it after publication means a new store listing and losing every installed user. |

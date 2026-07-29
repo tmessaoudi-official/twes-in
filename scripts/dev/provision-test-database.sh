@@ -121,8 +121,9 @@ GRANT ${TRUNCATOR_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE;
 
 -- ADMIN OPTION so the OWNER connection can grant and revoke this role inside a test. Needed because the
 -- ownership-reachability axis is otherwise untestable: the existing test connects AS the table's owner, and a
--- role always satisfies pg_has_role() on itself under every mode, so MEMBER -> USAGE survives as an
--- equivalent mutant. What has to be proven is a role REACHING an owner it does not inherit, and only a
+-- role always satisfies pg_has_role() on itself under every mode, so MEMBER -> USAGE survived as an
+-- apparently-equivalent mutant until this role existed. It now DIES — the claim of equivalence was wrong,
+-- which is why the role is here. What has to be proven is a role REACHING an owner it does not inherit, and only a
 -- superuser can set up the delegation that lets a test arrange that.
 GRANT ${PROBE_OWNER_ROLE} TO ${OWNER_ROLE} WITH ADMIN OPTION, INHERIT FALSE;
 
@@ -148,6 +149,11 @@ ALTER DATABASE ${DB} OWNER TO ${OWNER_ROLE};
 -- security not involved at all.
 REVOKE CONNECT, TEMPORARY ON DATABASE ${DB} FROM PUBLIC;
 GRANT CONNECT ON DATABASE ${DB} TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROLE}, ${REPLICATOR_ROLE};
+-- TEMPORARY, granted back explicitly after the REVOKE above took it from PUBLIC. The column-fidelity suite
+-- creates a TEMPORARY table so it needs no DDL on the schema and leaves nothing behind — a stray permanent
+-- table would break the tenancy suite's policed-table counts. This confers no cross-tenant reach: a temporary
+-- table is session-private and can only ever hold rows the role could already read.
+GRANT TEMPORARY ON DATABASE ${DB} TO ${RUNTIME_ROLE};
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT  USAGE  ON SCHEMA public TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROLE}, ${REPLICATOR_ROLE};
 GRANT  CREATE ON SCHEMA public TO ${OWNER_ROLE};

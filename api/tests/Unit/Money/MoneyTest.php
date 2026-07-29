@@ -479,4 +479,29 @@ final class MoneyTest extends TestCase
 
         self::assertSame('100.000', $original->amount());
     }
+
+    /**
+     * A 16-integer-digit amount is diagnosed as a RANGE problem, not a decimals one.
+     *
+     * `Money::of()` checks the magnitude BEFORE normalising to the currency scale, and that ordering does more
+     * than name the caller's own value in the message — it selects which of two exceptions the caller gets.
+     * Deleting the pre-normalisation check was invisible: the constructor still refuses the amount, so no wrong
+     * money escapes, but the report becomes "cannot be represented exactly in TND" and sends an operator to fix
+     * the number of decimals on a value whose problem is its size.
+     */
+    public function testAnOversizedAmountIsReportedAsARangeProblemNotADecimalsProblem(): void
+    {
+        try {
+            Money::of('1234567890123456.7777', Currency::of('TND'));
+            self::fail('16 integer digits must be refused.');
+        } catch (InvalidMoneyAmount $refused) {
+            self::assertStringContainsString(
+                'digits before the decimal point',
+                $refused->getMessage(),
+                'The diagnosis must name the magnitude. Reporting a decimals problem sends the operator to '
+                . 'the wrong field.',
+            );
+            self::assertStringNotContainsString('represented exactly', $refused->getMessage());
+        }
+    }
 }

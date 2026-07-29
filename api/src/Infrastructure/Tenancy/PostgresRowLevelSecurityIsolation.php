@@ -138,7 +138,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * Whether the value read back after a binding is the value that was written.
      *
      * Pure, and extracted for the same reason {@see self::roleCanBypassPolicies()} and
-     * {@see self::policedTableViolations()} are: the branch is otherwise unreachable from a test. Round 5
+     * {@see self::policedTableViolations()} are: it makes the classification directly assertable without
+     * arranging a database that misbehaves.
+     *
+     * **Not because the branch is unreachable — it is reachable, and a test drives it.** An earlier version of
+     * this sentence said "otherwise unreachable from a test", which was refuted by code committed in the same
+     * change: `LyingStatement` in TenantIsolationTest substitutes a `PDOStatement` subclass through PDO's
+     * `ATTR_STATEMENT_CLASS` and drives `bind()` into the mismatch on a real connection. Extraction is still
+     * worth having; the claim of impossibility was not, and is exactly what CLAUDE.md § Gotchas now forbids. Round 5
      * deleted this comparison outright and the whole suite stayed green — the test named for it re-queried
      * the GUC itself rather than driving `bind()` into the mismatch, so `bind()` would have silently
      * succeeded on a binding that never took, which is the exact failure the read-back exists to prevent.
@@ -351,8 +358,16 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * policies, not *removing* them.
      *
      * The table set is derived from the catalogue rather than passed in, deliberately: any table with RLS
-     * enabled is by definition tenant-owned, so a table added by a later wave is covered the day it is
-     * created and cannot be forgotten from a list. `has_table_privilege` already accounts for privileges
+     * enabled is by definition tenant-owned, so a table added by a later wave is covered the day it is created
+     * and cannot be omitted from a list somebody has to maintain.
+     *
+     * **What that does NOT cover, stated because an earlier version of this sentence implied the opposite.** The
+     * inverse is the dangerous direction and it is the likely Wave 1 mistake: a tenant-owned table whose
+     * migration **forgot** `ENABLE ROW LEVEL SECURITY` is invisible here *by construction*, because it never
+     * enters the derived set. This method can only verify tables somebody already remembered to police.
+     * Catching the forgotten one is the **schema gate's** job — recorded as owed, and a P0 at the first Wave 1
+     * migration — not this method's, and reading this docblock as though it covered both is how that gate
+     * would come to seem redundant. `has_table_privilege` already accounts for privileges
      * held via role membership, and `pg_has_role` on the owner covers reaching ownership by `SET ROLE`
      * from either current_user or session_user, for the same reason as above.
      *

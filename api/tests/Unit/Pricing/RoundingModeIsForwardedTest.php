@@ -16,6 +16,7 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Money\Currency;
+use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\PriceCalculator;
 use Twes\Domain\Pricing\ProductPricing;
@@ -77,21 +78,39 @@ final class RoundingModeIsForwardedTest extends TestCase
 
     /**
      * @param callable(RoundingMode): mixed $compute
+     * @param class-string<\Throwable>|null $expected the exception the layer's contract promises,
+     *                                                or null where the layer REPORTS instead of raising
      */
     #[DataProvider('entryPointsThatMustRefuseAnUnnecessaryRounding')]
-    public function testUnnecessaryIsNotSilentlySubstituted(callable $compute): void
+    public function testUnnecessaryIsNotSilentlySubstituted(callable $compute, ?string $expected): void
     {
-        // Null or a throw, depending on the layer's contract — Decimal reports, Money and the pricing
-        // classes raise. What matters is that the result is NOT a quietly rounded number, which is what a
-        // hard-coded mode produces.
+        // THE EXCEPTION TYPE, not merely "it threw". Accepting any `\Throwable` here let the null-quotient
+        // guards in `Money::dividedBy` and `Money::ratioTo` be deleted invisibly: without them a `TypeError`
+        // comes out of the constructor or the return type instead, the suite stayed green, and a `TypeError`
+        // is an `Error` rather than an `InvalidArgumentException` — so a handler mapping domain exceptions to
+        // 422 maps it to a **500**. Same shape as the recorded gotcha about accepting any non-zero exit as a
+        // detection: a crash and a refusal are not the same outcome.
         try {
             $result = $compute(RoundingMode::Unnecessary);
-        } catch (\Throwable) {
-            self::assertTrue(true, 'Refused by exception, which satisfies the contract.');
+        } catch (\Throwable $thrown) {
+            self::assertNotNull(
+                $expected,
+                'This layer reports rather than raises, so an exception is itself the defect: ' . $thrown::class,
+            );
+            self::assertInstanceOf(
+                $expected,
+                $thrown,
+                'A refusal must be the documented domain exception. A TypeError or Error here means a guard '
+                . 'was removed and the failure will surface as a 500 rather than a validation error.',
+            );
 
             return;
         }
 
+        self::assertNull(
+            $expected,
+            'This entry point is documented as raising, and it returned instead.',
+        );
         self::assertNull(
             $result,
             'RoundingMode::Unnecessary must refuse rather than round. A value came back instead, so the '
@@ -198,49 +217,60 @@ final class RoundingModeIsForwardedTest extends TestCase
 
         yield 'Decimal::divide' => [
             static fn(RoundingMode $m): ?string => Decimal::divide('1.000', '3', 3, $m),
+            null,
         ];
         yield 'Decimal::rescale' => [
             static fn(RoundingMode $m): ?string => Decimal::rescale('0.0015', 3, $m),
+            null,
         ];
         yield 'Money::multipliedBy' => [
             static fn(RoundingMode $m): Money => Money::of('0.001', $tnd)->multipliedBy('1.5', $m),
+            InvalidMoneyAmount::class,
         ];
         yield 'Money::dividedBy' => [
             static fn(RoundingMode $m): Money => Money::of('1.000', $tnd)->dividedBy('3', $m),
+            InvalidMoneyAmount::class,
         ];
         yield 'Money::ratioTo' => [
             static fn(RoundingMode $m): string => Money::of('2.000', $tnd)
                 ->ratioTo(Money::of('3.000', $tnd), 12, $m),
+            InvalidMoneyAmount::class,
         ];
         yield 'PriceCalculator::netFromCost' => [
             static fn(RoundingMode $m): Money => new PriceCalculator()
                 ->netFromCost(Money::of('0.001', $tnd), Rate::fromPercentage('50'), $m),
+            InvalidMoneyAmount::class,
         ];
         yield 'PriceCalculator::profitRateFromNet' => [
             static fn(RoundingMode $m): ?Rate => new PriceCalculator()
                 ->profitRateFromNet(Money::of('3.000', $tnd), Money::of('5.000', $tnd), $m),
+            InvalidMoneyAmount::class,
         ];
         yield 'PriceCalculator::vat' => [
             static fn(RoundingMode $m): Money => new PriceCalculator()
                 ->vat(Money::of('0.013', $tnd), Rate::fromPercentage('19'), $m),
+            InvalidMoneyAmount::class,
         ];
         yield 'ProductPricing::netPrice' => [
             static fn(RoundingMode $m): Money => ProductPricing::fromProfitRate(
                 Money::of('0.001', $tnd),
                 Rate::fromPercentage('50'),
             )->netPrice($m),
+            InvalidMoneyAmount::class,
         ];
         yield 'ProductPricing::profitRate' => [
             static fn(RoundingMode $m): ?Rate => ProductPricing::fromNetPrice(
                 Money::of('3.000', $tnd),
                 Money::of('5.000', $tnd),
             )->profitRate($m),
+            InvalidMoneyAmount::class,
         ];
         yield 'ProductPricing::withCost' => [
             static fn(RoundingMode $m): ProductPricing => ProductPricing::fromNetPrice(
                 Money::of('3.000', $tnd),
                 Money::of('5.000', $tnd),
             )->withCost(Money::of('6.000', $tnd), $m),
+            InvalidMoneyAmount::class,
         ];
     }
 }

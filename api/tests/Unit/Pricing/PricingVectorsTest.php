@@ -251,6 +251,42 @@ final class PricingVectorsTest extends TestCase
             $groupVat = $calculator->vat($base, Rate::fromPercentage((string) $rate), RoundingMode::HalfUp);
             $vat = $vat->plus($groupVat);
 
+            // THE LOOP BELOW ASSERTS NOTHING IF NOTHING MATCHES, so the match is asserted first. A reviewer
+            // respelled a `rate` key from "19" to "19.0" and the whole per-rate breakdown became unassertable:
+            // both bases and both VATs could be set to nonsense, or the section emptied entirely, with the suite
+            // green — the only signal was the assertion count dropping, which nothing checks. This table is a
+            // legally required line on a French and a Tunisian invoice, and this file is named as the reference
+            // implementation the Angular and Flutter tiers copy.
+            // A MULTI-RATE document must declare its breakdown. Guarding only on "a breakdown was declared" left
+            // the sharpest variant open: emptying `vat_by_rate` outright removed every assertion about it and the
+            // suite stayed green. A single-rate case carries its rate at the case level and legitimately has no
+            // breakdown, so the requirement is conditioned on the shape rather than demanded of every case.
+            if (\count($baseByRate) > 1) {
+                self::assertNotSame(
+                    [],
+                    $vatByRate,
+                    'A document with more than one VAT rate must declare vat_by_rate — that per-rate table is a '
+                    . 'required line on a French and a Tunisian invoice, and without it nothing here is checked.',
+                );
+            }
+
+            if ([] !== $vatByRate) {
+                self::assertSameSize(
+                    $vatByRate,
+                    $baseByRate,
+                    'A declared breakdown must cover every rate present in the lines and no others. A rate string '
+                    . 'that matches no line makes its group silently unassertable.',
+                );
+            }
+
+            foreach ($vatByRate as $declaredGroup) {
+                self::assertArrayHasKey(
+                    $declaredGroup['rate'],
+                    $baseByRate,
+                    'No line carries rate "' . $declaredGroup['rate'] . '", so this group would never be checked.',
+                );
+            }
+
             foreach ($vatByRate as $expectedGroup) {
                 if ($expectedGroup['rate'] === (string) $rate) {
                     self::assertSame($expectedGroup['base'], $base->amount(), "base for rate {$rate}, case {$id}");

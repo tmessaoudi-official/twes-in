@@ -47,7 +47,7 @@ fresh_fixture() {
   # The documents that STATE the licensing rule, so the case below can check they agree with the gate that
   # ENFORCES it. Round 6 found the gate permitting nine identifiers while both documents said five "and
   # nothing else" — a licensing decision taken as a build fix.
-  cp "$REPO_ROOT"/CLAUDE.md "$REPO_ROOT"/LICENSING.md "$WORK/repo/"
+  cp "$REPO_ROOT"/CLAUDE.md "$REPO_ROOT"/LICENSING.md "$REPO_ROOT"/README.md "$WORK/repo/"
   mkdir -p "$WORK/repo/.claude/agents"
   cp "$REPO_ROOT"/.claude/agents/completeness-reviewer.md "$WORK/repo/.claude/agents/"
   # The Angular tier's manifest AND lock. Omitting either would make every npm-licence assertion below
@@ -781,7 +781,11 @@ echo "== the licensing rule must be stated the same way everywhere it is stated 
 # CLAUDE.md invariant 8(a), LICENSING.md or the reviewer charter — so a session following CLAUDE.md had to
 # refuse a dependency the gate accepted, and a reviewer following its own charter had to file a P0 against
 # the gate. Four artefacts, one rule: this case makes disagreement fail rather than wait for a review.
-for document in CLAUDE.md LICENSING.md .claude/agents/completeness-reviewer.md; do
+# FIVE surfaces, not three. The first version of this loop covered the three documents I had just amended and
+# missed the two that also state the rule — README.md, which frames itself as the pre-dependency read, and
+# THIRD-PARTY-NOTICES.md, which CLAUDE.md 8(a) names as where a licence must be recorded. Both were left on the
+# superseded five-identifier list, so round 6's own finding reproduced verbatim in two more files.
+for document in CLAUDE.md LICENSING.md README.md THIRD-PARTY-NOTICES.md .claude/agents/completeness-reviewer.md; do
   fresh_fixture
   missing=()
 
@@ -802,7 +806,42 @@ for l in r['permissive'] + r['build_time_data']:
       "$document" "${missing[*]}"
     failed=$((failed + 1))
   fi
+
+  # THE OTHER DIRECTION. Presence-only checking is one-directional: a document could be made WIDER than the
+  # gate — adding `LGPL-3.0` to the permitted sentence in CLAUDE.md 8(a), the file the charter now calls
+  # authoritative — with every case green. That is the exact copyleft class 8(a) names as a commercial-branch
+  # killer. So the nine distributed identifiers must appear as a CLOSED list: comma-separated, in order, and
+  # not followed by another identifier. Whitespace is normalised first because every one of these documents
+  # line-wraps the list.
+  # THIRD-PARTY-NOTICES.md records each dependency's own licence and discusses the identifiers in prose; it
+  # does not state the RULE as a list, so the closed-list shape is asked only of the four documents that do.
+  if [[ "$document" == THIRD-PARTY-NOTICES.md ]]; then
+    continue
+  fi
+
+  if python3 - "$WORK/repo/${document}" <<'PYLIST'
+import re, sys, pathlib
+text = re.sub(r'\s+', ' ', pathlib.Path(sys.argv[1]).read_text())
+expected = 'MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0'
+# The list must be present AND not extended by a further identifier.
+sys.exit(0 if re.search(re.escape(expected) + r'(?![,\s]*[A-Za-z0-9])', text) else 1)
+PYLIST
+  then
+    printf '  ok   — %s states the distributed set as a CLOSED list\n' "$document"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — %s does not state the nine distributed identifiers as a closed, ordered list. Either the order changed, or an identifier was appended to it — which would make the document permit something the gate refuses.\n' \
+      "$document"
+    failed=$((failed + 1))
+  fi
 done
+
+# A CASE-COUNT FLOOR. The rule-set size baselines catch a deleted *rule*; nothing caught a deleted *case* —
+# removing the three cross-document licence checks gave a green run with a lower count and no signal. Committed
+# minimum, so shrinking the suite is a deliberate edit to this number rather than a quiet one elsewhere.
+# 259 rather than 260: $passed is read BEFORE this assertion increments it, so the floor is the count of every
+# OTHER case. Setting it to the final total makes the check fail against itself.
+assert_at_least "the suite itself has not shrunk" "$passed" 259
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

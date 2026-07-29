@@ -103,4 +103,53 @@ final class UuidV7GeneratorTest extends TestCase
     {
         self::assertSame('UTC', new SystemClock()->now()->getTimezone()->getName());
     }
+
+    /**
+     * The five hyphen-separated groups must PARTITION the 32 hex characters, not overlap.
+     *
+     * Nothing asserted this, so the generator could silently stop carrying most of its randomness: with the
+     * final group sliced from offset 0 instead of 20, the emitted id is
+     * `PPPPPPPP-PPPP-7rrr-8rrr-PPPPPPPPPPPP` — the 48 random bits of bytes 10–15 never reach the output and the
+     * last group is a constant at a fixed millisecond, leaving **26** usable random bits instead of 74. The
+     * format regex, the version nibble, the variant nibble, the clock prefix and 1000-unique-ids all still
+     * pass, because the middle 26 bits vary.
+     *
+     * That matters beyond entropy: this class's docblock sells those 74 bits as a tenancy control — a missing
+     * authorisation check on `/invoices/1234` is enumerable, on a UUID it is not — and nothing could falsify it.
+     *
+     * Deterministic, no statistics: at a FROZEN clock the timestamp prefix is identical, so any group that
+     * echoes it is caught by a single inequality.
+     */
+    public function testTheGroupsPartitionTheHexRatherThanRepeatingTheTimestamp(): void
+    {
+        $generator = new UuidV7Generator(FrozenClock::at('2026-07-29T12:00:00+00:00'));
+
+        $first = $generator->nextIdentifier();
+        $second = $generator->nextIdentifier();
+
+        $groups = explode('-', $first);
+        self::assertCount(5, $groups);
+
+        // The two ids share a millisecond, so their timestamp prefix is identical — and everything after it
+        // must not be.
+        self::assertSame(
+            substr($first, 0, 13),
+            substr($second, 0, 13),
+            'precondition: the clock is frozen, so the 48-bit prefix is shared',
+        );
+
+        self::assertNotSame(
+            $groups[4],
+            explode('-', $second)[4],
+            'The last group must be random. If it is constant at a frozen clock it is echoing the timestamp, '
+            . 'and 48 random bits never reach the output.',
+        );
+
+        // And it must not simply BE the prefix, which is the specific mutation: offset 20 → 0.
+        self::assertNotSame(
+            $groups[0] . $groups[1],
+            $groups[4],
+            'The last group repeats the first 12 hex characters, so the groups overlap rather than partition.',
+        );
+    }
 }

@@ -169,9 +169,11 @@ transitive list would rot on the first `npm update` while a direct one records a
 Zero-clause BSD, which is permissive with no attribution requirement at all — strictly less demanding than
 MIT. It is TypeScript's own runtime helper library.
 
-**Six licence identifiers in the locked tree are not on the strict permissive list, and all but `tslib`'s
-are dev-only.** `BlueOak-1.0.0`, `MIT-0` and `CC0-1.0` were added to that list on their own merits (all
-non-copyleft, none imposing an obligation that could survive into a commercial sublicence). `CC-BY-4.0`
+**Four of the six licence identifiers beyond the original MIT/Apache/BSD/ISC set are now ON the permitted
+list, and only `tslib`'s applies to a RUNTIME dependency.** `0BSD`, `BlueOak-1.0.0`, `MIT-0` and `CC0-1.0` were
+each added on their own merits (all non-copyleft, none imposing an obligation that could survive into a
+commercial sublicence) — see `CLAUDE.md` § "Licensing invariants" 8(a), which is authoritative, and
+`LICENSING.md`. `CC-BY-4.0`
 (`caniuse-lite`) and `CC-BY-3.0` (`spdx-exceptions`) were **not**: they are Creative Commons *content*
 licences that impose attribution, and this project has already refused a dependency for exactly that reason
 (licensing invariant 3 — `admin-portal`'s Attribution Assurance License). They are permitted only as

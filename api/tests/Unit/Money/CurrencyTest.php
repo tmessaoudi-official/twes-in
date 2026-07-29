@@ -183,4 +183,46 @@ final class CurrencyTest extends TestCase
         // And a currency equals itself, so the guard is not simply returning false.
         self::assertTrue($eur->equals(Currency::of('EUR')));
     }
+
+    /**
+     * NO currency has one decimal place, and that closes the group defined only by exclusion.
+     *
+     * The 3-, 4- and 0-decimal sets are each pinned as complete, so `2 → 3`, `2 → 0` and `2 → 4` all fail. The
+     * two-decimal group — 128 currencies — was defined by exclusion alone, and the range assertions admit `1`,
+     * so a one-decimal typo in any of the 128 was undetectable: `CZK` with one decimal makes
+     * `Money::of('19.99', CZK)` unenterable while the suite stays green. ISO 4217 has no 1-decimal currency, so
+     * asserting the set is empty is a fact about the standard rather than a restatement of the table.
+     */
+    public function testNoCurrencyHasASingleDecimalPlace(): void
+    {
+        $oneDecimal = array_values(array_filter(
+            Currency::all(),
+            static fn(string $code): bool => 1 === Currency::of($code)->scale(),
+        ));
+
+        self::assertSame(
+            [],
+            $oneDecimal,
+            'ISO 4217 defines no currency with one decimal place, so an entry here is a typo — and a '
+            . 'one-decimal currency makes every ordinary price in it unrepresentable.',
+        );
+
+        // And the two-decimal group is exactly the complement of the three pinned sets, so it cannot be
+        // silently narrowed either.
+        $byScale = [];
+
+        foreach (Currency::all() as $code) {
+            $byScale[Currency::of($code)->scale()][] = $code;
+        }
+
+        $scales = array_keys($byScale);
+        sort($scales);
+
+        self::assertSame(
+            [0, 2, 3, 4],
+            $scales,
+            'Only four scales exist in the registry. A fifth is either a typo or a standard change that needs '
+            . 'the NUMERIC(19,4) column revisited.',
+        );
+    }
 }

@@ -84,7 +84,7 @@ spent partly because the tree changed under the reviewer.
 
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
-Delivered and verified, **after certification rounds 1, 2 and 3** (see below): the figures rise every round, so **run the commands rather than trusting a number written here** — `php tools/bin/phpunit-12.phar` and `bash scripts/gates/test-gates.sh` each report their own; six architecture/licensing gates, each proven to fail on an injected
+Delivered and verified, **and re-verified by every certification round since** (see below): the figures rise every round, so **run the commands rather than trusting a number written here** — `php tools/bin/phpunit-12.phar` and `bash scripts/gates/test-gates.sh` each report their own; six architecture/licensing gates, each proven to fail on an injected
 violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
 removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
 
@@ -621,6 +621,9 @@ mutants on the ownership axis, which are *equivalent* mutants because the tests 
 `current_user == session_user` — the asymmetric case is covered on the role-attributes axis by
 `testAConnectionWhoseSessionUserCanReachBypassRlsIsRefused`.
 
+**ROUNDS 6 AND 7 HAVE SINCE RUN** — see their record above; the developer ruled after round 5 to fix all
+thirteen items and run another round on a frozen tree, and rounds 6 and 7 are that plus its consequence.
+
 **ROUND 5 IS THE CAP.** `CLAUDE.md` § "Certification ladder" requires two *consecutive* clean rounds and caps
 the loop at five; there have been **zero** clean rounds. The required next step is the plain-text escalation,
 not a declaration of victory — and the bundle-integration precedent for stopping at five explicitly excludes
@@ -632,6 +635,62 @@ and a float-truncation P0 that silently turned a 30% margin into 0%. Three of ro
 with working exploits against a live database. Against that: the counts are not converging, and the dominant
 *category* of finding has shifted from code to record-keeping — 6 of the completeness lens's 8, and 8 of the
 13 R5 items above, are documentation or coverage rather than wrong behaviour.
+
+### Certification rounds 6 and 7 — 17 then 20 findings; SIX P0s, every one in the previous round's code
+
+Frozen at `b80efa8` and `3f09126`. Counts across the loop: 48 → 26 → 20 → 21 → 29 → **17** → **20**.
+
+**Recorded because a reviewer had to point it out: round 6 originally existed only in a commit-message body.**
+Every other round put its residues in a table that later rounds worked from; a commit message is not greppable
+by topic and is not where anybody looks. That omission is itself the eighth instance of this project's signature
+defect — a claim recorded somewhere other than where its readers are.
+
+**The six P0s, and the pattern that matters more than any of them.** All six were in code written to close the
+*previous* round. This loop is not draining a fixed pool of pre-existing bugs; it is finding the defects each
+fix introduces, which is why "one more clean round" kept receding.
+
+| # | P0 | Round |
+|---|---|---|
+| 1 | `polqual` read, `polwithcheck` never — a scoped `USING` beside `WITH CHECK (true)` was CLEAN and permitted a cross-tenant INSERT (PostgreSQL reuses `USING` as a write check only for `UPDATE` and `INSERT … RETURNING`). The same line **falsely refused** a correct per-command policy pair. | 6 |
+| 2 | `LIKE '%twes.tenant_id%'` proves a policy *mentions* the setting, not that it isolates by it: `USING (scoped OR current_setting('twes.support_mode') = 'on')` passed, and **setting a custom GUC needs no privilege**, so the unprivileged runtime role flipped it and read every tenant. Now an exact comparison against `canonicalPolicyExpression()`. | 6 |
+| 3 | Predefined roles were invisible — `pg_*` roles carry all three checked attributes false, so all fourteen passed. `pg_execute_server_program` reaches superuser via `COPY TO PROGRAM`; `pg_write_server_files` writes files as `postgres`. Any `pg_*` membership is now refused, except `pg_database_owner` (implicit for a database owner, confers nothing). | 6 |
+| 4 | The exact comparison closed the literal `true` and left **column identity** open: `USING (company_id = …)` beside `WITH CHECK (audit_tenant = …)` is two individually-canonical halves, and a plain INSERT is guarded by `WITH CHECK` alone. The tenant column is now one value per table, checked within and across policies. **My own test had pinned the permissive reading as intended.** | 7 |
+| 5 | `pg_partition_tree` knows only **declarative** partitioning. A legacy `INHERITS` child has `relispartition = f`, appears in no partition tree, and carries `relrowsecurity = f` — never inspected, full cross-tenant read/update/delete/insert. Now a recursive `pg_inherits` walk, which is the catalogue behind both mechanisms. `grep -rn INHERITS` across the repo had no match: never considered. | 7 |
+| 6 | **The fifth path**, and every check in the class was structurally blind to it: they all ask about roles *reachable* from the connection, but PostgreSQL runs part of a query as a role you cannot reach. A view evaluates RLS as its OWNER unless `security_invoker = true` — which **defaults to false** — so a view owned by a `BYPASSRLS` role returns and accepts every tenant. A matview cannot carry RLS at all; a `SECURITY DEFINER` function runs as its owner. The leaking topology was **our own fixture plus one `CREATE VIEW`**. | 7 |
+
+**Two claims of impossibility, both refuted — the round's most transferable lesson and now a `CLAUDE.md`
+Gotcha.** Closing round 5 I disclosed two residues and explained each with a claim that it *could not* be
+tested. Round 6 killed both: PDO substitutes the statement class natively, so nine lines drive `bind()`'s
+read-back branch on a real connection; and "equivalent mutant" means *no input distinguishes it*, which was true
+of the `current_user` halves and false of the load-bearing `session_user` halves. Round 7 then found a third
+such claim still standing in the very file the Gotcha is about. **An admitted gap gets re-tried; a documented
+impossibility gets read once and never re-tested.**
+
+**Also closed across the two rounds:** `Decimal::add`/`subtract` silently truncated at a narrowing scale
+outside `applyRounding()`; the representability guard tested the *exact* product where the constructor receives
+the *rounded* one (rounding carries a digit); `Currency::equals` could compare **scales** instead of codes with
+the suite green, making `EUR + USD = 200.00 EUR`; four money-path parameters still took a bare `string|int`, so
+`Rate::fromFraction(0.30)` returned **zero**; the per-rate VAT breakdown asserted nothing when no group matched,
+and could be emptied outright; `catch (\Throwable)` in the rounding test let `Money`'s null-guards be deleted,
+turning a 422 into a 500; the 2-decimal currency group was defined only by exclusion, so a 1-decimal typo in any
+of 128 was undetectable; `UuidV7Generator`'s groups were never asserted to *partition* the hex, so the output
+could carry 26 random bits instead of 74; the licensing invariant said five identifiers "and nothing else" while
+the gate enforced nine; Flutter Web still fetched Noto from `fonts.gstatic.com` for Arabic; and the documented
+Flutter command order made both new GDPR tests **skip** while reporting success.
+
+**Round 7's residues, owed:**
+
+| # | Owed |
+|---|---|
+| R7-1 | **Noto is not self-hosted.** With `fontFallbackBaseUrl` pinned same-origin and no Noto under it, an Arabic glyph makes the engine retry a 404 at ~30 req/s for the page's lifetime and the glyphs never render. Better than leaking every visitor's IP to Google, and not a finished state. The real fix needs an **OFL-1.1 licensing decision** — Noto is OFL-1.1, which is not on the permitted list. **Blocks any Arabic UI**, and `ar` already has a committed catalogue. |
+| R7-2 | `assertPolicedTablesAreBeyondThisRolesReach()`'s docblock claims catalogue derivation means a table "cannot be forgotten from a list". The inverse is the dangerous direction and it is the one that happens: a tenant-owned table whose migration **omitted** `ENABLE ROW LEVEL SECURITY` is invisible to this check by construction. That coverage is the schema gate's job — **P0 at the first Wave 1 migration** — and the docblock must say so rather than the opposite. |
+| R7-3 | No case-count floor on `test-gates.sh`: deleting the three cross-document licence cases gives a green run with a lower count and nothing notices. The rule-set size baselines do not cover case deletion. |
+| R7-4 | `spdx-headers.sh` states a header in JSON is "impossible". It is not — `api/composer.json` carries `"license": "AGPL-3.0-or-later"` in the field both Composer and npm define, and **`admin/package.json` has no such field and no gate looks.** The obstacle is comment syntax, not the identifier. |
+| R7-5 | Reviewer agents are chartered at **session load time**, so amending `.claude/agents/*.md` does not re-charter a running agent. Round 7's completeness lens was running the pre-fix licensing charter and said so. The meta-case protects the file; it cannot protect a session already started. |
+
+Plus, unchanged: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, **R5-2's** two-line throw-wiring (now
+covered — `LyingStatement` kills it), the composite-key schema gate, PHPStan/deptrac, and the Flutter
+transitive-licence walk.
 
 ## Scaffolding findings — 2026-07-29, from screenshotting the builds rather than running the tests
 
