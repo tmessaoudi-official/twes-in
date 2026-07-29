@@ -354,8 +354,8 @@ of them, per tier:
 | Symfony API | `composer validate`, `vendor/bin/phpstan` (max level), `vendor/bin/php-cs-fixer --dry-run`, `vendor/bin/phpunit`, `bin/console doctrine:schema:validate`, `bin/console lint:container` |
 | **Architecture fitness** | `vendor/bin/deptrac` (or `phpat`) for the inward-only layer rules; a PHPStan banned-function rule for ambient `time()`/`random_int()`/`getenv()`/`file_get_contents()` in `Domain/`; a grep gate for `#[ORM\` under `Domain/`. **Not yet implemented** — see § "Architecture". |
 | **Licensing** | Every dependency permissive and present in `THIRD-PARTY-NOTICES.md`; SPDX header on every source file. **Not yet implemented** — a script, not a human habit, because a habit will not survive a rushed `composer require`. |
-| Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production` |
-| Flutter client | `flutter analyze`, `flutter test` |
+| Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, an **a11y check** (`axe-core`), **locale key-parity** across every shipped locale, and the shared pricing vectors |
+| Flutter client | `flutter analyze`, `flutter test` — including semantics/a11y tests and the shared pricing vectors |
 | Infra | `docker compose config`, `bash -n` on every shell script |
 
 **The two "not yet implemented" rows are the honest state, not filler.** They exist as rows so that

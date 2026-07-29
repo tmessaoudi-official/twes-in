@@ -113,12 +113,21 @@ operation; no drift after a long sequence of partial payments and refunds.
 agree. **Visual evidence delivered with `SendUserFile` in the same turn** — a PDF is a legal document
 and no unit test looks at the pixels.
 
-## Wave 5 — Tax & e-invoicing (France first)
+## Wave 5 — Tax & e-invoicing (jurisdiction order OPEN — see below)
 
-**In:** French VAT rules · Factur-X (PDF/A-3 with embedded XML) · Peppol BIS · EN 16931 validation ·
-reverse charge · exempt vs zero-rated (different legally, routinely conflated in code).
+**Inconsistency flagged 2026-07-29, not silently resolved.** This wave said "France first", written
+before the developer ruled the default currency **TND** and specified Tunisia's fixed stamp duty. Those
+two rulings point at **Tunisia** as the primary jurisdiction, and France and Tunisia need *different*
+e-invoicing work — Factur-X/Chorus Pro versus Tunisia's own regime. Guessing here would mean building
+several weeks of the wrong compliance layer, so the order is an open question rather than an assumption.
 
-**Out:** the other 35 jurisdictions and 7 standards. Deferred deliberately.
+**In, regardless of order:** the generic charge engine from `pricing-and-documents.plan.md` (per-line and
+per-document VAT at differing rates, plus fixed absolute charges) · reverse charge · exempt vs
+zero-rated, which are legally distinct and routinely conflated in code · one jurisdiction's rules and one
+e-invoicing format, done properly end to end.
+
+**Out:** every other jurisdiction and format. Deferred deliberately, and the charge engine is what makes
+adding one later a configuration exercise rather than a rewrite.
 
 **Acceptance:** generated XML passes a real schema/schematron validation; the PDF and the XML never
 disagree on a figure.

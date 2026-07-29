@@ -266,3 +266,7 @@ one is routinely discovered too late.
 
 1. **Which locales ship in the first version?** The answer decides whether RTL — and therefore
    bidirectional PDF rendering, the hardest item above — is in scope for the first release or not.
+2. **Which jurisdiction's tax and e-invoicing rules come first — Tunisia or France?** `build-waves.plan.md`
+   Wave 5 was written as "France first" *before* TND and the Tunisian stamp duty were ruled, and those
+   rulings point the other way. The two need different compliance work (Factur-X / Chorus Pro versus
+   Tunisia's own regime), so this is several weeks of build pointed in one direction or the other.
