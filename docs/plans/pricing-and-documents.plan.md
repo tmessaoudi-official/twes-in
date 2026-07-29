@@ -262,11 +262,17 @@ one is routinely discovered too late.
   They are independent axes: `locale` drives text, dates and number *formatting*; `currency` drives
   amounts and scale. Conflating them is a common and confusing bug.
 
-## Open — awaiting the developer
+## Assumed, not blocking — stated so a wrong assumption is cheap to correct
 
-1. **Which locales ship in the first version?** The answer decides whether RTL — and therefore
-   bidirectional PDF rendering, the hardest item above — is in scope for the first release or not.
-2. **Which jurisdiction's tax and e-invoicing rules come first — Tunisia or France?** `build-waves.plan.md`
-   Wave 5 was written as "France first" *before* TND and the Tunisian stamp duty were ruled, and those
-   rulings point the other way. The two need different compliance work (Factur-X / Chorus Pro versus
-   Tunisia's own regime), so this is several weeks of build pointed in one direction or the other.
+**Locales in the first version: French, Arabic and English, with RTL in scope.** Not asked, because it
+is inferable and the safe direction is clear: France and Tunisia both ship in Wave 5, so French is
+certain; Tunisia makes Arabic near-certain; English is the usual third. **Arabic means RTL, and RTL
+reaches the generated PDF** — bidirectional text and Arabic glyph shaping, the hardest item in the i18n
+scope.
+
+The asymmetry is what decides it: planning for RTL and not needing it costs a little over-engineering,
+whereas needing it and not having planned for it means reworking every template and both clients. So RTL
+is in scope from Wave 0's scaffolding.
+
+**Say the word if Arabic is out** and the PDF bidirectional work drops out of scope with it — that is
+the single largest saving available in the i18n budget.

@@ -113,21 +113,26 @@ operation; no drift after a long sequence of partial payments and refunds.
 agree. **Visual evidence delivered with `SendUserFile` in the same turn** — a PDF is a legal document
 and no unit test looks at the pixels.
 
-## Wave 5 — Tax & e-invoicing (jurisdiction order OPEN — see below)
+## Wave 5 — Tax & e-invoicing (France AND Tunisia, both in this wave)
 
-**Inconsistency flagged 2026-07-29, not silently resolved.** This wave said "France first", written
-before the developer ruled the default currency **TND** and specified Tunisia's fixed stamp duty. Those
-two rulings point at **Tunisia** as the primary jurisdiction, and France and Tunisia need *different*
-e-invoicing work — Factur-X/Chorus Pro versus Tunisia's own regime. Guessing here would mean building
-several weeks of the wrong compliance layer, so the order is an open question rather than an assumption.
+**RULED 2026-07-29: both jurisdictions ship together.** This resolves the inconsistency flagged earlier
+(the wave originally said "France first", written before TND and the Tunisian stamp duty were ruled).
+
+Doing two jurisdictions at once is **more work than one but less than one-then-another**, and that is the
+argument for it: two live jurisdictions from the start force the tax layer to be genuinely generic
+instead of France-shaped with Tunisia bolted on. They differ in exactly the ways that expose a bad
+abstraction — different VAT rates and bands, a fixed stamp duty in one and not the other, different
+e-invoicing formats and transports, different currencies (EUR 2 decimals, TND 3), and different
+languages. If the charge engine and the format layer survive both, they will survive the third.
 
 **In, regardless of order:** the generic charge engine from `pricing-and-documents.plan.md` (per-line and
 per-document VAT at differing rates, plus fixed absolute charges) · reverse charge · exempt vs
 zero-rated, which are legally distinct and routinely conflated in code · one jurisdiction's rules and one
 e-invoicing format, done properly end to end.
 
-**Out:** every other jurisdiction and format. Deferred deliberately, and the charge engine is what makes
-adding one later a configuration exercise rather than a rewrite.
+**Out:** every other jurisdiction and format. Deferred deliberately — and having done two, adding a
+third should be configuration plus a format adapter, never a rewrite. If it is not, the abstraction is
+wrong and that is the signal to stop and fix it.
 
 **Acceptance:** generated XML passes a real schema/schematron validation; the PDF and the XML never
 disagree on a figure.
