@@ -19,8 +19,9 @@ own statically-typed PHP-inspired language — is **vision, not a target**: the 
 nothing here is built for it. Do not treat it as a requirement, do not design around its unknowns, and
 do not defer a decision waiting for it. See `VISION.md`.
 
-Status: **greenfield.** As of 2026-07-29 this repo contains the Claude bundle and planning docs only —
-no application code yet. Anything below describing the stack is the *target*, not the present. Read
+Status: **greenfield.** As of 2026-07-29 this repo contains the Claude bundle, planning documents, the
+licence and notices (`LICENSE`, `LICENSING.md`, `THIRD-PARTY-NOTICES.md`), `README.md` and `VISION.md` —
+and **no application code**. Anything below describing the stack is the *target*, not the present. Read
 `docs/plans/*.plan.md` for where the build actually is.
 
 ## Routing
@@ -105,7 +106,10 @@ These are not guidelines. Breaking one changes what this repository legally *is*
 
 8. **twes-in itself is AGPL-3.0-or-later plus a commercial licence**, copyright wholly
    Takieddine MESSAOUDI (developer ruling, 2026-07-29: open source, but sellable by the author). Three
-   consequences that bind day-to-day work, detailed in `LICENSING.md`: **(a)** every dependency must be
+   consequences that bind day-to-day work — the first two are obligations 1–2 of `LICENSING.md`
+   § "Three obligations", the third is its § "Notices"; that file's third obligation (AGPL binds *us*
+   too once we distribute) is not restated here because it constrains distribution rather than
+   day-to-day code: **(a)** every dependency must be
    **permissive — MIT, Apache-2.0, BSD-2/3-Clause or ISC, and nothing else** — and recorded in
    `THIRD-PARTY-NOTICES.md` in the same change that adds it. **"AGPL-compatible" is the wrong test**:
    a GPL/AGPL/LGPL dependency satisfies our AGPL branch and *kills the commercial one*, because a third
@@ -332,8 +336,9 @@ are expensive.
 
 ## Gotchas
 
-*(This section is the decision register. It is empty because the project is greenfield — entries land
-as rulings are made and as the codebase teaches us things. Do not delete this heading.)*
+*(This section is the decision register — see § "Plans live in the repo". Entries land as rulings are
+made and as the codebase teaches us things. Never write a count here; `grep -c '^- \*\*20' CLAUDE.md`
+over this section is the only trustworthy tally. Do not delete this heading.)*
 
 - **2026-07-29 — `.claude/settings.json` is writable in THIS container.** pdfturbo's bundle documents
   the file as classifier-blocked for Claude, and ships a `settings.json.pending` +

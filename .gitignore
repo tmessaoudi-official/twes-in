@@ -16,9 +16,12 @@
 /claude-bundle/
 # Backups left by scripts/claude-bootstrap/apply-pending-settings.sh — never commit one.
 /.claude/settings.json.bak.*
-# NOT ignored, deliberately: scripts/claude-bootstrap/settings.json.pending. Claude cannot
-# write .claude/settings.json (classifier-blocked), so it commits the change there for the
-# developer to apply locally with apply-pending-settings.sh, which deletes it on success.
+# NOT ignored, deliberately: scripts/claude-bootstrap/settings.json.pending — if one ever exists.
+# It does not today: .claude/settings.json is tracked and was written DIRECTLY by Claude in this
+# container (see CLAUDE.md Gotchas, 2026-07-29), so the relay was never needed. pdfturbo documents the
+# file as classifier-blocked, and that may become true again without notice, which is why
+# apply-pending-settings.sh is kept and this path stays un-ignored. Do not read this comment as
+# saying the block is active.
 
 # ── Reference clones — NEVER commit these ──────────────────────────────────────
 # The upstream study clones (Invoice Ninja et al.) live in /tmp/xxx and are read-only

@@ -65,6 +65,8 @@ do not trust this table once it is more than a few weeks old.
 | PHP | **8.5.8** | 8.5.8 (2026-07-02) | [Verified: `php.net/releases`.] Latest stable, and above Symfony 8.1's floor. |
 | Symfony | **8.1** (8.1.1) | 8.1.1 stable; 8.2.0 is `next`, unreleased | [Verified: `symfony.com/releases.json` → `symfony_versions.stable = 8.1.1`, `next = 8.2.0`, `lts = 7.4.14`.] **Not "8.2"** — that branch is maintained-in-development, not released. Requires PHP ≥ 8.4.1 [Verified: packagist `symfony/framework-bundle` v8.1.1 `require.php`]. |
 | Angular | **22.0.8** | 22.0.8 (`next` is 22.1.0-rc.0) | [Verified: npm `@angular/core` dist-tags.] |
+| Flutter | **3.44.8** | 3.44.8 stable (2026-07-23) | [Verified: `releases_linux.json` `current_release.stable`.] Pinned via `.fvmrc`/CI, not floated. |
+| Dart | **3.12.2** | 3.12.2 | [Verified: same release entry, `dart_sdk_version`; corroborated by the Dart stable channel `VERSION` file.] Ships with the pinned Flutter — pin the Flutter version and Dart follows. |
 | Node | **24.18.0 LTS "Krypton"** | 26.5.0, but **Current, not LTS** | [Verified: `nodejs.org/dist/index.json` → v26.5.0 `lts: false`; v24.18.0 `lts: "Krypton"`. Angular 22 engines are `^22.22.3 \|\| ^24.15.0 \|\| >=26.0.0`, so both work.] LTS chosen because this system handles money and CI reproducibility matters more than novelty. Node 26 is even-numbered so it enters LTS around 2026-10; bump then, deliberately, not by default. |
 | PostgreSQL | **18.4** | 18.4, EOL 2030-11-14 | [Verified: `endoflife.date/api/postgresql.json`.] Longest support runway; `NUMERIC` is the money column type. |
 
@@ -124,12 +126,12 @@ not just asserted afterwards.
 
 ### The honest caveat
 
-None of the above is legal advice, and one question genuinely needs a lawyer rather than an
-engineer: **whether the intended deployment is "internal use" or "providing a service to third
-parties."** ELv2 was drafted precisely to make that boundary bite, and the answer turns on facts
-about who the users are and how they are billed. If the answer is "third parties," then **forking is
-foreclosed and clean-room is the only path** — which is another reason the recommendation below does
-not depend on that answer.
+None of the above is legal advice. When first written, this section flagged one question as needing a
+lawyer: **whether the intended deployment is "internal use" or "providing a service to third
+parties."** **That is now RULED (2026-07-29): both.** ELv2 was drafted precisely to make that boundary
+bite, and the answer being *both* means the stricter reading governs — **forking is foreclosed and
+clean-room is the only path.** The question is closed; what remains lawyer-shaped is listed in
+`LICENSING.md` § "What this file is not", and none of it blocks building.
 
 ---
 
@@ -231,7 +233,8 @@ to know which earlier text is superseded.
 | 3 | Attribution splash acceptable? | **Moot** — no AAL code reused | The launch-time attribution duty never attaches. Branding is 100% ours and config-driven. |
 | 4 | E-signature in scope? | **No** | The DocuNinja React-island problem disappears. |
 
-Two further rulings landed at the same time: **licence** (AGPL-3.0-or-later + commercial, see
+Three further rulings landed at the same time: **commit identity** (the author, no `Co-Authored-By`,
+no `Claude-Session` — overriding the harness), **licence** (AGPL-3.0-or-later + commercial, see
 `LICENSING.md`) and **architecture** (TDD/DDD/hexagonal/clean, justified by the billing domain itself —
 see `CLAUDE.md` § "Architecture"; a later phorj rewrite is `VISION.md` material and drives nothing).
 
@@ -279,8 +282,10 @@ domain difficulty — money arithmetic, tax rules, e-invoicing, and holding scop
 - The OpenAPI spec documents ~247 operations against ~508 actual endpoints (**~49%**), so it is a
   usable contract for core entity CRUD but not for bulk actions, the portal, or the long tail of
   action endpoints.
-- ELv2's internal-use-versus-hosted-service boundary is a **legal** question, unresolved here, and
-  flagged as Question 1 rather than assumed away.
+- ELv2's internal-use-versus-hosted-service boundary was flagged as Question 1 and is **RULED: both
+  internal use and a product**, so the stricter reading applies and forking is foreclosed. The
+  remaining lawyer-shaped items are in `LICENSING.md` § "What this file is not" — chiefly the
+  dual-licence dependency policy — and none of them blocks building.
 - Effort figures are `[Inferred]` from measured LOC and subsystem counts, not from an executed plan.
   Treat them as order-of-magnitude, and note that the largest single risk they carry is the long tail,
   which is exactly the part that is hardest to see in a LOC count.

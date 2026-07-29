@@ -133,11 +133,31 @@ Before Phase 5 (implement — whether that is code, agent spawning, or any other
 
 **Loop**: repeat investigate → `advisor()` until it raises nothing new. Cap at 5 rounds — each round is a genuine independent review, not a cheap self-loop, so it should converge fast or something is actually wrong. At the cap, if `advisor()` still has open findings, invoke `ask-human`: surface the findings, options are resolve manually / narrow scope / proceed with documented risk / escalate for manual resolution. Never silently proceed past an unresolved `advisor()` finding.
 
-**Autonomous mode**: When active, the confirmation gates (Phase 4 plan, Phase 6 evidence, and the closing *"what's next? / shall I commit?"* check-in) run silently. Phase 3C and 6C no longer have a per-cycle ask to suppress — `advisor()` calls are tool calls, not user questions, so the investigate → certify loop runs identically whether autonomous or not. One exception: the 5-round escalation always asks via `ask-human`, even in autonomous mode — same as risky/destructive actions (Destructive & Risky Command Protocol) and `git commit`/`push` (Rule 10): a stuck independent review is not something autonomous mode silently overrides. Active autonomous mode is **always visible on statusline line 2**. Entered two ways:
-- **Per-task** — offer *Proceed fully autonomously* as an option at the Phase 4 plan gate (Medium/Large), or on direct user request at any point: set `_AUTONOMOUS_3C=1` and `touch ~/.claude/run/autonomous-3c-$CLAUDE_CODE_SESSION_ID` (renders `⚠ AUTO-3C`; the var is in the Bash env and equals the payload's `session_id`). **Auto-cleared at Phase 8** via `rm -f`.
-- **Persistent** — a user opt-in sentinel surviving until **manually removed** (no expiry): global `~/.claude/state/autonomous-3c-bypass` (`⚠⚠ AUTO-3C(g)`) or per-project `~/.claude/projects/<cwd-slug>/state/autonomous-3c-bypass` (`⚠⚠ AUTO-3C(proj)`). When present, check at Phase 0 and set `_AUTONOMOUS_3C=1`. Never auto-cleared. (Creating a per-project one needs `mkdir -p ~/.claude/projects/<slug>/state` first.)
+**Autonomous mode — REWRITTEN for this container (2026-07-29). Read this; the upstream version described
+machinery that does not exist here, and believing it would let a session silence three gates while
+thinking it could not.** Upstream, autonomous mode was entered by touching a sentinel under
+`~/.claude/run/` or `~/.claude/state/`, was rendered on statusline line 2, and had every sentinel
+create/write/delete `ask`-gated in `settings.json` plus a second bash-firewall layer. **None of that is
+true here** — there is no statusline, no `~/.claude/run/` or `~/.claude/state/` directory, no `ask`
+permission tier in `.claude/settings.json` (it has `defaultMode`, `allow` and an empty `deny`), and no
+bash firewall. [Verified: `ls ~/.claude/run ~/.claude/state` → both absent; `settings.json` has no `ask`
+key.] So there is **no mechanical opt-in and no visible indicator**: do not write a sentinel, do not
+claim one is visible to the developer, and do not treat the absence of a prompt as consent.
 
-Every autonomous-3c sentinel (per-session + persistent) has its create/write/delete `ask`-gated in `settings.json`; entering/leaving autonomous mode is never silent — the prompt is the opt-in. All bypass sentinels live under `~/.claude/state/` (global) or `~/.claude/projects/<cwd-slug>/state/` (project). **Two enforcement layers cover *all* create/edit/delete**: settings.json `ask` gates the common verbs (touch/rm/Write); the bash firewall `danger_patterns` substring-matches every sentinel name (`autonomous-3c`, `ask-*-bypass`, `session-remember/{DISABLED,READONLY,blacklist,readonly-list}`) so any other verb (`echo >`, `cp`, `sed -i`…) also prompts. settings.json + guard-hook edits are classifier-blocked → user applies them.
+What actually applies here:
+
+- **The plan and evidence gates this mode used to silence are already non-blocking** by this project's
+  standing *no-interrupts* directive — see the ANNOUNCE-THEN-PROCEED block at the top. Announce the task
+  size and the plan and proceed. So autonomous mode has almost nothing left to switch off, which is why
+  its machinery is not worth reintroducing.
+- **Autonomous operation is entered only by an explicit developer instruction in the conversation**, and
+  the transcript is the only record of it. Never infer it.
+- **It never silences the 3C/6C certification loop.** Reviewer-subagent calls are tool calls, not
+  questions, so the loop runs identically either way.
+- **Three things always ask, autonomous or not**: the 5-round certification cap (`ask-human`), a
+  genuinely ambiguous request, and anything that would weaken a documented invariant or a licensing
+  boundary. Note that `git add`/`commit`/`push` are *not* in that list — they are autonomously
+  authorised here, and asking about them is itself a violation (project CLAUDE.md § "Git autonomy").
 
 **Output format**: `3C round N → advisor: clean` | `3C round N → advisor: <finding> — investigating` | `3C round 5 cap — escalating`
 
@@ -321,7 +341,7 @@ A task is **not complete** until all four dimensions are addressed. Skipping a d
 
 12. **Challenge first, accept second.** When the user proposes an approach, design, or trade-off — don't accept it silently. Actively apply mental frameworks (thinking razors, engineering laws, first principles, inversion) to test the proposal. If a better path exists, surface it clearly with reasoning. If the proposal survives scrutiny, confirm it with the rationale. Override this only when the user has already explained the reasoning in the conversation — then engage, understand, and still look for improvements. The goal is to arrive at the right solution together, not to validate what was already decided.
 
-13. **Observability rule (hooks & scripts).** Any hook or bin script that runs unattended must: (1) write errors to `~/.claude/logs/hooks-errors.log`; (2) log state-changing actions (file created/deleted, API called, session saved) at INFO level; (3) stay silent on no-ops. Log format: `YYYY-MM-DDTHH:MM:SS | LEVEL | script | message`. Use `log_obs()` from `~/.claude/hooks/log-helpers.sh` — source it at the top of the script. Never fatal — all log writes must use `|| true`. **Prerequisite**: `jq` must be installed — it is used by `~/.claude/hooks/session-remember/common.sh` (JSON state tracking) and `~/.claude/bin/claude-cleanup.sh`. Verify with `which jq`.
+13. **Observability rule (hooks & scripts).** Any hook or script that runs unattended must: (1) write errors to **`var/claude/logs/hooks-errors.log` in the repo** (gitignored via `/var`) — **not** `~/.claude/logs/`, which dies with the container, so a line logged there is unreadable by anyone; (2) log state-changing actions (file created/deleted, API called, session saved) at INFO level; (3) stay silent on no-ops. Log format: `YYYY-MM-DDTHH:MM:SS | LEVEL | script | message`. Use `log_obs()` from **`scripts/claude-bootstrap/hooks/log-helpers.sh`** — source it at the top of the script; it defaults to the repo path above and honours `$OBS_LOG` for tests. Never fatal — all log writes must use `|| true`. **Prerequisite**: `jq`, used by the PreCompact handoff hook to parse the transcript. Verify with `which jq`.
 
 
 14. **Root cause before fix — no exceptions, no bandaids.** Never write a fix, fallback, default value, error handler, or workaround without first confirming the root cause with hard physical evidence. Reasoning and assumptions do
@@ -380,14 +400,14 @@ Trigger words that signal `loop` is needed: *"keep doing"*, *"monitor"*, *"every
 
    | Moment | Action |
    |--------|--------|
-   | **Phase 0 session start** | Glob BOTH `docs/plans/*.plan.md` AND `~/.claude/projects/<slug>/plans/*.plan.md`. If found: read and announce — *"Restoring from `<path>/<topic>.plan.md` — N decisions from prior session."* This check is mandatory, not optional. **Then re-write the active-plan pointer** (see note below) to the restored plan's absolute path, so the statusline reflects it after a resume/compact. (The `session-start-banner.sh` SessionStart hook now also AUTO-INHERITS this on its own — an unattached session adopts the most-recent prior pointer for a plan in the same project — so a continued session shows `▸plan` even before you act; this manual step still applies when you restore a *different* plan than the inherited one.) |
+   | **Phase 0 session start** | Glob `docs/plans/*.plan.md` — that is the only location here; there is no `~/.claude/projects/<slug>/plans/`. If found: read and announce — *"Restoring from `docs/plans/<topic>.plan.md` — N decisions from prior session."* Mandatory, not optional. There is no statusline pointer to re-write and no `session-start-banner.sh` (that hook was rejected, see `docs/plans/claude-bundle-integration.plan.md`). |
    | **After each answered question that resolves a design/approach decision** | Append to `## Decisions Log` immediately — **before the next action**. This is a paired action, not a reminder. Does not apply to task-gate confirmations (size/proceed gates). |
    | **Phase 4 plan approval** | Write the plan to `docs/plans/<topic>.plan.md` and `git add` it (location is settled — see above). Committing AND pushing are autonomous here per the project's git-autonomy override, but only when the quality gate is green. Append every ruling to that file's `## Decisions Log` in the SAME change — one canonical place, no divergent copy. There is no active-plan statusline pointer in this container. |
-   | **Phase 8 completion** | Ask in plain text — propose deleting the plan file, show exact deletion command (`git rm docs/plans/<topic>.plan.md` for repo; `rm ~/.claude/projects/<slug>/plans/<topic>.plan.md` for global). Proceed only if approved. **Always clear the active-plan pointer** regardless: `rm -f ~/.claude/run/active-plan-$CLAUDE_CODE_SESSION_ID`. |
+   | **Phase 8 completion** | Ask in plain text — propose deleting the plan file, show the exact command (`git rm docs/plans/<topic>.plan.md`). Proceed only if approved. No pointer to clear. Note that in this repo a plan file is usually worth KEEPING: its `## Decisions Log` is the decision record, and `CLAUDE.md` § "Plans live in the repo" treats it as durable state, not scratch. |
 
    **No exceptions**: A session that ends without a plan file when design decisions were made is a liability. The only valid exemption: state *"no plan file needed — no design/approach decisions made"* explicitly. That statement is itself the record.
 
-   **Active-plan statusline pointer**: The "current plan" shown on statusline line 2 (`▸plan:<topic>`) is **session state, not a globbable location** — plan files live under many project slugs and concurrent sessions each have their own active plan. It is driven by a per-session pointer at `~/.claude/run/active-plan-<session_id>` holding the plan file's **absolute path** (written Phase 4, cleared Phase 8, re-written on Phase 0 restore — keyed on `$CLAUDE_CODE_SESSION_ID`, which equals the statusline payload's `session_id`, same contract as autonomous-3c). It is benign transient state in `run/` (bundle-excluded, not a safety sentinel) — so unlike the bypass sentinels it is **not** ask-gated. The statusline self-heals a stale pointer: if the target file no longer exists, nothing is shown.
+   **There is no active-plan statusline pointer here.** Upstream drove a `▸plan:<topic>` statusline indicator from a per-session file under `~/.claude/run/`. This container has no statusline and no `~/.claude/run/` directory [Verified: `ls ~/.claude/run` → absent], so nothing is written, nothing is cleared, and no rule may depend on one existing. The plan file itself, committed, is the entire mechanism.
 
 18. **Evidence grade — mandatory on every substantive output.** Every plan step, decision, option-set, recommendation, or factual claim the user might act on must carry an explicit evidence grade with its evidence basis stated inline. No exceptions within this trigger surface.
 
@@ -422,31 +442,19 @@ Trigger words that signal `loop` is needed: *"keep doing"*, *"monitor"*, *"every
 
    **Relationship to other rules**: Rule 11 (verify proposals) defines *how* to check a claim; this rule defines *how to label* the result — every Rule 11 check ends in a Rule 18 grade. Rule 14 (root cause) is the fix-scoped case of this same discipline: a root cause must reach [Verified] here before Rule 14 permits writing a fix.
 
-## Memory System Toggles
+## Memory System Toggles — NOT APPLICABLE HERE
 
-The session-remember pipeline (`~/.claude/hooks/session-remember/`) has two file-presence kill switches:
+Upstream this section documented kill switches, a model override (`SR_MODEL`), a timezone override
+(`SR_TZ`) and index-maintenance rules for a `session-remember` memory pipeline under
+`~/.claude/hooks/session-remember/`. **That pipeline is not installed in this container** [Verified:
+`ls ~/.claude/hooks` → absent], so there is nothing to toggle and no `MEMORY.md` to maintain. The whole
+section is retained only as this note, so that a session does not go looking for machinery the
+preamble already lists as absent.
 
-| File | Effect | Toggle |
-|------|--------|--------|
-| `~/.claude/hooks/session-remember/DISABLED` | Full silence — no context loaded, no capture | `touch` to disable; `rm` to re-enable |
-| `~/.claude/hooks/session-remember/READONLY` | Load prior context but skip new capture | `touch` to go read-only; `rm` to resume capture |
-
-**Precedence**: DISABLED > READONLY > per-project `blacklist` > normal operation.
-Both are independent of `CLAUDE_PROJECT_DIR` — they apply to every project globally.
-
-**Model override**: Set `SR_MODEL=<model-id>` in the environment before starting Claude Code to use a different model for all session-remember LLM calls. Default: `claude-haiku-4-5` (date-suffix-free, forward-compatible).
-
-**Timezone override**: Set `SR_TZ=<zone>` (e.g. `SR_TZ=UTC`, `SR_TZ=America/New_York`) to override the session-remember consolidation timezone. Default: `{{TZ}}`. Required on any machine where `$TZ` is not set to Paris — without this, daily consolidation fires at the wrong time and all session timestamps are offset.
-
-**Tunable knobs** (set as env vars before launching Claude Code): see `~/.claude/refs/SESSION-REMEMBER.md` for the full table.
-
-**Index maintenance**: `MEMORY.md` truncates at 200 lines. When the index approaches 150 lines, consolidate related entries, archive resolved project entries, and remove references to stale memories. Check: `wc -l ~/.claude/projects/<project>/memory/MEMORY.md`.
-
-**Memory expiry**: `/audit` Agent E is the natural review trigger — it flags stale, resolved, or no-longer-applicable backlog items. Run `/audit` (or `/audit --section=E`) after any major sprint completes. No separate pruner needed.
-
-**Time-bounded project memories**: For `project` type memories that contain genuinely time-bounded facts (sprint deadlines, active incidents, current blockers), add `expires: YYYY-MM-DD` to the frontmatter. Agent E will flag entries whose expiry date has passed for review. Example: `expires: 2026-06-01`.
-
-**What belongs in memory vs. reports**: Open P1 backlogs, in-progress task lists, and sprint state are ephemeral — they belong in mega-analysis reports (`~/.claude/projects/meta-reports/`) and session handoffs, not memory files. Memory is for non-obvious facts that future sessions need *without* running an analysis (behavioral quirks, decision rationale, design constraints). When a memory file starts accumulating "still pending" items, strip the open-item section and leave only the structural/evergreen facts.
+**What replaces it:** durable state lives in the repo — `docs/plans/<topic>.plan.md` for decisions
+(each with its own `## Decisions Log`), `CLAUDE.md` § "Gotchas" for rulings that outlive a plan, and
+gitignored `var/claude/**` for transient review output and the PreCompact handoff. Only committed
+state survives the container.
 
 ## Destructive & Risky Command Protocol
 

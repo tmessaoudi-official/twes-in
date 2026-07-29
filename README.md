@@ -42,8 +42,8 @@ copyrightable expression. The rules that keep it that way are in
 | Tier | Pinned |
 |---|---|
 | API | PHP **8.5.8**, Symfony **8.1** |
-| Admin | Angular **22.0.8**, Node **24 LTS** |
-| Client | Flutter (mobile + native desktop later) |
+| Admin | Angular **22.0.8**, Node **24.18.0 LTS** |
+| Client | Flutter **3.44.8**, Dart **3.12.2** — mobile now, native desktop planned |
 | Database | PostgreSQL **18.4** |
 
 Versions are pinned exactly, not floated — a reproducible build is a precondition for trusting a money
