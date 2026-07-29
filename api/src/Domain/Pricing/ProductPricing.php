@@ -14,6 +14,7 @@ namespace Twes\Domain\Pricing;
 
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
+use Twes\Domain\Pricing\Exception\InvalidCost;
 use Twes\Domain\Shared\RoundingMode;
 
 /**
@@ -41,12 +42,23 @@ use Twes\Domain\Shared\RoundingMode;
  */
 final readonly class ProductPricing
 {
+    /**
+     * @throws InvalidCost if the cost is negative
+     */
     private function __construct(
         private Money $cost,
         private PricedBy $authoredBy,
         private ?Rate $authoredRate,
         private ?Money $authoredNetPrice,
-    ) {}
+    ) {
+        // In the constructor so EVERY path is covered — both factories, all three `with*` methods.
+        // Decided rather than left ambiguous: a certification round found a negative cost accepted and
+        // silently producing a negative selling price. See InvalidCost for why this is a pricing rule
+        // rather than a Money rule.
+        if ($cost->isNegative()) {
+            throw InvalidCost::negative($cost);
+        }
+    }
 
     /** The user typed a profit rate. It is authoritative and exact; the price is derived from it. */
     public static function fromProfitRate(Money $cost, Rate $profitRate): self
@@ -97,9 +109,12 @@ final readonly class ProductPricing
     /**
      * The profit rate.
      *
-     * Exact when the user typed it. Derived from cost and price otherwise — and **null when the cost is
-     * zero**, because the rate is then mathematically undefined rather than zero. A zero would claim the
-     * product is sold at cost; the form shows an empty field.
+     * Exact when the user typed it. Derived from cost and price otherwise — and **null when the rate has
+     * to be DERIVED and the cost is zero**, because `(net - 0) / 0` is undefined rather than zero. A zero
+     * would claim the product is sold at cost; the form shows an empty field.
+     *
+     * Note the precision in that condition. A rate the user *typed* is defined even on a zero cost —
+     * nothing is being divided — so it is returned as entered. Only a derived one can be undefined.
      */
     public function profitRate(RoundingMode $mode): ?Rate
     {
@@ -126,8 +141,11 @@ final readonly class ProductPricing
      * against the old cost is no longer a statement about the new one, whereas the margin they accepted
      * still is.
      *
-     * The one case with no rate to preserve is a zero old cost, where the rate is undefined. The typed
-     * price is then kept unchanged rather than invented from nothing.
+     * **Zero costs, both directions.** A zero *old* cost means there is no rate to preserve, so the typed
+     * value is kept unchanged rather than invented from nothing. A zero *new* cost on a price-authored
+     * product means the typed price must survive the edit — applying any rate to zero would yield zero and
+     * silently discard it. Both are guarded, and both have fixture cases; an earlier version guarded only
+     * the first, and the fixture only ever moved *away* from a zero cost, so the gap was invisible.
      *
      * @throws CurrencyMismatch if the new cost is in a different currency
      */
@@ -135,6 +153,14 @@ final readonly class ProductPricing
     {
         if (!$this->cost->currency()->equals($newCost->currency())) {
             throw CurrencyMismatch::between($this->cost->currency(), $newCost->currency());
+        }
+
+        // TWO zero checks, and an earlier version had only the first — which deleted the very thing this
+        // class exists to protect. Correcting a cost to zero on a price-authored product derived a rate
+        // from the OLD pair and then applied it to zero, so the typed price became 0.000. The new cost
+        // needs checking as much as the old one.
+        if ($newCost->isZero() && PricedBy::NetPrice === $this->authoredBy) {
+            return new self($newCost, PricedBy::NetPrice, null, $this->authoredNetPrice);
         }
 
         $rate = $this->profitRate($mode);

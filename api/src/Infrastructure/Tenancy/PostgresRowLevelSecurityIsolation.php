@@ -55,6 +55,12 @@ use Twes\Infrastructure\Tenancy\Exception\NoCurrentTenant;
  *  3. **A pooled connection.** `SET LOCAL` is scoped to the transaction, which is deliberate: a
  *     transaction-scoped setting cannot leak to whoever gets the connection next. A session-scoped
  *     `SET` would, and is why this class does not use one.
+ *  4. **A tenant id pinned on the connection itself.** A DSN may carry
+ *     `options='-c twes.tenant_id=…'`, which needs no privilege and is exactly the shape a `DATABASE_URL`
+ *     takes. Because `bind()` writes transaction-locally, PostgreSQL restores that session value on
+ *     COMMIT — so every later unbound statement reads and writes that tenant, and the fail-closed
+ *     property is gone. `bind()`'s read-back cannot see it, because it only runs when `bind()` runs. It is
+ *     checked at connection acquisition by {@see self::assertNoTenantPinnedOnTheConnection()}.
  */
 final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolationStrategy
 {
@@ -96,11 +102,12 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         $statement = $connection->prepare('SELECT set_config(?, ?, true)');
         $statement->execute([self::TENANT_SETTING, $expected]);
 
-        // Read back rather than trust. set_config returns the value it set, so this costs nothing, and
-        // it closes the gap where some other statement on this connection has set the same GUC at
-        // SESSION scope: transaction-local writing stops this class leaking its own value, but nothing
-        // stops another writer, and a silently mis-scoped session is the one failure that leaks data
-        // while every test passes.
+        // Read back rather than trust: set_config returns the value it set, so this costs nothing and it
+        // catches a binding that did not take.
+        //
+        // What it does NOT do — corrected after this comment overclaimed: it cannot detect a value set at
+        // SESSION scope by anything else, because it only runs when bind() runs and the session value is
+        // restored on COMMIT. That gap is closed at connection acquisition instead, by check 4 above.
         $actual = $statement->fetchColumn();
 
         if ($actual !== $expected) {
@@ -203,6 +210,43 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 . 'restricted role.',
             );
         }
+
+        self::assertNoTenantPinnedOnTheConnection($connection);
+    }
+
+    /**
+     * Refuse a connection that already carries a tenant id.
+     *
+     * The fourth bypass, and the least obvious: a DSN can pin the GUC with `options='-c twes.tenant_id=…'`
+     * at no privilege. Since `bind()` writes transaction-locally, that value is restored on every COMMIT,
+     * so the unbound path silently becomes *scoped to whoever pinned it* rather than scoped to nothing.
+     *
+     * Two values are acceptable and both mean "no tenant": **NULL** on a connection that has never bound,
+     * and the **empty string** after one has — a custom GUC's reset value is `''`, not NULL, the same
+     * asymmetry the policy's `nullif` exists to absorb. Treating `''` as pinned would reject every
+     * recycled connection in production. Anything else was put there by something that is not this class.
+     *
+     * @throws \RuntimeException if a tenant id is already present
+     */
+    public static function assertNoTenantPinnedOnTheConnection(\PDO $connection): void
+    {
+        $statement = $connection->prepare('SELECT current_setting(?, true)');
+        $statement->execute([self::TENANT_SETTING]);
+
+        $pinned = $statement->fetchColumn();
+
+        if (null === $pinned || false === $pinned || '' === $pinned) {
+            return;
+        }
+
+        throw new \RuntimeException(\sprintf(
+            'This connection already carries %s = "%s", so on every COMMIT PostgreSQL restores it and '
+            . 'unbound statements silently read that tenant instead of nothing. A DSN option such as '
+            . "options='-c %s=…' does this at no privilege. Remove it from the connection string.",
+            self::TENANT_SETTING,
+            \is_string($pinned) ? $pinned : get_debug_type($pinned),
+            self::TENANT_SETTING,
+        ));
     }
 
     /** PDO reports booleans as PHP bools or as "t"/"f" depending on the driver build. */

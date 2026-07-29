@@ -32,9 +32,16 @@ failed=0
 # Build a minimal fake repository that the gates accept: a Domain/ tree, translations, a lock file.
 fresh_fixture() {
   rm -rf "$WORK/repo"
-  mkdir -p "$WORK/repo/scripts/gates" "$WORK/repo/api/src/Domain/Probe" "$WORK/repo/api/translations"
+  # Application/ as well as Domain/: FORBIDDEN_BY_LAYER has two entries and only one was ever covered,
+  # so deleting the Application rule outright still gave 33/33.
+  mkdir -p "$WORK/repo/scripts/gates" "$WORK/repo/api/src/Domain/Probe" \
+           "$WORK/repo/api/src/Application/Probe" "$WORK/repo/api/translations"
   cp "$REPO_ROOT"/scripts/gates/*.php "$REPO_ROOT"/scripts/gates/*.sh "$WORK/repo/scripts/gates/"
   cp "$REPO_ROOT"/api/translations/*.xlf "$WORK/repo/api/translations/"
+  # BOTH manifest and lock. Omitting composer.json made every assertion about the
+  # THIRD-PARTY-NOTICES.md check vacuous: directRequirements() returned [] and the check ran zero times,
+  # so deleting it wholesale still gave 33/33.
+  cp "$REPO_ROOT"/api/composer.json "$WORK/repo/api/"
   cp "$REPO_ROOT"/api/composer.lock "$WORK/repo/api/"
   cp "$REPO_ROOT"/THIRD-PARTY-NOTICES.md "$WORK/repo/"
 
@@ -57,11 +64,57 @@ final class Clean
     }
 }
 PHP
+
+  mkdir -p "$WORK/repo/api/tests/Unit"
+  cat > "$WORK/repo/api/tests/Unit/CleanTest.php" <<'PHP'
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Tests\Unit;
+
+final class CleanTest {}
+PHP
+
+  cat > "$WORK/repo/api/src/Application/Probe/CleanHandler.php" <<'PHP'
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Application\Probe;
+
+use Twes\Domain\Probe\Clean;
+
+final class CleanHandler
+{
+    public function handle(Clean $clean, string $value): string
+    {
+        return $clean->pure($value);
+    }
+}
+PHP
 }
 
-# assert_gate <description> <gate script> <expected exit: 0 or 1>
+# assert_gate <description> <gate script> <expected exit: 0 or 1> [expected output substring]
+#
+# THE EXIT CODE IS NOT ENOUGH, and an earlier version of this function proved it. It accepted *any*
+# non-zero exit for an expected-failure case and never looked at the output, so a gate replaced with
+# `throw new RuntimeException('boom')` passed all 33 cases while printing `ok — catches time`. A crash and
+# a detection are indistinguishable by exit code alone.
+#
+# So: an expected FAILURE must also print the gate's own FAIL marker, plus — where given — a substring
+# naming the specific violation. An expected PASS must print "OK". Both directions are checked, because a
+# gate that cannot pass is as broken as one that cannot fail.
 assert_gate() {
-  local description="$1" gate="$2" expected="$3"
+  local description="$1" gate="$2" expected="$3" expected_output="${4:-}"
   local output rc
 
   case "$gate" in
@@ -70,11 +123,37 @@ assert_gate() {
   esac
   rc=$?
 
-  if [[ "$rc" -eq "$expected" ]] || { [[ "$expected" -eq 1 ]] && [[ "$rc" -ne 0 ]]; }; then
+  # The marker a gate prints is not always its filename: no-ambient-calls-in-domain.php announces itself
+  # as "no-ambient-calls", and no-orm-attributes-in-domain.sh as "no-orm-attributes".
+  local gate_name="${gate%%.*}"
+  gate_name="${gate_name%-in-domain}"
+  local wanted="$expected_output"
+
+  if [[ -z "$wanted" ]]; then
+    if (( expected == 0 )); then
+      wanted="${gate_name}: OK"
+    else
+      wanted="${gate_name}: FAIL"
+    fi
+  fi
+
+  local why=""
+
+  if (( expected == 0 )); then
+    (( rc == 0 )) || why="expected exit 0, got $rc"
+  else
+    (( rc != 0 )) || why="expected a non-zero exit, got 0"
+  fi
+
+  if [[ -z "$why" ]] && ! printf '%s' "$output" | grep -qF -- "$wanted"; then
+    why="exit code was right but the output never said \"$wanted\" — a crash, not a detection?"
+  fi
+
+  if [[ -z "$why" ]]; then
     printf '  ok   — %s\n' "$description"
     passed=$((passed + 1))
   else
-    printf '  FAIL — %s (expected exit %s, got %s)\n' "$description" "$expected" "$rc"
+    printf '  FAIL — %s (%s)\n' "$description" "$why"
     printf '%s\n' "$output" | sed 's/^/         /'
     failed=$((failed + 1))
   fi
@@ -157,10 +236,34 @@ fresh_fixture
 printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\nuse Brick\\Math\\BigDecimal;\n\nfinal class Sneaky { public function f(): string { return BigDecimal::class; } }\n' > "$WORK/repo/api/src/Domain/Probe/Sneaky.php"
 assert_gate 'catches a vendor namespace in Domain' layer-dependencies.php 1
 
+echo "== outward dependencies from Application, not only from Domain =="
+fresh_fixture
+printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Application\\Probe;\n\nuse Twes\\Infrastructure\\Tenancy\\TenantId;\n\nfinal class Leak { public function f(): string { return TenantId::class; } }\n' > "$WORK/repo/api/src/Application/Probe/Leak.php"
+assert_gate 'catches Application -> Infrastructure' layer-dependencies.php 1 'Application references Twes\Infrastructure'
+
+fresh_fixture
+printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Application\\Probe;\n\nuse Twes\\UI\\Http\\Response;\n\nfinal class Leak { public function f(): string { return Response::class; } }\n' > "$WORK/repo/api/src/Application/Probe/Leak.php"
+assert_gate 'catches Application -> UI' layer-dependencies.php 1 'Application references Twes\UI'
+
+echo "== a direct dependency missing from THIRD-PARTY-NOTICES.md =="
+fresh_fixture
+python3 - "$WORK/repo/api/composer.json" <<'PYADD'
+import json, sys, pathlib
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d.setdefault('require', {})['acme/undocumented-lib'] = '^1.0'
+p.write_text(json.dumps(d, indent=4))
+PYADD
+assert_gate 'catches a direct dependency absent from the notices' dependency-licences.php 1 'acme/undocumented-lib'
+
 echo "== SPDX headers =="
 fresh_fixture
 printf '<?php\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\nfinal class Sneaky {}\n' > "$WORK/repo/api/src/Domain/Probe/Sneaky.php"
 assert_gate 'catches a missing header' spdx-headers.sh 1
+
+fresh_fixture
+mkdir -p "$WORK/repo/api/tests/Unit"
+printf '<?php\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Tests\\Unit;\n\nfinal class NoHeaderTest {}\n' > "$WORK/repo/api/tests/Unit/NoHeaderTest.php"
+assert_gate 'catches a missing header OUTSIDE api/src' spdx-headers.sh 1 'api/tests/Unit/NoHeaderTest.php'
 
 fresh_fixture
 {

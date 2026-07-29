@@ -93,6 +93,49 @@ final class MoneyTest extends TestCase
         Money::of(0.1, Currency::of('TND'));
     }
 
+    /**
+     * TWO decimals beyond the currency's scale, not one.
+     *
+     * Every other strictness test here used exactly scale+1 (`0.1001` TND, `1.005` EUR), and a mutation
+     * narrowing the remainder's working scale in `Decimal::rescale` survived all of them — it returned
+     * `0.100` for this amount instead of refusing, laundering an unrepresentable value into a legal
+     * document. One digit of margin in a test was the whole gap.
+     */
+    public function testItRefusesAnAmountTwoDecimalsBeyondTheCurrencyScale(): void
+    {
+        $this->expectException(InvalidMoneyAmount::class);
+        $this->expectExceptionMessage('0.10001');
+
+        Money::of('0.10001', Currency::of('TND'));
+    }
+
+    public function testItRefusesAnAmountManyDecimalsBeyondTheCurrencyScale(): void
+    {
+        $this->expectException(InvalidMoneyAmount::class);
+
+        Money::of('0.1000000001', Currency::of('TND'));
+    }
+
+    public function testTheUnusedOperationsAreCorrect(): void
+    {
+        // negated() is what credit notes and refunds will be built on, and absolute()/isPositive() feed
+        // payment-application guards. All three had zero references, and `isPositive()` returning true for
+        // zero is the classic form of that bug.
+        $negative = Money::of('-2.500', Currency::of('TND'));
+
+        self::assertSame('2.500', $negative->negated()->amount());
+        self::assertSame('2.500', $negative->absolute()->amount());
+        self::assertSame('2.500', Money::of('2.500', Currency::of('TND'))->absolute()->amount());
+        self::assertSame('-2.500', Money::of('2.500', Currency::of('TND'))->negated()->amount());
+
+        self::assertFalse($negative->isPositive());
+        self::assertFalse(Money::zero(Currency::of('TND'))->isPositive(), 'Zero is not positive.');
+        self::assertTrue(Money::of('0.001', Currency::of('TND'))->isPositive());
+
+        // Negating zero must not produce "-0.000".
+        self::assertSame('0.000', Money::zero(Currency::of('TND'))->negated()->amount());
+    }
+
     #[DataProvider('malformedAmounts')]
     public function testItRefusesAMalformedAmount(string $amount): void
     {

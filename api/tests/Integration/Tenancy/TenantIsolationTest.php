@@ -270,32 +270,6 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
-    /**
-     * Documents a real limitation rather than a guarantee.
-     *
-     * `TRUNCATE` is **never** subject to row-level security, at any privilege level — it is gated only
-     * by the TRUNCATE privilege. So the runtime role must not hold it, which is an infrastructure
-     * control and not something this class can enforce. This test pins the behaviour so that nobody
-     * later mistakes RLS for protection against it.
-     */
-    public function testTruncateIsNotProtectedByRowLevelSecurityWhichIsWhyTheRoleMustNotHoldIt(): void
-    {
-        $isolation = new PostgresRowLevelSecurityIsolation();
-
-        $this->connection->beginTransaction();
-        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
-            TenantId::fromString(self::TENANT_A),
-        ));
-
-        $this->connection->exec('TRUNCATE ' . self::TABLE);
-        $remaining = $this->connection->query('SELECT count(*) FROM ' . self::TABLE);
-        $count = false === $remaining ? null : $remaining->fetchColumn();
-
-        $this->connection->rollBack();
-
-        self::assertSame(0, (int) $count, 'TRUNCATE bypasses RLS. REVOKE TRUNCATE from the runtime role.');
-    }
-
     // ------------------------------------------------------------------ fail-closed behaviour
 
     public function testBindingWithoutATenantIsRefused(): void
@@ -340,9 +314,112 @@ final class TenantIsolationTest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    /**
+     * The fourth bypass: a tenant id pinned on the connection itself.
+     *
+     * `options='-c twes.tenant_id=…'` in a DSN needs no privilege and is exactly what a `DATABASE_URL`
+     * carries. Because `bind()` writes transaction-locally, PostgreSQL restores that session value on
+     * COMMIT, so the unbound path becomes scoped to whoever pinned it rather than to nothing — and
+     * `bind()`'s read-back cannot see it. Checked at acquisition instead.
+     */
+    public function testAConnectionCarryingAPinnedTenantIsRefused(): void
+    {
+        $pinned = self::connect("options='-c " . PostgresRowLevelSecurityIsolation::TENANT_SETTING . '=' . self::TENANT_B . "'");
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessageMatches('/already carries/');
+
+        new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($pinned);
+    }
+
+    public function testAVirginConnectionAndAPreviouslyBoundOneAreBothAccepted(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        // Never bound: current_setting is NULL.
+        $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
+
+        // Bound once and committed: the reset value is the empty string, NOT NULL. Both mean "no tenant",
+        // and treating '' as pinned would reject every recycled connection in production.
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+        $this->connection->commit();
+
+        $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
+
+        $this->expectNotToPerformAssertions();
+    }
+
+    /**
+     * The throwing branch of the bypass check, which had no coverage at all: the only test called it on a
+     * role that passes and then declared `expectNotToPerformAssertions()`, so a broken predicate was
+     * indistinguishable from a safe role. Creating a BYPASSRLS role needs the privilege the application
+     * role must not have, so the predicate is exercised directly — which is why it was extracted.
+     */
+    public function testTheBypassPredicateDetectsAPrivilegedRole(): void
+    {
+        self::assertTrue(PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+            ['rolsuper' => true, 'rolbypassrls' => false],
+        ));
+        self::assertTrue(PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+            ['rolsuper' => false, 'rolbypassrls' => true],
+        ));
+        self::assertFalse(PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+            ['rolsuper' => false, 'rolbypassrls' => false],
+        ));
+
+        // pdo_pgsql reports booleans as PHP bools or as "t"/"f" depending on the build, so both spellings
+        // must be understood — a string 'f' read as truthy would invert the whole check.
+        self::assertTrue(PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+            ['rolsuper' => 't', 'rolbypassrls' => 'f'],
+        ));
+        self::assertFalse(PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+            ['rolsuper' => 'f', 'rolbypassrls' => 'f'],
+        ));
+    }
+
+    /**
+     * `TRUNCATE` removes EVERY tenant's rows, not just the bound tenant's.
+     *
+     * The earlier version of this test counted rows while still bound to tenant A, so a policy-scoped
+     * `DELETE` produced an identical observation and the assertion could not tell them apart — it would
+     * have passed unchanged on the day PostgreSQL made `TRUNCATE` RLS-scoped, which is exactly when it
+     * should start failing. The count is now taken with RLS off, which is the only way to see B's row go.
+     */
+    public function testTruncateRemovesEveryTenantsRowsWhichIsWhyTheRoleMustNotHoldIt(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+        $this->connection->exec('TRUNCATE ' . self::TABLE);
+        $this->connection->commit();
+
+        // With the policy off, so other tenants' rows are visible if any survived.
+        $this->connection->exec('ALTER TABLE ' . self::TABLE . ' DISABLE ROW LEVEL SECURITY');
+
+        try {
+            $statement = $this->connection->query('SELECT count(*) FROM ' . self::TABLE);
+            $total = false === $statement ? null : $statement->fetchColumn();
+        } finally {
+            $this->connection->exec('ALTER TABLE ' . self::TABLE . ' ENABLE ROW LEVEL SECURITY');
+        }
+
+        self::assertSame(
+            0,
+            (int) $total,
+            "TRUNCATE must be shown to remove tenant B's row too. If this is 1, TRUNCATE became "
+            . 'RLS-scoped and the REVOKE TRUNCATE requirement can be revisited.',
+        );
+    }
+
     // ------------------------------------------------------------------ fixture
 
-    private static function connect(): \PDO
+    private static function connect(string $extraDsn = ''): \PDO
     {
         $dsn = getenv('TWES_TEST_DSN');
         $user = getenv('TWES_TEST_DB_USER');
@@ -353,7 +430,7 @@ final class TenantIsolationTest extends TestCase
         }
 
         try {
-            return new \PDO($dsn, $user, $password, [
+            return new \PDO($dsn . ('' === $extraDsn ? '' : ';' . $extraDsn), $user, $password, [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
                 \PDO::ATTR_EMULATE_PREPARES => false,
             ]);

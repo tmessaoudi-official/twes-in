@@ -1,0 +1,281 @@
+<?php
+
+/*
+ * This file is part of twes-in.
+ *
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Tests\Unit\Pricing;
+
+use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\TestCase;
+use Twes\Domain\Money\Currency;
+use Twes\Domain\Money\Exception\CurrencyMismatch;
+use Twes\Domain\Money\Money;
+use Twes\Domain\Pricing\Exception\InvalidCost;
+use Twes\Domain\Pricing\PricedBy;
+use Twes\Domain\Pricing\ProductPricing;
+use Twes\Domain\Pricing\Rate;
+use Twes\Domain\Shared\RoundingMode;
+
+/**
+ * Direct tests for the authored-field rule.
+ *
+ * `PricingVectorsTest` drives the cross-tier fixture; this file covers what a fixture cannot: the
+ * mutators, the guards, the boundaries, and one defect a certification round found in code that had
+ * looked correct — `withCost` checked the OLD cost for zero and not the new one, so correcting a cost to
+ * zero deleted the typed price. Every method here exists because a mutation to the class survived the
+ * whole suite without it.
+ */
+#[CoversClass(ProductPricing::class)]
+final class ProductPricingTest extends TestCase
+{
+    private const string TND = 'TND';
+
+    // ---------------------------------------------------------------- the defect a round found
+
+    /**
+     * The P0. Correcting a cost to zero must not destroy a typed price.
+     *
+     * Applying any rate to a zero cost yields zero, so a price-authored product whose cost becomes zero
+     * has to keep its typed value — there is nothing to recompute it from. The earlier version derived a
+     * rate from the OLD pair and applied it to the new zero cost, silently replacing 150.000 with 0.000.
+     */
+    public function testCorrectingTheCostToZeroDoesNotDestroyATypedPrice(): void
+    {
+        $pricing = ProductPricing::fromNetPrice(
+            $this->money('100.000'),
+            $this->money('150.000'),
+        )->withCost($this->money('0.000'), RoundingMode::HalfUp);
+
+        self::assertSame('150.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+        self::assertSame('0.000', $pricing->cost()->amount());
+        self::assertSame(PricedBy::NetPrice, $pricing->authoredBy(), 'Authorship must not transfer here.');
+        self::assertNull(
+            $pricing->profitRate(RoundingMode::HalfUp),
+            'A rate derived against a zero cost is undefined, so it must be null rather than the old value.',
+        );
+    }
+
+    /**
+     * The mirror case, which is NOT a defect and must keep working.
+     *
+     * A rate the user *typed* is defined even on a zero cost — nothing is being divided — so it is
+     * returned as entered, and the price is legitimately zero.
+     */
+    public function testATypedRateSurvivesAZeroCostAndIsStillExact(): void
+    {
+        $pricing = ProductPricing::fromProfitRate(
+            $this->money('100.000'),
+            Rate::fromPercentage('30'),
+        )->withCost($this->money('0.000'), RoundingMode::HalfUp);
+
+        self::assertSame('0.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+        self::assertSame('30.0000000000', $pricing->profitRate(RoundingMode::HalfUp)?->percentage());
+    }
+
+    public function testAZeroOldCostKeepsTheTypedPriceAndTheCostStillChanges(): void
+    {
+        // The `cost` assertion is the point: the fixture asserted the price and the authorship but not the
+        // cost, so an implementation that ignored the cost edit outright passed.
+        $pricing = ProductPricing::fromNetPrice($this->money('0.000'), $this->money('50.000'))
+            ->withCost($this->money('10.000'), RoundingMode::HalfUp);
+
+        self::assertSame('10.000', $pricing->cost()->amount(), 'The cost edit must be applied.');
+        self::assertSame('50.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+    }
+
+    // ---------------------------------------------------------------- the mutators
+
+    /**
+     * `withProfitRate` and `withNetPrice` are what the UI calls on every keystroke-committed edit, and
+     * neither had a test: `return $this;` survived both. A discarded edit is a wrong price on the next
+     * document.
+     */
+    public function testTypingANewRateReplacesTheAuthoredValue(): void
+    {
+        $pricing = ProductPricing::fromNetPrice($this->money('100.000'), $this->money('150.000'))
+            ->withProfitRate(Rate::fromPercentage('25'));
+
+        self::assertSame(PricedBy::ProfitRate, $pricing->authoredBy());
+        self::assertSame('25.0000000000', $pricing->profitRate(RoundingMode::HalfUp)?->percentage());
+        self::assertSame('125.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+        self::assertSame('100.000', $pricing->cost()->amount(), 'The cost must be carried over unchanged.');
+    }
+
+    public function testTypingANewPriceReplacesTheAuthoredValue(): void
+    {
+        $pricing = ProductPricing::fromProfitRate($this->money('100.000'), Rate::fromPercentage('30'))
+            ->withNetPrice($this->money('175.000'));
+
+        self::assertSame(PricedBy::NetPrice, $pricing->authoredBy());
+        self::assertSame('175.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+        self::assertSame('75.0000000000', $pricing->profitRate(RoundingMode::HalfUp)?->percentage());
+    }
+
+    public function testItIsImmutable(): void
+    {
+        $original = ProductPricing::fromProfitRate($this->money('100.000'), Rate::fromPercentage('30'));
+
+        $original->withCost($this->money('200.000'), RoundingMode::HalfUp);
+        $original->withNetPrice($this->money('999.000'));
+        $original->withProfitRate(Rate::fromPercentage('99'));
+
+        self::assertSame('100.000', $original->cost()->amount());
+        self::assertSame('130.000', $original->netPrice(RoundingMode::HalfUp)->amount());
+    }
+
+    // ---------------------------------------------------------------- guards
+
+    public function testAPriceInAnotherCurrencyIsRefused(): void
+    {
+        $this->expectException(CurrencyMismatch::class);
+
+        ProductPricing::fromNetPrice($this->money('100.000'), Money::of('100.00', Currency::of('EUR')));
+    }
+
+    public function testACostChangeToAnotherCurrencyIsRefused(): void
+    {
+        $pricing = ProductPricing::fromProfitRate($this->money('100.000'), Rate::fromPercentage('30'));
+
+        $this->expectException(CurrencyMismatch::class);
+
+        $pricing->withCost(Money::of('100.00', Currency::of('EUR')), RoundingMode::HalfUp);
+    }
+
+    /**
+     * A negative *cost* is refused.
+     *
+     * RULED here rather than left ambiguous, because a certification round found it accepted and silently
+     * producing a negative selling price. `Money` must allow negatives — a credit note is a negative
+     * document — but a product's cost below zero is not a commercial state, and a negative *rate* already
+     * covers the real case this might be mistaken for: selling below cost.
+     */
+    public function testANegativeCostIsRefused(): void
+    {
+        $this->expectException(InvalidCost::class);
+
+        ProductPricing::fromProfitRate($this->money('-100.000'), Rate::fromPercentage('30'));
+    }
+
+    public function testANegativeCostIsRefusedOnAPriceAuthoredProductToo(): void
+    {
+        $this->expectException(InvalidCost::class);
+
+        ProductPricing::fromNetPrice($this->money('-100.000'), $this->money('50.000'));
+    }
+
+    public function testACostChangeToANegativeValueIsRefused(): void
+    {
+        $pricing = ProductPricing::fromProfitRate($this->money('100.000'), Rate::fromPercentage('30'));
+
+        $this->expectException(InvalidCost::class);
+
+        $pricing->withCost($this->money('-1.000'), RoundingMode::HalfUp);
+    }
+
+    // ---------------------------------------------------------------- boundaries
+
+    /**
+     * Repeated cost changes must not compound rounding.
+     *
+     * They do not, and the reason is structural rather than lucky: authorship transfers to the rate on the
+     * first edit, so every later edit multiplies the same exact rate by a new cost instead of re-deriving
+     * a rate from an already-rounded price.
+     */
+    public function testRepeatedCostChangesDoNotCompoundRounding(): void
+    {
+        $pricing = ProductPricing::fromNetPrice($this->money('3.000'), $this->money('10.000'));
+        $rate = $pricing->profitRate(RoundingMode::HalfUp)?->percentage();
+
+        foreach (['4.000', '5.000', '6.000', '7.000', '3.000'] as $cost) {
+            $pricing = $pricing->withCost($this->money($cost), RoundingMode::HalfUp);
+            self::assertSame($rate, $pricing->profitRate(RoundingMode::HalfUp)?->percentage());
+        }
+
+        // Back at the original cost, the original price returns exactly.
+        self::assertSame('10.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+    }
+
+    /**
+     * The documented magnitude boundary, pinned rather than left as prose.
+     *
+     * Above roughly 1e9 a cost change rebuilds the price from a 12-decimal rate and can lose a millime —
+     * visible even on a change to the *same* cost, which should be a no-op. `NUMERIC(19,4)` permits 15
+     * integer digits, so the type allows amounts this large; the rate's precision is what runs out. This
+     * test exists so the boundary is a known, asserted property instead of a surprise.
+     */
+    public function testTheAuthoredPriceGuaranteeHasAKnownBoundaryAboveOneBillion(): void
+    {
+        $pricing = ProductPricing::fromNetPrice(
+            $this->money('3000000000.000'),
+            $this->money('10000000000.000'),
+        );
+
+        $sameCost = $pricing->withCost($this->money('3000000000.000'), RoundingMode::HalfUp);
+
+        self::assertSame(
+            '9999999999.999',
+            $sameCost->netPrice(RoundingMode::HalfUp)->amount(),
+            'Documented boundary: above ~1e9 a cost change loses a millime, because the price is rebuilt '
+            . 'from a rate rounded to 12 decimals. If this ever returns 10000000000.000, the precision was '
+            . 'raised or the rebuild removed — update the docblock rather than deleting this test.',
+        );
+    }
+
+    public function testBelowTheBoundaryASameCostChangeIsExact(): void
+    {
+        $pricing = ProductPricing::fromNetPrice(
+            $this->money('300000000.000'),
+            $this->money('1000000000.000'),
+        )->withCost($this->money('300000000.000'), RoundingMode::HalfUp);
+
+        self::assertSame('1000000000.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+    }
+
+    // ---------------------------------------------------------------- agreement with PriceCalculator
+
+    /**
+     * The two implementations of the same formula must agree.
+     *
+     * `PriceCalculator` and `ProductPricing` compute net-from-rate and rate-from-net independently, and
+     * `CLAUDE.md` § Architecture requires one implementation rather than two. Until they are unified, this
+     * test is what stops them drifting — a certification round found them line-for-line identical with
+     * nothing asserting it, driven from two different fixture sections.
+     */
+    public function testProductPricingAgreesWithPriceCalculator(): void
+    {
+        $calculator = new \Twes\Domain\Pricing\PriceCalculator();
+
+        foreach ([['100.000', '30'], ['12.345', '30'], ['0.010', '0'], ['100.000', '-20']] as [$cost, $percentage]) {
+            $rate = Rate::fromPercentage($percentage);
+
+            self::assertSame(
+                $calculator->netFromCost($this->money($cost), $rate, RoundingMode::HalfUp)->amount(),
+                ProductPricing::fromProfitRate($this->money($cost), $rate)
+                    ->netPrice(RoundingMode::HalfUp)->amount(),
+                "net disagrees for cost {$cost} at {$percentage}%",
+            );
+        }
+
+        foreach ([['100.000', '140.000'], ['3.000', '10.000'], ['100.000', '80.000']] as [$cost, $net]) {
+            self::assertSame(
+                $calculator->profitRateFromNet($this->money($cost), $this->money($net), RoundingMode::HalfUp)
+                    ?->percentage(),
+                ProductPricing::fromNetPrice($this->money($cost), $this->money($net))
+                    ->profitRate(RoundingMode::HalfUp)?->percentage(),
+                "rate disagrees for cost {$cost} at net {$net}",
+            );
+        }
+    }
+
+    private function money(string $amount): Money
+    {
+        return Money::of($amount, Currency::of(self::TND));
+    }
+}

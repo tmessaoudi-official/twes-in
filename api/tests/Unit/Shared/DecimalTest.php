@@ -176,6 +176,37 @@ final class DecimalTest extends TestCase
         );
     }
 
+    /**
+     * A discarded remainder that extends well beyond one digit past the target scale.
+     *
+     * The surviving mutant narrowed the remainder's working scale, which silently truncated the discarded
+     * part and so mis-decided the rounding. Every existing case discarded exactly one digit, where the
+     * mutation is invisible.
+     */
+    public function testRoundingLooksAtTheWHOLEDiscardedRemainderNotJustItsFirstDigit(): void
+    {
+        // 0.0005001 is just OVER half a unit at scale 3, so half-down must still round UP.
+        self::assertSame('0.001', Decimal::rescale('0.0005001', 3, RoundingMode::HalfDown));
+        self::assertSame('0.001', Decimal::rescale('0.0005001', 3, RoundingMode::HalfUp));
+        self::assertSame('0.001', Decimal::rescale('0.0005001', 3, RoundingMode::HalfEven));
+
+        // 0.0004999 is just UNDER half, so half-up must round DOWN.
+        self::assertSame('0.000', Decimal::rescale('0.0004999', 3, RoundingMode::HalfUp));
+
+        // And an exactly-representable value many digits out must not be treated as a remainder at all.
+        self::assertSame('0.100', Decimal::rescale('0.1000000000', 3, RoundingMode::Unnecessary));
+        self::assertNull(Decimal::rescale('0.1000000001', 3, RoundingMode::Unnecessary));
+    }
+
+    public function testCompareUsesTheWIDESTScaleNotTheNarrowest(): void
+    {
+        // A comparison at the narrower operand's scale would call these equal.
+        self::assertSame(-1, Decimal::compare('0.10', '0.101'));
+        self::assertSame(1, Decimal::compare('0.101', '0.10'));
+        self::assertSame(0, Decimal::compare('0.10', '0.100'));
+        self::assertSame(-1, Decimal::compare('-0.101', '-0.10'));
+    }
+
     // ---------------------------------------------------------------- helpers
 
     #[DataProvider('integerDigitCases')]
