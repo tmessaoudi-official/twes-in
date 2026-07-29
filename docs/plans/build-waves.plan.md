@@ -161,13 +161,52 @@ seams, and all are recorded so they cannot be mistaken for done:
 | Owed | Why it is not closed here |
 |---|---|
 | **Composite tenant keys as a schema rule, mechanically checked.** PostgreSQL performs referential-integrity and uniqueness checks with row security BYPASSED, so a single-column FK lets one tenant delete another's rows and a bare unique constraint is an existence oracle. | Documented in `policySqlFor()` and in `tenancy-security-reviewer`, but there is no table yet to check. **Becomes a P0 with the first Wave 1 migration** — a gate asserting every `company_id` table has `relrowsecurity AND relforcerowsecurity`, a policy, and composite keys must land with it. |
-| **A non-owner runtime database role, without `TRUNCATE`.** `FORCE` stops an owner skipping policies, not removing them; `TRUNCATE` is never subject to RLS. | Infrastructure, not code — belongs with `infra/` (Wave 12) and is recorded in its README. The behaviour is pinned by a test so nobody mistakes RLS for protection against it. |
-| **The rate-quantisation question.** `Rate` holds 6 fraction decimals, and the ruled cost-edit direction recomputes the net *from that rate*, so at large magnitudes it loses money: cost `1000000.000` with a typed net of `1000000.500` stores `0.0001%`, and a cost rise to `1100000.000` yields `1100001.100` where exact is `1100000.550`. | **Needs a developer ruling, not a fix.** The spec says both "the stored authority is `net_price`, never re-derive from a rounded rate" and "editing cost preserves the rate", and the second requires the re-derivation the first forbids. See the question raised at the end of this round. |
+| **A non-owner runtime database role, without `TRUNCATE`.** `FORCE` stops an owner skipping policies, not removing them; `TRUNCATE` is never subject to RLS at any privilege level. | Infrastructure, not code — belongs with `infra/` (Wave 12). **Round 2 found this row claimed it was "recorded in its README" when it was not** — `infra/README.md` mentioned only non-superuser/`BYPASSRLS`. Now genuinely recorded there. |
+| ~~The rate-quantisation question.~~ **CLOSED 2026-07-29** by the 17:40 ruling in the Decisions Log: `authored_by` plus 12 fraction decimals. Both motivating cases now come out exact and are pinned in `pricing-vectors.json` § `authored_field`. | Kept as a struck row rather than deleted, so the trail from finding to ruling stays readable. |
 | **`netFromCost` differs from the spec's written formula under `HalfEven`.** One multiplication vs `cost + (cost × rate)` diverge when the tie parity flips. | Identical under the ruled `half_up` (160,000 pairs, 0 divergences). The one-step form is the better arithmetic; the plan's formula line should be amended to match rather than the code changed — folded into the pricing spec next round. |
 | **PHPStan and deptrac configuration.** No `phpstan.neon`, no `deptrac.yaml`, and `composer gate` names `gate:static` with neither a config nor paths. | Both are uninstallable here, so a config would be untested. Lands with `composer install`. |
 | **The i18n catalogues have no consumer.** Nine keys in three locales; every message the code emits is still a hardcoded English literal. | There is no HTTP layer to translate for. Lands with the RFC 9457 error shape, together with a reverse gate (a key used in code but absent from a catalogue). |
 | **Locale-aware formatting and its own test vectors.** Wave 0's scope named it; no formatter exists. | Needs a rendering surface to be meaningful. Moves to Wave 4 (PDF) and Wave 8 (admin), where `TND`'s three decimals can actually be seen to be right. |
 | **A JSON Schema for `pricing-vectors.json`.** | The `$schema` key pointed at a file that did not exist and has been removed rather than left dangling. Worth writing when the second consumer (Angular) lands and the shape stops moving. |
+
+
+### Certification round 2 — 26 findings, NOT clean; the counter did not reset
+
+Ran against frozen `a18aa9d`: **9 correctness · 11 completeness · 6 security.** Reviewers were told what
+round 1 fixed so they audited the fixes rather than re-finding the originals, and were told explicitly
+that a clean verdict was acceptable. It was not clean.
+
+**Fixed in this round** (see the commit that follows this entry): the stale `composer.lock` — round 1 added
+`ext-intl` and `ext-pdo_pgsql` to `composer.json` and never regenerated it, so `composer validate` exited 2
+while `CLAUDE.md` declared that row "Runs", and neither extension was in the lock's `platform` block so
+`composer install` would not have enforced them; four surviving stale claims, all of them mine, all of the
+same shape — **a correction appended while the false statement stood**, which is the third time in one
+session and is now a Gotchas entry rather than a note.
+
+**Owed from round 2, and this is why Wave 0 is not certified.** Each is real, each has a reproduction in
+the round-2 reports, and none should be closed without one:
+
+| # | Finding | Severity |
+|---|---|---|
+| R2-1 | **`ProductPricing::withCost()` guards the OLD cost for zero, not the new one.** `fromNetPrice(100.000, 150.000)->withCost(0.000)` deletes the typed price (net becomes `0.000`) and then reports `50%` on a zero cost, contradicting `profitRate()`'s own docblock. The one thing the class exists to protect. The fixture only ever moves *away* from a zero cost — its own `why` says "the reverse direction is not [safe]", and that is the untested direction. | **P0** |
+| R2-2 | **`scripts/gates/test-gates.sh` reports 33/33 for gates that detect nothing.** Five demonstrations: `assert_gate` accepts *any* non-zero exit for an expected-failure case and never asserts output, so a gate replaced with `throw` passes all 33; the fixture never copies `api/composer.json`, so the notices check is exercised zero times and can be deleted wholesale; `api/src/Application` is never created, so half of `FORBIDDEN_BY_LAYER` is uncovered; 60 of 71 banned names and 7 of 9 superglobals can be removed; `SEARCH_ROOTS` can be cut to one entry. | **P1** |
+| R2-3 | **Fail-closed tenancy is defeated by any pre-existing session value of `twes.tenant_id`** — settable with no privilege via a DSN `options='-c twes.tenant_id=…'`, i.e. exactly what a `DATABASE_URL` carries. After `bind()` commits, the session value is restored and the unbound path reads and writes that tenant. `bind()`'s read-back comment claiming it closes the session-scope gap is **wrong**. Fix, verified to discriminate correctly and not to false-positive on the reused-connection case: `assertConnectionCannotBypassPolicies()` must also assert `current_setting('twes.tenant_id', true) ∈ {NULL, ''}` at connection acquisition. | **P1** |
+| R2-4 | **A surviving mutant that launders an unrepresentable amount.** Narrowing the remainder scale in `Decimal::rescale` makes `Money::of('0.10001', TND)` return `0.100` instead of refusing. Root cause: **no test anywhere uses an amount more than ONE decimal beyond the currency scale.** Needs `Money::of('0.10001', TND)` throws and `Decimal::rescale('0.0005001', 3, HalfDown) === '0.001'`. | **P1** |
+| R2-5 | **`withProfitRate()` and `withNetPrice()` have no test** — the two methods the UI calls on every edit. `return $this;` survives both. Same for `withCost`'s zero-rate branch, because the fixture asserts `net_price` and `authored_by` but not `cost`. | **P1** |
+| R2-6 | **The profit-rate formula now exists TWICE in `Domain/`.** `ProductPricing::profitRate` is line-for-line `PriceCalculator::profitRateFromNet`, and `netPrice` is `netFromCost`; they are driven from two different fixture sections and nothing asserts they agree. `profitRateFromNet` has no non-test caller. Directly against `CLAUDE.md` § Architecture: *"one implementation, never two"*. | **P2** |
+| R2-7 | **No `RateTest`.** `Unnecessary → HalfUp` survives in both factories, turning `InvalidRate::tooPrecise` into the silent rounding its own message forbids. `isZero`, `isNegative`, `equals`, `zero()` all unasserted. | **P2** |
+| R2-8 | **`test-gates.sh` is wired into nothing** — absent from `CLAUDE.md` and from `composer gate`. A 33-case suite no documented command runs. | **P2** |
+| R2-9 | **The six-target / two-admin-interfaces ruling has no mechanical home.** Wave 12 says only "CI mirroring the quality gate"; `CLAUDE.md`'s Flutter gate row has **no per-target build**; the three-runner matrix exists in one README and no wave, gate row or table. Eleven skill banners still say "a Flutter mobile/desktop app". | **P2** |
+| R2-10 | **`authored_by` is new persisted state that never reaches Wave 1's scope.** Wave 1's `In:` list names no `Product` entity, and F4 names only the snapshot rule — so the wave writing the first migration has no record that the column exists. | **P2** |
+| R2-11 | **`testTruncateIsNotProtected…` cannot distinguish what it claims to pin.** It counts rows while still bound to tenant A, so a scoped `DELETE` produces the identical observation. It would pass unchanged the day PostgreSQL made `TRUNCATE` RLS-scoped — exactly when it should start failing. | **P2** |
+| R2-12 | **A savepoint rollback after `bind()` reverts the GUC to the previous tenant** while the PHP-side context still believes the new one. Not reachable today (PDO forbids nested transactions) but Doctrine implements them as savepoints, and `InMemoryTenantContext::switchTo()` exists for exactly the multi-tenant worker case. | **P2** |
+| R2-13 | **Gate evasions still open:** `new (expr)()` and `new (self::CONST)()` (a third syntax the round-1 `new $var()` guard did not consider), and `DateTimeImmutable::createFromFormat()` — a genuine clock read, since missing format fields default to *now*, in a call that looks like ordinary parsing. | **P2** |
+| R2-14 | **Undocumented magnitude boundary:** above a cost of ~1e9, a `withCost` to the *same value* drifts by a millime, because the price is rebuilt from a 12-decimal rate. `NUMERIC(19,4)` permits 15 integer digits, so the type allows it. Repeated cost changes do **not** compound (verified). | **P3** |
+| R2-15 | **A negative cost is accepted** and silently yields a negative selling price. `Money` must allow negatives for credit notes, but a product *cost* below zero is not a commercial state. Decide and state it, as `Rate` does for negative rates. | **P3** |
+| R2-16 | The pricing plan's `## Decisions Log` had no entry for the ruling that rewrote its own subject; `Money::negated`/`absolute`/`isPositive` and `Decimal::compare` have no direct tests. | **P3** |
+
+**Round 3 must therefore run, and a clean round 3 alone still would not certify Wave 0** — the MAXIMAL
+tier needs *two consecutive* clean rounds. Do not start Wave 1 before that.
 
 ### Original scope, for reference — HISTORICAL, read the tables above for what is true
 
@@ -353,16 +392,14 @@ not copyrightable; only expression is (licensing invariant 2). These four are **
 modifications on top of that baseline**, to be specced in detail when their wave starts.
 
 **F1 — Merge several invoices of the same client into one.** Same client is a hard precondition.
-Detailed spec at Wave 2 (shared document machinery). *Open decision: which invoice states may be
-merged — see below.*
+Detailed spec at Wave 2 (shared document machinery). *RULED 2026-07-29: drafts only — `pricing-and-documents.plan.md` § Decisions Log.*
 
 **F2 — Create an invoice from a quote, if one does not already exist.** One-to-one link, so converting
 twice does not silently produce a second invoice; the second attempt returns the existing one.
 Wave 2.
 
 **F3 — Create a delivery note from an invoice while the invoice is still a draft.** Draft-only is a
-deliberate constraint from the developer. *Open decision: separate document type or a rendering — see
-below.* Wave 2, or Wave 4 if it turns out to be a rendering concern.
+deliberate constraint from the developer. *RULED 2026-07-29: its own persistent, independently numbered document — same log.* Wave 2, or Wave 4 if it turns out to be a rendering concern.
 
 **F4 — Profit rate on the product, so the selling price is computed from cost + profit rate + VAT.**
 This is the most arithmetic-sensitive addition in the list and has **no upstream behaviour to inherit**
@@ -371,9 +408,12 @@ kernel, because it feeds line pricing. Non-negotiable regardless of the open dec
 selling price is snapshotted onto the invoice line** at issue time. A later change to a product's cost
 or profit rate must never retroactively alter an issued document.
 
-## Awaiting the developer
+## Awaiting the developer — **ALL FIVE NOW RULED, 2026-07-29**
 
-Five open decisions, listed in the session brief: the profit-rate formula (markup vs margin), which
-invoice states may be merged, whether a delivery note is its own document type, whether multi-currency
-is in the first release, and the VAT rounding point. **Wave 0 is unaffected by all five** — its seams
-are scope-independent — so it can start before they are answered.
+This section listed five open decisions; every one has since been settled and the rulings live in
+`pricing-and-documents.plan.md` § Decisions Log. Kept as a record rather than deleted, with the outcomes:
+profit-rate formula → **markup on cost**, VAT on the profit-inclusive net; invoice merging → **drafts
+only**; delivery notes → **their own persistent, independently numbered documents**; multi-currency →
+**in from the start, default TND**; VAT rounding → **once per rate group on the summed base**.
+
+Nothing here is awaiting the developer. The open items are in the owed table under Wave 0.

@@ -381,7 +381,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Tier | Green means | State |
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
-| **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate | **Runs** |
+| **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance, and round 2 proved that suite was itself too weak; strengthening it is owed (`build-waves.plan.md` R2-2) | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, `axe-core` a11y, locale key-parity, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
@@ -399,7 +399,8 @@ php   scripts/gates/no-ambient-calls-in-domain.php
 bash  scripts/gates/spdx-headers.sh
 php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
-cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check
+bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Gotchas on why this one matters
+cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check && composer validate
 ```
 
 **Tooling setup in a fresh container** (nothing here is installed by default): PHP 8.5.8 and
@@ -475,6 +476,26 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   Two consequences: **push promptly after committing**, and if the hook does fire, treat its
   instruction as superseded by § "Git autonomy" — the developer's ruling wins over harness machinery.
   This is the Stop half of the same conflict whose SessionStart half is recorded in § "Git autonomy".
+- **2026-07-29 — a correction appended below a false statement is not a correction. THREE times in one
+  session.** Round 1 flagged it, I fixed those instances, and then did it again twice more: `a18aa9d`'s
+  commit message claimed it "closes a real contradiction in the spec" while the contradicting sentence sat
+  84 lines below the new ruling, unannotated; the owed table still listed the rate-quantisation item as
+  "needs a developer ruling" with the superseded numbers, while the ruling was at line 48 of the same file;
+  and two documents asserted a control was "recorded in `infra/README.md`" when `git log` showed that file
+  had never been touched. **The rule, since evidently stating it once was not enough: when a decision is
+  superseded, edit the ORIGINAL sentence in place. Adding a new section that says the opposite leaves a
+  reader with two contradictory statements and no way to tell which is current** — and every one of these
+  was caught by a reviewer, not by me, because I was reading my new text rather than grepping for the old.
+  A claim in a commit message that a file was amended is worth exactly nothing without a `grep` first.
+- **2026-07-29 — a meta-gate needs its OWN adversary. `test-gates.sh` reported 33/33 for a gate that
+  detected nothing.** It was written to protect the six gates and was itself the weakest link: its
+  `assert_gate` accepted *any* non-zero exit as "caught the violation" and never asserted output, so a gate
+  replaced with `throw new RuntimeException` passed all 33 cases while printing `ok — catches time`. Its
+  fixture also never copied `api/composer.json`, so the licensing check it was supposed to cover ran zero
+  times. Two general lessons: **assert on the MESSAGE, not just a non-zero exit code** — a crash and a
+  detection are indistinguishable otherwise — and **a test fixture that omits an input makes every
+  assertion about that input vacuous while the suite stays green.** Both are the same shape as the
+  handoff-hook failure already recorded above, which is why they belong here rather than in a plan.
 - **2026-07-29 — GitHub egress is restricted to THIS repository, so `composer install` cannot run.**
   Every Composer `dist` URL for a GitHub-hosted package is `api.github.com`, `codeload.github.com` or
   `github.com`, and all three return **403** with *"GitHub access to this repository is not enabled for

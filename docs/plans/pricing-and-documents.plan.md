@@ -29,6 +29,10 @@ analogue**, so every rule here is ours to decide.
 - [2026-07-29 14:35] RULED **profit rate is bidirectional: last-edited-wins.** `cost`, `profit_rate`
   and `net_price` are three linked fields; editing one recomputes the dependent one. Default rate 30.
   Product-form helper only — never visible on an invoice.
+- [2026-07-29 17:40] RULED **the profit-rate fix is BOTH parts**: a product persists `authored_by`
+  (`profit_rate` or `net_price`) and the typed field is never recomputed, **and** `Rate` carries 12
+  fraction decimals (10 on the percentage) rather than 6. Precision moves the boundary; authorship removes
+  it. Supersedes the "stored authority is `net_price`" bullet under § F4, amended there in place.
 - [2026-07-29 14:35] RULED **delivery notes are PERSISTENT, independently numbered documents**, not
   ephemeral children of an invoice — the developer asked for "maximum understanding and protection".
   Draft (previewable, mutable, unnumbered) → Issued (numbered, immutable, PDF stored). A re-download
@@ -157,9 +161,13 @@ this is exactly the "change reaches every tier" lens.
 - **`net_price < cost`** → the rate goes **negative**, and that is allowed: selling below cost is real
   (clearance, loss-leader). Surface it visibly rather than clamping it; never silently coerce to 0.
 - **`net_price = cost`** → rate `0%`. Valid.
-- **Rounding**: the rate is a display-and-input convenience; the **stored authority is `net_price`**.
-  Never re-derive `net_price` from a rounded rate on load, or prices will drift each time the form is
-  opened.
+- **Rounding**: **AMENDED 2026-07-29 by the RULED section above — read that, not this bullet's original
+  form.** It used to say "the stored authority is `net_price`; never re-derive it from a rounded rate",
+  which contradicted the ruled behaviour that a cost change preserves the rate and moves the price. The
+  authority is **whichever field the user typed** (`authored_by`), not unconditionally `net_price`. The
+  original warning survives in the form that matters — *a typed price is never rebuilt from a rounded
+  rate* — while a cost change legitimately rebuilds a **derived** price from a rate, which is the ruled
+  behaviour and not drift.
 - **Snapshot rule, non-negotiable**: the net price is copied onto the invoice line when the line is
   created. A later change to the product's cost or rate must never alter an already-issued document.
 

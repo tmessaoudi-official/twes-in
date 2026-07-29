@@ -74,7 +74,8 @@
             "@php ../scripts/gates/layer-dependencies.php",
             "@php ../scripts/gates/no-ambient-calls-in-domain.php",
             "bash ../scripts/gates/spdx-headers.sh",
-            "@php ../scripts/gates/locale-key-parity.php"
+            "@php ../scripts/gates/locale-key-parity.php",
+            "bash ../scripts/gates/test-gates.sh"
         ],
         "gate:licences": "@php ../scripts/gates/dependency-licences.php",
         "gate:mapping": [
