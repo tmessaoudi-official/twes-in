@@ -132,3 +132,48 @@ tree. No file, and no translation of a file, from any of them is present. See `C
 § "Licensing invariants". The legitimate inputs were the published OpenAPI specification, the schema
 shape, observable behaviour, and the public standards (EN 16931, UBL, CII, Factur-X, Peppol BIS) —
 none of which is copyrightable expression.
+
+## Angular admin (`admin/package.json`)
+
+Scaffolded with the official generator (`ng new`, Angular CLI 22.0.9) rather than by hand, so the layout
+and configuration follow Angular's own current recommendations instead of ours. Node 26.5.0.
+
+Every direct dependency below, with the licence npm records for it in `admin/package-lock.json`. The
+**763** packages in the full locked tree across both tiers are checked by
+`scripts/gates/dependency-licences.php` on every run; only direct choices are enumerated here, because a
+transitive list would rot on the first `npm update` while a direct one records a decision somebody made.
+
+| Package | Constraint | Licence | Scope |
+|---|---|---|---|
+| `@angular/common` | `^22.0.0` | MIT | runtime |
+| `@angular/compiler` | `^22.0.0` | MIT | runtime |
+| `@angular/core` | `^22.0.0` | MIT | runtime |
+| `@angular/forms` | `^22.0.0` | MIT | runtime |
+| `@angular/platform-browser` | `^22.0.0` | MIT | runtime |
+| `@angular/router` | `^22.0.0` | MIT | runtime |
+| `rxjs` | `~7.8.0` | Apache-2.0 | runtime |
+| `tslib` | `^2.3.0` | 0BSD | runtime |
+| `@angular/build` | `^22.0.9` | MIT | dev |
+| `@angular/cli` | `^22.0.9` | MIT | dev |
+| `@angular/compiler-cli` | `^22.0.0` | MIT | dev |
+| `@eslint/js` | `^10.0.1` | MIT | dev |
+| `angular-eslint` | `22.1.0` | MIT | dev |
+| `eslint` | `^10.6.0` | MIT | dev |
+| `jsdom` | `^28.0.0` | MIT | dev |
+| `prettier` | `^3.8.1` | MIT | dev |
+| `typescript` | `~6.0.2` | Apache-2.0 | dev |
+| `typescript-eslint` | `8.62.1` | MIT | dev |
+| `vitest` | `^4.0.8` | MIT | dev |
+
+**`tslib` is the only runtime dependency here whose licence is not MIT/ISC/Apache/BSD**: it is **0BSD**,
+Zero-clause BSD, which is permissive with no attribution requirement at all — strictly less demanding than
+MIT. It is TypeScript's own runtime helper library.
+
+**Six licence identifiers in the locked tree are not on the strict permissive list, and all but `tslib`'s
+are dev-only.** `BlueOak-1.0.0`, `MIT-0` and `CC0-1.0` were added to that list on their own merits (all
+non-copyleft, none imposing an obligation that could survive into a commercial sublicence). `CC-BY-4.0`
+(`caniuse-lite`) and `CC-BY-3.0` (`spdx-exceptions`) were **not**: they are Creative Commons *content*
+licences that impose attribution, and this project has already refused a dependency for exactly that reason
+(licensing invariant 3 — `admin-portal`'s Attribution Assurance License). They are permitted only as
+**build-time reference data absent from the shipped artifact**, and the gate fails if either ever appears as
+a runtime dependency.

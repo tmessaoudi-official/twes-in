@@ -1,0 +1,13 @@
+<!--
+  Deliberately minimal. `ng new` scaffolds a 20 KB welcome page carrying Angular's own logo, links and
+  copy; none of it is ours and none of it is the admin shell, so it is replaced here rather than left to be
+  deleted later — the first commit of this tier contains no vendor marketing.
+
+  The product name comes from the BRANDING token, never a literal: CLAUDE.md licensing invariant 9 requires
+  a later public deployment to be a config change, not a code change.
+
+  The real shell lands in Wave 8 — see README.md for this tier's gate conditions.
+-->
+<h1>{{ productName() }}</h1>
+<p>Admin client — scaffolded, not yet built. See docs/plans/build-waves.plan.md, Wave 8.</p>
+<router-outlet />

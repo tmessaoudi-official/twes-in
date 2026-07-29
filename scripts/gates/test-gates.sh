@@ -44,6 +44,11 @@ fresh_fixture() {
   cp "$REPO_ROOT"/api/composer.json "$WORK/repo/api/"
   cp "$REPO_ROOT"/api/composer.lock "$WORK/repo/api/"
   cp "$REPO_ROOT"/THIRD-PARTY-NOTICES.md "$WORK/repo/"
+  # The Angular tier's manifest AND lock. Omitting either would make every npm-licence assertion below
+  # vacuous while the suite stayed green -- exactly the defect already recorded for api/composer.json.
+  mkdir -p "$WORK/repo/admin"
+  cp "$REPO_ROOT"/admin/package.json "$WORK/repo/admin/"
+  cp "$REPO_ROOT"/admin/package-lock.json "$WORK/repo/admin/"
 
   # A GIT WORK TREE, because spdx-headers.sh asks git which files exist in order to prove its search roots
   # COVER every source file — the inventory direction that was missing when `api/phpunit.xml` sat unscanned
@@ -313,7 +318,9 @@ PY
 assert_gate 'catches a dependency declaring no licence' dependency-licences.php 1
 
 fresh_fixture
-rm "$WORK/repo/api/composer.lock"
+# EVERY lock, not just the API's: with the Angular tier scaffolded, removing one leaves the other to be
+# counted and the "inspected nothing" guard is never reached. A vacuity case that is itself vacuous.
+rm "$WORK/repo/api/composer.lock" "$WORK/repo/admin/package-lock.json"
 assert_gate 'refuses to pass when no lock file was inspected' dependency-licences.php 1
 
 
@@ -600,6 +607,61 @@ PYLOCK
     assert_gate "catches copyleft on the ${where} ${section} entry" dependency-licences.php 1 'not permissive'
   done
 done
+
+echo "== the NPM licence path, which reads a lockfileVersion 3 lock without node_modules =="
+# A whole tier's dependency tree arrived with the Angular scaffold, and the gate had been reporting it as
+# "owed -- Wave 8" while the lock file sat beside it unread. These cases exist so that cannot recur.
+fresh_fixture
+python3 - "$WORK/repo/admin/package-lock.json" <<'PYNPM'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d['packages']['node_modules/tslib']['license'] = 'GPL-3.0-or-later'
+p.write_text(json.dumps(d))
+PYNPM
+assert_gate 'catches a copyleft RUNTIME npm dependency' dependency-licences.php 1 'RUNTIME — we distribute this'
+
+fresh_fixture
+python3 - "$WORK/repo/admin/package-lock.json" <<'PYNPM'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+# A CC-BY package promoted to runtime. Tolerated as dev-only build-time data; never as something we ship.
+e = d['packages']['node_modules/caniuse-lite']
+e['dev'] = False
+p.write_text(json.dumps(d))
+PYNPM
+assert_gate 'catches a CC-BY dependency promoted to RUNTIME' dependency-licences.php 1 'caniuse-lite'
+
+fresh_fixture
+python3 - "$WORK/repo/admin/package-lock.json" <<'PYNPM'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+del d['packages']['node_modules/tslib']['license']
+p.write_text(json.dumps(d))
+PYNPM
+assert_gate 'catches an npm dependency declaring NO licence' dependency-licences.php 1 'declares NO licence'
+
+# The other direction: a dev-only CC-BY must still PASS, or the split is pointless and the gate is just
+# a stricter flat list wearing two names.
+fresh_fixture
+assert_gate 'accepts CC-BY on a DEV-only build-time data package' dependency-licences.php 0
+
+fresh_fixture
+python3 - "$WORK/repo/admin/package-lock.json" <<'PYNPM'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d['lockfileVersion'] = 4
+p.write_text(json.dumps(d))
+PYNPM
+assert_gate 'refuses an unknown lockfileVersion rather than reading nothing' dependency-licences.php 1 'this gate reads version 3'
+
+fresh_fixture
+python3 - "$WORK/repo/admin/package.json" <<'PYNPM'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d['dependencies']['acme-undocumented-widget'] = '^1.0.0'
+p.write_text(json.dumps(d))
+PYNPM
+assert_gate 'catches a direct npm dependency absent from the notices' dependency-licences.php 1 'acme-undocumented-widget'
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"
