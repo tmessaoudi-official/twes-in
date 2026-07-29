@@ -540,6 +540,92 @@ TypeScript, forever. Two consequences follow and both are load-bearing rather th
    someone who may be on a phone on mobile data, and Flutter Web ships a large bundle before it renders
    anything. "Two admin interfaces" is a choice about the admin, and the portal is not an admin surface.
 
+### Certification round 5 — 29 findings, FIVE P0s, three of them proven cross-tenant breaches
+
+Frozen at `2e56c9f`. Counts across the loop: 48 → 26 → 20 → 21 → **29**. The count rose, and the reason is
+recorded honestly: **two entire tiers were scaffolded between rounds 4 and 5**, which widened the search
+surface mid-loop. Both the security and completeness lenses said so independently. That was a sequencing
+mistake — scaffolding belonged either before the loop opened or after it closed.
+
+**The three proven breaches.** Each came with a working exploit, not a theory:
+
+1. **`REPLICATION` was never checked.** A role with `LOGIN REPLICATION` and nothing else — not superuser, not
+   `BYPASSRLS` — passed the entire chain. Its SQL *is* correctly policed, which is exactly what made the
+   clean verdict convincing, and the same credentials ran `pg_basebackup`; both tenants' rows came back out
+   of the copied heap files. Row security has no bearing on a physical read. Worse, the provisioning script
+   spelled out `NOSUPERUSER NOBYPASSRLS NOCREATEROLE NOCREATEDB` under a comment promising that re-running it
+   "repairs a role whose attributes drifted" — and omitted the one attribute that most defeats the design.
+2. **`TRUNCATE` was checked with inheritance semantics while `SET ROLE` uses membership semantics.**
+   `has_table_privilege()` resolves privileges the way PostgreSQL applies them *now*; a grant made
+   `WITH INHERIT FALSE` — the PG16+ way to say "hold this deliberately, not by default" — is invisible to it
+   and one statement from the privilege. Every tenant's rows were erased through that gap with
+   `current_user == session_user` throughout, so no DSN trick was involved. The ownership check *two lines
+   above* had the semantics right, which is precisely what made the asymmetry easy to miss.
+3. **`relkind = 'r'` excluded partitioned tables.** A partitioned parent carries `relkind = 'p'` with
+   `relrowsecurity = t` (its partitions carry `f`), so ownership, `TRUNCATE`, `FORCE` and the non-vacuity
+   count all skipped it — and it counted for nothing toward "at least one policed table". Cross-tenant read
+   **and** write, against a clean verdict. Verified that `'p'` is the only hole: views and materialised views
+   cannot carry RLS at all.
+
+**The two process P0s, and these are the ones worth remembering.**
+
+4. **`layer-dependencies.php` exited 1 from a fresh clone** and 0 in the author's tree, because
+   `api/src/Application` is an empty directory git cannot track — and the per-layer existence check that
+   failed was *round 4's own fix*. So every "six gates green" claim across five rounds was produced in an
+   environment no clone reproduces. **This is round 1's finding #1 recurring verbatim**, and the `.gitkeep`
+   remedy from then was never extended to the directory a later gate started requiring. Now applied to all
+   four empty directories and verified by running the gates from `git checkout-index`, not from the tree.
+5. **`php-cs-fixer` exited 8, and had for three commits.** One token, introduced in the Angular scaffolding
+   commit, never re-checked — while `CLAUDE.md` § "Git autonomy" requires a green gate before every commit
+   and three commit messages asserted green.
+
+**Also closed:** the policy *expression* is now read rather than only the two catalogue flags
+(`ENABLE` + `FORCE` + `USING (true)` was a clean verdict on a table readable and writable across tenants);
+**four money-path parameters** (`Money::multipliedBy`, `::dividedBy`, `Rate::fromPercentage`,
+`::fromFraction`) still took a bare `string|int` and silently truncated a float — round 1 fixed one of five
+sites, and `Rate::fromFraction(0.30)` returned a rate of **zero**, the F4 defect arriving through a different
+door; and `GRANT CONNECT` was inert because PostgreSQL grants it to `PUBLIC` on every new database.
+
+**Provisioning gained two probe roles** — `twes_replicator` and a `twes_truncator` granted `WITH INHERIT
+FALSE` — on the principle round 4 established: *a fixture that cannot express a dangerous shape cannot detect
+it.* Six roles now. 27 → 32 integration tests; 296 → 328 total, 1410 assertions.
+
+**Still open after round 5, and each stated where it actually is:**
+
+| # | Owed | Where |
+|---|---|---|
+| R5-1 | The **ownership** reachability axis (`MEMBER` vs `USAGE`) has no live test: the existing test connects *as* the owner, and a role always satisfies `pg_has_role` on itself under any mode, so the both-halves mutant survives. Closing it needs a seventh role with `ADMIN OPTION` plumbing so a table owner can be *reached* without being *assumed*. The sibling TRUNCATE axis — where the P0 actually was — **is** covered. | this table |
+| R5-2 | `bind()`'s read-back mismatch throw has no coverage; the test named for it re-queries the GUC itself and never drives the branch. Remedy is the pattern this class used twice already: extract to a pure predicate. | this table |
+| R5-3 | `assertPolicedTablesAreBeyondThisRolesReach()`'s `return \count($tables)` is hardcodable to `1` with the suite green, so the count assertion does not do what its comment claims. A second policed table in the fixture fixes it. | this table |
+| R5-4 | The **licensing** gate is the only gate with no `--dump-rules` and no size baseline, so `GPL-3.0` can be added to `PERMISSIVE` with all 226 meta-cases green. Growth is the dangerous direction, exactly as for the SPDX exclusion list, which *does* have a maximum assertion. | this table |
+| R5-5 | `Decimal::add()`/`subtract()` silently truncate at a narrowing scale, outside `applyRounding()`, contradicting the class's own docblock. All four current callers are safe by construction — operands already at the target scale — which is a property of today's callers, not of the method. | this table |
+| R5-6 | `ProductPricing::netPrice()` throws from a read accessor when `cost × (1 + rate)` exceeds `Money`'s bound — the mirror of R4-4, which was closed on `profitRate()` only. Matching the two bounds does not constrain their *product*. | this table |
+| R5-7 | `spdx-headers.sh` cannot see `.html`, `.scss` or `.js`, so `admin/src/app/app.html` — which we authored, replacing the generated welcome page — carries no identifier. The **extensions** set complement is the direction still unasserted after R4-8 closed the *roots* one. | this table |
+| R5-8 | `pricing-and-documents.plan.md`'s headline `### The formula` block still reads `cost + (cost × profit_rate)`, the two-step form, while three other places say `cost × (1 + rate)`. Identical under HalfUp — every fixture vector is HalfUp — so a client implementer would pass every vector and diverge the day a company configures half-even. Round 1 owed this and it dropped off the register. | this table |
+| R5-9 | Owed items whose pointer leads somewhere they are not recorded: `application/wasm` (→ `infra/README.md`), the external-origin test (→ `mobile/README.md`), the Flutter transitive-licence walk (→ this plan). Round 2 filed this exact shape once already. | this table |
+| R5-10 | Both client tiers have **no security row** in their gate-condition tables. Concretely: no CSP anywhere and `@angular/build`'s `autoCsp` left off; Android release variant signed with the **published debug key**; token-in-keystore stated in prose, not gated. | `admin/README.md`, `mobile/README.md` |
+| R5-11 | `.gitignore` misses `.npmrc`, `api/config/secrets/**`, `*.p8`, `*.mobileprovision` — in a repo where `git add -A` is a standing autonomous operation. | this table |
+| R5-12 | **The seventh recurrence of correcting a claim somewhere other than where it is made:** `README.md:9` and **11 skill banners** still say the client tiers do not exist, and `.claude/skills/sweep/SKILL.md` reads that as authorisation to skip the Angular and Flutter review dimensions — including visual evidence — for tiers that are present and building. | this table |
+| R5-13 | Stale counts: `CLAUDE.md` writes "183 cases" (actual 226) **377 lines after stating that no count may be written there**, and this plan's Wave 0 "Delivered and verified" headline still says 251 tests / 183 gate tests. | this table |
+
+Plus, unchanged and still accurate: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, the composite-key
+schema gate (**P0 at the first Wave 1 migration**), PHPStan/deptrac, and — new from the partitioned-table
+finding — **RLS on a partitioned parent does not police direct access to a partition**, so a Wave 1
+partitioned tenant table needs the policy on every partition. That belongs beside the composite-key rule in
+`policySqlFor()`'s docblock.
+
+**ROUND 5 IS THE CAP.** `CLAUDE.md` § "Certification ladder" requires two *consecutive* clean rounds and caps
+the loop at five; there have been **zero** clean rounds. The required next step is the plain-text escalation,
+not a declaration of victory — and the bundle-integration precedent for stopping at five explicitly excludes
+code waves.
+
+**What the loop has actually bought, stated so the decision can be made on evidence.** Five rounds have found
+**five P0s that a green test suite did not**: two tenancy P0s (round 4's ownership/TRUNCATE, round 5's three),
+and a float-truncation P0 that silently turned a 30% margin into 0%. Three of round 5's were demonstrated
+with working exploits against a live database. Against that: the counts are not converging, and the dominant
+*category* of finding has shifted from code to record-keeping — 6 of the completeness lens's 8, and 8 of the
+13 R5 items above, are documentation or coverage rather than wrong behaviour.
+
 ## Scaffolding findings — 2026-07-29, from screenshotting the builds rather than running the tests
 
 Both client tiers were scaffolded with their official generators on 2026-07-29 (see each tier's README).

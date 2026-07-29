@@ -4,9 +4,12 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 **Flutter** client for **all six targets** — Android, iOS, Linux, Windows, macOS and Web — over
 **PostgreSQL**. Flutter Web means twes-in ships **two admin interfaces**, Flutter and Angular.
 
-> **Status: early.** Wave 0 has landed — the `Money` value object, the profit-rate arithmetic, the
-> multi-tenant isolation seam, and six architecture/licensing gates, under `api/`. The Symfony
-> application itself, Doctrine and the two client tiers do **not** exist yet. Read
+> **Status: early.** Wave 0 has landed but is **not yet certified** — the `Money` value object, the
+> profit-rate arithmetic, the multi-tenant isolation seam, and six architecture/licensing gates, under `api/`.
+> **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
+> `flutter create`), and each is green on its own toolchain — but neither holds application code yet. The
+> Symfony application itself (`bin/`, `config/`, `public/`) and Doctrine do **not** exist: they are blocked on
+> GitHub egress, see `CLAUDE.md` § Gotchas. `infra/` is still a README stub. Read
 > `docs/plans/build-waves.plan.md` for exactly what is and is not built.
 
 ## Licence — dual

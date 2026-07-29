@@ -42,7 +42,7 @@ disallowed-tools: AskUserQuestion
      git-autonomy override, the architecture rules (hexagonal, framework-free `Domain/`), the quality
      gate, and the in-repo plan home (`docs/plans/<topic>.plan.md`, each plan carrying its own
      `## Decisions Log`). On any conflict with a delta above, CLAUDE.md wins.
-  7. THREE TOOLCHAINS, NONE OF THEM BUILT YET. twes-in is a Symfony (PHP) REST API + an Angular
+  7. THREE TOOLCHAINS — THE API PARTLY BUILT, BOTH CLIENTS SCAFFOLDED, INFRA NOT STARTED. twes-in is a Symfony (PHP) REST API + an Angular
      admin front end + a Flutter client for all six targets
      (Android, iOS, Linux, Windows, macOS, Web — its Web build is a SECOND admin interface alongside
      the Angular one), over Postgres, with Docker Compose for local
@@ -51,8 +51,10 @@ disallowed-tools: AskUserQuestion
      dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,
      UUIDv7), four PHPUnit suites under `api/tests/`, and six gates in `scripts/gates/` with their own
      `test-gates.sh`. **Still absent:** the Symfony application, Doctrine, PHPStan and deptrac (every
-     Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `admin/`,
-     `mobile/` and `infra/` tiers, which are README stubs listing the tests and enforcers they owe.
+     Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `infra/` tier, which
+     is a README stub. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
+     `flutter create` on Flutter 3.44.8 with all six platform directories) and each is green on its own
+     toolchain — lint/analyze, unit tests, production build — but neither holds application code yet.
      The repo also holds `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`,
      `THIRD-PARTY-NOTICES.md`, four plan files under `docs/plans/` (one mandatory reading before any
      application code), `docs/spec/pricing-vectors.json`, `.claude/`,

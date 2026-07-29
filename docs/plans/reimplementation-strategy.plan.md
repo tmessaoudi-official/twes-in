@@ -13,6 +13,30 @@ clones; figures are labelled accordingly.
 
 ## Decisions Log
 - [2026-07-29 20:50] AGREED: adopt **API Platform** (MIT) for the REST tier, in **DTO + State Provider/Processor mode ONLY** — `#[ApiResource]` on a domain entity is forbidden here and already fails `layer-dependencies.php`, whose domain vendor allowlist is empty. Adopted mainly because it generates the OpenAPI spec from the code, and `CLAUDE.md` makes an API change that does not reach the spec a P0; a generated spec cannot drift. Open: plain JSON vs JSON-LD/Hydra as the public representation, and whether GraphQL is in scope at all.
+- [2026-07-29 21:35] AGREED: **both JSON and JSON-LD**, content-negotiated. Near-free with API Platform (one
+  normalizer chain, a config list of formats), and JSON-LD is a large part of what makes that framework worth
+  its weight. Cost is controlled rather than doubled: **full contract tests on JSON** — the shape both clients
+  consume — plus a **smoke test per resource on JSON-LD** (200 + `@context` present), because both come from
+  the same normalizer, so if JSON is right JSON-LD is right modulo the envelope.
+- [2026-07-29 21:35] AGREED: **GraphQL deferred, not refused.** The problem GraphQL solves is *many clients
+  you do not control, each wanting a different slice of a large graph*. twes-in has two clients, both ours,
+  with one API team — so when a client needs a different slice, the endpoint is edited. Its two real benefits
+  are reachable otherwise: composite-screen round-trips via REST compound documents (`?include=`), and typed
+  clients via `openapi-typescript` / `openapi_generator` from the OpenAPI spec API Platform already emits. Its
+  cost is not: GraphQL moves authorisation from per-endpoint to **per-field**, and certification round 5
+  returned three *proven* cross-tenant exploits in the isolation layer. Revisit after Wave 11 **with
+  measurements**, and only with resolver-level tenancy enforcement and query-complexity limits shipping
+  alongside. The only benefit genuinely lost meanwhile is field deprecation in place of `/v2` versioning.
+- [2026-07-29 21:35] AGREED: **a transport-agnostic gateway interface in BOTH clients, mandatory from the
+  first screen** — no component may call an HTTP client directly. Note the honest justification: it is
+  **testability** (fake the data layer in Angular unit tests and Flutter widget tests without HTTP), and
+  preserving the GraphQL option is a *side benefit*, not the reason. Retrofitting it after forty components
+  call `HttpClient` directly is not a refactor anybody schedules. A Wave 8 and Wave 11 gate condition.
+- [2026-07-29 21:35] AGREED: **Flutter Web stays**, and the justification is recorded correctly as *one
+  codebase across six platforms* — not parity with Invoice Ninja. That distinction matters: the clones on disk
+  show `in-flutter` advertising only Desktop and Mobile apps while `in-ui` (React) is the web client, i.e.
+  their two-UI state looks like a migration rather than a product decision. Ours is a build target of an app
+  written anyway, which is a genuinely different and much cheaper proposition.
 
 - [2026-07-29 09:00] AGREED: the four upstream repos are **studied, never forked into this tree**. Clones live at `/tmp/xxx/**` and `.gitignore` blocks `/reference/`, `/upstream/`, `/vendor-reference/`.
 - [2026-07-29 09:30] FOUND: the four repos carry **three different licences**, not one. `invoiceninja` (API) and `ui` (React) are **Elastic License 2.0**; `admin-portal` (Flutter) is the **Attribution Assurance License**; `dockerfiles` is **GPL-2.0**. [Verified: read all four LICENSE files directly.] Any plan that treats "Invoice Ninja's licence" as a single thing is wrong.
