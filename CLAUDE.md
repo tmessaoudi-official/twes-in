@@ -181,8 +181,15 @@ driving it — phorj is unfinished and nothing here is designed for it.
   no arrays where a value object belongs. This is good practice regardless; it also keeps the domain
   inside the subset a stricter language can express, which is the point.
 
-**Money is our own value object**, in the domain, immutable, integer minor units plus currency, with an
-**explicit rounding mode on every operation that can lose precision**. A decimal library may be an
+**Money is our own value object**, in the domain, immutable, carrying an amount plus its currency, with
+an **explicit rounding mode on every operation that can lose precision**.
+
+**The default currency is TND, which has THREE decimal places** (1 dinar = 1000 millimes), so **a
+2-decimal assumption is a bug for the default currency, not an edge case**. No `round($x, 2)`, no
+`× 100` to reach minor units, no "cents" in a name or a comment. `Money` carries each currency's own
+scale and refuses to assume one; the column type is `NUMERIC(19,4)` — 3 decimals exact, plus a digit of
+headroom for unit prices and rates. Tunisia's stamp duty of `0.100 TND` is 100 millimes and must
+represent exactly. [Verified: ISO 4217 — TND, BHD, JOD, KWD, OMR, LYD and IQD are the 3-decimal set.] A decimal library may be an
 implementation detail inside it; it may never leak into a signature. Rationale: this is the crown-jewel
 logic, a wrong number here is a wrong legal document, and upstream's version of it is the single worst
 defect in the product we are learning from — floats on models, `BcMath::mul` and native float
@@ -319,6 +326,8 @@ goes to `var/claude/**`, which is gitignored.
 Current plans:
 - `docs/plans/reimplementation-strategy.plan.md` — the build-vs-fork analysis, licensing findings,
   scope decisions, and the target architecture. **Read this before writing any application code.**
+- `docs/plans/pricing-and-documents.plan.md` — the profit-rate, delivery-note and charge-model spec.
+  **Read before touching pricing, VAT or document numbering.**
 - `docs/plans/build-waves.plan.md` — the wave-by-wave build plan. **Every wave ends in a MAXIMAL
   certification round against a frozen commit**; a wave is not done until its gate is green and the
   panel converges. Read this before starting any wave.
