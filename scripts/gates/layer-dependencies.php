@@ -105,6 +105,18 @@ function main(): int
         return 1;
     }
 
+    // A gate that inspected nothing must not report OK — its siblings hard-fail in this state, and this
+    // one printed "OK — 0 file(s)" after a directory rename, which is a green gate that checked nothing.
+    if (0 === $filesChecked) {
+        fwrite(\STDERR, sprintf(
+            "layer-dependencies: FAIL — inspected 0 files. Expected PHP under %s. Were the layer "
+            . "directories renamed or moved?\n",
+            implode(', ', array_map(static fn(string $l): string => 'api/src/' . $l, array_keys(FORBIDDEN_BY_LAYER))),
+        ));
+
+        return 1;
+    }
+
     fwrite(\STDOUT, sprintf(
         "layer-dependencies: OK — %d file(s) in %s respect the inward-only rule.\n",
         $filesChecked,

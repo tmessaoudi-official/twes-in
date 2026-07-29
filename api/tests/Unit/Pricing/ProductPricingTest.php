@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Twes\Tests\Unit\Pricing;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
@@ -205,7 +206,10 @@ final class ProductPricingTest extends TestCase
     /**
      * The documented magnitude boundary, pinned rather than left as prose.
      *
-     * Above roughly 1e9 a cost change rebuilds the price from a 12-decimal rate and can lose a millime —
+     * Above roughly 1e9 a cost change rebuilds the price from a 12-decimal rate and drifts by a millime — in
+     * EITHER direction. A round found `+0.001` as well as `-0.001` (cost 3e9 with a typed price of 50.000
+     * gains one), and the positive direction is the one that matters legally, because the customer
+     * overpays. Visible even on a change to the *same* cost, which should be a no-op —
      * visible even on a change to the *same* cost, which should be a no-op. `NUMERIC(19,4)` permits 15
      * integer digits, so the type allows amounts this large; the rate's precision is what runs out. This
      * test exists so the boundary is a known, asserted property instead of a surprise.
@@ -241,37 +245,59 @@ final class ProductPricingTest extends TestCase
     // ---------------------------------------------------------------- agreement with PriceCalculator
 
     /**
-     * The two implementations of the same formula must agree.
+     * Pins the delegated results against LITERAL expected values, not against `PriceCalculator`.
      *
-     * `PriceCalculator` and `ProductPricing` compute net-from-rate and rate-from-net independently, and
-     * `CLAUDE.md` § Architecture requires one implementation rather than two. Until they are unified, this
-     * test is what stops them drifting — a certification round found them line-for-line identical with
-     * nothing asserting it, driven from two different fixture sections.
+     * This test used to compare `ProductPricing` with `PriceCalculator` — which was meaningful while both
+     * implemented the formulas, and became a tautology the moment `ProductPricing` started delegating:
+     * both sides of every assertion then executed the same code, and breaking both formulas at once still
+     * passed. A round caught that. Expected values here are computed by hand and stated as literals, so the
+     * test fails if the shared implementation is wrong rather than merely if the two disagree.
+     *
+     * @param non-empty-string $expected
      */
-    public function testProductPricingAgreesWithPriceCalculator(): void
+    #[DataProvider('pricingByHand')]
+    public function testDelegatedResultsMatchHandComputedValues(
+        string $cost,
+        ?string $percentage,
+        ?string $netPrice,
+        string $expected,
+    ): void {
+        if (null !== $percentage) {
+            // net = cost x (1 + rate)
+            self::assertSame($expected, ProductPricing::fromProfitRate(
+                $this->money($cost),
+                Rate::fromPercentage($percentage),
+            )->netPrice(RoundingMode::HalfUp)->amount());
+
+            return;
+        }
+
+        // rate = (net - cost) / cost
+        self::assertSame($expected, ProductPricing::fromNetPrice(
+            $this->money($cost),
+            $this->money($netPrice ?? self::fail('a case needs one of percentage or netPrice')),
+        )->profitRate(RoundingMode::HalfUp)?->percentage());
+    }
+
+    /** @return iterable<string, array{string, ?string, ?string, string}> */
+    public static function pricingByHand(): iterable
     {
-        $calculator = new \Twes\Domain\Pricing\PriceCalculator();
-
-        foreach ([['100.000', '30'], ['12.345', '30'], ['0.010', '0'], ['100.000', '-20']] as [$cost, $percentage]) {
-            $rate = Rate::fromPercentage($percentage);
-
-            self::assertSame(
-                $calculator->netFromCost($this->money($cost), $rate, RoundingMode::HalfUp)->amount(),
-                ProductPricing::fromProfitRate($this->money($cost), $rate)
-                    ->netPrice(RoundingMode::HalfUp)->amount(),
-                "net disagrees for cost {$cost} at {$percentage}%",
-            );
-        }
-
-        foreach ([['100.000', '140.000'], ['3.000', '10.000'], ['100.000', '80.000']] as [$cost, $net]) {
-            self::assertSame(
-                $calculator->profitRateFromNet($this->money($cost), $this->money($net), RoundingMode::HalfUp)
-                    ?->percentage(),
-                ProductPricing::fromNetPrice($this->money($cost), $this->money($net))
-                    ->profitRate(RoundingMode::HalfUp)?->percentage(),
-                "rate disagrees for cost {$cost} at net {$net}",
-            );
-        }
+        // 100.000 x 1.30 = 130.000
+        yield 'the default markup' => ['100.000', '30', null, '130.000'];
+        // 12.345 x 1.30 = 16.0485, an exact tie at the millime, half-up lifts it
+        yield 'a tie at the millime' => ['12.345', '30', null, '16.049'];
+        // 100.000 x 0.80 = 80.000
+        yield 'a negative rate sells below cost' => ['100.000', '-20', null, '80.000'];
+        // 0.010 x 1.00 = 0.010
+        yield 'zero markup' => ['0.010', '0', null, '0.010'];
+        // (140 - 100) / 100 = 0.40
+        yield 'rate from a typed price' => ['100.000', null, '140.000', '40.0000000000'];
+        // (10 - 3) / 3 = 2.333333333333...
+        yield 'a repeating rate' => ['3.000', null, '10.000', '233.3333333333'];
+        // (80 - 100) / 100 = -0.20
+        yield 'a negative rate from a typed price' => ['100.000', null, '80.000', '-20.0000000000'];
+        // (10000.001 - 10000) / 10000 = 0.0000001
+        yield 'one millime on ten thousand' => ['10000.000', null, '10000.001', '0.0000100000'];
     }
 
     private function money(string $amount): Money

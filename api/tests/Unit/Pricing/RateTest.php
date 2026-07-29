@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Pricing\Exception\InvalidRate;
 use Twes\Domain\Pricing\Rate;
+use Twes\Domain\Shared\RoundingMode;
 
 /**
  * `Rate` had no test file. A certification round showed what that cost: switching either factory from
@@ -87,6 +88,80 @@ final class RateTest extends TestCase
         yield 'exponent' => ['3e1'];
         yield 'comma' => ['30,5'];
         yield 'space' => [' 30'];
+    }
+
+    /**
+     * The rounding mode on the division that derives every profit rate.
+     *
+     * It was asserted by nothing: mutants discarding the mode entirely survived all 209 unit tests,
+     * because no test input rounded *up* and none was an exact tie. The tie case is the serious one —
+     * under a half-even mutant it reproduces the precise F4 defect that `authored_by` and the
+     * 12-decimal rate were introduced to eliminate: a product sold a millime above cost displaying
+     * 0.0000000000 % and losing the millime on the next cost edit.
+     */
+    public function testTheDerivedRateRoundsUpWhenTheThirteenthDecimalDemandsIt(): void
+    {
+        $calculator = new \Twes\Domain\Pricing\PriceCalculator();
+        $tnd = \Twes\Domain\Money\Currency::of('TND');
+
+        // 8/3 = 2.666666666666_6…, so the 13th fraction decimal is 6 and half-up must lift the 12th.
+        $rate = $calculator->profitRateFromNet(
+            \Twes\Domain\Money\Money::of('3.000', $tnd),
+            \Twes\Domain\Money\Money::of('11.000', $tnd),
+            RoundingMode::HalfUp,
+        );
+
+        self::assertSame('266.6666666667', $rate?->percentage(), 'A Down mutant returns …6666.');
+    }
+
+    public function testTheDerivedRateResolvesAnExactTieByTheGivenMode(): void
+    {
+        $calculator = new \Twes\Domain\Pricing\PriceCalculator();
+        $tnd = \Twes\Domain\Money\Currency::of('TND');
+        $cost = \Twes\Domain\Money\Money::of('2000000000.000', $tnd);
+        $net = \Twes\Domain\Money\Money::of('2000000000.001', $tnd);
+
+        // 0.001 / 2e9 = 5e-13 — an exact tie at the 13th fraction decimal, so the mode decides alone.
+        self::assertSame(
+            '0.0000000001',
+            $calculator->profitRateFromNet($cost, $net, RoundingMode::HalfUp)?->percentage(),
+            'Half-up must lift the tie. A half-even mutant returns 0.0000000000 and deletes the millime.',
+        );
+        self::assertSame(
+            '0.0000000000',
+            $calculator->profitRateFromNet($cost, $net, RoundingMode::HalfDown)?->percentage(),
+            'Half-down must drop it — so the mode is demonstrably consulted, not ignored.',
+        );
+    }
+
+    /**
+     * A rate whose magnitude cannot be stored.
+     *
+     * `profit_rate` is `NUMERIC(15,12)` — twelve fraction decimals leave only THREE integer digits — and
+     * `Rate` bounded the scale but never the magnitude. A one-millime cost with a typed price of 1000.000
+     * derives a rate of 999999, which `withCost` then makes the authored value, so it is what Wave 1 must
+     * persist: `ERROR: numeric field overflow`. `Money` has had exactly this guard since round 1.
+     */
+    public function testARateTooLargeForItsColumnIsRefused(): void
+    {
+        $this->expectException(InvalidRate::class);
+        $this->expectExceptionMessageMatches('/NUMERIC\\(15,12\\)/');
+
+        Rate::fromFraction('1000');
+    }
+
+    public function testTheLargestStorableRateIsAccepted(): void
+    {
+        self::assertSame('99999.9999999999', Rate::fromFraction('999.999999999999')->percentage());
+    }
+
+    public function testAMalformedFractionIsRefused(): void
+    {
+        // fromFraction had no malformed-input coverage at all: removing its guard let '' become 0%.
+        $this->expectException(InvalidRate::class);
+        $this->expectExceptionMessageMatches('/not a plain decimal/');
+
+        Rate::fromFraction('');
     }
 
     public function testFromFractionAndFromPercentageAgree(): void

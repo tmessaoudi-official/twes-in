@@ -65,8 +65,25 @@ final readonly class Rate
      */
     public const int PERCENTAGE_SCALE = 10;
 
+    /**
+     * Digits allowed before the decimal point.
+     *
+     * `profit_rate` is `NUMERIC(15,12)`: twelve fraction decimals leave exactly three integer digits, so
+     * a rate of 1000 (100 000 %) cannot be stored. Bounded here rather than discovered at INSERT, for the
+     * same reason `Money::MAX_INTEGER_DIGITS` exists — and this is the asymmetry a round found: the money
+     * half was guarded and the rate half was not, while `withCost()` makes a *derived* rate the authored
+     * value, so an unstorable one is reachable from an ordinary edit (a one-millime cost with a typed
+     * price of 1000.000 derives 999999).
+     */
+    public const int MAX_INTEGER_DIGITS = 3;
+
     /** @param string $fraction canonical decimal string at exactly FRACTION_SCALE decimals */
-    private function __construct(private string $fraction) {}
+    private function __construct(private string $fraction)
+    {
+        if (Decimal::integerDigits($fraction) > self::MAX_INTEGER_DIGITS) {
+            throw InvalidRate::tooLarge($fraction);
+        }
+    }
 
     /**
      * From the form a human types: `30` means 30%.

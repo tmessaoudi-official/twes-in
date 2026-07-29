@@ -1,7 +1,8 @@
 # twes-in
 
 An invoicing and billing platform — **Symfony** REST API, **Angular** admin web client, and a
-**Flutter** client for mobile with native desktop support planned, over **PostgreSQL**.
+**Flutter** client for **all six targets** — Android, iOS, Linux, Windows, macOS and Web — over
+**PostgreSQL**. Flutter Web means twes-in ships **two admin interfaces**, Flutter and Angular.
 
 > **Status: early.** Wave 0 has landed — the `Money` value object, the profit-rate arithmetic, the
 > multi-tenant isolation seam, and six architecture/licensing gates, under `api/`. The Symfony
@@ -44,7 +45,7 @@ copyrightable expression. The rules that keep it that way are in
 |---|---|
 | API | PHP **8.5.8**, Symfony **8.1.1** |
 | Admin | Angular **22.0.8**, Node **26.5.0** |
-| Client | Flutter **3.44.8**, Dart **3.12.2** — mobile now, native desktop planned |
+| Client | Flutter **3.44.8**, Dart **3.12.2** — Android, iOS, Linux, Windows, macOS, Web |
 | Database | PostgreSQL **18.4** |
 
 Versions are pinned exactly, not floated — a reproducible build is a precondition for trusting a money

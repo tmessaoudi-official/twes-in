@@ -349,7 +349,19 @@ final class TenantIsolationTest extends TestCase
 
         $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
 
-        $this->expectNotToPerformAssertions();
+        // And it refuses to answer inside a transaction, where '' may shadow a live session pin.
+        $this->connection->beginTransaction();
+
+        try {
+            $threw = false;
+            $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
+        } catch (\RuntimeException) {
+            $threw = true;
+        } finally {
+            $this->connection->rollBack();
+        }
+
+        self::assertTrue($threw, 'The check must refuse to answer inside a transaction.');
     }
 
     /**

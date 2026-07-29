@@ -84,8 +84,8 @@ spent partly because the tree changed under the reviewer.
 
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
-Delivered and verified, **after certification rounds 1 and 2** (see below): **226 tests, 1219 assertions
-green** and **37 gate tests green**; six architecture/licensing gates, each proven to fail on an injected
+Delivered and verified, **after certification rounds 1, 2 and 3** (see below): **251 tests, 1247
+assertions green** and **37 gate tests green**; six architecture/licensing gates, each proven to fail on an injected
 violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
 removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
 
@@ -193,11 +193,11 @@ the round-2 reports, and none should be closed without one:
 | R2-3 | **Fail-closed tenancy is defeated by any pre-existing session value of `twes.tenant_id`** — settable with no privilege via a DSN `options='-c twes.tenant_id=…'`, i.e. exactly what a `DATABASE_URL` carries. After `bind()` commits, the session value is restored and the unbound path reads and writes that tenant. `bind()`'s read-back comment claiming it closes the session-scope gap is **wrong**. Fix, verified to discriminate correctly and not to false-positive on the reused-connection case: `assertConnectionCannotBypassPolicies()` must also assert `current_setting('twes.tenant_id', true) ∈ {NULL, ''}` at connection acquisition. | **P1** — **CLOSED.** `assertNoTenantPinnedOnTheConnection()` refuses a connection whose GUC is already set, accepting only NULL (never bound) and `''` (bound and committed) — so it does not reject recycled connections. Called from `assertConnectionCannotBypassPolicies()`. Tested with a real `options='-c …'` DSN. |
 | R2-4 | **A surviving mutant that launders an unrepresentable amount.** Narrowing the remainder scale in `Decimal::rescale` makes `Money::of('0.10001', TND)` return `0.100` instead of refusing. Root cause: **no test anywhere uses an amount more than ONE decimal beyond the currency scale.** Needs `Money::of('0.10001', TND)` throws and `Decimal::rescale('0.0005001', 3, HalfDown) === '0.001'`. | **P1** — **CLOSED.** `MoneyTest` and `DecimalTest` now use amounts *two and ten* decimals past the currency scale; the remainder-scale mutant dies. |
 | R2-5 | **`withProfitRate()` and `withNetPrice()` have no test** — the two methods the UI calls on every edit. `return $this;` survives both. Same for `withCost`'s zero-rate branch, because the fixture asserts `net_price` and `authored_by` but not `cost`. | **P1** — **CLOSED.** `ProductPricingTest` covers both mutators, the cost assertion, immutability and both currency guards; every no-op mutant dies. |
-| R2-6 | **The profit-rate formula now exists TWICE in `Domain/`.** `ProductPricing::profitRate` is line-for-line `PriceCalculator::profitRateFromNet`, and `netPrice` is `netFromCost`; they are driven from two different fixture sections and nothing asserts they agree. `profitRateFromNet` has no non-test caller. Directly against `CLAUDE.md` § Architecture: *"one implementation, never two"*. | **P2** |
+| R2-6 | **The profit-rate formula now exists TWICE in `Domain/`.** `ProductPricing::profitRate` is line-for-line `PriceCalculator::profitRateFromNet`, and `netPrice` is `netFromCost`; they are driven from two different fixture sections and nothing asserts they agree. `profitRateFromNet` has no non-test caller. Directly against `CLAUDE.md` § Architecture: *"one implementation, never two"*. | **P2** — **CLOSED by unification.** `ProductPricing` now delegates both formulas to `PriceCalculator`, which is the single home; [Verified: `grep -c 'markupMultiplier\|ratioTo'` → 0 and 2]. |
 | R2-7 | **No `RateTest`.** `Unnecessary → HalfUp` survives in both factories, turning `InvalidRate::tooPrecise` into the silent rounding its own message forbids. `isZero`, `isNegative`, `equals`, `zero()` all unasserted. | **P2** — **CLOSED.** `RateTest` added — 40 assertions across both factories, the too-precise contract, sign predicates, `zero()`, `markupMultiplier()` and the scale relationship. The `Unnecessary → HalfUp` mutants die. |
 | R2-8 | **`test-gates.sh` is wired into nothing** — absent from `CLAUDE.md` and from `composer gate`. A 33-case suite no documented command runs. | **P2** — **CLOSED.** `test-gates.sh` is in `composer gate:architecture` and in `CLAUDE.md`'s command block. |
-| R2-9 | **The six-target / two-admin-interfaces ruling has no mechanical home.** Wave 12 says only "CI mirroring the quality gate"; `CLAUDE.md`'s Flutter gate row has **no per-target build**; the three-runner matrix exists in one README and no wave, gate row or table. Eleven skill banners still say "a Flutter mobile/desktop app". | **P2** |
-| R2-10 | **`authored_by` is new persisted state that never reaches Wave 1's scope.** Wave 1's `In:` list names no `Product` entity, and F4 names only the snapshot rule — so the wave writing the first migration has no record that the column exists. | **P2** |
+| R2-9 | **The six-target / two-admin-interfaces ruling has no mechanical home.** Wave 12 says only "CI mirroring the quality gate"; `CLAUDE.md`'s Flutter gate row has **no per-target build**; the three-runner matrix exists in one README and no wave, gate row or table. Eleven skill banners still say "a Flutter mobile/desktop app". | **P2** — **CLOSED.** Wave 12 carries the three-runner release matrix; `CLAUDE.md`'s Flutter gate row requires a build of all six targets; header and all eleven skill banners updated. |
+| R2-10 | **`authored_by` is new persisted state that never reaches Wave 1's scope.** Wave 1's `In:` list names no `Product` entity, and F4 names only the snapshot rule — so the wave writing the first migration has no record that the column exists. | **P2** — **CLOSED.** Wave 1's scope names the `Product` entity and specifies all four pricing columns with types, `authored_by` non-null, plus the composite-key and RLS requirements. |
 | R2-11 | **`testTruncateIsNotProtected…` cannot distinguish what it claims to pin.** It counts rows while still bound to tenant A, so a scoped `DELETE` produces the identical observation. It would pass unchanged the day PostgreSQL made `TRUNCATE` RLS-scoped — exactly when it should start failing. | **P2** — **CLOSED.** The test now counts with RLS off, which is the only way to observe that tenant B's row went too; a scoped `DELETE` no longer produces the same observation. |
 | R2-12 | **A savepoint rollback after `bind()` reverts the GUC to the previous tenant** while the PHP-side context still believes the new one. Not reachable today (PDO forbids nested transactions) but Doctrine implements them as savepoints, and `InMemoryTenantContext::switchTo()` exists for exactly the multi-tenant worker case. | **P2** |
 | R2-13 | **Gate evasions still open:** `new (expr)()` and `new (self::CONST)()` (a third syntax the round-1 `new $var()` guard did not consider), and `DateTimeImmutable::createFromFormat()` — a genuine clock read, since missing format fields default to *now*, in a call that looks like ordinary parsing. | **P2** |
@@ -229,6 +229,80 @@ boundary, now pinned by a test but still a real limit).
 
 **Round 3 must therefore run, and a clean round 3 alone still would not certify Wave 0** — the MAXIMAL
 tier needs *two consecutive* clean rounds. Do not start Wave 1 before that.
+
+
+### Certification round 3 — 20 findings, NOT clean
+
+Against frozen `53ff9c6`: **10 correctness · 5 security · 5 completeness.** Reviewers were told what rounds
+1 and 2 fixed and that a clean verdict was acceptable. It was not clean. Notably, the correctness reviewer
+**disclosed a bug in its own harness before reporting** — its ANSI-blind output matching had made every
+mutant falsely report "killed" — then rebuilt on exit codes and re-ran everything.
+
+**Fixed in this round.** All ten correctness findings, three of five security, and four of five
+completeness:
+
+- **`Money::ratioTo()` ignored the caller's rounding mode and nothing noticed.** Mutants discarding it
+  survived all 209 unit tests, because no test input rounded *up* and none was an exact tie. The tie case
+  is the serious one: under a half-even mutant it **reproduces the exact F4 defect** that `authored_by` and
+  the 12-decimal rate were built to eliminate. Two cases added, one per direction.
+- **`Rate` had no magnitude guard**, while `53ff9c6` specified `profit_rate NUMERIC(15,12)` — twelve
+  fraction decimals leave only **three** integer digits. A one-millime cost with a typed price of 1000.000
+  derives 999999, which `withCost` makes the *authored* value: `ERROR: numeric field overflow`. `Money` had
+  had this guard since round 1; the money half was fixed and the rate half created in the same session.
+  Now `Rate::MAX_INTEGER_DIGITS = 3` in the constructor.
+- **The `SET ROLE` bypass.** `rolsuper` and `rolbypassrls` are **not inherited**, so a role that is a
+  *member* of a privileged or table-owning role read `f`/`f`, passed the check, and reached full
+  cross-tenant read/write with one `SET ROLE`. And the precondition was created **by this session** —
+  `infra/README.md` mandates a separate owning migration role, and the ordinary wiring grants it to the
+  runtime role. The check is now a predicate over every role reachable via `pg_has_role(…, 'MEMBER')`,
+  with an explicit refusal if the privilege set cannot be determined. [Verified against live roles: a
+  member of a `BYPASSRLS` role is refused; the restricted role is accepted.]
+- **The acquisition check had two unstated preconditions.** Inside a transaction, `''` may be a
+  transaction-local shadow over a live session pin that returns on COMMIT — and the same call would throw
+  on a correctly *bound* connection. It now refuses to answer inside a transaction. Separately, one
+  post-acquisition session-scope write reopened the bypass in full with `bind()` still reporting success,
+  so **`bind()` now re-checks before every write** rather than trusting a one-time check.
+- **The ambient denylist had holes in all four of its own categories**, and since every one is a global
+  symbol the layer gate was blind to them too. Added ~35 names — including the entire process family
+  (`shell_exec`, `exec`, `proc_open`), which had been left open while `mail()` and `curl_init()` were
+  banned — plus `include`/`require` and the backtick operator, which are language constructs the tokenizer
+  walk skipped for the same reason `T_EXIT` was already special-cased.
+- **The agreement test had become a tautology.** Once `ProductPricing` delegated, both sides of every
+  assertion executed the same code: breaking *both* formulas still passed. Replaced with hand-computed
+  literals. [Verified: breaking both now fails all 8 cases.]
+- **Three `isWellFormed` guards were untested** — `multipliedBy` (the path a **line quantity** travels, so
+  an absent quantity became a free line), `dividedBy`, and `Rate::fromFraction`.
+- **Ten of the seventeen zero-decimal currencies had no scale assertion.** The 3-decimal set was pinned as
+  a *set*; the 0-decimal set was enumerated ad hoc. Both it and the 4-decimal set are now pinned as sets.
+- **`isLessThan`/`isGreaterThan` were never asserted at equality**, and they are what payment application
+  will be built on: an inclusive `isGreaterThan` flags an exact-full payment as an overpayment.
+- **`layer-dependencies.php` printed `OK — 0 file(s)`** after a directory rename, where two sibling gates
+  hard-fail. It now refuses to pass having inspected nothing.
+- **`InvalidCost`'s message stated a rule the domain does not hold** — a negative selling *price* is
+  accepted by two other paths. Reworded, with the open question named.
+- **The >1e9 boundary docblock said the drift "can lose a millime".** It can also **add** one, which is the
+  direction that matters legally. Corrected.
+- Stale statements: the three R2 rows now say CLOSED **in-cell** (they said it only in prose below the
+  table — the *fifth* recurrence of the pattern in `CLAUDE.md` § Gotchas, so this sweep was done by `grep`
+  rather than from memory); `CLAUDE.md`'s architecture row no longer calls closed work owed;
+  `mobile/README.md`'s dangling "open question" is resolved; `README.md`, `VISION.md`, `CLAUDE.md`'s layout
+  comment and `reimplementation-strategy.plan.md` no longer call desktop "planned" or "later"; the pricing
+  plan's "Nothing here is implemented" is corrected.
+
+**Owed from round 3 — three rows, and they are why round 4 must run:**
+
+| # | Finding | Severity |
+|---|---|---|
+| R3-1 | **`test-gates.sh` pins the fixture's instances, not the rule sets.** Seven neuterings each keep 37/37 — dropping `packages-dev` from the licence merge, slicing the package list to one, dropping two of three forbidden layers, deleting the `DateTime` row, disabling the `T_EXIT` branch, and two `SEARCH_ROOTS`/extension reductions. The last hides a header-less `.orm.xml`, which is exactly what Wave 1 must produce. Remedy is structural: drive the cases from the gates' own data — one per `BANNED_*` entry, one per `FORBIDDEN_BY_LAYER` pair, a fixture member per root and per extension, and a `packages-dev` case. | **P2** |
+| R3-2 | **`Decimal::divide`'s working-scale `max()` term is only partly covered.** A case with a 15-decimal dividend was added, but the term deserves a systematic sweep across dividend/divisor/target-scale combinations rather than one example. | **P3** |
+| R3-3 | **`Decimal::scaleOf` survives a mutant returning garbage for every dotless value.** Now has direct tests, but the reviewer's point stands: it survived by *luck of consumer shape*, and the next consumer — a formatter, or a `NUMERIC(19,4)` decimal-count check in the Doctrine type — would break silently. | **P3** |
+
+Also still open from round 2: **R2-12** (savepoint rollback reverts the GUC — unreachable until Doctrine),
+**R2-13** (`new (expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` evade the
+ambient gate) and **R2-14** (the >1e9 boundary, pinned but real).
+
+**Round 4 is owed. Wave 0 remains uncertified** — MAXIMAL needs two *consecutive* clean rounds and no round
+has yet been clean. Do not start Wave 1.
 
 ### Original scope, for reference — HISTORICAL, read the tables above for what is true
 

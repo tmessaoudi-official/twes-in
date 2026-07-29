@@ -305,6 +305,51 @@ final class MoneyTest extends TestCase
 
     // ---------------------------------------------------------------- comparison
 
+    /**
+     * `multipliedBy` and `dividedBy` validate their argument, and nothing asserted it.
+     *
+     * `multipliedBy` is the path a **line quantity** travels, so under a guard-removal mutant an absent
+     * quantity (`''`) silently became a free line and `'+5'` was accepted. Only `Money::of` had coverage.
+     */
+    public function testAMalformedFactorIsRefused(): void
+    {
+        $this->expectException(InvalidMoneyAmount::class);
+        $this->expectExceptionMessageMatches('/not a plain decimal/');
+
+        Money::of('100.000', Currency::of('TND'))->multipliedBy('', RoundingMode::HalfUp);
+    }
+
+    public function testAMalformedFactorWithALeadingPlusIsRefused(): void
+    {
+        $this->expectException(InvalidMoneyAmount::class);
+
+        Money::of('100.000', Currency::of('TND'))->multipliedBy('+5', RoundingMode::HalfUp);
+    }
+
+    public function testAMalformedDivisorIsRefused(): void
+    {
+        $this->expectException(InvalidMoneyAmount::class);
+
+        Money::of('100.000', Currency::of('TND'))->dividedBy('', RoundingMode::HalfUp);
+    }
+
+    /**
+     * The equality boundary on the two predicates payment application will be built from.
+     *
+     * Only the strictly-different direction was asserted, so `<` → `<=` and `>` → `>=` both survived. An
+     * inclusive `isGreaterThan` flags an exact-full payment as an overpayment; an inclusive `isLessThan`
+     * leaves a fully-paid invoice partial.
+     */
+    public function testTheComparisonPredicatesAreStrictAtEquality(): void
+    {
+        $amount = Money::of('100.000', Currency::of('TND'));
+        $same = Money::of('100.000', Currency::of('TND'));
+
+        self::assertFalse($amount->isLessThan($same));
+        self::assertFalse($amount->isGreaterThan($same));
+        self::assertSame(0, $amount->compareTo($same));
+    }
+
     public function testComparison(): void
     {
         $small = Money::of('0.100', Currency::of('TND'));

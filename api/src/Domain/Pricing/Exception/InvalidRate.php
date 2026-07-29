@@ -25,6 +25,20 @@ final class InvalidRate extends \InvalidArgumentException
         ));
     }
 
+    public static function tooLarge(string $fraction): self
+    {
+        return new self(\sprintf(
+            'Rate fraction "%s" has more than %d digit(s) before the decimal point, so it does not fit a '
+            . 'NUMERIC(15,12) column — %d fraction decimals leave only %d integer digits. Refused here '
+            . 'rather than at the database boundary. A rate this large usually means a near-zero cost: '
+            . 'check the cost rather than raising this bound.',
+            $fraction,
+            Rate::MAX_INTEGER_DIGITS,
+            Rate::FRACTION_SCALE,
+            Rate::MAX_INTEGER_DIGITS,
+        ));
+    }
+
     public static function tooPrecise(string $value): self
     {
         return new self(\sprintf(

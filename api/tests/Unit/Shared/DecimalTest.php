@@ -207,6 +207,45 @@ final class DecimalTest extends TestCase
         self::assertSame(-1, Decimal::compare('-0.101', '-0.10'));
     }
 
+    /**
+     * A dividend whose scale exceeds `$scale + scaleOf($divisor)`.
+     *
+     * That is the only input class where `divide`'s `max()` term in the working scale becomes
+     * load-bearing, and nothing reached it: `RateTest` gets to 11 decimals and the term only matters above
+     * 12. Deleting it turned `InvalidRate::tooPrecise` into the silent rounding its own message forbids.
+     * Realistic trigger: a rate string carrying float artefacts from the Angular or Flutter tier, like
+     * "30.000000000000004", which has 15 decimals.
+     */
+    public function testDivisionSeesADividendWiderThanTheTargetScalePlusTheDivisor(): void
+    {
+        // 15 decimals in, target 12, divisor scale 0 — so the remainder lives beyond a narrowed window.
+        self::assertNull(
+            Decimal::divide('30.000000000000004', '100', 12, RoundingMode::Unnecessary),
+            'Not exact at 12 decimals, so Unnecessary must refuse rather than quietly truncate.',
+        );
+        self::assertSame('0.300000000000', Decimal::divide('30.000000000000004', '100', 12, RoundingMode::Down));
+        self::assertNull(Decimal::divide('0.0000000000000001', '1', 12, RoundingMode::Unnecessary));
+    }
+
+    #[DataProvider('scales')]
+    public function testScaleOf(string $value, int $expected): void
+    {
+        self::assertSame($expected, Decimal::scaleOf($value));
+    }
+
+    /** @return iterable<string, array{string, int}> */
+    public static function scales(): iterable
+    {
+        // A dotless value has scale 0. A mutant inverting the has-a-dot test reported 2 for '100', which
+        // no consumer happened to break on — luck of consumer shape, not design.
+        yield 'no decimal point' => ['100', 0];
+        yield 'single digit, no point' => ['7', 0];
+        yield 'three decimals' => ['0.100', 3];
+        yield 'twelve decimals' => ['0.300000000000', 12];
+        yield 'negative, dotless' => ['-100', 0];
+        yield 'negative with decimals' => ['-0.10', 2];
+    }
+
     // ---------------------------------------------------------------- helpers
 
     #[DataProvider('integerDigitCases')]

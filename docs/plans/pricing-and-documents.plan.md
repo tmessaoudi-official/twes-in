@@ -4,7 +4,9 @@ Detailed spec for the developer's feature additions (F1–F4 in `build-waves.pla
 developer's own description, not from upstream behaviour — three of the four have **no upstream
 analogue**, so every rule here is ours to decide.
 
-**Nothing here is implemented.**
+**Partly implemented as of 2026-07-29.** F4's arithmetic — the formula, the 12-decimal `Rate`,
+`ProductPricing` with `authored_by`, and the shared vectors — is built and tested in `api/src/Domain/Pricing/`.
+F1, F2, F3 and the charge model are not. Read `build-waves.plan.md` for exactly what exists.
 
 ## Decisions Log
 

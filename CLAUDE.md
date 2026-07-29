@@ -231,7 +231,8 @@ at all:
 ```
 api/          # Symfony REST API (layout below)
 admin/        # Angular admin web client
-mobile/       # Flutter client — mobile now, native desktop later
+mobile/       # Flutter client — Android, iOS, Linux, Windows, macOS, Web. ALL SIX ruled in scope, so
+              # desktop is not "later"; the Web build is a SECOND admin interface alongside admin/.
 infra/        # Dockerfiles, compose, deployment. WRITTEN FROM SCRATCH — never copied from
               # invoiceninja/dockerfiles, which is GPL-2.0 (licensing invariant 7).
 docs/plans/   # plans, each with its own Decisions Log
@@ -384,7 +385,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Tier | Green means | State |
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
-| **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance, and round 2 proved that suite was itself too weak; strengthening it is owed (`build-waves.plan.md` R2-2) | **Runs** |
+| **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice — `assert_gate` asserts each gate's own message rather than only its exit code, and the fixture covers every layer, root and lock section. Residual gaps are tabulated as R3 rows | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, `axe-core` a11y, locale key-parity, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |

@@ -35,6 +35,7 @@ const BANNED_FUNCTIONS = [
     'date_default_timezone_set' => 'the domain never mutates global state',
     'date_create_immutable' => 'inject Domain\\Shared\\Clock',
     'date_create_from_format' => 'parse at the boundary',
+    'gettimeofday' => 'inject Domain\\Shared\\Clock',
 
     // ---- randomness
     'rand' => 'inject Domain\\Shared\\IdGenerator',
@@ -48,6 +49,9 @@ const BANNED_FUNCTIONS = [
     'mt_srand' => 'the domain never seeds a generator',
     'srand' => 'the domain never seeds a generator',
     'bin2hex' => 'only reached here via random_bytes; generate identifiers in Infrastructure/',
+    'str_shuffle' => 'inject Domain\\Shared\\IdGenerator',
+    'openssl_random_pseudo_bytes' => 'inject Domain\\Shared\\IdGenerator',
+    'random' => 'inject Domain\\Shared\\IdGenerator',
 
     // ---- the environment
     'getenv' => 'configuration is injected, never read',
@@ -56,6 +60,17 @@ const BANNED_FUNCTIONS = [
     'ini_set' => 'the domain never mutates its environment',
     'php_uname' => 'the domain does not know what it runs on',
     'gethostname' => 'the domain does not know what it runs on',
+    'get_cfg_var' => 'configuration is injected, never read',
+    'filter_input' => 'reads a superglobal; the request belongs to UI/',
+    'filter_input_array' => 'reads a superglobal; the request belongs to UI/',
+    'getopt' => 'CLI arguments belong to UI/',
+    'getmypid' => 'the domain does not know what process it is',
+    'php_sapi_name' => 'the domain does not know how it was invoked',
+    'sys_getloadavg' => 'the domain does not inspect the machine',
+    'memory_get_usage' => 'the domain does not inspect the machine',
+    'sys_get_temp_dir' => 'the domain does not touch the filesystem',
+    'getcwd' => 'the domain does not touch the filesystem',
+    'chdir' => 'the domain never mutates process state',
 
     // ---- I/O
     'file_get_contents' => 'load in Infrastructure/ and pass the data in',
@@ -67,6 +82,30 @@ const BANNED_FUNCTIONS = [
     'file_exists' => 'the domain does not touch the filesystem',
     'glob' => 'the domain does not touch the filesystem',
     'scandir' => 'the domain does not touch the filesystem',
+    'readfile' => 'load in Infrastructure/ and pass the data in',
+    'opendir' => 'the domain does not touch the filesystem',
+    'readdir' => 'the domain does not touch the filesystem',
+    'touch' => 'persist through a repository port',
+    'mkdir' => 'persist through a repository port',
+    'rmdir' => 'persist through a repository port',
+    'rename' => 'persist through a repository port',
+    'copy' => 'persist through a repository port',
+    'stream_socket_client' => 'call the outside world from Infrastructure/',
+    'stream_get_contents' => 'read streams in Infrastructure/',
+    'file_put_contents_atomic' => 'persist through a repository port',
+
+    // ---- command execution. Banned outright: the gate previously stopped mail() and curl_init() while
+    // leaving shell_exec() and proc_open() untouched, which is the larger hole by some distance.
+    'shell_exec' => 'a domain rule never runs a subprocess',
+    'exec' => 'a domain rule never runs a subprocess',
+    'system' => 'a domain rule never runs a subprocess',
+    'passthru' => 'a domain rule never runs a subprocess',
+    'proc_open' => 'a domain rule never runs a subprocess',
+    'popen' => 'a domain rule never runs a subprocess',
+    'pcntl_fork' => 'a domain rule never forks',
+    'posix_getpwuid' => 'the domain does not inspect the host',
+    'escapeshellcmd' => 'only needed by code that runs subprocesses, which the domain does not',
+    'escapeshellarg' => 'only needed by code that runs subprocesses, which the domain does not',
     'curl_init' => 'call the outside world from Infrastructure/',
     'fsockopen' => 'call the outside world from Infrastructure/',
     'mail' => 'send from Infrastructure/',
@@ -197,6 +236,30 @@ function inspect(string $file): array
         // exit and die are language constructs, not T_STRING function names.
         if ($token->is([\T_EXIT])) {
             $violations[] = describe($file, $token->line, strtolower($token->text), BANNED_FUNCTIONS['exit']);
+
+            continue;
+        }
+
+        // Same class, and previously missed for the same reason: include/require are unbounded filesystem
+        // reads AND code execution, and the backtick operator is shell execution — none is a T_STRING.
+        if ($token->is([\T_INCLUDE, \T_INCLUDE_ONCE, \T_REQUIRE, \T_REQUIRE_ONCE])) {
+            $violations[] = describe(
+                $file,
+                $token->line,
+                strtolower(trim($token->text)),
+                'the domain does not read the filesystem or execute code it loaded',
+            );
+
+            continue;
+        }
+
+        if ('`' === $token->text) {
+            $violations[] = describe(
+                $file,
+                $token->line,
+                'the backtick operator',
+                'shell execution; a domain rule never runs a subprocess',
+            );
 
             continue;
         }

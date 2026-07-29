@@ -75,6 +75,40 @@ final class CurrencyTest extends TestCase
         self::assertSame(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND'], $threeDecimal);
     }
 
+    /**
+     * The zero-decimal set, pinned as a set — mirroring the three-decimal test.
+     *
+     * It was enumerated ad hoc, 7 of 17, so ten currencies could have their scale changed without a
+     * single test noticing: under `BIF => 1`, `Money::of('100.5', BIF)` was accepted instead of refused.
+     * A wrong scale here laundens an unrepresentable amount exactly as a wrong TND scale would.
+     */
+    public function testTheZeroDecimalSetIsExactlyTheSeventeenIsoCurrencies(): void
+    {
+        $zeroDecimal = array_values(array_filter(
+            Currency::all(),
+            static fn(string $code): bool => 0 === Currency::of($code)->scale(),
+        ));
+
+        sort($zeroDecimal);
+
+        self::assertSame([
+            'BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW', 'PYG',
+            'RWF', 'UGX', 'UYI', 'VND', 'VUV', 'XAF', 'XOF', 'XPF',
+        ], $zeroDecimal);
+    }
+
+    public function testTheFourDecimalSetIsExactlyTheTwoIsoCurrencies(): void
+    {
+        $fourDecimal = array_values(array_filter(
+            Currency::all(),
+            static fn(string $code): bool => 4 === Currency::of($code)->scale(),
+        ));
+
+        sort($fourDecimal);
+
+        self::assertSame(['CLF', 'UYW'], $fourDecimal);
+    }
+
     public function testItNormalisesLowercaseInput(): void
     {
         self::assertSame('TND', Currency::of('tnd')->code());

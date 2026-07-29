@@ -1,6 +1,6 @@
 # mobile — Flutter client
 
-**Not built yet. Lands in Wave 11** (`docs/plans/build-waves.plan.md`). Mobile first; native desktop
+**Not built yet. Lands in Wave 11** (`docs/plans/build-waves.plan.md`). Mobile is built first; desktop
 later.
 
 Pinned on landing: Flutter **3.44.8**, Dart **3.12.2** — the current stable channel
@@ -20,7 +20,7 @@ ship. What that actually costs, stated plainly, because none of it is a flag you
 | **Linux** | Linux | GTK development headers; packaging is a separate decision (see below) |
 | **Windows** | **Windows only** | A code-signing certificate, or every user sees a SmartScreen warning |
 | **macOS** | **macOS only** | Notarisation as well as signing; the app is sandboxed by default, which affects file save |
-| **Web** | any OS | See the open question below — it overlaps the Angular admin |
+| **Web** | any OS | **RULED in scope**: twes-in ships two admin interfaces, this and the Angular one — the same shape Invoice Ninja offers with Flutter and React. Accepted cost: every admin screen exists twice. The public client portal stays Angular, because an unauthenticated link opened on mobile data cannot afford a large bundle. |
 
 **You cannot cross-compile.** That is the single most consequential fact here: Windows binaries need a
 Windows machine, and iOS and macOS need a Mac. So CI is a **three-runner matrix** —

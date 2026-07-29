@@ -8,7 +8,8 @@
 
 An invoicing and billing platform that is **both** the author's own internal invoicing **and** a
 product sold to others — a Symfony REST API, an Angular admin client, and a Flutter client for mobile
-with native desktop support later, over PostgreSQL.
+with native desktop support — which is **ruled in scope for Wave 11, not "later"**: all six Flutter
+targets ship (Android, iOS, Linux, Windows, macOS, Web). See `docs/plans/build-waves.plan.md`.
 
 Licensed **AGPL-3.0-or-later plus a commercial licence** (`LICENSING.md`): open source, and sellable by
 the author. Everything in it is ours — a clean-room reimplementation inspired by Invoice Ninja's

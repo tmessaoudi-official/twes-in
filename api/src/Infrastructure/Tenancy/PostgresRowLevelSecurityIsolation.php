@@ -93,6 +93,15 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             );
         }
 
+        // BEFORE writing, on every bind — not once at acquisition. A single session-scope `set_config(...,
+        // false)` after acquisition reopens the bypass completely, with bind()'s read-back still reporting
+        // success, because a transaction-local write shadows the pin until COMMIT restores it. Checking
+        // here covers the DSN pin, PGOPTIONS, and any later writer, at the cost of one cheap query.
+        //
+        // Read outside this transaction's own write: PostgreSQL restores the session value on COMMIT, so
+        // what matters is what the session held when this transaction began.
+        self::assertSessionTenantIsUnset($connection);
+
         $expected = $context->tenantId()->toString();
 
         // set_config() rather than a literal SET LOCAL, because SET does not accept bound parameters
@@ -188,8 +197,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      */
     public function assertConnectionCannotBypassPolicies(\PDO $connection): void
     {
+        // EVERY REACHABLE ROLE, not just current_user. `rolsuper` and `rolbypassrls` are not inherited, so
+        // a role that is a *member* of a superuser, BYPASSRLS or table-owning role reads f/f in its own
+        // pg_roles row, passes a naive check, and then reaches those privileges with one `SET ROLE`. That
+        // precondition is not exotic: infra/README.md mandates a separate owning migration role, and the
+        // ordinary way to wire that in one container is to grant it to the runtime role.
         $statement = $connection->query(
-            'SELECT rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user',
+            'SELECT bool_or(rolsuper) AS rolsuper, bool_or(rolbypassrls) AS rolbypassrls '
+            . 'FROM pg_roles WHERE pg_has_role(current_user, oid, \'MEMBER\')',
         );
 
         if (false === $statement) {
@@ -203,11 +218,21 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('The current database role could not be found in pg_roles.');
         }
 
+        // bool_or over an empty set is NULL, which would read as "safe". current_user is always a member of
+        // itself, so an empty set means the query is wrong rather than the role being unprivileged.
+        if (null === $role['rolsuper'] && null === $role['rolbypassrls']) {
+            throw new \RuntimeException(
+                'Could not determine the privileges reachable from the current role. Refusing rather than '
+                . 'assuming they are safe.',
+            );
+        }
+
         if (self::roleCanBypassPolicies($role)) {
             throw new \RuntimeException(
-                'The application database role is a superuser or has BYPASSRLS, so row-level security '
-                . 'does not apply to it and every tenant is visible to every other. Connect as a '
-                . 'restricted role.',
+                'A role reachable from this connection is a superuser or has BYPASSRLS, so row-level '
+                . 'security can be escaped with one SET ROLE and every tenant becomes visible to every '
+                . 'other. Connect as a restricted role that is a member of no privileged role — note that '
+                . 'granting the table-owning migration role to the runtime role is enough to fail this.',
             );
         }
 
@@ -230,6 +255,17 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      */
     public static function assertNoTenantPinnedOnTheConnection(\PDO $connection): void
     {
+        // OUTSIDE a transaction only, and this is not pedantry. Inside one, `''` may be a transaction-local
+        // shadow over a live session pin that returns on COMMIT — so the check would accept a connection it
+        // should refuse. It would also throw on a correctly *bound* connection, blaming a DSN option for a
+        // legitimate binding. Both directions are wrong, so the state is refused rather than interpreted.
+        if ($connection->inTransaction()) {
+            throw new \RuntimeException(
+                'Check for a pinned tenant OUTSIDE a transaction. Inside one the session value may be '
+                . 'shadowed by a transaction-local write, so neither answer means what it appears to.',
+            );
+        }
+
         $statement = $connection->prepare('SELECT current_setting(?, true)');
         $statement->execute([self::TENANT_SETTING]);
 
@@ -246,6 +282,36 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             self::TENANT_SETTING,
             \is_string($pinned) ? $pinned : get_debug_type($pinned),
             self::TENANT_SETTING,
+        ));
+    }
+
+    /**
+     * The in-transaction form of the pinned-tenant check, for use from `bind()`.
+     *
+     * `bind()` necessarily runs inside a transaction, where the public check refuses to answer. What is
+     * checked here is narrower and sufficient: at the moment `bind()` is called it has not yet written, so
+     * a non-empty value can only have come from somewhere else — a DSN option, `PGOPTIONS`, or a
+     * session-scope write by other code. `''` and NULL are both "no tenant", exactly as above.
+     *
+     * @throws \RuntimeException if a tenant id is already present
+     */
+    private static function assertSessionTenantIsUnset(\PDO $connection): void
+    {
+        $statement = $connection->prepare('SELECT current_setting(?, true)');
+        $statement->execute([self::TENANT_SETTING]);
+
+        $existing = $statement->fetchColumn();
+
+        if (null === $existing || false === $existing || '' === $existing) {
+            return;
+        }
+
+        throw new \RuntimeException(\sprintf(
+            'Refusing to bind: %s already reads "%s" before this binding was written, so something else on '
+            . 'this connection set it — a DSN option, PGOPTIONS, or a session-scope write. On COMMIT that '
+            . 'value returns and unbound statements would silently read that tenant.',
+            self::TENANT_SETTING,
+            \is_string($existing) ? $existing : get_debug_type($existing),
         ));
     }
 
