@@ -388,4 +388,69 @@ final class ProductPricingTest extends TestCase
             ProductPricing::fromNetPrice($cost, $net)->profitRate(RoundingMode::HalfUp),
         );
     }
+
+    /**
+     * An unrepresentable net price is refused when the pair is COMBINED, never raised when the price is READ.
+     *
+     * The mirror of the `profitRate()` fix from a round earlier, and deliberately the opposite remedy. A
+     * *rate* that cannot be derived is legitimately absent, so null is the honest answer. A *price* always
+     * exists, so there is nothing to report — the invalid combination must simply not be constructible.
+     *
+     * These three triples are certification round 5's own reproduction cases. Each constructed, persisted,
+     * and then threw on every read of its price; because the product page reads the price, the record could
+     * not be repaired through the UI. Every value is far inside `NUMERIC(19,4)`: matching `Money`'s and
+     * `Rate`'s bounds individually says nothing about their PRODUCT.
+     */
+    #[DataProvider('editsWhoseNetPriceWouldNotBeRepresentable')]
+    public function testAnUnrepresentableNetPriceIsRefusedAtTheEditNotAtTheRead(
+        string $cost,
+        string $net,
+        string $newCost,
+    ): void {
+        $tnd = Currency::of('TND');
+        $pricing = ProductPricing::fromNetPrice(Money::of($cost, $tnd), Money::of($net, $tnd));
+
+        try {
+            $edited = $pricing->withCost(Money::of($newCost, $tnd), RoundingMode::HalfUp);
+        } catch (InvalidCost $refused) {
+            // The message must name the implied price, or an operator cannot tell which value is at fault.
+            self::assertStringContainsString('net price', $refused->getMessage());
+            self::assertStringContainsString('check the cost', $refused->getMessage());
+
+            return;
+        }
+
+        // If the edit was allowed then the READ must work — that is the whole promise. A throw here is the
+        // defect; a clean read means this case no longer exceeds the bound and the operands need widening.
+        self::fail(\sprintf(
+            'The edit was allowed and the price read back as %s, so this case no longer exercises the '
+            . 'bound. Widen the operands.',
+            $edited->netPrice(RoundingMode::HalfUp)->amount(),
+        ));
+    }
+
+    /** @return iterable<string, array{string, string, string}> */
+    public static function editsWhoseNetPriceWouldNotBeRepresentable(): iterable
+    {
+        yield 'millime cost corrected upward' => ['0.001', '100000.000', '10000000.000'];
+        yield 'millime cost, million price' => ['0.001', '1000000.000', '1000000.000'];
+        yield 'unit cost, billion correction' => ['1.000', '1000000.000', '1000000000.000'];
+    }
+
+    /**
+     * The ordinary large-but-fine case is still accepted, so the guard is a bound and not a wall.
+     *
+     * A 1000 % margin on a 1 000 000 TND cost is 11 000 000 — eight integer digits, comfortably storable.
+     */
+    public function testALargeButRepresentableNetPriceIsStillAccepted(): void
+    {
+        $tnd = Currency::of('TND');
+
+        $pricing = ProductPricing::fromProfitRate(
+            Money::of('1000000.000', $tnd),
+            Rate::fromPercentage('1000'),
+        );
+
+        self::assertSame('11000000.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+    }
 }

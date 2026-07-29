@@ -49,6 +49,7 @@ fresh_fixture() {
   mkdir -p "$WORK/repo/admin"
   cp "$REPO_ROOT"/admin/package.json "$WORK/repo/admin/"
   cp "$REPO_ROOT"/admin/package-lock.json "$WORK/repo/admin/"
+  mkdir -p "$WORK/repo/admin/src"
   # The Flutter manifest. Its lock carries no licence field (see the gate's OWED entry), so the notices
   # check is the ONLY examination this tier's dependencies get -- which makes covering it more important
   # here than for the tiers that also have a licence check.
@@ -370,6 +371,7 @@ AMBIENT_RULES="$(cd "$WORK/repo" && php scripts/gates/no-ambient-calls-in-domain
 LAYER_RULES="$(cd "$WORK/repo" && php scripts/gates/layer-dependencies.php --dump-rules)"
 SPDX_RULES="$(cd "$WORK/repo" && bash scripts/gates/spdx-headers.sh --dump-rules)"
 ORM_RULES="$(cd "$WORK/repo" && bash scripts/gates/no-orm-attributes-in-domain.sh --dump-rules)"
+LICENCE_RULES="$(cd "$WORK/repo" && php scripts/gates/dependency-licences.php --dump-rules)"
 
 # assert_at_least <description> <actual> <committed minimum>
 #
@@ -418,7 +420,47 @@ assert_at_least "spdx: individually-listed files have not shrunk" \
 excluded_count="$(printf '%s' "$SPDX_RULES" | sed -n 's/^excluded //p' | wc -w)"
 assert_at_least "spdx: the exclusion list has not GROWN beyond 6" "$((12 - excluded_count))" 6
 assert_at_least "spdx: extensions have not shrunk" \
-  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 8
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 12
+
+# THE LICENSING LISTS, and this gate was the only one with no introspection at all: round 5 added GPL-3.0,
+# AGPL-3.0 and MPL-2.0 to PERMISSIVE and every case stayed green. Both directions are asserted, because both
+# are dangerous here — a SHRINK breaks the build for no reason, and GROWTH is a legal act.
+assert_contains "licences: the permissive set survives" "$LICENCE_RULES" \
+  MIT Apache-2.0 BSD-2-Clause BSD-3-Clause ISC 0BSD MIT-0 CC0-1.0 BlueOak-1.0.0
+assert_contains "licences: the build-time-data exception survives" "$LICENCE_RULES" CC-BY-4.0 CC-BY-3.0
+assert_contains "licences: every lock file is still inspected" "$LICENCE_RULES" \
+  /api/composer.lock /admin/package-lock.json
+assert_at_least "licences: PERMISSIVE has not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['permissive'])")" 9
+assert_at_least "licences: lock files have not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['lock_files'])")" 2
+
+# A MAXIMUM on PERMISSIVE, for the same reason the SPDX exclusion list has one: every identifier added here
+# permits a class of dependency, and a copyleft one satisfies the AGPL branch while killing the commercial
+# one. Nine today; raising this number is a licensing decision and must be a deliberate edit to this file.
+permissive_count="$(count_rules "$LICENCE_RULES" "len(r['permissive'])")"
+assert_at_least "licences: PERMISSIVE has not GROWN beyond 9" "$((18 - permissive_count))" 9
+assert_at_least "licences: the build-time-data exception has not GROWN beyond 2" \
+  "$((4 - $(count_rules "$LICENCE_RULES" "len(r['build_time_data'])")))" 2
+
+echo "== GENERATED: every permissive identifier must actually be ACCEPTED =="
+# The other direction from the copyleft cases: an identifier on the list that the gate rejects anyway is a
+# rule that is present but not honoured, which the round-3 lesson says is exactly as bad as one that is
+# absent. One case per entry, driven from the gate's own data.
+while read -r licence; do
+  fresh_fixture
+  python3 - "$WORK/repo/api/composer.lock" "$licence" <<'PYLIC'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d['packages'][0]['license'] = [sys.argv[2]]
+p.write_text(json.dumps(d, indent=4))
+PYLIC
+  assert_gate "accepts ${licence}" dependency-licences.php 0
+done < <(printf '%s' "$LICENCE_RULES" | python3 -c "
+import json,sys
+for l in json.load(sys.stdin)['permissive']:
+    print(l)
+")
 
 # The names whose loss would matter most, per category. Not exhaustive by design — exhaustive would
 # duplicate the gate — but every entry here is one a reviewer named or one whose absence is a known
@@ -710,6 +752,16 @@ p = pathlib.Path(sys.argv[1])
 p.write_text(p.read_text().rstrip() + '\n\nflutter:\n  uses-material-design: true\n  assets:\n  fonts:\n')
 PYPUB
 assert_gate 'does NOT treat the top-level flutter: block as dependencies' dependency-licences.php 0
+
+echo "== SPDX: the newly in-scope authored file types =="
+# R4-8 closed the missing *roots*; round 5 found the missing *extensions*. admin/src/app/app.html is OURS —
+# it replaced the generated welcome page — and carried no identifier beside a .ts sibling that did.
+for extension in html scss css js; do
+  fresh_fixture
+  mkdir -p "$WORK/repo/admin/src"
+  printf 'no licence header here\n' > "$WORK/repo/admin/src/unlicensed.${extension}"
+  assert_gate "scans admin/src/*.${extension}" spdx-headers.sh 1 "unlicensed.${extension}"
+done
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

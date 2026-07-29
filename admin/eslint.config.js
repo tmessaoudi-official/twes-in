@@ -1,3 +1,10 @@
+/*
+ * This file is part of twes-in.
+ *
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
 // @ts-check
 const eslint = require('@eslint/js');
 const { defineConfig } = require('eslint/config');

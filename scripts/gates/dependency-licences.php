@@ -103,6 +103,25 @@ const OWED = [
         . 'licences are recorded there by hand',
 ];
 
+/*
+ * See no-ambient-calls-in-domain.php for why gates are introspectable. This gate was the ONLY one without
+ * it, and round 5 measured the consequence: `GPL-3.0`, `AGPL-3.0` and `MPL-2.0` could all be added to
+ * PERMISSIVE with every meta-case still green. Growth is this list's dangerous direction — adding an
+ * identifier is a legal act, not a build fix — which is why test-gates.sh asserts a MAXIMUM here, exactly as
+ * it does for the SPDX exclusion list.
+ */
+if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
+    echo json_encode([
+        'permissive' => PERMISSIVE,
+        'build_time_data' => PERMISSIVE_FOR_BUILD_TIME_DATA,
+        'lock_files' => array_values(LOCK_FILES),
+        // UNESCAPED_SLASHES so a path reads as /api/composer.lock rather than \/api\/composer.lock — the
+        // meta-suite greps this output, and an escaped slash makes a correct assertion fail confusingly.
+    ], \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES), "\n";
+
+    exit(0);
+}
+
 exit(main());
 
 function main(): int

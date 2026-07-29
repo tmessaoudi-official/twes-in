@@ -390,4 +390,61 @@ final class DecimalTest extends TestCase
         self::assertSame('0.000', Decimal::multiplyExact('-0.000', '3'));
         self::assertFalse(Decimal::isNegative(Decimal::rescale('-0.0001', 3, RoundingMode::Down) ?? 'x'));
     }
+
+    /**
+     * `add()` and `subtract()` REFUSE a narrowing scale rather than truncating.
+     *
+     * `bcadd`/`bcsub` truncate at their scale argument, so these two used to lose digits silently and
+     * outside `applyRounding()` — contradicting this class's own promise that all rounding lives in one
+     * place. `add('0.1', '0.19', 1)` returned `0.2`, discarding 0.09 with no diagnostic and no
+     * `RoundingMode` to consult. Every caller at the time was safe *by construction*, which is a property
+     * of those callers rather than of the method.
+     *
+     * @param string $expectedFragment part of the value the exception must name, so the message is
+     *                                 actionable rather than generic
+     */
+    #[DataProvider('exactOperationsThatWouldHaveToRound')]
+    public function testAddAndSubtractRefuseToRoundInsteadOfTruncatingSilently(
+        callable $operation,
+        string $expectedFragment,
+    ): void {
+        try {
+            $result = $operation();
+        } catch (\LogicException $thrown) {
+            self::assertStringContainsString($expectedFragment, $thrown->getMessage());
+            self::assertStringContainsString('RoundingMode', $thrown->getMessage());
+
+            return;
+        }
+
+        self::fail(\sprintf(
+            'Expected a refusal, got "%s" — a digit was discarded with no diagnostic.',
+            $result,
+        ));
+    }
+
+    /** @return iterable<string, array{callable, string}> */
+    public static function exactOperationsThatWouldHaveToRound(): iterable
+    {
+        yield 'add loses 0.09' => [static fn(): string => Decimal::add('0.1', '0.19', 1), '0.29'];
+        yield 'add loses a millime' => [static fn(): string => Decimal::add('0.005', '0.004', 2), '0.009'];
+        yield 'subtract loses a digit' => [
+            static fn(): string => Decimal::subtract('1.005', '0.001', 2),
+            '1.004',
+        ];
+    }
+
+    /** The widening and equal-scale cases must still work, or the refusal above is unusable. */
+    public function testAddAndSubtractStillAcceptAScaleThatLosesNothing(): void
+    {
+        self::assertSame('0.290', Decimal::add('0.1', '0.19', 3), 'widening is exact');
+        self::assertSame('0.29', Decimal::add('0.10', '0.19', 2), 'equal scale is exact');
+        self::assertSame('1.004', Decimal::subtract('1.005', '0.001', 3));
+
+        // Trailing zeros are not "lost digits": 0.20 narrows to 0.2 exactly.
+        self::assertSame('0.2', Decimal::add('0.10', '0.10', 1));
+
+        // And the whole-number case both operands share, which is what Money::plus relies on.
+        self::assertSame('3.000', Decimal::add('1.000', '2.000', 3));
+    }
 }

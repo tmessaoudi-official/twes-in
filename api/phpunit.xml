@@ -74,5 +74,6 @@
         <env name="TWES_TEST_DB_REPLICATOR_USER" value="twes_replicator"/>
         <env name="TWES_TEST_DB_REPLICATOR_PASSWORD" value="twes_replicator"/>
         <env name="TWES_TEST_DB_TRUNCATOR_ROLE" value="twes_truncator"/>
+        <env name="TWES_TEST_DB_PROBE_OWNER_ROLE" value="twes_probe_owner"/>
     </php>
 </phpunit>

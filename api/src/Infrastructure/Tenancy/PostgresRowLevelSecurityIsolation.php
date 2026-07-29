@@ -127,15 +127,41 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         // restored on COMMIT. That gap is closed at connection acquisition instead, by check 4 above.
         $actual = $statement->fetchColumn();
 
-        if ($actual !== $expected) {
-            throw new \RuntimeException(\sprintf(
-                'Tenant isolation did not take effect: expected the %s session setting to be "%s" but '
-                . 'it reads "%s". Refusing to continue on an unscoped connection.',
-                self::TENANT_SETTING,
-                $expected,
-                \is_string($actual) ? $actual : get_debug_type($actual),
-            ));
+        $mismatch = self::describeBindingMismatch($expected, $actual);
+
+        if (null !== $mismatch) {
+            throw new \RuntimeException($mismatch);
         }
+    }
+
+    /**
+     * Whether the value read back after a binding is the value that was written.
+     *
+     * Pure, and extracted for the same reason {@see self::roleCanBypassPolicies()} and
+     * {@see self::policedTableViolations()} are: the branch is otherwise unreachable from a test. Round 5
+     * deleted this comparison outright and the whole suite stayed green — the test named for it re-queried
+     * the GUC itself rather than driving `bind()` into the mismatch, so `bind()` would have silently
+     * succeeded on a binding that never took, which is the exact failure the read-back exists to prevent.
+     *
+     * @param string $expected the tenant id that was written
+     * @param mixed $actual whatever `set_config` returned — a string when it worked, `false` when the
+     *                      fetch failed, and anything else means the driver surprised us
+     *
+     * @return string|null the message to raise, or null when the binding took
+     */
+    public static function describeBindingMismatch(string $expected, mixed $actual): ?string
+    {
+        if ($actual === $expected) {
+            return null;
+        }
+
+        return \sprintf(
+            'Tenant isolation did not take effect: expected the %s session setting to be "%s" but it reads '
+            . '"%s". Refusing to continue on an unscoped connection.',
+            self::TENANT_SETTING,
+            $expected,
+            \is_string($actual) ? $actual : get_debug_type($actual),
+        );
     }
 
     /**

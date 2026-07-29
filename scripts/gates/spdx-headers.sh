@@ -40,6 +40,7 @@ readonly -a SEARCH_FILES=(
   "api/.php-cs-fixer.dist.php"
   "mobile/pubspec.yaml"
   "mobile/analysis_options.yaml"
+  "admin/eslint.config.js"
 )
 
 # Paths excluded from the header requirement, and this list needs its reason stated because "the gate
@@ -69,7 +70,16 @@ readonly -a EXCLUDED_FROM_HEADERS=(
 readonly HEADER_WINDOW=40
 
 # See no-ambient-calls-in-domain.php for why: one generated case per root and per extension.
-readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml)
+# Extensions in scope, and note this list gates BOTH directions — the header check and the root-COVERAGE
+# check below — so a type absent from here is invisible to both by construction. R4-8 closed the missing
+# *roots*; round 5 found the missing *extensions*: `admin/src/app/app.html` is ours (we replaced the generated
+# welcome page with it) and carried no identifier, sitting beside a `.ts` sibling that did.
+#
+# `html`, `scss` and `css` are Angular's authored template and style types. `js` covers `eslint.config.js` and
+# any future build script. Deliberately still absent: `json` (no comment syntax, so a header is impossible),
+# `md` (prose, covered by the repo's own licence), and `ttf`/`ico` (binaries — their licences are recorded in
+# THIRD-PARTY-NOTICES.md instead, which is where a vendored font's Apache-2.0 grant belongs).
+readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js)
 
 if [[ "${1:-}" == "--dump-rules" ]]; then
   printf 'roots %s\n' "${SEARCH_ROOTS[*]}"

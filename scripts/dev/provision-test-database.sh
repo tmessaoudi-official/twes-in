@@ -16,7 +16,7 @@
 # dangerous shapes with no way to be exercised: creating a BYPASSRLS role needs a privilege the runtime
 # role must never hold, so the refusal branches stay untested for as long as there is one role.
 #
-# SIX roles, each earning its place by making one refusal branch testable:
+# SEVEN roles, each earning its place by making one refusal branch testable:
 #
 #   twes          the runtime role. Restricted: no SUPERUSER, no BYPASSRLS, no CREATEROLE, member of
 #                 nothing privileged, and NOT the owner of the tenant-owned tables. This is the role the
@@ -33,6 +33,10 @@
 #                 LOGIN REPLICATION and nothing else. Round 5 recovered BOTH tenants' rows from a
 #                 pg_basebackup taken with such a role while the isolation check certified it clean, because
 #                 physical replication never touches row security. Exists so that refusal is proven live.
+#   twes_probe_owner
+#                 NOLOGIN, owns nothing normally. Granted to twes_owner WITH ADMIN OPTION so a test can hand
+#                 it to the runtime role WITH INHERIT FALSE and own a table with it — the only way to prove
+#                 that the OWNERSHIP axis uses membership semantics rather than inheritance ones.
 #   twes_truncator
 #                 plain, and granted to the runtime role **WITH INHERIT FALSE** — the PG16+ way to say "hold
 #                 this deliberately, not by default". That grant is invisible to has_table_privilege and one
@@ -55,6 +59,7 @@ MEMBER_PASSWORD="${TWES_TEST_DB_MEMBER_PASSWORD:-twes_member}"
 REPLICATOR_ROLE="${TWES_TEST_DB_REPLICATOR_USER:-twes_replicator}"
 REPLICATOR_PASSWORD="${TWES_TEST_DB_REPLICATOR_PASSWORD:-twes_replicator}"
 TRUNCATOR_ROLE="${TWES_TEST_DB_TRUNCATOR_ROLE:-twes_truncator}"
+PROBE_OWNER_ROLE="${TWES_TEST_DB_PROBE_OWNER_ROLE:-twes_probe_owner}"
 
 psql --no-psqlrc --set ON_ERROR_STOP=1 <<SQL
 -- CREATE ROLE has no IF NOT EXISTS, so each one is guarded. ALTER after CREATE rather than instead of
@@ -78,6 +83,9 @@ DO \$\$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${TRUNCATOR_ROLE}') THEN
         CREATE ROLE ${TRUNCATOR_ROLE};
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${PROBE_OWNER_ROLE}') THEN
+        CREATE ROLE ${PROBE_OWNER_ROLE};
+    END IF;
 END \$\$;
 
 -- NOSUPERUSER NOBYPASSRLS NOCREATEROLE spelled out rather than left to the default: the whole suite is
@@ -99,6 +107,7 @@ ALTER ROLE ${MEMBER_ROLE}  WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCR
 ALTER ROLE ${REPLICATOR_ROLE} WITH LOGIN NOSUPERUSER NOBYPASSRLS REPLICATION NOCREATEROLE NOCREATEDB
     PASSWORD '${REPLICATOR_PASSWORD}';
 ALTER ROLE ${TRUNCATOR_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
+ALTER ROLE ${PROBE_OWNER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 
 -- The two grants that make the reachability tests possible, and ONLY on the probe role. Granting
 -- either of these to ${RUNTIME_ROLE} is the misconfiguration the suite exists to detect.
@@ -109,6 +118,13 @@ GRANT ${RUNTIME_ROLE} TO ${MEMBER_ROLE};
 -- so has_table_privilege() answers "no" while one SET ROLE reaches them. This is the shape the isolation
 -- check must refuse, and it cannot be tested unless the fixture can express it.
 GRANT ${TRUNCATOR_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE;
+
+-- ADMIN OPTION so the OWNER connection can grant and revoke this role inside a test. Needed because the
+-- ownership-reachability axis is otherwise untestable: the existing test connects AS the table's owner, and a
+-- role always satisfies pg_has_role() on itself under every mode, so MEMBER -> USAGE survives as an
+-- equivalent mutant. What has to be proven is a role REACHING an owner it does not inherit, and only a
+-- superuser can set up the delegation that lets a test arrange that.
+GRANT ${PROBE_OWNER_ROLE} TO ${OWNER_ROLE} WITH ADMIN OPTION, INHERIT FALSE;
 
 -- Explicitly NOT granted, stated so a future reader does not "fix" it:
 --   GRANT ${OWNER_ROLE} TO ${RUNTIME_ROLE};   -- would let the runtime role SET ROLE to the table owner
@@ -135,6 +151,9 @@ GRANT CONNECT ON DATABASE ${DB} TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROL
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT  USAGE  ON SCHEMA public TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROLE}, ${REPLICATOR_ROLE};
 GRANT  CREATE ON SCHEMA public TO ${OWNER_ROLE};
+-- The probe owner needs CREATE on the schema to be allowed to OWN an object in it, even though it never
+-- creates one itself — PostgreSQL checks the incoming owner's schema privileges on ALTER TABLE ... OWNER TO.
+GRANT  CREATE ON SCHEMA public TO ${PROBE_OWNER_ROLE};
 
 -- Table privileges for tables the owner has not created yet. DML but deliberately NOT TRUNCATE:
 -- TRUNCATE is never subject to row security at any privilege level, so a runtime role holding it can

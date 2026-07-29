@@ -40,6 +40,16 @@ final class TenantIsolationTest extends TestCase
 {
     private const string TABLE = 'tenant_isolation_probe';
 
+    /**
+     * A SECOND policed table, whose only job is to make the inspected COUNT meaningful.
+     *
+     * With one table, `assertPolicedTablesAreBeyondThisRolesReach()`'s `return count($tables)` was
+     * hardcodable to `1` and the assertion checking it passed against the mutant — so the assertion did not
+     * do what its own comment claimed. Round 5 proved that. A second table means only a real count satisfies
+     * both, and it also proves the query iterates rather than returning its first row.
+     */
+    private const string SECOND_TABLE = 'tenant_isolation_probe_two';
+
     private const string TENANT_A = '01926b3c-0000-7000-8000-00000000000a';
     private const string TENANT_B = '01926b3c-0000-7000-8000-00000000000b';
 
@@ -63,6 +73,7 @@ final class TenantIsolationTest extends TestCase
         // file — hiding the one message an operator needs ("no PostgreSQL server reachable").
         if (isset($this->owner)) {
             $this->owner->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+            $this->owner->exec('DROP TABLE IF EXISTS ' . self::SECOND_TABLE);
         }
     }
 
@@ -327,11 +338,14 @@ final class TenantIsolationTest extends TestCase
         // check that had silently stopped looking at anything was indistinguishable from a safe role —
         // and a review proved it: replacing the whole privilege query with `SELECT false, false` left this
         // test green. Asserting the count makes the SQL load-bearing.
+        // TWO policed tables, deliberately. With one, `return \count($tables)` was hardcodable to `1` and
+        // this assertion passed against it — so the comment claiming "asserting the count makes the SQL
+        // load-bearing" was not true. Round 5 proved that with a surviving mutant.
         self::assertSame(
-            1,
+            2,
             $isolation->assertConnectionCannotBypassPolicies($this->connection),
-            'The check must report the probe table it inspected. Zero would mean it certified a '
-            . 'connection against no policy at all.',
+            'The check must report BOTH policed tables it inspected. A hardcoded 1 — or a zero, which would '
+            . 'mean it certified a connection against no policy at all — must fail here.',
         );
     }
 
@@ -471,6 +485,85 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * OWNERSHIP reached by MEMBERSHIP, not held by inheritance — the axis that survived every mutant.
+     *
+     * `testTheRoleThatOwnsAPolicedTableIsRefused` connects **as** the owner, and a role always satisfies
+     * `pg_has_role()` on itself under every mode, so swapping `MEMBER` for `USAGE` there is an equivalent
+     * mutant. Round 5 flagged it, and the reason it matters is not academic: the *same* distinction was got
+     * wrong two lines below on the TRUNCATE axis, and that one was a working exploit. An untested semantic is
+     * how a correct line and an incorrect line end up side by side.
+     *
+     * The shape needed is a role that can REACH an owner it does not INHERIT. `twes_probe_owner` is granted
+     * to the owning role `WITH ADMIN OPTION` by the provisioning script precisely so this test can hand it to
+     * the runtime role `WITH INHERIT FALSE` and own a table with it.
+     */
+    public function testOwnershipReachableOnlyBySetRoleIsRefused(): void
+    {
+        $probeOwner = getenv('TWES_TEST_DB_PROBE_OWNER_ROLE');
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        if (!\is_string($probeOwner) || !\is_string($runtimeRole)) {
+            self::markTestSkipped('TWES_TEST_DB_PROBE_OWNER_ROLE and TWES_TEST_DB_USER must be set.');
+        }
+
+        $owned = self::TABLE . '_owned_elsewhere';
+
+        $this->owner->exec('GRANT ' . $probeOwner . ' TO ' . $runtimeRole . ' WITH INHERIT FALSE');
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $owned);
+        $this->owner->exec(
+            'CREATE TABLE ' . $owned . ' (company_id uuid NOT NULL, id integer NOT NULL, '
+            . 'PRIMARY KEY (company_id, id))',
+        );
+
+        try {
+            // Policy FIRST, ownership second. Transferring ownership away means this connection can no longer
+            // ALTER the table at all, so the policy would fail with "must be owner of table".
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($owned) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            $this->owner->exec('ALTER TABLE ' . $owned . ' OWNER TO ' . $probeOwner);
+
+            // The preconditions that make this a MEMBERSHIP test rather than an inheritance one. Without
+            // them the test could pass for the wrong reason and prove nothing about the distinction.
+            $semantics = $this->connection->query(
+                "SELECT pg_has_role(session_user, '" . $probeOwner . "', 'MEMBER') AS by_membership, "
+                . "pg_has_role(session_user, '" . $probeOwner . "', 'USAGE') AS by_inheritance",
+            );
+            self::assertNotFalse($semantics);
+            /** @var array{by_membership: bool|string, by_inheritance: bool|string} $row */
+            $row = $semantics->fetch(\PDO::FETCH_ASSOC);
+            self::assertContains($row['by_membership'], [true, 't', '1'], 'reachable by SET ROLE');
+            self::assertNotContains(
+                $row['by_inheritance'],
+                [true, 't', '1'],
+                'NOT inherited — if this becomes true the grant stopped being WITH INHERIT FALSE and the '
+                . 'membership-versus-inheritance distinction is no longer under test.',
+            );
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+                self::fail('A table owned by a role reachable via SET ROLE must be refused.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString($owned, $exception->getMessage());
+                self::assertStringContainsString('owned by ' . $probeOwner, $exception->getMessage());
+            }
+        } finally {
+            // Order matters. The table may be owned by the probe role by now, and only a member of that role
+            // can drop it — so SET ROLE first, drop, reset, and only then remove the grant. Revoking first
+            // would strand a table nobody left in this test is allowed to drop.
+            try {
+                $this->owner->exec('SET ROLE ' . $probeOwner);
+                $this->owner->exec('DROP TABLE IF EXISTS ' . $owned);
+            } finally {
+                $this->owner->exec('RESET ROLE');
+                $this->owner->exec('DROP TABLE IF EXISTS ' . $owned);
+                $this->owner->exec('REVOKE ' . $probeOwner . ' FROM ' . $runtimeRole);
+            }
+        }
+    }
+
+    /**
      * The runtime role must be unable to do what the owner just did.
      *
      * The other half of the P0: the check refusing the owner is only useful if the role it *accepts* truly
@@ -527,7 +620,10 @@ final class TenantIsolationTest extends TestCase
      */
     public function testTheCheckRefusesToCertifyADatabaseWithNoPolicedTable(): void
     {
+        // EVERY policed table, or the vacuity guard is never reached and this case is itself vacuous — the
+        // same trap the licence gate's "inspected nothing" case fell into when a second lock file appeared.
         $this->owner->exec('DROP TABLE IF EXISTS ' . self::TABLE);
+        $this->owner->exec('DROP TABLE IF EXISTS ' . self::SECOND_TABLE);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/no isolation to be subject to/');
@@ -756,6 +852,48 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * `bind()`'s read-back comparison, whose branch had NO coverage at all.
+     *
+     * Round 5 deleted the comparison and the whole suite stayed green: the test named
+     * `testBindingIsVerifiedRatherThanAssumed` re-queries the GUC itself and never drives `bind()` into a
+     * mismatch. Without it, `bind()` silently succeeds on a binding that never took — an unscoped connection
+     * reporting success, which is the worst outcome this class has.
+     *
+     * Exercised through the extracted pure predicate, because provoking a genuine mismatch would mean making
+     * PostgreSQL lie about its own `set_config` return value.
+     */
+    public function testTheBindingReadBackDetectsEveryWayAValueCanFailToTake(): void
+    {
+        $expected = self::TENANT_A;
+
+        // The happy path: no message.
+        self::assertNull(
+            PostgresRowLevelSecurityIsolation::describeBindingMismatch($expected, $expected),
+        );
+
+        // A DIFFERENT tenant — the dangerous case, because the connection is scoped to somebody else.
+        $wrong = PostgresRowLevelSecurityIsolation::describeBindingMismatch($expected, self::TENANT_B);
+        self::assertNotNull($wrong);
+        self::assertStringContainsString(self::TENANT_B, $wrong, 'The message must name what it actually read.');
+        self::assertStringContainsString('did not take effect', $wrong);
+
+        // Empty, and NULL — a GUC that was never written reads as one of these, so a naive `== ` comparison
+        // (rather than `===`) would treat them as equal to a tenant id and report success.
+        self::assertNotNull(PostgresRowLevelSecurityIsolation::describeBindingMismatch($expected, ''));
+        self::assertNotNull(PostgresRowLevelSecurityIsolation::describeBindingMismatch($expected, null));
+
+        // `false` is what PDO returns when the fetch itself failed. It must not be confused with a value, and
+        // the message must say what type arrived rather than printing nothing.
+        $failed = PostgresRowLevelSecurityIsolation::describeBindingMismatch($expected, false);
+        self::assertNotNull($failed);
+        self::assertStringContainsString('bool', $failed);
+
+        // And a loose-comparison trap: 0 == 'string' was true in PHP 7 and is false in PHP 8, but `0` and
+        // `'0'` still compare loosely equal, so a `!=` here would pass a zero off as a tenant id.
+        self::assertNotNull(PostgresRowLevelSecurityIsolation::describeBindingMismatch('0', 0));
+    }
+
+    /**
      * `GRANT TRUNCATE ... TO PUBLIC` is caught — the grantee every role is covered by.
      *
      * `aclexplode` reports a PUBLIC grant as grantee OID **0**, which is not a real role, so
@@ -818,11 +956,11 @@ final class TenantIsolationTest extends TestCase
             self::assertSame('p', $meta['relkind']);
             self::assertContains($meta['relrowsecurity'], [true, 't', '1']);
 
-            // SEEN: two policed tables now, not one.
+            // SEEN: three policed tables now — the two ordinary ones plus the partitioned parent.
             self::assertSame(
-                2,
+                3,
                 PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection),
-                'A policed partitioned table must be counted. If this is 1, relkind filtering has dropped '
+                'A policed partitioned table must be counted. If this is 2, relkind filtering has dropped '
                 . 'it and every check below skips it too.',
             );
 
@@ -1082,6 +1220,21 @@ final class TenantIsolationTest extends TestCase
                 $runtimeRole,
             ));
             $this->owner->exec('REVOKE TRUNCATE ON ' . self::TABLE . ' FROM ' . $runtimeRole);
+        }
+
+        // The second policed table. Deliberately minimal — it carries no rows and no test reads it. Its only
+        // purpose is that the number of policed tables is greater than one, so a hardcoded count fails.
+        $this->owner->exec('DROP TABLE IF EXISTS ' . self::SECOND_TABLE);
+        $this->owner->exec(
+            'CREATE TABLE ' . self::SECOND_TABLE . ' (
+                company_id uuid NOT NULL,
+                id         integer NOT NULL,
+                PRIMARY KEY (company_id, id)
+            )',
+        );
+
+        foreach (PostgresRowLevelSecurityIsolation::policySqlFor(self::SECOND_TABLE) as $statement) {
+            $this->owner->exec($statement);
         }
 
         // Seeded with RLS off, since seeding spans both tenants by definition.

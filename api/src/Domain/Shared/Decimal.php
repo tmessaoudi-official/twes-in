@@ -65,14 +65,67 @@ final class Decimal
         return '' === $significant ? 1 : \strlen($significant);
     }
 
+    /**
+     * Sum, EXACTLY — a narrowing scale is refused rather than truncated.
+     *
+     * `bcadd` truncates at its scale argument, so this method used to lose digits silently and outside
+     * `applyRounding()`, contradicting this class's own promise that all rounding lives in one place.
+     * `add('0.1', '0.19', 1)` returned `0.2`, discarding 0.09 with no diagnostic and no `RoundingMode` to
+     * consult. Certification round 5 found it; all four callers at the time were safe *by construction*
+     * (their operands already sat at the target scale), which is a property of those callers and not of this
+     * method — and the first Wave 1 caller accumulating at a document scale would have been wrong.
+     *
+     * The sum is computed at full width and then required to fit. A caller that genuinely wants to round
+     * must say so, through {@see self::rescale()} with an explicit mode.
+     *
+     * @throws \LogicException if the result does not fit in `$scale` without rounding
+     */
     public static function add(string $left, string $right, int $scale): string
     {
-        return self::normaliseZero(bcadd($left, $right, $scale));
+        return self::exactlyAt(
+            bcadd($left, $right, max(self::scaleOf($left), self::scaleOf($right))),
+            $scale,
+            'add',
+        );
     }
 
+    /**
+     * Difference, EXACTLY. See {@see self::add()} for why a narrowing scale is refused.
+     *
+     * @throws \LogicException if the result does not fit in `$scale` without rounding
+     */
     public static function subtract(string $left, string $right, int $scale): string
     {
-        return self::normaliseZero(bcsub($left, $right, $scale));
+        return self::exactlyAt(
+            bcsub($left, $right, max(self::scaleOf($left), self::scaleOf($right))),
+            $scale,
+            'subtract',
+        );
+    }
+
+    /**
+     * Narrow to `$scale`, or refuse.
+     *
+     * A `LogicException` rather than a domain exception on purpose: reaching it means a *caller* asked an
+     * exact operation to discard digits, which is a programming error at the call site, not invalid user
+     * input. `Money` and `Rate` already take a `RoundingMode` wherever a user-facing rounding is legitimate.
+     */
+    private static function exactlyAt(string $value, int $scale, string $operation): string
+    {
+        $narrowed = self::rescale($value, $scale, RoundingMode::Unnecessary);
+
+        if (null === $narrowed) {
+            throw new \LogicException(\sprintf(
+                'Decimal::%s() would have to round %s to fit %d decimal place(s), and it is an exact '
+                . 'operation. bcadd/bcsub truncate silently, which is why this is refused rather than '
+                . 'discarded — use Decimal::rescale() with an explicit RoundingMode if rounding is intended.',
+                $operation,
+                $value,
+                $scale,
+            ));
+        }
+
+        return $narrowed;
     }
 
     /** Exact product: the result scale is the sum of the operand scales, so nothing is discarded. */

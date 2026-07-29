@@ -15,6 +15,7 @@ namespace Twes\Domain\Pricing;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Exception\InvalidCost;
+use Twes\Domain\Shared\Decimal;
 use Twes\Domain\Shared\RoundingMode;
 
 /**
@@ -63,6 +64,23 @@ final readonly class ProductPricing
     /** The user typed a profit rate. It is authoritative and exact; the price is derived from it. */
     public static function fromProfitRate(Money $cost, Rate $profitRate): self
     {
+        // REFUSE AT THE EDIT, not at the read. `cost x (1 + rate)` can exceed what a Money can hold even
+        // when the cost and the rate are each comfortably inside their own bounds — matching two bounds says
+        // nothing about their product. Certification round 5 found `netPrice()` throwing for a
+        // one-millime cost with a 100 000 TND price whose cost was later corrected upward: the aggregate
+        // constructed, persisted and then 500'd on every read of its price, and because the product page
+        // reads it, the record could not be repaired through the UI.
+        //
+        // This is the mirror of the fix applied to `profitRate()` a round earlier, and the opposite remedy is
+        // right here: a *rate* that cannot be derived is legitimately absent, so null is the honest answer —
+        // but a *price* always exists, so there is nothing to report and the invalid combination must simply
+        // not be constructible.
+        $product = Decimal::multiplyExact($cost->amount(), $profitRate->markupMultiplier());
+
+        if (Decimal::integerDigits($product) > Money::MAX_INTEGER_DIGITS) {
+            throw InvalidCost::netPriceWouldNotBeRepresentable($cost, $profitRate, $product);
+        }
+
         return new self($cost, PricedBy::ProfitRate, $profitRate, null);
     }
 

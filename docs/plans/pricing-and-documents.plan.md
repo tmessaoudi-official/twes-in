@@ -49,9 +49,26 @@ F1, F2, F3 and the charge model are not. Read `build-waves.plan.md` for exactly 
 Markup on cost, with VAT applied to the profit-inclusive net:
 
 ```
-net   = cost + (cost × profit_rate)     ← the sellable unit price, NET
-gross = net  + (net  × vat_rate)        ← VAT on top of net, NEVER on cost alone
+net   = cost × (1 + profit_rate)        ← the sellable unit price, NET. ONE multiplication.
+gross = net  × (1 + vat_rate)           ← VAT on top of net, NEVER on cost alone
 ```
+
+**One multiplication, not `cost + (cost × profit_rate)`, and this is a correctness requirement rather than a
+preference.** The two-step form rounds twice and can land a millime away. The forms are provably identical
+under half-up — and **every vector in `docs/spec/pricing-vectors.json` is half-up**, so a client implementer
+who wrote the two-step form would pass the entire cross-tier fixture and then disagree with the API the day a
+company configures **half-even**, which `CLAUDE.md` § Architecture explicitly supports because rounding policy
+belongs to the issuing company. The witness, at the default 3-decimal currency:
+
+```
+one step:  0.001 × 1.5   = 0.0015 → half-even → 0.002    (tie, last digit 1 is odd)
+two steps: 0.001 × 0.5   = 0.0005 → half-even → 0.000    (tie, last digit 0 is even)
+           0.001 + 0.000 = 0.001                          ← a millime short
+```
+
+`api/tests/Unit/Pricing/ProductPricingTest.php` asserts that divergence directly. This line previously showed
+the two-step form; certification round 1 owed the correction, it was never made, and round 5 found it still
+here — with three other places in this same file and in the fixture already stating the one-step form.
 
 Worked, `cost = 100.000 TND`, `profit_rate = 30%`, `vat_rate = 19%`:
 

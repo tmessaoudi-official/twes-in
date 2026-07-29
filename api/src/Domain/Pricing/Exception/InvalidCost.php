@@ -36,4 +36,29 @@ final class InvalidCost extends \InvalidArgumentException
             $cost->amount(),
         ));
     }
+
+    /**
+     * The net price this cost and rate imply cannot be held by a `Money`.
+     *
+     * Refused when the pair is *combined* rather than when the price is *read*, because `netPrice()` is an
+     * accessor and an accessor must not throw on state that was persisted legally. The two bounds being
+     * individually satisfied says nothing about their product: a 0.001 cost with a 99999999 rate is two
+     * perfectly storable values whose product needs sixteen integer digits.
+     */
+    public static function netPriceWouldNotBeRepresentable(
+        \Twes\Domain\Money\Money $cost,
+        \Twes\Domain\Pricing\Rate $profitRate,
+        string $product,
+    ): self {
+        return new self(\sprintf(
+            'A cost of %s at a profit rate of %s %% implies a net price of %s, which needs more than %d '
+            . 'digits before the decimal point and cannot be stored. Refused here rather than when the price '
+            . 'is read, because reading a price must never fail for a product that saved successfully. A '
+            . 'rate this large usually means the cost is near zero — check the cost.',
+            $cost->amount(),
+            $profitRate->percentage(),
+            $product,
+            \Twes\Domain\Money\Money::MAX_INTEGER_DIGITS,
+        ));
+    }
 }
