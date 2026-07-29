@@ -333,6 +333,8 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
 
         $policedTables = self::assertPolicedTablesAreBeyondThisRolesReach($connection);
 
+        self::assertNoRlsExemptObjectIsReadable($connection);
+
         self::assertNoTenantPinnedOnTheConnection($connection);
 
         return $policedTables;
@@ -371,13 +373,20 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // Tenant A could read, overwrite and delete tenant B's rows through one while this check reported
             // clean. `pg_partition_tree` returns no rows for a plain table, hence the UNION rather than a
             // single expression.
-            'WITH policed AS ('
+            'WITH RECURSIVE policed AS ('
             . '  SELECT c.oid FROM pg_class c '
             . "  WHERE c.relrowsecurity AND c.relkind IN ('r', 'p')"
             . '), subject AS ('
             . '  SELECT oid FROM policed'
             . '  UNION'
-            . '  SELECT t.relid FROM policed p, pg_partition_tree(p.oid) t WHERE t.relid IS NOT NULL'
+            // pg_inherits, RECURSIVELY — not pg_partition_tree. Round 6 used the latter and round 7 showed it
+            // knows only DECLARATIVE partitioning: a child created with the older `INHERITS (parent)` syntax
+            // has `relispartition = f`, appears in no partition tree, carries `relrowsecurity = f` of its own,
+            // and was therefore never inspected — full cross-tenant read, update, delete AND insert while the
+            // verdict was clean. `pg_inherits` is the catalogue behind BOTH mechanisms, so recursing it covers
+            // declarative partitions (including multi-level and cross-schema, both re-verified) and legacy
+            // inheritance children in one expression, and covers whatever PostgreSQL adds next that reuses it.
+            . '  SELECT i.inhrelid FROM pg_inherits i JOIN subject d ON d.oid = i.inhparent'
             . ') '
             . 'SELECT n.nspname || \'.\' || c.relname AS "table", o.rolname AS owner, '
             . "pg_has_role(session_user, c.relowner, 'MEMBER') "
@@ -484,6 +493,25 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
+     * The column a canonical policy expression scopes, or null when the expression is not canonical.
+     *
+     * Exists so the caller can require ONE column per table rather than one per clause — see
+     * {@see self::policedTableViolations()} for the cross-tenant INSERT that per-clause checking allowed.
+     */
+    public static function policyExpressionColumn(?string $expression): ?string
+    {
+        if (null === $expression) {
+            return null;
+        }
+
+        if (1 !== preg_match('/^\\(([a-z_][a-z0-9_]*) = /', $expression, $matches)) {
+            return null;
+        }
+
+        return $expression === self::canonicalPolicyExpression($matches[1]) ? $matches[1] : null;
+    }
+
+    /**
      * Whether one rendered expression is the canonical tenant predicate.
      *
      * NULL is accepted, and that is not laxity: a per-command policy legitimately has one half unset —
@@ -545,11 +573,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // policy does not cover direct access to the partition, so this is a full cross-tenant read and
             // write — round 6 demonstrated all three of read, overwrite and delete through one.
             if (!self::isTrue($table['rls_enabled'])) {
+                // The relationship is named from the column that was already fetched, rather than asserted.
+                // `is_partition` was selected and never read, so this message called every unpoliced child a
+                // "partition" — which became a false statement the moment the subject set grew to cover legacy
+                // `INHERITS` children, and they are exactly the case round 7 found.
                 $violations[] = \sprintf(
-                    '%s is a partition of a policed table but has no row-level security of its own, and a '
-                    . "parent's policy does NOT cover direct access to a partition — every tenant's rows are "
-                    . 'readable and writable through it',
+                    '%s is %s of a policed table but has no row-level security of its own, and a parent\'s '
+                    . "policy does NOT cover direct access to a child — every tenant's rows are readable and "
+                    . 'writable through it',
                     $table['table'],
+                    self::isTrue($table['is_partition'])
+                        ? 'a partition'
+                        : 'an INHERITS child (legacy table inheritance, not declarative partitioning)',
                 );
 
                 // Nothing below can be judged: an unpoliced relation has no policies to inspect.
@@ -566,6 +601,11 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
 
             /** @var list<array{qual: string|null, check: string|null, permissive: bool}> $policies */
             $policies = json_decode($table['policies'], true, 512, \JSON_THROW_ON_ERROR);
+
+            // Every column any permissive policy on this table scopes. One table has one tenant column; more
+            // than one means at least one policy is guarding the wrong thing, and the class cannot tell which
+            // — so it reports the disagreement rather than guessing.
+            $tableColumns = [];
 
             foreach ($policies as $policy) {
                 // RESTRICTIVE policies are ANDed, so an unscoped one only ever narrows access and cannot be
@@ -601,7 +641,201 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                         self::TENANT_SETTING,
                     );
                 }
+
+                // AND BOTH HALVES MUST NAME THE SAME COLUMN. Checking each half in isolation asked only "is
+                // this canonical for SOME column" — so `USING (company_id = …)` beside
+                // `WITH CHECK (audit_tenant = …)` was two individually-canonical halves, no violation, and a
+                // plain INSERT (guarded by WITH CHECK alone) planted a row in another tenant. Round 7 proved
+                // it. Any denormalised tenant-ish column the inserting session controls will do, which is why
+                // "the column name is the only degree of freedom" has to mean ONE degree per table rather than
+                // one per clause.
+                $columns = array_unique(array_filter([
+                    self::policyExpressionColumn($policy['qual']),
+                    self::policyExpressionColumn($policy['check']),
+                ], static fn(?string $column): bool => null !== $column));
+
+                if (\count($columns) > 1) {
+                    $violations[] = \sprintf(
+                        '%s has a policy whose USING and WITH CHECK clauses scope DIFFERENT columns (%s). '
+                        . 'Each half is individually well-formed, which is what makes this dangerous: the '
+                        . 'write check then guards a column the caller may control, so a row can be planted '
+                        . 'in another tenant',
+                        $table['table'],
+                        implode(' vs ', $columns),
+                    );
+                }
+
+                $tableColumns = [...$tableColumns, ...$columns];
             }
+
+            // ACROSS policies too, not only within one. Two permissive policies scoping different columns OR
+            // together exactly as a single mismatched policy does.
+            $distinct = array_values(array_unique($tableColumns));
+
+            if (\count($distinct) > 1) {
+                $violations[] = \sprintf(
+                    '%s has permissive policies scoping DIFFERENT columns (%s). Permissive policies are ORed, '
+                    . 'so the loosest one decides — a table has one tenant column',
+                    $table['table'],
+                    implode(' vs ', $distinct),
+                );
+            }
+        }
+
+        return $violations;
+    }
+
+    /**
+     * Refuse a connection that can read an object which BORROWS a privileged role's RLS exemption.
+     *
+     * **The fifth path, and the one every other check in this class is structurally blind to.** Everything
+     * above asks about roles *reachable* from the connection. But PostgreSQL will happily execute part of a
+     * query as a role you cannot reach:
+     *
+     *  - **A view** evaluates row-level security as its OWNER unless `security_invoker = true` — and
+     *    `security_invoker` defaults to **false**. A view owned by a `BYPASSRLS` role therefore returns every
+     *    tenant's rows, and accepts writes into any tenant, to a caller holding nothing but an ordinary
+     *    `SELECT`/`UPDATE` grant.
+     *  - **A materialised view** cannot carry RLS at all. It is a plaintext snapshot of whatever the refreshing
+     *    role could see, so one over tenant-owned data is a cross-tenant read by construction.
+     *  - **A `SECURITY DEFINER` function** runs as its owner, with the same consequence.
+     *
+     * Round 7 demonstrated all three, reading *and writing* across tenants with the verdict CLEAN — and the
+     * leaking topology was this project's own provisioned fixture plus one `CREATE VIEW`, because `twes_bypass`
+     * already exists and is the natural home somebody would put cross-tenant reporting in.
+     *
+     * Note `FORCE ROW LEVEL SECURITY` genuinely saves the case where the owner is merely the *table* owner, so
+     * the existing design reasoning holds; the gap was that no question was asked about the OBJECTS a
+     * connection may read, only about the ROLES it may become.
+     *
+     * Scoped to non-system schemas, necessarily: every one of PostgreSQL's ~150 catalogue and
+     * `information_schema` views is owned by a superuser with `security_invoker` unset, so an unscoped check
+     * would refuse every connection on earth.
+     *
+     * @throws \RuntimeException if such an object is readable
+     */
+    public static function assertNoRlsExemptObjectIsReadable(\PDO $connection): void
+    {
+        $statement = $connection->query(
+            'SELECT n.nspname || \'.\' || c.relname AS "object", '
+            . 'c.relkind::text AS kind, o.rolname AS owner, '
+            . 'o.rolsuper OR o.rolbypassrls AS owner_exempt, '
+            // Compared to the literal 'true' IN SQL, so PHP receives a real boolean. `pg_options_to_table`
+            // yields the *string* 'true', which isTrue() does not recognise — it accepts `t` and `1`, the
+            // spellings pdo_pgsql produces for an actual boolean column. Normalising here rather than
+            // widening isTrue() keeps that helper's contract to what the driver emits: the first version of
+            // this check read every security_invoker view as unsafe because of exactly this mismatch.
+            . "coalesce((SELECT option_value FROM pg_options_to_table(c.reloptions) "
+            . "WHERE option_name = 'security_invoker'), 'false') = 'true' AS security_invoker "
+            . 'FROM pg_class c '
+            . 'JOIN pg_roles o ON o.oid = c.relowner '
+            . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
+            . "WHERE c.relkind IN ('v', 'm', 'f') "
+            . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+            // Only objects this connection can actually read. A view it cannot select from leaks nothing.
+            . "AND has_table_privilege(current_user, c.oid, 'SELECT') "
+            . 'ORDER BY 1',
+        );
+
+        if (false === $statement) {
+            throw new \RuntimeException('Could not inspect views and materialised views.');
+        }
+
+        /** @var list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string}> $objects */
+        $objects = $statement->fetchAll(\PDO::FETCH_ASSOC);
+
+        $violations = self::rlsExemptObjectViolations($objects);
+
+        // SECURITY DEFINER functions, asked separately because they live in pg_proc rather than pg_class.
+        $functions = $connection->query(
+            'SELECT n.nspname || \'.\' || p.proname AS "function", o.rolname AS owner '
+            . 'FROM pg_proc p '
+            . 'JOIN pg_roles o ON o.oid = p.proowner '
+            . 'JOIN pg_namespace n ON n.oid = p.pronamespace '
+            . 'WHERE p.prosecdef '
+            . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+            . 'AND (o.rolsuper OR o.rolbypassrls) '
+            . "AND has_function_privilege(current_user, p.oid, 'EXECUTE') "
+            . 'ORDER BY 1',
+        );
+
+        if (false !== $functions) {
+            /** @var list<array{function: string, owner: string}> $rows */
+            $rows = $functions->fetchAll(\PDO::FETCH_ASSOC);
+
+            foreach ($rows as $row) {
+                $violations[] = \sprintf(
+                    '%s is SECURITY DEFINER and owned by %s, which is exempt from row-level security, so '
+                    . 'calling it runs as that role',
+                    $row['function'],
+                    $row['owner'],
+                );
+            }
+        }
+
+        if ([] !== $violations) {
+            throw new \RuntimeException(
+                'This connection can read an object that borrows a privileged role\'s exemption from '
+                . 'row-level security, so the policies on the underlying tables do not apply to it: '
+                . implode('; ', $violations)
+                . '. A view over tenant-owned data must be created WITH (security_invoker = true) and owned '
+                . 'by a role that is itself subject to the policies; a materialised view over tenant-owned '
+                . 'data cannot be made safe at all, because a matview carries no row-level security.',
+            );
+        }
+    }
+
+    /**
+     * Which readable views, materialised views or foreign tables borrow an exemption.
+     *
+     * Pure, so the branches are testable without arranging a privileged owner — the same reason
+     * {@see self::roleCanBypassPolicies()} and {@see self::policedTableViolations()} are.
+     *
+     * @param list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string}> $objects
+     *
+     * @return list<string>
+     */
+    public static function rlsExemptObjectViolations(array $objects): array
+    {
+        $violations = [];
+
+        foreach ($objects as $object) {
+            // A MATERIALISED VIEW or a FOREIGN TABLE cannot carry row-level security at all, at any
+            // ownership, so both are refused on kind alone. A matview is a stored copy of rows somebody could
+            // read; a foreign table's rows live somewhere this server does not police.
+            if ('m' === $object['kind'] || 'f' === $object['kind']) {
+                $violations[] = \sprintf(
+                    '%s is %s, which cannot carry row-level security at all%s',
+                    $object['object'],
+                    'm' === $object['kind'] ? 'a materialised view' : 'a foreign table',
+                    'm' === $object['kind']
+                        ? ' — it is a plaintext snapshot of whatever the refreshing role could read'
+                        : ' — its rows are not policed by this server',
+                );
+
+                continue;
+            }
+
+            // A VIEW is judged on `security_invoker` FIRST, and ownership only sharpens the message.
+            //
+            // The precedence matters and getting it backwards produces a false positive: with
+            // `security_invoker = true` the view evaluates policies as the QUERYING role, so the owner's own
+            // privileges are irrelevant and the view is safe even when a superuser owns it. The first version
+            // of this check tested ownership first and refused exactly that safe shape.
+            if (self::isTrue($object['security_invoker'])) {
+                continue;
+            }
+
+            $violations[] = \sprintf(
+                '%s is a view without security_invoker, so it evaluates row-level security as its owner %s '
+                . 'rather than as the querying role%s',
+                $object['object'],
+                $object['owner'],
+                self::isTrue($object['owner_exempt'])
+                    ? ' — and that owner is EXEMPT from row-level security (superuser or BYPASSRLS), so the '
+                        . 'view returns and accepts every tenant'
+                    : ', so it returns that role\'s tenant scope and not the caller\'s',
+            );
         }
 
         return $violations;

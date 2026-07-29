@@ -1161,6 +1161,282 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * A policy whose two halves scope DIFFERENT columns is refused.
+     *
+     * Round 7's P0, and the sharpest one so far: each half was individually canonical, so the exact-match
+     * comparison introduced a round earlier reported no violation — and a plain `INSERT` is guarded by
+     * `WITH CHECK` alone, so tenant A planted a row in tenant B. Any denormalised tenant-ish column the
+     * inserting session controls will do. "The column name is the only degree of freedom" has to mean one
+     * degree per TABLE, not one per clause.
+     *
+     * My own test previously pinned the permissive reading as *intended*, using the same column on both
+     * halves — so the mismatched pair had no case in either direction.
+     */
+    public function testAPolicyWhoseHalvesScopeDifferentColumnsIsRefused(): void
+    {
+        $table = self::TABLE . '_mismatched';
+
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $table);
+        $this->owner->exec(
+            'CREATE TABLE ' . $table . ' (company_id uuid NOT NULL, audit_tenant uuid NOT NULL, id integer '
+            . 'NOT NULL, PRIMARY KEY (company_id, id))',
+        );
+
+        try {
+            $this->owner->exec('ALTER TABLE ' . $table . ' ENABLE ROW LEVEL SECURITY');
+            $this->owner->exec('ALTER TABLE ' . $table . ' FORCE ROW LEVEL SECURITY');
+
+            // Hand-written rather than from policySqlFor(), because the point is that a hand-written policy
+            // can be individually well-formed on each half and still wrong.
+            $scoped = static fn(string $column): string => $column
+                . " = nullif(current_setting('" . PostgresRowLevelSecurityIsolation::TENANT_SETTING
+                . "', true), '')::uuid";
+
+            $this->owner->exec(
+                'CREATE POLICY tenant_isolation ON ' . $table
+                . ' USING (' . $scoped('company_id') . ')'
+                . ' WITH CHECK (' . $scoped('audit_tenant') . ')',
+            );
+
+            // The precondition that makes this the interesting case: BOTH halves are canonical on their own.
+            self::assertTrue(
+                PostgresRowLevelSecurityIsolation::policyExpressionIsCanonical(
+                    PostgresRowLevelSecurityIsolation::canonicalPolicyExpression('company_id'),
+                ),
+            );
+            self::assertTrue(
+                PostgresRowLevelSecurityIsolation::policyExpressionIsCanonical(
+                    PostgresRowLevelSecurityIsolation::canonicalPolicyExpression('audit_tenant'),
+                ),
+            );
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+                self::fail('A policy whose halves scope different columns must be refused.');
+            } catch (\RuntimeException $exception) {
+                $message = $exception->getMessage();
+
+                // BOTH violations, asserted separately. A single mismatched policy trips the per-policy check
+                // AND the cross-policy one, so asserting only the shared phrase let either be deleted while
+                // the other kept the test green — which is exactly what the mutation sweep showed.
+                self::assertStringContainsString(
+                    'USING and WITH CHECK clauses scope DIFFERENT columns',
+                    $message,
+                    'the per-policy check',
+                );
+                self::assertStringContainsString(
+                    'permissive policies scoping DIFFERENT columns',
+                    $message,
+                    'the cross-policy check',
+                );
+                self::assertStringContainsString('company_id vs audit_tenant', $message);
+            }
+        } finally {
+            $this->owner->exec('DROP TABLE IF EXISTS ' . $table);
+        }
+    }
+
+    /**
+     * A legacy `INHERITS` child of a policed parent is inspected — the mechanism `pg_partition_tree` cannot see.
+     *
+     * PostgreSQL still fully supports table inheritance, and a child created that way has
+     * `relispartition = f`, appears in no partition tree, and carries `relrowsecurity = f`. Round 6's fix
+     * walked `pg_partition_tree` and so covered declarative partitioning only; round 7 read, updated, deleted
+     * AND inserted across tenants through an `INHERITS` child with the verdict clean. `pg_inherits` is the
+     * catalogue behind both mechanisms.
+     */
+    public function testAnInheritsChildOfAPolicedParentIsInspected(): void
+    {
+        $parent = self::TABLE . '_inh_parent';
+        $child = self::TABLE . '_inh_child';
+
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $child);
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $parent . ' CASCADE');
+        $this->owner->exec(
+            'CREATE TABLE ' . $parent . ' (company_id uuid NOT NULL, id integer NOT NULL, '
+            . 'PRIMARY KEY (company_id, id))',
+        );
+
+        try {
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($parent) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            $this->owner->exec('CREATE TABLE ' . $child . ' () INHERITS (' . $parent . ')');
+
+            // The preconditions: legacy inheritance, NOT a declarative partition, and unpoliced.
+            $meta = $this->connection->query(
+                "SELECT relispartition, relrowsecurity FROM pg_class WHERE relname = '" . $child . "'",
+            );
+            self::assertNotFalse($meta);
+            /** @var array{relispartition: bool|string, relrowsecurity: bool|string} $row */
+            $row = $meta->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotContains($row['relispartition'], [true, 't', '1'], 'not a declarative partition');
+            self::assertNotContains($row['relrowsecurity'], [true, 't', '1'], 'unpoliced of its own');
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+                self::fail('An unpoliced INHERITS child of a policed parent must be refused.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString($child, $exception->getMessage());
+                // And it must be NAMED correctly — calling an INHERITS child "a partition" was a separate
+                // finding, from a column that was fetched and never read.
+                self::assertStringContainsString('INHERITS child', $exception->getMessage());
+            }
+        } finally {
+            $this->owner->exec('DROP TABLE IF EXISTS ' . $child);
+            $this->owner->exec('DROP TABLE IF EXISTS ' . $parent . ' CASCADE');
+        }
+    }
+
+    /**
+     * The FIFTH path: an object that borrows a privileged role's exemption.
+     *
+     * Every other check in this class asks about roles *reachable* from the connection. PostgreSQL will run
+     * part of a query as a role you cannot reach: a view evaluates policies as its OWNER unless
+     * `security_invoker = true`, and that option defaults to **false**. Round 7 read and wrote across tenants
+     * through a view owned by `twes_bypass` — a role this fixture already provisions and never grants to the
+     * runtime role, which is precisely why the role queries never looked at it.
+     *
+     * Both directions, because the precedence is easy to get backwards: a view WITH `security_invoker` is safe
+     * even when a privileged role owns it, and the first version of this check refused exactly that.
+     */
+    public function testAViewThatBorrowsAnExemptOwnersRlsBypassIsRefused(): void
+    {
+        $unsafe = self::TABLE . '_unsafe_view';
+        $safe = self::TABLE . '_safe_view';
+
+        $this->owner->exec('DROP VIEW IF EXISTS ' . $unsafe);
+        $this->owner->exec('DROP VIEW IF EXISTS ' . $safe);
+
+        try {
+            $this->owner->exec('CREATE VIEW ' . $unsafe . ' AS SELECT * FROM ' . self::TABLE);
+            $runtimeRole = getenv('TWES_TEST_DB_USER');
+            self::assertIsString($runtimeRole);
+            $this->owner->exec('GRANT SELECT ON ' . $unsafe . ' TO ' . $runtimeRole);
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+                self::fail('A view without security_invoker must be refused.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString($unsafe, $exception->getMessage());
+                self::assertStringContainsString('without security_invoker', $exception->getMessage());
+            }
+
+            // AND through the composite entry point, because a check nobody calls is not a check — removing
+            // the call site from assertConnectionCannotBypassPolicies() was invisible to the direct test above.
+            try {
+                new PostgresRowLevelSecurityIsolation()->assertConnectionCannotBypassPolicies($this->connection);
+                self::fail('assertConnectionCannotBypassPolicies() must include the object check.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString($unsafe, $exception->getMessage());
+            }
+
+            // The SAFE shape must be accepted, or the check forbids views outright rather than requiring they
+            // be written correctly.
+            $this->owner->exec('DROP VIEW ' . $unsafe);
+            $this->owner->exec(
+                'CREATE VIEW ' . $safe . ' WITH (security_invoker = true) AS SELECT * FROM ' . self::TABLE,
+            );
+            $this->owner->exec('GRANT SELECT ON ' . $safe . ' TO ' . $runtimeRole);
+
+            PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+
+            self::assertTrue(true, 'A security_invoker view is accepted.');
+        } finally {
+            $this->owner->exec('DROP VIEW IF EXISTS ' . $unsafe);
+            $this->owner->exec('DROP VIEW IF EXISTS ' . $safe);
+        }
+    }
+
+    /**
+     * A `SECURITY DEFINER` function owned by an exempt role is refused.
+     *
+     * The third shape of the fifth path, and it lives in `pg_proc` rather than `pg_class`, so it needs its own
+     * query — which means it can be neutered independently. Owned by a superuser here because that is the case
+     * that matters: the function body then runs with row security not applying at all.
+     */
+    public function testASecurityDefinerFunctionOwnedByAnExemptRoleIsRefused(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('No superuser connection available to own a SECURITY DEFINER function.');
+        }
+
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        self::assertIsString($runtimeRole);
+
+        $function = self::TABLE . '_secdef';
+
+        $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        $granter->exec(
+            'CREATE FUNCTION ' . $function . '() RETURNS bigint LANGUAGE sql SECURITY DEFINER '
+            . 'AS \'SELECT count(*) FROM ' . self::TABLE . '\'',
+        );
+
+        try {
+            $granter->exec('GRANT EXECUTE ON FUNCTION ' . $function . '() TO ' . $runtimeRole);
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+                self::fail('A SECURITY DEFINER function owned by an exempt role must be refused.');
+            } catch (\RuntimeException $exception) {
+                self::assertStringContainsString($function, $exception->getMessage());
+                self::assertStringContainsString('SECURITY DEFINER', $exception->getMessage());
+            }
+        } finally {
+            $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        }
+    }
+
+    /**
+     * The object-exemption classifier, as a pure function — including the precedence that produced a false
+     * positive on the first attempt.
+     */
+    public function testTheRlsExemptObjectPredicateClassifiesEveryShape(): void
+    {
+        $view = [
+            'object' => 'public.v',
+            'kind' => 'v',
+            'owner' => 'twes_owner',
+            'owner_exempt' => 'f',
+            'security_invoker' => 't',
+        ];
+
+        // security_invoker wins over ownership: RLS applies as the QUERYING role, so an exempt owner is
+        // irrelevant. Refusing this shape was the first version's bug.
+        self::assertSame([], PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([$view]));
+        self::assertSame([], PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations(
+            [['owner_exempt' => 't', 'owner' => 'postgres'] + $view],
+        ));
+
+        // Without it, the view evaluates as its owner — refused whoever that is, because it is not the
+        // caller's scope; and the message escalates when the owner is exempt.
+        $plain = PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations(
+            [['security_invoker' => 'f'] + $view],
+        );
+        self::assertCount(1, $plain);
+        self::assertStringContainsString("not the caller's", $plain[0]);
+
+        $exempt = PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations(
+            [['security_invoker' => 'f', 'owner_exempt' => 't', 'owner' => 'postgres'] + $view],
+        );
+        self::assertCount(1, $exempt);
+        self::assertStringContainsString('EXEMPT', $exempt[0]);
+
+        // A matview and a foreign table cannot carry RLS at any ownership, so they are refused on kind alone —
+        // even with security_invoker set, which is meaningless for them.
+        foreach (['m' => 'materialised view', 'f' => 'foreign table'] as $kind => $described) {
+            $refused = PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations(
+                [['kind' => $kind, 'security_invoker' => 't'] + $view],
+            );
+            self::assertCount(1, $refused, $described);
+            self::assertStringContainsString($described, $refused[0]);
+        }
+    }
+
+    /**
      * A real PARTITION of a policed parent, which is the case my own previous test did not create.
      *
      * The test that closed R5-3 built a partitioned parent with **zero partitions**, so the interesting
