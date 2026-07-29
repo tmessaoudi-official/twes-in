@@ -22,11 +22,19 @@ own statically-typed PHP-inspired language — is **vision, not a target**: the 
 nothing here is built for it. Do not treat it as a requirement, do not design around its unknowns, and
 do not defer a decision waiting for it. See `VISION.md`.
 
-Status: **Wave 0 landed** (2026-07-29). `api/` holds a framework-free `Domain/` (money, pricing) and
-`Infrastructure/` (tenancy, clock, identifiers), four PHPUnit suites, and six gates in `scripts/gates/`
-with their own test suite. **Not yet built:** the Symfony application, Doctrine, PHPStan/deptrac (all
-blocked — see § Gotchas on GitHub egress), and the `admin/`, `mobile/` and `infra/` tiers. Anything below
-describing those is the *target*. Read `docs/plans/build-waves.plan.md` for where the build actually is.
+Status: **Wave 0 landed, not yet certified** (2026-07-29). `api/` holds a framework-free `Domain/` (money,
+pricing) and `Infrastructure/` (tenancy, clock, identifiers), four PHPUnit suites, and six gates in
+`scripts/gates/` with their own test suite (`scripts/gates/test-gates.sh` reports its own case count;
+no number is written here, because a count in prose drifts). **`admin/` and `mobile/` are scaffolded** — each with its
+tier's official generator (`ng new`, `flutter create`), never by hand — and each is green on its own toolchain,
+but neither holds any application code yet.
+
+**Not yet built:** the Symfony application itself (`bin/`, `config/`, `public/`, `.env`), Doctrine,
+PHPStan/deptrac — all blocked, see § Gotchas on GitHub egress — and the `infra/` tier. That blocker is why the
+API tier has no skeleton while the two client tiers do: `ng new` and `flutter create` fetch from npm and
+pub.dev, which are reachable; `composer create-project symfony/skeleton` fetches from GitHub, which is not.
+Anything below describing those is the *target*. Read `docs/plans/build-waves.plan.md` for where the build
+actually is.
 
 ## Routing
 
@@ -396,8 +404,10 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks. 183 cases | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
-| Angular admin | `npm run lint`, `npm run test`, `ng build --configuration production`, `axe-core` a11y, locale key-parity, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
-| Flutter client | `flutter analyze`, `flutter test`, semantics/a11y tests, golden or real screenshots at a **desktop** window size as well as a phone one, the shared pricing vectors, **and a build of all six targets** — Android, iOS, Linux, Windows, macOS, Web. Builds cannot be cross-compiled, so that is three CI runners; the matrix is in `build-waves.plan.md` § Wave 12 | Wave 11 — `mobile/README.md` |
+| Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
+| Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
+| Flutter client | `flutter analyze`, `flutter test`, `flutter build web --release --no-web-resources-cdn` | **Runs** (scaffolded 2026-07-29, all six platform directories present) |
+| Flutter client, owed | semantics/a11y tests, golden or real screenshots at a **desktop** window size as well as a phone one, the shared pricing vectors, **a build of all six targets** (Android, iOS, Linux, Windows, macOS, Web — not cross-compilable, so three CI runners; matrix in `build-waves.plan.md` § Wave 12), a test that fails if the built web bundle references **any external origin**, and a real bundle identifier | Wave 11 — `mobile/README.md` |
 | Infra | `docker compose config`, `bash -n` on every shell script | Wave 12 — `infra/README.md` |
 
 **The one command to run the API tier's gate**, once Composer works, is `composer gate` — it chains
@@ -415,9 +425,21 @@ bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Got
 cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check && composer validate
 ```
 
-**Tooling setup in a fresh container** (nothing here is installed by default): PHP 8.5.8 and
-PostgreSQL 18.4 come from the sury.org and PGDG apt repositories; `bash scripts/dev/fetch-tools.sh`
-downloads the PHPUnit and php-cs-fixer phars against pinned SHA-256 hashes. The **integration suite's
+**Tooling setup in a fresh container** (nothing here is installed by default):
+
+| Tier | How | Reachable? |
+|---|---|---|
+| PHP 8.5.8, PostgreSQL 18.4 | sury.org and PGDG apt repositories | yes |
+| PHPUnit, php-cs-fixer | `bash scripts/dev/fetch-tools.sh` — official phars, pinned SHA-256 | yes (`phar.phpunit.de`, `cs.symfony.com`) |
+| PostgreSQL roles for the tenancy proof | `sudo -u postgres bash scripts/dev/provision-test-database.sh` | n/a |
+| Node 26.5.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
+| Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` | yes (`registry.npmjs.org`) |
+| Flutter 3.44.8 | `flutter_linux_3.44.8-stable.tar.xz` from `storage.googleapis.com` | yes |
+| **Composer dependencies** | `composer install` | **NO — GitHub egress, see § Gotchas** |
+
+Two notes that cost time to rediscover. The container's default Node is **22.22.2**, one patch below Angular
+22's `^22.22.3` floor, so Angular CLI refuses to install until Node is upgraded. And Flutter warns loudly about
+running as root but works; the warning is not a failure. The **integration suite's
 database prerequisites** are:
 
 ```

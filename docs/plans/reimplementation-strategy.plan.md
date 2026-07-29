@@ -12,6 +12,7 @@ clones; figures are labelled accordingly.
 ---
 
 ## Decisions Log
+- [2026-07-29 20:50] AGREED: adopt **API Platform** (MIT) for the REST tier, in **DTO + State Provider/Processor mode ONLY** — `#[ApiResource]` on a domain entity is forbidden here and already fails `layer-dependencies.php`, whose domain vendor allowlist is empty. Adopted mainly because it generates the OpenAPI spec from the code, and `CLAUDE.md` makes an API change that does not reach the spec a P0; a generated spec cannot drift. Open: plain JSON vs JSON-LD/Hydra as the public representation, and whether GraphQL is in scope at all.
 
 - [2026-07-29 09:00] AGREED: the four upstream repos are **studied, never forked into this tree**. Clones live at `/tmp/xxx/**` and `.gitignore` blocks `/reference/`, `/upstream/`, `/vendor-reference/`.
 - [2026-07-29 09:30] FOUND: the four repos carry **three different licences**, not one. `invoiceninja` (API) and `ui` (React) are **Elastic License 2.0**; `admin-portal` (Flutter) is the **Attribution Assurance License**; `dockerfiles` is **GPL-2.0**. [Verified: read all four LICENSE files directly.] Any plan that treats "Invoice Ninja's licence" as a single thing is wrong.
@@ -44,6 +45,48 @@ clones; figures are labelled accordingly.
 - [2026-07-29 11:15] AGREED: this plan file is the record of truth; it is committed. Four questions remain OPEN for the developer and are listed at the end. No work beyond the Claude bundle proceeds until Questions 1 and 2 are ruled.
 
 ---
+
+
+## API Platform — adopted for the REST tier, DTO mode only (2026-07-29)
+
+`api-platform/core` is **MIT** [Verified: `repo.packagist.org/p2/api-platform/core.json`, latest stable
+**v4.3.17**, `license: ["MIT"]` — note Packagist's v2 metadata is *minified* and inherits absent fields from the
+previous entry, so a naive read of the newest entry shows `license: null`]. Its 15 direct requires are Symfony
+components, `psr/*`, `doctrine/inflector`, `composer/semver` and `willdurand/negotiation`.
+`dependency-licences.php` over the lock file is the binding check once installation is possible.
+
+**Why adopt it.** Not to save typing. The decisive reason is that **it generates the OpenAPI specification from
+the code**. `CLAUDE.md` § "The API contract is ours to design" makes an API change that fails to reach the
+OpenAPI spec a **P0** for `completeness-reviewer`, and the only durable way to satisfy that is for the spec not
+to be a separate artefact anyone can forget. Secondary: pagination, filtering, sorting, content negotiation,
+RFC 7807 problem details, validation wiring, and a mature HTTP test client — which is what the currently-empty
+`functional` suite needs.
+
+**The constraint, and it is absolute.** API Platform's default idiom is `#[ApiResource]` on a Doctrine entity.
+That is forbidden twice here: it puts a framework attribute in `Domain/`, and it is a third-party namespace in
+`Domain/`, which `layer-dependencies.php` already rejects because `DOMAIN_VENDOR_ALLOWLIST` is deliberately
+empty. **No new gate is needed** — the existing one catches it. So:
+
+- `#[ApiResource]` lives on a **DTO in `UI/`**.
+- A `ProviderInterface` / `ProcessorInterface` adapter in `Infrastructure/` or `UI/` calls an `Application/`
+  handler.
+- `Domain/` never learns that an API exists.
+
+This is a documented, mainstream API Platform configuration, not a workaround. Be honest about the cost: DTO
+mode gives back a real slice of the time saving as mapping code, so the win is smaller than the
+entity-mapped demos suggest — and still clearly positive, because the mapping is code we would write anyway to
+keep the contract from leaking the domain's shape.
+
+**Not yet added to `api/composer.json`.** Adding a requirement without being able to run `composer update`
+would leave `composer.lock` inconsistent with the manifest, and `composer validate` — a green quality-gate row
+today — would start failing. It goes in with the Wave 1 skeleton, in the same change that can resolve it.
+
+**Two questions deliberately left open** because both are user-visible product decisions rather than
+implementation details: whether the public representation is **plain JSON or JSON-LD/Hydra** (API Platform
+defaults to the latter, and it is the more RESTful-by-the-book choice but a heavier one for two hand-written
+clients to consume), and whether **GraphQL** — which API Platform provides at almost no extra cost — is in scope
+at all. Neither is answerable from the code.
+
 
 ## Rulings of 2026-07-29 — every open question is CLOSED
 
