@@ -80,7 +80,7 @@ Manual trigger for end-of-session learning extraction. Companion to the automati
 | Flag | Behavior |
 |------|----------|
 | `--quick` | Skip to the 2 highest-signal lenses only (Failure pattern + Decision rationale); skips all 6-lens scan; output is a compact 2-question pass. |
-| `--source=project\|all` | **Accepted but inert here.** Upstream used it to scan other projects' `MEMORY.md` indices for duplicates; this container has no memory pipeline and no other projects [Verified: `find / -name MEMORY.md` → nothing]. Step 2.5 degrades to a duplicate check against `var/claude/memory/` in this repo only. |
+| `--source=project\|all` | (default: `all`) — `all` runs Step 2.5's duplicate check against `var/claude/memory/`; `project` **skips** Step 2.5 entirely. Upstream used this flag to scan *other projects'* `MEMORY.md` indices; there is no memory pipeline and no other project here [Verified: `find / -name MEMORY.md` → nothing], so the cross-project half does nothing — but the skip is real, so the flag is not inert. |
 
 ---
 
@@ -126,10 +126,6 @@ For each of these lenses, ask the question and answer honestly — skip any wher
 ---
 
 ## Step 2.5: Cross-project index enrichment (skip if `--source=project` or `--quick`)
-
-**Compute current project slug:**
-```bash
-```
 
 **Index scan** — read the memory indices, text only, no full file reads:
 ```bash

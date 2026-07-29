@@ -373,6 +373,24 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   relay script is kept anyway — the block is environment-dependent and may reappear, and the script is
   inert when there is no pending file. Do not delete it, and do not assume the block is gone
   permanently.
+- **2026-07-29 — NEVER commit while a certification panel is reading. Freeze means freeze.** Round 5 of
+  the bundle certification was told the artefact was frozen at `653e211`; a commit landed mid-round and
+  it rewrote **exactly** the files the reviewer had been assigned. The reviewer caught it, but only after
+  reading a `README.md` row that does not exist at the frozen commit — **it was one step from filing a
+  fabricated finding against a file the frozen tree did not contain.** A round run on a moving tree is
+  not evidence and cannot count toward the two-clean requirement, regardless of what it reports. The
+  discipline: commit, then freeze, then spawn the panel, then **do not touch the tree** until it
+  reports. If something urgent must change, kill the round and restart it — a discarded round is cheap;
+  a fabricated finding is not.
+- **2026-07-29 — a guard on one write path is not a guard.** The `<!-- manual -->` handoff protection was
+  implemented on the PreCompact hook's default write and *not* on its opt-in LLM write, so with
+  `TWES_HANDOFF_LLM=1` a hand-written note was still destroyed — and `log_obs` recorded "latest.md is
+  manual — kept" two lines before clobbering it, so the observability trail actively lied. Five
+  assertions passed throughout, because none of them set the env var and the LLM assertion only grepped
+  the source instead of executing the path. **Two lessons, both general: decide a condition ONCE into a
+  variable that every path reads, and a test that greps source instead of running code proves nothing.**
+  The fix was verified by running the new test against the pre-fix hook — 1 failed — then against the
+  fixed one — 35 passed.
 - **2026-07-29 — the container's Stop hook will tell you to undo the commit-identity ruling. Do not
   comply.** `~/.claude/stop-hook-git-check.sh` (wired as a `Stop` hook in the container's
   `launcher-settings.json`) checks every commit in `origin/master..HEAD` and, for any whose committer

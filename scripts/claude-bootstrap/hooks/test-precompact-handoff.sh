@@ -190,5 +190,41 @@ else
   ok "unmarked latest.md is refreshed as before"
 fi
 
+# ── 6. The guard must hold on the OPT-IN LLM PATH TOO ────────────────────────────────
+# This is the assertion whose absence let a real bug ship: the first guard protected only the default
+# write, so with TWES_HANDOFF_LLM=1 a marked latest.md was still clobbered — and the log said "kept"
+# two lines before destroying it. Grepping the source for the env var (as the old LLM assertion did)
+# cannot catch that; the path has to be EXECUTED. A stub `claude` on PATH makes that cheap.
+STUB="$TMP/stub"; mkdir -p "$STUB"
+cat > "$STUB/claude" <<'STUBEOF'
+#!/usr/bin/env bash
+printf '{"result":"STUB NARRATIVE"}\n'
+STUBEOF
+chmod +x "$STUB/claude"
+
+rm -rf "$TMP/out"; mkdir -p "$TMP/out"
+printf 'MY HAND-WRITTEN STATE\n<!-- manual -->\n' > "$TMP/out/latest.md"
+PATH="$STUB:$PATH" TWES_HANDOFF_LLM=1   run_hook "$(printf '{"transcript_path":"%s","cwd":"%s","session_id":"llm-manual"}' "$TRANSCRIPT" "$TMP")"
+check "exit 0 on the LLM path with a manual latest.md" "$RC" "0"
+if grep -q 'MY HAND-WRITTEN STATE' "$TMP/out/latest.md"; then
+  ok "manual latest.md survives the LLM path too"
+else
+  bad "manual latest.md CLOBBERED by the LLM path — guard not honoured on both writes"
+fi
+if grep -q 'STUB NARRATIVE' "$TMP"/out/handoff-*.md 2>/dev/null; then
+  ok "LLM narrative still appended to the archive"
+else
+  bad "LLM narrative missing from the archive — the narrative was lost, not just withheld"
+fi
+
+# Converse on the LLM path: unmarked latest.md must receive the narrative.
+rm -rf "$TMP/out"; mkdir -p "$TMP/out"
+PATH="$STUB:$PATH" TWES_HANDOFF_LLM=1   run_hook "$(printf '{"transcript_path":"%s","cwd":"%s","session_id":"llm-auto"}' "$TRANSCRIPT" "$TMP")"
+if grep -q 'STUB NARRATIVE' "$TMP/out/latest.md" 2>/dev/null; then
+  ok "unmarked latest.md receives the LLM narrative"
+else
+  bad "unmarked latest.md did not receive the narrative — guard too broad on the LLM path"
+fi
+
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
 [[ $FAIL -eq 0 ]]

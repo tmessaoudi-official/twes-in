@@ -120,6 +120,6 @@ Rules:
 - "Memory Updates" is advisory — the next session will see it and decide whether to act
 - If nothing meaningful to hand off, write: "No active work."
 
-After writing the file, append `<!-- manual -->` on its own line at the very end. This marker tells the stop hook that a human explicitly saved state — it will skip overwriting with an auto-generated handoff.
+After writing the file, append `<!-- manual -->` on its own line at the very end. This marker tells the **PreCompact** hook (`scripts/claude-bootstrap/hooks/precompact-handoff.sh`) that a human explicitly saved state: it keeps `latest.md` intact and writes its auto-generated note to the timestamped archive instead, so nothing is lost either way. Honoured on both write paths, including the opt-in `TWES_HANDOFF_LLM=1` narrative. **Not a "stop hook"** — this bundle registers no Stop hook, and the container's own `stop-hook-git-check.sh` is unrelated and must be disobeyed (`CLAUDE.md` § Gotchas).
 
 Say "Saved." when done — nothing else.
