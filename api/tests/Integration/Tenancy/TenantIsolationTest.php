@@ -2190,8 +2190,11 @@ final class TenantIsolationTest extends TestCase
             );
             $this->connection->commit();
 
-            // Every existing guard, on the same connection, immediately afterwards.
-            $isolation->assertConnectionCannotBypassPolicies($this->connection);
+            // EVERY GUARD THAT PREDATED THIS CLASS, individually, on the same connection — all clean, which is
+            // what made the leak below invisible when it was found. Note `assertConnectionCannotBypassPolicies()`
+            // is deliberately NOT called here any more: round 12 composed the session-lifetime check into it, so
+            // it now REFUSES this state, and calling it here would assert the very gap that has been closed.
+            // The composite is asserted to refuse at the end of this test instead.
             PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
             PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
             $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
@@ -2239,6 +2242,26 @@ final class TenantIsolationTest extends TestCase
             self::assertStringContainsString($temporary, $caught->getMessage());
             self::assertStringContainsString($cursor, $caught->getMessage());
 
+            // AND THE COMPOSITE ACQUISITION CHECK REFUSES IT TOO. This is the closure round 12 asked for: the
+            // guard existed and was reachable only from its own test, so a pool wiring had two entry points to
+            // remember instead of one. "A check nobody calls is not a check" — this project's own fifth-path
+            // test asserts the identical property, and the seventh class shipped without it.
+            $composite = null;
+
+            try {
+                $isolation->assertConnectionCannotBypassPolicies($this->connection);
+            } catch (\RuntimeException $exception) {
+                $composite = $exception;
+            }
+
+            self::assertNotNull(
+                $composite,
+                'The composite acquisition check must refuse a connection carrying session-lifetime data. If '
+                . 'this passes, the call was removed from assertConnectionCannotBypassPolicies() and the '
+                . 'direct assertion below cannot see that.',
+            );
+            self::assertStringContainsString($temporary, $composite->getMessage());
+
             // And discarding really removes both, so the guard is satisfiable rather than a dead end. This is
             // the release-time half: a connection returned to the pool must go back with nothing on it.
             PostgresRowLevelSecurityIsolation::discardSessionState($this->connection);
@@ -2259,24 +2282,213 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
-     * `discardSessionState()` refuses to run inside a transaction rather than failing obscurely.
+     * `discardSessionState()` CLEARS an open transaction rather than refusing — the direction was backwards.
      *
-     * `DISCARD ALL` cannot run in a transaction block — PostgreSQL raises 25001. Refusing with an explanation
-     * is the difference between a caller who moves the call and a caller who wraps it in a try/catch, and the
-     * second is how a release-time guard quietly stops running.
+     * The first version threw inside a transaction, reasoning that `DISCARD ALL` raises 25001 there and an
+     * explicit refusal beats an obscure failure. Round 12 refuted it: a connection is returned to the pool most
+     * often on an EXCEPTION path, where a transaction is still open — so the one state the method refused was
+     * the state it would most often be called in, and the dirtiest connection went back with the temp table,
+     * the held cursor and the binding still on it. For a cleanup routine, fail-closed means "clear it anyway".
+     *
+     * Asserted with real dirt on the connection, not just an open transaction: a temp table, a held cursor and
+     * a bound tenant. Asserting only that no exception is thrown would pass against a method that returned
+     * early.
      */
-    public function testDiscardingSessionStateIsRefusedInsideATransaction(): void
+    public function testDiscardingSessionStateClearsAnOpenTransactionRatherThanRefusing(): void
     {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $this->connection->beginTransaction();
+        $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+            TenantId::fromString(self::TENANT_A),
+        ));
+        $this->connection->exec('CREATE TEMPORARY TABLE discard_probe (id integer)');
+        $this->connection->exec('DECLARE discard_cur CURSOR WITH HOLD FOR SELECT 1');
+
+        // Still INSIDE the transaction, which is the state the old version refused.
+        self::assertTrue($this->connection->inTransaction());
+
+        PostgresRowLevelSecurityIsolation::discardSessionState($this->connection);
+
+        self::assertFalse($this->connection->inTransaction(), 'the transaction must be rolled back');
+
+        // And the connection must actually be clean, which is the point of calling it at all.
+        PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised($this->connection);
+        $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
+    }
+
+    /**
+     * THE EIGHTH CARRIER: a large object is readable under any binding, and DISCARD ALL cannot clear it.
+     *
+     * `pg_largeobject` is a system catalogue that cannot carry row-level security at any privilege level.
+     * `lo_from_bytea`/`lo_get` need nothing the restricted runtime role lacks, and the default ACL is
+     * owner-only — which, because every request connects as the SAME role, means every tenant's blob is
+     * readable under every binding. A billing product generating invoice PDFs is the canonical use.
+     *
+     * The leak is demonstrated before the guard is asked about it, and the residue is removed inside the same
+     * transaction so the suite leaves no permanent object behind.
+     */
+    public function testALargeObjectIsReadableUnderAnyBindingAndIsRefused(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        // Clean slate: another test or a reviewer's probe must not decide this case.
+        PostgresRowLevelSecurityIsolation::assertNoLargeObjectIsReachable($this->connection);
+
         $this->connection->beginTransaction();
 
         try {
-            PostgresRowLevelSecurityIsolation::discardSessionState($this->connection);
-            self::assertTrue(false, 'unreachable');
-        } catch (\RuntimeException $exception) {
-            self::assertStringContainsString('outside a transaction', $exception->getMessage());
+            $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_A),
+            ));
+
+            $created = $this->connection->query(
+                "SELECT lo_from_bytea(0, 'tenant-A invoice PDF bytes') AS oid",
+            );
+            self::assertNotFalse($created);
+            $oid = (string) $created->fetchColumn();
+
+            // THE LEAK: the same connection, a different tenant, and the bytes come back.
+            $this->connection->exec('SAVEPOINT rebind');
+            $read = $this->connection->query(
+                "SELECT convert_from(lo_get(" . $oid . "), 'UTF8') AS bytes",
+            );
+            self::assertNotFalse($read);
+            self::assertSame(
+                'tenant-A invoice PDF bytes',
+                (string) $read->fetchColumn(),
+                'A large object carries no policy, so its bytes are readable whatever tenant is bound.',
+            );
+
+            // And row-level security is not even possible on the catalogue that holds it.
+            $rls = $this->connection->query(
+                "SELECT relrowsecurity FROM pg_class WHERE relname = 'pg_largeobject'",
+            );
+            self::assertNotFalse($rls);
+            self::assertNotContains(
+                $rls->fetchColumn(),
+                [true, 't', '1'],
+                'pg_largeobject cannot carry RLS, which is why the rule is ZERO large objects.',
+            );
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoLargeObjectIsReachable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A reachable large object must be refused.');
+            self::assertStringContainsString($oid, $caught->getMessage());
+            self::assertStringContainsString('cannot carry row-level security', $caught->getMessage());
         } finally {
+            // Rolled back rather than dropped: a large object created in a transaction disappears with it, so
+            // this leaves the database exactly as it was even if an assertion above failed.
             $this->connection->rollBack();
         }
+
+        PostgresRowLevelSecurityIsolation::assertNoLargeObjectIsReachable($this->connection);
+    }
+
+    /**
+     * The TEMPORARY capability is refused for a role that lacks it, and its absence is what removes shadowing.
+     *
+     * Both directions, using roles this fixture already provisions: the runtime role HOLDS `TEMPORARY` because
+     * the column-fidelity suite needs a scratch table, so it must be refused; `twes_bypass` is granted
+     * `CONNECT` and not `TEMPORARY`, so it must be accepted. Without the accepting arm this would be a check
+     * that cannot pass, which is a check somebody disables.
+     */
+    public function testTheTemporaryCapabilityIsRefusedWhenReachableAndAcceptedWhenNot(): void
+    {
+        $caught = null;
+
+        try {
+            PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateTemporaryObjects($this->connection);
+        } catch (\RuntimeException $exception) {
+            $caught = $exception;
+        }
+
+        self::assertNotNull(
+            $caught,
+            'The runtime role holds TEMPORARY in this fixture, so the guard must refuse it. If this passes, '
+            . 'either the grant was removed from provision-test-database.sh or the guard reads nothing.',
+        );
+        self::assertStringContainsString('pg_temp PRECEDES public', $caught->getMessage());
+
+        // The ACCEPTING arm, on a role granted CONNECT but never TEMPORARY.
+        $withoutTemp = self::connectAs('TWES_TEST_DB_BYPASS_USER', 'TWES_TEST_DB_BYPASS_PASSWORD');
+        PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateTemporaryObjects($withoutTemp);
+
+        self::assertTrue(true, 'A role without TEMPORARY is accepted, so the guard is satisfiable.');
+    }
+
+    /**
+     * The NULL-`datacl` arm, which is the DANGEROUS default and was untested until a mutant survived.
+     *
+     * A NULL `datacl` means "PostgreSQL's defaults apply", and that default grants `TEMPORARY` **and**
+     * `CONNECT` to `PUBLIC`. Reading NULL as "no grants" therefore certifies every untouched database as safe —
+     * the exact inversion the sibling arm for a function's `EXECUTE` exists to prevent.
+     *
+     * This fixture could not catch it: `provision-test-database.sh` REVOKEs from PUBLIC and then GRANTs, which
+     * MATERIALISES `datacl`, so the explicit grant is found whichever way NULL is read. A mutant flipping the
+     * default-grants arm to `false` passed the whole suite. [Verified on this cluster: `twes_in_test.datacl` is
+     * `{twes_owner=CTc/...,twes=Tc/...}` while `postgres.datacl` is **NULL**.]
+     *
+     * So the case connects to a database whose ACL is genuinely untouched. That also exercises the scope
+     * boundary `assertPolicedTablesAreBeyondThisRolesReach()` documents: PUBLIC retains `CONNECT` on other
+     * databases, so the runtime role really can reach one — which is why that boundary is documented rather
+     * than asserted, and why this test can exist at all.
+     */
+    public function testTheTemporaryGuardTreatsANullDatabaseAclAsTheDangerousDefault(): void
+    {
+        $user = getenv('TWES_TEST_DB_USER');
+        $password = getenv('TWES_TEST_DB_PASSWORD');
+        $host = getenv('TWES_TEST_DB_HOST') ?: '127.0.0.1';
+
+        if (!\is_string($user) || !\is_string($password)) {
+            self::markTestSkipped('No runtime credentials configured.');
+        }
+
+        try {
+            $untouched = new \PDO(
+                \sprintf('pgsql:host=%s;dbname=postgres', $host),
+                $user,
+                $password,
+                [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION],
+            );
+        } catch (\PDOException $exception) {
+            self::markTestSkipped(
+                'No database with an untouched ACL is reachable, so the NULL-datacl arm cannot be exercised '
+                . 'here: ' . $exception->getMessage(),
+            );
+        }
+
+        // The precondition: this database's ACL really is NULL, or the case proves nothing beyond the one above.
+        $acl = $untouched->query(
+            'SELECT datacl IS NULL AS untouched FROM pg_database WHERE datname = current_database()',
+        );
+        self::assertNotFalse($acl);
+        self::assertContains(
+            $acl->fetchColumn(),
+            [true, 't', '1'],
+            'This test needs a database whose datacl is NULL. If it is not, pick another.',
+        );
+
+        $caught = null;
+
+        try {
+            PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateTemporaryObjects($untouched);
+        } catch (\RuntimeException $exception) {
+            $caught = $exception;
+        }
+
+        self::assertNotNull(
+            $caught,
+            'A NULL datacl grants TEMPORARY to PUBLIC, so it must be REFUSED. Reading NULL as "no grants" '
+            . 'certifies every untouched database as safe.',
+        );
+        self::assertStringContainsString('NULL datacl', $caught->getMessage());
     }
 
     // ------------------------------------------------------------------ fixture

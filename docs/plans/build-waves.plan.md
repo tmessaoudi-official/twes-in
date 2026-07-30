@@ -114,7 +114,7 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   closure are ACCEPTED, and round 12 is pointed at the round-11 diff** — `scripts/gates/shell-syntax.sh` and
   `dependency-licences.php`'s own-licence check both stay, notwithstanding the previous ruling's "I write no new
   gate code" clause. Consequence accepted explicitly rather than hoped away: round 12's scope therefore INCLUDES
-  ~500 lines of new gate code, which is exactly the input the freeze existed to remove, so gate findings are
+  292 lines of new gate code, which is exactly the input the freeze existed to remove, so gate findings are
   expected rather than a surprise. The freeze hypothesis is retired as falsified (see the amended entry below);
   round 12 is a normal MAXIMAL round over the round-11 diff, with the `Rate`/`PriceCalculator`/`Currency` surface
   the correctness lens *confirmed* rather than attacked as its second target.
@@ -148,7 +148,7 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   deferred to Wave 12 while ten scripts already existed unchecked, including the other gates), and an
   own-licence-declaration check inside `dependency-licences.php` (closing the live half of R7-4, where nothing
   asserted that either manifest declares `AGPL-3.0-or-later`). Both are proven to fail before being trusted and
-  `test-gates.sh` is at 344 cases, 0 failed — but the clause said *no new gate code*, and writing 500 lines of it
+  `test-gates.sh` is at 344 cases, 0 failed — but the clause said *no new gate code*, and writing 292 lines of it
   is not a small reading of that. **This is the developer's call to accept or revert**, and it is the one open
   item from round 11.
 
@@ -581,6 +581,34 @@ layer that cannot see its own trigger — repository code does not issue the sav
    seam (a DBAL middleware), or forbid savepoint-backed nested transactions in configuration. A check every
    caller must remember is the weakest of the three, and this repo already records that a control enforced
    only by a reviewer's memory is not a control.
+
+**WAVE 1 ALSO OWES THE CONNECTION-LIFECYCLE WIRING FOR THE SEVENTH AND EIGHTH CARRIERS** (round 12). This is
+recorded here rather than only in a docblock because that is precisely the omission round 11 recorded *closing*
+one round earlier — "the savepoint obligation lived in one Decisions Log line and a docblock, so a Wave 1
+session and its load-time-chartered reviewer had no way to find it" — and the identical omission was
+reintroduced for the seventh class in the very next round.
+
+Three calls, and a pool that lands without them is a `completeness-reviewer` **P0**:
+
+1. **`discardSessionState()` when a connection is RETURNED.** A temporary table and a `CURSOR WITH HOLD`
+   outlive the transaction-scoped binding and are readable under whatever tenant is bound next. It rolls back
+   an open transaction rather than refusing, because release most often happens on an exception path.
+2. **`assertConnectionCannotBypassPolicies()` when one is ACQUIRED** — which now composes the session-lifetime
+   and large-object checks, so this is one call rather than three. Round 12 found the seventh-class guard
+   reachable only from its own test; composing it is what makes "a check nobody calls is not a check" hold.
+3. **`assertConnectionCannotCreateTemporaryObjects()` in PRODUCTION only**, and deliberately not in the
+   composite: the test database grants `TEMPORARY` because the column-fidelity suite needs a scratch table, so
+   composing it would fail every run. `pg_temp` PRECEDES `public` in the search path, so a temporary table named
+   after a policed one intercepts every unqualified reference to it — the leak arrives under the real table's
+   own name. [Verified: with a temporary `shadow_probe` present, `current_schemas(true)` reads
+   `{pg_temp_6,pg_catalog,public}` and an unqualified `shadow_probe::regclass` resolves into `pg_temp_6`.]
+
+**And the eighth carrier is a RULE, not a wiring item: zero large objects.** `pg_largeobject` is a system
+catalogue that cannot carry row-level security at any privilege level, `lo_get` needs no privilege the runtime
+role lacks, and the default ACL is owner-only — which, because every request connects as the same role, means
+every tenant's blob is readable under every binding. `DISCARD ALL` does not clear them. Blobs go in a policed
+tenant-owned table or outside the database. Invoice PDFs are the canonical large-object use, so Wave 4 must not
+reach for one.
 
 **THE SCHEMA GATE IS A WAVE 1 BLOCKER — the first migration does not land without it** (developer ruling,
 2026-07-30). Every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply

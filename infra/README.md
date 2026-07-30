@@ -33,3 +33,46 @@ invariants", item 7.
 | **No policy may be `USING (true)`, and every policy must reference `twes.tenant_id`** | `ENABLE` + `FORCE` + a policy named `tenant_isolation` that isolates nothing satisfied every flag-based check while allowing cross-tenant reads **and** writes. The two catalogue flags cannot distinguish a correct policy from a hole; the expression has to be read. Now checked. |
 | **A policed PARTITIONED table needs the policy on every PARTITION, not only the parent** | RLS on a partitioned parent does not police direct access to a partition: `SELECT * FROM invoices_2026` bypasses the parent's policy entirely. The parent carries `relkind = 'p'`, which also excluded it from the isolation check until round 5. |
 | CI mirroring the quality gate tier by tier | Every job commented with why it exists and what breaks without it — house convention. |
+
+### The runtime role must NOT hold `TEMPORARY` on the database
+
+Added at certification round 12, which found this requirement stated in a shell comment in
+`scripts/dev/provision-test-database.sh` and **nowhere else** — not here, beside its two siblings, and asserted
+by no code, while `TRUNCATE`, an identically-shaped requirement, *is* asserted. "A control asserted in prose and
+enforced nowhere is not a control" is this repository's most-repeated lesson.
+
+`pg_temp` **precedes** `public` in the effective search path, so a temporary table named after a policed one
+intercepts every UNQUALIFIED reference to it:
+
+```sql
+-- bound to tenant A
+CREATE TEMPORARY TABLE invoices AS SELECT * FROM public.invoices;
+-- connection returned to the pool, next holder bound to tenant B, ordinary application SQL:
+SELECT * FROM invoices;      -- resolves to pg_temp.invoices: tenant A's rows, unpoliced
+```
+
+The leak arrives under the real table's own name, through queries no reviewer would look at twice. A temporary
+table also carries no row-level security of its own and sits in no policed inheritance hierarchy, so no arm of
+`assertPolicedTablesAreBeyondThisRolesReach()` can ever see it.
+
+```sql
+REVOKE TEMPORARY ON DATABASE <db> FROM PUBLIC;   -- PostgreSQL grants it to PUBLIC by default
+-- and do NOT grant it back to the runtime role
+```
+
+A **NULL `datacl`** means PostgreSQL's default, which grants `TEMPORARY` (and `CONNECT`) to `PUBLIC` — so an
+untouched database is the dangerous case, not the safe one. Asserted by
+`PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateTemporaryObjects()`, which is deliberately not
+part of the composite acquisition check: the **test** database grants `TEMPORARY` on purpose, because the
+column-fidelity suite needs a scratch table that leaves nothing behind. Production must not.
+
+### No large objects, ever
+
+`pg_largeobject` is a system catalogue and **cannot carry row-level security at any privilege level**.
+`lo_from_bytea`/`lo_get` need no privilege the restricted runtime role lacks, and a large object's default ACL
+is owner-only — which, because every request connects as the *same* runtime role, means **every tenant's blob is
+readable under every binding**. `DISCARD ALL` does not clear them, so there is no release-time remedy either.
+
+Blobs belong in a policed tenant-owned table or outside the database entirely. Invoice PDFs are the canonical
+large-object use, so this is a constraint on Wave 4 rather than a theoretical one. Asserted by
+`assertNoLargeObjectIsReachable()`, which is composed into the acquisition check.

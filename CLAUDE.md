@@ -263,7 +263,9 @@ rule with an empty allowlist; adding an entry is an argument to be made in a com
 **The default currency is TND, which has THREE decimal places** (1 dinar = 1000 millimes), so **a
 2-decimal assumption is a bug for the default currency, not an edge case**. No `round($x, 2)`, no
 `× 100` to reach minor units, no "cents" in a name or a comment. `Money` carries each currency's own
-scale and refuses to assume one; the column type is `NUMERIC(19,4)` — 3 decimals exact, plus a digit of
+scale and refuses to assume one; the column type is `NUMERIC(19,4)` **plus a companion `currency` column on
+every persisted amount** (added at round 12, which found that argument made for the `product` table alone
+— a `Money` is *(amount, currency)*, so a bare NUMERIC cannot reconstitute one) — 3 decimals exact, plus a digit of
 headroom for unit prices and rates. Tunisia's stamp duty of `0.100 TND` is 100 millimes and must
 represent exactly. [Verified: ISO 4217 — TND, BHD, JOD, KWD, OMR, LYD and IQD are the 3-decimal set.] A decimal library may be an
 implementation detail inside it; it may never leak into a signature. Rationale: this is the crown-jewel

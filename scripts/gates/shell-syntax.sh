@@ -40,7 +40,10 @@ failed=0
 while IFS= read -r file; do
     [ -n "$file" ] || continue
 
-    if ! bash -n "$file" 2>&1; then
+    # `--` because a tracked path beginning with `-` would otherwise be consumed as a bash option,
+    # and the gate would then mis-report rather than check it. Not exploitable (-n suppresses
+    # execution) but a gate that mis-reports is the thing this gate exists to prevent.
+    if ! bash -n -- "$file" 2>&1; then
         echo "shell-syntax: FAIL — ${file} does not parse"
         failed=$((failed + 1))
     fi

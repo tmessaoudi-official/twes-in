@@ -456,6 +456,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
 
         self::assertNoTenantPinnedOnTheConnection($connection);
 
+        // THE SEVENTH AND EIGHTH CARRIERS, composed here rather than left as methods a caller must remember.
+        // Round 12 found the seventh-class guard reachable only from its own test, one round after it closed a
+        // P0 — while this method already composed the equally lifecycle-dependent
+        // assertNoTenantPinnedOnTheConnection(). Two entry points to remember is one more than a pool wiring
+        // will remember, and this project's own fifth-path test asserts exactly this property: "a check nobody
+        // calls is not a check".
+        //
+        // assertConnectionCannotCreateTemporaryObjects() is deliberately NOT here — see its docblock: the test
+        // database grants TEMPORARY on purpose, so composing it would fail every run. That one is addressed to
+        // production, recorded in infra/README.md, and owed as Wave 1 wiring.
+        self::assertNoSessionLifetimeDataIsMaterialised($connection);
+        self::assertNoLargeObjectIsReachable($connection);
+
         return $policedTables;
     }
 
@@ -571,8 +584,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . ') '
             . 'SELECT n.nspname || \'.\' || c.relname AS "table", o.rolname AS owner, '
             . 's.via_ancestry, '
-            . "pg_has_role(session_user, c.relowner, 'MEMBER') "
-            . "OR pg_has_role(current_user, c.relowner, 'MEMBER') AS owner_reachable, "
+            . self::roleIsReachableSql('c.relowner') . ' AS owner_reachable, '
             // TRUNCATE by REACHABILITY, not by inheritance. `has_table_privilege` resolves privileges the
             // way PostgreSQL applies them *now* — inheritably — while `SET ROLE` is authorised by
             // MEMBERSHIP. A grant made `WITH INHERIT FALSE` (the PG16+ way to say "hold this deliberately,
@@ -580,10 +592,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // the privilege. Round 5 erased both tenants through exactly that gap. aclexplode is used
             // because it exposes the grantee, which is the thing membership has to be tested against;
             // grantee 0 is PUBLIC.
-            . 'EXISTS (SELECT 1 FROM aclexplode(c.relacl) a '
-            . "WHERE a.privilege_type = 'TRUNCATE' AND (a.grantee = 0 "
-            . "OR pg_has_role(session_user, a.grantee, 'MEMBER') "
-            . "OR pg_has_role(current_user, a.grantee, 'MEMBER'))) AS can_truncate, "
+            . self::privilegeIsReachableSql('c.relacl', 'TRUNCATE', false) . ' AS can_truncate, '
             . 'c.relforcerowsecurity AS forced, '
             . 'c.relrowsecurity AS rls_enabled, '
             . "c.relispartition AS is_partition, "
@@ -651,8 +660,13 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     /**
      * SQL for "this connection can become the role in `$roleOid`", as a boolean expression.
      *
-     * ONE definition, referenced everywhere, because the wrong definition is the recurring defect in this
-     * class. `has_table_privilege`/`has_function_privilege` resolve privileges the way PostgreSQL applies
+     * ONE definition, referenced everywhere — and that sentence was FALSE for a round after it was written.
+     * Round 12 found `assertPolicedTablesAreBeyondThisRolesReach()` still spelling both predicates out inline,
+     * in the very query these helpers were extracted from, while this docblock told a reader there was only one
+     * place to change. Byte-equivalent at the time, so nothing leaked — but divergence between copies is the
+     * defect this file records twice (round 5 fixed one copy of this predicate; round 11 found the other, seven
+     * rounds later), and a claim of a single choke point is what stops somebody looking for the second copy.
+     * Both call sites now call these. `has_table_privilege`/`has_function_privilege` resolve privileges the way PostgreSQL applies
      * them at this instant — **inheritably** — while `SET ROLE` is authorised by **MEMBERSHIP**. A grant made
      * `WITH INHERIT FALSE` (the PG16+ way to say "hold this deliberately, not by default") is therefore
      * invisible to the `has_*_privilege` family and exactly one statement away from the privilege. This
@@ -667,6 +681,34 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     {
         return \sprintf(
             "(pg_has_role(session_user, %s, 'MEMBER') OR pg_has_role(current_user, %s, 'MEMBER'))",
+            $roleOid,
+            $roleOid,
+        );
+    }
+
+    /**
+     * The NARROW form: "this connection can actually BECOME the role", for use under a negation.
+     *
+     * `MEMBER` is the widest of `pg_has_role`'s modes and is the correct one everywhere this class asks
+     * *positively* — "could this connection reach a dangerous privilege" must err wide. Under a **negation** the
+     * same width inverts the safety direction, and round 12 found exactly that in the `SECURITY DEFINER`
+     * filter: `NOT (… 'MEMBER' …)` excludes a function whose owner the connection is a *member* of but cannot
+     * `SET ROLE` to — which is precisely the case where calling the function is the ONLY route to that role's
+     * rights, and therefore the one that most needs flagging.
+     *
+     * PostgreSQL 16 separated the three grant options, so this is a live distinction rather than a theoretical
+     * one. [Verified on this server, for this fixture's own `GRANT twes_truncator TO twes WITH INHERIT FALSE`:
+     * `MEMBER` true, `USAGE` false, `SET` true, and `pg_auth_members` records `inherit_option=false`,
+     * `set_option=true` as separate columns.]
+     *
+     * `SET` is the mode asked here because `SET ROLE` is what "become" means. A grant made `WITH SET FALSE`
+     * yields `MEMBER` true and `SET` false: the connection cannot become the role by any ordinary means, so a
+     * `SECURITY DEFINER` function owned by it IS an escalation and must be reported.
+     */
+    private static function roleCanBeAssumedSql(string $roleOid): string
+    {
+        return \sprintf(
+            "(pg_has_role(session_user, %s, 'SET') OR pg_has_role(current_user, %s, 'SET'))",
             $roleOid,
             $roleOid,
         );
@@ -1069,7 +1111,10 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . 'JOIN pg_namespace n ON n.oid = p.pronamespace '
             . 'WHERE p.prosecdef '
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
-            . 'AND NOT ' . self::roleIsReachableSql('p.proowner') . ' '
+            // The NARROW mode, because this predicate is NEGATED — see roleCanBeAssumedSql(). With 'MEMBER'
+            // here, a function whose owner the connection is a member of but cannot SET ROLE to was excluded
+            // as "no escalation", when it is the case where the function is the only route to that role.
+            . 'AND NOT ' . self::roleCanBeAssumedSql('p.proowner') . ' '
             // EXECUTE resolved through the ACL, with the default-grants-PUBLIC arm that
             // `has_function_privilege` was silently supplying. Dropping that arm along with the function would
             // have made every untouched SECURITY DEFINER function invisible — the commonest case there is.
@@ -1310,22 +1355,163 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * releases sequence state and deallocates prepared statements. A targeted version would need extending
      * every time PostgreSQL grows another kind of session state, and forgetting to extend it is silent.
      *
-     * Refused inside a transaction because PostgreSQL raises 25001 there. Refusing with an explanation is the
-     * difference between a caller who moves the call and a caller who wraps it in a try/catch — and the second
-     * is how a release-time guard quietly stops running.
-     *
-     * @throws \RuntimeException if called inside a transaction
+     * **An open transaction is ROLLED BACK, not refused** — see the inline comment for why the original
+     * refusal had the direction backwards. `DISCARD ALL` cannot run inside a transaction block (SQLSTATE
+     * 25001), so something has to give, and for a cleanup routine the safe thing to give is the transaction.
      */
     public static function discardSessionState(\PDO $connection): void
     {
+        // ROLLS BACK AND CLEARS, rather than refusing. The first version threw inside a transaction, on the
+        // reasoning that DISCARD ALL raises 25001 there and an explicit refusal beats an obscure failure.
+        // Round 12 refuted the direction: a connection is returned to the pool most often on an EXCEPTION
+        // path, where a transaction is still open — so the one state this method refused was the state it
+        // would most often be called in, and the dirtiest connection went back to the pool with the temp
+        // table, the held cursor and the binding still on it.
+        //
+        // For a CLEANUP routine, fail-closed means "clear it anyway". An open transaction at release is
+        // already an error, and rolling it back is the only safe interpretation: committing would persist
+        // whatever half-finished work raised the exception.
         if ($connection->inTransaction()) {
-            throw new \RuntimeException(
-                'Discard session state outside a transaction: DISCARD ALL cannot run inside a transaction '
-                . 'block (SQLSTATE 25001). Commit or roll back first, then discard.',
-            );
+            $connection->rollBack();
         }
 
         $connection->exec('DISCARD ALL');
+    }
+
+    /**
+     * Refuse a connection that can reach a LARGE OBJECT — the eighth carrier, and the longest-lived.
+     *
+     * The seventh class covers *session*-lifetime carriers. A large object is the same "copy rows out from
+     * under a policy" channel with a **permanent** lifetime, and every property that makes it dangerous is a
+     * property of PostgreSQL rather than of our schema:
+     *
+     *  - `pg_largeobject` is a system catalogue and **cannot carry row-level security at all**.
+     *  - `lo_from_bytea()` and `lo_get()` need no privilege the restricted runtime role lacks.
+     *  - A large object's default ACL is **owner-only** — and since every request connects as the *same*
+     *    runtime role, owner-only means *every tenant's blob is readable under every binding*.
+     *  - `DISCARD ALL` does not touch it, so {@see self::discardSessionState()} is not a remedy.
+     *
+     * [Verified on this server as the restricted role: `lo_from_bytea` created an object owned by `twes` with
+     * a NULL ACL, and `lo_get` returned its bytes while the session was bound to a DIFFERENT tenant;
+     * `relrowsecurity` on `pg_largeobject` is false.]
+     *
+     * A billing product generating invoice PDFs is the canonical large-object use, which is what makes this
+     * worth a guard rather than a note. **The rule is zero: blobs belong in a policed tenant-owned table or
+     * outside the database entirely.** That is a stricter rule than "police them", chosen because there is no
+     * way to police them — so the only enforceable statement is that none exists.
+     *
+     * @throws \RuntimeException if any large object exists
+     */
+    public static function assertNoLargeObjectIsReachable(\PDO $connection): void
+    {
+        $statement = $connection->query(
+            'SELECT m.oid, m.lomowner::regrole::text AS owner, '
+            . 'coalesce(m.lomacl::text, \'(owner only)\') AS acl '
+            . 'FROM pg_largeobject_metadata m ORDER BY m.oid',
+        );
+
+        if (false === $statement) {
+            throw new \RuntimeException('Could not inspect large objects.');
+        }
+
+        /** @var list<array{oid: int|string, owner: string, acl: string}> $objects */
+        $objects = $statement->fetchAll(\PDO::FETCH_ASSOC);
+
+        if ([] === $objects) {
+            return;
+        }
+
+        $described = array_map(
+            static fn(array $object): string => \sprintf(
+                'large object %s owned by %s, acl %s',
+                (string) $object['oid'],
+                $object['owner'],
+                $object['acl'],
+            ),
+            $objects,
+        );
+
+        throw new \RuntimeException(
+            'This database contains large objects, which cannot carry row-level security at any privilege '
+            . 'level and are readable under whatever tenant is bound when they are read: '
+            . implode('; ', $described)
+            . '. twes-in stores blobs in a policed tenant-owned table or outside the database; there is no '
+            . 'way to police pg_largeobject, so the only enforceable rule is that none exists. DISCARD ALL '
+            . 'does not clear them.',
+        );
+    }
+
+    /**
+     * Refuse a connection that can create TEMPORARY objects — because `pg_temp` SHADOWS `public`.
+     *
+     * The seventh class detects a temporary relation that already exists. This removes the capability, and the
+     * two are not redundant: detection runs at acquisition, and a temp table created *after* that is invisible
+     * until the next acquisition.
+     *
+     * **Why shadowing makes this worse than an extra unpoliced table.** `pg_temp` precedes `public` in the
+     * effective search path, so a temporary table named after a real one intercepts every UNQUALIFIED
+     * reference to it:
+     *
+     * ```
+     * -- bound to tenant A
+     * CREATE TEMPORARY TABLE invoices AS SELECT * FROM public.invoices;
+     * -- connection returned to the pool, next holder bound to tenant B, ordinary application SQL:
+     * SELECT * FROM invoices;   -- resolves to pg_temp.invoices: tenant A's rows, unpoliced
+     * ```
+     *
+     * The leak arrives under the real table's own name, through queries no reviewer would look at twice.
+     * [Verified on this server: with a temporary `shadow_probe` present, `current_schemas(true)` reads
+     * `{pg_temp_6,pg_catalog,public}` and an unqualified `shadow_probe::regclass` resolves into `pg_temp_6`
+     * rather than `public`. The resolution is what was verified; the row read through it was not, so this
+     * docblock claims the former only.]
+     *
+     * **Not part of {@see self::assertConnectionCannotBypassPolicies()}, and that is deliberate rather than an
+     * omission.** This project's own test database GRANTS `TEMPORARY` to the runtime role, because the
+     * column-fidelity suite needs a scratch table that leaves nothing behind — so composing this into the
+     * acquisition check would fail every test run. The requirement is therefore addressed to **production**,
+     * is recorded in `infra/README.md` beside the sibling requirements (the runtime role must not own the
+     * policed tables, and must not hold `TRUNCATE`), and is owed as Wave 1 wiring. Disclosed here because
+     * "a control asserted in prose and enforced nowhere is not a control" is this repository's most-repeated
+     * lesson, and a capability with a tested assertion and a named owner is not the same thing as prose.
+     *
+     * @throws \RuntimeException if TEMPORARY on the current database is reachable
+     */
+    public static function assertConnectionCannotCreateTemporaryObjects(\PDO $connection): void
+    {
+        // By REACHABILITY, like every other privilege question in this class: aclexplode over datacl, with
+        // membership tested against the grantee. A NULL datacl means PostgreSQL's default, which grants
+        // TEMPORARY (and CONNECT) to PUBLIC — so a NULL ACL is the DANGEROUS case here, exactly as it is for
+        // a function's EXECUTE, and reading it as "no grants" would certify every default database as safe.
+        $statement = $connection->query(
+            'SELECT current_database() AS db, ('
+            . '  SELECT ' . self::privilegeIsReachableSql('d.datacl', 'TEMPORARY', true) . ' '
+            . '  FROM pg_database d WHERE d.datname = current_database()'
+            . ') AS can_create_temp',
+        );
+
+        if (false === $statement) {
+            throw new \RuntimeException('Could not inspect the database ACL for TEMPORARY.');
+        }
+
+        /** @var array{db: string, can_create_temp: bool|string}|false $row */
+        $row = $statement->fetch(\PDO::FETCH_ASSOC);
+
+        if (false === $row) {
+            throw new \RuntimeException('Could not read the current database from pg_database.');
+        }
+
+        if (self::isTrue($row['can_create_temp'])) {
+            throw new \RuntimeException(\sprintf(
+                'This connection can create TEMPORARY objects in %s. A temporary table carries no row-level '
+                . 'security and pg_temp PRECEDES public in the search path, so a temporary table named after '
+                . 'a policed one intercepts every unqualified reference to it — the next holder of this '
+                . 'connection reads the previous tenant\'s rows under the real table\'s own name. '
+                . 'REVOKE TEMPORARY ON DATABASE %s FROM PUBLIC, and do not grant it to the runtime role. '
+                . 'Note a NULL datacl means PostgreSQL\'s default, which grants TEMPORARY to PUBLIC.',
+                $row['db'],
+                $row['db'],
+            ));
+        }
     }
 
     /**

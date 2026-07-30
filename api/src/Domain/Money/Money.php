@@ -239,7 +239,10 @@ final readonly class Money
      * Deliberately **not** a `Money`: the ratio of two amounts is dimensionless, and returning money
      * here is how a rate ends up rounded to a currency's scale — losing the precision a profit rate or
      * a tax rate needs. The caller supplies the scale it needs, because only the caller knows whether
-     * it is building a rate (six decimals) or a proportion for an allocation.
+     * it is building a rate (TWELVE decimals -- see Rate::FRACTION_SCALE) or a proportion for an allocation.
+     * Said "six" until round 12, which is the exact number a prior round ruled WAS the defect: six rounded a
+     * real 0.0000001 rate to zero and deleted a millime of profit. Round 11 added lines immediately below
+     * this sentence without reading it.
      *
      * @throws CurrencyMismatch
      * @throws InvalidMoneyAmount if rounding is needed under RoundingMode::Unnecessary
