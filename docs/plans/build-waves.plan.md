@@ -110,6 +110,31 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   remainder subtraction, so a too-small working scale makes an **inexact division report itself as exact**.
   Invisible to HalfUp; decisive for `Ceiling`, which then rounds a strictly-positive value DOWN, and for
   `Unnecessary`, which hands back a value instead of refusing a lossy operation. Two cases added; mutant dies.
+- [2026-07-30 08:30] RULED (developer accepting the recommendation): **freeze the gates; round 11 verifies the
+  DOMAIN only, and I write no new gate code in response to it.** Findings by round are
+  48 → 26 → 20 → 21 → 29 → 17 → 20 → 23 → 29 → 28: not converging, and round 10 made the reason legible. The
+  findings have moved entirely out of Wave 0's product code and into **the gates and records the loop itself
+  produced** — all three round-10 lenses independently found that round 9's two P1 fixes were deletable with the
+  suite green, and the copyleft veto I wrote to close a licensing bypass did not work at all because its markers
+  were case-sensitive. Two lenses have now confirmed the domain, the tenancy implementation and the money
+  arithmetic green across several consecutive rounds.
+  So the loop's dominant input is **my own new gate code, failing on its first attempt, every round**. Removing
+  that input is the one change plausibly capable of producing a clean round, and it is a cheaper experiment than
+  changing what MAXIMAL requires. Accepted cost, stated rather than hidden: the gate defects round 10 found were
+  real, so freezing means accepting the gates as they now stand — including the residues below — rather than
+  believing they are finished.
+  **If round 11 comes back clean, round 12 under the same freeze is what would satisfy MAXIMAL's two consecutive
+  clean rounds.** If it comes back with domain findings, the hypothesis is wrong and that is worth knowing.
+
+- [2026-07-30 08:30] RECORDED, so the next session does not have to rediscover it: **a reviewer agent that
+  builds a policed probe table and leaves it behind breaks `TenantIsolationTest`.** Four tests failed after
+  round 10 — `testTheApplicationRoleCannotBypassRowLevelSecurity`,
+  `testTheCheckRefusesToCertifyADatabaseWithNoPolicedTable` and both partition cases — because they assert on
+  counts derived from the catalogue, and a leftover `probe_sp_*` table changes those counts. It was NOT a
+  regression from the commit under review, which cost real time to establish.
+  `DROP TABLE IF EXISTS public.probe_sp_* CASCADE` clears it. Better: a reviewer reproducing tenancy behaviour
+  should use a `CREATE TEMPORARY TABLE`, as `NumericColumnFidelityTest` already does for exactly this reason.
+
 - [2026-07-30 06:10] RULED (R4-18, developer accepting the recommendation): **leave the empty-string gap open
   and keep the record; close it opportunistically, not urgently.** `assertSessionTenantIsUnset()` returns early
   on `'' === $existing`, so a transaction-local `set_config('twes.tenant_id', '', true)` masks a live
