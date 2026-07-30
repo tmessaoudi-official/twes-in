@@ -58,10 +58,39 @@ final class PricingVectorsTest extends TestCase
             static fn(array $case): bool => isset($case['vat_if_rounded_per_line_which_is_WRONG']),
         );
         self::assertNotEmpty($pinsRoundingOrder, 'No case distinguishes per-line from per-document VAT rounding.');
-        self::assertGreaterThanOrEqual(9, \count($vectors['cases']));
+        self::assertGreaterThanOrEqual(11, \count($vectors['cases']));
         self::assertGreaterThanOrEqual(8, \count($vectors['edit_directions']));
         self::assertGreaterThanOrEqual(3, \count($vectors['document_totals']));
         self::assertGreaterThanOrEqual(4, \count($vectors['authored_field']));
+
+        // COUNTS ARE NOT COVERAGE, and round 11 proved it on this very file: eleven cases, and not one of
+        // them a NEGATIVE tie — while `conventions.rounding` names negative ties as *the* thing that separates
+        // a correct implementation from a plausible one, because `Math.round(-0.5)` is -0 in JavaScript. A
+        // floor on `count()` cannot notice the absence of a property. So the two properties the conventions
+        // actually claim are asserted directly.
+        $negative = array_filter(
+            $vectors['cases'],
+            static fn(array $case): bool => str_starts_with($case['expected']['vat'], '-'),
+        );
+        self::assertNotEmpty(
+            $negative,
+            'No case has a negative VAT, so nothing pins half_up as half-AWAY-FROM-ZERO. A TypeScript tier '
+            . 'written with Math.round would agree with this fixture on every case in it.',
+        );
+
+        // FOUR distinct currency scales. With 0, 2 and 3 only, an implementation hardcoding "at most three
+        // decimals" — the natural over-correction to TND's three — passes the whole fixture.
+        $scales = array_values(array_unique(array_map(
+            static fn(array $case): int => Currency::of($case['currency'])->scale(),
+            $vectors['cases'],
+        )));
+        sort($scales);
+        self::assertSame(
+            [0, 2, 3, 4],
+            $scales,
+            'The fixture must exercise a zero-, two-, three- AND four-decimal currency. TND has three, so '
+            . 'three is the DEFAULT case here and neither the minimum nor the maximum a tier may assume.',
+        );
     }
 
     #[DataProvider('pricingCases')]

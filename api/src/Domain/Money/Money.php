@@ -244,6 +244,9 @@ final readonly class Money
      * @throws CurrencyMismatch
      * @throws InvalidMoneyAmount if rounding is needed under RoundingMode::Unnecessary
      * @throws \DivisionByZeroError if `$other` is zero — a caller that can hit zero must check first
+     * @throws \LogicException if `$scale` is negative. A programming error at the call site, refused by
+     *                         Decimal so a bcmath ValueError cannot escape the domain — see
+     *                         Decimal::assertScale()
      */
     public function ratioTo(self $other, int $scale, RoundingMode $mode): string
     {
@@ -252,9 +255,12 @@ final readonly class Money
         $ratio = Decimal::divide($this->amount, $other->amount, $scale, $mode);
 
         if (null === $ratio) {
-            throw InvalidMoneyAmount::roundingWouldLosePrecision(
+            // The SCALE-shaped factory, not the currency-shaped one. The failure is about the scale this
+            // caller asked for; the currency is not involved, which is exactly why this method returns a
+            // string rather than a Money. See the factory's docblock.
+            throw InvalidMoneyAmount::roundingWouldLosePrecisionAtScale(
                 $this->amount . ' / ' . $other->amount,
-                $this->currency,
+                $scale,
             );
         }
 

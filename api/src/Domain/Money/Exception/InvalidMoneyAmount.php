@@ -60,6 +60,26 @@ final class InvalidMoneyAmount extends \InvalidArgumentException
         ));
     }
 
+    /**
+     * The DIMENSIONLESS case: a ratio, rounded at a scale the caller chose.
+     *
+     * Separate from {@see self::roundingWouldLosePrecision()} because that one names the currency and its
+     * scale, and neither is involved here. `Money::ratioTo()` returns a plain string precisely because the
+     * ratio of two amounts is dimensionless, and it rounds at the scale the CALLER asked for — so reporting
+     * `does not fit TND (3 decimal place(s))` to a caller who asked for twelve is a false statement in an
+     * error message. It sends a reader to inspect the currency, which is not part of the failure, while the
+     * number they actually chose is absent. Round 11 found the currency-shaped factory reused here.
+     */
+    public static function roundingWouldLosePrecisionAtScale(string $expression, int $scale): self
+    {
+        return new self(\sprintf(
+            'Result "%s" does not fit %d decimal place(s) and RoundingMode::Unnecessary forbids rounding '
+            . 'it. Choose a rounding mode, or ask for a higher scale.',
+            $expression,
+            $scale,
+        ));
+    }
+
     public static function roundingWouldLosePrecision(string $amount, Currency $currency): self
     {
         return new self(\sprintf(

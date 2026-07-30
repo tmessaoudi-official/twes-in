@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Twes\Domain\Pricing;
 
 use Twes\Domain\Money\Exception\CurrencyMismatch;
+use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Exception\InvalidCost;
 use Twes\Domain\Shared\Decimal;
@@ -87,7 +88,20 @@ final readonly class ProductPricing
         // fits under all seven. Bounding by the worst case is why this method does not need to know which mode
         // a later `netPrice()` call will use.
         $exact = Decimal::multiplyExact($cost->amount(), $profitRate->markupMultiplier());
-        $product = Decimal::rescale($exact, $cost->currency()->scale(), RoundingMode::Up) ?? $exact;
+
+        // `?? throw`, NOT `?? $exact`. `Decimal::rescale()` returns null for exactly one reason — the caller
+        // passed `RoundingMode::Unnecessary` and the value needed rounding — so with `Up` hardcoded above the
+        // null arm is unreachable today. Round 11 found it written as `?? $exact`, which is unreachable *and*
+        // wrong: falling back to the unrounded exact product is precisely the version round 6 refuted, because
+        // rounding can carry an extra integer digit and the guard below would then measure the wrong number.
+        // A dead arm that silently produces a wrong value is worse than one that fails loudly, so if a later
+        // edit changes that mode this raises instead of quietly re-opening the boundary.
+        $product = Decimal::rescale($exact, $cost->currency()->scale(), RoundingMode::Up)
+            ?? throw new \LogicException(
+                'Decimal::rescale() returned null for RoundingMode::Up, which it does only for '
+                . 'RoundingMode::Unnecessary. Do not fall back to the unrounded product here — the digit '
+                . 'guard below must measure the value Money will actually receive.',
+            );
 
         if (Decimal::integerDigits($product) > Money::MAX_INTEGER_DIGITS) {
             throw InvalidCost::netPriceWouldNotBeRepresentable($cost, $profitRate, $product);
@@ -150,11 +164,22 @@ final readonly class ProductPricing
      * Note the precision in that condition. A rate the user *typed* is defined even on a zero cost —
      * nothing is being divided — so it is returned as entered. Only a derived one can be undefined.
      *
-     * **This accessor does not throw**, and that is a promise rather than an accident: a review found it
-     * raising `InvalidRate` for a product that had constructed and persisted perfectly legally (a
+     * **This accessor does not throw ON THE DATA**, and that is a promise rather than an accident: a review
+     * found it raising `InvalidRate` for a product that had constructed and persisted perfectly legally (a
      * one-millime cost with a typed price of 1000.000), which is a 500 on a product page rather than a
      * validation error. `PriceCalculator::profitRateFromNet()` reports an unrepresentable derived rate as
      * null, through the same channel as an undefined one, because both mean "no rate to display".
+     *
+     * The qualifier is not a hedge, and round 11 was right to find it missing: an earlier version of this
+     * paragraph said flatly "does not throw", while `RoundingModeIsForwardedTest` pinned — deliberately, in a
+     * case named `entryPointsThatMustRefuseAnUnnecessaryRounding` — that a cost of 3.000 with a typed price of
+     * 5.000 raises `InvalidMoneyAmount` under `RoundingMode::Unnecessary`. Both are correct and the distinction
+     * is the whole point: that mode is the CALLER asserting "this division needs no rounding", and 2/3 needs
+     * rounding, so the throw reports a false assertion in the call rather than a defect in the product. Every
+     * other mode returns a rate or null. A docblock that promises more than the code delivers is the more
+     * expensive artifact, because it is read once and believed.
+     *
+     * @throws InvalidMoneyAmount if $mode is RoundingMode::Unnecessary and the derivation cannot be exact
      */
     public function profitRate(RoundingMode $mode): ?Rate
     {

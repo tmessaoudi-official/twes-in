@@ -256,6 +256,72 @@ final class MoneyTest extends TestCase
     }
 
     /**
+     * `ratioTo()` refuses a negative scale itself, rather than letting a bcmath `ValueError` escape.
+     *
+     * `$scale` arrives from the caller and reached `bcdiv()` unvalidated, which raises
+     * `ValueError: bcdiv(): Argument #3 ($scale) must be between 0 and 2147483647`. CLAUDE.md § Architecture
+     * requires bcmath to stay an implementation detail inside `Decimal` and never reach a signature — and an
+     * exception type IS part of a signature. The message also names a function the caller has never heard of
+     * and cannot find anywhere in `Domain/`.
+     *
+     * `\LogicException`, not `InvalidMoneyAmount`: a negative scale is a programming error at the call site,
+     * never invalid user input, and it is the same classification `Decimal::exactlyAt()` already uses. The
+     * guard lives in `Decimal` rather than here so that all four scale-taking methods are covered — see
+     * `DecimalScaleSweepTest` for the full set.
+     */
+    public function testRatioToRefusesANegativeScaleRatherThanLeakingABcmathValueError(): void
+    {
+        $tnd = Currency::of('TND');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('cannot be negative');
+
+        Money::of('2.000', $tnd)->ratioTo(Money::of('3.000', $tnd), -1, RoundingMode::HalfUp);
+    }
+
+    /**
+     * Zero scale is ACCEPTED — the boundary, so the guard rejects negatives rather than falsy values.
+     *
+     * `0 === $scale` is a legitimate request for an integer ratio, and `if (!$scale)` or `if ($scale < 1)`
+     * would refuse it. Pinned because that off-by-one is the natural way to write the guard above.
+     */
+    public function testRatioToAcceptsAZeroScale(): void
+    {
+        $tnd = Currency::of('TND');
+
+        self::assertSame(
+            '1',
+            Money::of('3.000', $tnd)->ratioTo(Money::of('2.000', $tnd), 0, RoundingMode::HalfDown),
+        );
+    }
+
+    /**
+     * The precision-loss message names the scale that was ASKED FOR, not the currency's.
+     *
+     * A ratio is dimensionless — the method's own docblock says so and deliberately returns a string rather
+     * than a `Money` for exactly that reason. So reporting `does not fit TND (3 decimal place(s))` when the
+     * caller requested twelve is a false statement in an error message: it sends a reader to look at the
+     * currency, which is not involved in the failure, while the number they chose is absent. Round 11 found
+     * it reusing the currency-shaped factory.
+     */
+    public function testRatioToPrecisionLossNamesTheRequestedScaleRatherThanTheCurrencys(): void
+    {
+        $tnd = Currency::of('TND');
+
+        try {
+            Money::of('2.000', $tnd)->ratioTo(Money::of('3.000', $tnd), 12, RoundingMode::Unnecessary);
+            self::assertTrue(false, 'unreachable');
+        } catch (InvalidMoneyAmount $exception) {
+            self::assertStringContainsString('12', $exception->getMessage());
+            self::assertStringNotContainsString(
+                'TND',
+                $exception->getMessage(),
+                'The currency is not involved: a ratio is dimensionless.',
+            );
+        }
+    }
+
+    /**
      * `equals()` is the deliberate exception: it answers false rather than throwing.
      *
      * "Is 100 TND the same money as 100 EUR" has a definite answer, and it is no. Asserted so that the

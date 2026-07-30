@@ -78,10 +78,13 @@ final class Decimal
      * The sum is computed at full width and then required to fit. A caller that genuinely wants to round
      * must say so, through {@see self::rescale()} with an explicit mode.
      *
-     * @throws \LogicException if the result does not fit in `$scale` without rounding
+     * @throws \LogicException if `$scale` is negative, or if the result does not fit in `$scale` without
+     *                         rounding
      */
     public static function add(string $left, string $right, int $scale): string
     {
+        self::assertScale($scale, 'add');
+
         return self::exactlyAt(
             bcadd($left, $right, max(self::scaleOf($left), self::scaleOf($right))),
             $scale,
@@ -92,15 +95,50 @@ final class Decimal
     /**
      * Difference, EXACTLY. See {@see self::add()} for why a narrowing scale is refused.
      *
-     * @throws \LogicException if the result does not fit in `$scale` without rounding
+     * @throws \LogicException if `$scale` is negative, or if the result does not fit in `$scale` without
+     *                         rounding
      */
     public static function subtract(string $left, string $right, int $scale): string
     {
+        self::assertScale($scale, 'subtract');
+
         return self::exactlyAt(
             bcsub($left, $right, max(self::scaleOf($left), self::scaleOf($right))),
             $scale,
             'subtract',
         );
+    }
+
+    /**
+     * A scale must be a count of decimal places, so it cannot be negative.
+     *
+     * **This is the bcmath containment boundary, and that is the whole reason it exists.** Every bcmath
+     * function raises `ValueError: bcdiv(): Argument #3 ($scale) must be between 0 and 2147483647` for a
+     * negative scale, and round 11 found all four scale-taking methods here passing one straight through.
+     * That leaks twice: CLAUDE.md § Architecture requires bcmath to stay an implementation detail inside this
+     * class and never reach a signature — and an exception type IS part of a signature — while the message
+     * names a function the caller has never heard of and cannot find in `Domain/`.
+     *
+     * All four entry points, not just the one a review happened to arrive through: `add`, `subtract`,
+     * `rescale` and `divide`. A guard on one of a class of call sites is the recurring defect this project
+     * records in CLAUDE.md § Gotchas, twice over.
+     *
+     * `\LogicException` for the same reason {@see self::exactlyAt()} uses one: a negative scale is a
+     * programming error at the call site, never invalid user input. Note the boundary is `< 0`, not falsy —
+     * a scale of **zero** is a legitimate request for an integer result and is accepted.
+     *
+     * @throws \LogicException if `$scale` is negative
+     */
+    private static function assertScale(int $scale, string $operation): void
+    {
+        if ($scale < 0) {
+            throw new \LogicException(\sprintf(
+                'Decimal::%s() was given a scale of %d. A scale is a count of decimal places and cannot be '
+                . 'negative; zero is valid and means an integer result.',
+                $operation,
+                $scale,
+            ));
+        }
     }
 
     /**
@@ -156,10 +194,14 @@ final class Decimal
      * Re-express an exact value at `$scale`, rounding only if digits would be lost.
      *
      * Returns null when `$mode` is {@see RoundingMode::Unnecessary} and rounding would be needed —
-     * the caller turns that into a domain exception, so this class raises nothing itself.
+     * the caller turns that into a domain exception, so this class raises nothing about ROUNDING itself.
+     *
+     * @throws \LogicException if `$scale` is negative
      */
     public static function rescale(string $value, int $scale, RoundingMode $mode): ?string
     {
+        self::assertScale($scale, 'rescale');
+
         if (self::scaleOf($value) <= $scale) {
             // Widening only pads zeroes; nothing can be lost.
             return self::normaliseZero(bcadd($value, '0', $scale));
@@ -201,9 +243,12 @@ final class Decimal
      * Returns null under {@see RoundingMode::Unnecessary} when the division is not exact.
      *
      * @throws \DivisionByZeroError
+     * @throws \LogicException if `$scale` is negative
      */
     public static function divide(string $dividend, string $divisor, int $scale, RoundingMode $mode): ?string
     {
+        self::assertScale($scale, 'divide');
+
         if (self::isZero($divisor)) {
             throw new \DivisionByZeroError('Division by zero.');
         }

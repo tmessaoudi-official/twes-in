@@ -239,6 +239,92 @@ final class DecimalScaleSweepTest extends TestCase
         yield 'a trailing dot counts zero decimals' => ['5.', 0];
     }
 
+    /**
+     * EVERY scale-taking entry point refuses a negative scale, and none leaks a bcmath `ValueError`.
+     *
+     * A negative scale makes every bcmath function raise
+     * `ValueError: bcdiv(): Argument #3 ($scale) must be between 0 and 2147483647`, and round 11 found all
+     * four of these passing one straight through. CLAUDE.md § Architecture requires bcmath to stay an
+     * implementation detail inside `Decimal` and never reach a signature — an exception type IS part of a
+     * signature — and the message names a function the caller cannot find anywhere in `Domain/`.
+     *
+     * GENERATED from the method list rather than hand-picked, for the reason the gates' own meta-suite is:
+     * hand-picked cases pin the instances somebody thought of, and the defect here was precisely that a guard
+     * was needed on a CLASS of call sites. `assertNotEmpty` is there so that deleting the provider cannot
+     * quietly make this vacuous.
+     *
+     * @param callable(int): mixed $operation
+     */
+    #[DataProvider('everyScaleTakingOperation')]
+    public function testEveryScaleTakingOperationRefusesANegativeScale(string $name, callable $operation): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Decimal::' . $name . '() was given a scale of -1');
+
+        $operation(-1);
+    }
+
+    /**
+     * And every one of them ACCEPTS zero — the boundary that separates "negative" from "falsy".
+     *
+     * `if (!$scale)` or `if ($scale < 1)` is the natural way to write that guard and would refuse a
+     * legitimate request for an integer result. Each case is asserted to produce a value rather than merely
+     * not to throw, so a guard that returned early would still be caught.
+     *
+     * @param callable(int): mixed $operation
+     */
+    #[DataProvider('everyScaleTakingOperation')]
+    public function testEveryScaleTakingOperationAcceptsAZeroScale(string $name, callable $operation): void
+    {
+        self::assertNotNull($operation(0), $name . ' must accept a scale of zero');
+    }
+
+    /** @return iterable<string, array{string, callable}> */
+    public static function everyScaleTakingOperation(): iterable
+    {
+        // Operands chosen so that a scale of ZERO is exact for all four — the exact-narrowing methods
+        // (`add`, `subtract`) throw a DIFFERENT LogicException when a value does not fit, and that would
+        // mask the scale guard being absent.
+        yield 'add' => ['add', static fn(int $s): string => Decimal::add('2', '3', $s)];
+        yield 'subtract' => ['subtract', static fn(int $s): string => Decimal::subtract('5', '3', $s)];
+        yield 'rescale' => [
+            'rescale',
+            static fn(int $s): ?string => Decimal::rescale('7', $s, RoundingMode::HalfUp),
+        ];
+        yield 'divide' => [
+            'divide',
+            static fn(int $s): ?string => Decimal::divide('6', '3', $s, RoundingMode::HalfUp),
+        ];
+    }
+
+    /**
+     * The provider covers every public method of `Decimal` that takes a `$scale`, and says so in code.
+     *
+     * Reflection rather than a written list, because a written list is what goes stale the day a fifth
+     * scale-taking method is added — and then the two tests above look exhaustive while covering four of
+     * five. This fails on that day, which is the only way the word "every" in their names stays true.
+     */
+    public function testTheProviderCoversEveryPublicScaleTakingMethod(): void
+    {
+        $covered = array_keys(iterator_to_array(self::everyScaleTakingOperation()));
+        $withScale = [];
+
+        foreach (new \ReflectionClass(Decimal::class)->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            foreach ($method->getParameters() as $parameter) {
+                if ('scale' === $parameter->getName()) {
+                    $withScale[] = $method->getName();
+
+                    break;
+                }
+            }
+        }
+
+        self::assertNotEmpty($withScale, 'Reflection found no scale-taking method, so this test is vacuous.');
+        sort($covered);
+        sort($withScale);
+        self::assertSame($withScale, $covered);
+    }
+
     private static function absolute(string $value): string
     {
         return str_starts_with($value, '-') ? substr($value, 1) : $value;

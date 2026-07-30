@@ -1,17 +1,17 @@
 {
   "version": 1,
-  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift \u2014 producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file is a completeness-reviewer P0.",
+  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift — producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file is a completeness-reviewer P0.",
   "rules": {
     "net_from_cost": "net = cost * (1 + profit_rate)",
     "rate_from_net": "profit_rate = (net - cost) / cost, undefined when cost is zero",
     "vat_from_net": "vat = net * vat_rate  -- the VAT base is ALWAYS the net, never the cost",
     "gross": "gross = net + vat",
     "vat_rounding": "VAT is grouped by rate and rounded ONCE per rate group on the summed base -- not per line and then summed. The two orders differ by a millime on some inputs, and the document_totals cases below include one where they diverge specifically so a tier that gets this wrong cannot pass.",
-    "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE \u2014 and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate."
+    "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE — and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate."
   },
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
-    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format \u2014 clients format for the locale; this is the canonical value so cross-tier comparison is exact.",
+    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact.",
     "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error."
   },
@@ -131,6 +131,32 @@
         "net": "16.049",
         "vat": "3.049",
         "gross": "19.098"
+      }
+    },
+    {
+      "id": "tnd-negative-rounding-tie",
+      "why": "THE case conventions.rounding names as the discriminator, and it was absent: every tie here was POSITIVE. The exact VAT is -0.0005 TND, a tie at the millime, and half_up means half AWAY FROM ZERO, so it is -0.001. JavaScript's Math.round(-0.5) returns -0 and Dart's num.round() rounds half away from zero -- so a TypeScript tier written with Math.round produces -0.000 here and agrees with this file on every other case in it. A convention that names its own discriminator and then does not carry one is pinned by nothing.",
+      "currency": "TND",
+      "cost": "0.010",
+      "profit_rate": "-200",
+      "vat_rate": "5",
+      "expected": {
+        "net": "-0.010",
+        "vat": "-0.001",
+        "gross": "-0.011"
+      }
+    },
+    {
+      "id": "clf-four-decimals",
+      "why": "A FOUR-decimal currency, which no case carried. The set ran 0 (JPY), 2 (EUR) and 3 (TND), so an implementation hardcoding 'at most three' -- the natural over-correction to TND's three -- passed everything. CLF is the Chilean unidad de fomento and is in Currency's own table. The net is also a positive tie at the fourth decimal: 1.2345 x 1.3 = 1.60485 exactly, so half_up gives 1.6049 and a truncating implementation gives 1.6048.",
+      "currency": "CLF",
+      "cost": "1.2345",
+      "profit_rate": "30",
+      "vat_rate": "19",
+      "expected": {
+        "net": "1.6049",
+        "vat": "0.3049",
+        "gross": "1.9098"
       }
     }
   ],
@@ -333,7 +359,7 @@
       }
     }
   ],
-  "schema": "No JSON Schema yet \u2014 owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",
+  "schema": "No JSON Schema yet — owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",
   "authored_field": [
     {
       "id": "authored-net-survives-a-cost-change",
@@ -353,7 +379,7 @@
     },
     {
       "id": "authored-net-large-amount-survives-a-cost-change",
-      "why": "The same defect at scale: 0.500 TND of profit on a million. A 6-decimal rate produced 1100001.100 where the exact answer is 1100000.550 \u2014 0.550 TND out, against the customer.",
+      "why": "The same defect at scale: 0.500 TND of profit on a million. A 6-decimal rate produced 1100001.100 where the exact answer is 1100000.550 — 0.550 TND out, against the customer.",
       "currency": "TND",
       "authored_by": "net_price",
       "cost": "1000000.000",
@@ -369,7 +395,7 @@
     },
     {
       "id": "authored-rate-is-exact-and-preserved",
-      "why": "The ruled default direction. A typed rate is exact, and a cost change preserves it while the price moves \u2014 never the reverse, which would let the rate silently absorb a cost rise and erode the margin.",
+      "why": "The ruled default direction. A typed rate is exact, and a cost change preserves it while the price moves — never the reverse, which would let the rate silently absorb a cost rise and erode the margin.",
       "currency": "TND",
       "authored_by": "profit_rate",
       "cost": "100.000",
