@@ -7,7 +7,9 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 > **Status: early.** Wave 0 has landed but is **not yet certified** — the `Money` value object, the
 > profit-rate arithmetic, the multi-tenant isolation seam, and six architecture/licensing gates, under `api/`.
 > **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
-> `flutter create`), and each is green on its own toolchain — but neither holds application code yet. The
+> `flutter create`), and each is green on its own toolchain, and each carries the branding seam and (for
+> Flutter) the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or
+> transport** code yet — no invoicing, no models, no API client. The
 > Symfony application itself (`bin/`, `config/`, `public/`) and Doctrine do **not** exist: they are blocked on
 > GitHub egress, see `CLAUDE.md` § Gotchas. `infra/` is still a README stub. Read
 > `docs/plans/build-waves.plan.md` for exactly what is and is not built.

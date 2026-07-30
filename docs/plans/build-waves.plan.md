@@ -586,10 +586,15 @@ wave that writes the migration with no record of it):
 
 | Column | Type | Why |
 |---|---|---|
+| `currency` | non-null `CHAR(3)` | **THE COLUMN THIS TABLE WAS MISSING**, found at round 11 while the heading above claimed there was nothing left to decide. A `Money` is *(amount, currency)*, and `NUMERIC` alone cannot reconstitute one: `12.3400` is EUR 12.34 or TND 12.340 with equal claim, and the two are different amounts of different money. There is no defaulting round it — `Currency::of()` deliberately refuses an unknown code rather than assuming two decimals, and `NumericColumnFidelityTest` already drives JPY (scale 0) and TND (scale 3) through one such column, so the ambiguity is proven live rather than hypothetical. **ONE column for the row, not one per amount:** `cost` and `net_price` are necessarily the same currency because the domain refuses to mix them (`ProductPricing::fromNetPrice()` raises `CurrencyMismatch`), so a second column could only ever record an impossible state. Whether a product may differ from the tenant's default currency is an application-layer default, not a schema question — the column is required either way |
 | `cost` | `NUMERIC(19,4)` | never a float; see `CLAUDE.md` § Gotchas |
 | `profit_rate` | `NUMERIC(27,12)` nullable | 12 fraction decimals (`Rate::FRACTION_SCALE`) plus 15 integer digits (`Rate::MAX_INTEGER_DIGITS`, matching `Money`'s). **Widened from `NUMERIC(15,12)` at round 4**: three integer digits was too narrow, and a one-millime cost with a typed price of 1000.000 derives 999999. Null when the price was the authored field |
 | `net_price` | `NUMERIC(19,4)` nullable | null when the rate was the authored field |
 | `authored_by` | non-null enum `('profit_rate','net_price')` | **the load-bearing one.** Without it both fields look equally real and the derived one gets rebuilt from a rounded copy — see `pricing-and-documents.plan.md` § F4 |
+
+`profit_rate` carries **no** currency, and that is the same rule seen from the other side: a rate is
+dimensionless. `Money::ratioTo()` returns a plain string rather than a `Money` for exactly this reason, and
+round 11 also found its error message naming a currency that was not part of the failure.
 
 Every tenant-owned table in this wave also carries `company_id`, `PRIMARY KEY (company_id, id)`, foreign
 keys and unique constraints on **both** columns, and the three RLS statements from

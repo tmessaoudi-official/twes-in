@@ -23,11 +23,17 @@ nothing here is built for it. Do not treat it as a requirement, do not design ar
 do not defer a decision waiting for it. See `VISION.md`.
 
 Status: **Wave 0 landed, not yet certified** (2026-07-29). `api/` holds a framework-free `Domain/` (money,
-pricing) and `Infrastructure/` (tenancy, clock, identifiers), four PHPUnit suites, and six gates in
+pricing) and `Infrastructure/` (tenancy, clock, identifiers), four PHPUnit suites, and seven gates in
 `scripts/gates/` with their own test suite (`scripts/gates/test-gates.sh` reports its own case count;
 no number is written here, because a count in prose drifts). **`admin/` and `mobile/` are scaffolded** — each with its
-tier's official generator (`ng new`, `flutter create`), never by hand — and each is green on its own toolchain,
-but neither holds any application code yet.
+tier's official generator (`ng new`, `flutter create`), never by hand — and each is green on its own toolchain.
+Each also holds the **application code its own invariants already demanded**, which this sentence used to deny:
+the branding seam licensing invariant 9 requires (`admin/src/app/branding.ts`, `mobile/lib/branding.dart`),
+the Flutter font-fallback and same-origin controls in `mobile/lib/main.dart` and `mobile/web/`, and executed
+tests for all of them. What neither tier holds is any **domain or transport** code — no invoicing, no models,
+no API client — which is the accurate claim and the one the build-wave plan is written against. Both tier
+READMEs described that branding code as implemented while this line said the tiers were empty; round 11
+found the contradiction.
 
 **Not yet built:** the Symfony application itself (`bin/`, `config/`, `public/`, `.env`), Doctrine,
 PHPStan/deptrac — all blocked, see § Gotchas on GitHub egress — and the `infra/` tier. That blocker is why the
@@ -300,7 +306,7 @@ api/src/
   UI/              # REST controllers, CLI commands, serializers.
 ```
 
-**Enforcement landed in Wave 0.** The P0s above are no longer prose — six gates in `scripts/gates/`
+**Enforcement landed in Wave 0.** The P0s above are no longer prose — seven gates in `scripts/gates/`
 check them, each proven to fail on an injected violation before being trusted:
 
 | Gate | Enforces |
@@ -311,6 +317,7 @@ check them, each proven to fail on an injected violation before being trusted:
 | `spdx-headers.sh` | licensing invariant 8(c), on every source file — **and that the search roots COVER every tracked source file**, which is the direction that was missing when `api/phpunit.xml` sat unscanned with no identifier |
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
+| `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
 
 The two layer gates are **separate on purpose, and merging them would be a mistake**: a framework
 dependency arrives as a `use` statement and an import check finds it, but `time()`, `random_int()`,
@@ -445,20 +452,22 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Tier | Green means | State |
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
-| **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
+| **Architecture fitness** | the seven gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus **every locked pub package's own licence read out of the pub cache** (`mobile/pubspec.lock` records no licence field, so the cache is the only place they exist — a copyleft grant is vetoed even when the same file also states a permissive one, more than one match is refused as ambiguous, a non-`hosted`/non-`sdk` source is refused, and a version that is not plain semver is refused because it becomes a filesystem path), plus every **vendored font** under `mobile/assets/fonts/`, recursively: a REUSE sidecar declaring exactly one identifier, an acceptable one, **every one of the font's own `name`-table licence records corroborating it**, the licence text beside the binary *and* declared under `flutter:`→`assets:` so it ships, and — the direction that was missing — **every font path the manifest declares must have been examined**, because a forward walk says nothing about the files it never reached. A font arrives as a committed binary rather than a manifest entry, so no lock file can see it; it is not the only such asset (13 of the 37 tracked `.png`/`.ico` files are template-derived and ship too), which is why that sentence no longer says "the one" | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
 | Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
 | Flutter client | `flutter analyze`, **`flutter build web --release --no-web-resources-cdn`, then `flutter test`** — in that ORDER | **Runs** (scaffolded 2026-07-29, all six platform directories present). The order is load-bearing, not stylistic: two tests read `build/web` to prove the bundle reaches no external origin, and with `test` before `build` they **skip** and the command still exits 0 with "All tests passed!". A GDPR control that silently does not run is worse than one that is owed. |
 | Flutter client, owed | semantics/a11y tests, golden or real screenshots at a **desktop** window size as well as a phone one, the shared pricing vectors, **a build of all six targets** (Android, iOS, Linux, Windows, macOS, Web — not cross-compilable, so three CI runners; matrix in `build-waves.plan.md` § Wave 12), and a real bundle identifier | Wave 11 — `mobile/README.md` |
-| Infra | `docker compose config`, `bash -n` on every shell script | Wave 12 — `infra/README.md` |
+| **Shell syntax** | `scripts/gates/shell-syntax.sh` — `bash -n` over every tracked shell script, discovered from `git ls-files` plus a shebang sweep rather than a written list | **Runs** (added at round 11, which pointed out that ten scripts already existed and already passed, while this row deferred the check to the wave that would add *more* — so the ones that existed went unchecked, and a syntax error in a gate is the worst place for one: the gate stops detecting and its non-zero exit reads as a detection) |
+| Infra | `docker compose config` | Wave 12 — `infra/README.md` |
 
 **The one command to run the API tier's gate**, once Composer works, is `composer gate` — it chains
 `gate:licences`, `gate:architecture`, `gate:static`, `gate:style`, `gate:mapping` and `gate:test`. Until
 then, `gate:architecture` runs today with no dependencies at all. **`gate:licences` is plain PHP too but is no longer dependency-free**: its pub-cache walk FAILS rather than skips when it cannot look (developer ruling, 2026-07-30), so it needs `cd mobile && flutter pub get` first, or `PUB_CACHE` pointing at a populated cache. That coupling is the accepted cost of not letting a licence check pass quietly on nothing. The gate prints a `counts —` line unconditionally so the meta-suite's anti-vacuity probes still work on a PHP-only checkout:
 
 ```
+bash  scripts/gates/shell-syntax.sh
 bash  scripts/gates/no-orm-attributes-in-domain.sh
 php   scripts/gates/layer-dependencies.php
 php   scripts/gates/no-ambient-calls-in-domain.php
@@ -587,7 +596,7 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   was caught by a reviewer, not by me, because I was reading my new text rather than grepping for the old.
   A claim in a commit message that a file was amended is worth exactly nothing without a `grep` first.
 - **2026-07-29 — a meta-gate needs its OWN adversary. `test-gates.sh` reported 33/33 for a gate that
-  detected nothing.** It was written to protect the six gates and was itself the weakest link: its
+  detected nothing.** It was written to protect the gates and was itself the weakest link: its
   `assert_gate` accepted *any* non-zero exit as "caught the violation" and never asserted output, so a gate
   replaced with `throw new RuntimeException` passed all 33 cases while printing `ok — catches time`. Its
   fixture also never copied `api/composer.json`, so the licensing check it was supposed to cover ran zero
@@ -615,7 +624,7 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   **(a)** `api/composer.lock` is committed and fully pinned, so a session with reachable dist URLs needs
   only `composer install`; **(b)** PHPUnit and php-cs-fixer publish official phars from `phar.phpunit.de`
   and `cs.symfony.com`, which *are* reachable — `scripts/dev/fetch-tools.sh` fetches them against pinned
-  SHA-256 hashes; **(c)** the six architecture and licensing gates are written in plain PHP and bash
+  SHA-256 hashes; **(c)** the architecture and licensing gates are written in plain PHP and bash
   precisely so they need nothing installed — with one deliberate exception since 2026-07-30, `gate:licences`,
   whose pub-cache walk needs `flutter pub get` because it fails rather than passing quietly on nothing; **(d)** PHPStan and deptrac ship phars only from GitHub
   releases, so they stay owed. Do **not** resolve this by pointing Composer at a third-party mirror —

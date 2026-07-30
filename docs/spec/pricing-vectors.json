@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift — producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file is a completeness-reviewer P0.",
+  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift — producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file ONCE THAT TIER HAS PRICING CODE is a completeness-reviewer P0. The qualifier is a correction, not a loophole: the unqualified sentence declared a P0 against admin/ and mobile/ from the day this file was written, while the build plan rules their consumers to Wave 8 and Wave 11 respectively -- so the fixture contradicted the plan and one of them had to be wrong. Today only api/tests/Unit/Pricing/PricingVectorsTest.php consumes it, which is correct and is the reference implementation of this file's shape. The obligation attaches the moment a tier computes a price.",
   "rules": {
     "net_from_cost": "net = cost * (1 + profit_rate)",
     "rate_from_net": "profit_rate = (net - cost) / cost, undefined when cost is zero",

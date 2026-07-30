@@ -265,6 +265,7 @@ assert_gate "clean: no-orm-attributes" no-orm-attributes-in-domain.sh 0
 assert_gate "clean: spdx-headers" spdx-headers.sh 0
 assert_gate "clean: locale-key-parity" locale-key-parity.php 0
 assert_gate "clean: dependency-licences" dependency-licences.php 0
+assert_gate "clean: shell-syntax" shell-syntax.sh 0
 
 echo "== ambient clock, randomness, environment and I/O =="
 for pair in \
@@ -1521,7 +1522,56 @@ else
   failed=$((failed + 1))
 fi
 
-assert_at_least "the suite itself has not shrunk" "$passed" 315
+echo "== shell syntax =="
+# The gate added at round 11, which found `bash -n` deferred to Wave 12 while ten scripts already existed
+# and already passed -- so the ones that existed went unchecked, and a syntax error in a GATE is the worst
+# place for one: the gate stops detecting and its non-zero exit reads as a detection.
+fresh_fixture
+printf '#!/usr/bin/env bash\nif [ 1 -eq 1 ]; then\n  echo unterminated\n' > "$WORK/repo/broken.sh"
+assert_gate 'catches an unterminated if' shell-syntax.sh 1 'broken.sh does not parse'
+
+fresh_fixture
+printf '#!/usr/bin/env bash\nf() {\n  echo missing brace\n' > "$WORK/repo/scripts/half.sh"
+assert_gate 'catches an unclosed function body' shell-syntax.sh 1 'half.sh does not parse'
+
+# AN EXTENSIONLESS SCRIPT, which the *.sh arm alone cannot see. This repo has none today, which is exactly
+# why a name-only sweep would look complete -- so the shebang arm needs its own case or it is untested code.
+fresh_fixture
+printf '#!/bin/sh\ncase x in\n' > "$WORK/repo/scripts/hook-without-extension"
+assert_gate 'catches a broken script with NO .sh extension' shell-syntax.sh 1 'hook-without-extension'
+
+# UNTRACKED, because `--others` is deliberate and would otherwise be an untested flag: a script somebody
+# has just written and not yet committed is precisely when a syntax check is worth having. The fixture
+# stages nothing, so every case above is already untracked -- this one asserts the arm explicitly, with the
+# file present in the working tree and absent from the index.
+fresh_fixture
+printf '#!/usr/bin/env bash\nwhile true\n' > "$WORK/repo/scripts/uncommitted.sh"
+git -C "$WORK/repo" add -A >/dev/null 2>&1
+printf '#!/usr/bin/env bash\nuntil false\n' > "$WORK/repo/scripts/never-added.sh"
+assert_gate 'catches a script present but never git-added' shell-syntax.sh 1 'never-added.sh'
+
+# ANTI-VACUITY, the direction that matters most for a gate whose subject matter is discovered rather than
+# passed in: with nothing to inspect it must FAIL rather than print OK. This is the fourth instance of that
+# same shape in this repository (test-gates.sh at 33/33 for a gate detecting nothing, a fixture omitting
+# composer.json, an integration suite reporting OK after skipping all 62 cases), so it is asserted here.
+rm -rf "$WORK/empty"
+mkdir -p "$WORK/empty/scripts/gates"
+cp "$REPO_ROOT/scripts/gates/shell-syntax.sh" "$WORK/empty/scripts/gates/"
+git -C "$WORK/empty" init -q
+# The gate's own copy is the only script present, so it is excluded to leave the sweep with nothing.
+printf 'scripts/\n' > "$WORK/empty/.gitignore"
+vacuity_output="$(cd "$WORK/empty" && bash scripts/gates/shell-syntax.sh 2>&1)" && vacuity_rc=0 || vacuity_rc=$?
+
+if (( vacuity_rc != 0 )) && printf '%s' "$vacuity_output" | grep -qF 'pass vacuously'; then
+  printf '  ok   — %s\n' 'refuses to report OK after inspecting zero scripts'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (rc=%s)\n' 'refuses to report OK after inspecting zero scripts' "$vacuity_rc"
+  printf '%s\n' "$vacuity_output" | sed 's/^/         /'
+  failed=$((failed + 1))
+fi
+
+assert_at_least "the suite itself has not shrunk" "$passed" 320
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

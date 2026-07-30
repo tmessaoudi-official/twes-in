@@ -47,8 +47,7 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "Twes\\Tests\\": "tests/",
-            "Twes\\Tools\\PHPStan\\": "tools/phpstan/src/"
+            "Twes\\Tests\\": "tests/"
         }
     },
     "config": {
