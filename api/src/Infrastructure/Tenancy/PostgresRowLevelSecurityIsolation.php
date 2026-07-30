@@ -476,12 +476,31 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * **What that does NOT cover, stated because an earlier version of this sentence implied the opposite.** The
      * inverse is the dangerous direction and it is the likely Wave 1 mistake: a tenant-owned table whose
      * migration **forgot** `ENABLE ROW LEVEL SECURITY` is invisible here *by construction*, because it never
-     * enters the derived set. This method can only verify tables somebody already remembered to police.
-     * Catching the forgotten one is the **schema gate's** job — recorded as owed, and a P0 at the first Wave 1
-     * migration — not this method's, and reading this docblock as though it covered both is how that gate
-     * would come to seem redundant. `has_table_privilege` already accounts for privileges
-     * held via role membership, and `pg_has_role` on the owner covers reaching ownership by `SET ROLE`
-     * from either current_user or session_user, for the same reason as above.
+     * enters the derived set — **unless it happens to sit in a policed inheritance hierarchy**, in which case
+     * the descendant and ancestor arms below do reach it. A standalone forgotten table is still nobody's
+     * business but the **schema gate's** — recorded as owed, and a P0 at the first Wave 1 migration — and
+     * reading this docblock as though it covered that case is how that gate would come to seem redundant.
+     *
+     * TRUNCATE and ownership are both tested by **REACHABILITY**, never by `has_table_privilege`. That
+     * function resolves privileges the way PostgreSQL applies them right now — *inheritably* — while `SET
+     * ROLE` is authorised by MEMBERSHIP, so a grant made `WITH INHERIT FALSE` is invisible to it and one
+     * statement away from the privilege. An earlier version of this paragraph asserted the opposite
+     * ("`has_table_privilege` already accounts for privileges held via role membership") while the code
+     * beneath it had already moved to `aclexplode` plus `pg_has_role`; the sentence was a stale description of
+     * a rejected approach, and leaving it there is how the rejected approach gets reintroduced.
+     *
+     * **Scope, stated because it is a real boundary and not an oversight.** Every catalogue this reads is
+     * per-database, so the verdict covers `current_database()` and nothing else. PostgreSQL grants `CONNECT` to
+     * PUBLIC on every new database, so a runtime role can generally reach `postgres`, `template1` and any
+     * sibling database on the cluster, where this check has said nothing at all. That matters the day twes-in
+     * runs more than one tenant database on one cluster.
+     *
+     * It is deliberately NOT asserted here. An assertion would fail on essentially every development cluster
+     * on earth, because those PUBLIC grants are the shipped default — and a check that always fails is a check
+     * somebody disables, which is strictly worse than a documented scope. The requirement belongs to the
+     * cluster: `REVOKE CONNECT ON DATABASE … FROM PUBLIC` for every database, which
+     * scripts/dev/provision-test-database.sh already does for the one it creates. Owed to `infra/` in Wave 12
+     * for the rest, and recorded in docs/plans/build-waves.plan.md so it is not rediscovered as a finding.
      *
      * @return int the number of policed tables inspected
      *
@@ -503,7 +522,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             'WITH RECURSIVE policed AS ('
             . '  SELECT c.oid FROM pg_class c '
             . "  WHERE c.relrowsecurity AND c.relkind IN ('r', 'p')"
-            . '), subject AS ('
+            . '), descendant AS ('
             . '  SELECT oid FROM policed'
             . '  UNION'
             // pg_inherits, RECURSIVELY — not pg_partition_tree. Round 6 used the latter and round 7 showed it
@@ -513,9 +532,34 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // verdict was clean. `pg_inherits` is the catalogue behind BOTH mechanisms, so recursing it covers
             // declarative partitions (including multi-level and cross-schema, both re-verified) and legacy
             // inheritance children in one expression, and covers whatever PostgreSQL adds next that reuses it.
-            . '  SELECT i.inhrelid FROM pg_inherits i JOIN subject d ON d.oid = i.inhparent'
+            . '  SELECT i.inhrelid FROM pg_inherits i JOIN descendant d ON d.oid = i.inhparent'
+            . '), ancestor AS ('
+            // AND THE SAME CATALOGUE WALKED **UPWARD**, which is the sixth bypass class and the one every arm
+            // above is structurally blind to: all of them read `d.oid = i.inhparent` and emit `i.inhrelid`, so
+            // they can only ever reach descendants. PostgreSQL's inheritance semantics make the inverse the
+            // more dangerous direction — a child's policies are NOT applied when the child is read through its
+            // parent, so an UNPOLICED PARENT of policed children returns every descendant's rows to every
+            // tenant and accepts writes into any of them, while the children are correctly policed and the
+            // verdict reads CLEAN. Round 11 demonstrated read, update and delete through one.
+            //
+            // It is the natural Wave 1 supertype (`documents` with `invoices` and `credit_notes` under it),
+            // where somebody polices the leaves because those are the tables holding the data.
+            . '  SELECT i.inhparent AS oid FROM pg_inherits i JOIN policed p ON p.oid = i.inhrelid'
+            . '  UNION'
+            . '  SELECT i.inhparent FROM pg_inherits i JOIN ancestor a ON a.oid = i.inhrelid'
+            . '), subject AS ('
+            . '  SELECT oid, false AS via_ancestry FROM descendant'
+            . '  UNION ALL'
+            // Ancestors that are ALREADY in the descendant set are excluded rather than duplicated: a policed
+            // ancestor is in `policed` and needs no second row, and an unpoliced table that is both an ancestor
+            // of one policed table and a descendant of another is a violation either way. The flag exists only
+            // so the message names the relationship that makes the table dangerous — telling a reader to police
+            // "a child" when the children are already policed sends them to the wrong table.
+            . '  SELECT oid, true FROM ancestor'
+            . '  WHERE oid NOT IN (SELECT oid FROM descendant)'
             . ') '
             . 'SELECT n.nspname || \'.\' || c.relname AS "table", o.rolname AS owner, '
+            . 's.via_ancestry, '
             . "pg_has_role(session_user, c.relowner, 'MEMBER') "
             . "OR pg_has_role(current_user, c.relowner, 'MEMBER') AS owner_reachable, "
             // TRUNCATE by REACHABILITY, not by inheritance. `has_table_privilege` resolves privileges the
@@ -564,7 +608,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not inspect the policed tables.');
         }
 
-        /** @var list<array{table: string, owner: string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string, policies: int|string, scoped_policies: int|string}> $tables */
+        /** @var list<array{table: string, owner: string, via_ancestry: bool|string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string, rls_enabled: bool|string, is_partition: bool|string, policies: string}> $tables */
         $tables = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
         // A check with no subject matter must not report success — the same vacuity that made a gate print
@@ -591,6 +635,60 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         }
 
         return \count($tables);
+    }
+
+    /**
+     * SQL for "this connection can become the role in `$roleOid`", as a boolean expression.
+     *
+     * ONE definition, referenced everywhere, because the wrong definition is the recurring defect in this
+     * class. `has_table_privilege`/`has_function_privilege` resolve privileges the way PostgreSQL applies
+     * them at this instant — **inheritably** — while `SET ROLE` is authorised by **MEMBERSHIP**. A grant made
+     * `WITH INHERIT FALSE` (the PG16+ way to say "hold this deliberately, not by default") is therefore
+     * invisible to the `has_*_privilege` family and exactly one statement away from the privilege. This
+     * project's own fixture provisions that shape on purpose (`twes_truncator`, granted
+     * `WITH INHERIT FALSE`), and rounds 5 and 11 each found a check that used the blind function.
+     *
+     * BOTH `session_user` and `current_user`, and the pair is not redundant: a connection sitting inside
+     * `SET ROLE` has an innocent-looking `current_user` while `session_user` still names the role whose
+     * memberships decide what it can become next, and `RESET ROLE` needs no privilege at all.
+     */
+    private static function roleIsReachableSql(string $roleOid): string
+    {
+        return \sprintf(
+            "(pg_has_role(session_user, %s, 'MEMBER') OR pg_has_role(current_user, %s, 'MEMBER'))",
+            $roleOid,
+            $roleOid,
+        );
+    }
+
+    /**
+     * SQL for "this connection holds `$privilege` on the object whose ACL is `$acl`", by REACHABILITY.
+     *
+     * `aclexplode` is used rather than `has_*_privilege` for the reason {@see self::roleIsReachableSql()}
+     * gives: it exposes the **grantee**, which is the thing membership has to be tested against. Grantee 0 is
+     * PUBLIC.
+     *
+     * `$aclDefaultGrantsIt` is the whole subtlety of the function case. A NULL ACL means "PostgreSQL's default
+     * privileges apply", and that default is **not the same for every object kind**: a table's default grants
+     * nothing to anybody but its owner, while a **function's default grants EXECUTE to PUBLIC**. So a
+     * `SECURITY DEFINER` function with an untouched ACL is callable by every role on the server, and reading a
+     * NULL `proacl` as "no grants" makes the check certify precisely the shape it exists to refuse.
+     */
+    private static function privilegeIsReachableSql(
+        string $acl,
+        string $privilege,
+        bool $aclDefaultGrantsIt,
+    ): string {
+        return \sprintf(
+            '(%s%s IS NOT NULL AND EXISTS (SELECT 1 FROM aclexplode(%s) a '
+            . "WHERE a.privilege_type = '%s' AND (a.grantee = 0 "
+            . "OR pg_has_role(session_user, a.grantee, 'MEMBER') "
+            . "OR pg_has_role(current_user, a.grantee, 'MEMBER'))))",
+            $aclDefaultGrantsIt ? $acl . ' IS NULL OR ' : '',
+            $acl,
+            $acl,
+            $privilege,
+        );
     }
 
     /**
@@ -670,7 +768,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * privileges the runtime role must never hold, so they are unit-testable here and separately proven
      * live against the real catalogue by the integration suite.
      *
-     * @param list<array{table: string, owner: string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string, rls_enabled: bool|string, is_partition: bool|string, policies: string}> $tables
+     * @param list<array{table: string, owner: string, via_ancestry?: bool|string, owner_reachable: bool|string, can_truncate: bool|string, forced: bool|string, rls_enabled: bool|string, is_partition: bool|string, policies: string}> $tables
      *
      * @return list<string> one human-readable violation per problem found, empty when the role is safe
      */
@@ -696,23 +794,33 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 );
             }
 
-            // A PARTITION of a policed parent with row-level security switched off on itself. The parent's
-            // policy does not cover direct access to the partition, so this is a full cross-tenant read and
-            // write — round 6 demonstrated all three of read, overwrite and delete through one.
+            // A relation in a policed hierarchy with row-level security switched off on ITSELF. Both
+            // directions leak, for opposite reasons, and the message has to say which — a reader told to
+            // police the wrong end of the hierarchy fixes nothing.
             if (!self::isTrue($table['rls_enabled'])) {
-                // The relationship is named from the column that was already fetched, rather than asserted.
+                // The relationship is named from a column that was fetched, rather than asserted.
                 // `is_partition` was selected and never read, so this message called every unpoliced child a
                 // "partition" — which became a false statement the moment the subject set grew to cover legacy
-                // `INHERITS` children, and they are exactly the case round 7 found.
-                $violations[] = \sprintf(
-                    '%s is %s of a policed table but has no row-level security of its own, and a parent\'s '
-                    . "policy does NOT cover direct access to a child — every tenant's rows are readable and "
-                    . 'writable through it',
-                    $table['table'],
-                    self::isTrue($table['is_partition'])
-                        ? 'a partition'
-                        : 'an INHERITS child (legacy table inheritance, not declarative partitioning)',
-                );
+                // `INHERITS` children, and they are exactly the case round 7 found. `via_ancestry` is the same
+                // discipline applied to round 11's ancestor arm; it is optional in the signature so that the
+                // pure unit tests written before that arm existed still describe a valid catalogue row.
+                $violations[] = self::isTrue($table['via_ancestry'] ?? false)
+                    ? \sprintf(
+                        '%s is an unpoliced ANCESTOR of a policed table, and a child\'s policy is NOT applied '
+                        . 'when the child is read through its parent — so every descendant\'s rows are '
+                        . 'readable and writable through it by every tenant, however correct the '
+                        . "descendants' own policies are. Police the parent too",
+                        $table['table'],
+                    )
+                    : \sprintf(
+                        '%s is %s of a policed table but has no row-level security of its own, and a parent\'s '
+                        . "policy does NOT cover direct access to a child — every tenant's rows are readable "
+                        . 'and writable through it',
+                        $table['table'],
+                        self::isTrue($table['is_partition'])
+                            ? 'a partition'
+                            : 'an INHERITS child (legacy table inheritance, not declarative partitioning)',
+                    );
 
                 // Nothing below can be judged: an unpoliced relation has no policies to inspect.
                 continue;
@@ -825,7 +933,13 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *    `SELECT`/`UPDATE` grant.
      *  - **A materialised view** cannot carry RLS at all. It is a plaintext snapshot of whatever the refreshing
      *    role could see, so one over tenant-owned data is a cross-tenant read by construction.
-     *  - **A `SECURITY DEFINER` function** runs as its owner, with the same consequence.
+     *  - **A `SECURITY DEFINER` function** runs as its owner, with the same consequence — and **not only when
+     *    that owner is privileged**. Round 11 found this arm filtered to `rolsuper OR rolbypassrls`, which
+     *    misses the owner that matters most here: `twes_owner` is neither, and it owns the policed tables, so
+     *    it is exempt from their policies wherever `FORCE ROW LEVEL SECURITY` is absent. The question asked is
+     *    therefore whether the owner is a role this connection could **already become**. Note too that a
+     *    function's default ACL grants `EXECUTE` to **PUBLIC**, so an untouched `SECURITY DEFINER` function is
+     *    callable by every role on the server.
      *
      * Round 7 demonstrated all three, reading *and writing* across tenants with the verdict CLEAN — and the
      * leaking topology was this project's own provisioned fixture plus one `CREATE VIEW`, because `twes_bypass`
@@ -859,8 +973,16 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
             . "WHERE c.relkind IN ('v', 'm', 'f') "
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
-            // Only objects this connection can actually read. A view it cannot select from leaks nothing.
-            . "AND has_table_privilege(current_user, c.oid, 'SELECT') "
+            // Only objects this connection can actually read — a view it cannot select from leaks nothing.
+            //
+            // By REACHABILITY, not by `has_table_privilege`. Round 11 found this line still using that
+            // function, which reintroduced the exact `WITH INHERIT FALSE` gap this file documents at length
+            // and closed in the table check seven rounds earlier: a SELECT grant held non-inheritably is
+            // invisible to it, so a leaking view was excluded from the result set and the verdict read clean.
+            // Owner-reachability is an arm of its own because a NULL `relacl` means "owner only", and if the
+            // connection can become the owner it can read the view regardless of any grant.
+            . 'AND (' . self::roleIsReachableSql('c.relowner')
+            . ' OR ' . self::privilegeIsReachableSql('c.relacl', 'SELECT', false) . ') '
             . 'ORDER BY 1',
         );
 
@@ -874,30 +996,36 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         $violations = self::rlsExemptObjectViolations($objects);
 
         // SECURITY DEFINER functions, asked separately because they live in pg_proc rather than pg_class.
+        //
+        // THE OWNER FILTER IS REACHABILITY, NOT `rolsuper OR rolbypassrls`. Round 11 found this restricted to
+        // exempt owners, and that misses the owner that matters most in this very project: `twes_owner` is
+        // neither a superuser nor `BYPASSRLS`, and it **owns the policed tables** — so unless every one of them
+        // carries `FORCE ROW LEVEL SECURITY` it is exempt from its own policies, and a SECURITY DEFINER
+        // function owned by it hands the caller that exemption. The correct question is not "is this owner
+        // privileged" but "does calling this function run as a role this connection could not otherwise
+        // become". If the owner IS reachable, the call is no escalation — the connection could `SET ROLE` to it
+        // anyway, and that reachability is itself reported by assertPolicedTablesAreBeyondThisRolesReach().
         $functions = $connection->query(
-            'SELECT n.nspname || \'.\' || p.proname AS "function", o.rolname AS owner '
+            'SELECT n.nspname || \'.\' || p.proname AS "function", o.rolname AS owner, '
+            . 'o.rolsuper OR o.rolbypassrls AS owner_exempt '
             . 'FROM pg_proc p '
             . 'JOIN pg_roles o ON o.oid = p.proowner '
             . 'JOIN pg_namespace n ON n.oid = p.pronamespace '
             . 'WHERE p.prosecdef '
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
-            . 'AND (o.rolsuper OR o.rolbypassrls) '
-            . "AND has_function_privilege(current_user, p.oid, 'EXECUTE') "
+            . 'AND NOT ' . self::roleIsReachableSql('p.proowner') . ' '
+            // EXECUTE resolved through the ACL, with the default-grants-PUBLIC arm that
+            // `has_function_privilege` was silently supplying. Dropping that arm along with the function would
+            // have made every untouched SECURITY DEFINER function invisible — the commonest case there is.
+            . 'AND ' . self::privilegeIsReachableSql('p.proacl', 'EXECUTE', true) . ' '
             . 'ORDER BY 1',
         );
 
         if (false !== $functions) {
-            /** @var list<array{function: string, owner: string}> $rows */
+            /** @var list<array{function: string, owner: string, owner_exempt: bool|string}> $rows */
             $rows = $functions->fetchAll(\PDO::FETCH_ASSOC);
 
-            foreach ($rows as $row) {
-                $violations[] = \sprintf(
-                    '%s is SECURITY DEFINER and owned by %s, which is exempt from row-level security, so '
-                    . 'calling it runs as that role',
-                    $row['function'],
-                    $row['owner'],
-                );
-            }
+            $violations = [...$violations, ...self::securityDefinerFunctionViolations($rows)];
         }
 
         if ([] !== $violations) {
@@ -907,9 +1035,46 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 . implode('; ', $violations)
                 . '. A view over tenant-owned data must be created WITH (security_invoker = true) and owned '
                 . 'by a role that is itself subject to the policies; a materialised view over tenant-owned '
-                . 'data cannot be made safe at all, because a matview carries no row-level security.',
+                . 'data cannot be made safe at all, because a matview carries no row-level security; and a '
+                . 'SECURITY DEFINER function must be owned by a role this connection could already become, '
+                . 'or made SECURITY INVOKER, or have EXECUTE revoked from PUBLIC.',
             );
         }
+    }
+
+    /**
+     * Which readable `SECURITY DEFINER` functions hand this connection a role it could not otherwise become.
+     *
+     * Pure, for the same reason the two sibling `*Violations()` methods are: arranging a privileged owner needs
+     * privileges the runtime role must never hold, so the branches are unit-testable here and separately
+     * proven live against the real catalogue by the integration suite.
+     *
+     * The message distinguishes the two reasons, because the remedies differ. An **exempt** owner (superuser or
+     * `BYPASSRLS`) means row security never applies inside the call at all. A merely **unreachable** owner
+     * means the call runs as somebody else — which is a cross-tenant read whenever that somebody is the
+     * tables' owner and the tables are not `FORCE`d, and is an unaudited privilege transfer regardless.
+     *
+     * @param list<array{function: string, owner: string, owner_exempt: bool|string}> $functions
+     *
+     * @return list<string>
+     */
+    public static function securityDefinerFunctionViolations(array $functions): array
+    {
+        $violations = [];
+
+        foreach ($functions as $function) {
+            $violations[] = \sprintf(
+                '%s is SECURITY DEFINER and owned by %s, %s, so calling it runs as that role',
+                $function['function'],
+                $function['owner'],
+                self::isTrue($function['owner_exempt'])
+                    ? 'which is EXEMPT from row-level security (superuser or BYPASSRLS)'
+                    : 'a role this connection cannot otherwise become — and if that role owns the policed '
+                        . 'tables without FORCE ROW LEVEL SECURITY it is exempt from their policies',
+            );
+        }
+
+        return $violations;
     }
 
     /**
@@ -966,6 +1131,145 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         }
 
         return $violations;
+    }
+
+    /**
+     * Refuse a connection carrying tenant data MATERIALISED at session lifetime.
+     *
+     * **The seventh bypass class, and the first one that is not about privileges at all.** Every other guard
+     * here is transaction-shaped because {@see self::bind()} is: `set_config(..., true)` is undone on COMMIT,
+     * which is what stops a binding reaching whoever gets the connection next. Two ordinary PostgreSQL
+     * features are session-shaped instead, and both copy rows out from under a policy that is correctly in
+     * force at the time:
+     *
+     *  - a **TEMPORARY TABLE** lives until the session ends, carries no row-level security of its own, and is
+     *    in no policed inheritance hierarchy — so no arm of
+     *    {@see self::assertPolicedTablesAreBeyondThisRolesReach()} can ever see it, by construction;
+     *  - a **`DECLARE … CURSOR WITH HOLD`** is materialised by PostgreSQL at COMMIT *precisely so that it can
+     *    be read afterwards*, and `pg_cursors` makes it discoverable to the next holder of the connection.
+     *
+     * Neither needs a privilege the restricted runtime role does not already have, and both are what an
+     * ordinary reporting job or batch import writes. Round 11 read tenant A's rows while bound to tenant B
+     * with all four other guards reporting clean.
+     *
+     * **This is a detection, and the remedy is {@see self::discardSessionState()} at release.** The obligation
+     * is recorded rather than wired because no connection-pool lifecycle exists yet — the same gap R4-3 names,
+     * and it wants the same hook. Wave 1 owes both calls: `discardSessionState()` when a connection is
+     * returned, and this assertion when one is acquired. Landing a pool without them is a
+     * completeness-reviewer P0.
+     *
+     * `pg_my_temp_schema()` rather than a `pg_temp%` name match: every *other* session's temporary relations
+     * are visible in `pg_class` too, and reporting those would make this refuse connections over state it
+     * cannot reach and cannot clear. It returns 0 when this session has no temporary schema.
+     *
+     * Only **holdable** cursors are reported. A cursor without `WITH HOLD` is closed by PostgreSQL at COMMIT,
+     * so it cannot outlive the binding it was declared under and is not a cross-tenant channel.
+     *
+     * @throws \RuntimeException if any such object exists
+     */
+    public static function assertNoSessionLifetimeDataIsMaterialised(\PDO $connection): void
+    {
+        $relations = $connection->query(
+            'SELECT c.relname AS name, c.relkind::text AS kind FROM pg_class c '
+            . 'WHERE pg_my_temp_schema() <> 0 AND c.relnamespace = pg_my_temp_schema() '
+            . 'ORDER BY 1',
+        );
+
+        if (false === $relations) {
+            throw new \RuntimeException('Could not inspect this session\'s temporary relations.');
+        }
+
+        $cursors = $connection->query('SELECT name FROM pg_cursors WHERE is_holdable ORDER BY 1');
+
+        if (false === $cursors) {
+            throw new \RuntimeException('Could not inspect this session\'s held cursors.');
+        }
+
+        /** @var list<array{name: string, kind: string}> $relationRows */
+        $relationRows = $relations->fetchAll(\PDO::FETCH_ASSOC);
+        /** @var list<array{name: string}> $cursorRows */
+        $cursorRows = $cursors->fetchAll(\PDO::FETCH_ASSOC);
+
+        $violations = self::sessionLifetimeDataViolations($relationRows, $cursorRows);
+
+        if ([] !== $violations) {
+            throw new \RuntimeException(
+                'This connection carries tenant data materialised at SESSION lifetime, which outlives the '
+                . 'transaction-scoped binding and is therefore readable under whatever tenant is bound next: '
+                . implode('; ', $violations)
+                . '. Call discardSessionState() when returning a connection to the pool.',
+            );
+        }
+    }
+
+    /**
+     * Which session-lifetime objects are a cross-tenant channel, given the catalogue rows.
+     *
+     * Pure, for the same reason the sibling `*Violations()` methods are — and here the reason is sharper: the
+     * kinds enumerated below cannot all be arranged on one connection cheaply (a temporary *sequence* needs a
+     * separate statement, a temporary *view* is legal but rare), so the classification is proven exhaustively
+     * here and the dangerous pair is proven live by the integration suite.
+     *
+     * @param list<array{name: string, kind: string}> $relations
+     * @param list<array{name: string}> $cursors
+     *
+     * @return list<string>
+     */
+    public static function sessionLifetimeDataViolations(array $relations, array $cursors): array
+    {
+        $violations = [];
+
+        foreach ($relations as $relation) {
+            $violations[] = \sprintf(
+                'the temporary %s %s holds rows copied out from under the policies, and carries none of its '
+                . 'own',
+                match ($relation['kind']) {
+                    'r' => 'table',
+                    'v' => 'view',
+                    'S' => 'sequence',
+                    'm' => 'materialised view',
+                    'c' => 'composite type',
+                    'i' => 'index',
+                    default => 'relation of kind ' . $relation['kind'],
+                },
+                $relation['name'],
+            );
+        }
+
+        foreach ($cursors as $cursor) {
+            $violations[] = \sprintf(
+                'the held cursor %s was materialised at COMMIT and can be FETCHed under any later binding',
+                $cursor['name'],
+            );
+        }
+
+        return $violations;
+    }
+
+    /**
+     * Clear every scrap of session-lifetime state from a connection, so it can be reused safely.
+     *
+     * `DISCARD ALL` rather than a targeted `CLOSE ALL` plus a `DROP` sweep, and the choice is deliberate: it
+     * also drops the session's temporary schema, resets every `SET` — including this class's own tenant GUC —
+     * releases sequence state and deallocates prepared statements. A targeted version would need extending
+     * every time PostgreSQL grows another kind of session state, and forgetting to extend it is silent.
+     *
+     * Refused inside a transaction because PostgreSQL raises 25001 there. Refusing with an explanation is the
+     * difference between a caller who moves the call and a caller who wraps it in a try/catch — and the second
+     * is how a release-time guard quietly stops running.
+     *
+     * @throws \RuntimeException if called inside a transaction
+     */
+    public static function discardSessionState(\PDO $connection): void
+    {
+        if ($connection->inTransaction()) {
+            throw new \RuntimeException(
+                'Discard session state outside a transaction: DISCARD ALL cannot run inside a transaction '
+                . 'block (SQLSTATE 25001). Commit or roll back first, then discard.',
+            );
+        }
+
+        $connection->exec('DISCARD ALL');
     }
 
     /**

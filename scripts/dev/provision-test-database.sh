@@ -180,8 +180,19 @@ REVOKE CONNECT, TEMPORARY ON DATABASE ${DB} FROM PUBLIC;
 GRANT CONNECT ON DATABASE ${DB} TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROLE}, ${REPLICATOR_ROLE};
 -- TEMPORARY, granted back explicitly after the REVOKE above took it from PUBLIC. The column-fidelity suite
 -- creates a TEMPORARY table so it needs no DDL on the schema and leaves nothing behind — a stray permanent
--- table would break the tenancy suite's policed-table counts. This confers no cross-tenant reach: a temporary
--- table is session-private and can only ever hold rows the role could already read.
+-- table would break the tenancy suite's policed-table counts.
+--
+-- THIS GRANT IS NOT FREE, and the sentence here previously said it was: "a temporary table is session-private
+-- and can only ever hold rows the role could already read". Session-private is the problem, not the reassurance.
+-- A temporary table outlives the transaction-scoped tenant binding under which its rows were selected, carries
+-- no row-level security of its own, and is in no policed inheritance hierarchy — so it is readable under
+-- whatever tenant is bound to that connection NEXT. Certification round 11 read tenant A's rows while bound to
+-- tenant B through one, with every other guard reporting clean. "Rows the role could already read" conflates
+-- the ROLE's lifetime privileges with the TENANT's transaction-scoped scope, and the whole design rests on
+-- those being different.
+-- Kept because the suite needs it and PostgreSQL offers no narrower grant; made safe instead by
+-- PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised() at acquisition and
+-- ::discardSessionState() at release. In production this grant should simply be absent.
 GRANT TEMPORARY ON DATABASE ${DB} TO ${RUNTIME_ROLE};
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 GRANT  USAGE  ON SCHEMA public TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROLE}, ${REPLICATOR_ROLE};

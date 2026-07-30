@@ -1291,6 +1291,120 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * The SIXTH bypass class: an unpoliced **ANCESTOR** of a policed table.
+     *
+     * Every arm of the subject set before this one walked `pg_inherits` **downward** — `d.oid = i.inhparent`
+     * emitting `i.inhrelid` — so it could only ever reach descendants. The inverse was never inspected, and
+     * PostgreSQL's inheritance semantics make it the more dangerous direction: *"policies belonging to child
+     * tables are not applied when accessing through the parent"*. So an unpoliced parent of policed children
+     * returns **every descendant's rows to every tenant**, and accepts writes into any of them, while the
+     * children themselves are correctly policed and the verdict reads `CLEAN — N policed table(s) inspected`.
+     *
+     * It is not a contrived shape. It is the natural Wave 1 supertype — a `documents` parent with `invoices`
+     * and `credit_notes` inheriting it — where somebody polices the leaves because those are the tables with
+     * the data in them.
+     *
+     * The leak is demonstrated on a real connection BEFORE the check is asked about it, because a test that
+     * only asserts the error message proves the message and not the danger.
+     */
+    public function testAnUnpolicedAncestorOfAPolicedTableIsInspected(): void
+    {
+        $parent = self::TABLE . '_anc_parent';
+        $child = self::TABLE . '_anc_child';
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $child);
+        $this->owner->exec('DROP TABLE IF EXISTS ' . $parent . ' CASCADE');
+        $this->owner->exec(
+            'CREATE TABLE ' . $parent . ' (company_id uuid NOT NULL, id integer NOT NULL, '
+            . 'PRIMARY KEY (company_id, id))',
+        );
+
+        try {
+            $this->owner->exec('CREATE TABLE ' . $child . ' () INHERITS (' . $parent . ')');
+
+            // The CHILD is policed, correctly and from the canonical emitter. The PARENT deliberately is not
+            // — that asymmetry is the whole subject of this test.
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($child) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            if (\is_string($runtimeRole)) {
+                $this->owner->exec('GRANT SELECT, INSERT ON ' . $parent . ' TO ' . $runtimeRole);
+                $this->owner->exec('GRANT SELECT, INSERT ON ' . $child . ' TO ' . $runtimeRole);
+            }
+
+            $isolation = new PostgresRowLevelSecurityIsolation();
+
+            $this->connection->beginTransaction();
+            $isolation->bind($this->connection, InMemoryTenantContext::forTenant(TenantId::fromString(self::TENANT_A)));
+            $this->connection->exec(
+                'INSERT INTO ' . $child . " (company_id, id) VALUES ('" . self::TENANT_A . "', 1)",
+            );
+            $this->connection->commit();
+
+            // Now as tenant B. The child refuses — its policy is right. The parent does not.
+            $this->connection->beginTransaction();
+            $isolation->bind($this->connection, InMemoryTenantContext::forTenant(TenantId::fromString(self::TENANT_B)));
+
+            $direct = $this->connection->query('SELECT count(*) FROM ' . $child);
+            self::assertNotFalse($direct);
+            self::assertSame(
+                '0',
+                (string) $direct->fetchColumn(),
+                'The child is policed, so tenant B must not see tenant A row through it.',
+            );
+
+            $through = $this->connection->query('SELECT count(*) FROM ' . $parent);
+            self::assertNotFalse($through);
+            self::assertSame(
+                '1',
+                (string) $through->fetchColumn(),
+                'THE LEAK: a parent carries no policy of its own, and a child\'s policy is not applied when '
+                . 'the child is read through the parent — so tenant B reads tenant A row.',
+            );
+
+            $this->connection->commit();
+
+            // Captured rather than asserted inside the catch: PHPUnit's AssertionFailedError extends
+            // \RuntimeException, so `self::fail()` in a try whose catch is \RuntimeException is swallowed by
+            // its own handler. That mistake is recorded in CLAUDE.md and has been made twice here already.
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'An unpoliced ANCESTOR of a policed table must be refused.');
+            self::assertStringContainsString($parent, $caught->getMessage());
+            // Named by the relationship that makes it dangerous. Calling this "a child" would send a reader
+            // to police the leaves, which are already policed.
+            self::assertStringContainsStringIgnoringCase('ancestor', $caught->getMessage());
+
+            // And the correct configuration must be ACCEPTED, or the check forbids inheritance outright
+            // rather than requiring that every table in the hierarchy be policed.
+            foreach (PostgresRowLevelSecurityIsolation::policySqlFor($parent) as $statement) {
+                $this->owner->exec($statement);
+            }
+
+            self::assertSame(
+                4,
+                PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection),
+                'Two probe tables plus this parent and child — all four inspected.',
+            );
+        } finally {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+
+            $this->owner->exec('DROP TABLE IF EXISTS ' . $child);
+            $this->owner->exec('DROP TABLE IF EXISTS ' . $parent . ' CASCADE');
+        }
+    }
+
+    /**
      * The FIFTH path: an object that borrows a privileged role's exemption.
      *
      * Every other check in this class asks about roles *reachable* from the connection. PostgreSQL will run
@@ -1389,6 +1503,189 @@ final class TenantIsolationTest extends TestCase
         } finally {
             $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
         }
+    }
+
+    /**
+     * A `SECURITY DEFINER` function owned by the TABLE OWNER — neither superuser nor `BYPASSRLS` — is refused.
+     *
+     * The check was filtered to `rolsuper OR rolbypassrls`, which reads as thorough and misses the owner that
+     * matters most in this project. `twes_owner` holds neither attribute and **owns every policed table**, so
+     * wherever `FORCE ROW LEVEL SECURITY` is absent it is exempt from its own policies — and a `SECURITY
+     * DEFINER` function it owns hands that exemption to any caller. `twes_owner` is deliberately never granted
+     * to the runtime role, which is exactly what makes the call an escalation rather than a convenience.
+     *
+     * No superuser is needed to arrange this, unlike the exempt-owner case above: the owning connection the
+     * suite already has is the dangerous owner. So this case runs on every machine, where that one skips.
+     *
+     * It also pins the second half of the same fix — a function's DEFAULT ACL grants `EXECUTE` to **PUBLIC**,
+     * so no grant is issued here at all. Replacing `has_function_privilege` with an ACL walk that read a NULL
+     * `proacl` as "no grants" would have made every untouched SECURITY DEFINER function invisible.
+     */
+    public function testASecurityDefinerFunctionOwnedByTheTableOwnerIsRefused(): void
+    {
+        $function = self::TABLE . '_secdef_owner';
+
+        $this->owner->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        $this->owner->exec(
+            'CREATE FUNCTION ' . $function . '() RETURNS bigint LANGUAGE sql SECURITY DEFINER '
+            . 'AS \'SELECT count(*) FROM ' . self::TABLE . '\'',
+        );
+
+        try {
+            // The preconditions: the owner is NOT exempt, and no EXECUTE grant was made.
+            $attributes = $this->connection->query(
+                'SELECT o.rolsuper OR o.rolbypassrls AS exempt, p.proacl IS NULL AS default_acl '
+                . 'FROM pg_proc p JOIN pg_roles o ON o.oid = p.proowner '
+                . "WHERE p.proname = '" . $function . "'",
+            );
+            self::assertNotFalse($attributes);
+            /** @var array{exempt: bool|string, default_acl: bool|string} $row */
+            $row = $attributes->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotContains($row['exempt'], [true, 't', '1'], 'the owner must NOT be exempt');
+            self::assertContains($row['default_acl'], [true, 't', '1'], 'no EXECUTE grant was made');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'A SECURITY DEFINER function owned by the unreachable table owner must be refused.',
+            );
+            self::assertStringContainsString($function, $caught->getMessage());
+            // And the reason must be the right one: naming it "exempt" would send a reader to check role
+            // attributes that are correct, rather than to the ownership that is the problem.
+            self::assertStringContainsString('cannot otherwise become', $caught->getMessage());
+        } finally {
+            $this->owner->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        }
+    }
+
+    /**
+     * A view readable only through a `WITH INHERIT FALSE` grant is inspected.
+     *
+     * `has_table_privilege` resolves privileges *inheritably*, so a SELECT grant made to a role the connection
+     * is a MEMBER of but does not INHERIT from is invisible to it — while `SET ROLE` needs only the membership.
+     * Round 11 found the view query still filtered on that function, seven rounds after the same mistake was
+     * removed from the table query, so a leaking view was excluded from the result set and the verdict read
+     * clean. `twes_probe_owner` is used because the provisioning script grants it to the owning role `WITH
+     * ADMIN OPTION`, which is what lets this test make the `WITH INHERIT FALSE` grant without a superuser —
+     * exactly the reason that role exists. What it is named for is irrelevant here; only the grant shape is.
+     */
+    public function testAViewReachableOnlyByNonInheritedMembershipIsInspected(): void
+    {
+        $view = self::TABLE . '_noninherit_view';
+        $probeRole = getenv('TWES_TEST_DB_PROBE_OWNER_ROLE');
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+
+        if (!\is_string($probeRole) || !\is_string($runtimeRole)) {
+            self::markTestSkipped('No non-inheriting probe role configured.');
+        }
+
+        $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
+        // Owned by the owner, security_invoker unset — the leaking shape.
+        $this->owner->exec('CREATE VIEW ' . $view . ' AS SELECT * FROM ' . self::TABLE);
+
+        try {
+            // REVOKED FIRST, and this is the step that makes the test about anything. The provisioning script
+            // sets ALTER DEFAULT PRIVILEGES granting the runtime role SELECT on every relation the owner
+            // creates, so without this the role holds SELECT directly and inheritably — the blind function
+            // answers YES, the premise below is unreachable, and the case proves nothing.
+            $this->owner->exec('REVOKE ALL ON ' . $view . ' FROM ' . $runtimeRole);
+            $this->owner->exec('GRANT ' . $probeRole . ' TO ' . $runtimeRole . ' WITH INHERIT FALSE');
+            $this->owner->exec('GRANT SELECT ON ' . $view . ' TO ' . $probeRole);
+
+            // The precondition, asserted rather than assumed: the blind function says NO while membership
+            // says YES. If PostgreSQL ever changes that, this test is about nothing and should say so.
+            $resolution = $this->connection->query(
+                "SELECT has_table_privilege(current_user, '" . $view . "', 'SELECT') AS inheritable, "
+                . "pg_has_role(session_user, '" . $probeRole . "', 'MEMBER') AS reachable",
+            );
+            self::assertNotFalse($resolution);
+            /** @var array{inheritable: bool|string, reachable: bool|string} $flags */
+            $flags = $resolution->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotContains($flags['inheritable'], [true, 't', '1'], 'not held inheritably');
+            self::assertContains($flags['reachable'], [true, 't', '1'], 'but one SET ROLE away');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A view reachable by non-inherited membership must be inspected.');
+            self::assertStringContainsString($view, $caught->getMessage());
+        } finally {
+            $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
+            $this->owner->exec('REVOKE ' . $probeRole . ' FROM ' . $runtimeRole);
+        }
+    }
+
+    /**
+     * The `SECURITY DEFINER` classifier, as a pure function — both reasons, distinctly worded.
+     *
+     * The wording is load-bearing rather than cosmetic. Reporting an unreachable-but-unprivileged owner as
+     * "EXEMPT (superuser or BYPASSRLS)" sends a reader to check two role attributes that are correct, and they
+     * conclude the finding is a false positive. That is how a real bypass gets closed as noise.
+     */
+    public function testTheSecurityDefinerClassifierNamesTheReasonForEachOwner(): void
+    {
+        $violations = PostgresRowLevelSecurityIsolation::securityDefinerFunctionViolations([
+            ['function' => 'public.super_fn', 'owner' => 'postgres', 'owner_exempt' => 't'],
+            ['function' => 'public.owner_fn', 'owner' => 'twes_owner', 'owner_exempt' => 'f'],
+        ]);
+
+        self::assertCount(2, $violations);
+        self::assertStringContainsString('EXEMPT from row-level security', $violations[0]);
+        self::assertStringContainsString('postgres', $violations[0]);
+        self::assertStringContainsString('cannot otherwise become', $violations[1]);
+        self::assertStringNotContainsString('EXEMPT', $violations[1]);
+        self::assertStringContainsString('FORCE ROW LEVEL SECURITY', $violations[1]);
+
+        self::assertSame([], PostgresRowLevelSecurityIsolation::securityDefinerFunctionViolations([]));
+    }
+
+    /**
+     * The session-lifetime classifier, as a pure function, over every relation kind it can be handed.
+     *
+     * Arranging a temporary *sequence*, *view* or *composite type* on one connection is a statement each and
+     * proves nothing extra about the danger, so the kind vocabulary is pinned here while the dangerous pair —
+     * a temporary table and a held cursor — is proven live above. The `default` arm is exercised too: a kind
+     * this match does not know must still be REPORTED, with the raw letter, rather than silently named
+     * something it is not.
+     */
+    public function testTheSessionLifetimeClassifierNamesEveryRelationKind(): void
+    {
+        $violations = PostgresRowLevelSecurityIsolation::sessionLifetimeDataViolations([
+            ['name' => 'tmp_t', 'kind' => 'r'],
+            ['name' => 'tmp_v', 'kind' => 'v'],
+            ['name' => 'tmp_s', 'kind' => 'S'],
+            ['name' => 'tmp_m', 'kind' => 'm'],
+            ['name' => 'tmp_c', 'kind' => 'c'],
+            ['name' => 'tmp_i', 'kind' => 'i'],
+            ['name' => 'tmp_x', 'kind' => 'Z'],
+        ], [
+            ['name' => 'held_one'],
+        ]);
+
+        self::assertCount(8, $violations);
+        self::assertStringContainsString('temporary table tmp_t', $violations[0]);
+        self::assertStringContainsString('temporary view tmp_v', $violations[1]);
+        self::assertStringContainsString('temporary sequence tmp_s', $violations[2]);
+        self::assertStringContainsString('temporary materialised view tmp_m', $violations[3]);
+        self::assertStringContainsString('temporary composite type tmp_c', $violations[4]);
+        self::assertStringContainsString('temporary index tmp_i', $violations[5]);
+        self::assertStringContainsString('relation of kind Z tmp_x', $violations[6]);
+        self::assertStringContainsString('held cursor held_one', $violations[7]);
+
+        // And a connection with nothing on it is clean — the guard must be satisfiable.
+        self::assertSame([], PostgresRowLevelSecurityIsolation::sessionLifetimeDataViolations([], []));
     }
 
     /**
@@ -1744,6 +2041,133 @@ final class TenantIsolationTest extends TestCase
             "TRUNCATE must be shown to remove tenant B's row too. If this is 1, TRUNCATE became "
             . 'RLS-scoped and the REVOKE TRUNCATE requirement can be revisited.',
         );
+    }
+
+    /**
+     * The SEVENTH bypass class: tenant data MATERIALISED at SESSION lifetime, which outlives the binding.
+     *
+     * Every guard in this class is transaction-shaped, because `bind()` is: `set_config(..., true)` is undone
+     * on COMMIT, which is exactly what stops a binding leaking to whoever gets the connection next. Two things
+     * PostgreSQL offers are **not** transaction-shaped, and both copy rows out from under the policy while it
+     * is correctly in force:
+     *
+     *  - a **TEMPORARY TABLE**, which lives until the session ends and carries no row-level security of its own
+     *    (it is not in the policed hierarchy, so no arm of the table check can ever see it);
+     *  - a **`DECLARE … CURSOR WITH HOLD`**, which PostgreSQL materialises at COMMIT precisely so it can be
+     *    read afterwards — and `pg_cursors` makes it discoverable to whoever holds the connection next.
+     *
+     * Both are available to the restricted runtime role at no privilege, and both are what an innocent
+     * reporting job or a batch import writes. The demonstration below reads tenant A's rows while bound to
+     * tenant B with **every other guard reporting clean**, which is why this needed a guard of its own rather
+     * than a note.
+     */
+    public function testSessionLifetimeMaterialisedTenantDataIsRefusedAndDiscardable(): void
+    {
+        $isolation = new PostgresRowLevelSecurityIsolation();
+        $temporary = 'tenant_leak_tmp';
+        $cursor = 'tenant_leak_cur';
+
+        try {
+            // Bound to tenant A, and correctly scoped: the SELECT below sees only A's rows.
+            $this->connection->beginTransaction();
+            $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_A),
+            ));
+            $this->connection->exec(
+                'CREATE TEMPORARY TABLE ' . $temporary . ' AS SELECT * FROM ' . self::TABLE,
+            );
+            $this->connection->exec(
+                'DECLARE ' . $cursor . ' CURSOR WITH HOLD FOR SELECT label FROM ' . self::TABLE,
+            );
+            $this->connection->commit();
+
+            // Every existing guard, on the same connection, immediately afterwards.
+            $isolation->assertConnectionCannotBypassPolicies($this->connection);
+            PostgresRowLevelSecurityIsolation::assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+            PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            $isolation->assertNoTenantPinnedOnTheConnection($this->connection);
+
+            // THE LEAK, now bound to tenant B.
+            $this->connection->beginTransaction();
+            $isolation->bind($this->connection, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_B),
+            ));
+
+            $policed = $this->connection->query('SELECT count(*) FROM ' . self::TABLE);
+            self::assertNotFalse($policed);
+            self::assertSame('1', (string) $policed->fetchColumn(), 'tenant B has exactly one row of its own');
+
+            $copied = $this->connection->query('SELECT count(*) FROM ' . $temporary);
+            self::assertNotFalse($copied);
+            self::assertSame(
+                '2',
+                (string) $copied->fetchColumn(),
+                "THE LEAK: a temporary table carries no policy, so tenant A's two rows are readable by "
+                . 'tenant B for the rest of the session.',
+            );
+
+            $held = $this->connection->query('FETCH ALL FROM ' . $cursor);
+            self::assertNotFalse($held);
+            self::assertSame(
+                ['a-one', 'a-two'],
+                $held->fetchAll(\PDO::FETCH_COLUMN),
+                'THE LEAK: a WITH HOLD cursor is materialised at COMMIT and read afterwards, under whatever '
+                . 'tenant is bound then.',
+            );
+
+            $this->connection->commit();
+
+            // Which the new guard refuses, naming both.
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A connection carrying session-lifetime tenant data must be refused.');
+            self::assertStringContainsString($temporary, $caught->getMessage());
+            self::assertStringContainsString($cursor, $caught->getMessage());
+
+            // And discarding really removes both, so the guard is satisfiable rather than a dead end. This is
+            // the release-time half: a connection returned to the pool must go back with nothing on it.
+            PostgresRowLevelSecurityIsolation::discardSessionState($this->connection);
+            PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised($this->connection);
+
+            $gone = $this->connection->query(
+                "SELECT count(*) FROM pg_cursors WHERE name = '" . $cursor . "'",
+            );
+            self::assertNotFalse($gone);
+            self::assertSame('0', (string) $gone->fetchColumn(), 'DISCARD ALL closed the held cursor');
+        } finally {
+            if ($this->connection->inTransaction()) {
+                $this->connection->rollBack();
+            }
+
+            $this->connection->exec('DISCARD ALL');
+        }
+    }
+
+    /**
+     * `discardSessionState()` refuses to run inside a transaction rather than failing obscurely.
+     *
+     * `DISCARD ALL` cannot run in a transaction block — PostgreSQL raises 25001. Refusing with an explanation
+     * is the difference between a caller who moves the call and a caller who wraps it in a try/catch, and the
+     * second is how a release-time guard quietly stops running.
+     */
+    public function testDiscardingSessionStateIsRefusedInsideATransaction(): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            PostgresRowLevelSecurityIsolation::discardSessionState($this->connection);
+            self::assertTrue(false, 'unreachable');
+        } catch (\RuntimeException $exception) {
+            self::assertStringContainsString('outside a transaction', $exception->getMessage());
+        } finally {
+            $this->connection->rollBack();
+        }
     }
 
     // ------------------------------------------------------------------ fixture
