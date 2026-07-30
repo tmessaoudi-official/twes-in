@@ -265,6 +265,25 @@ function inspect(string $file): array
                 );
             }
 
+            // `$c::createFromFormat()` — a dynamically-named STATIC CALL, banned for exactly the reason the
+            // `new $var` ban above gives. ROUND 9 found the asymmetry: this file banned the dynamic
+            // INSTANTIATION by shape and then checked static calls by name only, so `$c::` walked through.
+            //
+            // It lives INSIDE this branch on purpose. Written as a separate `if ($token->is(T_VARIABLE))`
+            // block below, it was UNREACHABLE — this branch `continue`s for every variable token — and the
+            // gate reported OK on the very attack it was added to catch. Third instance today of a rule that
+            // could not fire; caught only because the attack was re-run rather than the fix assumed.
+            $next = nextMeaningfulToken($tokens, $index);
+
+            if (null !== $next && $next->is(\T_DOUBLE_COLON)) {
+                $violations[] = describe(
+                    $file,
+                    $token->line,
+                    $token->text . '::',
+                    'a static call on a dynamically-named class cannot be checked; name the class directly',
+                );
+            }
+
             continue;
         }
 
@@ -294,6 +313,38 @@ function inspect(string $file): array
         // denylist. Checked at the import, which is the one place the real name is still written down.
         if ($token->is(\T_USE)) {
             $afterUse = nextMeaningfulToken($tokens, $index);
+
+            // `use DateTimeImmutable as Stamp;` then `new Stamp()` or `Stamp::createFromFormat()`.
+            // ROUND 9 (P1): this defeated BOTH the `new` rule and the static-call rule, because both key on
+            // the class name AS WRITTEN AT THE CALL SITE — and three architecture gates reported OK on a
+            // domain file that read the clock twice. It is not even an evasion: `use X as Y` is ordinary
+            // style. Exactly the hole the `use function time as now` branch below was written to close, for
+            // functions, and never written for CLASS imports. Checked at the import, which is the one place
+            // the real name is still written down — the same remedy, applied to the other half.
+            if (null !== $afterUse && !$afterUse->is([\T_FUNCTION, \T_CONST])) {
+                for ($cursor = $index + 1; $cursor < $count && ';' !== $tokens[$cursor]->text; ++$cursor) {
+                    if (!$tokens[$cursor]->is([\T_STRING, \T_NAME_QUALIFIED, \T_NAME_FULLY_QUALIFIED])) {
+                        continue;
+                    }
+
+                    $parts = explode('\\', $tokens[$cursor]->text);
+                    $imported = strtolower(end($parts));
+
+                    foreach (BANNED_INSTANTIATIONS as $class => $reason) {
+                        if ($imported !== strtolower($class)) {
+                            continue;
+                        }
+
+                        $violations[] = describe(
+                            $file,
+                            $tokens[$cursor]->line,
+                            'use ' . $class,
+                            $reason . '; importing it under another name does not change what it is, and an '
+                            . 'alias is invisible to every check that reads the call site',
+                        );
+                    }
+                }
+            }
 
             if (null !== $afterUse && $afterUse->is(\T_FUNCTION)) {
                 // Everything up to the statement's `;`, so grouped imports — `use function A\{time, date};`
@@ -419,7 +470,18 @@ function inspect(string $file): array
                 break;
             }
 
-            $afterColon = nextMeaningfulToken($tokens, $index + 1);
+            // FROM THE `::` TOKEN'S OWN INDEX, not $index + 1. ROUND 9 (false positive): `nextMeaningfulToken`
+            // skips whitespace and comments, so `::` can sit several tokens after $index — and scanning from
+            // $index + 1 then returned the `::` itself, which is not T_CLASS, so a legitimate
+            // `DateTimeImmutable ::class` (one space, valid PHP) was reported as a violation. The docblock
+            // promises the opposite. A rule that cannot pass is as broken as one that cannot fail.
+            $colonIndex = $index;
+
+            while ($colonIndex < $count && !$tokens[$colonIndex]->is(\T_DOUBLE_COLON)) {
+                ++$colonIndex;
+            }
+
+            $afterColon = nextMeaningfulToken($tokens, $colonIndex);
 
             if (null === $afterColon || !$afterColon->is(\T_CLASS)) {
                 $violations[] = describe(

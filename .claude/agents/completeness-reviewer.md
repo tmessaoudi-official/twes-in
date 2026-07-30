@@ -107,6 +107,14 @@ other two is the default failure mode here, not an unusual one.
    defence in depth that has not arrived — noted so their absence is not mistaken for a gap in coverage
    the gates already provide.
 
+10. **TENANCY WIRING THAT WAVE 1 OWES — check this whenever a repository or a Doctrine mapping appears.**
+   `PostgresRowLevelSecurityIsolation::assertStillBoundTo()` guards against a savepoint rollback silently
+   reverting the tenant binding — a cross-tenant read AND write, reproduced. It is called by nothing yet.
+   A change that lands a tenant-scoped repository, or enables Doctrine's nested transactions, without
+   wiring that re-check (or without removing the shape, per `build-waves.plan.md` Wave 1) is a **P0**.
+   This row exists because the obligation previously lived only in a docblock and one Decisions Log line,
+   and you are chartered at load time — so if it is not written here, you cannot know to look.
+
 10. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
    with a `## Decisions Log`. If this change resolved a design decision, is it recorded there, in the
    same change? An unrecorded ruling will be re-litigated by the next session — that is the cost, and

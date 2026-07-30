@@ -43,6 +43,35 @@ use Twes\Domain\Shared\RoundingMode;
  * break silently. Pinned directly here, so the function is covered by its own contract rather than by whoever
  * happens to call it.
  */
+/**
+ * AN UNKILLED MUTANT, recorded rather than hidden: the `+ 1` on the working scale survives removal.
+ *
+ * `$working = max(armA, armB) + 1`. With the `+ 1` deleted, all 33 cases here still pass, and I could not
+ * construct an input that distinguishes them. The reason appears to be that every bcmath call using
+ * `$working` is already exact at `max(armA, armB)`:
+ *   - `bcmul($truncated, $absDivisor, …)` needs `$scale + scaleOf($divisor)` — that is armB;
+ *   - `bcsub($absDividend, product, …)` needs `max(scaleOf($dividend), armB)` — that is the max itself;
+ *   - `bcmul('2', $remainder, …)` does not increase scale;
+ *   - `bcmul(unit($scale), $absDivisor, …)` needs `$scale + scaleOf($divisor)` — armB again.
+ * So the `+ 1` reads as redundant headroom.
+ *
+ * **Stated as an observation, NOT as an impossibility, and deliberately not acted on.** `CLAUDE.md`
+ * § Gotchas forbids recording a coverage gap as impossible — three such claims were refuted in one session,
+ * and a documented impossibility gets read once and never re-tested, which makes the false claim the more
+ * expensive artifact. And removing precision headroom from money arithmetic on the strength of my own
+ * reading is exactly the change that should face a reviewer first. So: either a later round finds the input
+ * that kills this mutant, or the `+ 1` is removed deliberately with this reasoning attached. What must not
+ * happen is it sitting here unremarked.
+ *
+ * ROUND 9 CONFIRMED THIS INDEPENDENTLY and more thoroughly: a reviewer ran 864,920 cases (dividend and
+ * divisor scales 0-12, negatives, seven target scales, all eight rounding modes) and got byte-identical
+ * output with and without the `+ 1`, then proved algebraically that every operand is exactly
+ * representable at `max(armA, armB)`. So it is redundant rather than merely unkilled — and the decision
+ * to record it instead of removing it still stands, because removing precision headroom from money
+ * arithmetic is a deliberate change, not a tidy-up. There is no test for it, deliberately: a test that
+ * cannot fail inflates the count and pins nothing (round 9 filed the `assertSame(1, 1)` marker that used
+ * to sit here).
+ */
 #[CoversClass(Decimal::class)]
 final class DecimalScaleSweepTest extends TestCase
 {
@@ -124,6 +153,12 @@ final class DecimalScaleSweepTest extends TestCase
         yield 'a true half, negative' => ['-1', '2', 0];
         yield 'half at the last place' => ['0.125', '1', 2];
 
+        // A ZERO DIVIDEND, which round 9 found absent from the entire unit suite. Behaviour is already
+        // correct — every mode yields '0.00' and Unnecessary does not refuse — so this is a missing pin
+        // rather than a defect, and a zero-total document is a real shape in a billing system.
+        yield 'zero dividend' => ['0', '3', 2];
+        yield 'zero dividend, negative divisor' => ['0', '-3', 2];
+
         // The domain's real shapes: TND's three decimals and a 12-decimal rate.
         yield "TND, a millime" => ['1', '1000', 3];
         yield 'a rate at full 12-decimal precision' => ['1', '7', 12];
@@ -145,8 +180,16 @@ final class DecimalScaleSweepTest extends TestCase
      *   - `Ceiling` must round away from zero on ANY remainder — a lost remainder silently rounds DOWN;
      *   - `Unnecessary` must return null on any remainder — a lost remainder silently returns a value, which
      *     defeats the one mode that exists to refuse a lossy operation.
-     * A wrong number and a silent loss of precision respectively, in a billing domain. So arm A is not
-     * redundant; it was simply untested, which is what the residue said.
+     * A wrong number and a silent loss of precision respectively, in a billing domain.
+     *
+     * **CORRECTION (round 9), because the sentence here was false.** It read "arm A is not redundant; it was
+     * simply untested". Arm A is load-bearing — that part is verified — but it was NOT untested:
+     * `DecimalTest::testDivisionSeesADividendWiderThanTheTargetScalePlusTheDivisor` has pinned it since round
+     * 3 and its own docblock says so, and the arm-A mutant produces THREE failures, one of them that
+     * pre-existing case. The residue R3-2 said "only partly covered", not "untested" — so the claim
+     * misquoted the residue it cited. What these two cases add is coverage of the `Ceiling`/`Unnecessary`
+     * consequence, which is a different failure mode from the round-3 case. Asserting a coverage fact without
+     * running the mutant is the exact sin § Gotchas records; it is recorded here rather than quietly edited.
      */
     public function testCeilingSeesARemainderTheDividendScaleWouldOtherwiseHide(): void
     {
@@ -165,34 +208,6 @@ final class DecimalScaleSweepTest extends TestCase
         // And it must still ACCEPT a genuinely exact division, or it would be a check that cannot pass.
         self::assertSame('2', Decimal::divide('4', '2', 0, RoundingMode::Unnecessary));
         self::assertSame('0.25', Decimal::divide('1', '4', 2, RoundingMode::Unnecessary));
-    }
-
-    /**
-     * AN UNKILLED MUTANT, recorded rather than hidden: the `+ 1` on the working scale survives removal.
-     *
-     * `$working = max(armA, armB) + 1`. With the `+ 1` deleted, all 33 cases here still pass, and I could not
-     * construct an input that distinguishes them. The reason appears to be that every bcmath call using
-     * `$working` is already exact at `max(armA, armB)`:
-     *   - `bcmul($truncated, $absDivisor, …)` needs `$scale + scaleOf($divisor)` — that is armB;
-     *   - `bcsub($absDividend, product, …)` needs `max(scaleOf($dividend), armB)` — that is the max itself;
-     *   - `bcmul('2', $remainder, …)` does not increase scale;
-     *   - `bcmul(unit($scale), $absDivisor, …)` needs `$scale + scaleOf($divisor)` — armB again.
-     * So the `+ 1` reads as redundant headroom.
-     *
-     * **Stated as an observation, NOT as an impossibility, and deliberately not acted on.** `CLAUDE.md`
-     * § Gotchas forbids recording a coverage gap as impossible — three such claims were refuted in one session,
-     * and a documented impossibility gets read once and never re-tested, which makes the false claim the more
-     * expensive artifact. And removing precision headroom from money arithmetic on the strength of my own
-     * reading is exactly the change that should face a reviewer first. So: either a later round finds the input
-     * that kills this mutant, or the `+ 1` is removed deliberately with this reasoning attached. What must not
-     * happen is it sitting here unremarked.
-     */
-    public function testTheWorkingScaleGuardBandIsRecordedAsUnpinned(): void
-    {
-        // Not a behavioural assertion — a marker so the observation above is discoverable from the test list
-        // rather than only from a docblock. The real content is the docblock; this keeps it from being deleted
-        // as a stray comment.
-        self::assertSame(1, 1);
     }
 
     /**

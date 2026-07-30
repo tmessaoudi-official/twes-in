@@ -210,6 +210,33 @@ const FONT_NAME_TABLE_EVIDENCE = [
  * Every identifier here must also be on PERMISSIVE; the check below asserts that rather than assuming it, so
  * adding a signature cannot quietly widen what is accepted.
  */
+/**
+ * Phrases that mean a licence text contains a COPYLEFT grant, whatever else it also contains.
+ *
+ * WHY THIS EXISTS — round 9 defeated the classifier without any trickery. `str_contains`, first match wins,
+ * no negative check: a single `LICENSE` that concatenates a GPL grant with a permissive paragraph for some
+ * bundled helper — a common shape in the pub ecosystem — classified as the PERMISSIVE one and the gate
+ * reported `OK — 25 pub package(s) … all permissively licensed`. That is licensing invariant 8(a), the one
+ * this gate exists to enforce, defeated by a file that says both things.
+ *
+ * This is the third time this repository has been bitten by substring matching where it needed a *decision*:
+ * `policedTableViolations()` records that `LIKE '%twes.tenant_id%'` "proves a policy MENTIONS the setting
+ * rather than isolates by it", and the font walk had to move to "EVERY name record must corroborate". The
+ * generalisation, now stated in three places: **a substring proves mention, never meaning.**
+ *
+ * Checked BEFORE any permissive signature, and any hit is fatal regardless of what else matched.
+ */
+const PUB_COPYLEFT_MARKERS = [
+    'GNU GENERAL PUBLIC LICENSE',
+    'GNU LESSER GENERAL PUBLIC LICENSE',
+    'GNU AFFERO GENERAL PUBLIC LICENSE',
+    'Mozilla Public License',
+    'Eclipse Public License',
+    'Common Development and Distribution License',
+    'SERVER SIDE PUBLIC LICENSE',
+    'Business Source License',
+];
+
 const PUB_LICENCE_SIGNATURES = [
     ['BSD-3-Clause', 'Neither the name of'],
     ['Apache-2.0', 'Apache License'],
@@ -275,6 +302,7 @@ if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
         'font_name_table_evidence' => array_keys(FONT_NAME_TABLE_EVIDENCE),
         'max_font_bytes' => MAX_FONT_BYTES,
         'framework_provided_fonts' => array_keys(FRAMEWORK_PROVIDED_FONTS),
+        'pub_copyleft_markers' => PUB_COPYLEFT_MARKERS,
         'pub_licence_signatures' => array_map(static fn(array $s): string => $s[0], PUB_LICENCE_SIGNATURES),
         'pub_licence_files' => PUB_LICENCE_FILES,
         'lock_files' => array_values(LOCK_FILES),
@@ -411,6 +439,19 @@ function main(): int
     foreach (OWED as $tier => $note) {
         fwrite(\STDOUT, 'dependency-licences: owed — ' . $tier . ': ' . $note . "\n");
     }
+
+    // ALWAYS, and before the verdict. The anti-vacuity probes in test-gates.sh parse these counts to prove the
+    // gate actually looked at the real repository — and they used to read the success summary, which is not
+    // printed on failure. So coupling the pub walk to `flutter pub get` (developer ruling) made a PHP-only
+    // checkout fail the pub check AND take the FONT probe down with it: 313 passed, 3 failed, with two of the
+    // three failures reporting "every case below is then vacuous". A count is evidence about what was
+    // inspected; it must not depend on the verdict.
+    fwrite(\STDOUT, sprintf(
+        "dependency-licences: counts — %d package(s), %d pub package(s), %d vendored font(s)\n",
+        $checked,
+        $pubChecked,
+        $fontsChecked,
+    ));
 
     if ([] !== $offending) {
         fwrite(\STDERR, "dependency-licences: FAIL\n\n");
@@ -809,11 +850,59 @@ function pubLicenceViolations(int &$checked): array
     $violations = [];
 
     foreach (pubLockedPackages($raw) as $name => $package) {
+        // `sdk` is the Flutter SDK itself — BSD-3-Clause, not in the cache, covered by the notices. ANY OTHER
+        // source (`git`, `path`, `hosted` on a private server) is third-party code with no cache entry that
+        // the notices presence check also never sees, so it passed completely unexamined with the count
+        // unmoved. Refused rather than skipped: this is the same "a forward walk says nothing about what it
+        // never reached" direction the font walk gained, omitted here in the same commit.
+        if ('sdk' === $package['source']) {
+            continue;
+        }
+
         if ('hosted' !== $package['source']) {
+            $violations[] = sprintf(
+                '%s %s has source "%s", which this walk cannot read a licence for — it is not in the pub '
+                . 'cache and the notices presence check does not see it either. Refused rather than skipped.',
+                $name,
+                $package['version'],
+                $package['source'],
+            );
+
+            continue;
+        }
+
+        // F6 (round 9): the version comes out of pubspec.lock and `[^\"]+` admitted `/` and `..`, so a crafted
+        // version read a licence from OUTSIDE the cache entirely and certified the package from a file it does
+        // not own. Shape-checked first, then containment-checked below — the package NAME was already safe.
+        if (1 !== preg_match('/^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$/', $package['version'])) {
+            $violations[] = sprintf(
+                '%s has version "%s", which is not a plain semantic version. Refused: this string becomes a '
+                . 'filesystem path, and `..` in it would read a licence from outside the pub cache.',
+                $name,
+                $package['version'],
+            );
+
             continue;
         }
 
         $directory = $cache . '/' . $name . '-' . $package['version'];
+
+        // Belt and braces after the shape check, because a containment assertion is the thing that actually
+        // states the invariant: every licence this gate reads must come from inside the cache it was given.
+        $resolved = realpath($directory);
+        $resolvedCache = realpath($cache);
+
+        if (false !== $resolved && false !== $resolvedCache && !str_starts_with($resolved, $resolvedCache)) {
+            $violations[] = sprintf(
+                '%s %s resolves to %s, which is OUTSIDE the pub cache (%s). Refused.',
+                $name,
+                $package['version'],
+                $resolved,
+                $resolvedCache,
+            );
+
+            continue;
+        }
 
         if (!is_dir($directory)) {
             $violations[] = sprintf(
@@ -857,15 +946,55 @@ function pubLicenceViolations(int &$checked): array
         }
 
         ++$checked;
-        $identifier = null;
 
-        // First match wins, and the list is ordered so the more specific signature comes first.
+        // COPYLEFT VETO FIRST. A text that contains a copyleft grant is refused whatever else it contains —
+        // round 9 slipped a GPL-3.0 package past the classifier by appending a permissive paragraph to it.
+        foreach (PUB_COPYLEFT_MARKERS as $marker) {
+            if (str_contains($text, $marker)) {
+                $violations[] = sprintf(
+                    '%s %s: its licence text contains "%s", a COPYLEFT grant. Refused whatever else the file '
+                    . 'also says — a concatenated licence is not a permissive one, and a copyleft dependency '
+                    . 'satisfies the AGPL branch while killing the commercial one. Read %s.',
+                    $name,
+                    $package['version'],
+                    $marker,
+                    $licencePath,
+                );
+
+                continue 2;
+            }
+        }
+
+        // Then collect EVERY match rather than the first. Ordering alone is not enough: two permissive
+        // signatures matching means the file states more than one licence, and this gate must not pick
+        // whichever happens to pass — the same "ambiguity is refused" rule the font name-table check uses.
+        $matched = [];
+
         foreach (PUB_LICENCE_SIGNATURES as [$spdx, $signature]) {
             if (str_contains($text, $signature)) {
-                $identifier = $spdx;
-
-                break;
+                $matched[$spdx] = true;
             }
+        }
+
+        // BSD-3-Clause legitimately contains BSD-2-Clause's disclaimer paragraph, so that ONE pair is a known
+        // superset rather than an ambiguity: the more specific identifier wins and the pair is collapsed.
+        if (isset($matched['BSD-3-Clause'])) {
+            unset($matched['BSD-2-Clause']);
+        }
+
+        $identifier = 1 === count($matched) ? array_key_first($matched) : null;
+
+        if (count($matched) > 1) {
+            $violations[] = sprintf(
+                '%s %s: its licence text matches MORE THAN ONE licence (%s), so what it is actually offered '
+                . 'under is ambiguous. Refused rather than guessed. Read %s.',
+                $name,
+                $package['version'],
+                implode(' and ', array_keys($matched)),
+                $licencePath,
+            );
+
+            continue;
         }
 
         if (null === $identifier) {

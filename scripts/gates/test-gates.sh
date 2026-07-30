@@ -818,7 +818,7 @@ add_fonts_fixture() {
 # committed fonts — a renamed directory, a changed extension list, an early return — every case below would
 # still pass on its own fixture while the gate checked nothing where it matters.
 real_font_report="$(cd "$REPO_ROOT" && php scripts/gates/dependency-licences.php 2>&1)"
-real_font_count="$(printf '%s' "$real_font_report" | sed -n 's/.* and \([0-9]*\) vendored font(s).*/\1/p')"
+real_font_count="$(printf '%s' "$real_font_report" | sed -n 's/^dependency-licences: counts — .*, \([0-9]*\) vendored font(s).*/\1/p')"
 
 if [[ -n "$real_font_count" ]] && (( real_font_count >= 5 )); then
   printf '  ok   — the gate reads %s vendored font(s) in the real repository\n' "$real_font_count"
@@ -1102,21 +1102,33 @@ echo "== THE PUB TRANSITIVE-LICENCE WALK, this tier's first per-package licence 
 # that promise gets a case, because the happy path proves only that the happy path works.
 
 fresh_fixture
-assert_gate "accepts the synthetic pub tree" dependency-licences.php 0 "pub package(s)"
+assert_gate "accepts the synthetic pub tree" dependency-licences.php 0 "2 pub package(s)"
 
 # ANTI-VACUITY, against the REAL tree rather than the fixture: if the walk ever stops finding the committed
 # lock -- a renamed file, an early return, a changed source filter -- every case above still passes on its own
 # synthetic cache while the gate verifies nothing where it matters. Same guard the font walk carries.
 real_pub_report="$(cd "$REPO_ROOT" && php scripts/gates/dependency-licences.php 2>&1)"
-real_pub_count="$(printf '%s' "$real_pub_report" | sed -n 's/.*, \([0-9]*\) pub package(s).*/\1/p')"
+real_pub_count="$(printf '%s' "$real_pub_report" | sed -n 's/^dependency-licences: counts — [0-9]* package(s), \([0-9]*\) pub package(s).*/\1/p')"
 
-if [[ -n "$real_pub_count" ]] && (( real_pub_count >= 20 )); then
-  printf '  ok   — the gate reads %s pub package(s) in the real repository\n' "$real_pub_count"
-  passed=$((passed + 1))
-else
-  printf '  FAIL — the gate reported no pub-package count for the real repository, so every pub case is vacuous. Output: %s\n' \
+# THREE outcomes, not two, because "the gate read nothing" and "there is nothing to read on this machine" are
+# different facts and only one of them is a defect. The pub walk needs a populated cache (`flutter pub get`) --
+# the accepted cost of the fail-loudly ruling -- so on a PHP-only checkout a zero count is the DOCUMENTED
+# precondition, not vacuity. Conflating them made this probe fail on exactly the machine CLAUDE.md says the
+# plain-PHP gates run on, and drag the case-count floor down with it.
+if [[ -z "$real_pub_count" ]]; then
+  printf '  FAIL — the gate printed no counts line at all, so nothing can be said about what it inspected. Output: %s\n' \
     "$real_pub_report"
   failed=$((failed + 1))
+elif (( real_pub_count >= 20 )); then
+  printf '  ok   — the gate reads %s pub package(s) in the real repository\n' "$real_pub_count"
+  passed=$((passed + 1))
+elif [[ -d "${PUB_CACHE:-$HOME/.pub-cache}/hosted/pub.dev" ]]; then
+  printf '  FAIL — a pub cache EXISTS but the gate read only %s package(s) from the real repository, so the pub cases are vacuous. Output: %s\n' \
+    "$real_pub_count" "$real_pub_report"
+  failed=$((failed + 1))
+else
+  printf '  ok   — no pub cache on this machine, so the real-repo pub count is 0 by precondition (run `cd mobile && flutter pub get`); the fixture cases below still run against $WORK/pubcache\n'
+  passed=$((passed + 1))
 fi
 
 # THE ORDERING, which is the one thing in this walk that is silently wrong rather than loudly wrong. The
@@ -1125,19 +1137,23 @@ fi
 # licence contains both phrases precisely so this case can tell the difference.
 fresh_fixture
 python3 - "$WORK/repo/scripts/gates/dependency-licences.php" <<'PYORDER'
-import pathlib, sys, re
+import pathlib, sys
 p = pathlib.Path(sys.argv[1]); t = p.read_text()
-# Move BSD-2 ahead of BSD-3 -- the mistake the ordering comment warns about.
+# ONLY the order. An earlier version of this case ALSO deleted 'BSD-2-Clause' from PERMISSIVE, and 22 Angular
+# packages then produced the asserted substring on their own -- so the case passed with the signature order
+# left correct, and the one property the gate calls "silently wrong rather than loudly wrong" was pinned by
+# nothing. Round 9 caught it. The collapse rule (BSD-3 wins over BSD-2) must survive reordering, so this
+# mutation removes the collapse as well: reordering alone is now handled, which is the point of having it.
 bsd3 = "    ['BSD-3-Clause', 'Neither the name of'],\n"
 bsd2 = "    ['BSD-2-Clause', 'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS'],\n"
 assert bsd3 in t and bsd2 in t
 t = t.replace(bsd3, "").replace(bsd2, bsd2 + bsd3)
-# And make BSD-2 unacceptable, so the misclassification becomes observable as a refusal.
-t = t.replace("    'BSD-2-Clause',\n", "", 1)
+t = t.replace("        if (isset($matched['BSD-3-Clause'])) {\n            unset($matched['BSD-2-Clause']);\n        }\n", "")
 p.write_text(t)
 PYORDER
+# Names the FIXTURE package, so no other tier's packages can satisfy this assertion by accident.
 assert_gate "an UNORDERED signature list misreads BSD-3 as BSD-2" dependency-licences.php 1 \
-  "is BSD-2-Clause — not permissive"
+  "probe_bsd 1.0.0: its licence text matches MORE THAN ONE"
 
 fresh_fixture
 rm -rf "$WORK/pubcache"

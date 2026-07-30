@@ -114,8 +114,11 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   and keep the record; close it opportunistically, not urgently.** `assertSessionTenantIsUnset()` returns early
   on `'' === $existing`, so a transaction-local `set_config('twes.tenant_id', '', true)` masks a live
   session-scope pin that returns on COMMIT. It stays **P2** for one reason: whoever can issue that statement can
-  already bind to any tenant directly, so it grants no privilege they lack. **Deferred action with a TRIGGER,
-  not a someday:** when the tenancy code is next opened for any reason, refuse `''` rather than treating it as
+  already bind to any tenant directly, so it grants no privilege they lack. **Deferred action with a NARROWED trigger** — round 9
+  filed that the original wording ("when the tenancy code is next opened for any reason") fired in the very
+  commit that recorded it, since that commit added 55 lines to this exact file and left the early return. A
+  trigger satisfied and not honoured in its own commit is a rule nothing consults, so it is narrowed to the
+  thing it is actually about: **when `assertSessionTenantIsUnset()` itself is next changed**, refuse `''` rather than treating it as
   unset — `current_setting` returns NULL for never-set and `''` for explicitly-emptied, so the two are
   distinguishable in about three lines. Confirm first that no legitimate path writes `''`, or the fix breaks
   honest callers. The residue's own suggestion — a re-check on connection *release* — remains the right shape and
@@ -301,8 +304,8 @@ the round-2 reports, and none should be closed without one:
 | R2-9 | **The six-target / two-admin-interfaces ruling has no mechanical home.** Wave 12 says only "CI mirroring the quality gate"; `CLAUDE.md`'s Flutter gate row has **no per-target build**; the three-runner matrix exists in one README and no wave, gate row or table. Eleven skill banners still say "a Flutter mobile/desktop app". | **P2** — **CLOSED.** Wave 12 carries the three-runner release matrix; `CLAUDE.md`'s Flutter gate row requires a build of all six targets; header and all eleven skill banners updated. |
 | R2-10 | **`authored_by` is new persisted state that never reaches Wave 1's scope.** Wave 1's `In:` list names no `Product` entity, and F4 names only the snapshot rule — so the wave writing the first migration has no record that the column exists. | **P2** — **CLOSED.** Wave 1's scope names the `Product` entity and specifies all four pricing columns with types, `authored_by` non-null, plus the composite-key and RLS requirements. |
 | R2-11 | **`testTruncateIsNotProtected…` cannot distinguish what it claims to pin.** It counts rows while still bound to tenant A, so a scoped `DELETE` produces the identical observation. It would pass unchanged the day PostgreSQL made `TRUNCATE` RLS-scoped — exactly when it should start failing. | **P2** — **CLOSED.** The test now counts with RLS off, which is the only way to observe that tenant B's row went too; a scoped `DELETE` no longer produces the same observation. |
-| R2-12 | **A savepoint rollback after `bind()` reverts the GUC to the previous tenant** while the PHP-side context still believes the new one. Not reachable today (PDO forbids nested transactions) but Doctrine implements them as savepoints, and `InMemoryTenantContext::switchTo()` exists for exactly the multi-tenant worker case. | **P2** |
-| R2-13 | **Gate evasions still open:** `new (expr)()` and `new (self::CONST)()` (a third syntax the round-1 `new $var()` guard did not consider), and `DateTimeImmutable::createFromFormat()` — a genuine clock read, since missing format fields default to *now*, in a call that looks like ordinary parsing. | **P2** |
+| R2-12 | ~~**CLOSED 2026-07-30** — and its premise was FALSE; see the Decisions Log. A `SAVEPOINT` issued as ordinary SQL needs no ORM, so this reproduced in nine lines and permitted a cross-tenant READ **and WRITE**.~~ Original text: **A savepoint rollback after `bind()` reverts the GUC to the previous tenant** while the PHP-side context still believes the new one. Not reachable today (PDO forbids nested transactions) but Doctrine implements them as savepoints, and `InMemoryTenantContext::switchTo()` exists for exactly the multi-tenant worker case. | **P2** |
+| R2-13 | ~~**CLOSED 2026-07-30**, seven rounds after being filed — all three were still live.~~ Original text: **Gate evasions:** `new (expr)()` and `new (self::CONST)()` (a third syntax the round-1 `new $var()` guard did not consider), and `DateTimeImmutable::createFromFormat()` — a genuine clock read, since missing format fields default to *now*, in a call that looks like ordinary parsing. | **P2** |
 | R2-14 | **Undocumented magnitude boundary:** above a cost of ~1e9, a `withCost` to the *same value* drifts by a millime, because the price is rebuilt from a 12-decimal rate. `NUMERIC(19,4)` permits 15 integer digits, so the type allows it. Repeated cost changes do **not** compound (verified). | **P3** |
 | R2-15 | **A negative cost is accepted** and silently yields a negative selling price. `Money` must allow negatives for credit notes, but a product *cost* below zero is not a commercial state. Decide and state it, as `Rate` does for negative rates. | **P3** — **CLOSED.** A negative cost is refused by `InvalidCost`, checked in `ProductPricing`'s constructor so every path is covered. Ruled rather than left ambiguous: selling below cost is a negative *rate*, which `Rate` allows. |
 | R2-16 | The pricing plan's `## Decisions Log` had no entry for the ruling that rewrote its own subject; `Money::negated`/`absolute`/`isPositive` and `Decimal::compare` have no direct tests. | **P3** — **PARTLY CLOSED.** `Money::negated`/`absolute`/`isPositive` and `Decimal::compare` now have direct tests, and the min-scale mutant dies. The pricing plan's Decisions Log entry was added. |
@@ -323,7 +326,7 @@ of sixteen are done:
   with types, including `authored_by` as non-null, plus the composite-key and RLS requirements every
   tenant-owned table in that wave must carry.
 
-Still open, and each is genuinely not-now rather than deferred by convenience: **R2-12** (a savepoint
+Recorded as not-now at round 2; **R2-12 and R2-13 were closed 2026-07-30** and the premise of R2-12 was refuted: **R2-12** (a savepoint
 rollback reverts the GUC — unreachable until Doctrine introduces nested transactions, and the fix belongs
 with the code that creates the exposure), **R2-13** (`new (expr)()` and
 `DateTimeImmutable::createFromFormat()` evade the ambient-call gate) and **R2-14** (the >1e9 rate-precision
@@ -393,13 +396,13 @@ completeness:
   comment and `reimplementation-strategy.plan.md` no longer call desktop "planned" or "later"; the pricing
   plan's "Nothing here is implemented" is corrected.
 
-**Owed from round 3.** R3-1 is closed (below); R3-2 and R3-3 remain, and they are why round 4 must run:
+**Owed from round 3.** R3-1 is closed (below); **R3-2 and R3-3 were closed 2026-07-30**; at the time they remained, and they are why round 4 must run:
 
 | # | Finding | Severity |
 |---|---|---|
 | R3-1 | ~~**`test-gates.sh` pins the fixture's instances, not the rule sets.**~~ **CLOSED, structurally.** Each gate now answers `--dump-rules` with its own rule data, and the meta-suite uses it two ways, because one alone is insufficient: **generated cases** — one execution per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section — prove every present rule fires; and a **committed baseline** asserts each rule set is a *superset* of a named list, because generating cases from the data means deleting an entry would delete its own case. 37 → **183 cases**. All seven demonstrated neuterings now fail, plus two more found while building it: disabling the `T_EXIT` branch kept the suite green (the generated cases skip `exit`/`die` by construction), and so did disabling the `include`/`require` and backtick branches — so those five language constructs have explicit cases. [Verified: nine neuterings re-run individually, each reported.] Original finding: Seven neuterings each keep 37/37 — dropping `packages-dev` from the licence merge, slicing the package list to one, dropping two of three forbidden layers, deleting the `DateTime` row, disabling the `T_EXIT` branch, and two `SEARCH_ROOTS`/extension reductions. The last hides a header-less `.orm.xml`, which is exactly what Wave 1 must produce. Remedy is structural: drive the cases from the gates' own data — one per `BANNED_*` entry, one per `FORBIDDEN_BY_LAYER` pair, a fixture member per root and per extension, and a `packages-dev` case. | **P2** |
-| R3-2 | **`Decimal::divide`'s working-scale `max()` term is only partly covered.** A case with a 15-decimal dividend was added, but the term deserves a systematic sweep across dividend/divisor/target-scale combinations rather than one example. | **P3** |
-| R3-3 | **`Decimal::scaleOf` survives a mutant returning garbage for every dotless value.** Now has direct tests, but the reviewer's point stands: it survived by *luck of consumer shape*, and the next consumer — a formatter, or a `NUMERIC(19,4)` decimal-count check in the Doctrine type — would break silently. | **P3** |
+| R3-2 | ~~**CLOSED 2026-07-30**; arm A proved load-bearing via `Ceiling`/`Unnecessary`.~~ Original text: **`Decimal::divide`'s working-scale `max()` term is only partly covered.** A case with a 15-decimal dividend was added, but the term deserves a systematic sweep across dividend/divisor/target-scale combinations rather than one example. | **P3** |
+| R3-3 | ~~**CLOSED 2026-07-30** by direct dotless cases.~~ Original text: **`Decimal::scaleOf` survives a mutant returning garbage for every dotless value.** Now has direct tests, but the reviewer's point stands: it survived by *luck of consumer shape*, and the next consumer — a formatter, or a `NUMERIC(19,4)` decimal-count check in the Doctrine type — would break silently. | **P3** |
 
 Also still open from round 2: **R2-12** (savepoint rollback reverts the GUC — unreachable until Doctrine),
 **R2-13** (`new (expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` evade the
@@ -457,7 +460,7 @@ could step around the thing being asserted.
 `RoundingModeIsForwardedTest`'s `withCost` case, where a 12th-decimal rate difference is what decides the
 third decimal of the price.
 
-**Still open and honestly so:** **R2-12** (savepoint rollback reverts the GUC — unreachable until Doctrine),
+**Still open at the time of round 4, ALL FOUR now closed (2026-07-30):** **R2-12** (savepoint rollback reverts the GUC — unreachable until Doctrine),
 **R2-13** (`new (expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` evade the ambient
 gate), **R3-2** (`Decimal::divide` working-scale sweep), **R3-3** (`scaleOf` survives by luck of consumer
 shape), **R4-18** above, and the composite-key schema gate — **P0 at the first Wave 1 migration**.
@@ -509,6 +512,24 @@ precisely because they are unfixable later.
 totals, discounts, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
 tax is a *flag*, never a parallel class hierarchy · invoice state machine behind a **transition guard**, no
 status written by assignment · numbering with per-tenant counters.
+
+**WAVE 1 ALSO OWES THE SAVEPOINT RE-CHECK WIRING** (round 9, P2-2 — the obligation existed only in a
+Decisions Log line and a docblock, i.e. in neither place a Wave 1 session or its reviewer would look).
+`PostgresRowLevelSecurityIsolation::assertStillBoundTo()` exists, is tested and is called by **nothing**. A
+`ROLLBACK TO SAVEPOINT` reverts the transaction-local tenant binding while the PHP-side context still holds
+the new tenant, which permits a cross-tenant **read and write** — reproduced against a real policed table.
+Doctrine emits savepoints for nested transactions, so this becomes live the moment persistence lands.
+
+Two things Wave 1 must decide rather than inherit, because round 9 showed the obligation is addressed to a
+layer that cannot see its own trigger — repository code does not issue the savepoint and cannot observe it:
+
+1. **Put `assertStillBoundTo()` on the `TenantIsolationStrategy` port**, not only the concrete class. A
+   repository injected with the port — which is the point of the seam — cannot call it today without an
+   `instanceof`, so correct code written against the abstraction is defenceless.
+2. **Prefer removing the shape to checking for it**: either drive the re-check from the savepoint-emitting
+   seam (a DBAL middleware), or forbid savepoint-backed nested transactions in configuration. A check every
+   caller must remember is the weakest of the three, and this repo already records that a control enforced
+   only by a reviewer's memory is not a control.
 
 **THE SCHEMA GATE IS A WAVE 1 BLOCKER — the first migration does not land without it** (developer ruling,
 2026-07-30). Every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply
@@ -755,7 +776,7 @@ it.* Six roles now. 27 → 32 integration tests; 296 → 328 total, 1410 asserti
 | R5-12 | **The seventh recurrence of correcting a claim somewhere other than where it is made:** `README.md:9` and **11 skill banners** still say the client tiers do not exist, and `.claude/skills/sweep/SKILL.md` reads that as authorisation to skip the Angular and Flutter review dimensions — including visual evidence — for tiers that are present and building. | this table |
 | R5-13 | Stale counts: `CLAUDE.md` writes "183 cases" (actual 226) **377 lines after stating that no count may be written there**, and this plan's Wave 0 "Delivered and verified" headline still says 251 tests / 183 gate tests. | this table |
 
-Plus, unchanged and still accurate: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, the composite-key
+Plus — **R2-12, R2-13, R3-2 and R3-3 are all CLOSED as of 2026-07-30**, so read the Decisions Log before believing the rest of this line, which is preserved as the record of what was open at the time: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, the composite-key
 schema gate (**P0 at the first Wave 1 migration**), PHPStan/deptrac, and — new from the partitioned-table
 finding — **RLS on a partitioned parent does not police direct access to a partition**, so a Wave 1
 partitioned tenant table needs the policy on every partition. That belongs beside the composite-key rule in
@@ -836,7 +857,7 @@ Flutter command order made both new GDPR tests **skip** while reporting success.
 | R7-4 | `spdx-headers.sh` states a header in JSON is "impossible". It is not — `api/composer.json` carries `"license": "AGPL-3.0-or-later"` in the field both Composer and npm define, and **`admin/package.json` has no such field and no gate looks.** The obstacle is comment syntax, not the identifier. |
 | R7-5 | Reviewer agents are chartered at **session load time**, so amending `.claude/agents/*.md` does not re-charter a running agent. Round 7's completeness lens was running the pre-fix licensing charter and said so. The meta-case protects the file; it cannot protect a session already started. |
 
-Plus, unchanged: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, **R5-2's** two-line throw-wiring (now
+Plus — **R2-12, R2-13, R3-2, R3-3 and the Flutter transitive-licence walk are all CLOSED as of 2026-07-30**; preserved as the record of what was open then: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, **R5-2's** two-line throw-wiring (now
 covered — `LyingStatement` kills it), the composite-key schema gate, PHPStan/deptrac, and the Flutter
 transitive-licence walk.
 
@@ -887,6 +908,36 @@ the Noto family and `fontFamilyFallback` removed**, which is the state R7-1 desc
 independently at 175 404s in 9 s against my 229 in 12 s — the same ~19–20 req/s mechanism. Recorded this way
 because `CLAUDE.md` already carries the cost of a `[Verified]` that no fresh clone could reproduce.
 
+### Certification round 9 — 29 findings, and the panel died once before it ran
+
+**First attempt died silently.** Three agents, no notifications, nothing in the developer's UI. Recorded because
+the failure mode is invisible from inside: the parent cannot distinguish "still working" from "dead", so a round
+can be waited on forever. The developer noticing an empty UI was the deciding evidence. Relaunched with two
+changes: **bounded scope per lens** with an explicit instruction to report partial findings rather than go
+silent, and **one lens owning PostgreSQL** instead of three concurrently running `pg_ctlcluster` — a hazard the
+previous round created.
+
+**Counts: correctness 9, security 8, completeness 12.** Every finding was in the three unreviewed commits.
+
+The two that mattered most were both in code written to close earlier rounds:
+
+| # | Finding |
+|---|---|
+| **security F5 — P1** | **The pub licence classifier accepted a GPL-3.0 package.** No trickery: a `LICENSE` concatenating a copyleft grant with a permissive paragraph — a common shape in the pub ecosystem — matched the permissive signature first, and the gate printed `OK … all permissively licensed`. Licensing invariant 8(a), defeated by the gate written to enforce it. **Third time this repo has been bitten by substring matching where it needed a decision** (`LIKE '%twes.tenant_id%'` proving a policy *mentions* the setting; the font name-table check needing *every* record to corroborate). Closed with a copyleft veto checked before any permissive signature, plus refusal when more than one licence matches. |
+| **correctness F2 — P1** | **`use DateTimeImmutable as Stamp;` defeated BOTH new ambient rules.** Three architecture gates reported OK on a domain file that read the clock twice, and it is not an evasion — `use X as Y` is ordinary style. Exactly the hole the `use function time as now` branch closed for functions, never written for CLASS imports. Closed at the import site. |
+
+Others, each closed: a **path traversal** in the pub walk (the `version` field becomes a filesystem path, so `1.0.0/../../..` certified a package from a licence it does not own); the **tenant-less divergence** was undetectable and, worse, the prescribed `if ($context->hasTenant())` call shape meant no check ran in that state; a **false positive I introduced** (`DateTimeImmutable ::class` with one space); `$c::createFromFormat()` evading a rule whose sibling bans `new $c` by shape; the divergence message **prescribing a remedy that is impossible** and whose only working form is a documented bypass; and `catch (\RuntimeException)` **swallowing PHPUnit's own `fail()`**, since `AssertionFailedError` extends it.
+
+**Three findings were about my own records rather than code, and they are the ones worth remembering:**
+
+1. **A false coverage claim.** `DecimalScaleSweepTest`'s docblock said arm A "was simply untested". It has been pinned by `DecimalTest::testDivisionSeesADividendWiderThanTheTargetScalePlusTheDivisor` since round 3 — the arm-A mutant produces three failures, one pre-existing — and the residue said "only partly covered", not "untested". Corrected in place, not quietly.
+2. **A functional regression from a ruling's unstated consequence.** Making the pub walk fail-when-it-cannot-look coupled the licensing gate to `flutter pub get`, which made `CLAUDE.md`'s "run today with no dependencies at all" false AND took the FONT anti-vacuity probe down with it: `313 passed, 3 failed` on a PHP-only checkout. Closed by printing the counts line unconditionally (a count is evidence about what was inspected; it must not depend on the verdict) and by teaching the pub probe to distinguish "read nothing" from "nothing to read on this machine". Verified green on both machine shapes.
+3. **A vacuous meta-case I wrote to prove ordering matters.** Its mutation also deleted `BSD-2-Clause` from `PERMISSIVE`, and 22 Angular packages then produced the asserted substring with the signature order left correct — so the one property the gate calls "silently wrong rather than loudly wrong" was pinned by nothing. Now mutates only the order and asserts a message naming the fixture package. Verified: neutering the walk now fails it.
+
+**Also closed: four pointers that led nowhere.** R8-16's ruled remedy and the Angular notices gap both said "lands with `infra/`" and `infra/README.md` recorded neither; the savepoint obligation lived in one Decisions Log line and a docblock, so a Wave 1 session and its load-time-chartered reviewer had no way to find it — it is now in Wave 1's scope and in the reviewer charter; and the residue table still restated R2-12's refuted premise verbatim, unannotated, with a line reading "unchanged and **still accurate**".
+
+**Round 10 is owed.** Still zero consecutive clean rounds.
+
 ### Certification round 8 — 23 findings across three lenses, and the fifth consecutive round whose findings are in the previous round's code
 
 **Counts: correctness 8, security 5, completeness 10.** Zero clean rounds still. Every finding was in the font
@@ -929,8 +980,7 @@ the contradiction was between a documented invariant and the code it described. 
 because both ran when the database happened to be up.
 
 **Round 9 is owed**, and Wave 0 still has **zero** consecutive clean rounds against the two MAXIMAL requires.
-Per the developer's ruling of 2026-07-30, round 9 is **scoped to the font machinery and the documents changed by
-rounds 8 and 9** rather than re-reading all of Wave 0: two independent lenses confirmed the API tier, the
+Per the developer's ruling of 2026-07-30, round 9 was originally **scoped to the font machinery**, and that scope was SUPERSEDED before it ran: `e89e3f7` added tenancy code, two new ambient-gate rules and a new test suite, none of it font machinery, so the round that actually ran covered all three unreviewed commits rather than re-reading all of Wave 0: two independent lenses confirmed the API tier, the
 tenancy work and all six gates green and untouched, so the only region still producing findings is the patch
 itself. That scope is a deliberate narrowing, recorded here so a later reader does not mistake a scoped clean
 round for a full one.

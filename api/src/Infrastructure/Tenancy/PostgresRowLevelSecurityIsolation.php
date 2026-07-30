@@ -163,17 +163,36 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      */
     public function assertStillBoundTo(\PDO $connection, TenantContext $context): void
     {
+        // A TENANT-LESS CONTEXT IS THE OTHER HALF OF THE SAME DIVERGENCE, not an error. Round 9 (P1): this
+        // threw NoCurrentTenant when the context held no tenant — but a savepoint rollback, or a `clear()` for
+        // the genuinely cross-tenant work TenantContext's own docblock names (installation, a global health
+        // check, a cross-tenant migration), can leave the GUC bound to tenant A while the context holds
+        // nothing. Every statement is then still scoped to A while the application believes it is reading
+        // everything, so a cross-tenant report silently returns one tenant's rows as the whole set.
+        //
+        // Throwing made it undetectable in practice: NoCurrentTenant's own message says "ask
+        // TenantContext::hasTenant() first", so a correctly-written caller guards this call with
+        // `if ($context->hasTenant())` and runs NO check in exactly the state that needed one.
+        // So: expect the GUC to be EMPTY, and say so when it is not.
         if (!$context->hasTenant()) {
-            throw NoCurrentTenant::create();
+            $unbound = self::readTenantSetting($connection);
+
+            if ('' === $unbound) {
+                return;
+            }
+
+            throw new \RuntimeException(\sprintf(
+                'Tenant binding DIVERGED: the application believes it holds NO tenant — so it expects to see '
+                . 'every tenant\'s rows — but the connection is still scoped to "%s". A cross-tenant read '
+                . 'would silently return one tenant\'s rows as the whole set. Clear the binding, or bind '
+                . 'deliberately.',
+                $unbound,
+            ));
         }
 
         $expected = $context->tenantId()->toString();
 
-        $statement = $connection->prepare(
-            \sprintf("SELECT coalesce(current_setting(%s, true), '')", \sprintf("'%s'", self::TENANT_SETTING)),
-        );
-        $statement->execute();
-        $actual = $statement->fetchColumn();
+        $actual = self::readTenantSetting($connection);
 
         if ($actual === $expected) {
             return;
@@ -183,10 +202,32 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             'Tenant binding DIVERGED: the application believes tenant "%s" but the connection is scoped to '
             . '"%s". A savepoint rollback reverts a transaction-local binding while leaving the PHP-side '
             . 'context untouched, so continuing would read one tenant\'s rows under another tenant\'s name. '
-            . 'Re-bind before continuing.',
+            . 'ABORT this unit of work: do NOT try to re-bind, because bind() refuses while the reverted '
+            . 'value is present, and the only way to force it past that refusal is the empty-string masking '
+            . 'this class documents as a bypass. Roll back and open a new transaction.',
             $expected,
             \is_string($actual) && '' !== $actual ? $actual : '<unset>',
         ));
+    }
+
+    /**
+     * The tenant setting as the connection currently sees it, `''` when unset.
+     *
+     * Shared by both divergence branches so they cannot drift apart — and `coalesce` to `''` rather than null
+     * because "never set" and "explicitly emptied" are the same thing to a caller asking "am I still bound?".
+     * They are NOT the same thing to `assertSessionTenantIsUnset()`, which is why that method keeps its own
+     * read; see its own comment for the distinction it has to make.
+     */
+    private static function readTenantSetting(\PDO $connection): string
+    {
+        $statement = $connection->prepare(
+            \sprintf("SELECT coalesce(current_setting(%s, true), '')", \sprintf("'%s'", self::TENANT_SETTING)),
+        );
+        $statement->execute();
+
+        $value = $statement->fetchColumn();
+
+        return \is_string($value) ? $value : '';
     }
 
     /**

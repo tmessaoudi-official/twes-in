@@ -89,7 +89,7 @@
     "scripts-descriptions": {
         "gate": "Run the API tier's full quality gate. Green means every step, not most of them.",
         "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies.",
-        "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md).",
+        "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md). NEEDS a populated pub cache: run `cd mobile && flutter pub get` first, or set PUB_CACHE.",
         "gate:mapping": "Validate the service container and the Doctrine mapping without touching a database.",
         "gate:static": "PHPStan at max level, including the banned-ambient-function rule for Domain/.",
         "gate:style": "Check coding style without modifying files.",
