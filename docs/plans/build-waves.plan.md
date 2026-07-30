@@ -110,6 +110,15 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   remainder subtraction, so a too-small working scale makes an **inexact division report itself as exact**.
   Invisible to HalfUp; decisive for `Ceiling`, which then rounds a strictly-positive value DOWN, and for
   `Unnecessary`, which hands back a value instead of refusing a lossy operation. Two cases added; mutant dies.
+- [2026-07-30 10:15] RULED (developer accepting the recommendation): **the two gates written during round 11's
+  closure are ACCEPTED, and round 12 is pointed at the round-11 diff** — `scripts/gates/shell-syntax.sh` and
+  `dependency-licences.php`'s own-licence check both stay, notwithstanding the previous ruling's "I write no new
+  gate code" clause. Consequence accepted explicitly rather than hoped away: round 12's scope therefore INCLUDES
+  ~500 lines of new gate code, which is exactly the input the freeze existed to remove, so gate findings are
+  expected rather than a surprise. The freeze hypothesis is retired as falsified (see the amended entry below);
+  round 12 is a normal MAXIMAL round over the round-11 diff, with the `Rate`/`PriceCalculator`/`Currency` surface
+  the correctness lens *confirmed* rather than attacked as its second target.
+
 - [2026-07-30 08:30] RULED (developer accepting the recommendation): **freeze the gates; round 11 verifies the
   DOMAIN only, and I write no new gate code in response to it.** Findings by round are
   48 → 26 → 20 → 21 → 29 → 17 → 20 → 23 → 29 → 28 → 17: not converging, and rounds 10 and 11 each made the reason legible from a different side. The
