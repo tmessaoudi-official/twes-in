@@ -254,11 +254,24 @@ limitation and it is stated rather than papered over: the licences above were ea
 and `scripts/gates/dependency-licences.php` can therefore only check that every **direct** pub dependency
 appears in this file, not that its licence is permissive. The 23 transitive entries are the Dart and Flutter
 SDK's own first-party packages (`async`, `collection`, `meta`, `matcher`, `stack_trace`, `vm_service`,
-`leak_tracker`, `sky_engine` and similar), published by `dart.dev`/`flutter.dev` under BSD-3-Clause; adding
-any pub dependency from outside that set requires reading its licence and adding a row here in the same
-change. **Owed:** a licence check for this tier that does not depend on a field pub does not publish — the
-options are a build-time `flutter pub deps --json` walk plus a cached licence map, or vendoring the
-`LICENSE` files. Recorded in `docs/plans/build-waves.plan.md`.
+`leak_tracker`, `sky_engine` and similar), published by `dart.dev`/`flutter.dev` — **mostly** under
+BSD-3-Clause, and that word matters: **three are Apache-2.0**, namely `clock`, `fake_async` and
+`material_color_utilities` [Verified 2026-07-30: each package's own `LICENSE` opens *"Apache License /
+Version 2.0, January 2004"*]. Apache-2.0 is on the permitted list, so this was never a violation — but this
+file said "under BSD-3-Clause" without qualification, which was a false factual claim in the one document
+invariant 8(a) names as the licence record. Adding any pub dependency from outside that set requires reading
+its licence and adding a row here in the same change.
+
+~~**Owed:** a licence check for this tier that does not depend on a field pub does not publish.~~
+**DELIVERED 2026-07-30.** `scripts/gates/dependency-licences.php` now reads **every** locked pub package's
+own licence file out of the pub cache and classifies it — 24 hosted packages, 24 classified, none left over:
+**BSD-3-Clause ×20, Apache-2.0 ×3, MIT ×1.** The old note claimed the check needed `flutter pub deps --json`
+or vendored `LICENSE` files; neither was true, because every cached package already ships its licence. It
+**fails rather than skips** when it cannot look — no cache, a package missing from it, a package with no
+licence file, or a licence text matching no known signature are all failures — which means running this gate
+requires `cd mobile && flutter pub get` first. That coupling is the accepted cost, stated rather than hidden,
+and it is the same principle as the integration suite failing without PostgreSQL. `sdk`-source entries
+(`flutter`, `flutter_test`, `sky_engine`) are not in the cache and remain covered by this file.
 
 ### Fonts and icons that reach the bundle without being vendored by us
 

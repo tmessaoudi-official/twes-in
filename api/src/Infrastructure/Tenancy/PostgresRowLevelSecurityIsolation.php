@@ -135,6 +135,61 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
+     * Re-verify that the connection is STILL scoped to the tenant the application believes it is.
+     *
+     * WHY THIS EXISTS, and why it is not paranoia. `bind()` writes the tenant transaction-locally, which is
+     * what stops a binding leaking to whoever gets the connection next. The consequence nobody had tested:
+     * **a savepoint rollback reverts it.** `ROLLBACK TO SAVEPOINT` restores every transaction-local setting to
+     * its value at the savepoint, so a bind that happened *inside* the savepoint is undone while the PHP-side
+     * `TenantContext` still believes the new tenant. Every subsequent query is then scoped to the OLD tenant
+     * and labelled by the application as the NEW one — a silent cross-tenant read.
+     *
+     * The residue that recorded this said it was "not reachable today (PDO forbids nested transactions)".
+     * That is FALSE, and reproducing it took nine lines: PDO forbids a nested `beginTransaction()`, not a
+     * `SAVEPOINT` issued as ordinary SQL — which is precisely what Doctrine emits for a nested transaction.
+     * [Verified 2026-07-30 on a real connection, with no Doctrine and no ORM: bind A, `SAVEPOINT sp1`, bind B,
+     * `ROLLBACK TO SAVEPOINT sp1`, and `current_setting` reads `tenant-A` while the context holds `tenant-B`.]
+     * Fourth documented impossibility refuted this session; the lesson is in CLAUDE.md § Gotchas.
+     *
+     * The database cannot catch this on its own — it scopes correctly to what the GUC says, and it has no way
+     * to know what the application believes. So the check has to be app-side, and it has to be a re-read
+     * rather than a cached flag, because the whole failure is that the cached belief is the stale thing.
+     *
+     * **Obligation, recorded so it cannot be forgotten:** every tenant-scoped repository must call this after
+     * any savepoint release or rollback, and Wave 1 owes the wiring. Nothing calls it today because no
+     * repository exists yet — which is why this docblock states the obligation instead of the method quietly
+     * existing. A capability with a test and a recorded obligation is not the same thing as a rule nothing
+     * consults; if Wave 1 lands repositories without these calls, that is a completeness-reviewer P0.
+     */
+    public function assertStillBoundTo(\PDO $connection, TenantContext $context): void
+    {
+        if (!$context->hasTenant()) {
+            throw NoCurrentTenant::create();
+        }
+
+        $expected = $context->tenantId()->toString();
+
+        $statement = $connection->prepare(
+            \sprintf("SELECT coalesce(current_setting(%s, true), '')", \sprintf("'%s'", self::TENANT_SETTING)),
+        );
+        $statement->execute();
+        $actual = $statement->fetchColumn();
+
+        if ($actual === $expected) {
+            return;
+        }
+
+        throw new \RuntimeException(\sprintf(
+            'Tenant binding DIVERGED: the application believes tenant "%s" but the connection is scoped to '
+            . '"%s". A savepoint rollback reverts a transaction-local binding while leaving the PHP-side '
+            . 'context untouched, so continuing would read one tenant\'s rows under another tenant\'s name. '
+            . 'Re-bind before continuing.',
+            $expected,
+            \is_string($actual) && '' !== $actual ? $actual : '<unset>',
+        ));
+    }
+
+    /**
      * Whether the value read back after a binding is the value that was written.
      *
      * Pure, and extracted for the same reason {@see self::roleCanBypassPolicies()} and

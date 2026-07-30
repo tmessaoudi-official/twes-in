@@ -60,6 +60,15 @@ Partial mechanical backing: every skill in `.claude/skills/` declares
 `disallowed-tools: AskUserQuestion`, which removes the tool from the pool while that skill is active.
 The grant clears on the next user message, so outside a skill the discipline is yours.
 
+**EVERY reply ends with ONE of exactly two markers** (developer instruction, 2026-07-30). Without one, the
+developer cannot tell a question from a pause, and both look like prose that stopped. No exceptions, including
+short replies:
+
+- `❓ QUESTION — <one line>` followed by the numbered options. **I am blocked and waiting on a decision.**
+- `⏹ NO QUESTION — <what I am waiting on, or why I stopped>`. **Nothing is being asked of the developer.**
+
+The marker is the LAST line. If a reply would end without one, it is unfinished.
+
 **Do not ask about routine work.** The standing directive for this repo is *no interrupts*: announce
 the task size and the plan, then build it. Asking is reserved for the cases in
 § "When this protocol is mandatory" of that skill — chiefly a genuinely ambiguous request, a
@@ -712,6 +721,26 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   times: **a control that silently does not run is worse than one that is openly owed** — and the first where
   the contradiction was between this file's own words and the code they described. Start the right cluster with
   `pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start`.
+- **2026-07-30 — FOUR "impossible" claims refuted in one session. Treat every one in this repo as untried.**
+  The tally, because the pattern is the point rather than any single instance: `bind()`'s read-back "would need
+  PostgreSQL to lie" — killed by a nine-line `PDOStatement` subclass; the `session_user` halves were "equivalent
+  mutants" — killed by a DSN trick already used elsewhere in the same file; the Flutter transitive-licence walk
+  "cannot be read from `pubspec.lock`" — true of the lock, and every cached package ships its own licence file,
+  so 24 of 24 classified on the first attempt; and R2-12's savepoint divergence was "not reachable today (PDO
+  forbids nested transactions)" — which confuses a nested `beginTransaction()` with a `SAVEPOINT` issued as
+  ordinary SQL, and reproduced in nine lines with no ORM at all. **Every one was written by someone who had
+  reasoned rather than tried, and every one hid a real defect** — the last a silent cross-tenant read. The rule
+  is already in this file and is restated because restating it once evidently was not enough: say "not covered,
+  and here is what it would take", never "cannot be covered", unless the obstacle is a law of the system rather
+  than the limit of the afternoon. When you meet an impossibility claim in this repo, spend ten minutes trying
+  it before believing it.
+- **2026-07-30 — PostgreSQL does not persist in this container, and that now FAILS the suite rather than
+  skipping it.** The server goes down between commands, and three concurrent reviewer agents each running
+  `pg_ctlcluster` made it worse — a self-inflicted hazard worth knowing before telling several agents to manage
+  clusters at once. Two consequences of the skip-to-fail fix above, both intended: start the server before the
+  API gate every time (`pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start`), and read a red integration
+  suite in a fresh session as "the database is down" rather than "the tenancy logic broke" — the failure message
+  now says which.
 - **2026-07-30 — this container's `LANG` makes Flutter Web render a BLANK PAGE under Playwright.** Headless
   Chromium reports `navigator.language` as `en-US@posix` here, which Flutter's locale parser rejects with
   `RangeError: Incorrect locale information provided` — no failing test anywhere, just an empty screenshot.

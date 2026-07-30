@@ -268,6 +268,26 @@ function inspect(string $file): array
             continue;
         }
 
+        // `new ($expr)()` and `new (self::CONST)()` — PHP 8's parenthesised class expression, and a THIRD
+        // syntax the check above does not see: its next token is `(`, not a T_VARIABLE. Round 2 named both
+        // as still-open evasions of a gate that enforces a P0, and they were still open at round 9
+        // [Verified: each reported `no-ambient-calls: OK` before this branch existed]. Banned by SHAPE
+        // rather than by resolving the expression, because the whole point is that it cannot be resolved.
+        if ($token->is(\T_NEW)) {
+            $afterNew = nextMeaningfulToken($tokens, $index);
+
+            if (null !== $afterNew && '(' === $afterNew->text) {
+                $violations[] = describe(
+                    $file,
+                    $token->line,
+                    'new (...)',
+                    'a parenthesised class expression cannot be checked; name the class directly',
+                );
+            }
+
+            continue;
+        }
+
         // `use function time as now;` then `now()`. The import renames a banned function, and neither gate
         // saw it: the imported name `time` is followed by `as` or `;` rather than `(`, so the "only an
         // actual call counts" rule below skipped it, and the *alias* is an ordinary T_STRING that is in no
@@ -373,6 +393,45 @@ function inspect(string $file): array
 
         $name = strtolower(ltrim($token->text, '\\'));
         $previous = previousMeaningfulToken($tokens, $index);
+
+        // A STATIC CALL on a banned class obtains one just as surely as `new` does, and
+        // `DateTimeImmutable::createFromFormat()` is the dangerous case: undefined format fields default to
+        // *now*, so it is a genuine clock read wearing the clothes of ordinary parsing. Round 2 named it and
+        // it was still open at round 9. The rule is deliberately the CLASS, not a list of method names —
+        // `createFromFormat`, `createFromInterface` and `createFromMutable` are all ways to hold one, and
+        // enumerating methods would leave the next one open.
+        //
+        // `DateTimeImmutable::class` is EXCLUDED: naming the type is explicitly fine here (see
+        // BANNED_INSTANTIATIONS' own reason strings), and a mapping file or a signature legitimately does it.
+        // Compared case-insensitively against the keys, exactly as the `new` loop below does. Written
+        // case-sensitively first, and it silently matched nothing: `\DateTimeImmutable` arrives as a
+        // T_NAME_FULLY_QUALIFIED whose $name is already lowercased and leading-slash-stripped, so neither
+        // the raw text nor ucfirst() equals the key. The fix caught the bug; the shape is the lesson — a
+        // lookup that cannot match is indistinguishable from a rule that permits everything.
+        foreach (BANNED_INSTANTIATIONS as $class => $reason) {
+            if ($name !== strtolower($class)) {
+                continue;
+            }
+
+            $next = nextMeaningfulToken($tokens, $index);
+
+            if (null === $next || !$next->is(\T_DOUBLE_COLON)) {
+                break;
+            }
+
+            $afterColon = nextMeaningfulToken($tokens, $index + 1);
+
+            if (null === $afterColon || !$afterColon->is(\T_CLASS)) {
+                $violations[] = describe(
+                    $file,
+                    $token->line,
+                    $class . '::',
+                    'a static call on this class obtains one; ' . $reason,
+                );
+            }
+
+            break;
+        }
 
         // `new DateTimeImmutable(...)` — the type in a signature or a docblock is untouched.
         if (null !== $previous && $previous->is(\T_NEW)) {

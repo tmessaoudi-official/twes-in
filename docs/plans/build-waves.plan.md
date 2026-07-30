@@ -58,6 +58,91 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
+- [2026-07-30 03:20] RULED: **R8-16's remedy is an INFRA rule, not app code — any GET under the
+  `fontFallbackBaseUrl` prefix returns 200 with a valid font instead of 404.** Measured rather than reasoned:
+  with the prefix 404ing, a release web build rendering Japanese, Hebrew and an emoji issued **712 same-origin
+  404s and 713 requests total** in a 12-second load; with a catch-all returning 200 at that prefix, the same
+  build issued **0 404s and 17 requests total**. The engine stops retrying once the fetch succeeds. The font
+  served is the already-vendored `NotoSansArabic-Regular.ttf` — zero extra bytes, no new licence question.
+  **The safety property was screenshotted, not assumed**: a font either contains a codepoint or it does not, so
+  a substituted face cannot render a WRONG glyph — CJK/Hebrew/emoji come out as `.notdef` tofu, visually
+  identical to the 404 outcome, while Arabic still renders correctly from its declared family. A wrong character
+  in a billing document would be far worse than a missing one. Lands with `infra/` in Wave 12.
+- [2026-07-30 03:20] RECORDED: **vendoring Flutter's whole Noto fallback set is rejected on evidence**, so no
+  future session re-explores it: the web engine compiles in **143 distinct Noto families**, the CJK ones at
+  **100–124 subset shards each** (`notosanskr` 124, `notosansjp` 124, `notosanshk` 109, `notosanstc` 105,
+  `notosanssc` 101), at version-hashed paths that break on every Flutter upgrade.
+- [2026-07-30 03:20] RECORDED: **R8-16 is WEB-ONLY.** `fontFallbackBaseUrl` appears in the compiled web engine
+  and **nowhere** in the framework's Dart libraries [Verified: `grep -rn fontFallbackBaseUrl
+  /opt/sdk/flutter/packages/flutter/lib/` → no hits], so the five native targets never enter this path. Stated
+  because an unbounded residue reads as worse than it is, and a bounded one gets fixed rather than feared.
+- [2026-07-30 04:40] RULED: **the Flutter transitive-licence check is DELIVERED, by walking the pub cache.**
+  Its owed note said per-package licences "cannot be read" from `pubspec.lock` — true of the lock, and beside
+  the point, because every cached package ships its own licence file. Nobody had looked. 24 hosted packages, 24
+  classified, none left over: **BSD-3-Clause ×20, Apache-2.0 ×3, MIT ×1**. `PUB_LICENCE_SIGNATURES` is ORDERED
+  (BSD-3 before BSD-2, whose disclaimer the 3-clause text contains verbatim). **It fails rather than skips**
+  whenever it cannot look, which couples the licensing gate to `flutter pub get` — the accepted cost, stated
+  rather than hidden, and the same principle as the integration suite failing without PostgreSQL.
+- [2026-07-30 04:40] CORRECTION found by measurement: `THIRD-PARTY-NOTICES.md` claimed the transitive set was
+  "under BSD-3-Clause" without qualification. **Three are Apache-2.0** — `clock`, `fake_async`,
+  `material_color_utilities`. Permitted, so never a violation, but a false factual claim in the one file
+  invariant 8(a) names as the licence record. Corrected in place.
+- [2026-07-30 05:20] RECORDED: **R2-12's premise was FALSE and the defect reproduces today in nine lines.**
+  "Not reachable today (PDO forbids nested transactions)" confuses a nested `beginTransaction()` with a
+  `SAVEPOINT` issued as ordinary SQL — which is what Doctrine emits. [Verified on a real connection, no ORM:
+  bind A, `SAVEPOINT sp1`, bind B, `ROLLBACK TO SAVEPOINT sp1`, `current_setting` reads **A** while the context
+  holds **B**.] `bind()` writes transaction-locally on purpose, and a savepoint rollback restores
+  transaction-local settings — so the binding is silently undone and subsequent queries read the OLD tenant's
+  rows under the NEW tenant's name. **A cross-tenant read with the whole isolation suite green**, because
+  nothing in it crosses a savepoint. Closed by `assertStillBoundTo()`: a re-read, not a cached flag, because the
+  stale cached belief IS the failure. Mutation-proven. **Nothing calls it yet** — no repository exists — so Wave
+  1 owes the wiring and the docblock says so; landing repositories without those calls is a
+  `completeness-reviewer` **P0**.
+- [2026-07-30 05:20] RECORDED: **R2-13's three named evasions were still live seven rounds after being
+  reported** — `new ($expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` each produced
+  `no-ambient-calls: OK` with exit 0. Both fixes ban a SHAPE rather than resolving an expression, and the
+  static-call rule keys on the **class** rather than a method list, so `createFromInterface` and
+  `createFromMutable` are covered without being named. `::class` still passes, because naming a type is fine.
+  Five cases added, including that negative — a rule that cannot pass is as broken as one that cannot fail.
+- [2026-07-30 05:50] RECORDED: **R3-2 was a real gap, not a tidiness item.** A 20-case property sweep (no
+  hand-computed literals — asserted against bcmath at `scale + 30`) passed with arm A of
+  `max(scaleOf($dividend), $scale + scaleOf($divisor))` DELETED. Arm A does not change a digit: it guards the
+  remainder subtraction, so a too-small working scale makes an **inexact division report itself as exact**.
+  Invisible to HalfUp; decisive for `Ceiling`, which then rounds a strictly-positive value DOWN, and for
+  `Unnecessary`, which hands back a value instead of refusing a lossy operation. Two cases added; mutant dies.
+- [2026-07-30 06:10] RULED (R4-18, developer accepting the recommendation): **leave the empty-string gap open
+  and keep the record; close it opportunistically, not urgently.** `assertSessionTenantIsUnset()` returns early
+  on `'' === $existing`, so a transaction-local `set_config('twes.tenant_id', '', true)` masks a live
+  session-scope pin that returns on COMMIT. It stays **P2** for one reason: whoever can issue that statement can
+  already bind to any tenant directly, so it grants no privilege they lack. **Deferred action with a TRIGGER,
+  not a someday:** when the tenancy code is next opened for any reason, refuse `''` rather than treating it as
+  unset — `current_setting` returns NULL for never-set and `''` for explicitly-emptied, so the two are
+  distinguishable in about three lines. Confirm first that no legitimate path writes `''`, or the fix breaks
+  honest callers. The residue's own suggestion — a re-check on connection *release* — remains the right shape and
+  has nothing to hook into until a pool exists.
+- [2026-07-30 06:10] RULED (schema gate, developer accepting the recommendation): **build it WITH Wave 1's first
+  migration, and add the migration template as well — not instead.** Every gate today reads *code*; nothing
+  reads the *schema*, so a migration that simply omits `ENABLE ROW LEVEL SECURITY` yields an unpoliced
+  tenant-owned table that no existing check can see. Building the gate now against an empty schema was rejected
+  on the session's own evidence: a gate with nothing to check is untestable, which is the vacuity trap this
+  session hit three separate times. The template is prevention and the gate is detection; a template alone is a
+  convention that a hand-written migration bypasses, so both. Wave 1 acceptance criteria updated below.
+- [2026-07-30 06:10] RULED (PHPStan/deptrac, developer accepting the recommendation): **leave both owed; do NOT
+  reach for a non-GitHub mirror.** They are MIT, in `composer.json`, and uninstallable because every dist URL is
+  a GitHub host returning 403. The six plain-PHP gates already enforce every architecture P0 and need nothing
+  installed, so these two are defence in depth that has not arrived rather than a hole. A mirror was rejected
+  outright: provenance of every dependency is precisely what § "Licensing invariants" forbids being casual
+  about. The real unblock is an environment with wider egress, which would also unblock the Symfony skeleton and
+  Doctrine — that is the developer's decision to make, and it is recorded here as the highest-leverage one
+  available rather than left implicit.
+- [2026-07-30 06:10] RULED (the `+ 1` working-scale guard band, developer accepting the recommendation):
+  **leave it in place with the observation recorded; do not remove it on my analysis alone.** Removing it passes
+  all 33 `DecimalScaleSweepTest` cases and I could not construct a distinguishing input; the argument for why it
+  looks redundant is in that test's docblock. It costs one digit of bcmath precision, i.e. nothing. It is NOT
+  recorded as impossible to kill — three impossibility claims were refuted in this session alone — and it is not
+  removed, because if the analysis is wrong the failure mode is a wrong number in a legal document held up by my
+  reasoning rather than by a test. Either a later round finds the input, or the `+ 1` goes deliberately with the
+  reasoning attached.
 - [2026-07-30 02:10] RULED: **`MaterialIcons-Regular.otf` is complied with under the STRICTER of its two
   candidate readings — CC-BY-4.0 — and that is a DISCHARGED OBLIGATION, not a new permission** (developer
   ruling, accepting the recommendation). The Flutter SDK ships a CC-BY-4.0 text beside the binary; Google's
@@ -424,6 +509,30 @@ precisely because they are unfixable later.
 totals, discounts, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
 tax is a *flag*, never a parallel class hierarchy · invoice state machine behind a **transition guard**, no
 status written by assignment · numbering with per-tenant counters.
+
+**THE SCHEMA GATE IS A WAVE 1 BLOCKER — the first migration does not land without it** (developer ruling,
+2026-07-30). Every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply
+omits `ENABLE ROW LEVEL SECURITY` produces a tenant-owned table that is completely unpoliced and that **no
+existing check can see** — `assertPolicedTablesAreBeyondThisRolesReach()` derives its subject set from tables
+that already have RLS, so a table without it is invisible by construction (R7-2 named this precisely).
+
+Two deliverables, and the ruling was explicit that it is both rather than either:
+
+1. **`scripts/gates/schema-tenancy.php`** — detection. For every tenant-owned table it must assert, against a
+   real migrated schema: `relrowsecurity` AND `relforcerowsecurity` are set; a policy exists whose expression is
+   the canonical one (`canonicalPolicyExpression()` already produces it, so the gate compares rather than
+   re-invents); the tenant column is `NOT NULL`; and the runtime role neither owns the table nor holds
+   `TRUNCATE` on it. It must **fail on a table it cannot classify** rather than skipping — the fourth instance of
+   that lesson in § Gotchas, and the reason the integration suite now fails without a database.
+   It gets its own cases in `test-gates.sh`, one per assertion, each proven to fire on an injected violation
+   **before** the gate is trusted — no gate in this repo is believed on its happy path.
+2. **A migration template** — prevention. So the correct shape is the default rather than something remembered.
+   A template is a convention and a hand-written migration bypasses it, which is exactly why it does not
+   replace the gate.
+
+Rejected on the session's own evidence: building the gate NOW against an empty schema. A gate with nothing to
+check is untestable, and this session found three separate cases where a fixture that omitted its input made
+every assertion about that input vacuous while the suite stayed green.
 
 **The `product` table's pricing columns are already decided, so its migration has no choices to make**
 (recorded here because a certification round found this specified only in the pricing plan, leaving the
@@ -799,7 +908,7 @@ Two composed into the serious one, and it is worth stating as a pair because nei
 | **R8-13** | The test titled *"carries **every** font it ships"* enumerated **two filenames** while the bundle held seven — the fixture-pins-the-instance shape, in the one test whose title claims the opposite. It is why R8-12 was invisible. | It enumerates `build/web` and derives the expected set from the manifest. It immediately earned itself by failing on `CupertinoIcons.ttf`'s family derivation. |
 | **R8-14** | A **sixth** rule-stating surface, uncovered: `reimplementation-strategy.plan.md`'s Decisions Log said the rule was two categories *"and nothing else"* while the gate enforced three — in a file `CLAUDE.md` tells sessions to read *before* writing application code. | Amended in place, added to the cross-check (six documents), **and** a repository-wide inventory case added: the *set* of files naming the closed list must match a committed list, because a hand-listed loop cannot notice a seventh surface appearing. That is how the fifth and sixth were each missed for a round. |
 | **R8-15** | `CLAUDE.md` said the gate *"keeps two lists"* four lines above the paragraph adding the third; the ruling carried **two different dates** across five surfaces; `mobile/web/flutter_bootstrap.js` and `index.html` were never touched and still said the OFL decision was *owed*. | All corrected in place. The last is the **fourth** instance of append-instead-of-edit, this time in the file implementing the control — and it was the mechanism hiding R8-16. |
-| **R8-16** | **The pin still has nothing behind it for every script except Latin and Arabic.** CJK, Hebrew and emoji resolve to the same-origin path and find nothing: **3328 404s in a 40-second load, uncapped, ~83 req/s per tab**, 0 external requests. In a billing product the trigger is tenant free text. | **NOT closed — recorded as owed**, in `flutter_bootstrap.js`, `index.html` and `mobile/README.md`, with the measurement. Not exploitable before Wave 11 (nothing renders user data yet). Fix is vendoring the fallback set or restricting renderable scripts. |
+| **R8-16** | **The `fontFallbackBaseUrl` pin has nothing behind it for every script except Latin and Arabic.** CJK, Hebrew and emoji resolve to the same-origin path, find nothing, and retry: measured 3328 same-origin 404s in a 40-second load, uncapped, 0 external requests. In a billing product the trigger is tenant free text. | **NOT closed, but SOLVED with a measured remedy and a bounded blast radius.** An `infra/` rule (Wave 12): any GET under the pinned prefix returns **200** with the already-vendored `NotoSansArabic-Regular.ttf`. Measured 713 → 17 requests, 712 → 0 404s. Verified safe by screenshot — a substituted font cannot produce a wrong glyph, only tofu, and Arabic is unaffected. **Web-only**: the mechanism is absent from the framework, so the five native targets never enter this path. Vendoring the full fallback set is rejected on evidence (143 families, 100–124 CJK shards, version-hashed paths). |
 | **R8-17** | The `arabicSample` constant's provenance was asserted in a docblock and a test title, and both compared the constant to itself. Phase 6 item 3 verbatim. | A test reads `api/translations/messages.ar.xlf` and asserts equality. |
 | **R8-18** | An oversized font aborted the gate with a PHP fatal; the notices file's cross-document sentence named four documents and "the five"; the Angular tier's `3rdpartylicenses.txt` is written **beside** the web root, not in it. | Size ceiling with a real message; sentence corrected to six; the Angular gap recorded as owed with the `infra/` tier — same *"beside is not shipped"* distinction, gated for one tier and unchecked for the other. |
 

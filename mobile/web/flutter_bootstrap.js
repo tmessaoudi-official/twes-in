@@ -33,8 +33,14 @@
 // user data turns every browser rendering it into a request storm against our own origin.
 //
 // Not exploitable before Wave 11, because nothing renders user data yet. Recorded as owed in
-// docs/plans/build-waves.plan.md and mobile/README.md so it is not closed-and-forgotten: the fix is either
-// vendoring the fallback set under this path or restricting which scripts the client will render.
+// docs/plans/build-waves.plan.md and mobile/README.md so it is not closed-and-forgotten.
+//
+// THE REMEDY IS RULED (2026-07-30) and lands with infra/ in Wave 12: any GET under this prefix returns 200 with
+// the already-vendored NotoSansArabic-Regular.ttf rather than 404. Measured on this exact build: 713 requests
+// and 712 404s become 17 and 0, because the engine stops retrying the moment the fetch succeeds. Safe because a
+// font either contains a codepoint or it does not -- the substitute yields .notdef tofu and never a WRONG glyph
+// -- and Arabic is unaffected, coming from its declared family rather than this path. Vendoring the whole
+// fallback set is rejected on evidence: 143 families, 100-124 subset shards each for CJK, version-hashed.
 {{flutter_js}}
 {{flutter_build_config}}
 

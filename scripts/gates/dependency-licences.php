@@ -196,6 +196,32 @@ const FONT_NAME_TABLE_EVIDENCE = [
 ];
 
 /**
+ * How a pub package's licence TEXT is classified, and why this list is ORDERED.
+ *
+ * `pubspec.lock` records no licence field — unlike `composer.lock` and npm's lockfileVersion 3 — which is why
+ * this tier had no licence check for the whole of Wave 0. What it does have is a licence FILE per package in
+ * the pub cache, and classification turns out to be unambiguous rather than heuristic: measured across the
+ * whole locked tree, 24 of 24 hosted packages classified, none left over.
+ *
+ * ORDER IS LOAD-BEARING. `BSD-3-Clause` must precede `BSD-2-Clause`, because the 3-clause text *contains* the
+ * 2-clause disclaimer paragraph verbatim — an unordered list double-matches all 20 BSD-3 packages and reports
+ * a licence that is not theirs. First match wins, so the more specific signature comes first.
+ *
+ * Every identifier here must also be on PERMISSIVE; the check below asserts that rather than assuming it, so
+ * adding a signature cannot quietly widen what is accepted.
+ */
+const PUB_LICENCE_SIGNATURES = [
+    ['BSD-3-Clause', 'Neither the name of'],
+    ['Apache-2.0', 'Apache License'],
+    ['MIT', 'Permission is hereby granted, free of charge'],
+    ['BSD-2-Clause', 'THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS'],
+    ['ISC', 'Permission to use, copy, modify, and/or distribute this software'],
+];
+
+/** Filenames a pub package may keep its licence in, most conventional first. */
+const PUB_LICENCE_FILES = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENCE', 'LICENCE.txt'];
+
+/**
  * Lock files to inspect, per tier. A tier that does not exist yet is reported as skipped rather than
  * passing silently — a green gate that checked nothing is worse than a red one.
  */
@@ -222,15 +248,12 @@ const NOTICES = '/THIRD-PARTY-NOTICES.md';
  * permissive list, and this gate still reported OK.
  */
 const OWED = [
-    // NOT "Wave 11" — the tier is scaffolded and its lock file exists. The real reason is narrower and
-    // worth stating exactly: pubspec.lock records no licence field at all, unlike composer.lock and npm's
-    // lockfileVersion 3, which both carry one per entry. So there is nothing here for this gate to read,
-    // and the Flutter tier's licences are verified by hand into THIRD-PARTY-NOTICES.md instead. Closing
-    // this properly needs a `flutter pub deps --json` walk with a cached licence map, or vendored LICENSE
-    // files; either is a design decision, not a one-line fix. See build-waves.plan.md.
-    'Flutter client' => 'mobile/pubspec.lock records NO licence field, so per-package licences cannot be '
-        . 'read from it; the direct dependencies are checked against THIRD-PARTY-NOTICES.md below and their '
-        . 'licences are recorded there by hand',
+    // The Flutter tier's entry is GONE, and deliberately not replaced with a softer one: its per-package
+    // licences are now READ, by pubLicenceViolations() below. The old note said they "cannot be read from"
+    // pubspec.lock, which was true and beside the point -- every cached package ships its own licence file.
+    // Recorded as a lesson rather than deleted silently: the entry stated an impossibility where the real
+    // obstacle was that nobody had looked, which CLAUDE.md § Gotchas names as the more expensive artifact
+    // ("an admitted gap gets re-tried; a documented impossibility gets read once and never re-tested").
 ];
 
 /*
@@ -252,6 +275,8 @@ if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
         'font_name_table_evidence' => array_keys(FONT_NAME_TABLE_EVIDENCE),
         'max_font_bytes' => MAX_FONT_BYTES,
         'framework_provided_fonts' => array_keys(FRAMEWORK_PROVIDED_FONTS),
+        'pub_licence_signatures' => array_map(static fn(array $s): string => $s[0], PUB_LICENCE_SIGNATURES),
+        'pub_licence_files' => PUB_LICENCE_FILES,
         'lock_files' => array_values(LOCK_FILES),
         // UNESCAPED_SLASHES so a path reads as /api/composer.lock rather than \/api\/composer.lock — the
         // meta-suite greps this output, and an escaped slash makes a correct assertion fail confusingly.
@@ -370,6 +395,15 @@ function main(): int
         }
     }
 
+    // The Flutter tier's transitive licences, read from the pub cache. Counted separately for the same
+    // reason the fonts are: a run that read 27 pub packages and zero lock files has verified nothing about
+    // the Composer or npm trees.
+    $pubChecked = 0;
+
+    foreach (pubLicenceViolations($pubChecked) as $violation) {
+        $offending[] = 'Flutter client: ' . $violation;
+    }
+
     foreach ($skipped as $tier) {
         fwrite(\STDOUT, 'dependency-licences: skipped ' . $tier . "\n");
     }
@@ -409,8 +443,10 @@ function main(): int
     }
 
     fwrite(\STDOUT, sprintf(
-        "dependency-licences: OK — %d package(s) and %d vendored font(s) all permissively licensed.\n",
+        "dependency-licences: OK — %d package(s), %d pub package(s) and %d vendored font(s) all "
+        . "permissively licensed.\n",
         $checked,
+        $pubChecked,
         $fontsChecked,
     ));
 
@@ -720,6 +756,212 @@ function declaredFontAssets(string $manifest): array
     }
 
     return array_values(array_unique($matches[1]));
+}
+
+/**
+ * Every pub package's licence, read from the pub cache — the check this tier went the whole of Wave 0 without.
+ *
+ * FAILS RATHER THAN SKIPS when it cannot look, and that is the entire design decision (developer ruling,
+ * 2026-07-30). `mobile/pubspec.lock` is committed, so if it exists the tier exists, and declining to verify a
+ * tier that exists is exactly the shape CLAUDE.md § Gotchas records four times over: a control that silently
+ * does not run is worse than one that is openly owed. The integration suite was changed the same way on the
+ * same day, for the same reason, after it skipped the tenancy proof and reported OK.
+ *
+ * The consequence is real and is stated rather than hidden: running this gate now requires a populated pub
+ * cache, i.e. `flutter pub get`. In CI, run it inside the Flutter job or after `flutter pub get`. The
+ * alternative considered and rejected was vendoring 24 licence texts into the repository, which trades a
+ * loud runtime precondition for a silent staleness obligation on every `pub upgrade`.
+ *
+ * Only `hosted` packages are walked. `sdk`-source entries (`flutter`, `flutter_test`, `sky_engine`) are not in
+ * the cache at all — they are the SDK itself, BSD-3-Clause, and named in THIRD-PARTY-NOTICES.md. Their licence
+ * is verified from the SDK's own LICENSE when the SDK is present, and reported as unverified-here when it is
+ * not, rather than assumed either way.
+ *
+ * @param int $checked incremented per package classified, by reference
+ *
+ * @return list<string>
+ */
+function pubLicenceViolations(int &$checked): array
+{
+    $lockPath = REPO_ROOT . '/mobile/pubspec.lock';
+
+    if (!is_file($lockPath)) {
+        return [];
+    }
+
+    $raw = file_get_contents($lockPath);
+
+    if (false === $raw) {
+        return ['could not read mobile/pubspec.lock.'];
+    }
+
+    $cache = pubCacheDirectory();
+
+    if (null === $cache) {
+        return [
+            'mobile/pubspec.lock exists, so this tier ships — but no pub cache was found, so NOTHING about '
+            . 'its licences was verified. This is a failure and not a skip on purpose: run '
+            . '`cd mobile && flutter pub get` first, or set PUB_CACHE. (In CI, run this gate inside the '
+            . 'Flutter job.)',
+        ];
+    }
+
+    $violations = [];
+
+    foreach (pubLockedPackages($raw) as $name => $package) {
+        if ('hosted' !== $package['source']) {
+            continue;
+        }
+
+        $directory = $cache . '/' . $name . '-' . $package['version'];
+
+        if (!is_dir($directory)) {
+            $violations[] = sprintf(
+                '%s %s is locked but absent from the pub cache (%s), so its licence was not read. Run '
+                . '`flutter pub get`.',
+                $name,
+                $package['version'],
+                $directory,
+            );
+
+            continue;
+        }
+
+        $licencePath = null;
+
+        foreach (PUB_LICENCE_FILES as $candidate) {
+            if (is_file($directory . '/' . $candidate)) {
+                $licencePath = $directory . '/' . $candidate;
+
+                break;
+            }
+        }
+
+        if (null === $licencePath) {
+            $violations[] = sprintf(
+                '%s %s ships NO licence file (looked for %s). Absence of a licence means no grant at all.',
+                $name,
+                $package['version'],
+                implode(', ', PUB_LICENCE_FILES),
+            );
+
+            continue;
+        }
+
+        $text = file_get_contents($licencePath);
+
+        if (false === $text) {
+            $violations[] = sprintf('%s %s: could not read %s.', $name, $package['version'], $licencePath);
+
+            continue;
+        }
+
+        ++$checked;
+        $identifier = null;
+
+        // First match wins, and the list is ordered so the more specific signature comes first.
+        foreach (PUB_LICENCE_SIGNATURES as [$spdx, $signature]) {
+            if (str_contains($text, $signature)) {
+                $identifier = $spdx;
+
+                break;
+            }
+        }
+
+        if (null === $identifier) {
+            $violations[] = sprintf(
+                '%s %s: its licence text matches no signature this gate knows, so it is UNCLASSIFIED and '
+                . 'therefore refused. Read %s and either add an ordered signature to '
+                . 'PUB_LICENCE_SIGNATURES or drop the package.',
+                $name,
+                $package['version'],
+                $licencePath,
+            );
+
+            continue;
+        }
+
+        // The signature table must not be able to widen what is accepted: an identifier can be recognised
+        // and still be unacceptable, and that is checked here rather than assumed at the table.
+        if (!in_array($identifier, PERMISSIVE, true)) {
+            $violations[] = sprintf(
+                '%s %s is %s — not permissive (RUNTIME or dev, this tier ships either way).',
+                $name,
+                $package['version'],
+                $identifier,
+            );
+        }
+    }
+
+    return $violations;
+}
+
+/**
+ * Where the pub cache lives. `PUB_CACHE` wins, exactly as pub itself honours it — which is also what makes
+ * this walk testable from a fixture rather than only against whatever the developer's machine happens to hold.
+ */
+function pubCacheDirectory(): ?string
+{
+    $explicit = getenv('PUB_CACHE');
+
+    if (is_string($explicit) && '' !== $explicit) {
+        $hosted = rtrim($explicit, '/') . '/hosted/pub.dev';
+
+        return is_dir($hosted) ? $hosted : null;
+    }
+
+    $home = getenv('HOME');
+
+    if (!is_string($home) || '' === $home) {
+        return null;
+    }
+
+    $hosted = $home . '/.pub-cache/hosted/pub.dev';
+
+    return is_dir($hosted) ? $hosted : null;
+}
+
+/**
+ * The locked packages a pubspec.lock declares, with source and version.
+ *
+ * A small reader rather than a YAML library, for the reason every gate here is written that way: these run on
+ * plain PHP with nothing installed. The shape is fixed and shallow — two-space-indented package names, each
+ * with a `source:` and a `version:` somewhere in its block.
+ *
+ * @return array<string, array{source: string, version: string}>
+ */
+function pubLockedPackages(string $raw): array
+{
+    $packages = [];
+    $current = null;
+
+    foreach (explode("\n", $raw) as $line) {
+        if (preg_match('/^  ([a-z_][a-z_0-9]*):\s*$/', $line, $matches)) {
+            $current = $matches[1];
+            $packages[$current] = ['source' => '', 'version' => ''];
+
+            continue;
+        }
+
+        // A top-level key (`packages:`, `sdks:`) ends the current package.
+        if (preg_match('/^[a-zA-Z]/', $line)) {
+            $current = null;
+
+            continue;
+        }
+
+        if (null === $current) {
+            continue;
+        }
+
+        if (preg_match('/^\s+source:\s*"?([a-z]+)"?\s*$/', $line, $matches)) {
+            $packages[$current]['source'] = $matches[1];
+        } elseif (preg_match('/^\s+version:\s*"([^"]+)"\s*$/', $line, $matches)) {
+            $packages[$current]['version'] = $matches[1];
+        }
+    }
+
+    return array_filter($packages, static fn(array $p): bool => '' !== $p['source'] && '' !== $p['version']);
 }
 
 /**

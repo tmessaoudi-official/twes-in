@@ -61,6 +61,35 @@ REPLICATOR_PASSWORD="${TWES_TEST_DB_REPLICATOR_PASSWORD:-twes_replicator}"
 TRUNCATOR_ROLE="${TWES_TEST_DB_TRUNCATOR_ROLE:-twes_truncator}"
 PROBE_OWNER_ROLE="${TWES_TEST_DB_PROBE_OWNER_ROLE:-twes_probe_owner}"
 
+# ── THE TWO-CLUSTER GUARD, drafted 2026-07-30 ──────────────────────────────────────────────────
+# WHY: this script provisions whichever cluster happens to own port 5432, and says nothing about
+# which one that was. On 2026-07-30 that cost the tenancy proof entirely: this container ships
+# PostgreSQL 16 and 18 BOTH configured on 5432, the 16 cluster won the port after a restart, every
+# integration connection got `password authentication failed for user "twes"`, and the suite
+# reported OK with exit 0. The roles existed — on the other cluster.
+#
+# A guard, not a fix: it cannot choose for the operator, but it can refuse to be silent. The failure
+# it prevents is provisioning cluster A while the suite connects to cluster B.
+if command -v pg_lsclusters >/dev/null 2>&1; then
+  configured_on_5432="$(pg_lsclusters --no-header 2>/dev/null | awk '$3 == 5432 { print $1 "/" $2 " (" $4 ")" }')"
+  count="$(printf '%s\n' "$configured_on_5432" | grep -c . || true)"
+
+  if [[ "$count" -gt 1 ]]; then
+    printf '\n!! MORE THAN ONE POSTGRESQL CLUSTER IS CONFIGURED ON PORT 5432:\n' >&2
+    printf '%s\n' "$configured_on_5432" | sed 's/^/     /' >&2
+    printf '   Only one can bind it. Roles created now land in whichever is ONLINE, and the\n' >&2
+    printf '   integration suite will connect to whichever owns the port when IT runs -- not\n' >&2
+    printf '   necessarily the same one. This exact mismatch made the tenancy proof skip while\n' >&2
+    printf '   reporting OK (CLAUDE.md, Gotchas 2026-07-30).\n' >&2
+    printf '   Stop the one you do not want, e.g.: pg_ctlcluster 16 main stop\n\n' >&2
+  fi
+fi
+
+# And say plainly WHERE the roles were created, so a later mismatch is diagnosable from this output
+# alone rather than by rediscovering the trap.
+printf 'provision-test-database: provisioning into %s\n' \
+  "$(psql --no-psqlrc -tAc "select 'PostgreSQL ' || current_setting('server_version') || ' on port ' || current_setting('port') || ', database ' || current_database()" 2>/dev/null || echo 'an unknown server')"
+
 psql --no-psqlrc --set ON_ERROR_STOP=1 <<SQL
 -- CREATE ROLE has no IF NOT EXISTS, so each one is guarded. ALTER after CREATE rather than instead of
 -- it, so that re-running also repairs a role whose attributes drifted.
