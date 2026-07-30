@@ -5,11 +5,11 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 **PostgreSQL**. Flutter Web means twes-in ships **two admin interfaces**, Flutter and Angular.
 
 > **Status: early.** Wave 0 has landed but is **not yet certified** — the `Money` value object, the
-> profit-rate arithmetic, the multi-tenant isolation seam, and six architecture/licensing gates, under `api/`.
+> profit-rate arithmetic, the multi-tenant isolation seam, and the architecture/licensing gates, under `api/`.
 > **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
-> `flutter create`), and each is green on its own toolchain, and each carries the branding seam and (for
-> Flutter) the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or
-> transport** code yet — no invoicing, no models, no API client. The
+> `flutter create`), each green on its own toolchain, and each carrying the branding seam and — for Flutter —
+> the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or transport**
+> code yet: no invoicing, no models, no API client. The
 > Symfony application itself (`bin/`, `config/`, `public/`) and Doctrine do **not** exist: they are blocked on
 > GitHub egress, see `CLAUDE.md` § Gotchas. `infra/` is still a README stub. Read
 > `docs/plans/build-waves.plan.md` for exactly what is and is not built.
@@ -85,7 +85,7 @@ session. An unbound connection sees **nothing**, not everything. See
 | `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
 | `api/` | The Symfony API. **Wave 0 landed**: `Domain/` (money, pricing), `Infrastructure/` (tenancy, clock, ids), four test suites. No HTTP layer or Doctrine yet. |
 | `admin/` · `mobile/` · `infra/` | Angular admin (Wave 8), Flutter client (Wave 11), deployment written from scratch (Wave 12). Each README lists the tests and enforcers it owes as gate conditions. |
-| `scripts/gates/` | The six architecture and licensing gates, plus their own test suite. |
+| `scripts/gates/` | The architecture, licensing and shell-syntax gates, plus their own test suite. `ls` it for the list — a count written in prose drifts. |
 | `docs/spec/pricing-vectors.json` | The pricing arithmetic every tier tests against, so three implementations cannot drift. |
 | `.claude/` | Repo-native Claude Code skills and reviewer agents, read in place. |
 | `scripts/claude-bootstrap/` | The reasoning framework, installed into an ephemeral `~/.claude` at session start. |

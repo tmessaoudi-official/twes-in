@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
-# WHY THIS EXISTS. The six gates in this directory ARE the enforcement of every architecture and
+# WHY THIS EXISTS. The gates in this directory ARE the enforcement of every architecture and
 # licensing invariant in CLAUDE.md. Nothing was testing them. An early `return 0;` in any one of them
 # would make `composer gate:architecture` report OK forever and no test would notice — which is the
 # same trap this project already recorded in CLAUDE.md § Gotchas from the handoff-hook failure:

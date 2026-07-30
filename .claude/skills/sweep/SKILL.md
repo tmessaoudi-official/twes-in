@@ -49,7 +49,7 @@ disallowed-tools: AskUserQuestion
      dev. **Wave 0 landed on 2026-07-29**, so there IS a source tree now — but only part of one, and
      the shape matters: `api/src/Domain/` (money, pricing — framework-free, zero Composer
      dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,
-     UUIDv7), four PHPUnit suites under `api/tests/`, and six gates in `scripts/gates/` with their own
+     UUIDv7), four PHPUnit suites under `api/tests/`, and the gates in `scripts/gates/` with their own
      `test-gates.sh`. **Still absent:** the Symfony application, Doctrine, PHPStan and deptrac (every
      Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `infra/` tier, which
      is a README stub. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,

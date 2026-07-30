@@ -232,7 +232,7 @@ spent partly because the tree changed under the reviewer.
 
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
-Delivered and verified, **and re-verified by every certification round since** (see below): the figures rise every round, so **run the commands rather than trusting a number written here** — `php tools/bin/phpunit-12.phar` and `bash scripts/gates/test-gates.sh` each report their own; six architecture/licensing gates, each proven to fail on an injected
+Delivered and verified, **and re-verified by every certification round since** (see below): the figures rise every round, so **run the commands rather than trusting a number written here** — `php tools/bin/phpunit-12.phar` and `bash scripts/gates/test-gates.sh` each report their own; the architecture/licensing gates, each proven to fail on an injected
 violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
 removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
 
