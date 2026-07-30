@@ -118,27 +118,26 @@ void main() {
       // aggregates LICENSE files from packages, not from app assets, so before the texts were declared under
       // `assets:` the bundle carried both families and mentioned neither licence — every test green.
       //
-      // `MaterialIcons-Regular.otf` is the one exception, and it is named rather than tolerated silently: it
-      // is the SDK's own asset, its licence position is an OPEN invariant-10 question (the SDK ships a
-      // CC-BY-4.0 text beside it, Google's icon repository says Apache-2.0, the binary carries no nameID 13,
-      // and the shipped copy is tree-shaken i.e. modified), and it is recorded as such in
-      // scripts/gates/dependency-licences.php's FONTS_PENDING_A_LICENSING_RULING. When that ruling lands,
-      // delete this exception — do not widen it.
-      const List<String> pendingARuling = <String>['MaterialIcons-Regular.otf'];
-
+      // NO EXCEPTIONS IN THIS LOOP. `MaterialIcons-Regular.otf` was exempt for one commit, on the honest
+      // grounds that its licence position was an open invariant-10 question — the SDK ships a CC-BY-4.0 text
+      // beside it, Google's icon repository states Apache-2.0, the binary carries no nameID 13, and the
+      // shipped copy is tree-shaken. The developer ruled (2026-07-30) to comply with the stricter reading,
+      // which satisfies both, so the obligation is discharged by MaterialIcons-LICENSE.txt travelling in the
+      // bundle and the exemption is gone. Round 8's lesson was that an exemption inside a check is where the
+      // drift hides; keeping one here after the ruling would have been the same mistake with a better excuse.
       for (final String path in shipped) {
         final String name = path.split('/').last;
 
-        if (pendingARuling.contains(name)) {
-          continue;
-        }
-
-        // Either a licence text beside it in the bundle, or a mention in the generated NOTICES. Strip the
+        // Either a licence text ANYWHERE in the bundle, or a mention in the generated NOTICES. Anywhere, not
+        // beside it: `fonts:` assets and `assets:` assets land in different directories, so a sibling check
+        // would fail for a font the framework injects while the obligation is in fact discharged. Strip the
         // extension BEFORE deriving the family, or `CupertinoIcons.ttf` (no hyphen) yields a family of
         // "CupertinoIcons.ttf" and looks for a licence nobody would ever name that.
         final String family = name.substring(0, name.lastIndexOf('.')).split('-').first;
-        final bool besideIt = File('${path.substring(0, path.lastIndexOf('/'))}/$family-LICENSE.txt')
-            .existsSync();
+        final bool besideIt = Directory('build/web')
+            .listSync(recursive: true)
+            .whereType<File>()
+            .any((File f) => f.path.endsWith('/$family-LICENSE.txt'));
 
         // Normalised comparison, because a package and its font disagree on spelling: the bundle ships
         // `CupertinoIcons.ttf` and NOTICES credits `cupertino_icons`. Dropping non-alphanumerics makes those

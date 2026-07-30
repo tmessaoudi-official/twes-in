@@ -58,6 +58,18 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
+- [2026-07-30 02:10] RULED: **`MaterialIcons-Regular.otf` is complied with under the STRICTER of its two
+  candidate readings — CC-BY-4.0 — and that is a DISCHARGED OBLIGATION, not a new permission** (developer
+  ruling, accepting the recommendation). The Flutter SDK ships a CC-BY-4.0 text beside the binary; Google's
+  icon repository states Apache-2.0, which is unverifiable from this container. Complying with CC-BY-4.0
+  satisfies Apache-2.0 § 4(a) too, so the stricter reading is correct under either. Attribution, licence URI
+  and a statement of modification (the shipped copy is tree-shaken) travel in the artifact via
+  `assets/fonts/MaterialIcons-LICENSE.txt`. **No permitted list is widened**: CC-BY-4.0 stays refused on any
+  Composer, npm or pub package, with a meta-case for each. Closes R8-12.
+- [2026-07-30 02:10] RULED: **round 9 is scoped to the round-8/9 diff**, not all of Wave 0 (developer ruling).
+  Two independent lenses confirmed the API tier, the tenancy work and all six gates green and untouched, so
+  the font machinery is the only region still producing findings. A scoped clean round must not be read as a
+  full one.
 - [2026-07-30 00:05] RULED: **OFL-1.1 is permitted for a vendored FONT ASSET only** (developer ruling,
   accepting the recommendation). A third narrow category beside the dev-only CC-BY pair, and the only one
   admitting a licence that is not permissive — so the gate caps it at one identifier and refuses OFL-1.1 on
@@ -462,6 +474,27 @@ operation; no drift after a long sequence of partial payments and refunds.
 agree. **Visual evidence delivered with `SendUserFile` in the same turn** — a PDF is a legal document
 and no unit test looks at the pixels.
 
+**Arabic in a PDF is a different problem from Arabic in the UI, and the developer's own `pdfturbo` has already
+solved it — read `/tmp/xxx/pdfturbo/src/export/arabicOverlay.ts` before writing any of this.** Four findings
+worth inheriting rather than rediscovering, each of which cost that project a measured experiment:
+
+- **Use Noto *Naskh* Arabic, not Noto *Sans* Arabic.** pdfturbo vendors `NotoNaskhArabic-Regular.ttf` with
+  `OFL.txt` beside it. Naskh is the traditional calligraphic style and the correct choice for a *document*;
+  Sans is the modern screen style, which is why `mobile/` bundles Sans instead. Both are OFL-1.1, so the
+  2026-07-30 ruling already covers Naskh — and Debian's `fonts-noto-core`, the source the Flutter fonts came
+  from, ships `NotoNaskhArabic-Regular.ttf` and `-Bold.ttf` in the same directory. No new licence question.
+- **The font must be a TTF/OTF, never a WOFF.** pdfturbo verified (2026-06-17) that fontkit mis-embeds the
+  WOFF1 of this exact face: only the `ا` outline survives the subset and every other glyph renders blank. Our
+  own gate refuses `.woff2` by name for an independent reason, and the two agree.
+- **Shaped glyph IDs come out already in visual right-to-left order — do NOT reverse them.** Measured: 0.98
+  correlation against a native `dir=rtl` render when drawn straight, −0.06 when reversed.
+- **Mixed Arabic + Latin/digits needs a real UAX#9 bidi pass**, resolving embedding levels and drawing each
+  run with its own font. pdfturbo uses `bidi-js`; our PDF path is PHP, so this is a dependency to find or
+  write, and it must be licence-checked like any other. `api/translations/messages.ar.xlf` already names this
+  as "the single most underestimated item in this project's i18n scope" — it is, and the estimate should carry
+  the documented ceiling pdfturbo hit: bracket display-mirroring, tashkeel/diacritic GPOS positioning, and
+  rotated Arabic drawn upright.
+
 ## Wave 5 — Tax & e-invoicing (France AND Tunisia, both in this wave)
 
 **RULED 2026-07-29: both jurisdictions ship together.** This resolves the inconsistency flagged earlier
@@ -762,7 +795,7 @@ Two composed into the serious one, and it is worth stating as a pair because nei
 | **R8-4** | Records were **concatenated and matched with one `str_contains`**, so one corroborating record satisfied the check while another said *"property of Acme Foundry, no redistribution"* — a well-formed table, no trickery. `sidecarLicence()` applied "several is as bad as none" to the sidecar; the binary half did the opposite. | **Every** record must corroborate; an ambiguous binary is refused. |
 | **R8-5** | `licenceTextIsShipped()`'s regex was scoped to neither `assets:` nor `flutter:`, so moving the block to the file root left five fonts shipping with **zero** licence texts, gate green. A path inside a folded scalar satisfied it too. | A small line reader scoped to `flutter:` → `assets:`, with both variants as cases. |
 | **R8-6** | The manifest path was hardcoded while the caller iterated a per-tier map, so a second tier's asset would be validated against the Flutter manifest. | `FONT_ASSET_DIRECTORIES` now carries `{fonts, manifest}` per tier; the meta-suite asserts each names its own. |
-| **R8-12** | **A seventh font ships and nothing checks it.** `uses-material-design: true` puts `MaterialIcons-Regular.otf` in the bundle with no licence anywhere in the artifact, and the SDK's own text beside it reads *"Attribution 4.0 International"* — **CC-BY-4.0 on a runtime asset**, which `CLAUDE.md` 8(a) forbids. | **NOT closed — it is an invariant-10 question and is being asked.** Named in `FONTS_PENDING_A_LICENSING_RULING` (meta-suite caps it at one entry), rowed in `THIRD-PARTY-NOTICES.md` with all four verified facts, and rowed as owed in `mobile/README.md`. |
+| **R8-12** | **A seventh font ships and nothing checks it.** `uses-material-design: true` puts `MaterialIcons-Regular.otf` in the bundle with no licence anywhere in the artifact, and the SDK's own text beside it reads *"Attribution 4.0 International"* — **CC-BY-4.0 on a runtime asset**, which `CLAUDE.md` 8(a) forbids. | **CLOSED — put to the developer under invariant 10, ruled 2026-07-30: comply with the STRICTER reading, which satisfies both.** `MaterialIcons-LICENSE.txt` carries the attribution, licence URI and statement of modification (the shipped copy is tree-shaken), is declared under `assets:` so it ships, and is enforced by `FRAMEWORK_PROVIDED_FONTS` — a **discharged obligation, not a permission**, with cases asserting CC-BY-4.0 is still refused on Composer, npm and pub packages. Enumerated separately from the vendored walk because a font arriving from a manifest *flag* is invisible to every directory walk and every lock file. |
 | **R8-13** | The test titled *"carries **every** font it ships"* enumerated **two filenames** while the bundle held seven — the fixture-pins-the-instance shape, in the one test whose title claims the opposite. It is why R8-12 was invisible. | It enumerates `build/web` and derives the expected set from the manifest. It immediately earned itself by failing on `CupertinoIcons.ttf`'s family derivation. |
 | **R8-14** | A **sixth** rule-stating surface, uncovered: `reimplementation-strategy.plan.md`'s Decisions Log said the rule was two categories *"and nothing else"* while the gate enforced three — in a file `CLAUDE.md` tells sessions to read *before* writing application code. | Amended in place, added to the cross-check (six documents), **and** a repository-wide inventory case added: the *set* of files naming the closed list must match a committed list, because a hand-listed loop cannot notice a seventh surface appearing. That is how the fifth and sixth were each missed for a round. |
 | **R8-15** | `CLAUDE.md` said the gate *"keeps two lists"* four lines above the paragraph adding the third; the ruling carried **two different dates** across five surfaces; `mobile/web/flutter_bootstrap.js` and `index.html` were never touched and still said the OFL decision was *owed*. | All corrected in place. The last is the **fourth** instance of append-instead-of-edit, this time in the file implementing the control — and it was the mechanism hiding R8-16. |
@@ -770,12 +803,28 @@ Two composed into the serious one, and it is worth stating as a pair because nei
 | **R8-17** | The `arabicSample` constant's provenance was asserted in a docblock and a test title, and both compared the constant to itself. Phase 6 item 3 verbatim. | A test reads `api/translations/messages.ar.xlf` and asserts equality. |
 | **R8-18** | An oversized font aborted the gate with a PHP fatal; the notices file's cross-document sentence named four documents and "the five"; the Angular tier's `3rdpartylicenses.txt` is written **beside** the web root, not in it. | Size ceiling with a real message; sentence corrected to six; the Angular gap recorded as owed with the `infra/` tier — same *"beside is not shipped"* distinction, gated for one tier and unchecked for the other. |
 
-**Two findings are deliberately NOT closed**, and both are the honest kind: R8-12 needs a licensing ruling and
-invariant 10 forbids resolving it conveniently; R8-16 is a measured availability limit with no user-data surface
-to trigger it before Wave 11. Both are named in code, in the notices and in the tier's README, and R8-12 is
-bounded by a meta-suite maximum so it cannot quietly grow.
+**R8-12 was put to the developer and is now closed** — the ruling is logged below. **R8-16 remains deliberately
+open**: a measured availability limit with no user-data surface to trigger it before Wave 11, named in
+`flutter_bootstrap.js`, `index.html` and `mobile/README.md` with its measurement.
+
+**Found while closing round 8, by accident rather than by the panel — and the worst defect of the series.** The
+integration suite **skipped all 62 tests and reported `OK` with exit 0**, so the tenancy proof did not run.
+Both connection helpers called `markTestSkipped()` on any `PDOException`, which contradicted `CLAUDE.md`
+§ "Quality gate" *in that file's own words*: it states the suite fails rather than passing when no database is
+reachable. The trigger was environmental — this container runs PostgreSQL clusters 16 and 18 **both configured
+on port 5432**, and after a restart the one without the tenancy roles won the port. Now `fail()`, with a message
+naming the two-cluster trap, in `api/tests/Integration/DatabaseRequirement.php`. [Verified: a wrong password
+gives `Tests: 62, Failures: 62` and exit 1; the same input previously gave exit 0.] Recorded in § Gotchas as the
+fourth instance of *a control that silently does not run is worse than one openly owed* — and the first where
+the contradiction was between a documented invariant and the code it described. **Neither reviewer caught it**,
+because both ran when the database happened to be up.
 
 **Round 9 is owed**, and Wave 0 still has **zero** consecutive clean rounds against the two MAXIMAL requires.
+Per the developer's ruling of 2026-07-30, round 9 is **scoped to the font machinery and the documents changed by
+rounds 8 and 9** rather than re-reading all of Wave 0: two independent lenses confirmed the API tier, the
+tenancy work and all six gates green and untouched, so the only region still producing findings is the patch
+itself. That scope is a deliberate narrowing, recorded here so a later reader does not mistake a scoped clean
+round for a full one.
 
 ## Scaffolding findings — 2026-07-29, from screenshotting the builds rather than running the tests
 

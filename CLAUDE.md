@@ -697,6 +697,21 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   identifiers appear further down in package rows. **So a document contradicting the gate in its own rule
   statement was certified as agreeing with it, by the very case written to catch that.** When a check
   exempts one member of the set it covers, the exemption needs the same scrutiny as the check.
+- **2026-07-30 — the integration suite SKIPPED the tenancy proof and reported `OK`, contradicting this very
+  file. Two PostgreSQL clusters share port 5432.** The invariant in § "Quality gate" — *"with no database
+  reachable the integration suite fails rather than passing"* — was prose; both connection helpers called
+  `markTestSkipped()` on any `PDOException`. This container runs clusters **16 and 18 both configured on 5432**
+  [Verified: `pg_lsclusters`], so after a restart the one *without* the tenancy roles won the port, every
+  connection got `FATAL: password authentication failed for user "twes"`, all 62 integration tests skipped, and
+  the run reported `OK, but some tests were skipped!` with **exit 0**. The proof standing between this product
+  and a reportable cross-tenant breach did not execute, and I found it by accident while reading an assertion
+  count — not from the panel, and not from the exit code. Both helpers now `fail()` with a message naming the
+  two-cluster trap, since `password authentication failed` otherwise sends a reader hunting for a wrong password
+  that is correct. [Verified: a deliberately wrong password now gives `Tests: 62, Failures: 62` and exit 1,
+  where the same input previously gave exit 0.] Fourth instance of the shape this section already records three
+  times: **a control that silently does not run is worse than one that is openly owed** — and the first where
+  the contradiction was between this file's own words and the code they described. Start the right cluster with
+  `pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start`.
 - **2026-07-30 — this container's `LANG` makes Flutter Web render a BLANK PAGE under Playwright.** Headless
   Chromium reports `navigator.language` as `en-US@posix` here, which Flutter's locale parser rejects with
   `RangeError: Incorrect locale information provided` — no failing test anywhere, just an empty screenshot.

@@ -270,23 +270,33 @@ distribute it":
 | Asset | How it arrives | Licence | State |
 |---|---|---|---|
 | `CupertinoIcons.ttf` | the `cupertino_icons` package | MIT | **Fine.** Its licence text is in the built artifact — [Verified: `grep -c "Vladimir Kharlampidi" build/web/assets/NOTICES` → 1] — because Flutter's generated `NOTICES` aggregates LICENSE files from *packages*, which this is. |
-| `MaterialIcons-Regular.otf` | `uses-material-design: true` | **an open question** | **Pending a developer ruling** — see below. |
+| `MaterialIcons-Regular.otf` | `uses-material-design: true` | **CC-BY-4.0**, as a discharged obligation | **Resolved by developer ruling, 2026-07-30** — see below. |
 
-**The MaterialIcons question, stated rather than resolved,** because licensing invariant 10 forbids picking the
-convenient reading. Four facts, all verified locally: the Flutter SDK ships `MaterialIcons_LICENSE.txt` beside
-the binary whose first line is *"Attribution 4.0 International"* — **CC-BY-4.0**, which this file permits for
-dev-only build-time data and explicitly not for a runtime asset we distribute. Google's `material-design-icons`
-repository relicensed the icons to Apache-2.0 in 2016, which would put it on the ordinary permissive list, but
-that **cannot be verified from this container** — GitHub egress is restricted to this repository. The binary
-carries **no nameID 13 at all** [Verified: parsed; only nameID 0 *"Copyright 2019 Google LLC"* and nameID 1
-*"Material Icons"*], so the name-table cross-check that makes every other font's sidecar evidence cannot run on
-it. And the copy in the bundle is **tree-shaken** — 7736 bytes from 1645184 — a *modified* work, which engages
-CC-BY § 3(a)(1)(b) and Apache-2.0 § 4(b) differently from an unmodified vendoring.
+**The MaterialIcons determination.** Its position was genuinely unclear, so under licensing invariant 10 it was
+put to the developer rather than resolved conveniently. Four facts, all verified locally: the Flutter SDK ships
+`MaterialIcons_LICENSE.txt` beside the binary whose first line is *"Attribution 4.0 International"* —
+**CC-BY-4.0**. Google's `material-design-icons` repository states Apache-2.0 for the icon set, which would be a
+weaker obligation, but that **cannot be verified from this container** — GitHub egress is restricted to this
+repository. The binary carries **no nameID 13 at all** [Verified: parsed; only nameID 0 *"Copyright 2019 Google
+LLC"* and nameID 1 *"Material Icons"*], so the name-table cross-check that makes every vendored font's sidecar
+into evidence cannot run on it. And the copy in the bundle is **tree-shaken** — 7736 bytes from 1645184 — a
+*modified* work, which engages CC-BY § 3(a)(1)(b) and Apache-2.0 § 4(b).
 
-It is recorded in `scripts/gates/dependency-licences.php` as `FONTS_PENDING_A_LICENSING_RULING`, a list the
-meta-suite caps at **one entry**, so the hole is named and bounded rather than silent. Either resolution is a
-one-line change once ruled: confirm the licence and record it here with its text shipped, or drop
-`uses-material-design: true` and use our own icon set.
+**The ruling: comply with the STRICTER reading, which satisfies both.** CC-BY-4.0 asks for attribution, a
+licence notice, the licence URI and an indication of modification; Apache-2.0 § 4(a) asks for less. All four are
+discharged by `mobile/assets/fonts/MaterialIcons-LICENSE.txt`, which is declared under `flutter:` → `assets:`
+and therefore **travels in the built artifact** [Verified 2026-07-30: present at
+`build/web/assets/assets/fonts/MaterialIcons-LICENSE.txt` in a release web build]. It carries Google's
+copyright, the licence and its URI, the SDK's full licence text, and an explicit statement that the shipped copy
+is subset by Flutter's icon tree-shaking rather than redrawn.
+
+**This is a discharged obligation, not a new permission, and the distinction is enforced.** CC-BY-4.0 remains
+off the permitted list for anything distributed: a Composer, npm or pub package under it is still refused, and
+`scripts/gates/test-gates.sh` carries a case for each of those asserting exactly that. The record lives in
+`scripts/gates/dependency-licences.php` as `FRAMEWORK_PROVIDED_FONTS` — enumerated because a font arriving from
+a *manifest flag* is invisible to every walk over our own directories and to every lock file, which is precisely
+how it shipped unnoticed for two commits. The meta-suite caps that list at **one entry**, so a second framework
+font is a deliberate licensing act rather than a way to make a build pass.
 
 ### Template-derived binaries: 37 tracked `.png`/`.ico`, 13 of them not ours
 

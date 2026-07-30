@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
+use Twes\Tests\Integration\DatabaseRequirement;
 
 /**
  * The COLUMN, against real PostgreSQL — the claim `CLAUDE.md` and `phpunit.xml` were both making unbacked.
@@ -164,8 +165,10 @@ final class NumericColumnFidelityTest extends TestCase
         $user = getenv('TWES_TEST_DB_USER');
         $password = getenv('TWES_TEST_DB_PASSWORD');
 
+        // FAIL, NEVER SKIP — see the class docblock and `CLAUDE.md` § "Quality gate", which promises exactly
+        // this and which the original code contradicted.
         if (!\is_string($dsn) || !\is_string($user) || !\is_string($password)) {
-            self::markTestSkipped('TWES_TEST_DSN, TWES_TEST_DB_USER and TWES_TEST_DB_PASSWORD must be set.');
+            self::fail('TWES_TEST_DSN, TWES_TEST_DB_USER and TWES_TEST_DB_PASSWORD must be set.');
         }
 
         try {
@@ -174,7 +177,7 @@ final class NumericColumnFidelityTest extends TestCase
                 \PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (\PDOException $exception) {
-            self::markTestSkipped('No PostgreSQL server reachable: ' . $exception->getMessage());
+            self::fail(DatabaseRequirement::unreachable($exception));
         }
     }
 }

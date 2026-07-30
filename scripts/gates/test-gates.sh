@@ -478,14 +478,15 @@ assert_at_least "licences: font directories have not shrunk" \
 assert_at_least "licences: the unreadable-container refusal list has not shrunk" \
   "$(count_rules "$LICENCE_RULES" "len(r['unverifiable_font_extensions'])")" 6
 
-# THE PENDING-RULING LIST IS THE MOST DANGEROUS LIST IN THIS GATE, because every entry is a shipped font that
-# nothing verifies. It exists so a hole is NAMED rather than silent (MaterialIcons-Regular.otf, whose licence
-# position is an open invariant-10 question), and a MAXIMUM of one is asserted so that adding a second is a
-# deliberate licensing act rather than a way to make a build pass. If the ruling lands, this number goes to 0.
-pending_count="$(count_rules "$LICENCE_RULES" "len(r['fonts_pending_a_licensing_ruling'])")"
-assert_at_least "licences: the pending-ruling list has not GROWN beyond 1" \
-  "$((2 - pending_count))" 1 "$pending_count"
-assert_contains "licences: the open MaterialIcons question is still named" "$LICENCE_RULES" \
+# THE FRAMEWORK-PROVIDED FONTS, which no walk over our own directories and no lock file can see: they arrive
+# from a manifest FLAG. MaterialIcons-Regular.otf shipped with no licence notice for two commits for exactly
+# that reason. A MAXIMUM of one is asserted because each entry is a font we distribute on the strength of an
+# enumerated obligation rather than a verifiable name table — adding a second is a deliberate licensing act.
+framework_font_count="$(count_rules "$LICENCE_RULES" "len(r['framework_provided_fonts'])")"
+assert_at_least "licences: the framework-font list has not GROWN beyond 1" \
+  "$((2 - framework_font_count))" 1 "$framework_font_count"
+assert_at_least "licences: the framework-font list has not shrunk" "$framework_font_count" 1
+assert_contains "licences: MaterialIcons is still enumerated as distributed" "$LICENCE_RULES" \
   MaterialIcons-Regular.otf
 assert_at_least "licences: the font companion allowlist has not shrunk" \
   "$(count_rules "$LICENCE_RULES" "len(r['font_companion_files'])")" 3
@@ -752,8 +753,7 @@ add_fonts_fixture() {
   for f in "$REPO_ROOT"/mobile/assets/fonts/*.ttf; do
     cp "$f" "$f.license" "$WORK/repo/mobile/assets/fonts/"
   done
-  cp "$REPO_ROOT"/mobile/assets/fonts/Roboto-LICENSE.txt \
-     "$REPO_ROOT"/mobile/assets/fonts/NotoSansArabic-LICENSE.txt "$WORK/repo/mobile/assets/fonts/"
+  cp "$REPO_ROOT"/mobile/assets/fonts/*-LICENSE.txt "$WORK/repo/mobile/assets/fonts/"
 }
 
 # ANTI-VACUITY. Asserted against the real tree, not the fixture: if the font walk ever stops finding the
@@ -924,6 +924,42 @@ p.write_text(t)
 PYFOLD
 assert_gate "is not satisfied by a path inside a folded scalar" dependency-licences.php 1 \
   'not in the built bundle'
+
+# R8-12: THE FRAMEWORK'S OWN FONT. `uses-material-design: true` injects MaterialIcons-Regular.otf into the
+# artifact, so we distribute a font that is not in this repository and not in any lock file. It shipped with no
+# licence notice at all for two commits, invisible to every walk over our own directories. The ruling
+# (2026-07-30) was to comply with the STRICTER of the two candidate readings — CC-BY-4.0 — which satisfies
+# Apache-2.0 s4(a) as well. These two cases hold that discharge in place.
+fresh_fixture
+add_fonts_fixture
+rm "$WORK/repo/mobile/assets/fonts/MaterialIcons-LICENSE.txt"
+assert_gate "catches a MISSING notice for a framework-injected font" dependency-licences.php 1 \
+  'attribution, licence URI and statement of modification'
+
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/pubspec.yaml" <<'PYMAT'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('    - assets/fonts/MaterialIcons-LICENSE.txt\n', ''))
+PYMAT
+assert_gate "catches a framework font's notice that is committed but NOT shipped" dependency-licences.php 1 \
+  'committed and not shipped'
+
+# AND THE DISCHARGE MUST NOT HAVE BECOME A PERMISSION. Complying with CC-BY-4.0 on an injected asset says
+# nothing about accepting a CC-BY package, and this case is what keeps those two apart. (The npm section has
+# the equivalent for a runtime npm dependency; this one covers Composer, where the identifier is a legal act
+# on code rather than on content.)
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/api/composer.lock" <<'PYCCBY'
+import json, pathlib, sys
+p = pathlib.Path(sys.argv[1]); d = json.loads(p.read_text())
+d['packages'][0]['license'] = ['CC-BY-4.0']
+p.write_text(json.dumps(d, indent=4))
+PYCCBY
+assert_gate "still refuses a CC-BY RUNTIME package despite the font discharge" dependency-licences.php 1 \
+  'not permissive'
 
 # R8-4: TWO nameID-13 records, one corroborating and one contradicting. A well-formed table -- no trickery --
 # that passed because the records were concatenated and matched with a single str_contains.
@@ -1153,7 +1189,7 @@ done
 # A CASE-COUNT FLOOR. The rule-set size baselines catch a deleted *rule*; nothing caught a deleted *case* —
 # removing the three cross-document licence checks gave a green run with a lower count and no signal. Committed
 # minimum, so shrinking the suite is a deliberate edit to this number rather than a quiet one elsewhere.
-# 298 rather than 299: $passed is read BEFORE this assertion increments it, so the floor is the count of every
+# 302 rather than 303: $passed is read BEFORE this assertion increments it, so the floor is the count of every
 # OTHER case. Setting it to the final total makes the check fail against itself.
 # AN INVENTORY OVER THE WHOLE REPOSITORY, because the loop above iterates a HAND-LISTED set and therefore
 # cannot notice a new surface appearing. That is precisely how the sixth one was missed for two rounds: five
@@ -1187,7 +1223,7 @@ else
   failed=$((failed + 1))
 fi
 
-assert_at_least "the suite itself has not shrunk" "$passed" 298
+assert_at_least "the suite itself has not shrunk" "$passed" 302
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

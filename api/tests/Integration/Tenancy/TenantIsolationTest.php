@@ -19,6 +19,7 @@ use Twes\Infrastructure\Tenancy\Exception\NoCurrentTenant;
 use Twes\Infrastructure\Tenancy\InMemoryTenantContext;
 use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
 use Twes\Infrastructure\Tenancy\TenantId;
+use Twes\Tests\Integration\DatabaseRequirement;
 
 /**
  * Runs against a real PostgreSQL server, because the guarantee under test is the *database's*, not the
@@ -1798,7 +1799,7 @@ final class TenantIsolationTest extends TestCase
         $password = getenv($passwordVariable);
 
         if (!\is_string($dsn) || !\is_string($user) || !\is_string($password)) {
-            self::markTestSkipped(\sprintf(
+            self::fail(\sprintf(
                 'TWES_TEST_DSN, %s and %s must be set. Run scripts/dev/provision-test-database.sh as a '
                 . 'superuser to create the roles the tenancy proof needs.',
                 $userVariable,
@@ -1812,7 +1813,9 @@ final class TenantIsolationTest extends TestCase
                 \PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (\PDOException $exception) {
-            self::markTestSkipped('No PostgreSQL server reachable: ' . $exception->getMessage());
+            // FAIL, NEVER SKIP. See DatabaseRequirement for why, and for the two-cluster accident that
+            // proved it: 62 skipped tests, exit 0, and the tenancy proof not run.
+            self::fail(DatabaseRequirement::unreachable($exception));
         }
     }
 

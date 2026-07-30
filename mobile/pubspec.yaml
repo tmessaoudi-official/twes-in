@@ -128,9 +128,20 @@ flutter:
   # Keeping the text beside the binary in the repository is necessary but not sufficient: the repository is
   # not the artifact anyone receives. scripts/gates/dependency-licences.php checks both — that the text sits
   # beside the font AND that it is declared here, so it actually ships.
+  # MaterialIcons-LICENSE.txt covers a font we do NOT vendor. `uses-material-design: true` above injects
+  # MaterialIcons-Regular.otf into the artifact, so we distribute it — and for two commits we distributed it
+  # with no licence notice anywhere in the bundle, invisible to every walk over our own directories because
+  # the file is not in this repository and no lock file records a manifest flag.
+  #
+  # Its position was unclear (the SDK ships a CC-BY-4.0 text beside it; Google's icon repository states
+  # Apache-2.0, unverifiable from this container), so per licensing invariant 10 it was put to the developer
+  # and the ruling was to comply with the STRICTER reading — which satisfies both. That notice carries the
+  # attribution, the licence URI and the statement of modification the tree-shaking requires. It records a
+  # DISCHARGED OBLIGATION, not a new permission: CC-BY-4.0 is still refused on any package.
   assets:
     - assets/fonts/Roboto-LICENSE.txt
     - assets/fonts/NotoSansArabic-LICENSE.txt
+    - assets/fonts/MaterialIcons-LICENSE.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -129,31 +129,42 @@ const FONT_DIRECTORY_COMPANION_FILES = ['txt', 'license', 'md'];
 const MAX_FONT_BYTES = 8 * 1024 * 1024;
 
 /**
- * Shipped font binaries that are NOT vendored by us, and whose licence position is an OPEN QUESTION.
+ * Font binaries the FRAMEWORK injects into the artifact, which we therefore distribute without vendoring.
  *
- * This list exists so a hole is NAMED rather than silent, and it holds exactly one entry:
+ * These cannot be found by the walk over `mobile/assets/fonts/` — they are not in the repository at all —
+ * and no lock file records them either, because they arrive from a manifest *flag*. So they are enumerated
+ * here, and each one's obligation is discharged by shipping its licence text, which this gate verifies.
  *
- * `MaterialIcons-Regular.otf` reaches `build/web/assets/fonts/` from `uses-material-design: true` — the
- * Flutter SDK's own asset, not something committed here. Its licence position is genuinely unclear and
- * licensing invariant 10 forbids resolving that by picking the convenient reading:
+ * **The identifier recorded here is a DISCHARGED OBLIGATION, not a permission.** Nothing in this list widens
+ * PERMISSIVE, and a Composer/npm/pub package under CC-BY-4.0 is still refused — the meta-suite has a case for
+ * exactly that. The distinction matters: an obligation we satisfy is not the same as a licence we accept.
+ *
+ * `MaterialIcons-Regular.otf` reaches `build/web/assets/fonts/` from `uses-material-design: true`. Its
+ * position was genuinely unclear, so under licensing invariant 10 it was put to the developer rather than
+ * resolved conveniently, and the **ruling (2026-07-30) was to comply with the STRICTER reading**:
  *
  *   - the SDK ships `MaterialIcons_LICENSE.txt` beside it whose first line is "Attribution 4.0
- *     International", i.e. **CC-BY-4.0** — which `CLAUDE.md` 8(a) permits for DEV-ONLY build-time data and
- *     explicitly not for a runtime asset we distribute;
- *   - Google's `material-design-icons` repository relicensed the icons to Apache-2.0 in 2016, which would
- *     put it on the ordinary permissive list — but that cannot be verified from this container, because
- *     GitHub egress is restricted to this repository (see CLAUDE.md § Gotchas);
- *   - the binary carries **no nameID 13 at all** [Verified: parsed; only nameID 0 "Copyright 2019 Google
- *     LLC" and nameID 1 "Material Icons"], so the cross-check that makes every other font's sidecar
- *     evidence cannot run on it;
- *   - and the copy in the bundle is **tree-shaken** to 7736 bytes from 1645184 — a modified work, which
- *     engages CC-BY 3(a)(1)(b)/(b) and Apache-2.0 4(b) differently from an unmodified vendoring.
+ *     International", i.e. **CC-BY-4.0**;
+ *   - Google's `material-design-icons` repository states Apache-2.0 for the icon set, a weaker obligation —
+ *     but that cannot be verified from this container, because GitHub egress is restricted to this repository
+ *     (see CLAUDE.md § Gotchas), so it is not the reading we rely on;
+ *   - complying with CC-BY-4.0 satisfies Apache-2.0 § 4(a) as well, so the stricter reading is correct under
+ *     either. Attribution, licence notice, licence URI and a **statement of modification** (the shipped copy
+ *     is tree-shaken from 1645184 to ~7736 bytes) all live in `MaterialIcons-LICENSE.txt`.
  *
- * So it is recorded as pending a developer ruling rather than approved, refused, or quietly unexamined.
- * `test-gates.sh` asserts a MAXIMUM of one entry here: adding a second is a deliberate licensing act, not a
- * way to make a build pass.
+ * Note the binary carries **no nameID 13 at all** [Verified: parsed; only nameID 0 "Copyright 2019 Google
+ * LLC" and nameID 1 "Material Icons"], so the name-table cross-check cannot run on it. That is why this is a
+ * separate, explicitly enumerated list rather than a sixth branch of the vendored-font walk: the evidence
+ * available here is different in kind, and pretending otherwise would make the cross-check look stronger
+ * than it is.
  */
-const FONTS_PENDING_A_LICENSING_RULING = ['MaterialIcons-Regular.otf'];
+const FRAMEWORK_PROVIDED_FONTS = [
+    'MaterialIcons-Regular.otf' => [
+        'obligation' => 'CC-BY-4.0',
+        'text' => 'MaterialIcons-LICENSE.txt',
+        'source' => 'uses-material-design: true',
+    ],
+];
 
 /**
  * Font containers this gate can read the licence out of, and the ones it refuses.
@@ -240,7 +251,7 @@ if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
         'font_companion_files' => FONT_DIRECTORY_COMPANION_FILES,
         'font_name_table_evidence' => array_keys(FONT_NAME_TABLE_EVIDENCE),
         'max_font_bytes' => MAX_FONT_BYTES,
-        'fonts_pending_a_licensing_ruling' => FONTS_PENDING_A_LICENSING_RULING,
+        'framework_provided_fonts' => array_keys(FRAMEWORK_PROVIDED_FONTS),
         'lock_files' => array_values(LOCK_FILES),
         // UNESCAPED_SLASHES so a path reads as /api/composer.lock rather than \/api\/composer.lock — the
         // meta-suite greps this output, and an escaped slash makes a correct assertion fail confusingly.
@@ -587,6 +598,35 @@ function fontViolations(string $directory, string $manifest, string $notices, in
                 $entry,
                 $family,
                 ltrim(NOTICES, '/'),
+            );
+        }
+    }
+
+    // THE FRAMEWORK'S OWN FONTS. Not in the repository, not in any lock file, and still distributed — so the
+    // only thing that can be checked is that we discharge the obligation: the licence text must exist and must
+    // be declared so it ships. `uses-material-design: true` put MaterialIcons-Regular.otf in the bundle with
+    // no licence anywhere in the artifact for two commits, and no walk over our own directories could see it.
+    foreach (FRAMEWORK_PROVIDED_FONTS as $font => $record) {
+        if (!is_file($directory . '/' . $record['text'])) {
+            $violations[] = sprintf(
+                '%s is injected into the bundle by `%s` and is %s, but %s is not in the font directory. Its '
+                . 'attribution, licence URI and statement of modification have to travel with the artifact.',
+                $font,
+                $record['source'],
+                $record['obligation'],
+                $record['text'],
+            );
+
+            continue;
+        }
+
+        if (!licenceTextIsShipped($manifest, $record['text'])) {
+            $violations[] = sprintf(
+                '%s: %s exists but is not declared under `flutter:` -> `assets:` in %s, so it is committed '
+                . 'and not shipped — which is the distinction that made this a finding in the first place.',
+                $font,
+                $record['text'],
+                basename($manifest),
             );
         }
     }
