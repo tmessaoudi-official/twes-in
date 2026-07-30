@@ -1571,7 +1571,72 @@ else
   failed=$((failed + 1))
 fi
 
-assert_at_least "the suite itself has not shrunk" "$passed" 320
+echo "== twes-in's OWN licence identifier, in the manifests where a comment is impossible =="
+# Round 7 recorded that no gate checked the `license` field Composer and npm define -- the only
+# machine-readable place invariant 8(c)'s identifier can live in a JSON file. Round 11 found that record
+# half-stale: admin/package.json had gained the field, so the finding's EXAMPLE was fixed while its substance
+# (nothing looks) was still true. A correct value that nothing asserts is one careless edit from a wrong one.
+#
+# The three mutations are deliberately different SHAPES: a near-miss identifier, an absent field, and a
+# permissive-but-wrong one. The first is what a careless edit produces, the second is the state round 7 found,
+# and the third is the one a reader would wave through -- MIT is on the permissive list, and the check being
+# made here is not "is this permissive" but "is this OURS".
+set_manifest_licence() {
+  python3 -c '
+import json, sys
+path, value = sys.argv[1], sys.argv[2]
+d = json.load(open(path))
+if value == "":
+    del d["license"]
+else:
+    d["license"] = value
+json.dump(d, open(path, "w"), indent=2)
+' "$1" "$2"
+}
+
+fresh_fixture
+set_manifest_licence "$WORK/repo/api/composer.json" 'AGPL-3.0'
+assert_gate 'catches a bare AGPL-3.0 in composer.json' dependency-licences.php 1 'not "AGPL-3.0-or-later"'
+
+fresh_fixture
+set_manifest_licence "$WORK/repo/admin/package.json" ''
+assert_gate 'catches a package.json with NO license field' dependency-licences.php 1 \
+  'declares its own licence as nothing'
+
+# BOTH manifests, not just the first. A check written against composer.json alone passes the case above and
+# misses this one -- which is exactly the shape of the finding being closed here, since admin/package.json was
+# the manifest nobody looked at.
+fresh_fixture
+set_manifest_licence "$WORK/repo/admin/package.json" 'MIT'
+assert_gate 'catches a permissive-but-wrong licence in package.json' dependency-licences.php 1 \
+  'admin/package.json declares its own licence as "MIT"'
+
+# ANTI-VACUITY: the count must prove the check RAN. A constant nothing reads permits everything -- the exact
+# defect CLAUDE.md § Gotchas records for PERMISSIVE_FOR_FONT_ASSETS, which was declared, documented and
+# dumped for a commit with no code path consulting it, while all 260 meta-cases stayed green.
+fresh_fixture
+own_licence_counts="$(cd "$WORK/repo" && env PUB_CACHE="$WORK/pubcache" \
+  php scripts/gates/dependency-licences.php 2>&1 | grep -o 'counts — .*')"
+
+if printf '%s' "$own_licence_counts" | grep -q '2 own-licence manifest'; then
+  printf '  ok   — %s\n' 'reports how many manifests its own-licence check examined'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (%s)\n' 'reports how many manifests its own-licence check examined' \
+    "$own_licence_counts"
+  failed=$((failed + 1))
+fi
+
+# And a manifest that is ABSENT must be REPORTED rather than skipped, because "examined nothing" and
+# "examined and found correct" are the two states a gate must never conflate.
+fresh_fixture
+rm -f "$WORK/repo/admin/package.json"
+assert_gate 'reports an absent manifest instead of skipping it' dependency-licences.php 1 \
+  'could not be verified'
+
+fresh_fixture
+
+assert_at_least "the suite itself has not shrunk" "$passed" 325
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

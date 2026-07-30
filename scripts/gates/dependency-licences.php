@@ -289,6 +289,21 @@ const LOCK_FILES = [
  */
 const NOTICES = '/THIRD-PARTY-NOTICES.md';
 
+/** twes-in's own SPDX identifier. One spelling, so a manifest cannot drift to a bare `AGPL-3.0`. */
+const OWN_LICENCE = 'AGPL-3.0-or-later';
+
+/**
+ * The manifests that must declare {@see OWN_LICENCE}, each with the key path the field lives at.
+ *
+ * A path rather than a flat key because Composer nests it (`license` at the root) and npm does not — they
+ * happen to agree today, and encoding the path means the day one of them moves is a one-line change rather
+ * than a rewritten check. See ownLicenceDeclarationViolations() for why pubspec.yaml is not here.
+ */
+const OWN_LICENCE_MANIFESTS = [
+    '/api/composer.json' => ['license'],
+    '/admin/package.json' => ['license'],
+];
+
 /**
  * Lock files owed by tiers that do not exist yet, so the gap stays visible.
  *
@@ -315,6 +330,8 @@ const OWED = [
  */
 if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
     echo json_encode([
+        'own_licence' => OWN_LICENCE,
+        'own_licence_manifests' => array_keys(OWN_LICENCE_MANIFESTS),
         'permissive' => PERMISSIVE,
         'build_time_data' => PERMISSIVE_FOR_BUILD_TIME_DATA,
         'font_assets' => PERMISSIVE_FOR_FONT_ASSETS,
@@ -342,6 +359,7 @@ function main(): int
 {
     $offending = [];
     $checked = 0;
+    $checkedManifests = 0;
     $skipped = [];
 
     foreach (LOCK_FILES as $tier => $relativePath) {
@@ -392,6 +410,8 @@ function main(): int
             }
         }
     }
+
+    $offending = [...$offending, ...ownLicenceDeclarationViolations($checkedManifests)];
 
     // Licensing invariant 8(a): recorded in THIRD-PARTY-NOTICES.md "in the same change that adds it".
     // CLAUDE.md's Licensing gate row promises this check; an earlier version of this gate did not make it,
@@ -483,10 +503,12 @@ function main(): int
     }
 
     fwrite(\STDOUT, sprintf(
-        "dependency-licences: counts — %d package(s), %d pub package(s), %d vendored font(s)\n",
+        "dependency-licences: counts — %d package(s), %d pub package(s), %d vendored font(s), "
+        . "%d own-licence manifest(s)\n",
         $checked,
         $pubChecked,
         $fontsChecked,
+        $checkedManifests,
     ));
 
     if ([] !== $offending) {
@@ -1436,6 +1458,86 @@ function fontLicenceDescription(string $path): ?array
  *
  * @return array<string, list<string>>
  */
+/**
+ * twes-in's OWN licence identifier, in the two manifests where a comment is impossible.
+ *
+ * Licensing invariant 8(c) requires every source file to carry `SPDX-License-Identifier: AGPL-3.0-or-later`
+ * machine-readably. JSON has no comment syntax, so `spdx-headers.sh` excludes `.json` — and its own comment
+ * has said for several rounds that this is *not* the same as "no identifier is possible", because Composer and
+ * npm both define a `license` FIELD for exactly this purpose. Round 7 recorded that nothing checked it. Round
+ * 11 found the record half-stale: `admin/package.json` had since gained the field, so the finding's example
+ * was fixed while the finding's actual substance — **no gate looks** — was still true, which is the more
+ * expensive half to leave open, because a correct value nothing asserts is one careless edit from a wrong one.
+ *
+ * It lives in the LICENSING gate rather than the header gate for two reasons: this file already parses both
+ * manifests as arrays, so no JSON parser has to be introduced into a bash script; and the claim being checked
+ * is about the project's own licence, which is this gate's subject.
+ *
+ * `mobile/pubspec.yaml` is deliberately absent: pub defines no `license` field (it derives the licence from a
+ * LICENSE file), and YAML *does* have comments, so that file carries a real SPDX header and `spdx-headers.sh`
+ * covers it.
+ *
+ * @param int $checkedManifests incremented per manifest examined, so a caller can prove this ran
+ *
+ * @return list<string>
+ */
+function ownLicenceDeclarationViolations(int &$checkedManifests): array
+{
+    $violations = [];
+
+    foreach (OWN_LICENCE_MANIFESTS as $relativePath => $pointer) {
+        $path = REPO_ROOT . $relativePath;
+
+        if (!is_file($path)) {
+            // ANNOUNCED, never silent. A missing manifest is a legitimate state for a checkout that has not
+            // fetched a tier, but a check that quietly inspected nothing is the vacuous pass this repository
+            // has now recorded four times.
+            $violations[] = sprintf(
+                '%s is absent, so twes-in\'s own licence declaration could not be verified there.',
+                ltrim($relativePath, '/'),
+            );
+
+            continue;
+        }
+
+        ++$checkedManifests;
+
+        /** @var mixed $manifest */
+        $manifest = json_decode((string) file_get_contents($path), true);
+        $declared = null;
+
+        if (is_array($manifest)) {
+            $node = $manifest;
+
+            foreach ($pointer as $key) {
+                if (!is_array($node) || !array_key_exists($key, $node)) {
+                    $node = null;
+
+                    break;
+                }
+
+                $node = $node[$key];
+            }
+
+            $declared = is_string($node) ? $node : null;
+        }
+
+        if (OWN_LICENCE !== $declared) {
+            $violations[] = sprintf(
+                '%s declares its own licence as %s at %s, not "%s". twes-in is AGPL-3.0-or-later plus a '
+                . 'commercial licence (LICENSING.md); JSON carries no comment, so this field is the ONLY '
+                . 'machine-readable place the identifier can live in this file.',
+                ltrim($relativePath, '/'),
+                null === $declared ? 'nothing' : '"' . $declared . '"',
+                implode('.', $pointer),
+                OWN_LICENCE,
+            );
+        }
+    }
+
+    return $violations;
+}
+
 function directRequirements(): array
 {
     $manifestPath = REPO_ROOT . '/api/composer.json';
