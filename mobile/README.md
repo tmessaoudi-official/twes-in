@@ -38,18 +38,29 @@ branding seam. No domain is owned yet, and this must be set to a reverse-DNS nam
 installed user. A Wave 11 gate condition.
 
 Current state: `flutter analyze` clean, then **`flutter build web --release --no-web-resources-cdn` and only
-then `flutter test`** — 4 passing. That order matters: two tests read `build/web`, and reversed they skip while
-the suite still reports success.
+then `flutter test`** — 9 passing. That order matters: three tests read `build/web`, and reversed they skip
+while the suite still reports success.
 
 The bundle makes **zero** external requests, including with Arabic text — which the Roboto vendoring alone did
 NOT achieve. Flutter Web's engine downloads Noto fallback fonts for any script the bundled fonts do not cover,
 from a URL compiled into the bundle defaulting to `fonts.gstatic.com`; measured, the same build issued 0 gstatic
-requests with Latin text and 13 with Arabic. `web/flutter_bootstrap.js` pins that origin. **Consequence to be
-honest about:** with the origin pinned and no Noto self-hosted yet, an Arabic glyph makes the engine retry a
-same-origin 404 at roughly 30 requests per second for the lifetime of the page, and the glyphs never render.
-That is a per-client flood against our own origin rather than a leak to Google — the right trade, and not a
-finished state. Self-hosting Noto before any Arabic UI ships is the real fix, and it needs an OFL-1.1
-licensing decision.
+requests with Latin text and 13 with Arabic. `web/flutter_bootstrap.js` pins that origin.
+
+**And a pin with nothing behind it was not a fix, which is worth stating because it looked like one.** With the
+origin pinned and no Noto self-hosted, an Arabic glyph made the engine retry a same-origin 404 for the lifetime
+of the page and the glyphs rendered as tofu boxes: a per-client flood against our own origin instead of a leak
+to Google. **Closed 2026-07-30** by vendoring Noto Sans Arabic (OFL-1.1, permitted for a vendored font asset
+only — developer ruling; see `THIRD-PARTY-NOTICES.md` for provenance and `CLAUDE.md` invariant 8(a) for the
+rule) and naming it in `ThemeData.fontFamilyFallback`, so the fallback path is never taken for Arabic at all.
+Measured on the same release build before and after: **229 HTTP 404s and unshaped glyphs → 0 404s, 0 external
+requests, correctly shaped RTL Arabic.**
+
+Two things the tests here cannot do, so do not read them as covering it. **A widget test cannot prove a glyph
+paints** — a tree holding an Arabic `Text` is identical whether it shapes correctly or renders tofu — so the
+rendered proof is a delivered screenshot, per `CLAUDE.md`'s visual-evidence rule. And **a blank Flutter
+screenshot under Playwright is usually the harness**: this container's `LANG` makes headless Chromium report
+`navigator.language` as `en-US@posix`, which Flutter's locale parser rejects with `RangeError`, blanking the
+page with every test still green. Pass `newContext({locale: 'en-US'})`.
 
 Pinned on landing: Flutter **3.44.8**, Dart **3.12.2** — the current stable channel
 [Verified 2026-07-29 against Flutter's release manifest: `stable` is 3.44.8 / Dart 3.12.2, released

@@ -84,6 +84,24 @@ flutter:
   # Apache-2.0. The licence text sits beside the files as Roboto-LICENSE.txt and is recorded in
   # THIRD-PARTY-NOTICES.md. Three weights rather than all seventeen: Material 3 uses regular, medium and
   # bold, and the rest would be ~2 MB of unused binary in every build.
+  # NOTO SANS ARABIC IS BUNDLED FOR THE SAME REASON, AND ONE MORE.
+  #
+  # Roboto covers no Arabic. When the engine meets a glyph its fonts do not have, Flutter Web downloads a
+  # Noto fallback from `fonts.gstatic.com` — the same GDPR transfer as above, for the locale where it matters
+  # most, since `ar` is a first-class locale here and already has a committed catalogue. Pinning
+  # `fontFallbackBaseUrl` same-origin in web/flutter_bootstrap.js stopped the transfer, but a pin with no
+  # font behind it is not a fix: the engine then retries a 404 for the page's lifetime and renders no Arabic
+  # at all. Bundling the family means the fallback path is never taken for Arabic in the first place, on every
+  # target rather than only on the web — a Linux desktop with no Arabic system font would fail the same way.
+  #
+  # OFL-1.1, which is NOT on the ordinary permissive list: it is permitted for a vendored font asset only
+  # (developer ruling 2026-07-29, CLAUDE.md invariant 8(a)). Vendored unmodified, so the Reserved Font Name
+  # clause is not engaged. Two weights, matching the Material 3 pairing Roboto uses. Provenance, sha256 and
+  # the name-table evidence are in THIRD-PARTY-NOTICES.md, and
+  # scripts/gates/dependency-licences.php verifies every one of those claims against the binary itself.
+  #
+  # Declared as a FAMILY here and referenced by ThemeData.fontFamilyFallback in lib/main.dart. A font that is
+  # bundled but never referenced is dead weight that still ships, so the two must move together.
   fonts:
     - family: Roboto
       fonts:
@@ -92,11 +110,27 @@ flutter:
           weight: 500
         - asset: assets/fonts/Roboto-Bold.ttf
           weight: 700
+    - family: Noto Sans Arabic
+      fonts:
+        - asset: assets/fonts/NotoSansArabic-Regular.ttf
+        - asset: assets/fonts/NotoSansArabic-Bold.ttf
+          weight: 700
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  # THE FONT LICENCES SHIP WITH THE FONTS. This is a compliance requirement, not tidiness.
+  #
+  # `fonts:` above bundles the .ttf files and nothing beside them, and Flutter's generated assets/NOTICES
+  # aggregates LICENSE files from *packages*, not from app assets — so the built bundle contained both
+  # families and mentioned neither licence. [Verified 2026-07-30 on a release web build:
+  # `grep -c "SIL Open Font License" build/web/assets/NOTICES` → 0, with both families present under
+  # build/web/assets/assets/fonts/.] Apache-2.0 section 4(a) and OFL-1.1 section 2 each require the licence to
+  # accompany the redistributed files, and a web bundle served to a browser is redistribution.
+  #
+  # Keeping the text beside the binary in the repository is necessary but not sufficient: the repository is
+  # not the artifact anyone receives. scripts/gates/dependency-licences.php checks both — that the text sits
+  # beside the font AND that it is declared here, so it actually ships.
+  assets:
+    - assets/fonts/Roboto-LICENSE.txt
+    - assets/fonts/NotoSansArabic-LICENSE.txt
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

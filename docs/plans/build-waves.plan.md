@@ -58,6 +58,12 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
+- [2026-07-30 00:05] RULED: **OFL-1.1 is permitted for a vendored FONT ASSET only** (developer ruling,
+  accepting the recommendation). A third narrow category beside the dev-only CC-BY pair, and the only one
+  admitting a licence that is not permissive — so the gate caps it at one identifier and refuses OFL-1.1 on
+  any Composer, npm or pub *package*. This closes R7-1: Noto Sans Arabic is vendored, referenced by
+  `ThemeData.fontFamilyFallback`, shipped with its licence text, and verified against the binary's own
+  OpenType `name` table. See § "R7-1 closed" for the three further defects the work uncovered.
 
 ---
 
@@ -682,7 +688,7 @@ Flutter command order made both new GDPR tests **skip** while reporting success.
 
 | # | Owed |
 |---|---|
-| R7-1 | **Noto is not self-hosted.** With `fontFallbackBaseUrl` pinned same-origin and no Noto under it, an Arabic glyph makes the engine retry a 404 at ~30 req/s for the page's lifetime and the glyphs never render. Better than leaking every visitor's IP to Google, and not a finished state. The real fix needs an **OFL-1.1 licensing decision** — Noto is OFL-1.1, which is not on the permitted list. **Blocks any Arabic UI**, and `ar` already has a committed catalogue. |
+| R7-1 | ~~**Noto is not self-hosted.**~~ **CLOSED 2026-07-30** — see § "R7-1 closed" below. The developer ruled OFL-1.1 permitted for vendored font assets only, and the font is now bundled, referenced, licensed, shipped and gated. |
 | R7-2 | `assertPolicedTablesAreBeyondThisRolesReach()`'s docblock claims catalogue derivation means a table "cannot be forgotten from a list". The inverse is the dangerous direction and it is the one that happens: a tenant-owned table whose migration **omitted** `ENABLE ROW LEVEL SECURITY` is invisible to this check by construction. That coverage is the schema gate's job — **P0 at the first Wave 1 migration** — and the docblock must say so rather than the opposite. |
 | R7-3 | No case-count floor on `test-gates.sh`: deleting the three cross-document licence cases gives a green run with a lower count and nothing notices. The rule-set size baselines do not cover case deletion. |
 | R7-4 | `spdx-headers.sh` states a header in JSON is "impossible". It is not — `api/composer.json` carries `"license": "AGPL-3.0-or-later"` in the field both Composer and npm define, and **`admin/package.json` has no such field and no gate looks.** The obstacle is comment syntax, not the identifier. |
@@ -691,6 +697,44 @@ Flutter command order made both new GDPR tests **skip** while reporting success.
 Plus, unchanged: **R2-12**, **R2-13**, **R3-2**, **R3-3**, **R4-18**, **R5-2's** two-line throw-wiring (now
 covered — `LyingStatement` kills it), the composite-key schema gate, PHPStan/deptrac, and the Flutter
 transitive-licence walk.
+
+### R7-1 closed — 2026-07-30, and it found three more defects on the way
+
+The developer's ruling (2026-07-30, § Decisions Log) permitted **OFL-1.1 for vendored font assets only** — a
+third narrow category beside the dev-only CC-BY pair, and the only one that admits a licence which is not
+permissive. Applying it produced the fix *and* three findings that every check in the repository had been
+passing, each worth recording because each is a general shape rather than a font problem.
+
+**The fix.** Noto Sans Arabic Regular and Bold vendored to `mobile/assets/fonts/`, extracted from Debian's
+`fonts-noto-core` 20201225-2 (`Files: *` → `License: OFL-1.1`, and **none** of that package's GPL-3+
+`debian/*` files), with the canonical licence text from SIL's own `openfontlicense.org`. Declared as a family
+in `pubspec.yaml`, referenced by `ThemeData.fontFamilyFallback`, and both licence texts declared under
+`assets:` so they ship. Before/after on a release web build, delivered as images:
+**229 HTTP 404s and tofu boxes → shaped RTL Arabic, 0 404s, 0 external requests.**
+
+| # | Found while closing R7-1 |
+|---|---|
+| **A — a permission that nothing consulted.** | `PERMISSIVE_FOR_FONT_ASSETS` was declared, documented and returned by `--dump-rules` for one commit while **no code path read it**. All 260 meta-cases stayed green, because a licence category that permits nothing is indistinguishable from one that permits everything when nothing consults it. The gate now walks `mobile/assets/fonts/` and checks five things per binary — and a font is the one third-party work here that arrives as a **committed binary**, so `composer.lock` and `package-lock.json` are both structurally blind to it. |
+| **B — the notices file's own rule statement was four identifiers narrower than the gate.** | `THIRD-PARTY-NOTICES.md` still said *"Permitted: MIT · Apache-2.0 · BSD-2-Clause · BSD-3-Clause · ISC. That is the whole list."* — the superseded five, under a heading reading `PERMISSIVE DEPENDENCIES ONLY`. It passed the five-document cross-check because that file was **exempt from the closed-list half** on the grounds that it "discusses the identifiers in prose", and the presence half found the four missing identifiers further down in package rows. Round 6's finding had therefore reproduced verbatim in the one file `CLAUDE.md` 8(a) names as where a licence must be recorded. **The exemption was the hole; it is gone**, and all five documents now state the list in the same closed ordered form. |
+| **C — beside the binary is not shipped.** | The licence text sat next to the font in the repository and was absent from every build: `pubspec`'s `fonts:` bundles the `.ttf` and nothing next to it, and Flutter's generated `assets/NOTICES` aggregates LICENSE files from *packages*, not from app assets. [Verified: `grep -c "SIL Open Font License" build/web/assets/NOTICES` → 0, with both families present in the same bundle.] Apache-2.0 § 4(a) and OFL-1.1 § 2 both attach to what is **distributed** — and this was already true of Roboto, so it was a full-set miss, not a Noto one. |
+
+**The gate's five per-font checks**, each with a case in `test-gates.sh` proven to fire: a REUSE 3.0
+`<file>.license` sidecar declaring **exactly one** SPDX identifier; that identifier permissive or on the
+font-asset list; **the font's own OpenType `name` table (nameID 13) corroborating it**, which is what makes
+the sidecar evidence rather than a typed assertion — a sidecar claiming OFL-1.1 for Roboto is refused,
+because Roboto's binary says *"Apache License"*; the licence text beside the binary **and** declared under
+`assets:`; and the family named in `THIRD-PARTY-NOTICES.md`. Fail-closed throughout: an identifier with no
+recorded name-table wording is refused rather than trusted, an unparseable or truncated `.ttf` is refused
+rather than skipped, and `.woff2`/`.ttc`/`.eot` are refused **by name** — a container the gate cannot read a
+licence out of must not be indistinguishable from one it approved. `test-gates.sh` is 284 cases, and one of
+them runs the gate against the **real** repository and asserts it read at least five fonts there, because
+the font fixture is opt-in per case and would otherwise be vacuous.
+
+**Also recorded, because it cost twenty minutes and will cost them again:** this container's `LANG` makes
+headless Chromium report `navigator.language` as `en-US@posix`, which Flutter Web's locale parser rejects with
+`RangeError: Incorrect locale information provided` — a **blank page** with no failing test anywhere. It is a
+harness artefact, not an app defect [Verified: the same build renders with `newContext({locale: 'en-US'})` and
+crashes without it], so any Playwright run against the Flutter web build must set a locale explicitly.
 
 ## Scaffolding findings — 2026-07-29, from screenshotting the builds rather than running the tests
 

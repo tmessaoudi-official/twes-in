@@ -1,0 +1,11 @@
+# REUSE 3.0 licence sidecar for a binary that cannot carry a comment.
+#
+# A font file has no comment syntax, so licensing invariant 8(c)'s "machine-readable, never a pasted
+# paragraph" is satisfied the way the REUSE Specification 3.0 provides for exactly this case: a sibling
+# <file>.license carrying the SPDX tags. scripts/gates/dependency-licences.php reads this file AND
+# cross-checks it against the font's own OpenType name table (nameID 13), so a sidecar that disagrees
+# with the binary it describes is a gate failure rather than a document nobody reads.
+#
+# OFL-1.1 is permitted for a vendored FONT ASSET only (CLAUDE.md invariant 8(a); developer ruling 2026-07-29). Vendored unmodified, so the Reserved Font Name clause is not engaged. Full text beside it as NotoSansArabic-LICENSE.txt.
+SPDX-FileCopyrightText: Copyright 2015-2020 Google LLC. All Rights Reserved.
+SPDX-License-Identifier: OFL-1.1

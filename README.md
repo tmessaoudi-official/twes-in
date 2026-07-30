@@ -26,7 +26,8 @@ Copyright © Takieddine MESSAOUDI. Read **[LICENSING.md](LICENSING.md)** before 
 accepting a contribution — the dual licence imposes two rules that are easy to break by accident:
 **dependencies must be permissive** — for anything distributed the permitted set is exactly
   MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0. A dev-only
-  dependency may additionally carry CC-BY-4.0 or CC-BY-3.0, and only as build-time data that is never shipped — *not* merely "AGPL-compatible", since
+  dependency may additionally carry CC-BY-4.0 or CC-BY-3.0, and only as build-time data that is never shipped;
+  a vendored font asset may carry OFL-1.1 — *not* merely "AGPL-compatible", since
 a copyleft dependency would destroy the commercial branch), and **no outside contribution can be merged
 without a CLA**. Every dependency is recorded in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 

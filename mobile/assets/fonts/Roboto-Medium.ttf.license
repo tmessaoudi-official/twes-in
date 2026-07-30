@@ -1,0 +1,11 @@
+# REUSE 3.0 licence sidecar for a binary that cannot carry a comment.
+#
+# A font file has no comment syntax, so licensing invariant 8(c)'s "machine-readable, never a pasted
+# paragraph" is satisfied the way the REUSE Specification 3.0 provides for exactly this case: a sibling
+# <file>.license carrying the SPDX tags. scripts/gates/dependency-licences.php reads this file AND
+# cross-checks it against the font's own OpenType name table (nameID 13), so a sidecar that disagrees
+# with the binary it describes is a gate failure rather than a document nobody reads.
+#
+# Roboto ships under Apache-2.0, which is on the ordinary permissive list -- no font-asset exception is needed for it. Full text beside it as Roboto-LICENSE.txt.
+SPDX-FileCopyrightText: Copyright 2011 Google Inc. All Rights Reserved.
+SPDX-License-Identifier: Apache-2.0

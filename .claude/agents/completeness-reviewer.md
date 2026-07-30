@@ -80,7 +80,9 @@ other two is the default failure mode here, not an unusual one.
    and their lock files): is each one **permissive** and recorded in `THIRD-PARTY-NOTICES.md` **in this
    same change**? Permissive for anything DISTRIBUTED means exactly: MIT, Apache-2.0, BSD-2-Clause,
    BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0, BlueOak-1.0.0. A **dev-only** dependency may also carry
-   CC-BY-4.0 or CC-BY-3.0, but only as build-time data that is never shipped — those impose attribution.
+   CC-BY-4.0 or CC-BY-3.0, but only as build-time data that is never shipped — those impose attribution. A
+   vendored FONT ASSET may carry OFL-1.1. The three categories do not leak: an OFL-1.1 code package or a
+   CC-BY runtime dependency is still a P0.
    The authoritative list is `CLAUDE.md` § "Licensing invariants" 8(a); if it and the gate disagree, that
    disagreement is itself the finding. A GPL, AGPL, LGPL or MPL
    dependency is a **P0**, not a style note: it satisfies the AGPL branch and destroys the commercial

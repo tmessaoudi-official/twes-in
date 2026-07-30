@@ -58,6 +58,36 @@ void main() {
       );
     });
 
+    test('carries every font it ships, and each font licence with it', () {
+      if (!buildDir.existsSync()) {
+        markTestSkipped('build/web absent');
+        return;
+      }
+
+      // A PIN WITH NOTHING BEHIND IT IS NOT A FIX, and this is the test that says so. `fontFallbackBaseUrl`
+      // pointing at our own origin with no Noto under it does stop the transfer to Google — and then the
+      // engine retries a 404 for the page's lifetime and renders Arabic as tofu boxes.
+      // [Verified 2026-07-30 on exactly that build: 229 HTTP 404s in a 12-second load.]
+      for (final String font in <String>['Roboto-Regular.ttf', 'NotoSansArabic-Regular.ttf']) {
+        expect(
+          File('build/web/assets/assets/fonts/$font').existsSync(),
+          isTrue,
+          reason: '$font is not in the bundle, so the engine will reach for its fallback path instead',
+        );
+      }
+
+      // And the licences must ship WITH them. Flutter's generated assets/NOTICES aggregates LICENSE files
+      // from packages, not from app assets, so before these were declared under `assets:` the bundle carried
+      // both families and mentioned neither licence — while every test here was green.
+      for (final String text in <String>['Roboto-LICENSE.txt', 'NotoSansArabic-LICENSE.txt']) {
+        expect(
+          File('build/web/assets/assets/fonts/$text').existsSync(),
+          isTrue,
+          reason: 'Apache-2.0 s4(a) and OFL-1.1 s2 require the licence to accompany what we distribute',
+        );
+      }
+    });
+
     test('bundles CanvasKit locally instead of fetching it from a CDN', () {
       if (!buildDir.existsSync()) {
         markTestSkipped('build/web absent');

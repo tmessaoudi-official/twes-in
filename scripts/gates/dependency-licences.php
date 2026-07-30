@@ -66,6 +66,69 @@ const PERMISSIVE = [
 const PERMISSIVE_FOR_BUILD_TIME_DATA = ['CC-BY-4.0', 'CC-BY-3.0'];
 
 /**
+ * Additionally acceptable for a vendored **font asset** (developer ruling, 2026-07-29).
+ *
+ * `OFL-1.1` — the SIL Open Font License — is the licence essentially every open font ships under, including
+ * the Noto family. It is **not** copyleft for our purposes and imposes nothing on our code: its one real
+ * obligation is the **Reserved Font Name** clause, which binds only somebody who MODIFIES the font and
+ * redistributes it under its original name. Vendoring a font unmodified triggers none of it, and the licence
+ * text travels beside the file.
+ *
+ * A third narrow category rather than a tenth entry on PERMISSIVE, for the same reason the CC-BY pair is
+ * quarantined: it is permitted where no obligation can attach, and a *code* dependency under OFL-1.1 would be
+ * a different question that this list must not silently answer. The gate refuses OFL-1.1 on any Composer, npm
+ * or pub package.
+ *
+ * Why it was needed: Flutter Web's engine downloads Noto fallback fonts from `fonts.gstatic.com` for any
+ * script the bundled fonts do not cover, and `ar` is a first-class locale here. Pinning the origin stopped the
+ * transfer to Google; rendering Arabic at all requires the font to be ours.
+ */
+const PERMISSIVE_FOR_FONT_ASSETS = ['OFL-1.1'];
+
+/**
+ * Directories holding vendored font binaries, per tier.
+ *
+ * This exists because the constant above was, for one commit, a **permission nothing consulted**: it was
+ * declared, documented and dumped by --dump-rules, and no code path read it. That is the same
+ * prose-versus-enforcement shape CLAUDE.md § Gotchas already records twice, and it is worse here than
+ * elsewhere — a licence category that is written down but unenforced reads as due diligence while
+ * permitting anything.
+ *
+ * A font is also the one dependency class the lock-file walk structurally cannot see: it arrives as a
+ * committed binary, not as a manifest entry, so `composer.lock` and `package-lock.json` are both blind to it.
+ */
+const FONT_ASSET_DIRECTORIES = ['Flutter client' => '/mobile/assets/fonts'];
+
+/**
+ * Font containers this gate can read the licence out of, and the ones it refuses.
+ *
+ * `.ttf` and `.otf` are both sfnt containers and both carry the OpenType `name` table this gate
+ * cross-checks. The refused set is refused **by name** rather than ignored, which is the whole point: a
+ * `.woff2` is compressed and a `.ttc` holds several fonts at once, so neither can be verified by the parser
+ * below — and a file the gate silently skipped would be indistinguishable from one it approved.
+ */
+const FONT_EXTENSIONS = ['ttf', 'otf'];
+const UNVERIFIABLE_FONT_EXTENSIONS = ['woff', 'woff2', 'ttc', 'otc', 'eot', 'pfb'];
+
+/**
+ * What a font's own `name` table must say for a sidecar's SPDX identifier to be believed.
+ *
+ * The sidecar is written by hand, so on its own it proves only that somebody typed an identifier. Every
+ * real font states its licence in nameID 13 (`License Description`), which is set by the foundry and
+ * travels inside the binary — so the two can be compared, and a sidecar that disagrees with the file it
+ * describes fails the gate.
+ *
+ * An identifier absent from this map is **refused**, not waved through: adding a font under a licence
+ * whose name-table wording nobody has checked is precisely the moment to stop and look.
+ */
+const FONT_NAME_TABLE_EVIDENCE = [
+    'OFL-1.1' => 'SIL Open Font License',
+    'Apache-2.0' => 'Apache License',
+    'MIT' => 'MIT License',
+    'CC0-1.0' => 'CC0',
+];
+
+/**
  * Lock files to inspect, per tier. A tier that does not exist yet is reported as skipped rather than
  * passing silently — a green gate that checked nothing is worse than a red one.
  */
@@ -114,6 +177,11 @@ if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
     echo json_encode([
         'permissive' => PERMISSIVE,
         'build_time_data' => PERMISSIVE_FOR_BUILD_TIME_DATA,
+        'font_assets' => PERMISSIVE_FOR_FONT_ASSETS,
+        'font_directories' => array_values(FONT_ASSET_DIRECTORIES),
+        'font_extensions' => FONT_EXTENSIONS,
+        'unverifiable_font_extensions' => UNVERIFIABLE_FONT_EXTENSIONS,
+        'font_name_table_evidence' => array_keys(FONT_NAME_TABLE_EVIDENCE),
         'lock_files' => array_values(LOCK_FILES),
         // UNESCAPED_SLASHES so a path reads as /api/composer.lock rather than \/api\/composer.lock — the
         // meta-suite greps this output, and an escaped slash makes a correct assertion fail confusingly.
@@ -211,6 +279,25 @@ function main(): int
         }
     }
 
+    // Vendored fonts. Checked separately from $checked so the "no lock file was inspected" guard below
+    // keeps meaning what it says — a run that read five fonts and zero lock files has still verified
+    // nothing about the dependency tree.
+    $fontsChecked = 0;
+
+    foreach (FONT_ASSET_DIRECTORIES as $tier => $relativePath) {
+        $directory = REPO_ROOT . $relativePath;
+
+        if (!is_dir($directory)) {
+            $skipped[] = $tier . ' fonts (' . ltrim($relativePath, '/') . ' absent)';
+
+            continue;
+        }
+
+        foreach (fontViolations($directory, $notices, $fontsChecked) as $violation) {
+            $offending[] = $tier . ': ' . $violation;
+        }
+    }
+
     foreach ($skipped as $tier) {
         fwrite(\STDOUT, 'dependency-licences: skipped ' . $tier . "\n");
     }
@@ -231,7 +318,8 @@ function main(): int
             Permissive means MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0, CC0-1.0
             or BlueOak-1.0.0. A DEV-ONLY dependency may additionally carry CC-BY-4.0 or CC-BY-3.0,
             which are content licences tolerated only for build-time reference data that is never
-            distributed -- the same list appears in this gate's PERMISSIVE constants.
+            distributed. A vendored FONT ASSET may carry OFL-1.1. None of the three lists applies to
+            the others -- an OFL-1.1 *package* is refused, as is a CC-BY runtime dependency.
 
             A copyleft dependency satisfies twes-in's AGPL branch and kills its commercial branch, which
             is why "AGPL-compatible" is not the test. Find a permissive alternative, or raise it with the
@@ -249,11 +337,328 @@ function main(): int
     }
 
     fwrite(\STDOUT, sprintf(
-        "dependency-licences: OK — %d package(s) all permissively licensed.\n",
+        "dependency-licences: OK — %d package(s) and %d vendored font(s) all permissively licensed.\n",
         $checked,
+        $fontsChecked,
     ));
 
     return 0;
+}
+
+/**
+ * Every way a vendored font can fail its licensing obligations.
+ *
+ * Five checks, and each one closes a distinct hole rather than restating the previous:
+ *
+ *  1. the container must be one this gate can actually read — an unverifiable one is refused by name;
+ *  2. a REUSE 3.0 `<file>.license` sidecar must exist and declare exactly one SPDX identifier;
+ *  3. that identifier must be permissive, or on the narrow font-asset list;
+ *  4. the font's own `name` table must corroborate it — this is what makes the sidecar evidence rather
+ *     than an assertion;
+ *  5. the full licence text must sit beside the binary, and the family must appear in the notices file.
+ *     OFL-1.1 § 2 requires the licence to accompany the font; Apache-2.0 § 4(a) requires the same.
+ *
+ * @param int $fontsChecked incremented per font read, by reference, so the caller can report the count
+ *
+ * @return list<string>
+ */
+function fontViolations(string $directory, string $notices, int &$fontsChecked): array
+{
+    $violations = [];
+    $entries = scandir($directory);
+
+    if (false === $entries) {
+        return ['could not read ' . $directory . '.'];
+    }
+
+    $acceptable = [...PERMISSIVE, ...PERMISSIVE_FOR_FONT_ASSETS];
+
+    foreach ($entries as $entry) {
+        $path = $directory . '/' . $entry;
+
+        if (!is_file($path)) {
+            continue;
+        }
+
+        $extension = strtolower(pathinfo($entry, \PATHINFO_EXTENSION));
+
+        if (in_array($extension, UNVERIFIABLE_FONT_EXTENSIONS, true)) {
+            $violations[] = sprintf(
+                '%s is a .%s font, which this gate cannot read a licence out of. Vendor the .ttf or .otf '
+                . 'instead, so the binary itself can be cross-checked against its sidecar.',
+                $entry,
+                $extension,
+            );
+
+            continue;
+        }
+
+        if (!in_array($extension, FONT_EXTENSIONS, true)) {
+            continue;
+        }
+
+        ++$fontsChecked;
+
+        $declared = sidecarLicence($path . '.license');
+
+        if (null === $declared) {
+            $violations[] = sprintf(
+                '%s has no readable %s.license sidecar declaring exactly one SPDX-License-Identifier. '
+                . 'A font carries no comment syntax, so REUSE 3.0 puts the tag in a sibling file.',
+                $entry,
+                $entry,
+            );
+
+            continue;
+        }
+
+        if (!in_array($declared, $acceptable, true)) {
+            $violations[] = sprintf(
+                '%s declares %s in its sidecar — not permissive, and not on the font-asset list either.',
+                $entry,
+                $declared,
+            );
+
+            continue;
+        }
+
+        // Fail closed on an identifier nobody has checked the wording for, rather than accept the
+        // sidecar unverified. The whole value of this check is that it does not trust the sidecar.
+        if (!isset(FONT_NAME_TABLE_EVIDENCE[$declared])) {
+            $violations[] = sprintf(
+                '%s declares %s, which is acceptable, but no name-table wording is recorded for it in '
+                . 'FONT_NAME_TABLE_EVIDENCE — so the sidecar cannot be checked against the binary. Read the '
+                . "font's nameID 13 and add the expected phrase.",
+                $entry,
+                $declared,
+            );
+
+            continue;
+        }
+
+        $embedded = fontLicenceDescription($path);
+
+        if (null === $embedded) {
+            $violations[] = sprintf(
+                '%s: could not read an OpenType name table out of it, so its sidecar claim of %s is '
+                . 'unverifiable. A font this gate cannot parse is refused rather than assumed.',
+                $entry,
+                $declared,
+            );
+
+            continue;
+        }
+
+        $expected = FONT_NAME_TABLE_EVIDENCE[$declared];
+
+        if (!str_contains($embedded, $expected)) {
+            $violations[] = sprintf(
+                '%s: sidecar says %s, but the font\'s own name table says "%s" — it does not mention "%s". '
+                . 'The binary wins; fix the sidecar or check where this file came from.',
+                $entry,
+                $declared,
+                substr($embedded, 0, 120),
+                $expected,
+            );
+
+            continue;
+        }
+
+        // The family is the part before the first hyphen: NotoSansArabic-Bold.ttf -> NotoSansArabic. That
+        // is the convention every font here is named by, and it is what the licence text file is named for.
+        $family = explode('-', pathinfo($entry, \PATHINFO_FILENAME))[0];
+        $licenceText = $family . '-LICENSE.txt';
+
+        if (!is_file($directory . '/' . $licenceText)) {
+            $violations[] = sprintf(
+                '%s: %s is missing. Both OFL-1.1 (section 2) and Apache-2.0 (section 4a) '
+                . 'require the licence to travel with the files, so the text belongs beside the binary.',
+                $entry,
+                $licenceText,
+            );
+        } elseif (!licenceTextIsShipped($licenceText)) {
+            // BESIDE THE BINARY IS NOT THE SAME AS SHIPPED, and the difference was live: a release web build
+            // contained both font families while its generated assets/NOTICES mentioned neither licence,
+            // because pubspec's `fonts:` bundles the .ttf and nothing next to it. The repository is not the
+            // artifact anyone receives, and the obligation attaches to the artifact.
+            $violations[] = sprintf(
+                '%s: assets/fonts/%s exists but mobile/pubspec.yaml does not declare it under `assets:`, so '
+                . 'it is not in the built bundle. The licence must accompany the files we distribute, not '
+                . 'only the ones we commit.',
+                $entry,
+                $licenceText,
+            );
+        }
+
+        if (!str_contains($notices, $family)) {
+            $violations[] = sprintf(
+                '%s: the %s family does not appear in %s. A vendored font is a distributed third-party '
+                . 'work and licensing invariant 8(a) applies to it exactly as to a package.',
+                $entry,
+                $family,
+                ltrim(NOTICES, '/'),
+            );
+        }
+    }
+
+    return $violations;
+}
+
+/**
+ * Whether mobile/pubspec.yaml declares a font licence text under `assets:`, so that it ships.
+ *
+ * Matched as a whole list entry rather than with a substring search, because every path named here is also
+ * named in the surrounding comments explaining why — and a check that a comment satisfies is not a check.
+ */
+function licenceTextIsShipped(string $licenceText): bool
+{
+    $manifest = REPO_ROOT . '/mobile/pubspec.yaml';
+
+    if (!is_file($manifest)) {
+        return false;
+    }
+
+    $raw = file_get_contents($manifest);
+
+    if (false === $raw) {
+        return false;
+    }
+
+    return 1 === preg_match(
+        '/^\s+-\s+assets\/fonts\/' . preg_quote($licenceText, '/') . '\s*$/m',
+        $raw,
+    );
+}
+
+/**
+ * The single SPDX identifier a REUSE sidecar declares, or null if it declares none or several.
+ *
+ * Several is as bad as none: two tags mean the file's licensing is ambiguous, and this gate must not pick
+ * whichever one happens to pass.
+ */
+function sidecarLicence(string $path): ?string
+{
+    if (!is_file($path)) {
+        return null;
+    }
+
+    $raw = file_get_contents($path);
+
+    if (false === $raw) {
+        return null;
+    }
+
+    if (!preg_match_all('/^SPDX-License-Identifier:\s*(\S+)\s*$/m', $raw, $matches)) {
+        return null;
+    }
+
+    $identifiers = array_values(array_unique($matches[1]));
+
+    return 1 === count($identifiers) ? $identifiers[0] : null;
+}
+
+/**
+ * nameID 13 — `License Description` — out of an sfnt font's `name` table.
+ *
+ * Written by hand rather than with a font library for the reason every gate here is: these run on plain PHP
+ * with nothing installed, which is what makes them work in this container at all (see § Gotchas on GitHub
+ * egress). The parse is deliberately strict and returns null rather than guessing — the caller treats null
+ * as a failure, so a container shape this does not understand is refused instead of approved.
+ *
+ * All matching records are concatenated, because the same string is usually present twice (Macintosh and
+ * Windows platform records) and occasionally only one of them carries the full text.
+ */
+function fontLicenceDescription(string $path): ?string
+{
+    $raw = file_get_contents($path);
+
+    if (false === $raw || strlen($raw) < 12) {
+        return null;
+    }
+
+    $header = unpack('Nversion/nnumTables', substr($raw, 0, 8));
+
+    if (false === $header) {
+        return null;
+    }
+
+    // 0x00010000 is TrueType outlines; 'OTTO' is CFF. A 'ttcf' collection deliberately falls through to
+    // null: it holds several fonts and this parser addresses one.
+    if (0x00010000 !== $header['version'] && 'OTTO' !== substr($raw, 0, 4)) {
+        return null;
+    }
+
+    $nameOffset = null;
+    $nameLength = 0;
+
+    for ($i = 0; $i < $header['numTables']; ++$i) {
+        $record = 12 + 16 * $i;
+
+        if (strlen($raw) < $record + 16) {
+            return null;
+        }
+
+        if ('name' !== substr($raw, $record, 4)) {
+            continue;
+        }
+
+        $entry = unpack('Noffset/Nlength', substr($raw, $record + 8, 8));
+
+        if (false === $entry) {
+            return null;
+        }
+
+        $nameOffset = $entry['offset'];
+        $nameLength = $entry['length'];
+
+        break;
+    }
+
+    if (null === $nameOffset || strlen($raw) < $nameOffset + 6) {
+        return null;
+    }
+
+    $table = unpack('nformat/ncount/nstringOffset', substr($raw, $nameOffset, 6));
+
+    if (false === $table) {
+        return null;
+    }
+
+    $descriptions = [];
+
+    for ($i = 0; $i < $table['count']; ++$i) {
+        $record = $nameOffset + 6 + 12 * $i;
+
+        if (strlen($raw) < $record + 12) {
+            return null;
+        }
+
+        $name = unpack(
+            'nplatformId/nencodingId/nlanguageId/nnameId/nlength/noffset',
+            substr($raw, $record, 12),
+        );
+
+        if (false === $name || 13 !== $name['nameId']) {
+            continue;
+        }
+
+        $start = $nameOffset + $table['stringOffset'] + $name['offset'];
+
+        if ($start + $name['length'] > $nameOffset + $nameLength) {
+            return null;
+        }
+
+        $value = substr($raw, $start, $name['length']);
+
+        // Platform 3 (Windows) and platform 0 (Unicode) store UTF-16BE; platform 1 (Macintosh) stores a
+        // single-byte encoding. Nothing here needs the exact Mac code page — the comparison is an ASCII
+        // substring — so latin-1 is a safe reading of it.
+        $descriptions[] = in_array($name['platformId'], [0, 3], true)
+            ? (string) mb_convert_encoding($value, 'UTF-8', 'UTF-16BE')
+            : $value;
+    }
+
+    return [] === $descriptions ? null : implode("\n", $descriptions);
 }
 
 /**

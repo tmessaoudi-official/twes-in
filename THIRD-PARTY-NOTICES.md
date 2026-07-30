@@ -9,7 +9,18 @@ audited afterwards. This file is a deliverable, not a formality: twes-in is dual
 Before adding any dependency: establish its licence, confirm it is **permissive**, and add a row here
 in the same change.
 
-**Permitted:** **MIT · Apache-2.0 · BSD-2-Clause · BSD-3-Clause · ISC**. That is the whole list.
+**Permitted for anything distributed:** MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0,
+CC0-1.0, BlueOak-1.0.0. That is the whole list, and it is stated in the same closed, ordered form in
+`CLAUDE.md` invariant 8(a), `LICENSING.md`, `README.md` and `.claude/agents/completeness-reviewer.md`;
+`scripts/gates/test-gates.sh` fails if any of the five drifts from the others or from the gate.
+
+Two narrow additions, neither of which leaks into the list above:
+
+- a **dev-only** dependency may also carry **CC-BY-4.0** or **CC-BY-3.0** — content licences tolerated only
+  for build-time reference data that is never shipped;
+- a vendored **font asset** may also carry **OFL-1.1** (developer ruling, 2026-07-29).
+
+An OFL-1.1 *code package* is refused, as is a CC-BY *runtime* dependency.
 
 **The test is NOT "AGPL-compatible"** — and getting this wrong is how the commercial licence dies.
 twes-in is dual-licensed (`LICENSING.md`), so every dependency must be conveyable under **both**
@@ -192,11 +203,43 @@ on Flutter **3.44.8** / Dart **3.12.2** — the current stable channel, matching
 | `flutter_test` | SDK | BSD-3-Clause | dev |
 | `flutter_lints` | `^6.0.0` | BSD-3-Clause | dev |
 | Roboto (font, bundled binary) | 3 weights, vendored | Apache-2.0 | runtime asset |
+| NotoSansArabic (font, bundled binary) | 2 weights, vendored | OFL-1.1 | runtime asset |
 
 **Roboto is vendored as a binary asset** under `mobile/assets/fonts/`, with its Apache-2.0 licence text kept
 beside it as `Roboto-LICENSE.txt`. Copied from the Flutter SDK's own `bin/cache/artifacts/material_fonts`,
 which is where Flutter ships it. Three weights (regular, medium, bold) rather than all seventeen. **Why
 vendored rather than fetched is a GDPR decision** — see `mobile/pubspec.yaml`, which states it in full.
+
+**Noto Sans Arabic is vendored for the same reason, and it is the one dependency here under a licence that
+is not on the permissive list.** OFL-1.1 is permitted for a **vendored font asset only** — developer ruling,
+2026-07-29, recorded in `CLAUDE.md` invariant 8(a). It is not copyleft in any sense that touches our code:
+its one substantive obligation is the **Reserved Font Name** clause, which binds somebody who *modifies* a
+font and redistributes it under its original name. These files are vendored byte-for-byte unmodified, so
+that clause is never engaged, and OFL-1.1 § 2 is satisfied by keeping the licence text beside them.
+
+Why it was needed rather than merely convenient: `ar` is a first-class locale here and already has a
+committed catalogue. Flutter Web's engine covers a script the bundled fonts do not by downloading a Noto
+fallback from `fonts.gstatic.com`; pinning `fontFallbackBaseUrl` same-origin stopped that transfer to
+Google, but with no font behind the pin an Arabic glyph produced a 404 retry loop and no glyphs at all.
+Bundling the family as a `fontFamilyFallback` means the engine never needs the fallback path for Arabic.
+
+Provenance, because a font's licence is only as good as where the binary came from
+[Verified 2026-07-29]: extracted from Debian/Ubuntu `fonts-noto-core` 20201225-2, whose
+`debian/copyright` records `Files: *` → `License: OFL-1.1`, copyright Google Inc./LLC. Only the two `.ttf`
+files were taken — **none of that package's `debian/*` files, which are GPL-3+**, so no copyleft attaches.
+Each binary states its own licence internally (OpenType `name` table nameID 13: *"This Font Software is
+licensed under the SIL Open Font License, Version 1.1"*, nameID 14: `http://scripts.sil.org/OFL`), and the
+canonical licence text was retrieved from SIL's own `https://openfontlicense.org/documents/OFL.txt`
+(sha256 `1d361a8f…f6b57e`) rather than reflowed out of the Debian copyright file.
+`sha256(NotoSansArabic-Regular.ttf)` = `504d7407d86875acf7d04dfaa0fd7524d0b8797723bc4aa18022f29db25b0b6e`;
+`sha256(NotoSansArabic-Bold.ttf)` = `ded6fc7359ca36d15d7aab9ef0c066e21ce48b26a069994d6602fa2cb9a1b952`.
+
+**Every vendored font is now gated, not merely documented.** `scripts/gates/dependency-licences.php`
+requires, per font binary: a REUSE 3.0 `<file>.license` sidecar declaring exactly one SPDX identifier; that
+identifier being permissive or on the font-asset list; **the font's own `name` table corroborating it**, so a
+sidecar that disagrees with the binary fails rather than being believed; the full licence text beside it; and
+the family named in this file. A `.woff2`, `.ttc` or `.eot` is refused **by name** rather than skipped —
+a container the gate cannot read a licence out of must not be indistinguishable from one it approved.
 
 [Verified 2026-07-29: `cupertino_icons` 1.0.9's licence text is "The MIT License (MIT)", (c) Vladimir
 Kharlampidi, read from `pub.dev/packages/cupertino_icons/license`; `flutter_lints` 6.0.0 and the Flutter SDK

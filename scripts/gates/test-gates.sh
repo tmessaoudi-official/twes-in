@@ -440,6 +440,13 @@ assert_at_least "spdx: extensions have not shrunk" \
 assert_contains "licences: the permissive set survives" "$LICENCE_RULES" \
   MIT Apache-2.0 BSD-2-Clause BSD-3-Clause ISC 0BSD MIT-0 CC0-1.0 BlueOak-1.0.0
 assert_contains "licences: the build-time-data exception survives" "$LICENCE_RULES" CC-BY-4.0 CC-BY-3.0
+assert_contains "licences: the font-asset exception survives" "$LICENCE_RULES" OFL-1.1
+assert_contains "licences: the font walk still knows where fonts live" "$LICENCE_RULES" \
+  /mobile/assets/fonts ttf otf
+assert_contains "licences: unreadable font containers are still refused by name" "$LICENCE_RULES" \
+  woff2 ttc eot
+assert_contains "licences: the name-table cross-check still knows these licences" "$LICENCE_RULES" \
+  OFL-1.1 Apache-2.0
 assert_contains "licences: every lock file is still inspected" "$LICENCE_RULES" \
   /api/composer.lock /admin/package-lock.json
 assert_at_least "licences: PERMISSIVE has not shrunk" \
@@ -455,6 +462,17 @@ assert_at_least "licences: PERMISSIVE has not GROWN beyond 9" "$((18 - permissiv
 build_time_count="$(count_rules "$LICENCE_RULES" "len(r['build_time_data'])")"
 assert_at_least "licences: the build-time-data exception has not GROWN beyond 2" \
   "$((4 - build_time_count))" 2 "$build_time_count"
+# A MAXIMUM of one on the font-asset list, for the strongest reason of the three: it is the only category
+# here that permits a licence which is NOT permissive. One entry is a ruling somebody made about OFL-1.1;
+# a second would be a ruling nobody made.
+font_count="$(count_rules "$LICENCE_RULES" "len(r['font_assets'])")"
+assert_at_least "licences: the font-asset exception has not GROWN beyond 1" \
+  "$((2 - font_count))" 1 "$font_count"
+assert_at_least "licences: the font-asset exception has not shrunk" "$font_count" 1
+assert_at_least "licences: font directories have not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['font_directories'])")" 1
+assert_at_least "licences: the unreadable-container refusal list has not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['unverifiable_font_extensions'])")" 6
 
 echo "== GENERATED: every permissive identifier must actually be ACCEPTED =="
 # The other direction from the copyleft cases: an identifier on the list that the gate rejects anyway is a
@@ -691,6 +709,139 @@ PYLOCK
   done
 done
 
+echo "== VENDORED FONTS, the one dependency class no lock file can see =="
+# WHY THESE EXIST. PERMISSIVE_FOR_FONT_ASSETS was declared, documented and returned by --dump-rules for one
+# commit while NO CODE PATH READ IT. Every case in this suite stayed green, because a licence category that
+# permits nothing is indistinguishable from one that permits everything when nothing consults it. Same shape
+# as the two failures already in CLAUDE.md § Gotchas.
+#
+# A font is also the only third-party work here that arrives as a committed BINARY rather than a manifest
+# entry, so composer.lock and package-lock.json are both structurally blind to it.
+#
+# NOT copied by fresh_fixture: at ~420 KB a pair of fonts times 260 cases is ~110 MB of pointless writes in
+# a container with a fixed disk allowance. So the fonts are opt-in per case — and because that reintroduces
+# the vacuity risk (a fixture omitting an input makes every assertion about it vacuous), the FIRST case below
+# runs the gate against the REAL repository and asserts it actually read fonts there.
+add_fonts_fixture() {
+  mkdir -p "$WORK/repo/mobile/assets/fonts"
+  # One Apache-2.0 font and one OFL-1.1 font: two licences, two different name-table wordings, which is what
+  # the cross-check needs in order to be provably wrong in the case further down.
+  for f in Roboto-Regular.ttf NotoSansArabic-Regular.ttf; do
+    cp "$REPO_ROOT/mobile/assets/fonts/$f" "$REPO_ROOT/mobile/assets/fonts/$f.license" \
+      "$WORK/repo/mobile/assets/fonts/"
+  done
+  cp "$REPO_ROOT"/mobile/assets/fonts/Roboto-LICENSE.txt \
+     "$REPO_ROOT"/mobile/assets/fonts/NotoSansArabic-LICENSE.txt "$WORK/repo/mobile/assets/fonts/"
+}
+
+# ANTI-VACUITY. Asserted against the real tree, not the fixture: if the font walk ever stops finding the
+# committed fonts — a renamed directory, a changed extension list, an early return — every case below would
+# still pass on its own fixture while the gate checked nothing where it matters.
+real_font_report="$(cd "$REPO_ROOT" && php scripts/gates/dependency-licences.php 2>&1)"
+real_font_count="$(printf '%s' "$real_font_report" | sed -n 's/.* and \([0-9]*\) vendored font(s).*/\1/p')"
+
+if [[ -n "$real_font_count" ]] && (( real_font_count >= 5 )); then
+  printf '  ok   — the gate reads %s vendored font(s) in the real repository\n' "$real_font_count"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — the gate reported no vendored-font count for the real repository. Every font case below is then vacuous. Output was: %s\n' \
+    "$real_font_report"
+  failed=$((failed + 1))
+fi
+
+fresh_fixture
+add_fonts_fixture
+assert_gate "accepts the vendored fonts as they are committed" dependency-licences.php 0
+
+fresh_fixture
+add_fonts_fixture
+rm "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf.license"
+assert_gate "catches a font with no REUSE sidecar" dependency-licences.php 1 'no readable'
+
+fresh_fixture
+add_fonts_fixture
+printf 'SPDX-License-Identifier: GPL-3.0-or-later\n' \
+  > "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf.license"
+assert_gate "catches a copyleft font sidecar" dependency-licences.php 1 'not permissive'
+
+# THE CASE THAT MAKES THE SIDECAR EVIDENCE RATHER THAN AN ASSERTION. Roboto's own name table says "Apache
+# License"; a sidecar claiming OFL-1.1 for it must be refused. Without this check the gate would accept
+# whatever a human typed, which is not a check at all.
+fresh_fixture
+add_fonts_fixture
+printf 'SPDX-License-Identifier: OFL-1.1\n' > "$WORK/repo/mobile/assets/fonts/Roboto-Regular.ttf.license"
+assert_gate "catches a sidecar that CONTRADICTS the font binary" dependency-licences.php 1 'name table'
+
+fresh_fixture
+add_fonts_fixture
+printf 'SPDX-License-Identifier: OFL-1.1\nSPDX-License-Identifier: Apache-2.0\n' \
+  > "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf.license"
+assert_gate "catches an ambiguous two-identifier sidecar" dependency-licences.php 1 'exactly one'
+
+# Permissive AND truthful, but with no recorded name-table wording — so the cross-check cannot run. Refused
+# rather than waved through: this is the branch that decides whether the gate fails open or closed.
+fresh_fixture
+add_fonts_fixture
+printf 'SPDX-License-Identifier: BlueOak-1.0.0\n' \
+  > "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf.license"
+assert_gate "refuses an identifier with no name-table wording recorded" dependency-licences.php 1 \
+  'FONT_NAME_TABLE_EVIDENCE'
+
+fresh_fixture
+add_fonts_fixture
+rm "$WORK/repo/mobile/assets/fonts/NotoSansArabic-LICENSE.txt"
+assert_gate "catches a missing licence TEXT beside the binary" dependency-licences.php 1 'LICENSE.txt is missing'
+
+# BESIDE THE BINARY IS NOT SHIPPED. The licence text can sit in the repository and be absent from every build,
+# which is what was actually happening: pubspec's `fonts:` bundles the .ttf and nothing next to it, so a
+# release web build carried both families and no licence at all. The obligation attaches to the artifact.
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/pubspec.yaml" <<'PYASSET'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('    - assets/fonts/NotoSansArabic-LICENSE.txt\n', ''))
+PYASSET
+assert_gate "catches a licence text that is committed but never SHIPPED" dependency-licences.php 1 \
+  'not in the built bundle'
+
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/THIRD-PARTY-NOTICES.md" <<'PYNOTICES'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('NotoSansArabic', 'SomeOtherFamily'))
+PYNOTICES
+assert_gate "catches a font absent from THIRD-PARTY-NOTICES.md" dependency-licences.php 1 'does not appear in'
+
+# A container the gate cannot read must be refused BY NAME. Skipping it silently would make a woff2
+# indistinguishable from an approved font, which is the whole failure mode this suite exists for.
+for unverifiable in woff2 ttc eot; do
+  fresh_fixture
+  add_fonts_fixture
+  printf 'not a real font\n' > "$WORK/repo/mobile/assets/fonts/Something.${unverifiable}"
+  assert_gate "refuses a .${unverifiable} rather than skipping it" dependency-licences.php 1 \
+    'cannot read a licence out of'
+done
+
+# A .ttf that is not parseable as one. Fail closed: null from the parser must be a violation, never a pass.
+fresh_fixture
+add_fonts_fixture
+printf 'this is not an sfnt container at all, not even close\n' \
+  > "$WORK/repo/mobile/assets/fonts/Broken-Regular.ttf"
+printf 'SPDX-License-Identifier: OFL-1.1\n' > "$WORK/repo/mobile/assets/fonts/Broken-Regular.ttf.license"
+cp "$WORK/repo/mobile/assets/fonts/NotoSansArabic-LICENSE.txt" \
+   "$WORK/repo/mobile/assets/fonts/Broken-LICENSE.txt"
+assert_gate "refuses a .ttf it cannot parse" dependency-licences.php 1 'could not read an OpenType name table'
+
+# And the truncation case separately: a real header followed by nothing. A parser that read past the end and
+# returned junk would pass the substring comparison by accident.
+fresh_fixture
+add_fonts_fixture
+head -c 200 "$REPO_ROOT/mobile/assets/fonts/NotoSansArabic-Regular.ttf" \
+  > "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf"
+assert_gate "refuses a TRUNCATED font" dependency-licences.php 1 'could not read an OpenType name table'
+
 echo "== the NPM licence path, which reads a lockfileVersion 3 lock without node_modules =="
 # A whole tier's dependency tree arrived with the Angular scaffold, and the gate had been reporting it as
 # "owed -- Wave 8" while the lock file sat beside it unread. These cases exist so that cannot recur.
@@ -794,7 +945,7 @@ for document in CLAUDE.md LICENSING.md README.md THIRD-PARTY-NOTICES.md .claude/
   done < <(printf '%s' "$LICENCE_RULES" | python3 -c "
 import json,sys
 r = json.load(sys.stdin)
-for l in r['permissive'] + r['build_time_data']:
+for l in r['permissive'] + r['build_time_data'] + r['font_assets']:
     print(l)
 ")
 
@@ -813,12 +964,13 @@ for l in r['permissive'] + r['build_time_data']:
   # killer. So the nine distributed identifiers must appear as a CLOSED list: comma-separated, in order, and
   # not followed by another identifier. Whitespace is normalised first because every one of these documents
   # line-wraps the list.
-  # THIRD-PARTY-NOTICES.md records each dependency's own licence and discusses the identifiers in prose; it
-  # does not state the RULE as a list, so the closed-list shape is asked only of the four documents that do.
-  if [[ "$document" == THIRD-PARTY-NOTICES.md ]]; then
-    continue
-  fi
-
+  # THE EXEMPTION WAS ITSELF THE HOLE, and it is gone. THIRD-PARTY-NOTICES.md used to be skipped here on the
+  # grounds that it "discusses the identifiers in prose" rather than stating the rule as a list. It did state
+  # the rule — "Permitted: MIT · Apache-2.0 · BSD-2-Clause · BSD-3-Clause · ISC. That is the whole list." — the
+  # superseded FIVE, four identifiers narrower than the gate, sitting under a heading reading
+  # "PERMISSIVE DEPENDENCIES ONLY". The presence half passed it because the four missing identifiers appear
+  # further down the file in package rows, so a document contradicting the gate in its own rule statement was
+  # certified as agreeing with it. All five documents now state the list in the same closed, ordered form.
   if python3 - "$WORK/repo/${document}" <<'PYLIST'
 import re, sys, pathlib
 text = re.sub(r'\s+', ' ', pathlib.Path(sys.argv[1]).read_text())
@@ -839,9 +991,9 @@ done
 # A CASE-COUNT FLOOR. The rule-set size baselines catch a deleted *rule*; nothing caught a deleted *case* —
 # removing the three cross-document licence checks gave a green run with a lower count and no signal. Committed
 # minimum, so shrinking the suite is a deliberate edit to this number rather than a quiet one elsewhere.
-# 259 rather than 260: $passed is read BEFORE this assertion increments it, so the floor is the count of every
+# 283 rather than 284: $passed is read BEFORE this assertion increments it, so the floor is the count of every
 # OTHER case. Setting it to the final total makes the check fail against itself.
-assert_at_least "the suite itself has not shrunk" "$passed" 259
+assert_at_least "the suite itself has not shrunk" "$passed" 283
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

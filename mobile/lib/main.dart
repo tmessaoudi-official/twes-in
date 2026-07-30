@@ -37,6 +37,11 @@ class TwesInApp extends StatelessWidget {
         // Roboto from fonts.gstatic.com on every load — see pubspec.yaml for why that is a GDPR problem
         // and not merely a packaging one.
         fontFamily: 'Roboto',
+        // Roboto covers no Arabic, and `ar` is a shipped locale (api/translations/messages.ar.xlf). Without
+        // this line the bundled Noto Sans Arabic is dead weight that still ships: the engine would reach for
+        // its own fallback path instead, which on the web means fontFallbackBaseUrl — pinned same-origin, so
+        // a 404 loop and no glyphs. Naming the family here is what makes the fallback path unnecessary.
+        fontFamilyFallback: const <String>['Noto Sans Arabic'],
       ),
       home: PlaceholderScreen(branding: branding),
     );
@@ -55,13 +60,59 @@ class PlaceholderScreen extends StatelessWidget {
       body: const Center(
         child: Padding(
           padding: EdgeInsets.all(24),
-          child: Text(
-            'Flutter client — scaffolded, not yet built.\n'
-            'See docs/plans/build-waves.plan.md, Wave 11.',
-            textAlign: TextAlign.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              Text(
+                'Flutter client — scaffolded, not yet built.\n'
+                'See docs/plans/build-waves.plan.md, Wave 11.',
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24),
+              ScriptCoverageCheck(),
+            ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// The bundled fonts' script coverage, rendered rather than asserted.
+///
+/// `api/translations/messages.ar.xlf` says it in as many words: Arabic reaches the admin, this client AND
+/// the generated PDFs, and it "must be proven with a rendered document, never asserted". A widget test
+/// cannot prove it — `flutter test` asserts a widget tree, and a tree containing an Arabic `Text` is
+/// identical whether the glyphs paint or come out as tofu boxes. So the claim is made visible on whichever
+/// of the six targets you happen to run, and a screenshot of this row is the evidence.
+///
+/// It earns its place for one build only. **Wave 11 replaces this with the real UI**, at which point the
+/// proof moves to that UI's own golden or screenshot — an Arabic invoice is the real subject. Until then
+/// deleting this leaves the font claim unproven on every target at once, which is how it was wrong before.
+class ScriptCoverageCheck extends StatelessWidget {
+  const ScriptCoverageCheck({super.key});
+
+  /// From the shipped catalogue, not invented here: `error.not_found`, Arabic target.
+  static const String arabicSample = 'المورد المطلوب غير موجود.';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: <Widget>[
+        Text(
+          'Script coverage — bundled fonts only, no network:',
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+        const SizedBox(height: 8),
+        // Latin from Roboto. Arabic from the bundled Noto via fontFamilyFallback, laid out RTL so the
+        // shaping and the direction are both visible: unshaped Arabic renders as disconnected letters, which
+        // a screenshot shows and no assertion does.
+        const Text('Latin — 1 234,567 TND'),
+        Directionality(
+          textDirection: TextDirection.rtl,
+          child: Text(arabicSample, style: Theme.of(context).textTheme.bodyLarge),
+        ),
+      ],
     );
   }
 }

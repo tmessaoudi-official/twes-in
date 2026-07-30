@@ -143,7 +143,18 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    list applies and `scripts/gates/dependency-licences.php` fails — which is why the gate keeps two lists
    rather than one wider one, and asserts a **MAXIMUM** on each.
 
-   Adding an identifier to either list is a **licensing decision under invariant 10**, not a build fix: amend
+   **A vendored FONT ASSET may carry `OFL-1.1`** (developer ruling, 2026-07-29) — a third narrow category, for
+   the same reason the CC-BY pair is quarantined rather than added above. The SIL Open Font License is not
+   copyleft for our purposes and imposes nothing on our code; its one real obligation is the **Reserved Font
+   Name** clause, which binds only somebody who *modifies* a font and redistributes it under its original name.
+   Vendoring unmodified triggers none of it, and the licence text travels beside the file. An OFL-1.1 *code*
+   package is still refused — the categories do not leak into one another. Needed because Flutter Web's engine
+   fetches Noto fallback fonts from `fonts.gstatic.com` for any script the bundled fonts do not cover, and `ar`
+   is a first-class locale: pinning the origin stopped the transfer to Google, but rendering Arabic at all
+   requires the font to be ours.
+
+   Adding an identifier to any of the three lists is a **licensing decision under invariant 10**, not a build
+   fix: amend
    this paragraph, `LICENSING.md`, the reviewer charter and the gate together, or the four disagree — which is
    precisely what round 6 found. **"AGPL-compatible" is the wrong test**:
    a GPL/AGPL/LGPL dependency satisfies our AGPL branch and *kills the commercial one*, because a third
@@ -424,7 +435,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
 | **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
-| **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` | **Runs** |
+| **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus every **vendored font** under `mobile/assets/fonts/`: a REUSE sidecar, an acceptable identifier, **the font's own `name` table corroborating it**, and the licence text both beside the binary and declared under `assets:` so it ships. A font is the one third-party work here that arrives as a committed binary, so no lock file can see it | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
 | Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
@@ -658,6 +669,38 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   be impossible, never merely discouraged. **How that requirement is actually met is the RLS entry
   above** — which supersedes this entry's original prescription of a default-on Doctrine filter, because
   a filter is bypassed by native queries, migrations and `psql`.
+- **2026-07-30 — a permission that nothing consults permits everything. `PERMISSIVE_FOR_FONT_ASSETS` was
+  declared, documented and dumped for one commit with no code path reading it.** All 260 meta-cases stayed
+  green, and they had to: a licence category that permits nothing is indistinguishable from one that permits
+  anything when no check consults it. This is the third instance of the same shape in this file (the handoff
+  hook's one guarded write path, `test-gates.sh` reporting 33/33 for a gate that detected nothing) and the
+  generalisation is now explicit: **a constant, list or rule added to a gate must be read by that gate's
+  failure path in the same change, and a case must prove it fires.** `--dump-rules` exposing it is not
+  enforcement — introspection describes a rule, it does not apply one.
+- **2026-07-30 — "beside the file" is not "shipped", and the obligation attaches to what is DISTRIBUTED.**
+  Both font licence texts sat correctly next to their binaries in the repository and were absent from every
+  build, because `pubspec`'s `fonts:` bundles the `.ttf` and nothing next to it while Flutter's generated
+  `assets/NOTICES` aggregates LICENSE files from *packages*, not app assets. [Verified: a release web build
+  carried both families with `grep -c "SIL Open Font License" build/web/assets/NOTICES` → 0.] Apache-2.0
+  § 4(a) and OFL-1.1 § 2 both bind the redistributed artifact, and a web bundle served to a browser is
+  redistribution. It was already true of Roboto, so it was a **full-set miss** rather than a new-font one.
+  The general rule for any vendored asset: check the built artifact, not the working tree — this is the same
+  distinction as CLAUDE.md's own *captured is not delivered*, applied to compliance instead of evidence.
+- **2026-07-30 — an exemption inside a cross-check is where the drift hides.** `THIRD-PARTY-NOTICES.md` was
+  exempt from the closed-list half of the five-document licence cross-check, on the reasonable-sounding
+  grounds that it "discusses the identifiers in prose". It did state the rule — *"Permitted: MIT ·
+  Apache-2.0 · BSD-2-Clause · BSD-3-Clause · ISC. That is the whole list."* — the superseded FIVE, four
+  narrower than the gate, under a heading reading `PERMISSIVE DEPENDENCIES ONLY`, in the one file invariant
+  8(a) names as where a licence must be recorded. The presence half passed it because the four missing
+  identifiers appear further down in package rows. **So a document contradicting the gate in its own rule
+  statement was certified as agreeing with it, by the very case written to catch that.** When a check
+  exempts one member of the set it covers, the exemption needs the same scrutiny as the check.
+- **2026-07-30 — this container's `LANG` makes Flutter Web render a BLANK PAGE under Playwright.** Headless
+  Chromium reports `navigator.language` as `en-US@posix` here, which Flutter's locale parser rejects with
+  `RangeError: Incorrect locale information provided` — no failing test anywhere, just an empty screenshot.
+  A harness artefact, not an app defect [Verified: the same build renders with
+  `newContext({locale: 'en-US'})` and crashes without it]. Always set a locale explicitly when driving the
+  Flutter web build, and read a blank Flutter screenshot as "check `pageerror` first", not "the app is fine".
 
 ## Git & CI
 
