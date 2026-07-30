@@ -50,9 +50,11 @@
     the third-party transfer the vendoring was supposed to end. Certification round 6 measured it: 0 gstatic
     requests with Latin text, 13 with Arabic, from the same build.
     Setting the base URL to a same-origin path means the engine 404s locally instead of reaching Google.
-    OWED at Wave 11: self-host the Noto fallback fonts under this path before shipping any Arabic UI, and
-    record their licence in THIRD-PARTY-NOTICES.md — Noto is OFL-1.1, which is NOT on this project's
-    permissive list, so that is a licensing decision to make deliberately rather than by `flutter build`.
+    ARABIC IS DONE (2026-07-30): OFL-1.1 was ruled permitted for a vendored font asset, so Noto Sans Arabic is
+    bundled and named in ThemeData.fontFamilyFallback, and this fallback path is never taken for it.
+    STILL OWED: every other uncovered script — CJK, Hebrew, emoji — resolves here and finds nothing, which
+    measures as 3328 same-origin 404s in a 40-second load, uncapped. No external transfer, but not a finished
+    state either. See mobile/web/flutter_bootstrap.js, which holds the full measurement and the two options.
   -->
   <script src="flutter_bootstrap.js" async></script>
 </body>

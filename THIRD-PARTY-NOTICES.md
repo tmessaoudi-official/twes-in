@@ -11,14 +11,17 @@ in the same change.
 
 **Permitted for anything distributed:** MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0,
 CC0-1.0, BlueOak-1.0.0. That is the whole list, and it is stated in the same closed, ordered form in
-`CLAUDE.md` invariant 8(a), `LICENSING.md`, `README.md` and `.claude/agents/completeness-reviewer.md`;
-`scripts/gates/test-gates.sh` fails if any of the five drifts from the others or from the gate.
+`CLAUDE.md` invariant 8(a), `LICENSING.md`, `README.md`, `docs/plans/reimplementation-strategy.plan.md` and
+`.claude/agents/completeness-reviewer.md`; `scripts/gates/test-gates.sh` fails if any of those six drifts from
+the others or from the gate, **and** asserts that the set of documents stating the rule has not grown — a
+hand-listed cross-check cannot notice a seventh surface appearing, which is how the fifth and sixth were each
+missed for a round.
 
 Two narrow additions, neither of which leaks into the list above:
 
 - a **dev-only** dependency may also carry **CC-BY-4.0** or **CC-BY-3.0** — content licences tolerated only
   for build-time reference data that is never shipped;
-- a vendored **font asset** may also carry **OFL-1.1** (developer ruling, 2026-07-29).
+- a vendored **font asset** may also carry **OFL-1.1** (developer ruling, 2026-07-30).
 
 An OFL-1.1 *code package* is refused, as is a CC-BY *runtime* dependency.
 
@@ -131,7 +134,7 @@ _No dependencies yet — the admin app is not scaffolded._
 
 _No dependencies yet — the client is not scaffolded._ The Flutter client is written from scratch;
 **no code from `invoiceninja/admin-portal` is used**, so its Attribution Assurance License imposes
-nothing here (developer ruling, 2026-07-29).
+nothing here (developer ruling, 2026-07-30).
 
 | Package | Version | Licence | Purpose | Verified |
 |---|---|---|---|---|
@@ -256,6 +259,60 @@ any pub dependency from outside that set requires reading its licence and adding
 change. **Owed:** a licence check for this tier that does not depend on a field pub does not publish — the
 options are a build-time `flutter pub deps --json` walk plus a cached licence map, or vendoring the
 `LICENSE` files. Recorded in `docs/plans/build-waves.plan.md`.
+
+### Fonts and icons that reach the bundle without being vendored by us
+
+Round 8 found the vendored-font enumeration stopped at the five files under `mobile/assets/fonts/`, while the
+release web build carries **seven** font binaries. The other two arrive from a manifest flag rather than from
+this repository, and both are recorded here because "we did not commit it" is not the same as "we do not
+distribute it":
+
+| Asset | How it arrives | Licence | State |
+|---|---|---|---|
+| `CupertinoIcons.ttf` | the `cupertino_icons` package | MIT | **Fine.** Its licence text is in the built artifact — [Verified: `grep -c "Vladimir Kharlampidi" build/web/assets/NOTICES` → 1] — because Flutter's generated `NOTICES` aggregates LICENSE files from *packages*, which this is. |
+| `MaterialIcons-Regular.otf` | `uses-material-design: true` | **an open question** | **Pending a developer ruling** — see below. |
+
+**The MaterialIcons question, stated rather than resolved,** because licensing invariant 10 forbids picking the
+convenient reading. Four facts, all verified locally: the Flutter SDK ships `MaterialIcons_LICENSE.txt` beside
+the binary whose first line is *"Attribution 4.0 International"* — **CC-BY-4.0**, which this file permits for
+dev-only build-time data and explicitly not for a runtime asset we distribute. Google's `material-design-icons`
+repository relicensed the icons to Apache-2.0 in 2016, which would put it on the ordinary permissive list, but
+that **cannot be verified from this container** — GitHub egress is restricted to this repository. The binary
+carries **no nameID 13 at all** [Verified: parsed; only nameID 0 *"Copyright 2019 Google LLC"* and nameID 1
+*"Material Icons"*], so the name-table cross-check that makes every other font's sidecar evidence cannot run on
+it. And the copy in the bundle is **tree-shaken** — 7736 bytes from 1645184 — a *modified* work, which engages
+CC-BY § 3(a)(1)(b) and Apache-2.0 § 4(b) differently from an unmodified vendoring.
+
+It is recorded in `scripts/gates/dependency-licences.php` as `FONTS_PENDING_A_LICENSING_RULING`, a list the
+meta-suite caps at **one entry**, so the hole is named and bounded rather than silent. Either resolution is a
+one-line change once ruled: confirm the licence and record it here with its text shipped, or drop
+`uses-material-design: true` and use our own icon set.
+
+### Template-derived binaries: 37 tracked `.png`/`.ico`, 13 of them not ours
+
+Also found by round 8, and recorded because the claim that a font was "the one third-party work arriving as a
+committed binary" was wrong. Thirteen of the 37 tracked image files are byte-identical to a Flutter-SDK or
+Angular-schematic template asset — `admin/public/favicon.ico` matches
+`@schematics/angular/.../favicon.ico.template`, `mobile/web/icons/Icon-192.png` and the Android
+`mipmap-*/ic_launcher.png` set match the SDK's own templates — and all of them ship.
+
+The `mobile/**` ones are covered by the generic sentence above: Flutter's template output, SDK, BSD-3-Clause.
+`admin/public/favicon.ico` is not, and is hereby recorded as **Angular schematic template output, MIT** (the
+`@angular/*` and `@schematics/angular` packages are MIT, already rowed in the Angular section). All are
+placeholders that licensing invariant 9 requires replacing with our own branding before any public deployment,
+at which point the question disappears rather than needing an answer.
+
+### Owed: the Angular tier's notices file may not reach the served artifact
+
+`npm run build` writes `dist/admin/3rdpartylicenses.txt` (329 lines, the MIT texts for `@angular/*`) as a
+**sibling** of `dist/admin/browser/`, which is the static web root. [Verified 2026-07-30: `browser/` holds
+`index.html`, the bundles, `styles-*.css` and `favicon.ico`, and `grep -rl "Permission is hereby granted"
+dist/admin/browser/` returns nothing.] So whether the notices are actually served depends on what `infra/`
+copies, and `infra/` holds only a `README.md` — nothing decides it yet.
+
+This is the same distinction this project promoted to a `CLAUDE.md` Gotcha on 2026-07-30 (*"beside the file is
+not shipped"*), gated for the Flutter tier and unchecked for this one. Owed with the `infra/` tier: either the
+deployment copies that file into the web root, or the build is configured to emit it there.
 
 **The generated per-platform scaffolding under `mobile/{android,ios,linux,macos,windows,web}` is Flutter's
 own template output** (SDK: BSD-3-Clause) and is deliberately **excluded from the SPDX header requirement**

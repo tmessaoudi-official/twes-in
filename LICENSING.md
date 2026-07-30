@@ -47,7 +47,7 @@ obligation that could survive into a commercial sublicence. A **dev-only** depen
 **CC-BY-4.0** or **CC-BY-3.0**, and only as build-time reference data that never reaches the shipped
 artifact; those impose attribution, which is why they are quarantined rather than added to the list above.
 
-A vendored **font asset** may carry **OFL-1.1** (developer ruling, 2026-07-29). The SIL Open Font License
+A vendored **font asset** may carry **OFL-1.1** (developer ruling, 2026-07-30). The SIL Open Font License
 imposes nothing on our code; its Reserved Font Name clause binds only somebody who modifies a font and
 redistributes it under its original name, which vendoring unmodified does not do. An OFL-1.1 *code* package is
 still refused.

@@ -94,10 +94,66 @@ const PERMISSIVE_FOR_FONT_ASSETS = ['OFL-1.1'];
  * elsewhere — a licence category that is written down but unenforced reads as due diligence while
  * permitting anything.
  *
- * A font is also the one dependency class the lock-file walk structurally cannot see: it arrives as a
+ * A font is one of the dependency classes the lock-file walk structurally cannot see: it arrives as a
  * committed binary, not as a manifest entry, so `composer.lock` and `package-lock.json` are both blind to it.
+ * (It is not the ONLY one — 13 of the 37 tracked `.png`/`.ico` files are byte-identical to a Flutter-SDK or
+ * Angular-schematic template asset and ship too. Round 8 found that sentence overstated here, and an
+ * overstatement that says "the class is closed at one member" is how the next member goes unlooked-for.)
+ *
+ * Each entry is a tier, and each tier names its own manifest, because the "is the licence text actually
+ * SHIPPED?" question is answered by a different file per tier and validating one tier's asset against
+ * another's manifest would be worse than not checking.
  */
-const FONT_ASSET_DIRECTORIES = ['Flutter client' => '/mobile/assets/fonts'];
+const FONT_ASSET_DIRECTORIES = [
+    'Flutter client' => ['fonts' => '/mobile/assets/fonts', 'manifest' => '/mobile/pubspec.yaml'],
+];
+
+/**
+ * Non-font files the font tree is allowed to contain.
+ *
+ * Everything else under a font directory is a **violation**, which is the inverse of how this walk first
+ * worked: it filtered *in* the extensions it understood, so a `Proprietary-Regular.font` with no sidecar and
+ * no notices row passed with the count never moving. An allowlist fails closed on a container nobody
+ * anticipated; an extension filter fails open on exactly that.
+ */
+const FONT_DIRECTORY_COMPANION_FILES = ['txt', 'license', 'md'];
+
+/**
+ * The largest font this gate will read into memory.
+ *
+ * `file_get_contents()` loads the whole binary, so a 100 MB `.ttf` aborted the gate with a PHP fatal and a
+ * stack trace instead of a message. That failed closed (exit 255), but this project has recorded three times
+ * that a crash and a detection are indistinguishable to anybody reading output — so the ceiling produces a
+ * real violation. No legitimate UI font is anywhere near this: the largest here is 253 KB.
+ */
+const MAX_FONT_BYTES = 8 * 1024 * 1024;
+
+/**
+ * Shipped font binaries that are NOT vendored by us, and whose licence position is an OPEN QUESTION.
+ *
+ * This list exists so a hole is NAMED rather than silent, and it holds exactly one entry:
+ *
+ * `MaterialIcons-Regular.otf` reaches `build/web/assets/fonts/` from `uses-material-design: true` — the
+ * Flutter SDK's own asset, not something committed here. Its licence position is genuinely unclear and
+ * licensing invariant 10 forbids resolving that by picking the convenient reading:
+ *
+ *   - the SDK ships `MaterialIcons_LICENSE.txt` beside it whose first line is "Attribution 4.0
+ *     International", i.e. **CC-BY-4.0** — which `CLAUDE.md` 8(a) permits for DEV-ONLY build-time data and
+ *     explicitly not for a runtime asset we distribute;
+ *   - Google's `material-design-icons` repository relicensed the icons to Apache-2.0 in 2016, which would
+ *     put it on the ordinary permissive list — but that cannot be verified from this container, because
+ *     GitHub egress is restricted to this repository (see CLAUDE.md § Gotchas);
+ *   - the binary carries **no nameID 13 at all** [Verified: parsed; only nameID 0 "Copyright 2019 Google
+ *     LLC" and nameID 1 "Material Icons"], so the cross-check that makes every other font's sidecar
+ *     evidence cannot run on it;
+ *   - and the copy in the bundle is **tree-shaken** to 7736 bytes from 1645184 — a modified work, which
+ *     engages CC-BY 3(a)(1)(b)/(b) and Apache-2.0 4(b) differently from an unmodified vendoring.
+ *
+ * So it is recorded as pending a developer ruling rather than approved, refused, or quietly unexamined.
+ * `test-gates.sh` asserts a MAXIMUM of one entry here: adding a second is a deliberate licensing act, not a
+ * way to make a build pass.
+ */
+const FONTS_PENDING_A_LICENSING_RULING = ['MaterialIcons-Regular.otf'];
 
 /**
  * Font containers this gate can read the licence out of, and the ones it refuses.
@@ -181,7 +237,10 @@ if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
         'font_directories' => array_values(FONT_ASSET_DIRECTORIES),
         'font_extensions' => FONT_EXTENSIONS,
         'unverifiable_font_extensions' => UNVERIFIABLE_FONT_EXTENSIONS,
+        'font_companion_files' => FONT_DIRECTORY_COMPANION_FILES,
         'font_name_table_evidence' => array_keys(FONT_NAME_TABLE_EVIDENCE),
+        'max_font_bytes' => MAX_FONT_BYTES,
+        'fonts_pending_a_licensing_ruling' => FONTS_PENDING_A_LICENSING_RULING,
         'lock_files' => array_values(LOCK_FILES),
         // UNESCAPED_SLASHES so a path reads as /api/composer.lock rather than \/api\/composer.lock — the
         // meta-suite greps this output, and an escaped slash makes a correct assertion fail confusingly.
@@ -284,16 +343,18 @@ function main(): int
     // nothing about the dependency tree.
     $fontsChecked = 0;
 
-    foreach (FONT_ASSET_DIRECTORIES as $tier => $relativePath) {
-        $directory = REPO_ROOT . $relativePath;
+    foreach (FONT_ASSET_DIRECTORIES as $tier => $paths) {
+        $directory = REPO_ROOT . $paths['fonts'];
 
         if (!is_dir($directory)) {
-            $skipped[] = $tier . ' fonts (' . ltrim($relativePath, '/') . ' absent)';
+            $skipped[] = $tier . ' fonts (' . ltrim($paths['fonts'], '/') . ' absent)';
 
             continue;
         }
 
-        foreach (fontViolations($directory, $notices, $fontsChecked) as $violation) {
+        $violations = fontViolations($directory, REPO_ROOT . $paths['manifest'], $notices, $fontsChecked);
+
+        foreach ($violations as $violation) {
             $offending[] = $tier . ': ' . $violation;
         }
     }
@@ -348,38 +409,40 @@ function main(): int
 /**
  * Every way a vendored font can fail its licensing obligations.
  *
- * Five checks, and each one closes a distinct hole rather than restating the previous:
+ * Six checks, and each one closes a distinct hole rather than restating the previous:
  *
- *  1. the container must be one this gate can actually read — an unverifiable one is refused by name;
+ *  1. the container must be one this gate can actually read — an unverifiable one is refused by name, and
+ *     anything that is neither a readable font nor a permitted companion file is refused too;
  *  2. a REUSE 3.0 `<file>.license` sidecar must exist and declare exactly one SPDX identifier;
  *  3. that identifier must be permissive, or on the narrow font-asset list;
  *  4. the font's own `name` table must corroborate it — this is what makes the sidecar evidence rather
- *     than an assertion;
- *  5. the full licence text must sit beside the binary, and the family must appear in the notices file.
- *     OFL-1.1 § 2 requires the licence to accompany the font; Apache-2.0 § 4(a) requires the same.
+ *     than an assertion — and **every** nameID-13 record must corroborate, not merely one of them;
+ *  5. the full licence text must sit beside the binary AND be declared so it ships, and the family must
+ *     appear in the notices. OFL-1.1 § 2 requires the licence to accompany the font; Apache-2.0 § 4(a) too;
+ *  6. **the inverse direction**: every font path the manifest DECLARES must have been one of the files
+ *     visited above. Round 8 found the walk was non-recursive and filtered *in* the extensions it knew, so
+ *     an unlicensed `.ttf` one directory down shipped in the release bundle with the gate reporting OK and
+ *     the count never moving. This is the direction `spdx-headers.sh` already learned to add — a forward
+ *     walk proves the files it found are fine, and says nothing about the files it never reached.
  *
  * @param int $fontsChecked incremented per font read, by reference, so the caller can report the count
  *
  * @return list<string>
  */
-function fontViolations(string $directory, string $notices, int &$fontsChecked): array
+function fontViolations(string $directory, string $manifest, string $notices, int &$fontsChecked): array
 {
     $violations = [];
-    $entries = scandir($directory);
+    $files = fontTreeFiles($directory);
 
-    if (false === $entries) {
+    if (null === $files) {
         return ['could not read ' . $directory . '.'];
     }
 
     $acceptable = [...PERMISSIVE, ...PERMISSIVE_FOR_FONT_ASSETS];
+    $visited = [];
 
-    foreach ($entries as $entry) {
-        $path = $directory . '/' . $entry;
-
-        if (!is_file($path)) {
-            continue;
-        }
-
+    foreach ($files as $relative => $path) {
+        $entry = $relative;
         $extension = strtolower(pathinfo($entry, \PATHINFO_EXTENSION));
 
         if (in_array($extension, UNVERIFIABLE_FONT_EXTENSIONS, true)) {
@@ -394,10 +457,24 @@ function fontViolations(string $directory, string $notices, int &$fontsChecked):
         }
 
         if (!in_array($extension, FONT_EXTENSIONS, true)) {
+            // ALLOWLIST, not an extension filter. A file here that is neither a font this gate can read nor
+            // a companion it expects is refused: filtering *in* the known extensions let a
+            // `Proprietary-Regular.font` through with no sidecar and no notices row.
+            if (!in_array($extension, FONT_DIRECTORY_COMPANION_FILES, true)) {
+                $violations[] = sprintf(
+                    '%s is neither a font this gate can read (.%s) nor a permitted companion file (.%s). '
+                    . 'A file under a font directory that nobody classified is refused, not skipped.',
+                    $entry,
+                    implode('/.', FONT_EXTENSIONS),
+                    implode('/.', FONT_DIRECTORY_COMPANION_FILES),
+                );
+            }
+
             continue;
         }
 
         ++$fontsChecked;
+        $visited[$relative] = true;
 
         $declared = sidecarLicence($path . '.license');
 
@@ -451,14 +528,27 @@ function fontViolations(string $directory, string $notices, int &$fontsChecked):
 
         $expected = FONT_NAME_TABLE_EVIDENCE[$declared];
 
-        if (!str_contains($embedded, $expected)) {
+        // EVERY record must corroborate, not merely one of them. Concatenating the records and running one
+        // `str_contains` over the join accepted a font whose Macintosh record read "property of Acme Foundry,
+        // all rights reserved, no redistribution" as long as its Windows record mentioned the OFL — a
+        // well-formed table, no trickery needed. `sidecarLicence()` already applies "several is as bad as
+        // none" to the sidecar; the binary half of the same cross-check must not do the opposite.
+        $dissenting = array_values(array_filter(
+            $embedded,
+            static fn(string $record): bool => !str_contains($record, $expected),
+        ));
+
+        if ([] !== $dissenting) {
             $violations[] = sprintf(
-                '%s: sidecar says %s, but the font\'s own name table says "%s" — it does not mention "%s". '
-                . 'The binary wins; fix the sidecar or check where this file came from.',
+                '%s: sidecar says %s, but %d of the font\'s %d name-table licence record(s) do not mention '
+                . '"%s" — one reads "%s". The binary wins, and an AMBIGUOUS binary is refused too: fix the '
+                . 'sidecar or check where this file came from.',
                 $entry,
                 $declared,
-                substr($embedded, 0, 120),
+                count($dissenting),
+                count($embedded),
                 $expected,
+                substr($dissenting[0], 0, 120),
             );
 
             continue;
@@ -476,7 +566,7 @@ function fontViolations(string $directory, string $notices, int &$fontsChecked):
                 $entry,
                 $licenceText,
             );
-        } elseif (!licenceTextIsShipped($licenceText)) {
+        } elseif (!licenceTextIsShipped($manifest, $licenceText)) {
             // BESIDE THE BINARY IS NOT THE SAME AS SHIPPED, and the difference was live: a release web build
             // contained both font families while its generated assets/NOTICES mentioned neither licence,
             // because pubspec's `fonts:` bundles the .ttf and nothing next to it. The repository is not the
@@ -501,19 +591,112 @@ function fontViolations(string $directory, string $notices, int &$fontsChecked):
         }
     }
 
+    // THE INVERSE DIRECTION. Everything above proves the files this walk FOUND are licensed; it says nothing
+    // about a font the walk never reached. So ask the manifest what it declares, and require every one of
+    // those paths to have been visited. A `.ttf` in a subdirectory, or under an extension the walk did not
+    // recognise, shipped in the release bundle with the gate green until this existed.
+    foreach (declaredFontAssets($manifest) as $declaredPath) {
+        $relative = preg_replace('#^assets/fonts/#', '', $declaredPath);
+
+        if (!isset($visited[$relative])) {
+            $violations[] = sprintf(
+                '%s is declared in %s but was never examined by this walk — so nothing verified its licence, '
+                . 'and it ships anyway. Either it is missing from disk, or it is a container this gate does '
+                . 'not read.',
+                $declaredPath,
+                basename($manifest),
+            );
+        }
+    }
+
     return $violations;
 }
 
 /**
- * Whether mobile/pubspec.yaml declares a font licence text under `assets:`, so that it ships.
+ * Every regular file under a font directory, recursively, keyed by its path relative to that directory.
  *
- * Matched as a whole list entry rather than with a substring search, because every path named here is also
- * named in the surrounding comments explaining why — and a check that a comment satisfies is not a check.
+ * Recursive because the first version was not, and a `.ttf` one level down was invisible to the gate while
+ * shipping in the release bundle. Sidecars are excluded from the returned set: they are read by name off the
+ * font they describe, and returning them would have the walk classify each one as an unexpected companion.
+ *
+ * @return array<string, string>|null null when the directory cannot be read
  */
-function licenceTextIsShipped(string $licenceText): bool
+function fontTreeFiles(string $directory): ?array
 {
-    $manifest = REPO_ROOT . '/mobile/pubspec.yaml';
+    if (!is_dir($directory)) {
+        return null;
+    }
 
+    $iterator = new \RecursiveIteratorIterator(
+        new \RecursiveDirectoryIterator($directory, \FilesystemIterator::SKIP_DOTS),
+        \RecursiveIteratorIterator::LEAVES_ONLY,
+    );
+
+    $files = [];
+
+    foreach ($iterator as $file) {
+        if (!$file instanceof \SplFileInfo || !$file->isFile()) {
+            continue;
+        }
+
+        $relative = substr($file->getPathname(), strlen($directory) + 1);
+
+        if (str_ends_with($relative, '.license')) {
+            continue;
+        }
+
+        $files[$relative] = $file->getPathname();
+    }
+
+    ksort($files);
+
+    return $files;
+}
+
+/**
+ * The font asset paths a Flutter manifest declares under `fonts:`.
+ *
+ * Read with a small line reader for the same reason `pubDirectRequirements()` is: these gates run on plain
+ * PHP with nothing installed. The pattern deliberately tolerates a trailing comment — `- asset: x.ttf  # y`
+ * is legal YAML, and an end-anchored pattern that silently matched nothing is exactly the defect round 8
+ * found in the Dart-side equivalent of this parse.
+ *
+ * @return list<string>
+ */
+function declaredFontAssets(string $manifest): array
+{
+    if (!is_file($manifest)) {
+        return [];
+    }
+
+    $raw = file_get_contents($manifest);
+
+    if (false === $raw) {
+        return [];
+    }
+
+    if (!preg_match_all('/^\s+-\s+asset:\s*(\S+)/m', $raw, $matches)) {
+        return [];
+    }
+
+    return array_values(array_unique($matches[1]));
+}
+
+/**
+ * Whether a Flutter manifest declares a font licence text under `flutter:` → `assets:`, so that it ships.
+ *
+ * SCOPED TO THAT BLOCK, which the first version was not. A bare whole-line pattern is satisfied by any
+ * list-item-shaped line anywhere in the file, so moving the `assets:` block out of `flutter:` — an easy and
+ * entirely realistic YAML mistake — left five fonts shipping with **zero** licence texts and the gate green.
+ * A path inside a folded scalar under `description:` satisfied it too. Both are now refused, because the
+ * question is not "is this string in the file" but "will Flutter bundle this file".
+ *
+ * The manifest is a parameter rather than a constant so each tier is validated against its own manifest: the
+ * caller iterates FONT_ASSET_DIRECTORIES, and a hardcoded path would check a second tier's asset against the
+ * Flutter one.
+ */
+function licenceTextIsShipped(string $manifest, string $licenceText): bool
+{
     if (!is_file($manifest)) {
         return false;
     }
@@ -524,10 +707,50 @@ function licenceTextIsShipped(string $licenceText): bool
         return false;
     }
 
-    return 1 === preg_match(
-        '/^\s+-\s+assets\/fonts\/' . preg_quote($licenceText, '/') . '\s*$/m',
-        $raw,
-    );
+    $wanted = 'assets/fonts/' . $licenceText;
+    $inFlutter = false;
+    $inAssets = false;
+
+    foreach (explode("\n", $raw) as $line) {
+        if (preg_match('/^flutter:\s*$/', $line)) {
+            $inFlutter = true;
+            $inAssets = false;
+
+            continue;
+        }
+
+        // Any other top-level key ends the flutter: block. Checked before the entry match so that an
+        // `assets:` key at the file root cannot be mistaken for the one inside it.
+        if (preg_match('/^[a-zA-Z_]/', $line)) {
+            $inFlutter = false;
+            $inAssets = false;
+
+            continue;
+        }
+
+        if (!$inFlutter) {
+            continue;
+        }
+
+        if (preg_match('/^\s+assets:\s*$/', $line)) {
+            $inAssets = true;
+
+            continue;
+        }
+
+        // A sibling key at the same indentation as `assets:` (fonts:, uses-material-design:) closes it.
+        if ($inAssets && preg_match('/^\s+[a-zA-Z_][a-zA-Z0-9_-]*:/', $line)) {
+            $inAssets = false;
+
+            continue;
+        }
+
+        if ($inAssets && preg_match('/^\s+-\s+(\S+)/', $line, $matches) && $matches[1] === $wanted) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -565,11 +788,23 @@ function sidecarLicence(string $path): ?string
  * egress). The parse is deliberately strict and returns null rather than guessing — the caller treats null
  * as a failure, so a container shape this does not understand is refused instead of approved.
  *
- * All matching records are concatenated, because the same string is usually present twice (Macintosh and
- * Windows platform records) and occasionally only one of them carries the full text.
+ * Returns the records SEPARATELY rather than joined. The join was the bug: the caller ran one
+ * `str_contains` over it, so a font with two nameID-13 records passed when only one of them corroborated the
+ * sidecar — while the other said the font was proprietary and could not be redistributed.
+ *
+ * @return list<string>|null null when the file cannot be parsed, which the caller treats as a REFUSAL
  */
-function fontLicenceDescription(string $path): ?string
+function fontLicenceDescription(string $path): ?array
 {
+    // The size ceiling comes first, and before file_get_contents(), because the point is not to load the file
+    // and then object: a 100 MB .ttf aborted this gate with a PHP fatal and a stack trace under a normal
+    // memory_limit. That failed closed, but a crash and a detection are indistinguishable in output.
+    $size = filesize($path);
+
+    if (false === $size || $size > MAX_FONT_BYTES) {
+        return null;
+    }
+
     $raw = file_get_contents($path);
 
     if (false === $raw || strlen($raw) < 12) {
@@ -618,6 +853,17 @@ function fontLicenceDescription(string $path): ?string
         return null;
     }
 
+    // CLAMP THE DECLARED LENGTH TO THE FILE. $nameLength arrives straight out of the table directory, which
+    // is the font's own bytes, and the string-bounds check below is the only thing keeping the reads inside
+    // the name table. Declaring nameLength = 0xFFFFFFFF made that check vacuous, and a nameID-13 record could
+    // then point ~128 KB past the table into another table's bytes: a phrase planted in the `glyf` region
+    // satisfied the cross-check on a font whose real licence record said "Apache License". PHP's substr()
+    // clips at EOF so nothing crashed — it simply believed the wrong bytes. Refuse rather than clamp
+    // silently: a font whose directory lies about its own table is not one to interpret charitably.
+    if ($nameOffset + $nameLength > strlen($raw)) {
+        return null;
+    }
+
     $table = unpack('nformat/ncount/nstringOffset', substr($raw, $nameOffset, 6));
 
     if (false === $table) {
@@ -658,7 +904,7 @@ function fontLicenceDescription(string $path): ?string
             : $value;
     }
 
-    return [] === $descriptions ? null : implode("\n", $descriptions);
+    return [] === $descriptions ? null : $descriptions;
 }
 
 /**

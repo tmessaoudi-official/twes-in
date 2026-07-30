@@ -48,6 +48,10 @@ fresh_fixture() {
   # ENFORCES it. Round 6 found the gate permitting nine identifiers while both documents said five "and
   # nothing else" — a licensing decision taken as a build fix.
   cp "$REPO_ROOT"/CLAUDE.md "$REPO_ROOT"/LICENSING.md "$REPO_ROOT"/README.md "$WORK/repo/"
+  # The sixth rule-stating surface, found by round 8. A plan file, but CLAUDE.md § "Plans live in the repo"
+  # makes it a read-before-you-code document, and its Decisions Log stated the licence rule.
+  mkdir -p "$WORK/repo/docs/plans"
+  cp "$REPO_ROOT"/docs/plans/reimplementation-strategy.plan.md "$WORK/repo/docs/plans/"
   mkdir -p "$WORK/repo/.claude/agents"
   cp "$REPO_ROOT"/.claude/agents/completeness-reviewer.md "$WORK/repo/.claude/agents/"
   # The Angular tier's manifest AND lock. Omitting either would make every npm-licence assertion below
@@ -474,6 +478,22 @@ assert_at_least "licences: font directories have not shrunk" \
 assert_at_least "licences: the unreadable-container refusal list has not shrunk" \
   "$(count_rules "$LICENCE_RULES" "len(r['unverifiable_font_extensions'])")" 6
 
+# THE PENDING-RULING LIST IS THE MOST DANGEROUS LIST IN THIS GATE, because every entry is a shipped font that
+# nothing verifies. It exists so a hole is NAMED rather than silent (MaterialIcons-Regular.otf, whose licence
+# position is an open invariant-10 question), and a MAXIMUM of one is asserted so that adding a second is a
+# deliberate licensing act rather than a way to make a build pass. If the ruling lands, this number goes to 0.
+pending_count="$(count_rules "$LICENCE_RULES" "len(r['fonts_pending_a_licensing_ruling'])")"
+assert_at_least "licences: the pending-ruling list has not GROWN beyond 1" \
+  "$((2 - pending_count))" 1 "$pending_count"
+assert_contains "licences: the open MaterialIcons question is still named" "$LICENCE_RULES" \
+  MaterialIcons-Regular.otf
+assert_at_least "licences: the font companion allowlist has not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['font_companion_files'])")" 3
+# Every font directory must name its OWN manifest: validating one tier's asset against another's manifest is
+# worse than not checking, and the constant is a map precisely so a second tier can be added.
+assert_contains "licences: each font directory names its own manifest" "$LICENCE_RULES" \
+  /mobile/pubspec.yaml
+
 echo "== GENERATED: every permissive identifier must actually be ACCEPTED =="
 # The other direction from the copyleft cases: an identifier on the list that the gate rejects anyway is a
 # rule that is present but not honoured, which the round-3 lesson says is exactly as bad as one that is
@@ -709,7 +729,7 @@ PYLOCK
   done
 done
 
-echo "== VENDORED FONTS, the one dependency class no lock file can see =="
+echo "== VENDORED FONTS, a dependency class no lock file can see =="
 # WHY THESE EXIST. PERMISSIVE_FOR_FONT_ASSETS was declared, documented and returned by --dump-rules for one
 # commit while NO CODE PATH READ IT. Every case in this suite stayed green, because a licence category that
 # permits nothing is indistinguishable from one that permits everything when nothing consults it. Same shape
@@ -724,11 +744,13 @@ echo "== VENDORED FONTS, the one dependency class no lock file can see =="
 # runs the gate against the REAL repository and asserts it actually read fonts there.
 add_fonts_fixture() {
   mkdir -p "$WORK/repo/mobile/assets/fonts"
-  # One Apache-2.0 font and one OFL-1.1 font: two licences, two different name-table wordings, which is what
-  # the cross-check needs in order to be provably wrong in the case further down.
-  for f in Roboto-Regular.ttf NotoSansArabic-Regular.ttf; do
-    cp "$REPO_ROOT/mobile/assets/fonts/$f" "$REPO_ROOT/mobile/assets/fonts/$f.license" \
-      "$WORK/repo/mobile/assets/fonts/"
+  # ALL FIVE, not a representative two. The fixture first copied only `Roboto-Regular` and
+  # `NotoSansArabic-Regular` — enough for two licences and two name-table wordings, which is what the
+  # cross-check cases need — and the round-8 inverse check then correctly failed the clean case, because the
+  # manifest declares five and the fixture provided two. That is the check doing its job on its own suite: a
+  # fixture that cannot satisfy the manifest cannot be used to prove the manifest is satisfied.
+  for f in "$REPO_ROOT"/mobile/assets/fonts/*.ttf; do
+    cp "$f" "$f.license" "$WORK/repo/mobile/assets/fonts/"
   done
   cp "$REPO_ROOT"/mobile/assets/fonts/Roboto-LICENSE.txt \
      "$REPO_ROOT"/mobile/assets/fonts/NotoSansArabic-LICENSE.txt "$WORK/repo/mobile/assets/fonts/"
@@ -770,7 +792,7 @@ assert_gate "catches a copyleft font sidecar" dependency-licences.php 1 'not per
 fresh_fixture
 add_fonts_fixture
 printf 'SPDX-License-Identifier: OFL-1.1\n' > "$WORK/repo/mobile/assets/fonts/Roboto-Regular.ttf.license"
-assert_gate "catches a sidecar that CONTRADICTS the font binary" dependency-licences.php 1 'name table'
+assert_gate "catches a sidecar that CONTRADICTS the font binary" dependency-licences.php 1 'name-table licence record'
 
 fresh_fixture
 add_fonts_fixture
@@ -841,6 +863,139 @@ add_fonts_fixture
 head -c 200 "$REPO_ROOT/mobile/assets/fonts/NotoSansArabic-Regular.ttf" \
   > "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf"
 assert_gate "refuses a TRUNCATED font" dependency-licences.php 1 'could not read an OpenType name table'
+
+echo "== ROUND 8: the font walk's own blind spots =="
+# EVERY CASE BELOW IS A ROUND-8 FINDING, and each one shipped an unlicensed or unverified font in the release
+# bundle with this suite green. They are grouped so that the shape is visible: the first version of the walk
+# proved things about the files it FOUND and nothing about the files it never reached.
+
+# R8-1a: NON-RECURSIVE. A .ttf one directory down, with no sidecar, no licence text and no notices row, was
+# invisible to `scandir()` while landing in build/web/assets/assets/fonts/naskh/.
+fresh_fixture
+add_fonts_fixture
+mkdir -p "$WORK/repo/mobile/assets/fonts/naskh"
+cp "$REPO_ROOT/mobile/assets/fonts/NotoSansArabic-Regular.ttf" \
+   "$WORK/repo/mobile/assets/fonts/naskh/Unlicensed-Regular.ttf"
+assert_gate "sees a font in a SUBDIRECTORY" dependency-licences.php 1 'no readable'
+
+# R8-1b: the walk filtered *in* the extensions it understood, so an unclassified container passed with the
+# font count never moving. An allowlist fails closed on a container nobody anticipated.
+fresh_fixture
+add_fonts_fixture
+printf 'not a font\n' > "$WORK/repo/mobile/assets/fonts/Proprietary-Regular.font"
+assert_gate "refuses an unclassified file under the font tree" dependency-licences.php 1 \
+  'nobody classified is refused'
+
+# R8-1c: THE INVERSE DIRECTION — a path the manifest declares that the walk never visited. This is the
+# direction spdx-headers.sh already learned to add, and its absence is what made the two cases above possible.
+fresh_fixture
+add_fonts_fixture
+rm "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf" \
+   "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf.license"
+assert_gate "catches a DECLARED font that the walk never examined" dependency-licences.php 1 \
+  'never examined by this walk'
+
+# R8-5: the `assets:` scoping. Moving the block to the file root is legal YAML that Flutter ignores, so five
+# fonts shipped with ZERO licence texts and the gate passed.
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/pubspec.yaml" <<'PYROOT'
+import pathlib, sys, re
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+block = "  assets:\n    - assets/fonts/Roboto-LICENSE.txt\n    - assets/fonts/NotoSansArabic-LICENSE.txt\n"
+assert block in t, 'fixture assumption broken: the assets block is not where this case expects'
+# Same two paths, same list shape -- but at the file root, outside `flutter:`, where Flutter never reads them.
+t = t.replace(block, "") + "\nassets:\n  - assets/fonts/Roboto-LICENSE.txt\n  - assets/fonts/NotoSansArabic-LICENSE.txt\n"
+p.write_text(t)
+PYROOT
+assert_gate "catches an assets: block moved OUT of flutter:" dependency-licences.php 1 \
+  'not in the built bundle'
+
+# And the folded-scalar variant: the paths present as prose inside `description:`, not a list at all.
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/pubspec.yaml" <<'PYFOLD'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1]); t = p.read_text()
+t = t.replace("    - assets/fonts/NotoSansArabic-LICENSE.txt\n", "")
+t = t.replace('description: "twes-in — invoicing and billing client"',
+              'description: >\n  twes-in client, shipping\n  - assets/fonts/NotoSansArabic-LICENSE.txt\n  and more')
+p.write_text(t)
+PYFOLD
+assert_gate "is not satisfied by a path inside a folded scalar" dependency-licences.php 1 \
+  'not in the built bundle'
+
+# R8-4: TWO nameID-13 records, one corroborating and one contradicting. A well-formed table -- no trickery --
+# that passed because the records were concatenated and matched with a single str_contains.
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/assets/fonts/NotoSansArabic-Regular.ttf" <<'PYTWO'
+import struct, sys, pathlib
+# Rebuild the name table with exactly two nameID-13 records: a Macintosh proprietary notice and a Windows OFL
+# sentence. Lengths in the table directory are EXACT, so nothing here depends on an out-of-bounds read.
+p = pathlib.Path(sys.argv[1]); d = bytearray(p.read_bytes())
+mac = b'This font is the property of Acme Foundry. No redistribution.'
+win = 'This Font Software is licensed under the SIL Open Font License, Version 1.1.'.encode('utf-16-be')
+recs = [(1, 0, 0, 13, len(mac), 0), (3, 1, 1033, 13, len(win), len(mac))]
+table = struct.pack('>HHH', 0, len(recs), 6 + 12 * len(recs))
+for r in recs:
+    table += struct.pack('>HHHHHH', *r)
+table += mac + win
+n = struct.unpack('>H', bytes(d[4:6]))[0]
+new_off = len(d)
+for i in range(n):
+    o = 12 + 16 * i
+    if bytes(d[o:o + 4]) == b'name':
+        d[o + 8:o + 16] = struct.pack('>II', new_off, len(table))
+        break
+d += table
+p.write_bytes(bytes(d))
+PYTWO
+assert_gate "refuses a font whose name records CONTRADICT each other" dependency-licences.php 1 \
+  'name-table licence record(s) do not mention'
+
+# R8-3: the bounds check trusted the font's own declared table length, so 0xFFFFFFFF made it vacuous and a
+# nameID-13 record could point past the table into another table's bytes. A phrase planted in the glyf region
+# satisfied the cross-check on a font whose real record said "Apache License".
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/assets/fonts/Roboto-Regular.ttf" <<'PYOOB'
+import struct, sys, pathlib
+p = pathlib.Path(sys.argv[1]); d = bytearray(p.read_bytes())
+planted = b'SIL Open Font License'
+at = 150000 if len(d) > 150000 + len(planted) else len(d) - len(planted) - 1
+d[at:at + len(planted)] = planted
+n = struct.unpack('>H', bytes(d[4:6]))[0]
+name_off = None
+for i in range(n):
+    o = 12 + 16 * i
+    if bytes(d[o:o + 4]) == b'name':
+        name_off, _ = struct.unpack('>II', bytes(d[o + 8:o + 16]))
+        d[o + 12:o + 16] = struct.pack('>I', 0xFFFFFFFF)   # the lie that neutralises the check
+        break
+fmt, cnt, so = struct.unpack('>HHH', bytes(d[name_off:name_off + 6]))
+for i in range(cnt):
+    r = name_off + 6 + 12 * i
+    pid, eid, lid, nid, ln, off = struct.unpack('>HHHHHH', bytes(d[r:r + 12]))
+    if nid == 13 and pid == 1:
+        d[r:r + 12] = struct.pack('>HHHHHH', pid, eid, lid, nid, len(planted), at - (name_off + so))
+        break
+p.write_bytes(bytes(d))
+PYOOB
+printf 'SPDX-License-Identifier: OFL-1.1\n' > "$WORK/repo/mobile/assets/fonts/Roboto-Regular.ttf.license"
+assert_gate "refuses a font whose directory LIES about its name-table length" dependency-licences.php 1 \
+  'could not read an OpenType name table'
+
+# And the size ceiling, which must produce a violation rather than a PHP fatal. 255 and a stack trace fail
+# closed, but this project has recorded three times that a crash and a detection look identical in output.
+fresh_fixture
+add_fonts_fixture
+head -c 9000000 /dev/zero > "$WORK/repo/mobile/assets/fonts/Huge-Regular.ttf"
+printf 'SPDX-License-Identifier: OFL-1.1\n' > "$WORK/repo/mobile/assets/fonts/Huge-Regular.ttf.license"
+cp "$WORK/repo/mobile/assets/fonts/NotoSansArabic-LICENSE.txt" \
+   "$WORK/repo/mobile/assets/fonts/Huge-LICENSE.txt"
+assert_gate "refuses an oversized font with a MESSAGE, not a fatal" dependency-licences.php 1 \
+  'could not read an OpenType name table'
 
 echo "== the NPM licence path, which reads a lockfileVersion 3 lock without node_modules =="
 # A whole tier's dependency tree arrived with the Angular scaffold, and the gate had been reporting it as
@@ -936,7 +1091,14 @@ echo "== the licensing rule must be stated the same way everywhere it is stated 
 # missed the two that also state the rule — README.md, which frames itself as the pre-dependency read, and
 # THIRD-PARTY-NOTICES.md, which CLAUDE.md 8(a) names as where a licence must be recorded. Both were left on the
 # superseded five-identifier list, so round 6's own finding reproduced verbatim in two more files.
-for document in CLAUDE.md LICENSING.md README.md THIRD-PARTY-NOTICES.md .claude/agents/completeness-reviewer.md; do
+# SIX surfaces now, not five. Round 8 found the sixth — docs/plans/reimplementation-strategy.plan.md, whose
+# Decisions Log entry stated the rule as two categories "and nothing else" while the gate enforced three, in a
+# file CLAUDE.md § "Plans live in the repo" tells sessions to read BEFORE writing application code. Counting
+# the covered documents is not enough on its own, which is why the inventory case below exists too: a check
+# over a hand-listed set cannot notice a seventh surface appearing.
+for document in CLAUDE.md LICENSING.md README.md THIRD-PARTY-NOTICES.md \
+                docs/plans/reimplementation-strategy.plan.md \
+                .claude/agents/completeness-reviewer.md; do
   fresh_fixture
   missing=()
 
@@ -991,9 +1153,41 @@ done
 # A CASE-COUNT FLOOR. The rule-set size baselines catch a deleted *rule*; nothing caught a deleted *case* —
 # removing the three cross-document licence checks gave a green run with a lower count and no signal. Committed
 # minimum, so shrinking the suite is a deliberate edit to this number rather than a quiet one elsewhere.
-# 283 rather than 284: $passed is read BEFORE this assertion increments it, so the floor is the count of every
+# 298 rather than 299: $passed is read BEFORE this assertion increments it, so the floor is the count of every
 # OTHER case. Setting it to the final total makes the check fail against itself.
-assert_at_least "the suite itself has not shrunk" "$passed" 283
+# AN INVENTORY OVER THE WHOLE REPOSITORY, because the loop above iterates a HAND-LISTED set and therefore
+# cannot notice a new surface appearing. That is precisely how the sixth one was missed for two rounds: five
+# were listed, six existed, and every case was green. So enumerate every markdown file that names a licence
+# identifier from the closed list and require the SET to match a committed inventory — a seventh file stating
+# the rule then fails here rather than waiting for a reviewer to grep.
+#
+# `build-waves.plan.md` is in the inventory but NOT in the loop above, and the distinction is mechanical
+# rather than a judgement call: it QUOTES the superseded five-item list inside a findings table as the record
+# of what was wrong, so requiring it to state the current nine as a closed list would require falsifying a
+# historical finding. Round 8's lesson is that an exemption inside a cross-check is where drift hides — so the
+# file is still pinned here by name, and adding another exemption means editing this list on purpose.
+expected_licence_surfaces="CLAUDE.md
+LICENSING.md
+README.md
+THIRD-PARTY-NOTICES.md
+docs/plans/build-waves.plan.md
+docs/plans/reimplementation-strategy.plan.md
+.claude/agents/completeness-reviewer.md"
+
+actual_licence_surfaces="$(cd "$REPO_ROOT" && grep -rl "BSD-2-Clause" --include='*.md' . 2>/dev/null \
+  | sed 's|^\./||' | grep -v node_modules | sort)"
+
+if [[ "$(printf '%s' "$expected_licence_surfaces" | sort)" == "$actual_licence_surfaces" ]]; then
+  printf '  ok   — exactly the known documents state a licence rule; no new surface appeared\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — the set of documents naming the closed licence list changed.\n         expected: %s\n         actual:   %s\n         A new surface must be added to the cross-check loop above, not merely written.\n' \
+    "$(printf '%s' "$expected_licence_surfaces" | sort | tr '\n' ' ')" \
+    "$(printf '%s' "$actual_licence_surfaces" | tr '\n' ' ')"
+  failed=$((failed + 1))
+fi
+
+assert_at_least "the suite itself has not shrunk" "$passed" 298
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

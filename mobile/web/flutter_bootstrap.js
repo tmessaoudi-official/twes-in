@@ -18,10 +18,23 @@
 // ignores it (verified: the gstatic request still fired). The loader's `config` argument is the supported
 // path, and reaching it requires this file, because the generated bootstrap calls `load()` itself.
 //
-// Pointing at a same-origin path means the engine 404s locally instead of reaching Google. OWED at Wave 11:
-// self-host the Noto fallback fonts under this path before shipping any Arabic UI, and record their licence
-// in THIRD-PARTY-NOTICES.md — Noto is OFL-1.1, which is NOT on this project's permissive list, so it is a
-// licensing decision to take deliberately rather than by running `flutter build`.
+// Pointing at a same-origin path means the engine 404s locally instead of reaching Google. That trade — a
+// self-inflicted 404 loop instead of a data transfer — is the RIGHT one, and it is still not a finished state.
+//
+// ARABIC IS DONE (2026-07-30): the developer ruled OFL-1.1 permitted for a vendored font asset, so Noto Sans
+// Arabic is bundled as a `fonts:` family and named in ThemeData.fontFamilyFallback. The engine therefore never
+// takes this fallback path for Arabic at all, and there is no licensing decision outstanding for it.
+//
+// STILL OWED, and measured rather than assumed: every OTHER script the bundled fonts do not cover — CJK,
+// Hebrew, emoji — still resolves through this path, finds nothing, and retries. [Verified 2026-07-30: a build
+// rendering Japanese, Hebrew and an emoji issued 1384 same-origin 404s in a 15-second load and 3328 in 40s,
+// linear and uncapped at ~83 req/s per tab, with 0 external requests.] In a billing product the trigger is
+// tenant-supplied free text — a client named 株式会社山田商事, an emoji in an invoice note — so one row of
+// user data turns every browser rendering it into a request storm against our own origin.
+//
+// Not exploitable before Wave 11, because nothing renders user data yet. Recorded as owed in
+// docs/plans/build-waves.plan.md and mobile/README.md so it is not closed-and-forgotten: the fix is either
+// vendoring the fallback set under this path or restricting which scripts the client will render.
 {{flutter_js}}
 {{flutter_build_config}}
 

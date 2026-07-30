@@ -6,6 +6,6 @@
 # cross-checks it against the font's own OpenType name table (nameID 13), so a sidecar that disagrees
 # with the binary it describes is a gate failure rather than a document nobody reads.
 #
-# OFL-1.1 is permitted for a vendored FONT ASSET only (CLAUDE.md invariant 8(a); developer ruling 2026-07-29). Vendored unmodified, so the Reserved Font Name clause is not engaged. Full text beside it as NotoSansArabic-LICENSE.txt.
+# OFL-1.1 is permitted for a vendored FONT ASSET only (CLAUDE.md invariant 8(a); developer ruling 2026-07-30). Vendored unmodified, so the Reserved Font Name clause is not engaged. Full text beside it as NotoSansArabic-LICENSE.txt.
 SPDX-FileCopyrightText: Copyright 2015-2020 Google LLC. All Rights Reserved.
 SPDX-License-Identifier: OFL-1.1

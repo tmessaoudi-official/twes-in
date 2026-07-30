@@ -51,10 +51,24 @@ void main() {
       // And the configured value must be same-origin, not merely present.
       final match = RegExp(r'''fontFallbackBaseUrl\s*:\s*["']([^"']*)["']''').firstMatch(source);
       expect(match, isNotNull, reason: 'fontFallbackBaseUrl must be a literal string');
+
+      final String configured = match!.group(1)!;
+
+      // `startsWith('/')` ALONE CERTIFIED ITS OWN BYPASS, which is why this is three assertions and not one.
+      // A protocol-relative URL — `//fonts.gstatic.com/s/` — starts with `/` and is a third-party origin, so
+      // the single check admitted precisely the transfer it exists to forbid. [Verified 2026-07-30: setting
+      // that value kept this test green while the build issued 16 requests to fonts.gstatic.com for Hebrew,
+      // Japanese and emoji glyphs.] Parse it instead of pattern-matching a prefix: a same-origin reference
+      // has no scheme and no authority, and `Uri` is the thing that actually knows the difference.
+      final Uri parsed = Uri.parse(configured);
+
+      expect(configured, startsWith('/'), reason: 'must be a root-relative path, not a bare or absolute URL');
+      expect(parsed.hasScheme, isFalse, reason: 'a scheme means a third-party origin: $configured');
       expect(
-        match!.group(1),
-        startsWith('/'),
-        reason: 'An absolute URL here is a third-party transfer; only a same-origin path is acceptable.',
+        parsed.hasAuthority,
+        isFalse,
+        reason: 'an authority — including the protocol-relative //host form — is a third-party transfer: '
+            '$configured',
       );
     });
 
@@ -68,22 +82,78 @@ void main() {
       // pointing at our own origin with no Noto under it does stop the transfer to Google — and then the
       // engine retries a 404 for the page's lifetime and renders Arabic as tofu boxes.
       // [Verified 2026-07-30 on exactly that build: 229 HTTP 404s in a 12-second load.]
-      for (final String font in <String>['Roboto-Regular.ttf', 'NotoSansArabic-Regular.ttf']) {
+      //
+      // ENUMERATE THE BUNDLE — do not list names. The first version of this test hardcoded two filenames
+      // under a title promising "every font it ships", and the bundle held SEVEN: it was blind to the three
+      // other vendored weights and, more importantly, to `assets/fonts/MaterialIcons-Regular.otf`, which
+      // `uses-material-design: true` ships with no licence text anywhere in the artifact. Listing instances
+      // where the title claims a class is the exact shape CLAUDE.md records against `test-gates.sh`.
+      final List<String> shipped = Directory('build/web')
+          .listSync(recursive: true)
+          .whereType<File>()
+          .map((File f) => f.path)
+          .where((String p) => p.endsWith('.ttf') || p.endsWith('.otf'))
+          .toList()
+        ..sort();
+
+      expect(shipped, isNotEmpty, reason: 'no font found in build/web — this test would assert nothing');
+
+      // Every family declared in pubspec must be present, derived from the manifest rather than named here.
+      final String pubspec = File('pubspec.yaml').readAsStringSync();
+      final Iterable<String> declaredAssets = RegExp(r'^\s+- asset:\s*(\S+)', multiLine: true)
+          .allMatches(pubspec)
+          .map((RegExpMatch m) => m.group(1)!.split('/').last);
+
+      expect(declaredAssets, isNotEmpty, reason: 'the pubspec asset parse found nothing');
+
+      for (final String font in declaredAssets) {
         expect(
-          File('build/web/assets/assets/fonts/$font').existsSync(),
+          shipped.any((String p) => p.endsWith('/$font')),
           isTrue,
-          reason: '$font is not in the bundle, so the engine will reach for its fallback path instead',
+          reason: '$font is declared but not in the bundle, so the engine reaches for its fallback instead',
         );
       }
 
-      // And the licences must ship WITH them. Flutter's generated assets/NOTICES aggregates LICENSE files
-      // from packages, not from app assets, so before these were declared under `assets:` the bundle carried
-      // both families and mentioned neither licence — while every test here was green.
-      for (final String text in <String>['Roboto-LICENSE.txt', 'NotoSansArabic-LICENSE.txt']) {
+      // And every shipped font must have a licence in the artifact. Flutter's generated assets/NOTICES
+      // aggregates LICENSE files from packages, not from app assets, so before the texts were declared under
+      // `assets:` the bundle carried both families and mentioned neither licence — every test green.
+      //
+      // `MaterialIcons-Regular.otf` is the one exception, and it is named rather than tolerated silently: it
+      // is the SDK's own asset, its licence position is an OPEN invariant-10 question (the SDK ships a
+      // CC-BY-4.0 text beside it, Google's icon repository says Apache-2.0, the binary carries no nameID 13,
+      // and the shipped copy is tree-shaken i.e. modified), and it is recorded as such in
+      // scripts/gates/dependency-licences.php's FONTS_PENDING_A_LICENSING_RULING. When that ruling lands,
+      // delete this exception — do not widen it.
+      const List<String> pendingARuling = <String>['MaterialIcons-Regular.otf'];
+
+      for (final String path in shipped) {
+        final String name = path.split('/').last;
+
+        if (pendingARuling.contains(name)) {
+          continue;
+        }
+
+        // Either a licence text beside it in the bundle, or a mention in the generated NOTICES. Strip the
+        // extension BEFORE deriving the family, or `CupertinoIcons.ttf` (no hyphen) yields a family of
+        // "CupertinoIcons.ttf" and looks for a licence nobody would ever name that.
+        final String family = name.substring(0, name.lastIndexOf('.')).split('-').first;
+        final bool besideIt = File('${path.substring(0, path.lastIndexOf('/'))}/$family-LICENSE.txt')
+            .existsSync();
+
+        // Normalised comparison, because a package and its font disagree on spelling: the bundle ships
+        // `CupertinoIcons.ttf` and NOTICES credits `cupertino_icons`. Dropping non-alphanumerics makes those
+        // the same string without making the check so loose that any substring satisfies it.
+        String squash(String s) => s.toLowerCase().replaceAll(RegExp('[^a-z0-9]'), '');
+
+        final File notices = File('build/web/assets/NOTICES');
+        final bool inNotices =
+            notices.existsSync() && squash(notices.readAsStringSync()).contains(squash(family));
+
         expect(
-          File('build/web/assets/assets/fonts/$text').existsSync(),
+          besideIt || inNotices,
           isTrue,
-          reason: 'Apache-2.0 s4(a) and OFL-1.1 s2 require the licence to accompany what we distribute',
+          reason: 'Apache-2.0 s4(a) and OFL-1.1 s2 require the licence to accompany what we distribute, and '
+              '$name ships with neither a $family-LICENSE.txt beside it nor a mention in assets/NOTICES',
         );
       }
     });

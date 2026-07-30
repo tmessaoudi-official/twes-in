@@ -140,10 +140,12 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    for exactly that reason (invariant 3: `admin-portal`'s Attribution Assurance License). They are permitted
    only where no obligation can attach, i.e. build-time reference *data* absent from the shipped artifact
    (`caniuse-lite`, `spdx-exceptions`). If either ever appears as a **runtime** dependency the nine-identifier
-   list applies and `scripts/gates/dependency-licences.php` fails — which is why the gate keeps two lists
-   rather than one wider one, and asserts a **MAXIMUM** on each.
+   list applies and `scripts/gates/dependency-licences.php` fails — which is why the gate keeps **three
+   separate lists** rather than one wider one, and asserts a **MAXIMUM** on each. (This sentence said "two
+   lists" for a commit while the paragraph four lines below it added the third; round 8 found it. A count
+   written next to the thing it counts is worth re-reading whenever that thing changes.)
 
-   **A vendored FONT ASSET may carry `OFL-1.1`** (developer ruling, 2026-07-29) — a third narrow category, for
+   **A vendored FONT ASSET may carry `OFL-1.1`** (developer ruling, 2026-07-30) — a third narrow category, for
    the same reason the CC-BY pair is quarantined rather than added above. The SIL Open Font License is not
    copyleft for our purposes and imposes nothing on our code; its one real obligation is the **Reserved Font
    Name** clause, which binds only somebody who *modifies* a font and redistributes it under its original name.
@@ -435,7 +437,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
 | **Architecture fitness** | the six gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
-| **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus every **vendored font** under `mobile/assets/fonts/`: a REUSE sidecar, an acceptable identifier, **the font's own `name` table corroborating it**, and the licence text both beside the binary and declared under `assets:` so it ships. A font is the one third-party work here that arrives as a committed binary, so no lock file can see it | **Runs** |
+| **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus every **vendored font** under `mobile/assets/fonts/`, recursively: a REUSE sidecar declaring exactly one identifier, an acceptable one, **every one of the font's own `name`-table licence records corroborating it**, the licence text beside the binary *and* declared under `flutter:`→`assets:` so it ships, and — the direction that was missing — **every font path the manifest declares must have been examined**, because a forward walk says nothing about the files it never reached. A font arrives as a committed binary rather than a manifest entry, so no lock file can see it; it is not the only such asset (13 of the 37 tracked `.png`/`.ico` files are template-derived and ship too), which is why that sentence no longer says "the one" | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
 | Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |

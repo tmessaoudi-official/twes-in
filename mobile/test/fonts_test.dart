@@ -42,7 +42,11 @@ void main() {
         continue;
       }
 
-      final assetMatch = RegExp(r'^\s+- asset:\s*(\S+)$').firstMatch(line);
+      // NOT end-anchored. `- asset: x.ttf  # regular` is legal YAML and meaning-preserving, and an
+      // end-anchored pattern silently matched zero assets against it — while the guard below, which checks
+      // FAMILIES, still passed. The loop body then ran zero times and the test named "all exist on disk"
+      // asserted nothing at all. Round 8 proved it by deleting every sidecar and watching this stay green.
+      final assetMatch = RegExp(r'^\s+- asset:\s*(\S+)').firstMatch(line);
 
       if (assetMatch != null && family != null) {
         declared[family]!.add(assetMatch.group(1)!);
@@ -58,7 +62,17 @@ void main() {
     });
 
     test('all exist on disk, with a licence text and a REUSE sidecar beside each', () {
-      expect(declared, isNotEmpty, reason: 'the pubspec font parse found nothing — fix this test, not the app');
+      // The guard is on the ASSETS, not the families. A non-empty `declared` map whose every value is an
+      // empty list is what made this test vacuous, so the count that the loop below actually iterates is the
+      // count that has to be non-zero — and every declared family must contribute at least one.
+      final int assetCount = declared.values.fold(0, (int sum, List<String> a) => sum + a.length);
+      expect(assetCount, greaterThanOrEqualTo(5),
+          reason: 'the pubspec asset parse found $assetCount assets — fix this test, not the app');
+
+      for (final MapEntry<String, List<String>> family in declared.entries) {
+        expect(family.value, isNotEmpty,
+            reason: 'family "${family.key}" parsed with no assets, so nothing below checks it');
+      }
 
       for (final entry in declared.entries) {
         for (final asset in entry.value) {
@@ -106,6 +120,28 @@ void main() {
         theme.textTheme.bodyLarge?.fontFamilyFallback,
         contains('Noto Sans Arabic'),
         reason: 'Without this the bundled Noto is dead weight and Arabic reaches for fontFallbackBaseUrl.',
+      );
+    });
+
+    // THE PROVENANCE, READ FROM THE SOURCE RATHER THAN TRUSTED. `ScriptCoverageCheck.arabicSample` carries a
+    // docblock claiming it comes from the shipped catalogue, and the test below is titled as though it proves
+    // that — while both only ever compared the constant to itself. The global framework's Phase 6 item 3 says
+    // it directly: no literal may be taken from the current instance without reading it from the source, or a
+    // test passes because the fixture matches a hardcoded value and both are wrong together.
+    test('the Arabic sample really is the shipped catalogue string, not a copy that drifted', () {
+      final File catalogue = File('../api/translations/messages.ar.xlf');
+      expect(catalogue.existsSync(), isTrue, reason: 'the ar catalogue is the source of this string');
+
+      final RegExpMatch? target = RegExp(
+        r'resname="error\.not_found">\s*<source>[^<]*</source>\s*<target>([^<]*)</target>',
+        multiLine: true,
+      ).firstMatch(catalogue.readAsStringSync());
+
+      expect(target, isNotNull, reason: 'error.not_found must exist in the ar catalogue');
+      expect(
+        ScriptCoverageCheck.arabicSample,
+        target!.group(1),
+        reason: 'main.dart claims this string comes from the catalogue; keep them equal or read it at runtime',
       );
     });
 
