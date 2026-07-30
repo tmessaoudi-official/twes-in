@@ -1,6 +1,6 @@
 {
     "name": "tmessaoudi-official/twes-in-api",
-    "description": "twes-in REST API — invoicing and billing. Clean-room reimplementation, no upstream code.",
+    "description": "twes-in REST API \u2014 invoicing and billing. Clean-room reimplementation, no upstream code.",
     "type": "project",
     "license": "AGPL-3.0-or-later",
     "authors": [
@@ -69,6 +69,7 @@
             "@gate:test"
         ],
         "gate:architecture": [
+            "bash ../scripts/gates/shell-syntax.sh",
             "bash ../scripts/gates/no-orm-attributes-in-domain.sh",
             "@php ../scripts/gates/layer-dependencies.php",
             "@php ../scripts/gates/no-ambient-calls-in-domain.php",
@@ -87,7 +88,7 @@
     },
     "scripts-descriptions": {
         "gate": "Run the API tier's full quality gate. Green means every step, not most of them.",
-        "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies.",
+        "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies. Also runs shell-syntax.sh: bash -n over every tracked script INCLUDING the other gates, because a syntax error in a gate makes it stop detecting while its non-zero exit reads as a detection.",
         "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md). NEEDS a populated pub cache: run `cd mobile && flutter pub get` first, or set PUB_CACHE.",
         "gate:mapping": "Validate the service container and the Doctrine mapping without touching a database.",
         "gate:static": "PHPStan at max level, including the banned-ambient-function rule for Domain/.",

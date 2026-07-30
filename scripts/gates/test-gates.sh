@@ -1636,7 +1636,68 @@ assert_gate 'reports an absent manifest instead of skipping it' dependency-licen
 
 fresh_fixture
 
-assert_at_least "the suite itself has not shrunk" "$passed" 325
+echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
+# Round 12 found shell-syntax.sh absent from `composer gate` one commit after it was added and documented as
+# FIRST in the gate command block. The reason it went unnoticed is that the clean-fixture block above is a
+# HAND-WRITTEN list of assert_gate lines, and this repo already learned -- for the licence-rule documents --
+# that "a hand-listed loop cannot notice a seventh surface appearing". So the set is compared against the
+# filesystem rather than against anybody's memory.
+gates_on_disk="$(cd "$REPO_ROOT/scripts/gates" && ls -1 *.php *.sh 2>/dev/null | grep -v '^test-gates.sh$' | sort | tr '\n' ' ')"
+
+# a) every gate on disk has a clean-fixture case in THIS suite
+missing_case=""
+for gate in $gates_on_disk; do
+  grep -qF "assert_gate \"clean: ${gate%%.*}" "$REPO_ROOT/scripts/gates/test-gates.sh" \
+    || grep -qF "$gate 0" "$REPO_ROOT/scripts/gates/test-gates.sh" \
+    || missing_case="$missing_case $gate"
+done
+
+if [[ -z "$missing_case" ]]; then
+  printf '  ok   — %s\n' 'every gate on disk has a clean-fixture case here'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (%s)\n' 'a gate on disk has no case in this suite' "$missing_case"
+  failed=$((failed + 1))
+fi
+
+# b) every gate on disk is RUN by composer gate:architecture (or gate:licences for the licensing one).
+#    A gate nobody runs is not a gate -- and the documented one-command entry point is `composer gate`.
+# Parsed from the `scripts` OBJECT, never grepped from the file. The first version of this case grepped
+# composer.json whole, and the mutant that unwires shell-syntax SURVIVED it -- because the gate's name also
+# appears in `scripts-descriptions`, which is prose that runs nothing. A check that greps a file instead of
+# the thing that executes is the defect this repository records more than any other, and this case reproduced
+# it on its first attempt.
+runnable="$(php -r '
+    $d = json_decode(file_get_contents($argv[1]), true);
+    $out = [];
+    array_walk_recursive($d["scripts"], function ($v) use (&$out) { $out[] = $v; });
+    echo implode("\n", $out);
+' "$REPO_ROOT/api/composer.json")"
+
+missing_wiring=""
+for gate in $gates_on_disk; do
+  printf '%s' "$runnable" | grep -qF "$gate" || missing_wiring="$missing_wiring $gate"
+done
+
+if [[ -z "$missing_wiring" ]]; then
+  printf '  ok   — %s\n' 'every gate on disk is wired into composer gate'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (%s)\n' 'a gate on disk is run by no composer script' "$missing_wiring"
+  failed=$((failed + 1))
+fi
+
+# c) ANTI-VACUITY: the two loops above are silent if the directory listing is empty, which is exactly how
+#    this class of case passes while checking nothing.
+if [[ -n "$gates_on_disk" ]]; then
+  printf '  ok   — %s (%s)\n' 'the gate inventory is non-empty' "$(printf '%s' "$gates_on_disk" | wc -w) gates"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s\n' 'the gate inventory is EMPTY, so both checks above were vacuous'
+  failed=$((failed + 1))
+fi
+
+assert_at_least "the suite itself has not shrunk" "$passed" 330
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"

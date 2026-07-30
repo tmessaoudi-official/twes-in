@@ -1628,6 +1628,115 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * A leaking view reachable only by a COLUMN grant is inspected — the eighth channel.
+     *
+     * Column privileges do not live in `pg_class.relacl`; they live in `pg_attribute.attacl`, and a column
+     * grant is recorded there and nowhere in `relacl`. So the object filter — which walked `relacl` only —
+     * excluded a non-`security_invoker` view from its result set entirely, and the verdict read CLEAN while
+     * the runtime role read every tenant through it. [Verified on this server: after `GRANT SELECT (label)`,
+     * `relacl` records no SELECT for the role, `has_table_privilege` is false, `has_column_privilege` is
+     * true, and `attacl` reads `label={twes=r/postgres}`.]
+     *
+     * The pre-round-11 `has_table_privilege` had the identical hole, so this is a gap of long standing rather
+     * than a regression — which is exactly why a rewrite of that line that did not widen it needs a test.
+     */
+    public function testAViewReachableOnlyByAColumnGrantIsInspected(): void
+    {
+        $view = self::TABLE . '_colgrant_view';
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        self::assertIsString($runtimeRole);
+
+        $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
+        $this->owner->exec('CREATE VIEW ' . $view . ' AS SELECT * FROM ' . self::TABLE);
+
+        try {
+            // Table-level access removed, column-level access granted. The provisioning script's default
+            // privileges hand the runtime role table-level SELECT on everything the owner creates, so without
+            // this REVOKE the case would pass through the arm that already worked and prove nothing.
+            $this->owner->exec('REVOKE ALL ON ' . $view . ' FROM ' . $runtimeRole);
+            $this->owner->exec('GRANT SELECT (label) ON ' . $view . ' TO ' . $runtimeRole);
+
+            $shape = $this->connection->query(
+                'SELECT (SELECT relacl IS NULL FROM pg_class WHERE oid = \'' . $view . '\'::regclass) AS no_relacl, '
+                . 'has_table_privilege(current_user, \'' . $view . '\', \'SELECT\') AS table_level, '
+                . 'has_column_privilege(current_user, \'' . $view . '\', \'label\', \'SELECT\') AS column_level',
+            );
+            self::assertNotFalse($shape);
+            /** @var array{no_relacl: bool|string, table_level: bool|string, column_level: bool|string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            // NOT asserted as "relacl is NULL": the REVOKE above materialises the default ACL, so relacl is
+            // non-NULL and simply carries no SELECT for this role. The hole is the same either way — the
+            // grant that DOES exist lives in pg_attribute.attacl, which the filter never reads.
+            self::assertNotContains($flags['no_relacl'], [true, 't', '1'], 'REVOKE materialised the ACL');
+            self::assertNotContains($flags['table_level'], [true, 't', '1'], 'no table-level privilege');
+            self::assertContains($flags['column_level'], [true, 't', '1'], 'but the column IS readable');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A view reachable by a COLUMN grant must be inspected.');
+            self::assertStringContainsString($view, $caught->getMessage());
+        } finally {
+            $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
+        }
+    }
+
+    /**
+     * A leaking view granted only a WRITE privilege is inspected — the same filter, the other direction.
+     *
+     * The filter asked only about `SELECT`, and a cross-tenant WRITE needs none. Writes through a view without
+     * `security_invoker` execute with the VIEW OWNER's privileges and the base table's policies are evaluated
+     * as that owner, so an `INSERT ... VALUES` — which requires no read privilege at all — plants a row in
+     * whatever tenant the caller names. An insert-only journal or audit view is an ordinary shape, and it was
+     * excluded from the result set before it ever reached the classifier that would have flagged it.
+     *
+     * "It is only a write" is not a mitigation: `UPDATE`/`DELETE` give cross-tenant overwrite and erase, and
+     * `UPDATE ... RETURNING` gives the read back as well.
+     */
+    public function testAViewGrantedOnlyAWritePrivilegeIsInspected(): void
+    {
+        $view = self::TABLE . '_writeonly_view';
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        self::assertIsString($runtimeRole);
+
+        $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
+        $this->owner->exec('CREATE VIEW ' . $view . ' AS SELECT * FROM ' . self::TABLE);
+
+        try {
+            $this->owner->exec('REVOKE ALL ON ' . $view . ' FROM ' . $runtimeRole);
+            $this->owner->exec('GRANT INSERT ON ' . $view . ' TO ' . $runtimeRole);
+
+            $shape = $this->connection->query(
+                'SELECT has_table_privilege(current_user, \'' . $view . '\', \'SELECT\') AS can_read, '
+                . 'has_table_privilege(current_user, \'' . $view . '\', \'INSERT\') AS can_write',
+            );
+            self::assertNotFalse($shape);
+            /** @var array{can_read: bool|string, can_write: bool|string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotContains($flags['can_read'], [true, 't', '1'], 'deliberately NOT readable');
+            self::assertContains($flags['can_write'], [true, 't', '1'], 'but writable, which is enough');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A view granted only INSERT must be inspected.');
+            self::assertStringContainsString($view, $caught->getMessage());
+        } finally {
+            $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
+        }
+    }
+
+    /**
      * The `SECURITY DEFINER` classifier, as a pure function — both reasons, distinctly worded.
      *
      * The wording is load-bearing rather than cosmetic. Reporting an unreachable-but-unprivileged owner as

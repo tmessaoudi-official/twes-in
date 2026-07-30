@@ -94,7 +94,7 @@ other two is the default failure mode here, not an unusual one.
 9. **Architecture rules are enforced by gates as of Wave 0 — so check the GATES, not just the code.**
    `CLAUDE.md` § "Architecture" assigns P0 to: a framework `use` in `Domain/`, ambient
    `time()`/`random_int()`/`getenv()`/`file_get_contents()` in `Domain/`, `#[ORM\` under `Domain/`, and
-   any outward `use` from `Domain/` to `Application/`/`Infrastructure/`/`UI/`. Six gates in
+   any outward `use` from `Domain/` to `Application/`/`Infrastructure/`/`UI/`. The gates in
    `scripts/gates/` now check these, and `scripts/gates/test-gates.sh` checks the gates.
 
    Your job shifted accordingly: **do not assume a gate caught something — run it, and try to slip past

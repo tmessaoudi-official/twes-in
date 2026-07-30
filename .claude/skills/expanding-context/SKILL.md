@@ -53,7 +53,7 @@ disallowed-tools: AskUserQuestion
      Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `infra/` tier, which
      is a README stub. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
      `flutter create` on Flutter 3.44.8 with all six platform directories) and each is green on its own
-     toolchain — lint/analyze, unit tests, production build — but neither holds application code yet.
+     toolchain — lint/analyze, unit tests, production build — but neither holds DOMAIN or TRANSPORT code yet — each does carry its branding seam, and Flutter its font/same-origin controls, with tests.
      The repo also holds `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`,
      `THIRD-PARTY-NOTICES.md`, four plan files under `docs/plans/` (one mandatory reading before any
      application code), `docs/spec/pricing-vectors.json`, `.claude/`,

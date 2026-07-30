@@ -521,7 +521,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // single expression.
             'WITH RECURSIVE policed AS ('
             . '  SELECT c.oid FROM pg_class c '
-            . "  WHERE c.relrowsecurity AND c.relkind IN ('r', 'p')"
+            // relpersistence = 'p', and this arm is FAIL-OPEN without it. Every session's TEMPORARY relations
+            // are visible in pg_class to every other session, so round 12 demonstrated both directions on one
+            // database: a sibling connection switching RLS on for a scratch temp table made this method refuse
+            // every OTHER connection, naming a relation the refused connection cannot read, locate or drop —
+            // and, worse, a concurrent session holding a correctly-policed temp table satisfies the
+            // `[] === $tables` vacuity guard, so the check reports "1 policed table inspected, clean" on a
+            // database where NO PERMANENT TABLE IS POLICED AT ALL. A tenant-owned table is never temporary.
+            //
+            // The sibling method added in the very same diff filters with pg_my_temp_schema() and documents
+            // exactly this hazard; the insight was applied in one place only, which is the defect shape this
+            // file's history records more than any other.
+            . "  WHERE c.relrowsecurity AND c.relpersistence = 'p' AND c.relkind IN ('r', 'p')"
             . '), descendant AS ('
             . '  SELECT oid FROM policed'
             . '  UNION'
@@ -689,6 +700,51 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             $acl,
             $privilege,
         );
+    }
+
+    /**
+     * The four privileges on the relation's OWN acl, plus every COLUMN acl on it.
+     *
+     * Two P0s from round 12, one filter, and both were narrowings nobody had questioned:
+     *
+     * **Column privileges are not in `relacl`.** They live in `pg_attribute.attacl`, and a column grant
+     * records nothing in the relation's own ACL. So a non-`security_invoker` view reachable only by
+     * `GRANT SELECT (label)` was excluded from the result set and the verdict read CLEAN while every tenant's
+     * rows were readable through it. [Verified on this server: after `GRANT SELECT (label)`,
+     * `has_table_privilege` is false, `has_column_privilege` is true, and `attacl` reads
+     * `label={twes=r/postgres}`.] The pre-round-11 `has_table_privilege` had the identical hole, so this was
+     * long-standing rather than a regression — which is exactly why rewriting that line without widening it
+     * was worth catching.
+     *
+     * **A cross-tenant WRITE needs no SELECT.** Writes through a view without `security_invoker` execute with
+     * the view OWNER's privileges and the base table's policies are evaluated as that owner, so a plain
+     * `INSERT ... VALUES` — requiring no read privilege at all — plants a row in whatever tenant the caller
+     * names. `UPDATE`/`DELETE` give overwrite and erase, and `UPDATE ... RETURNING` gives the read back too, so
+     * "it is only a write" is not a mitigation. An insert-only journal or audit view is an ordinary shape.
+     *
+     * `TRUNCATE` and `REFERENCES` are deliberately absent: neither reaches through a view, and the policed
+     * tables' own TRUNCATE reachability is asserted separately by
+     * {@see self::assertPolicedTablesAreBeyondThisRolesReach()}.
+     */
+    private static function anyAccessIsReachableSql(): string
+    {
+        $arms = [];
+
+        foreach (['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as $privilege) {
+            $arms[] = self::privilegeIsReachableSql('c.relacl', $privilege, false);
+            // The column arm, correlated on this relation. `aclexplode` over each column's own ACL, with the
+            // same grantee-membership test as everywhere else in this class — grantee 0 is PUBLIC.
+            $arms[] = \sprintf(
+                'EXISTS (SELECT 1 FROM pg_attribute att, aclexplode(att.attacl) ca '
+                . 'WHERE att.attrelid = c.oid AND att.attacl IS NOT NULL '
+                . "AND ca.privilege_type = '%s' AND (ca.grantee = 0 "
+                . "OR pg_has_role(session_user, ca.grantee, 'MEMBER') "
+                . "OR pg_has_role(current_user, ca.grantee, 'MEMBER')))",
+                $privilege,
+            );
+        }
+
+        return '(' . implode(' OR ', $arms) . ')';
     }
 
     /**
@@ -982,7 +1038,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // Owner-reachability is an arm of its own because a NULL `relacl` means "owner only", and if the
             // connection can become the owner it can read the view regardless of any grant.
             . 'AND (' . self::roleIsReachableSql('c.relowner')
-            . ' OR ' . self::privilegeIsReachableSql('c.relacl', 'SELECT', false) . ') '
+            . ' OR ' . self::anyAccessIsReachableSql() . ') '
             . 'ORDER BY 1',
         );
 
