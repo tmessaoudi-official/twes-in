@@ -203,9 +203,12 @@ const FONT_NAME_TABLE_EVIDENCE = [
  * the pub cache, and classification turns out to be unambiguous rather than heuristic: measured across the
  * whole locked tree, 24 of 24 hosted packages classified, none left over.
  *
- * ORDER IS LOAD-BEARING. `BSD-3-Clause` must precede `BSD-2-Clause`, because the 3-clause text *contains* the
- * 2-clause disclaimer paragraph verbatim — an unordered list double-matches all 20 BSD-3 packages and reports
- * a licence that is not theirs. First match wins, so the more specific signature comes first.
+ * ORDER STILL MATTERS, but for RECORDING rather than for accept/reject — and the earlier version of this
+ * docblock described behaviour that no longer exists ("first match wins"), which round 10 filed. The walk now
+ * collects EVERY match, refuses when any of them is non-permissive, and collapses the BSD-3/BSD-2 pair because
+ * the 3-clause text contains the 2-clause disclaimer verbatim. Since both are permissive, reordering changes
+ * only which identifier is REPORTED — and a BSD-3 package recorded as BSD-2 is a wrong licence record, so the
+ * gate tallies identifiers on stdout and the meta-suite pins that tally in both directions.
  *
  * Every identifier here must also be on PERMISSIVE; the check below asserts that rather than assuming it, so
  * adding a signature cannot quietly widen what is accepted.
@@ -230,11 +233,25 @@ const PUB_COPYLEFT_MARKERS = [
     'GNU GENERAL PUBLIC LICENSE',
     'GNU LESSER GENERAL PUBLIC LICENSE',
     'GNU AFFERO GENERAL PUBLIC LICENSE',
+    'GNU Affero',
+    'GNU Lesser',
+    'GPL-2.0',
+    'GPL-3.0',
+    'AGPL-3.0',
+    'LGPL-2.1',
+    'LGPL-3.0',
     'Mozilla Public License',
     'Eclipse Public License',
     'Common Development and Distribution License',
     'SERVER SIDE PUBLIC LICENSE',
     'Business Source License',
+    'European Union Public Licence',
+    'Open Software License',
+    'CeCILL',
+    'Artistic License',
+    'Microsoft Reciprocal License',
+    'copyleft',
+    'ShareAlike',
 ];
 
 const PUB_LICENCE_SIGNATURES = [
@@ -246,7 +263,13 @@ const PUB_LICENCE_SIGNATURES = [
 ];
 
 /** Filenames a pub package may keep its licence in, most conventional first. */
-const PUB_LICENCE_FILES = ['LICENSE', 'LICENSE.txt', 'LICENSE.md', 'LICENCE', 'LICENCE.txt'];
+const PUB_LICENCE_FILES = [
+    'LICENSE', 'LICENSE.txt', 'LICENSE.md',
+    'LICENCE', 'LICENCE.txt', 'LICENCE.md',
+    // The GNU convention, absent until round 10 found the consequence: a package can put a bundled helper's
+    // MIT terms in LICENSE and its OWN GPL terms in COPYING, and reading only the first accepted it.
+    'COPYING', 'COPYING.txt', 'COPYING.LESSER', 'COPYING.LIB',
+];
 
 /**
  * Lock files to inspect, per tier. A tier that does not exist yet is reported as skipped rather than
@@ -428,7 +451,9 @@ function main(): int
     // the Composer or npm trees.
     $pubChecked = 0;
 
-    foreach (pubLicenceViolations($pubChecked) as $violation) {
+    $pubTally = [];
+
+    foreach (pubLicenceViolations($pubChecked, $pubTally) as $violation) {
         $offending[] = 'Flutter client: ' . $violation;
     }
 
@@ -446,6 +471,17 @@ function main(): int
     // checkout fail the pub check AND take the FONT probe down with it: 313 passed, 3 failed, with two of the
     // three failures reporting "every case below is then vacuous". A count is evidence about what was
     // inspected; it must not depend on the verdict.
+    if ([] !== $pubTally) {
+        ksort($pubTally);
+        $rendered = [];
+
+        foreach ($pubTally as $spdx => $count) {
+            $rendered[] = $spdx . ' ' . $count;
+        }
+
+        fwrite(\STDOUT, 'dependency-licences: pub licences — ' . implode(', ', $rendered) . "\n");
+    }
+
     fwrite(\STDOUT, sprintf(
         "dependency-licences: counts — %d package(s), %d pub package(s), %d vendored font(s)\n",
         $checked,
@@ -822,7 +858,7 @@ function declaredFontAssets(string $manifest): array
  *
  * @return list<string>
  */
-function pubLicenceViolations(int &$checked): array
+function pubLicenceViolations(int &$checked, array &$tally = []): array
 {
     $lockPath = REPO_ROOT . '/mobile/pubspec.lock';
 
@@ -892,7 +928,7 @@ function pubLicenceViolations(int &$checked): array
         $resolved = realpath($directory);
         $resolvedCache = realpath($cache);
 
-        if (false !== $resolved && false !== $resolvedCache && !str_starts_with($resolved, $resolvedCache)) {
+        if (false !== $resolved && false !== $resolvedCache && !pathIsInside($resolved, $cache)) {
             $violations[] = sprintf(
                 '%s %s resolves to %s, which is OUTSIDE the pub cache (%s). Refused.',
                 $name,
@@ -916,17 +952,40 @@ function pubLicenceViolations(int &$checked): array
             continue;
         }
 
-        $licencePath = null;
+        // EVERY licence file, not the first. ROUND 10 (P1): this loop `break`ed on the first hit, so a package
+        // shipping LICENSE (a bundled helper's MIT terms) beside COPYING (its own GPL-3.0 terms) was accepted --
+        // and that split is the GNU convention, i.e. the common shape rather than an attack. All texts are
+        // concatenated so the copyleft veto below sees every one of them.
+        $licencePaths = [];
 
         foreach (PUB_LICENCE_FILES as $candidate) {
-            if (is_file($directory . '/' . $candidate)) {
-                $licencePath = $directory . '/' . $candidate;
+            $candidatePath = $directory . '/' . $candidate;
 
-                break;
+            if (!is_file($candidatePath)) {
+                continue;
             }
+
+            // P2-2: resolve the FILE, not just its directory. Containment was applied to $directory and never
+            // to the licence path, so a LICENSE symlink pointing outside the cache was read and believed. Pub
+            // packages are extracted from tarballs and tar carries symlinks, so a package can ship this.
+            $resolvedLicence = realpath($candidatePath);
+
+            if (false === $resolvedLicence || !pathIsInside($resolvedLicence, $cache)) {
+                $violations[] = sprintf(
+                    '%s %s: %s resolves outside the pub cache. Refused -- a licence read from a file the '
+                    . 'package does not own certifies nothing.',
+                    $name,
+                    $package['version'],
+                    $candidate,
+                );
+
+                continue 2;
+            }
+
+            $licencePaths[$candidate] = $resolvedLicence;
         }
 
-        if (null === $licencePath) {
+        if ([] === $licencePaths) {
             $violations[] = sprintf(
                 '%s %s ships NO licence file (looked for %s). Absence of a licence means no grant at all.',
                 $name,
@@ -937,20 +996,34 @@ function pubLicenceViolations(int &$checked): array
             continue;
         }
 
-        $text = file_get_contents($licencePath);
+        $text = '';
 
-        if (false === $text) {
-            $violations[] = sprintf('%s %s: could not read %s.', $name, $package['version'], $licencePath);
+        foreach ($licencePaths as $candidate => $resolvedLicence) {
+            $part = file_get_contents($resolvedLicence);
 
-            continue;
+            if (false === $part) {
+                $violations[] = sprintf('%s %s: could not read %s.', $name, $package['version'], $candidate);
+
+                continue 2;
+            }
+
+            $text .= "\n" . $part;
         }
 
-        ++$checked;
+        $licencePath = implode(' + ', array_keys($licencePaths));
 
         // COPYLEFT VETO FIRST. A text that contains a copyleft grant is refused whatever else it contains —
         // round 9 slipped a GPL-3.0 package past the classifier by appending a permissive paragraph to it.
+        // CASE-INSENSITIVELY, over whitespace-collapsed text. ROUND 10 (P1): every marker was ALL CAPS -- the
+        // form that appears only in a full licence's title block -- and str_contains is case-sensitive. GPL-3.0's
+        // own "How to Apply These Terms" tells authors to paste TITLE-CASE prose ("the GNU General Public
+        // License as published by the Free Software Foundation"), so the canonical notice never matched and
+        // round 9's exploit reproduced verbatim, with no trickery. Collapsing whitespace closes the
+        // line-wrapped variant of the same evasion.
+        $haystack = (string) preg_replace('/\s+/', ' ', $text);
+
         foreach (PUB_COPYLEFT_MARKERS as $marker) {
-            if (str_contains($text, $marker)) {
+            if (false !== stripos($haystack, $marker)) {
                 $violations[] = sprintf(
                     '%s %s: its licence text contains "%s", a COPYLEFT grant. Refused whatever else the file '
                     . 'also says — a concatenated licence is not a permissive one, and a copyleft dependency '
@@ -964,6 +1037,11 @@ function pubLicenceViolations(int &$checked): array
                 continue 2;
             }
         }
+
+        // Counted HERE, after the veto. ROUND 10 (P3): ++$checked ran before it, so a package refused at the
+        // veto was still reported as classified -- and the counts line is documented as "evidence about what
+        // was inspected", which the anti-vacuity probes trust.
+        ++$checked;
 
         // Then collect EVERY match rather than the first. Ordering alone is not enough: two permissive
         // signatures matching means the file states more than one licence, and this gate must not pick
@@ -982,20 +1060,33 @@ function pubLicenceViolations(int &$checked): array
             unset($matched['BSD-2-Clause']);
         }
 
-        $identifier = 1 === count($matched) ? array_key_first($matched) : null;
-
+        // MORE THAN ONE PERMISSIVE MATCH IS A CHOICE, NOT AN AMBIGUITY. ROUND 10 (P2, false positive): this
+        // refused "MIT OR Apache-2.0", the most common dual-licence offer in every package ecosystem -- the
+        // licensee picks, so no obligation is uncertain and nothing needs guessing. The ambiguity that DOES
+        // matter is a permissive text beside a non-permissive one, and the copyleft veto above already refuses
+        // that outright, before this runs.
         if (count($matched) > 1) {
-            $violations[] = sprintf(
-                '%s %s: its licence text matches MORE THAN ONE licence (%s), so what it is actually offered '
-                . 'under is ambiguous. Refused rather than guessed. Read %s.',
-                $name,
-                $package['version'],
-                implode(' and ', array_keys($matched)),
-                $licencePath,
-            );
+            $unacceptable = array_values(array_filter(
+                array_keys($matched),
+                static fn(string $spdx): bool => !in_array($spdx, PERMISSIVE, true),
+            ));
 
-            continue;
+            if ([] !== $unacceptable) {
+                $violations[] = sprintf(
+                    '%s %s: its licence text matches MORE THAN ONE licence (%s), and %s is not permissive. '
+                    . 'Refused rather than guessed. Read %s.',
+                    $name,
+                    $package['version'],
+                    implode(' and ', array_keys($matched)),
+                    implode(' and ', $unacceptable),
+                    $licencePath,
+                );
+
+                continue;
+            }
         }
+
+        $identifier = [] === $matched ? null : array_key_first($matched);
 
         if (null === $identifier) {
             $violations[] = sprintf(
@@ -1012,6 +1103,8 @@ function pubLicenceViolations(int &$checked): array
 
         // The signature table must not be able to widen what is accepted: an identifier can be recognised
         // and still be unacceptable, and that is checked here rather than assumed at the table.
+        $tally[$identifier] = ($tally[$identifier] ?? 0) + 1;
+
         if (!in_array($identifier, PERMISSIVE, true)) {
             $violations[] = sprintf(
                 '%s %s is %s — not permissive (RUNTIME or dev, this tier ships either way).',
@@ -1023,6 +1116,24 @@ function pubLicenceViolations(int &$checked): array
     }
 
     return $violations;
+}
+
+/**
+ * Whether a resolved path is genuinely INSIDE a directory, boundary included.
+ *
+ * ROUND 10 (P2): the check was `str_starts_with($resolved, $resolvedCache)`, which requires no separator -- so
+ * `/…/hosted/pub.devil/outside` satisfied a `/…/hosted/pub.dev` prefix test and a licence from outside the
+ * cache was read and believed. A prefix is not a path boundary.
+ */
+function pathIsInside(string $resolved, string $directory): bool
+{
+    $base = realpath($directory);
+
+    if (false === $base) {
+        return false;
+    }
+
+    return $resolved === $base || str_starts_with($resolved, rtrim($base, '/') . '/');
 }
 
 /**

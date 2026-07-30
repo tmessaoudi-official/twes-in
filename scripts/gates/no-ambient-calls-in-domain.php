@@ -119,6 +119,10 @@ const BANNED_FUNCTIONS = [
     'die' => 'a domain rule throws, it does not end the process',
     'sleep' => 'the domain does not wait',
     'usleep' => 'the domain does not wait',
+    // ROUND 10: `class_alias(\DateTimeImmutable::class, 'Stamp'); new Stamp();` obtained a live clock with
+    // all three architecture gates green -- the same alias family this commit closed for `use ... as`, one
+    // function call away. `::class` is permitted and `Stamp` is an unknown name, so nothing else saw it.
+    'class_alias' => 'no aliasing a class past the checks; name the class directly',
     'extract' => 'no dynamic symbol creation',
     'eval' => 'no dynamic code',
     'compact' => 'use an explicit array or a value object',
@@ -276,12 +280,26 @@ function inspect(string $file): array
             $next = nextMeaningfulToken($tokens, $index);
 
             if (null !== $next && $next->is(\T_DOUBLE_COLON)) {
-                $violations[] = describe(
-                    $file,
-                    $token->line,
-                    $token->text . '::',
-                    'a static call on a dynamically-named class cannot be checked; name the class directly',
-                );
+                // `$other::class` is PHP 8's get_class() and yields a STRING -- it can obtain no clock. ROUND 10
+                // (P1, false positive): this branch omitted the `::class` exclusion its named-class sibling
+                // documents sixty lines below, so `$this::class` and `$o::class` were rejected. That sibling's
+                // own comment says it: a rule that cannot pass is as broken as one that cannot fail.
+                $colonIndex = $index;
+
+                while ($colonIndex < $count && !$tokens[$colonIndex]->is(\T_DOUBLE_COLON)) {
+                    ++$colonIndex;
+                }
+
+                $afterColon = nextMeaningfulToken($tokens, $colonIndex);
+
+                if (null === $afterColon || !$afterColon->is(\T_CLASS)) {
+                    $violations[] = describe(
+                        $file,
+                        $token->line,
+                        $token->text . '::',
+                        'a static call on a dynamically-named class cannot be checked; name the class directly',
+                    );
+                }
             }
 
             continue;
@@ -321,8 +339,31 @@ function inspect(string $file): array
             // style. Exactly the hole the `use function time as now` branch below was written to close, for
             // functions, and never written for CLASS imports. Checked at the import, which is the one place
             // the real name is still written down — the same remedy, applied to the other half.
-            if (null !== $afterUse && !$afterUse->is([\T_FUNCTION, \T_CONST])) {
-                for ($cursor = $index + 1; $cursor < $count && ';' !== $tokens[$cursor]->text; ++$cursor) {
+            // ONLY an ALIASED import, and only at STATEMENT level. ROUND 10 (P1, false positive): `use` has
+            // three meanings in PHP -- namespace import, trait use, and CLOSURE CAPTURE -- and this branch
+            // caught the third. For `function () use ($clock): \DateTimeImmutable {` the forward walk covered
+            // the capture list, the return type and the body, so the gate rejected the project's OWN
+            // prescribed clock-injection pattern, naming a `use` statement the file did not contain.
+            //
+            // Restricting to `as` is not a narrowing that loses coverage: an UN-aliased `use DateTimeImmutable;`
+            // is already caught at the call site by the `new`/static-call rules, and php-cs-fixer rewrites it to
+            // a fully-qualified `\DateTimeImmutable` anyway. The alias is the only thing those rules cannot see.
+            $previousToken = previousMeaningfulToken($tokens, $index);
+            $atStatementLevel = null === $previousToken
+                || in_array($previousToken->text, [';', '{', '}'], true);
+
+            if ($atStatementLevel && null !== $afterUse && !$afterUse->is([\T_FUNCTION, \T_CONST])) {
+                $hasAlias = false;
+
+                for ($scan = $index + 1; $scan < $count && ';' !== $tokens[$scan]->text; ++$scan) {
+                    if ($tokens[$scan]->is(\T_AS)) {
+                        $hasAlias = true;
+
+                        break;
+                    }
+                }
+
+                for ($cursor = $index + 1; $hasAlias && $cursor < $count && ';' !== $tokens[$cursor]->text; ++$cursor) {
                     if (!$tokens[$cursor]->is([\T_STRING, \T_NAME_QUALIFIED, \T_NAME_FULLY_QUALIFIED])) {
                         continue;
                     }

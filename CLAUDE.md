@@ -322,7 +322,7 @@ comment or a string is not a false positive.
 both are in `api/composer.json`; neither can be installed in this container, because every Composer
 `dist` URL is a GitHub host and GitHub egress is restricted by organisation policy to this repository
 alone (see § Gotchas). They are defence in depth on top of the gates above, not a substitute for them —
-the gates run on plain PHP and need nothing installed.
+the architecture gates run on plain PHP and need nothing installed. (`gate:licences` is the one exception: its pub-cache walk fails rather than skips when it cannot look, so it needs `flutter pub get` — see § "Quality gate".)
 
 ## Certification ladder — governs every 3C/6C gate
 
@@ -616,7 +616,8 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   only `composer install`; **(b)** PHPUnit and php-cs-fixer publish official phars from `phar.phpunit.de`
   and `cs.symfony.com`, which *are* reachable — `scripts/dev/fetch-tools.sh` fetches them against pinned
   SHA-256 hashes; **(c)** the six architecture and licensing gates are written in plain PHP and bash
-  precisely so they need nothing installed; **(d)** PHPStan and deptrac ship phars only from GitHub
+  precisely so they need nothing installed — with one deliberate exception since 2026-07-30, `gate:licences`,
+  whose pub-cache walk needs `flutter pub get` because it fails rather than passing quietly on nothing; **(d)** PHPStan and deptrac ship phars only from GitHub
   releases, so they stay owed. Do **not** resolve this by pointing Composer at a third-party mirror —
   that is a provenance decision this project cannot make casually, given § "Licensing invariants".
 - **2026-07-29 — tenant isolation is PostgreSQL row-level security, not (only) a Doctrine filter.**

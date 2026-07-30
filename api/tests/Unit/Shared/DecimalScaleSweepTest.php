@@ -46,7 +46,7 @@ use Twes\Domain\Shared\RoundingMode;
 /**
  * AN UNKILLED MUTANT, recorded rather than hidden: the `+ 1` on the working scale survives removal.
  *
- * `$working = max(armA, armB) + 1`. With the `+ 1` deleted, all 33 cases here still pass, and I could not
+ * `$working = max(armA, armB) + 1`. With the `+ 1` deleted, every case here still passes, and I could not
  * construct an input that distinguishes them. The reason appears to be that every bcmath call using
  * `$working` is already exact at `max(armA, armB)`:
  *   - `bcmul($truncated, $absDivisor, …)` needs `$scale + scaleOf($divisor)` — that is armB;

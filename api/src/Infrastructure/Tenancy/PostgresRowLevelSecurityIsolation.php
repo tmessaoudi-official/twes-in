@@ -206,7 +206,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . 'value is present, and the only way to force it past that refusal is the empty-string masking '
             . 'this class documents as a bypass. Roll back and open a new transaction.',
             $expected,
-            \is_string($actual) && '' !== $actual ? $actual : '<unset>',
+            '' !== $actual ? $actual : '<unset>',
         ));
     }
 
@@ -215,8 +215,10 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * Shared by both divergence branches so they cannot drift apart — and `coalesce` to `''` rather than null
      * because "never set" and "explicitly emptied" are the same thing to a caller asking "am I still bound?".
-     * They are NOT the same thing to `assertSessionTenantIsUnset()`, which is why that method keeps its own
-     * read; see its own comment for the distinction it has to make.
+     * `assertSessionTenantIsUnset()` keeps its own read for two narrower reasons — parameter binding and its own
+     * message — NOT because it distinguishes those states: it treats null, false and '' identically, exactly as
+     * this does. Round 10 filed the earlier version of this sentence, which claimed the opposite and pointed at
+     * a comment that contradicted it.
      */
     private static function readTenantSetting(\PDO $connection): string
     {
@@ -227,7 +229,21 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
 
         $value = $statement->fetchColumn();
 
-        return \is_string($value) ? $value : '';
+        // THROW on a non-string; do NOT map it to ''. ROUND 10 (P2, fail-open): returning '' turned "the read
+        // failed" into "not bound", so the tenant-less branch certified a connection genuinely scoped to
+        // tenant A as UNBOUND — the exact cross-tenant state that branch exists to detect. This class's own
+        // describeBindingMismatch() docblock already names the value: "`false` when the fetch failed, and
+        // anything else means the driver surprised us". A failure signal is not a value.
+        if (!\is_string($value)) {
+            throw new \RuntimeException(\sprintf(
+                'Could not read the %s setting to verify the tenant binding: the driver returned %s. Refusing '
+                . 'to continue, because an unverifiable binding is indistinguishable from a wrong one.',
+                self::TENANT_SETTING,
+                get_debug_type($value),
+            ));
+        }
+
+        return $value;
     }
 
     /**

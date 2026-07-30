@@ -163,7 +163,9 @@ final class CleanHandler
 PHP
 }
 
-# A three-package pub cache matching the synthetic lock above. Rebuilt per fixture so a case can mutate it
+# A TWO-package pub cache; the synthetic lock declares three entries and the third (probe_sdk) is
+# source: sdk, deliberately absent because the SDK is not in the cache. Round 10 filed the earlier
+# "three-package" wording, which disagreed with the "2 pub package(s)" the cases now assert. Rebuilt per fixture so a case can mutate it
 # freely -- delete a licence, corrupt one, remove a package -- without touching anything shared.
 fresh_pub_cache() {
   rm -rf "$WORK/pubcache"
@@ -1103,6 +1105,11 @@ echo "== THE PUB TRANSITIVE-LICENCE WALK, this tier's first per-package licence 
 
 fresh_fixture
 assert_gate "accepts the synthetic pub tree" dependency-licences.php 0 "2 pub package(s)"
+# And the CORRECT order records BSD-3-Clause, not BSD-2-Clause -- the other half of the ordering case below.
+fresh_fixture
+add_fonts_fixture
+assert_gate "the ORDERED signature list records BSD-3 correctly" dependency-licences.php 0 \
+  "pub licences — BSD-3-Clause 1"
 
 # ANTI-VACUITY, against the REAL tree rather than the fixture: if the walk ever stops finding the committed
 # lock -- a renamed file, an early return, a changed source filter -- every case above still passes on its own
@@ -1152,8 +1159,12 @@ t = t.replace("        if (isset($matched['BSD-3-Clause'])) {\n            unset
 p.write_text(t)
 PYORDER
 # Names the FIXTURE package, so no other tier's packages can satisfy this assertion by accident.
-assert_gate "an UNORDERED signature list misreads BSD-3 as BSD-2" dependency-licences.php 1 \
-  "probe_bsd 1.0.0: its licence text matches MORE THAN ONE"
+# Asserts the IDENTIFIER, not a refusal. Round 10: once dual-permissive matches are accepted -- which is
+# correct, since "MIT OR Apache-2.0" is a choice and not an ambiguity -- reordering no longer changes
+# accept/reject, only which identifier is RECORDED. A BSD-3 package recorded as BSD-2 is a wrong licence
+# record, so the gate now tallies identifiers and this case pins the tally.
+assert_gate "an UNORDERED signature list records BSD-3 as BSD-2" dependency-licences.php 0 \
+  "pub licences — BSD-2-Clause 1"
 
 fresh_fixture
 rm -rf "$WORK/pubcache"
@@ -1184,6 +1195,107 @@ sed -i "s|\['MIT', 'Permission is hereby granted, free of charge'\],|['GPL-3.0-o
   "$WORK/repo/scripts/gates/dependency-licences.php"
 assert_gate "refuses a recognised but NON-PERMISSIVE pub licence" dependency-licences.php 1 \
   "is GPL-3.0-only — not permissive"
+
+echo "== ROUND 10: every rule added by rounds 9 and 10 gets a case that FIRES =="
+# WHY THIS BLOCK EXISTS. All three round-10 lenses independently found the same thing: round 9's TWO P1 fixes
+# -- the pub copyleft veto and the aliased class import -- were deletable with this suite reporting 316/316.
+# That is CLAUDE.md § Gotchas 2026-07-30 verbatim ("a rule added to a gate must be read by that gate's failure
+# path in the same change, AND a case must prove it fires"), broken in the commit that WROTE that Gotcha.
+# Neither rule adds a --dump-rules entry, so no generated case covers them and these are mandatory.
+
+assert_contains "licences: the copyleft marker list survives" "$LICENCE_RULES" \
+  "GNU GENERAL PUBLIC LICENSE" "Mozilla Public License" "Business Source License"
+assert_at_least "licences: the copyleft marker list has not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['pub_copyleft_markers'])")" 20
+assert_at_least "licences: the pub signature list has not shrunk" \
+  "$(count_rules "$LICENCE_RULES" "len(r['pub_licence_signatures'])")" 5
+
+# THE ROUND-9 EXPLOIT, in the TITLE-CASE form round 10 found still worked: the markers were ALL CAPS and
+# str_contains is case-sensitive, so GPL's own recommended prose notice never matched.
+fresh_fixture
+add_fonts_fixture
+printf 'Licensed under the GNU General Public License as published by the Free Software Foundation,\neither version 3 of the License.\n\n---\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\nof the bundled helper.\n' \
+  > "$WORK/pubcache/hosted/pub.dev/probe_mit-2.0.0/LICENSE"
+assert_gate "refuses a TITLE-CASE copyleft grant beside a permissive paragraph" dependency-licences.php 1 \
+  "a COPYLEFT grant"
+
+# The two-file form, which is the GNU convention rather than an attack: permissive LICENSE, copyleft COPYING.
+fresh_fixture
+add_fonts_fixture
+printf 'GNU GENERAL PUBLIC LICENSE\nVersion 3, 29 June 2007\n' \
+  > "$WORK/pubcache/hosted/pub.dev/probe_mit-2.0.0/COPYING"
+assert_gate "reads COPYING as well as LICENSE, not just the first" dependency-licences.php 1 "a COPYLEFT grant"
+
+# A licence SYMLINK pointing outside the cache. Pub packages come from tarballs and tar carries symlinks.
+fresh_fixture
+add_fonts_fixture
+mkdir -p "$WORK/outside"
+printf 'MIT License\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n' \
+  > "$WORK/outside/LICENSE"
+ln -sf "$WORK/outside/LICENSE" "$WORK/pubcache/hosted/pub.dev/probe_mit-2.0.0/LICENSE"
+assert_gate "refuses a licence SYMLINK that escapes the cache" dependency-licences.php 1 \
+  "resolves outside the pub cache"
+
+# Dual licensing is a CHOICE, not an ambiguity: "MIT OR Apache-2.0" must be ACCEPTED.
+fresh_fixture
+add_fonts_fixture
+printf 'This package is offered under MIT OR Apache-2.0, at your option.\n\nApache License\nVersion 2.0, January 2004\n\n---\n\nPermission is hereby granted, free of charge, to any person obtaining a copy\n' \
+  > "$WORK/pubcache/hosted/pub.dev/probe_mit-2.0.0/LICENSE"
+assert_gate "ACCEPTS a dual-licensed MIT-or-Apache package" dependency-licences.php 0 "2 pub package(s)"
+
+# A non-hosted source is refused rather than skipped, and a non-semver version is refused before it becomes
+# a path. Neither had a case; both were round-9 fixes.
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/pubspec.lock" <<'PYSRC'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('    source: hosted\n    version: "2.0.0"', '    source: git\n    version: "2.0.0"', 1))
+PYSRC
+assert_gate "refuses a non-hosted pub source rather than skipping it" dependency-licences.php 1 \
+  "which this walk cannot read a licence for"
+
+fresh_fixture
+add_fonts_fixture
+python3 - "$WORK/repo/mobile/pubspec.lock" <<'PYVER'
+import pathlib, sys
+p = pathlib.Path(sys.argv[1])
+p.write_text(p.read_text().replace('version: "2.0.0"', 'version: "2.0.0/../../../etc"', 1))
+PYVER
+assert_gate "refuses a version that is not plain semver" dependency-licences.php 1 \
+  "not a plain semantic version"
+
+echo "== ROUND 10: the ambient gate's new rules, each proven to fire =="
+fresh_fixture
+printf '<?php\n\n/*\n * SPDX-License-Identifier: AGPL-3.0-or-later\n */\n\ndeclare(strict_types=1);\n\nnamespace Twes\\Domain\\Probe;\n\nuse DateTimeImmutable as Stamp;\n\nfinal class Aliased\n{\n    public function a(): Stamp { return new Stamp(); }\n}\n' \
+  > "$WORK/repo/api/src/Domain/Probe/Aliased.php"
+assert_gate "catches an ALIASED class import of a banned class" no-ambient-calls-in-domain.php 1 \
+  "importing it under another name"
+
+fresh_fixture
+inject '    public function n(): mixed { $c = \DateTimeImmutable::class; return $c::createFromFormat("Y", "2026"); }'
+assert_gate "catches \$var:: -- a dynamically-named static call" no-ambient-calls-in-domain.php 1 \
+  "a static call on a dynamically-named class"
+
+fresh_fixture
+inject '    public function a(): object { class_alias(\DateTimeImmutable::class, "Stamp"); return new \Stamp(); }'
+assert_gate "catches class_alias, the same alias family one call away" no-ambient-calls-in-domain.php 1 \
+  "no aliasing a class past the checks"
+
+# THE THREE FALSE POSITIVES round 10 found, each pinned so the rules cannot be re-tightened into blocking
+# legitimate code. A rule that cannot pass is as broken as one that cannot fail.
+fresh_fixture
+inject '    public function f(object $o): string { return $o::class; }'
+assert_gate "still ALLOWS \$var::class, which is get_class()" no-ambient-calls-in-domain.php 0
+
+fresh_fixture
+inject '    public function f(): string { return \DateTimeImmutable ::class; }'
+assert_gate "still ALLOWS ::class with whitespace before the colons" no-ambient-calls-in-domain.php 0
+
+fresh_fixture
+inject '    public function f(object $clock): callable { return static function () use ($clock): \DateTimeImmutable { return $clock->now(); }; }'
+assert_gate "still ALLOWS a closure use(...) capture -- the prescribed clock injection" \
+  no-ambient-calls-in-domain.php 0
 
 echo "== ROUND 2's THREE NAMED GATE EVASIONS, open for seven rounds =="
 # Each was named by the round-2 reviewer as a live bypass of a gate that enforces a P0, and each was STILL

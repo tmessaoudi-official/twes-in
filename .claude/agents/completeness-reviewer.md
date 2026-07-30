@@ -115,11 +115,11 @@ other two is the default failure mode here, not an unusual one.
    This row exists because the obligation previously lived only in a docblock and one Decisions Log line,
    and you are chartered at load time — so if it is not written here, you cannot know to look.
 
-10. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
+11. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
    with a `## Decisions Log`. If this change resolved a design decision, is it recorded there, in the
    same change? An unrecorded ruling will be re-litigated by the next session — that is the cost, and
    it is why this row is on the gate.
-11. **Scope honesty.** Does the change do *less* than its message claims, or more? A commit titled
+12. **Scope honesty.** Does the change do *less* than its message claims, or more? A commit titled
    `fix: rounding on invoice totals` that also refactors the repository layer has an undisclosed
    blast radius. Equally: a `TODO`, a stub, a `throw new \LogicException('not implemented')`, or a
    feature flag left off — if the change advertises a capability that is not reachable, say so.
