@@ -58,24 +58,31 @@ final class PricingVectorsTest extends TestCase
             static fn(array $case): bool => isset($case['vat_if_rounded_per_line_which_is_WRONG']),
         );
         self::assertNotEmpty($pinsRoundingOrder, 'No case distinguishes per-line from per-document VAT rounding.');
-        self::assertGreaterThanOrEqual(11, \count($vectors['cases']));
+        // TEN, not eleven: the negative-tie case was REMOVED by developer ruling (2026-07-30), not lost.
+        // Lowered deliberately and in the same change as the removal, because a floor left at 11 would have
+        // failed loudly and invited somebody to re-add the very shape the ruling refuses.
+        self::assertGreaterThanOrEqual(10, \count($vectors['cases']));
         self::assertGreaterThanOrEqual(8, \count($vectors['edit_directions']));
         self::assertGreaterThanOrEqual(3, \count($vectors['document_totals']));
         self::assertGreaterThanOrEqual(4, \count($vectors['authored_field']));
 
-        // COUNTS ARE NOT COVERAGE, and round 11 proved it on this very file: eleven cases, and not one of
-        // them a NEGATIVE tie — while `conventions.rounding` names negative ties as *the* thing that separates
-        // a correct implementation from a plausible one, because `Math.round(-0.5)` is -0 in JavaScript. A
-        // floor on `count()` cannot notice the absence of a property. So the two properties the conventions
-        // actually claim are asserted directly.
-        $negative = array_filter(
-            $vectors['cases'],
-            static fn(array $case): bool => str_starts_with($case['expected']['vat'], '-'),
-        );
-        self::assertNotEmpty(
-            $negative,
-            'No case has a negative VAT, so nothing pins half_up as half-AWAY-FROM-ZERO. A TypeScript tier '
-            . 'written with Math.round would agree with this fixture on every case in it.',
+        // COUNTS ARE NOT COVERAGE, and this file has now proved it twice. Round 11 found eleven cases and
+        // not one negative tie, while `conventions.rounding` names negative ties as *the* discriminator. Round
+        // 12 then proved the guard added for it was itself vacuous: it filtered on `str_starts_with($vat, '-')`
+        // — a test for a negative SIGN, not a negative TIE — and both a sign-preserving mutation and a
+        // tie-destroying one survived it. A sign test cannot notice the absence of a tie, exactly as a
+        // count() floor cannot notice the absence of a property.
+        //
+        // THE NEGATIVE-TIE CASE IS GONE, by developer ruling (2026-07-30), not by oversight: reaching a
+        // negative tie from a product requires a rate below -100%, which derives a negative selling price, and
+        // `ProductPricing` now refuses that because a negative gross is a CREDIT NOTE. So the discriminator is
+        // Wave 2's obligation, stated in `conventions.rounding` and in Wave 2's scope. Asserted here so the
+        // obligation cannot be quietly dropped: the fixture must SAY it is owed for as long as it is owed.
+        self::assertStringContainsString(
+            'OWED TO WAVE 2',
+            $vectors['conventions']['rounding'],
+            'The negative-tie gap must stay named in the fixture until Wave 2 closes it. If Wave 2 has landed '
+            . 'a Credit case with a negative tie, delete this assertion in the same change.',
         );
 
         // FOUR distinct currency scales. With 0, 2 and 3 only, an implementation hardcoding "at most three

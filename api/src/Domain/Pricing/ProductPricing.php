@@ -60,6 +60,21 @@ final readonly class ProductPricing
         if ($cost->isNegative()) {
             throw InvalidCost::negative($cost);
         }
+
+        // AND THE TYPED SELLING PRICE, for the price-authored paths. `fromProfitRate()` guards the price it
+        // DERIVES; nothing guarded the one a user TYPES, so `fromNetPrice($cost, Money::of('-5.000', $tnd))`
+        // constructed and persisted a product sold at negative money — the same illegal state the rate ruling
+        // of 2026-07-30 refuses, reached through the other door. The constructor is the right place because
+        // every price-authored path funnels through it: both factories and all three `with*` methods.
+        //
+        // `isNegative`, never `<= 0`: a zero selling price is free-of-charge and legitimate.
+        if (null !== $authoredNetPrice && $authoredNetPrice->isNegative()) {
+            throw InvalidCost::netPriceWouldBeNegative(
+                $cost,
+                'n/a (the price was typed, not derived)',
+                $authoredNetPrice->amount(),
+            );
+        }
     }
 
     /** The user typed a profit rate. It is authoritative and exact; the price is derived from it. */
@@ -105,6 +120,28 @@ final readonly class ProductPricing
 
         if (Decimal::integerDigits($product) > Money::MAX_INTEGER_DIGITS) {
             throw InvalidCost::netPriceWouldNotBeRepresentable($cost, $profitRate, $product);
+        }
+
+        // A NEGATIVE SELLING PRICE IS REFUSED AT THE EDIT (developer ruling, 2026-07-30). `Rate` deliberately
+        // keeps no bound at -100% — a rate is a dimensionless number and Rate is the wrong place to encode what
+        // a document may contain — so the rule lives here, at the aggregate that decides what a product sells
+        // for. A product is not sold at negative money; a negative gross on a document line is a CREDIT NOTE,
+        // which is its own document type. Round 12 found the domain constructing and persisting a net of -0.010
+        // from a -200% rate with nothing anywhere ruling it.
+        //
+        // `isNegative`, never `<= 0`: exactly -100% derives ZERO, which is free-of-charge and legitimate — a
+        // sample, a warranty replacement, a promotional line — and refusing it would be found by a user rather
+        // than by the suite.
+        //
+        // THIS COVERS THE RATE-AUTHORED PATHS ONLY, and saying otherwise was the first thing written here.
+        // An earlier version of this comment claimed it was "the one place every construction path reaches",
+        // which is false: a price-authored instance stores the typed price and derives nothing, so it never
+        // passes through this method at all. The typed-price paths are guarded in the CONSTRUCTOR, beside the
+        // negative-cost check that exists for exactly the same reason. Two guards, one per authorship — which
+        // is the honest shape, and the claim of a single choke point was the more dangerous artifact because
+        // it invites deleting one of them.
+        if (Decimal::isNegative($product)) {
+            throw InvalidCost::netPriceWouldBeNegative($cost, $profitRate->percentage(), $product);
         }
 
         return new self($cost, PricedBy::ProfitRate, $profitRate, null);

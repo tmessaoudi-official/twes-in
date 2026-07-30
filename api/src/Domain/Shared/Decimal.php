@@ -41,6 +41,25 @@ final class Decimal
 
     private function __construct() {}
 
+    /**
+     * The largest scale this class will compute at — a PRACTICAL bound, and deliberately not bcmath's.
+     *
+     * bcmath's own ceiling is `INT_MAX` (2147483647), and enforcing *that* was the first fix attempted here.
+     * It is the wrong bound, and finding out why was worth more than the finding that prompted it: a scale of
+     * two billion is not rejected by bcmath at all, it is **accepted**, and bcmath then tries to compute two
+     * billion digits. [Verified: a `ratioTo()` at scale 2147483640 did not raise — it ran until the probe was
+     * killed at 120 seconds.] So the real hazard at the top of the range is an unbounded allocation and a hung
+     * request, not a leaked `ValueError`, and a guard set at bcmath's ceiling lets every such call straight
+     * through while reporting the containment promise as kept.
+     *
+     * 1000 is a policy choice and is stated as one rather than dressed up as a limit. The justification: it is
+     * three orders of magnitude above anything this domain uses — `Rate::FRACTION_SCALE` is **12** and money
+     * columns carry **4** — so no legitimate caller comes near it, while a buggy or hostile one fails in
+     * microseconds instead of allocating gigabytes. If a real use ever needs more, raise it deliberately with a
+     * measurement attached; never to make a test pass.
+     */
+    public const int MAX_SCALE = 1000;
+
     public static function isWellFormed(string $value): bool
     {
         return 1 === preg_match(self::PATTERN, $value);
@@ -131,12 +150,23 @@ final class Decimal
      */
     private static function assertScale(int $scale, string $operation): void
     {
-        if ($scale < 0) {
+        // BOTH ENDS. The first version of this guard checked `< 0` only, while the docblock above quoted
+        // bcmath's range verbatim — "must be between 0 and 2147483647" — and three separate places asserted
+        // that a ValueError could no longer escape: this method's docblock, `Money::ratioTo()`'s `@throws`,
+        // and a test whose own NAME says "none leaks a bcmath ValueError". All three were false at the upper
+        // bound, on all four entry points, and round 12 found it one round after the lower half landed.
+        //
+        // The lesson is the one this repository keeps relearning from the other direction: a guard derived
+        // from a stated range must enforce the WHOLE range, and quoting the bound in prose while enforcing
+        // half of it is worse than not quoting it, because a reader checks the prose.
+        if ($scale < 0 || $scale > self::MAX_SCALE) {
             throw new \LogicException(\sprintf(
-                'Decimal::%s() was given a scale of %d. A scale is a count of decimal places and cannot be '
-                . 'negative; zero is valid and means an integer result.',
+                'Decimal::%s() was given a scale of %d. A scale is a count of decimal places and must be '
+                . 'between 0 and %d; zero is valid and means an integer result. Beyond that bcmath itself '
+                . 'refuses, and letting it do so would leak the arithmetic implementation out of Domain/. Above the maximum bcmath does NOT refuse -- it allocates -- so that end is a hung request rather than an exception.',
                 $operation,
                 $scale,
+                self::MAX_SCALE,
             ));
         }
     }
@@ -265,6 +295,26 @@ final class Decimal
             self::scaleOf($absDividend),
             $scale + self::scaleOf($absDivisor),
         ) + 1;
+
+        // THE DERIVED SCALE, ASSERTED TOO — not just the caller's. `assertScale()` at the top of this method
+        // bounds `$scale`, and that is not sufficient: the working scale ADDS the divisor's own scale plus one,
+        // so a caller passing exactly `MAX_SCALE` overflows bcmath here rather than at the entry point.
+        // [Verified: `ratioTo(..., 2147483647, ...)` raised `ValueError: bcmul(): Argument #3 ($scale) must be
+        // between 0 and 2147483647` with the entry guard already in place.]
+        //
+        // Checked on the DERIVED value rather than by lowering `MAX_SCALE` behind a headroom constant, because
+        // the addition depends on the divisor's scale at runtime — a fixed headroom would be a magic number
+        // that is either too small to be safe or too large to be honest, and the exact quantity is right here.
+        if ($working > self::MAX_SCALE) {
+            throw new \LogicException(\sprintf(
+                'Decimal::divide() needs an internal working scale of %d to stay exact for a scale of %d, and '
+                . 'the maximum is %d. Ask for fewer decimal places: the working scale adds the divisor\'s own '
+                . 'scale plus one, so a scale near the maximum cannot be computed exactly.',
+                $working,
+                $scale,
+                self::MAX_SCALE,
+            ));
+        }
 
         $remainder = bcsub($absDividend, bcmul($truncated, $absDivisor, $working), $working);
 

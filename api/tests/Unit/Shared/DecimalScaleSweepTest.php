@@ -265,6 +265,50 @@ final class DecimalScaleSweepTest extends TestCase
     }
 
     /**
+     * EVERY scale-taking entry point refuses a scale ABOVE the maximum, too.
+     *
+     * Round 11 added the lower half of this guard. Round 12 found that the docblock quoted bcmath's range
+     * verbatim — "between 0 and 2147483647" — while enforcing only `>= 0`, so the `ValueError` the containment
+     * promise named still escaped at the top, from all four methods.
+     *
+     * And fixing it at bcmath's ceiling was ALSO wrong, which is the more useful half of this case: at that
+     * end bcmath does not refuse, it **allocates**. A `ratioTo()` at scale 2147483640 raised nothing and ran
+     * until a 120-second probe was killed — so the hazard up there is a hung request rather than a leaked
+     * exception, and a guard at the theoretical ceiling would have passed every such call while reporting the
+     * promise as kept. Hence `Decimal::MAX_SCALE` is a stated policy bound, three orders of magnitude above
+     * `Rate::FRACTION_SCALE`.
+     *
+     * @param callable(int): mixed $operation
+     */
+    #[DataProvider('everyScaleTakingOperation')]
+    public function testEveryScaleTakingOperationRefusesAScaleAboveTheMaximum(
+        string $name,
+        callable $operation,
+    ): void {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('Decimal::' . $name . '() was given a scale of ' . (Decimal::MAX_SCALE + 1));
+
+        $operation(Decimal::MAX_SCALE + 1);
+    }
+
+    /**
+     * `divide()` also refuses when the DERIVED working scale would exceed the maximum, and says which.
+     *
+     * The entry guard bounds the caller's scale; the working scale adds the divisor's own scale plus one, so a
+     * caller at exactly the maximum overflows *inside* the method. Two guards at two points, and the second
+     * needs its own case because the first cannot see the addition. The message must name the derived figure,
+     * or a caller at the boundary is told a number they did not pass.
+     */
+    public function testDivideRefusesADerivedWorkingScaleAboveTheMaximum(): void
+    {
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('internal working scale');
+
+        // MAX_SCALE is accepted by the entry guard; 1000 + scaleOf('3.000') + 1 = 1004 is not computable.
+        Decimal::divide('1.000', '3.000', Decimal::MAX_SCALE, RoundingMode::HalfUp);
+    }
+
+    /**
      * And every one of them ACCEPTS zero — the boundary that separates "negative" from "falsy".
      *
      * `if (!$scale)` or `if ($scale < 1)` is the natural way to write that guard and would refuse a

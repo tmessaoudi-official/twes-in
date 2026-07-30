@@ -12,7 +12,7 @@
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
     "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact.",
-    "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties.",
+    "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties. OWED TO WAVE 2, recorded rather than dropped: no case in this file currently carries a negative tie. One was added at round 11 and REMOVED at round 12 by developer ruling (2026-07-30), because the only way to reach a negative tie from a product is a profit rate below -100%, which derives a negative selling price -- now refused by ProductPricing, since a negative gross on a document line is a CREDIT NOTE rather than a sale. The Credit document type lands in Wave 2 and carries this obligation: until then no tier is pinned against Math.round(-0.5) === -0 or Dart's half-away-from-zero, and that is a gap with a name and an owner rather than a silent one.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error."
   },
   "cases": [
@@ -131,19 +131,6 @@
         "net": "16.049",
         "vat": "3.049",
         "gross": "19.098"
-      }
-    },
-    {
-      "id": "tnd-negative-rounding-tie",
-      "why": "THE case conventions.rounding names as the discriminator, and it was absent: every tie here was POSITIVE. The exact VAT is -0.0005 TND, a tie at the millime, and half_up means half AWAY FROM ZERO, so it is -0.001. JavaScript's Math.round(-0.5) returns -0 and Dart's num.round() rounds half away from zero -- so a TypeScript tier written with Math.round produces -0.000 here and agrees with this file on every other case in it. A convention that names its own discriminator and then does not carry one is pinned by nothing.",
-      "currency": "TND",
-      "cost": "0.010",
-      "profit_rate": "-200",
-      "vat_rate": "5",
-      "expected": {
-        "net": "-0.010",
-        "vat": "-0.001",
-        "gross": "-0.011"
       }
     },
     {

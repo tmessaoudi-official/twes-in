@@ -274,7 +274,7 @@ final class MoneyTest extends TestCase
         $tnd = Currency::of('TND');
 
         $this->expectException(\LogicException::class);
-        $this->expectExceptionMessage('cannot be negative');
+        $this->expectExceptionMessage('must be between 0 and');
 
         Money::of('2.000', $tnd)->ratioTo(Money::of('3.000', $tnd), -1, RoundingMode::HalfUp);
     }

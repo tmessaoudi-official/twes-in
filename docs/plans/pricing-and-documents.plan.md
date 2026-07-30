@@ -21,6 +21,22 @@ F1, F2, F3 and the charge model are not. Read `build-waves.plan.md` for exactly 
   superseded by this entry.
 - [2026-07-29 14:30] RULED **exchange rate is captured at document date and stored with the document**,
   never re-derived. An issued invoice's total must never change because a rate moved.
+- [2026-07-30 11:40] RULED **a profit rate is pure arithmetic; a NEGATIVE SELLING PRICE is refused at the
+  aggregate** (developer accepting the recommendation, after round 12 found a −200% rate enshrined in the
+  cross-tier fixture with nothing ruling it). Three parts, because the question had three:
+  **(a)** `Rate` keeps no bound at −100%. A rate is a dimensionless number and `Rate` is the wrong place to
+  encode what a *document* may contain — the same reason `Money::ratioTo()` returns a string rather than a
+  `Money`. **(b)** `ProductPricing` REFUSES a derived net price below zero. A product is not sold at negative
+  money; `Rate`'s own justification for negative rates scopes them to "selling below cost — clearance, a loss
+  leader", which is the open interval (−100%, 0). Round 12 showed the domain constructing net −0.010 from a
+  −200% rate and persisting it, with no guard anywhere. **(c)** The negative-tie vector MOVES TO WAVE 2's
+  Credit, where a negative amount is the legitimate shape rather than an accident.
+  **Owed, and recorded rather than dropped:** a negative tie is intrinsically a statement about negative
+  amounts, so removing the vector removes the only cross-tier pin on `Math.round(-0.5) === -0` in JavaScript and
+  Dart's half-away-from-zero. That discriminator is **Wave 2's obligation**, listed in its scope in
+  `build-waves.plan.md`. Until then no tier is pinned against it, which is a gap with a name and an owner rather
+  than a silent one.
+
 - [2026-07-29 14:30] RULED **merging invoices: drafts only.** Anything carrying a real invoice number
   cannot be merged in either direction — legally an issued numbered invoice is undone only by a credit
   note, never deleted. A merge touching a numbered invoice is a P0 for `domain-correctness-reviewer`.

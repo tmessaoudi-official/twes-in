@@ -500,4 +500,99 @@ final class ProductPricingTest extends TestCase
             self::assertSame('999999999999999.999', $onTheBoundary->netPrice($mode)->amount(), $mode->name);
         }
     }
+    /**
+     * A rate that derives a NEGATIVE selling price is refused — developer ruling, 2026-07-30.
+     *
+     * `Rate` deliberately keeps no bound at −100%: a rate is a dimensionless number, and `Rate` is the wrong
+     * place to encode what a *document* may contain — the same reason `Money::ratioTo()` returns a string
+     * rather than a `Money`. The rule belongs here, at the aggregate that decides what a product costs and
+     * sells for, because **a product is not sold at negative money.**
+     *
+     * `Rate`'s own justification for permitting negative rates scopes them to "selling below cost — clearance,
+     * a loss leader", which is the open interval (−100%, 0). Round 12 found the domain constructing and
+     * persisting a net of −0.010 from a −200% rate with no guard anywhere, after a −200% rate reached the
+     * cross-tier fixture as a side effect of manufacturing a negative rounding tie. A negative gross on a
+     * document line is a **credit note**, not a sale, and that is a tax-document distinction rather than a
+     * presentation one.
+     *
+     * Refused at the EDIT, like the representability guard beside it: the alternative is an aggregate that
+     * constructs, persists, and then reports a negative price on every read of a product page.
+     */
+    #[DataProvider('ratesThatDeriveANegativeNetPrice')]
+    public function testARateThatDerivesANegativeSellingPriceIsRefused(string $cost, string $rate): void
+    {
+        $this->expectException(InvalidCost::class);
+        $this->expectExceptionMessageMatches('/negative selling price|not sold at negative/i');
+
+        ProductPricing::fromProfitRate(
+            Money::of($cost, Currency::of('TND')),
+            Rate::fromPercentage($rate),
+        );
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function ratesThatDeriveANegativeNetPrice(): iterable
+    {
+        yield 'the fixture value round 12 found unruled' => ['0.010', '-200'];
+        yield 'just past the boundary' => ['100.000', '-100.0000000001'];
+        yield 'far past it' => ['100.000', '-1000000'];
+    }
+
+    /**
+     * And the BOUNDARY is accepted in both directions, so the guard refuses negatives rather than "loss".
+     *
+     * Exactly −100% derives a net of zero, which is free-of-charge and legitimate — a sample, a warranty
+     * replacement, a promotional line. A guard written `<= 0` or `isNegative() || isZero()` would refuse it,
+     * and refusing a zero-price line would be discovered by a user rather than by this suite.
+     */
+    public function testExactlyMinusOneHundredPercentIsAcceptedBecauseZeroIsNotNegative(): void
+    {
+        $pricing = ProductPricing::fromProfitRate(
+            Money::of('100.000', Currency::of('TND')),
+            Rate::fromPercentage('-100'),
+        );
+
+        self::assertSame('0.000', $pricing->netPrice(RoundingMode::HalfUp)->amount());
+    }
+
+    /**
+     * The same rule reached through `withProfitRate()` and `withCost()`, not only the factory.
+     *
+     * A guard on one of a class of entry points is the defect this repository records more than any other —
+     * three times in CLAUDE.md § Gotchas, and it happened again here: guarding the DERIVED price left the
+     * TYPED one wide open, so `fromNetPrice($cost, -5.000)` constructed and persisted a product sold at
+     * negative money. Two guards are needed, one per authorship, and this case proves both fire.
+     */
+    public function testEveryEntryPointRefusesADerivedNegativeSellingPrice(): void
+    {
+        $tnd = Currency::of('TND');
+        $sound = ProductPricing::fromProfitRate(Money::of('100.000', $tnd), Rate::fromPercentage('30'));
+
+        $caught = 0;
+
+        try {
+            $sound->withProfitRate(Rate::fromPercentage('-200'));
+        } catch (InvalidCost) {
+            ++$caught;
+        }
+
+        try {
+            // The TYPED price, which is the door the derived-price guard cannot see: a price-authored instance
+            // stores what the user entered and derives nothing, so it never reaches fromProfitRate()'s check.
+            // My first version of this case used withCost() on a -90% pair, which stays POSITIVE at a larger
+            // cost — a wrong test that would have "passed" once the real gap was closed elsewhere.
+            ProductPricing::fromNetPrice(Money::of('100.000', $tnd), Money::of('-5.000', $tnd));
+        } catch (InvalidCost) {
+            ++$caught;
+        }
+
+        try {
+            $sound->withNetPrice(Money::of('-1.000', $tnd));
+        } catch (InvalidCost) {
+            ++$caught;
+        }
+
+        self::assertSame(3, $caught, 'Every entry point must refuse a negative selling price, typed or derived.');
+    }
+
 }

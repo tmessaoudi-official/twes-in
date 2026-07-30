@@ -45,6 +45,27 @@ final class InvalidCost extends \InvalidArgumentException
      * individually satisfied says nothing about their product: a 0.001 cost with a 99999999 rate is two
      * perfectly storable values whose product needs sixteen integer digits.
      */
+    /**
+     * The derived selling price is below zero — developer ruling, 2026-07-30.
+     *
+     * Separate from {@see self::netPriceWouldNotBeRepresentable()} because the remedies are opposite: that one
+     * means the number is too large to store, this one means the number is legal arithmetic and an illegal
+     * *price*. A negative gross on a document line is a credit note, which is its own document type, so the
+     * message points there rather than suggesting a smaller rate.
+     */
+    public static function netPriceWouldBeNegative(Money $cost, string $rate, string $netPrice): self
+    {
+        return new self(\sprintf(
+            'A cost of %s at a profit rate of %s%% derives a selling price of %s. A product is not sold at '
+            . 'negative money: a negative selling price is a CREDIT NOTE, which is its own document type, not '
+            . 'a product priced below zero. A rate below -100%% is what produces this — rates between -100%% '
+            . 'and 0 are legitimate (clearance, a loss leader) and exactly -100%% is free of charge.',
+            $cost->amount(),
+            $rate,
+            $netPrice,
+        ));
+    }
+
     public static function netPriceWouldNotBeRepresentable(
         \Twes\Domain\Money\Money $cost,
         \Twes\Domain\Pricing\Rate $profitRate,
