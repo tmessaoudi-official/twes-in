@@ -25,6 +25,23 @@ namespace Twes\Domain\Document;
  */
 final readonly class NumberPattern
 {
+    /**
+     * The widest a document number may be padded to — bounded at BOTH ends, which round 16 found it was not.
+     *
+     * `padded()` refused a width below 1 and accepted anything up to `PHP_INT_MAX`, while
+     * `build-waves.plan.md` specifies `number_pattern_width smallint` and described that column as "matching
+     * `NumberPattern::padded()`'s own refusal" — true of the lower bound and false of the upper. That is the
+     * domain-admits-what-persistence-rejects mismatch the `document.number integer -> bigint` fix closed one row
+     * earlier in the same table.
+     *
+     * Twenty, because a document number is read aloud, typed into a bank transfer and printed in a column: at
+     * twenty digits a tenant could number every invoice in recorded history and still not reach it, and it fits
+     * `smallint` with room to spare. Like `DocumentLine::MAX_SCALE` this is a **derived** bound rather than a
+     * ruled one — if the developer needs more it is one constant and one column type, and the point is that the
+     * bound exists and the column can be derived from it.
+     */
+    public const int MAX_WIDTH = 20;
+
     private function __construct(private int $width) {}
 
     /**
@@ -41,6 +58,19 @@ final readonly class NumberPattern
                 'A number pattern width must be at least 1, got %d. A width of zero would render every '
                 . 'document number unpadded while appearing to be configured.',
                 $width,
+            ));
+        }
+
+        // AND AT THE TOP, see MAX_WIDTH: the persisted column is a `smallint`, so a width the domain accepts and
+        // the column cannot store is the same mismatch `document.number` had.
+        if ($width > self::MAX_WIDTH) {
+            throw new \InvalidArgumentException(\sprintf(
+                'A number pattern width of %d exceeds the maximum of %d. A document number is read aloud, typed '
+                . 'into a bank transfer and printed in a column; at %d digits a tenant could number every '
+                . 'invoice in recorded history without reaching it.',
+                $width,
+                self::MAX_WIDTH,
+                self::MAX_WIDTH,
             ));
         }
 

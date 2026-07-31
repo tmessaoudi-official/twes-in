@@ -98,7 +98,8 @@
         <env name="TWES_TEST_DB_MIXED_CASE_ROLE" value="twesMixedCase"/>
         <env name="TWES_TEST_DB_MIXED_CASE_PASSWORD" value="twesMixedCase"/>
         <!--
-            REQUIRED. Nine tests build privileged fixtures with it, and four are the only proof that a
+            REQUIRED. Many tests build privileged fixtures with it. Derive the count with
+            grep -c 'self::superuserConnection()', and four are the only proof that a
             security fix is load-bearing (the 'SET'-vs-'MEMBER' and pg_roles-vs-regrole mutants, and round
             15's rule and event-trigger carriers). Absent or wrong =&gt; the suite FAILS, not skips.
         -->

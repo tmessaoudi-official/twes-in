@@ -61,8 +61,10 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
 - [2026-07-31 09:00] RECORDED, because round 13 found none of it in any Decisions Log — Wave 1's pure domain
   landed at `b39bdb4` carrying five decisions that existed only in a commit message: **(a)** discounts and
-  inclusive-vs-exclusive tax are DEFERRED, because no fixture specifies them and inventing money numbers is the
-  one thing this domain must not do; **(b)** `DocumentState` is a CLOSED set of Draft/Issued/Cancelled —
+  inclusive-vs-exclusive tax are DEFERRED **to WAVE 2** (destination added round 16 — this entry named none, which
+  is the omission the Wave 1 prose was rewritten to stop criticising-without-fixing, and Phase 0 mandates reading
+  this log), because no fixture specifies them and inventing money numbers is the one thing this domain must not
+  do; **(b)** `DocumentState` is a CLOSED set of Draft/Issued/Cancelled —
   `Sent`/`Partial`/`Paid`/`Overdue` are Wave 3 and their transitions are ruled nowhere; **(c)** a negative
   quantity AND a negative unit price are both refused on a line, because a credit is its own document type
   (EN 16931 type code 381, not 380); **(d)** a negative fixed charge is refused, because a reduction is a
@@ -674,10 +676,10 @@ reach for one.
 **The wiring half that "a RULE, not a wiring item" denied:** detection alone is the wrong shape here, because
 `assertNoLargeObjectIsReachable()` throws on ANY row and is composed into acquisition — so one request reaching
 `lo_from_bytea` permanently refuses **every subsequent acquisition** until a privileged role unlinks the object.
-A permanent object on the hot path is an outage, not a guard. So the CAPABILITY is revoked as well, by the four
+A permanent object on the hot path is an outage, not a guard. So the CAPABILITY is revoked as well, by the five
 `REVOKE EXECUTE` statements now in `infra/README.md` § "No large objects, ever". `lo_import` is deliberately not
 among them — it ships with a non-NULL `proacl`, so PUBLIC never held it — while the detector still checks all
-five, because a cluster where somebody granted it is exactly what a checker is for.
+six, because a cluster where somebody granted it is exactly what a checker is for.
 
 **NUMBERING'S ALLOCATOR LANDED, 2026-07-31, AND ITS CONTRACT IS THE PART THAT MATTERS.** Wave 1's scope line
 above reads "numbering with per-tenant counters", and until round 14 only the *rendering* half existed:
@@ -808,7 +810,7 @@ migration has nothing to invent:
 | `document_charge.label` | non-null `text` | trimmed on store by `FixedCharge` |
 | `document_charge.amount` | non-null `NUMERIC(19,4)` | a document-scope charge, never in a VAT base |
 | `document_line.document_id` / `document_charge.document_id` | non-null, `(company_id, document_id)` FK | **omitted at round 15 along with `position` below.** The FK is composite because a single-column one lets one tenant delete another's rows — the rule already stated for every table in this wave, which is exactly why leaving these two rows out was a gap rather than an oversight |
-| `document_line.position` / `document_charge.position` | non-null `smallint`, `UNIQUE (company_id, document_id, position)` | **LOAD-BEARING, and it had no column** (round 15). `Invoice::withoutLine(int $position)` addresses lines BY POSITION and `removeAt()` re-indexes to keep them contiguous; `CurrencyMismatch::inContext('document line %d')` reports one to a client. Without a persisted order, positions are not stable across a database round-trip — so "remove line 2" issued against a rehydrated document can remove a DIFFERENT line, which is precisely the stale-page hazard `removeAt()`'s own comment says it exists to prevent |
+| `document_line.position` / `document_charge.position` | non-null `smallint`, `UNIQUE (company_id, document_id, position)`, **and `Invoice` owes a `MAX_LINES` constant it does not have** (round 16) | **LOAD-BEARING, and it had no column** (round 15). `Invoice::withoutLine(int $position)` addresses lines BY POSITION and `removeAt()` re-indexes to keep them contiguous; `CurrencyMismatch::inContext('document line %d')` reports one to a client. Without a persisted order, positions are not stable across a database round-trip — so "remove line 2" issued against a rehydrated document can remove a DIFFERENT line, which is precisely the stale-page hazard `removeAt()`'s own comment says it exists to prevent |
 
 **AND THE GAPLESS COUNTER TABLE, which the numbering feature requires and which this table omitted** (round 15
 — the preamble above says the point of this section is that "the wave writing the first migration has no record
@@ -823,8 +825,13 @@ that the column exists", and the counter existed only in prose in three places):
 
 **And the per-tenant `NumberPattern`, plus the per-company `vat_rounding_point` DEFAULT** — both named as persisted
 configuration and neither specified (round 15). They belong on the company/tenant settings table that Wave 1 must
-create anyway: `number_pattern_width` non-null `smallint CHECK (>= 1)` matching `NumberPattern::padded()`'s own
-refusal, and `default_vat_rounding_point` non-null enum over `VatRoundingPoint`'s backed values. The per-DOCUMENT
+create anyway: `number_pattern_width` non-null `smallint CHECK (>= 1)` — whose **lower** bound matches
+`NumberPattern::padded()`'s own refusal and whose **upper** bound is now
+`NumberPattern::MAX_WIDTH` (20). Round 16 found this and `position` to be two NEW instances of the
+domain-admits-what-persistence-rejects mismatch, added in the same table that fixed one for `document.number`:
+`padded()` accepted any width up to `PHP_INT_MAX`. The constant closes this one; `position` still owes an
+`Invoice::MAX_LINES` — and
+`default_vat_rounding_point` non-null enum over `VatRoundingPoint`'s backed values. The per-DOCUMENT
 snapshot in the table above is separate and both are needed: a company changing its default must not restate a
 document a client already holds.
 
@@ -856,7 +863,17 @@ negative selling price — so the only legitimate home for one is a **Credit**, 
 tier is pinned against `Math.round(-0.5) === -0` in JavaScript or Dart's half-away-from-zero, which
 `docs/spec/pricing-vectors.json` § `conventions.rounding` names as *the* cross-tier discriminator.
 
-**In:** Quote · Credit · conversion (quote → invoice) · the shared document abstraction. **Full-set
+**In:** Quote · Credit · conversion (quote → invoice) · the shared document abstraction · **discounts and
+inclusive-vs-exclusive tax**.
+
+**DISCOUNTS AND INCLUSIVE-VS-EXCLUSIVE TAX ARRIVE HERE FROM WAVE 1** (assigned round 15, recorded here at
+round 16 — the assignment was written in Wave 1's section and this one was not touched, so the destination
+had no record of the obligation. That is the same omission the negative-tie vector's own paragraph below
+exists to prevent, and it means a Wave 2 session could have converged a MAXIMAL panel reading only its own
+`In:` list). **Neither can be built without worked examples from the developer**: for discounts, whether a
+line discount reduces the VAT base and how a document-level discount is allocated across rate groups; for
+inclusive tax, a worked case showing the extraction. Inventing those numbers is precisely what this domain
+exists not to do, so they are BLOCKED rather than merely owed — see § "Awaiting the developer". **Full-set
 coverage is the theme:** anything true of Invoice must be true of Quote and Credit, or explicitly not.
 
 **Acceptance:** a calculation change applied to one document type is proven applied to all three — the

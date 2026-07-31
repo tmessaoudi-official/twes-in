@@ -100,7 +100,21 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     public const string TENANT_COLUMN = 'company_id';
 
     /**
-     * The large-object WRITE entry points. A `public const` rather than a local array, so a test can generate
+     * The large-object **CREATION** entry points — deliberately not "write entry points", which is what this said
+     * until round 16 and which is short by two.
+     *
+     * `lo_truncate` and `lo_truncate64` are writes, both `PUBLIC`-granted, and both deliberately absent: neither
+     * can CREATE a large object, so with the six below revoked there is nothing for them to truncate. The list is
+     * complete for the capability this method's name and message actually claim, and the wording now says which
+     * capability that is. Round 16 filed the over-claim rather than a breach, correctly — in a docblock whose whole
+     * security argument is exhaustive enumeration with a stated reason per exclusion, "writes only" followed by an
+     * incomplete list of writes is the `PriceCalculator` shape § Gotchas records.
+     *
+     * [Verified on PostgreSQL 18.4: the full `lo_*` write surface is these six plus `lo_truncate`/`lo_truncate64`;
+     * `lo_open`, `lo_lseek*`, `lo_tell*`, `lo_close` and `lo_unlink` are not writes, `lo_get`/`loread` are reads,
+     * and `lo_export` writes a FILE and ships `{postgres=X/postgres}`.]
+     *
+     * A `public const` rather than a local array, so a test can generate
      * one case per entry instead of pinning one instance of the rule.
      *
      * Writes only. `lo_get`/`loread` are reads, and a connection that cannot create a large object has nothing
@@ -1996,13 +2010,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * missing: it stated a rule and offered no way to enforce it. [Verified: the restricted runtime role could
      * call `lo_create`, `lo_from_bytea`, `lo_get`, `lo_put`, `lo_unlink` and `lowrite` — all six.]
      *
-     * PostgreSQL leaves `proacl` NULL on FOUR of the five checked here — `lo_create`, `lo_from_bytea`, `lo_put`
+     * PostgreSQL leaves `proacl` NULL on FIVE of the six checked here — `lo_creat`, `lo_create`, `lo_from_bytea`, `lo_put`
      * and `lowrite` — and a NULL `proacl` means "EXECUTE to PUBLIC", so a fresh cluster grants them to the
      * runtime role. **`lo_import` is the exception and the docblock used to lump it in with the rest:** it ships
      * as `{postgres=X/postgres}`, so PUBLIC never held it. [Verified on PostgreSQL 18.4:
      * `has_function_privilege('twes', lo_import, 'EXECUTE')` is false on an untouched cluster while the other
-     * four are true.] It stays in the DETECTOR's list regardless — a cluster where somebody granted it is
-     * precisely what a checker is for — so the detector covering five while the remedy revokes four is correct
+     * five are true.] Round 16 found this paragraph still saying FOUR of FIVE after `lo_creat` was added at the
+     * constant and in `infra/README.md` — a count left stale beside the thing it counts, with a `[Verified]` on it. It stays in the DETECTOR's list regardless — a cluster where somebody granted it is
+     * precisely what a checker is for — so the detector covering six while the remedy revokes five is correct
      * rather than a discrepancy, which is the sort of off-by-one that otherwise reads as an oversight.
      *
      * The remedy is `infra/README.md` § "No large objects, ever", which now actually contains it: round 14

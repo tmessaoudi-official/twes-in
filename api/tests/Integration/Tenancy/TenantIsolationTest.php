@@ -3478,8 +3478,9 @@ final class TenantIsolationTest extends TestCase
      * The superuser connection the privileged fixtures need. **FAILS rather than skipping when it is absent.**
      *
      * It returned null and every caller called `markTestSkipped()` until round 15, and `CLAUDE.md` blessed the
-     * credential as "optional and used only in one test". Both halves were wrong and dangerously so: NINE test
-     * methods gate on it, and among them are the two mutants that make round 14's `'SET'`-versus-`'MEMBER'` and
+     * credential as "optional and used only in one test". Both halves were wrong and dangerously so: MANY test
+     * methods gate on it — no count is written here, because it has been wrong in three successive rounds;
+     * `grep -c 'self::superuserConnection()' ` this file, and among them are the two mutants that make round 14's `'SET'`-versus-`'MEMBER'` and
      * `pg_roles`-versus-`regrole` fixes load-bearing, plus the two that pin round 15's rule and event-trigger
      * carriers. In a CI without this credential the whole suite reports `OK` while four security controls are
      * unexercised — and round 15 demonstrated the `'SET'`→`'MEMBER'` mutant surviving in exactly that shape.
@@ -3705,6 +3706,63 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * **A rule-bearing table the CALLER OWNS is NOT refused** — the escape, and the half round 16 found unpinned.
+     *
+     * The rule arm refuses a rule-bearing relation unless `owned_by_caller`, and no test created one, so the
+     * mutant that deletes that escape survived: every acquisition would then refuse unconditionally the moment a
+     * tenant-owned table carried a rule, which is the whole-pool outage shape round 14 shipped twice.
+     *
+     * The escape is sound, and the reason is the same one the view arm gives: a rule rewrites into its host
+     * relation's owner, so when that owner IS this connection, evaluating as the owner and evaluating as the
+     * caller are the same evaluation. Verified live — a gateway owned by the runtime role lands exactly the
+     * caller's own row, where the exempt-owned twin landed both tenants'.
+     */
+    public function testARuleBearingTableOwnedByTheCallerIsNotRefused(): void
+    {
+        $granter = self::superuserConnection();
+        $runtimeRole = (string) getenv('TWES_TEST_DB_USER');
+        $gate = 'caller_owned_rule_probe';
+
+        try {
+            $granter->exec(\sprintf('CREATE TABLE public.%s (a int)', $gate));
+            $granter->exec(\sprintf('CREATE RULE %s_ins AS ON INSERT TO public.%s DO INSTEAD NOTHING', $gate, $gate));
+            $granter->exec(\sprintf('ALTER TABLE public.%s OWNER TO %s', $gate, $runtimeRole));
+
+            // BOTH preconditions, or the case passes for the wrong reason: the rule must exist (otherwise the arm
+            // is not reached at all) AND the caller must own it (otherwise this is just a refusal we did not see).
+            $shape = $this->connection->query(\sprintf(
+                "SELECT (SELECT count(*) FROM pg_rewrite w WHERE w.ev_class = c.oid "
+                . "AND w.rulename <> '_RETURN') AS rules, "
+                . '(SELECT r.oid FROM pg_roles r WHERE r.rolname = current_user) = c.relowner AS mine '
+                . "FROM pg_class c WHERE c.relname = '%s'",
+                $gate,
+            ));
+            self::assertNotFalse($shape);
+            /** @var array{rules: int|string, mine: bool|string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            self::assertSame(1, (int) $flags['rules'], 'the probe must carry a user rule');
+            self::assertContains($flags['mine'], [true, 't', '1'], 'and this connection must own it');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNull(
+                $caught,
+                'A rule on a table this connection OWNS is not an escalation: the rewrite runs as the owner, '
+                . 'which is this connection. Refusing it would make every acquisition fail the moment a '
+                . 'tenant-owned table carried a rule.',
+            );
+        } finally {
+            $granter->exec(\sprintf('DROP TABLE IF EXISTS public.%s CASCADE', $gate));
+        }
+    }
+
+    /**
      * **An AGGREGATE support function and an OPERATOR-CLASS support function are inspected even with EXECUTE
      * revoked — the thirteenth carrier, round 16 P0.**
      *
@@ -3784,7 +3842,7 @@ final class TenantIsolationTest extends TestCase
         if (!\is_string($dsn) || !\is_string($user) || '' === $user) {
             self::fail(
                 'TWES_TEST_DSN, TWES_TEST_DB_SUPERUSER and TWES_TEST_DB_SUPERUSER_PASSWORD must all be set. '
-                . 'Nine tests need a superuser to build privileged fixtures, and four of them are the only '
+                . 'Many tests need a superuser to build privileged fixtures, and four of them are the only '
                 . 'evidence that a security fix is load-bearing. Skipping them reports OK while those controls '
                 . 'do not run, which is the outcome this suite already refuses for an unreachable database.',
             );

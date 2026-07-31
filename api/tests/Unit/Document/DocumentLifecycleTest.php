@@ -353,4 +353,31 @@ final class DocumentLifecycleTest extends TestCase
         );
     }
 
+    /**
+     * `NumberPattern` is bounded at BOTH ends, and the upper bound has a committed value.
+     *
+     * Round 16: `padded()` refused a width below 1 and accepted up to `PHP_INT_MAX`, while the plan specifies a
+     * `smallint` column described as "matching `padded()`'s own refusal" — true of one end only. The value is
+     * asserted exactly, because the column is derived from it: changing one without the other reinstates the
+     * mismatch.
+     */
+    public function testANumberPatternWidthIsBoundedAtBothEnds(): void
+    {
+        self::assertSame(20, NumberPattern::MAX_WIDTH, 'The smallint column is derived from this; change both.');
+
+        // Both boundaries ACCEPTED, so the guards refuse excess rather than precision.
+        self::assertSame(1, NumberPattern::padded(1)->width());
+        self::assertSame(NumberPattern::MAX_WIDTH, NumberPattern::padded(NumberPattern::MAX_WIDTH)->width());
+
+        foreach ([0, -1, NumberPattern::MAX_WIDTH + 1, \PHP_INT_MAX] as $refused) {
+            try {
+                NumberPattern::padded($refused);
+
+                self::fail(\sprintf('A width of %d must be refused.', $refused));
+            } catch (\InvalidArgumentException $expected) {
+                self::assertNotSame('', $expected->getMessage());
+            }
+        }
+    }
+
 }

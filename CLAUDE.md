@@ -543,12 +543,17 @@ NOLOGIN probe roles" two rounds after the set grew — so a CI provisioned from 
 variables and silently skipped both of the mutants that make round 14's tenancy fixes load-bearing.
 
 **`TWES_TEST_DB_SUPERUSER` and its password are REQUIRED, and were wrongly documented here as optional
-"used only in one test" until round 15.** Nine tests need a superuser to build privileged fixtures, and four
-of them are the *only* evidence that a security fix is load-bearing — the `'SET'`-versus-`'MEMBER'` mutant,
+"used only in one test" until round 15.** MANY tests need a superuser to build privileged fixtures — derive the count with
+`grep -c 'self::superuserConnection()' api/tests/Integration/Tenancy/TenantIsolationTest.php`, because this number
+has been written as "one", "nine" and "eleven" in three successive rounds and was stale each time. Four of them
+are the *only* evidence that a security fix is load-bearing — the `'SET'`-versus-`'MEMBER'` mutant,
 the `pg_roles`-versus-`regrole` mutant, and round 15's rule and event-trigger carriers. So a missing or wrong
 superuser credential now **fails** rather than skipping, for the identical reason the next sentence gives about
-an unreachable database. [Verified: removing the two `<env>` entries turns `OK (98 tests)` into
-`Tests: 98, Failures: 14`, where it previously reported `OK, but some tests were skipped!`.]
+an unreachable database. [Verified: removing the two `<env>` entries turns a green integration run into
+`Failures: 26`, where it previously reported `OK, but some tests were skipped!`. **No absolute test count is
+written here** — the earlier version of this citation said `OK (98 tests)` / `Failures: 14`, which was accurate
+when written and was invalidated by two later commits of the same diff, so round 16 filed it as a false
+`[Verified]`. A citation whose numbers move with the suite has to state the DIRECTION, not the totals.]
 
 The defaults in `api/phpunit.xml` are throwaway local values. With no database reachable the integration suite
 **fails** rather than passing — deliberately, since a green run that silently skipped the tenancy proof is the
