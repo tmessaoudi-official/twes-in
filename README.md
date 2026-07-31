@@ -6,6 +6,9 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 
 > **Status: early.** Wave 0 has landed but is **not yet certified** — the `Money` value object, the
 > profit-rate arithmetic, the multi-tenant isolation seam, and the architecture/licensing gates, under `api/`.
+> **Wave 1's pure domain has landed too**: the document calculation kernel (line nets, VAT grouped by rate,
+> fixed charges, totals), the generic Draft→Issued→Cancelled lifecycle, per-type numbering, and the `Invoice`
+> aggregate — all framework-free, which is why they could land while Composer is blocked.
 > **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
 > `flutter create`), each green on its own toolchain, and each carrying the branding seam and — for Flutter —
 > the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or transport**
@@ -83,7 +86,7 @@ session. An unbound connection sees **nothing**, not everything. See
 | `docs/plans/build-waves.plan.md` | The wave-by-wave build plan and what is deliberately out of scope. |
 | `docs/plans/pricing-and-documents.plan.md` | Profit-rate pricing, delivery notes, and the generic charge model. |
 | `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
-| `api/` | The Symfony API. **Wave 0 landed**: `Domain/` (money, pricing), `Infrastructure/` (tenancy, clock, ids), four test suites. No HTTP layer or Doctrine yet. |
+| `api/` | The Symfony API. **Wave 0 landed**: `Domain/` (money, pricing, documents), `Infrastructure/` (tenancy, clock, ids), four test suites. No HTTP layer or Doctrine yet. |
 | `admin/` · `mobile/` · `infra/` | Angular admin (Wave 8), Flutter client (Wave 11), deployment written from scratch (Wave 12). Each README lists the tests and enforcers it owes as gate conditions. |
 | `scripts/gates/` | The architecture, licensing and shell-syntax gates, plus their own test suite. `ls` it for the list — a count written in prose drifts. |
 | `docs/spec/pricing-vectors.json` | The pricing arithmetic every tier tests against, so three implementations cannot drift. |

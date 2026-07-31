@@ -47,7 +47,7 @@ disallowed-tools: AskUserQuestion
      (Android, iOS, Linux, Windows, macOS, Web — its Web build is a SECOND admin interface alongside
      the Angular one), over Postgres, with Docker Compose for local
      dev. **Wave 0 landed on 2026-07-29**, so there IS a source tree now — but only part of one, and
-     the shape matters: `api/src/Domain/` (money, pricing — framework-free, zero Composer
+     the shape matters: `api/src/Domain/` (money, pricing, documents — framework-free, zero Composer
      dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,
      UUIDv7), four PHPUnit suites under `api/tests/`, and the gates in `scripts/gates/` with their own
      `test-gates.sh`. **Still absent:** the Symfony application, Doctrine, PHPStan and deptrac (every

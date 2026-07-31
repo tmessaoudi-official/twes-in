@@ -4,7 +4,8 @@ The full build, sliced into waves, with a **certification review by the three le
 boundary** (developer ruling, 2026-07-29). Written before Wave 1 starts so the shape is clear and
 scope arrives deliberately rather than by accident.
 
-**Wave 0 has landed in part; everything from Wave 1 on is unimplemented.** Read
+**Wave 0 has landed in part. Wave 1's PURE DOMAIN has landed too** — the calculation kernel, the generic
+document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Domain/Document/`. **Everything else from Wave 1 on is unimplemented**, and Wave 1's persistence, migrations, schema gate and HTTP surface remain blocked on Composer. Amended at round 13, which found this sentence and the one in Wave 0's remainder section still saying Wave 1 had not started — in a file the landing commit itself edited. Read
 `reimplementation-strategy.plan.md` first — it holds the licensing invariants and the pinned stack. Note
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
@@ -58,6 +59,19 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-29 13:45] AGREED: certification tier per wave is **MAXIMAL** for any wave touching money,
   tax, tenancy, migrations, payments or e-invoicing — which is most of them. Documentation-only
   changes between waves get a single pass. See `CLAUDE.md` § "Certification ladder".
+- [2026-07-31 09:00] RECORDED, because round 13 found none of it in any Decisions Log — Wave 1's pure domain
+  landed at `b39bdb4` carrying five decisions that existed only in a commit message: **(a)** discounts and
+  inclusive-vs-exclusive tax are DEFERRED, because no fixture specifies them and inventing money numbers is the
+  one thing this domain must not do; **(b)** `DocumentState` is a CLOSED set of Draft/Issued/Cancelled —
+  `Sent`/`Partial`/`Paid`/`Overdue` are Wave 3 and their transitions are ruled nowhere; **(c)** a negative
+  quantity AND a negative unit price are both refused on a line, because a credit is its own document type
+  (EN 16931 type code 381, not 380); **(d)** a negative fixed charge is refused, because a reduction is a
+  discount with a different application order; **(e)** an empty document refuses to GUESS a currency, because
+  defaulting one would make a EUR company's new invoice silently three-decimal. Plus one DERIVED rather than
+  ruled, flagged as such in the code: issuing an EMPTY invoice is refused, because issuing consumes a sequence
+  number permanently and would burn a legal document number unrecoverably — a single condition to delete if the
+  developer disagrees.
+
 - [2026-07-30 03:20] RULED: **R8-16's remedy is an INFRA rule, not app code — any GET under the
   `fontFallbackBaseUrl` prefix returns 200 with a valid font instead of 404.** Measured rather than reasoned:
   with the prefix 404ing, a release web build rendering Japanese, Hebrew and an emoji issued **712 same-origin
@@ -267,8 +281,11 @@ returns 403 and `composer install` cannot run (`CLAUDE.md` § Gotchas has the ve
 - **PHPStan and deptrac**, whose phars ship only from GitHub releases.
 
 `api/composer.lock` is committed and fully pinned, so the next session with reachable dist URLs runs
-`composer install` and continues. These items are **Wave 0's remainder, not Wave 1's scope** — Wave 1
-must not start until they land, because the calculation kernel needs persistence to be meaningful.
+`composer install` and continues. These items are **Wave 0's remainder, not Wave 1's scope** — and
+**Wave 1's PERSISTENCE must not start until they land.** Amended at round 13: this read "Wave 1 must not start",
+and Wave 1's pure domain shipped at `b39bdb4` while these items are still blocked. The framework-free domain
+needs nothing installed, which is the architecture paying off rather than a workaround; what needs persistence to
+be meaningful is the migration, the schema gate and the repository wiring — not the arithmetic.
 
 Two scope changes made deliberately rather than silently:
 
@@ -557,7 +574,7 @@ missing its header. **Every one of those four is a test that must be watched fai
 cross-tenant reads — are decided here. `CLAUDE.md` § Gotchas records both as day-zero rulings
 precisely because they are unfixable later.
 
-## Wave 1 — Client & the invoice core
+## Wave 1 — Client & the invoice core — **PURE DOMAIN LANDED, 2026-07-31; persistence BLOCKED**
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, discounts, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
@@ -662,6 +679,13 @@ security bypassed, so a single-column FK lets one tenant delete another's rows.
 edited.
 
 ## Wave 2 — Quotes, credits & the shared document machinery
+
+**WAVE 2 OWES THE NEGATIVE-TIE VECTOR** (developer ruling 2026-07-30, recorded here at round 13, which found
+`pricing-and-documents.plan.md` claiming it was "listed in its scope in `build-waves.plan.md`" when it was not).
+A negative rounding tie is intrinsically a statement about negative amounts, and `ProductPricing` now refuses a
+negative selling price — so the only legitimate home for one is a **Credit**, which lands here. Until it does, no
+tier is pinned against `Math.round(-0.5) === -0` in JavaScript or Dart's half-away-from-zero, which
+`docs/spec/pricing-vectors.json` § `conventions.rounding` names as *the* cross-tier discriminator.
 
 **In:** Quote · Credit · conversion (quote → invoice) · the shared document abstraction. **Full-set
 coverage is the theme:** anything true of Invoice must be true of Quote and Credit, or explicitly not.

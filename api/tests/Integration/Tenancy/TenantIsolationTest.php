@@ -2797,6 +2797,79 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
+    /**
+     * ONE connection's temporary materialised view must not refuse EVERY OTHER connection.
+     *
+     * `rlsExemptObjectViolations()` refuses kind `'m'` on kind alone — correctly, since a matview carries no
+     * row-level security — and the object query had no persistence filter, so another backend's `pg_temp`
+     * matview entered the result set and made every other acquisition throw, naming an object it can neither
+     * read nor drop. A whole-pool outage from any single connection, needing only the `TEMPORARY` grant this
+     * fixture already holds. Round 12's own insight, applied in two of three places.
+     *
+     * Two connections, because the bug is invisible from one: a session's OWN temporary relations are the
+     * business of `assertNoSessionLifetimeDataIsMaterialised()`, which reports them separately.
+     */
+    public function testAnotherConnectionsTemporaryMatviewDoesNotRefuseThisOne(): void
+    {
+        $other = self::connect();
+        $other->exec('CREATE MATERIALIZED VIEW pg_temp.pool_outage_probe AS SELECT 1 AS x');
+
+        try {
+            // The precondition: it IS visible in this connection's pg_class, and is NOT in its temp schema.
+            $seen = $this->connection->query(
+                'SELECT (c.relnamespace = pg_my_temp_schema()) AS mine, c.relpersistence::text AS persistence '
+                . "FROM pg_class c WHERE c.relname = 'pool_outage_probe'",
+            );
+            self::assertNotFalse($seen);
+            /** @var array{mine: bool|string, persistence: string}|false $row */
+            $row = $seen->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotFalse($row, 'the other session\'s matview must be visible in pg_class');
+            self::assertNotContains($row['mine'], [true, 't', '1'], 'and NOT in this session\'s temp schema');
+            self::assertSame('t', $row['persistence'], 'temporary');
+
+            // And this connection must still certify. Before the persistence filter this threw.
+            PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+
+            self::assertTrue(true, 'A foreign temp matview must not refuse this connection.');
+        } finally {
+            $other->exec('DROP MATERIALIZED VIEW IF EXISTS pg_temp.pool_outage_probe');
+        }
+    }
+
+    /**
+     * The large-object CAPABILITY is detected, not just its residue.
+     *
+     * Detection alone is the shape of check somebody disables: `assertNoLargeObjectIsReachable()` is composed
+     * into acquisition and throws on ANY row, so one request reaching `lo_from_bytea` — the invoice-PDF path
+     * Wave 4 will write — permanently refuses every subsequent acquisition until a privileged role unlinks it.
+     * The `TEMPORARY` sibling removes the capability; the eighth carrier stated a rule and offered no
+     * enforcement.
+     *
+     * This fixture has NOT revoked the writers, so the guard must refuse here — the same shape as the
+     * `TEMPORARY` case, and for the same reason: a guard that cannot fire in the test environment is a guard
+     * nobody has seen work.
+     */
+    public function testTheLargeObjectWriteCapabilityIsRefusedWhileItExists(): void
+    {
+        $caught = null;
+
+        try {
+            PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateLargeObjects($this->connection);
+        } catch (\RuntimeException $exception) {
+            $caught = $exception;
+        }
+
+        self::assertNotNull(
+            $caught,
+            'PostgreSQL grants EXECUTE on the large-object writers to PUBLIC by default, so an unrevoked '
+            . 'database must be refused. If this passes, either the writers were revoked or the guard reads '
+            . 'nothing.',
+        );
+        // Named individually, so a reader knows which REVOKE to issue rather than being told "large objects".
+        self::assertStringContainsString('lo_from_bytea()', $caught->getMessage());
+        self::assertStringContainsString('REVOKE EXECUTE', $caught->getMessage());
+    }
+
     // ------------------------------------------------------------------ fixture
 
     /** The restricted runtime role — the one every isolation assertion is made against. */

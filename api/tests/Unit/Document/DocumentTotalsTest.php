@@ -27,10 +27,15 @@ use Twes\Domain\Shared\RoundingMode;
 /**
  * The calculation kernel, driven ENTIRELY by the committed cross-tier vectors.
  *
- * Not one expected number in this file is written by hand. Every one is read from
- * `docs/spec/pricing-vectors.json`, because that file is the contract three implementations (PHP,
- * TypeScript, Dart) must agree on, and a test asserting a locally-invented figure would let this tier
- * drift from the other two while staying green — which is the exact failure the fixture exists to prevent.
+ * **Every FIXTURE-DRIVEN expectation is read from `docs/spec/pricing-vectors.json`**, never written here,
+ * because that file is the contract three implementations (PHP, TypeScript, Dart) must agree on and a test
+ * asserting a locally-invented figure would let this tier drift while staying green.
+ *
+ * The claim used to read "not one expected number in this file is written by hand", and round 13 counted six
+ * that are: the fixed-charge differential (19.000 / 0.100 / 119.100) and the empty document (0.000 x3). Both
+ * scenarios have NO case in the fixture, so the absolute claim was also hiding a real coverage gap — nothing
+ * pins whether an empty TND invoice renders `0.000`, `0.00` or `0` when `admin/` implements at Wave 8. The two
+ * non-fixture tests are now named as such, and the gap is recorded rather than concealed by a false absolute.
  *
  * **The rounding ORDER is the thing under test, not the formula.** `pricing-and-documents.plan.md` rules
  * that VAT is grouped by rate and rounded **once per rate group on the summed base**, because that is what
@@ -406,6 +411,83 @@ final class DocumentTotalsTest extends TestCase
             self::documentCases(),
             static fn(array $case): bool => isset($case[0]['subtotal_if_rounded_once_which_is_WRONG']),
         );
+    }
+
+    /**
+     * The refusals that no mutant had ever tested — five of them, all revertible with the suite green.
+     *
+     * Round 13's completeness lens proved every one deletable: `resolveCurrency()`'s empty-document refusal
+     * silently defaulting to TND, `DocumentLine`'s negative and malformed quantity guards, and `FixedCharge`'s
+     * negative-amount and empty-label guards. `b39bdb4` claimed "eight mutants killed" and those eight were
+     * real, but the SET was incomplete — the same shape as round 4's finding that three of round 3's four
+     * tenancy fixes were revertible.
+     *
+     * The sharpest is the empty-document one: the mutant installs **the exact hazard the code's own comment
+     * argues against** — "a default of TND would make a EUR company's new invoice silently three-decimal" —
+     * and the suite reported OK.
+     *
+     * @param callable(): mixed $construction
+     */
+    #[DataProvider('everyUntestedRefusal')]
+    public function testEveryRefusalInTheKernelIsLoadBearing(
+        string $expectedException,
+        string $messageFragment,
+        callable $construction,
+    ): void {
+        $this->expectException($expectedException);
+        $this->expectExceptionMessageMatches('/' . preg_quote($messageFragment, '/') . '/i');
+
+        $construction();
+    }
+
+    /** @return iterable<string, array{string, string, callable}> */
+    public static function everyUntestedRefusal(): iterable
+    {
+        $tnd = Currency::of('TND');
+
+        yield 'an empty document with no currency to infer' => [
+            \InvalidArgumentException::class,
+            'no currency to infer',
+            // Defaulting here would make a EUR company's new invoice silently three-decimal, which is the
+            // hazard the code refuses to guess about.
+            static fn(): mixed => new DocumentCalculator()->calculate(
+                [],
+                [],
+                VatRoundingPoint::PerRateGroup,
+                RoundingMode::HalfUp,
+            ),
+        ];
+        yield 'a malformed quantity' => [
+            \InvalidArgumentException::class,
+            'not a well-formed decimal',
+            static fn(): mixed => new DocumentLine('1,5', Money::of('1.000', $tnd), Rate::zero()),
+        ];
+        yield 'a negative fixed charge' => [
+            \InvalidArgumentException::class,
+            'is negative',
+            // A negative charge silently REDUCES a document total with no VAT effect — an invisible discount
+            // through a field that is not a discount.
+            static fn(): mixed => new FixedCharge('rebate', Money::of('-1.000', $tnd)),
+        ];
+        yield 'an empty fixed-charge label' => [
+            \InvalidArgumentException::class,
+            'stable label',
+            static fn(): mixed => new FixedCharge('   ', Money::of('1.000', $tnd)),
+        ];
+    }
+
+    /**
+     * A fixed charge's label is TRIMMED on store, not only on validate.
+     *
+     * The docblock calls the label "a stable identifier for the charge, e.g. `stamp_duty`", and
+     * `' stamp_duty'` and `'stamp_duty'` are two distinct stable identifiers for one charge. The guard
+     * validated `trim($label)` and stored `$label`.
+     */
+    public function testAFixedChargeLabelIsTrimmedOnStore(): void
+    {
+        $charge = new FixedCharge('  stamp_duty  ', Money::of('0.100', Currency::of('TND')));
+
+        self::assertSame('stamp_duty', $charge->label());
     }
 
     // ------------------------------------------------------------------ fixture plumbing

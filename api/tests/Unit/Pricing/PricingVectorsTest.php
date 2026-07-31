@@ -15,6 +15,10 @@ namespace Twes\Tests\Unit\Pricing;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Twes\Domain\Document\DocumentCalculator;
+use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\FixedCharge;
+use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\PriceCalculator;
@@ -257,112 +261,135 @@ final class PricingVectorsTest extends TestCase
         string $expectedTotal,
         ?string $wrongPerLineVat,
     ): void {
+        // DELEGATED TO THE KERNEL. This method used to open-code the whole composition — line net, subtotal,
+        // base grouped by rate, one vat() per group, the divergence arm, gross plus charges — which made it a
+        // SECOND implementation of the thing `CLAUDE.md` § Architecture says must have exactly one
+        // ("Tax, discounts and rounding order are one implementation, never two"), driven from the same
+        // fixture section with nothing asserting the two agreed.
+        //
+        // AND THEY DID NOT AGREE. Round 13 reproduced it: this copy grouped on the RAW FIXTURE STRING
+        // (`$line['vat_rate'] ?? $singleVatRate`), so rates spelled `"19"` and `"19.0"` became two groups and
+        // 0.004 — while `DocumentCalculator` groups on the canonical `Rate::percentage()` and correctly gives
+        // one group and 0.005. That is precisely the bug the kernel's own comment warns about, present in the
+        // file whose comments call it "the reference implementation the Angular and Flutter tiers copy".
+        //
+        // What this method keeps is the half that is genuinely its own: assertions about the FIXTURE's SHAPE —
+        // that a multi-rate case declares a breakdown, that every declared group matches a rate some line
+        // carries, and that a case claiming the two rounding orders diverge really does diverge. Those are
+        // properties of the data, not of the arithmetic, and they cannot be delegated.
         $currencyObject = Currency::of($currency);
-        $calculator = new PriceCalculator();
-
-        $subtotal = Money::zero($currencyObject);
-        /** @var array<string, Money> $baseByRate */
-        $baseByRate = [];
+        $documentRate = null === $singleVatRate ? null : Rate::fromPercentage($singleVatRate);
+        $documentLines = [];
 
         foreach ($lines as $line) {
-            $lineNet = Money::of($line['unit_net'], $currencyObject)
-                ->multipliedBy($line['quantity'], RoundingMode::HalfUp);
-
-            self::assertSame($line['line_net'], $lineNet->amount(), "line net, case {$id}");
-
-            $subtotal = $subtotal->plus($lineNet);
-
-            $rate = $line['vat_rate'] ?? $singleVatRate;
+            $rate = isset($line['vat_rate']) ? Rate::fromPercentage($line['vat_rate']) : $documentRate;
             self::assertNotNull($rate, "case {$id}: every line needs a VAT rate");
 
-            // Accumulate the BASE per rate. Rounding happens once, after this loop.
-            $baseByRate[$rate] = ($baseByRate[$rate] ?? Money::zero($currencyObject))->plus($lineNet);
-        }
-
-        self::assertSame($expectedSubtotal, $subtotal->amount(), "subtotal, case {$id}");
-
-        $vat = Money::zero($currencyObject);
-
-        foreach ($baseByRate as $rate => $base) {
-            $groupVat = $calculator->vat($base, Rate::fromPercentage((string) $rate), RoundingMode::HalfUp);
-            $vat = $vat->plus($groupVat);
-
-            // THE LOOP BELOW ASSERTS NOTHING IF NOTHING MATCHES, so the match is asserted first. A reviewer
-            // respelled a `rate` key from "19" to "19.0" and the whole per-rate breakdown became unassertable:
-            // both bases and both VATs could be set to nonsense, or the section emptied entirely, with the suite
-            // green — the only signal was the assertion count dropping, which nothing checks. This table is a
-            // legally required line on a French and a Tunisian invoice, and this file is named as the reference
-            // implementation the Angular and Flutter tiers copy.
-            // A MULTI-RATE document must declare its breakdown. Guarding only on "a breakdown was declared" left
-            // the sharpest variant open: emptying `vat_by_rate` outright removed every assertion about it and the
-            // suite stayed green. A single-rate case carries its rate at the case level and legitimately has no
-            // breakdown, so the requirement is conditioned on the shape rather than demanded of every case.
-            if (\count($baseByRate) > 1) {
-                self::assertNotSame(
-                    [],
-                    $vatByRate,
-                    'A document with more than one VAT rate must declare vat_by_rate — that per-rate table is a '
-                    . 'required line on a French and a Tunisian invoice, and without it nothing here is checked.',
-                );
-            }
-
-            if ([] !== $vatByRate) {
-                self::assertSameSize(
-                    $vatByRate,
-                    $baseByRate,
-                    'A declared breakdown must cover every rate present in the lines and no others. A rate string '
-                    . 'that matches no line makes its group silently unassertable.',
-                );
-            }
-
-            foreach ($vatByRate as $declaredGroup) {
-                self::assertArrayHasKey(
-                    $declaredGroup['rate'],
-                    $baseByRate,
-                    'No line carries rate "' . $declaredGroup['rate'] . '", so this group would never be checked.',
-                );
-            }
-
-            foreach ($vatByRate as $expectedGroup) {
-                if ($expectedGroup['rate'] === (string) $rate) {
-                    self::assertSame($expectedGroup['base'], $base->amount(), "base for rate {$rate}, case {$id}");
-                    self::assertSame($expectedGroup['vat'], $groupVat->amount(), "vat for rate {$rate}, case {$id}");
-                }
-            }
-        }
-
-        self::assertSame($expectedVat, $vat->amount(), "vat, case {$id}");
-
-        // Where the fixture supplies it, prove the naive order gives a DIFFERENT answer — otherwise the
-        // case above would pass under either order and pin nothing.
-        if (null !== $wrongPerLineVat) {
-            $perLine = Money::zero($currencyObject);
-
-            foreach ($lines as $line) {
-                $rate = $line['vat_rate'] ?? $singleVatRate;
-                self::assertNotNull($rate);
-                $perLine = $perLine->plus($calculator->vat(
-                    Money::of($line['line_net'], $currencyObject),
-                    Rate::fromPercentage($rate),
-                    RoundingMode::HalfUp,
-                ));
-            }
-
-            self::assertSame($wrongPerLineVat, $perLine->amount(), "per-line VAT, case {$id}");
-            self::assertNotSame(
-                $expectedVat,
-                $perLine->amount(),
-                "case {$id} claims the two rounding orders diverge, but they agree — so it pins nothing.",
+            $documentLines[] = new DocumentLine(
+                $line['quantity'],
+                Money::of($line['unit_net'], $currencyObject),
+                $rate,
             );
         }
 
-        $total = $calculator->grossFromNet($subtotal, $vat);
+        $charges = array_map(
+            static fn(array $charge): FixedCharge => new FixedCharge(
+                $charge['label'],
+                Money::of($charge['amount'], $currencyObject),
+            ),
+            $fixedCharges,
+        );
 
-        foreach ($fixedCharges as $charge) {
-            $total = $total->plus(Money::of($charge['amount'], $currencyObject));
+        $totals = new DocumentCalculator()->calculate(
+            $documentLines,
+            $charges,
+            VatRoundingPoint::PerRateGroup,
+            RoundingMode::HalfUp,
+            $currencyObject,
+        );
+
+        foreach ($lines as $index => $line) {
+            self::assertSame(
+                $line['line_net'],
+                $totals->lineNets()[$index]->amount(),
+                "line net {$index}, case {$id}",
+            );
         }
 
-        self::assertSame($expectedTotal, $total->amount(), "total, case {$id}");
+        self::assertSame($expectedSubtotal, $totals->subtotalNet()->amount(), "subtotal, case {$id}");
+        self::assertSame($expectedVat, $totals->vatTotal()->amount(), "vat, case {$id}");
+        self::assertSame($expectedTotal, $totals->total()->amount(), "total, case {$id}");
+
+        // ---- FIXTURE-SHAPE assertions, which are this method's own and are not delegable.
+
+        // A MULTI-RATE document must declare its breakdown. Guarding only on "a breakdown was declared" left
+        // the sharpest variant open: emptying `vat_by_rate` outright removed every assertion about it and the
+        // suite stayed green. A single-rate case carries its rate at the case level and legitimately has none.
+        if (\count($totals->vatByRate()) > 1) {
+            self::assertNotSame(
+                [],
+                $vatByRate,
+                'A document with more than one VAT rate must declare vat_by_rate — that per-rate table is a '
+                . 'required line on a French and a Tunisian invoice, and without it nothing here is checked.',
+            );
+        }
+
+        if ([] !== $vatByRate) {
+            self::assertSameSize(
+                $vatByRate,
+                $totals->vatByRate(),
+                'A declared breakdown must cover every rate present in the lines and no others. A rate string '
+                . 'that matches no line makes its group silently unassertable.',
+            );
+
+            // Keyed by the CANONICAL percentage, which is how the kernel groups — so a fixture rate spelled
+            // `19.0` is checked against the group it actually lands in rather than silently matching nothing.
+            $computed = [];
+
+            foreach ($totals->vatByRate() as $group) {
+                $computed[$group->rate()->percentage()] = $group;
+            }
+
+            foreach ($vatByRate as $declaredGroup) {
+                $key = Rate::fromPercentage($declaredGroup['rate'])->percentage();
+                self::assertArrayHasKey(
+                    $key,
+                    $computed,
+                    'No line carries rate "' . $declaredGroup['rate'] . '", so this group would never be '
+                    . 'checked. Compared on the canonical percentage, because "19" and "19.0" are one rate.',
+                );
+                self::assertSame(
+                    $declaredGroup['base'],
+                    $computed[$key]->base()->amount(),
+                    "base for rate {$declaredGroup['rate']}, case {$id}",
+                );
+                self::assertSame(
+                    $declaredGroup['vat'],
+                    $computed[$key]->vat()->amount(),
+                    "vat for rate {$declaredGroup['rate']}, case {$id}",
+                );
+            }
+        }
+
+        // Where the fixture supplies it, prove the naive order gives a DIFFERENT answer — otherwise the case
+        // above would pass under either order and pin nothing. Through the kernel's own PerLine arm, so this
+        // no longer re-implements it either.
+        if (null !== $wrongPerLineVat) {
+            $perLine = new DocumentCalculator()->calculate(
+                $documentLines,
+                $charges,
+                VatRoundingPoint::PerLine,
+                RoundingMode::HalfUp,
+                $currencyObject,
+            );
+
+            self::assertSame($wrongPerLineVat, $perLine->vatTotal()->amount(), "per-line VAT, case {$id}");
+            self::assertNotSame(
+                $expectedVat,
+                $perLine->vatTotal()->amount(),
+                "case {$id} claims the two rounding orders diverge, but they agree — so it pins nothing.",
+            );
+        }
     }
 
     /**

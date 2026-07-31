@@ -259,6 +259,9 @@ final readonly class ProductPricing
      * the first, and the fixture only ever moved *away* from a zero cost, so the gap was invisible.
      *
      * @throws CurrencyMismatch if the new cost is in a different currency
+     * @throws InvalidCost if the cost is negative, or the derived price would be unrepresentable or NEGATIVE
+     * @throws CurrencyMismatch if the price is not in the cost's currency
+     * @throws InvalidCost if the typed price is negative
      */
     public function withCost(Money $newCost, RoundingMode $mode): self
     {

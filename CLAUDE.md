@@ -22,10 +22,15 @@ own statically-typed PHP-inspired language — is **vision, not a target**: the 
 nothing here is built for it. Do not treat it as a requirement, do not design around its unknowns, and
 do not defer a decision waiting for it. See `VISION.md`.
 
-Status: **Wave 0 landed, not yet certified** (2026-07-29). `api/` holds a framework-free `Domain/` (money,
-pricing) and `Infrastructure/` (tenancy, clock, identifiers), four PHPUnit suites, and seven gates in
-`scripts/gates/` with their own test suite (`scripts/gates/test-gates.sh` reports its own case count;
-no number is written here, because a count in prose drifts). **`admin/` and `mobile/` are scaffolded** — each with its
+Status: **Wave 0 landed, not yet certified; Wave 1's PURE DOMAIN landed** (2026-07-31). Wave 1's document
+kernel, lifecycle, numbering and `Invoice` aggregate are under `api/src/Domain/Document/` — framework-free,
+which is why they landed while Composer is blocked. Wave 1's persistence, migrations, schema gate and HTTP
+surface remain blocked; `docs/plans/build-waves.plan.md` § Wave 1 is authoritative.
+
+`api/` holds a framework-free `Domain/` (money, pricing, **documents**) and `Infrastructure/` (tenancy, clock,
+identifiers), four PHPUnit suites, and the gates in
+`scripts/gates/` with their own test suite (`ls scripts/gates/` and `scripts/gates/test-gates.sh` each report
+their own count; no number is written here, because a count in prose drifts). **`admin/` and `mobile/` are scaffolded** — each with its
 tier's official generator (`ng new`, `flutter create`), never by hand — and each is green on its own toolchain.
 Each also holds the **application code its own invariants already demanded**, which this sentence used to deny:
 the branding seam licensing invariant 9 requires (`admin/src/app/branding.ts`, `mobile/lib/branding.dart`),

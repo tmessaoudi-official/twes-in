@@ -108,7 +108,7 @@ other two is the default failure mode here, not an unusual one.
    the gates already provide.
 
 10. **TENANCY WIRING THAT WAVE 1 OWES — check this whenever a repository or a Doctrine mapping appears.**
-   `PostgresRowLevelSecurityIsolation` carries FOUR guards that Wave 1's connection lifecycle owes calls to, and only one of them is on the `TenantIsolationStrategy` port — so a repository injected with the port cannot reach the other three without an `instanceof`. `assertStillBoundTo()` guards against a savepoint rollback silently
+   `PostgresRowLevelSecurityIsolation` carries FOUR guards that Wave 1's connection lifecycle owes calls to, and **ZERO** of them are on the `TenantIsolationStrategy` port, which declares `bind()` and nothing else (round 13 corrected this line, which said "only one"). Three are `static`, so they cannot go on an interface as written. The set: `assertStillBoundTo()`, `assertConnectionCannotBypassPolicies()`, `discardSessionState()`, `assertConnectionCannotCreateTemporaryObjects()`, `assertNoLargeObjectIsReachable()` and `assertConnectionCannotCreateLargeObjects()`. The zero-large-objects RULE is not a method call at all and must be checked as a rule — so a repository injected with the port cannot reach the other three without an `instanceof`. `assertStillBoundTo()` guards against a savepoint rollback silently
    reverting the tenant binding — a cross-tenant read AND write, reproduced. It is called by nothing yet.
    A change that lands a tenant-scoped repository, or enables Doctrine's nested transactions, without
    wiring that re-check (or without removing the shape, per `build-waves.plan.md` Wave 1) is a **P0**.

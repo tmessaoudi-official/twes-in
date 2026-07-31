@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Twes\Domain\Pricing;
 
+use Twes\Domain\Money\Exception\CurrencyMismatch;
+use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Shared\RoundingMode;
 
@@ -68,6 +70,14 @@ final readonly class PriceCalculator
      *    constructed fine and then threw on every read.
      *
      * Callers must handle the null rather than coalesce it; `??  Rate::zero()` is the bug this guards.
+     *
+     * @throws CurrencyMismatch if the net is not in the cost's currency — this method does NOT guard the
+     *                          currencies itself, and `$net->minus($cost)` raises
+     * @throws InvalidMoneyAmount if $mode is RoundingMode::Unnecessary and the ratio is not exact
+     *
+     * Documented at round 13, which found this method carrying ZERO @throws while the round-12 sweep was
+     * advertised as covering "all three PriceCalculator methods" — the class has FOUR, and the omitted one
+     * was the only one with nothing at all. An incomplete sweep advertised as complete is worse than none.
      */
     public function profitRateFromNet(Money $cost, Money $net, RoundingMode $mode): ?Rate
     {

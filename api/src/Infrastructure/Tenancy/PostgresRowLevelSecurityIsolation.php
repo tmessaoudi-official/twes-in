@@ -1111,6 +1111,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . 'JOIN pg_roles o ON o.oid = c.relowner '
             . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
             . "WHERE c.relkind IN ('v', 'm', 'f') "
+            // PERMANENT only. Every session's temporary relations are visible in `pg_class` to every other
+            // session, and `rlsExemptObjectViolations()` refuses kind `'m'` on kind ALONE — before the
+            // `owned_by_caller` exclusion — so ONE connection creating a `pg_temp` materialised view made
+            // every OTHER acquisition throw, naming an object in another backend's temp schema that it can
+            // neither read nor drop. A whole-pool outage triggered by any single connection, needing only the
+            // TEMPORARY grant the test fixture already holds. [Verified with two live connections: session 2
+            // saw session 1's `pg_temp_16` matview with `relnamespace = pg_my_temp_schema()` false.]
+            //
+            // This is round 12's own finding applied in the third place: the policed-table query got
+            // `relpersistence = 'p'` and the session-lifetime check got `pg_my_temp_schema()`, and this query
+            // got neither. A tenant-owned view is never temporary; a session's OWN temporary relations are
+            // reported by assertNoSessionLifetimeDataIsMaterialised(), which is where they belong.
+            . "AND c.relpersistence = 'p' "
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
             // Only objects this connection can actually read — a view it cannot select from leaks nothing.
             //
@@ -1568,6 +1581,71 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . 'way to police pg_largeobject, so the only enforceable rule is that none exists. DISCARD ALL '
             . 'does not clear them.',
         );
+    }
+
+    /**
+     * Refuse a connection that can CREATE a large object — the capability, not just the residue.
+     *
+     * {@see self::assertNoLargeObjectIsReachable()} detects one that already exists, and on its own that is the
+     * shape of check somebody disables: it is composed into acquisition and throws on ANY row, so a single
+     * request reaching `lo_from_bytea` — the canonical invoice-PDF path Wave 4 will write — permanently refuses
+     * **every subsequent acquisition** until a privileged role unlinks it. A permanent object plus an
+     * unconditional refusal plus the hot path is an outage, and this class makes exactly that argument against
+     * asserting cross-database `CONNECT`.
+     *
+     * So the capability is removed, which is what the `TEMPORARY` sibling does and what the eighth carrier was
+     * missing: it stated a rule and offered no way to enforce it. [Verified: the restricted runtime role could
+     * call `lo_create`, `lo_from_bytea`, `lo_get`, `lo_put`, `lo_unlink` and `lowrite` — all six.]
+     *
+     * PostgreSQL grants `EXECUTE` on these to `PUBLIC` by default, so a NULL `proacl` is the dangerous case
+     * here exactly as it is for any other function. The remedy is in `infra/README.md`:
+     * `REVOKE EXECUTE ON FUNCTION lo_from_bytea(oid, bytea), lo_create(oid), lo_put(oid, bigint, bytea),
+     * lowrite(integer, bytea) FROM PUBLIC`.
+     *
+     * Not composed into {@see self::assertConnectionCannotBypassPolicies()}, for the same reason the
+     * `TEMPORARY` guard is not: the test database has not revoked these, so composing it would fail every run.
+     * Addressed to production, recorded in `infra/README.md`, and owed as Wave 1 wiring.
+     *
+     * @throws \RuntimeException if any large-object WRITE function is callable
+     */
+    public static function assertConnectionCannotCreateLargeObjects(\PDO $connection): void
+    {
+        // The WRITE functions only. `lo_get`/`loread` are reads, and a connection that cannot create one has
+        // nothing of its own to read — while revoking the readers too would break `pg_dump`, which is the kind
+        // of collateral damage that gets a control reverted wholesale.
+        $writers = ['lo_create', 'lo_from_bytea', 'lo_import', 'lo_put', 'lowrite'];
+        $callable = [];
+
+        foreach ($writers as $writer) {
+            $statement = $connection->query(\sprintf(
+                'SELECT bool_or(%s) AS callable FROM pg_proc p '
+                . 'JOIN pg_namespace n ON n.oid = p.pronamespace '
+                . "WHERE n.nspname = 'pg_catalog' AND p.proname = '%s'",
+                self::privilegeIsReachableSql('p.proacl', 'EXECUTE', true),
+                $writer,
+            ));
+
+            if (false === $statement) {
+                throw new \RuntimeException('Could not inspect large-object function privileges.');
+            }
+
+            if (self::isTrue((string) $statement->fetchColumn())) {
+                $callable[] = $writer . '()';
+            }
+        }
+
+        if ([] === $callable) {
+            return;
+        }
+
+        throw new \RuntimeException(\sprintf(
+            'This connection can create large objects (%s). pg_largeobject cannot carry row-level security at '
+            . 'any privilege level, its default ACL is owner-only — and since every request connects as the '
+            . 'SAME role, owner-only means every tenant\'s blob is readable under every binding — and DISCARD '
+            . 'ALL cannot clear it. REVOKE EXECUTE on these FROM PUBLIC; see infra/README.md. Blobs belong in '
+            . 'a policed tenant-owned table or outside the database.',
+            implode(', ', $callable),
+        ));
     }
 
     /**

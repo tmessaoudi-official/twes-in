@@ -31,6 +31,9 @@ use Twes\Domain\Money\Money;
  */
 final readonly class FixedCharge
 {
+    /** A stable identifier, trimmed. See the constructor for why trimming happens on store. */
+    private string $label;
+
     /**
      * @param string $label a stable identifier for the charge, e.g. `stamp_duty` — NOT display text, which
      *                      is the translation layer's job; a document rendered in Arabic must not carry a
@@ -39,10 +42,16 @@ final readonly class FixedCharge
      * @throws \InvalidArgumentException if the label is empty or the amount is negative
      */
     public function __construct(
-        private string $label,
+        string $label,
         private Money $amount,
     ) {
-        if ('' === trim($label)) {
+        // TRIMMED ON STORE, not only on validate. The first version validated `trim($label)` and stored
+        // `$label`, so `'  stamp_duty  '` was accepted and kept its padding — and this docblock calls the label
+        // "a stable identifier", of which `' stamp_duty'` and `'stamp_duty'` are two.
+        $label = trim($label);
+        $this->label = $label;
+
+        if ('' === $label) {
             throw new \InvalidArgumentException(
                 'A fixed charge needs a stable label. An unlabelled charge on an invoice is a figure '
                 . 'nobody can explain to a customer or an auditor.',
