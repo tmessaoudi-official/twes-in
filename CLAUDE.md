@@ -216,7 +216,10 @@ The mapping, for the patterns this product actually meets:
 |---|---|---|
 | Eloquent Active Record (`Model` with persistence on the entity) | **Doctrine ORM, data-mapper**: a framework-free entity plus XML mapping under `Infrastructure/` | This is the whole reason `Domain/` can be pure. An Active Record entity cannot satisfy § Architecture's first rule |
 | Global/local **Eloquent scopes** for tenancy | **PostgreSQL row-level security** first, a Doctrine filter second | Ruled already — see § Gotchas. A scope is opt-in per query and a filter is bypassed by native SQL; RLS is applied by the server to every statement |
-| **Laravel migrations** (`Schema::` builder) | **Doctrine Migrations** + `scripts/gates/schema-tenancy.php` | The gate is ours regardless: no migration framework enforces the RLS statements a tenant-owned table needs |
+| **Laravel migrations** (`Schema::` builder) | **Doctrine Migrations** + `scripts/gates/schema-tenancy.php` **(Wave 1 — does not exist yet)** | The gate is ours regardless: no migration framework enforces the RLS statements a tenant-owned table needs. The annotation matters because sibling cells in this table annotate future state and this one did not, so it read as extant — and `build-waves.plan.md` makes it a Wave 1 BLOCKER that cannot be built until a real migrated schema exists to check |
+| **Eloquent pagination** (`paginate()`, `per_page`) | **API Platform's pagination extension** | Already ruled by omission: § "The API contract is ours to design" rejects upstream's `per_page=999999` outright, and pagination is a named contract deliverable in `reimplementation-strategy.plan.md`. A hand-rolled limit/offset on each endpoint is how that ends up inconsistent across resources |
+| **Policies / Gates** (`Gate::allows`, `authorize()`) | **Symfony Voters** over a real `role_permissions` table | Ruled already, in `reimplementation-strategy.plan.md` and `build-waves.plan.md`: permissions are DATA, not a closure per ability, because an administrator must be able to change them without a deploy |
+| **Laravel throttling** (`throttle` middleware) | **`symfony/rate-limiter`** | Wave 10 commits to rate limiting; naming it here stops the middleware shape being reinvented |
 | **Form Requests** / `Validator` facade | **Symfony Validator** on DTOs at the UI boundary — and the domain still refuses invalid state itself | Validation at the edge is a message-quality feature; the invariant lives in the value object. Both, not either |
 | **API Resources** / `toArray()` | **API Platform** resources + Symfony Serializer | § "The API contract is ours to design" — the contract is declared, not assembled per endpoint |
 | **Eloquent events / observers** | **Doctrine events** for persistence concerns, **domain events** for business ones | Do not put business meaning in a persistence hook; that is how tax logic ends up firing on a flush |
@@ -635,7 +638,8 @@ locale carries the same SET; nothing checks COVERAGE, and that direction stays d
 `document.state.*` LABELS their `{state}`/`{from}`/`{to}` placeholders resolve through, which are not
 refusals of their own |
 | the CONTENT is not issuable — an empty invoice | **yes** | `document.empty_cannot_be_issued` |
-| a CONFIGURATION value an administrator can fix — a number-pattern width of zero | **yes** | `document.number_pattern_invalid`. Admin-facing is still user-facing; the person who set it is the person who can correct it |
+| the document is FULL — a 1001st line or fixed charge, against `Invoice::MAX_LINES` | **yes** | not a retype, but a real action and the same one `document.total_too_large` already prescribes: remove something, or split the document. `document.line_count_too_large`, `document.charge_count_too_large` — **two keys rather than one carrying a `{what}`**, because `assertRoomFor()`'s `$what` is the English words `line` and `fixed charge`, and a machine-side noun interpolated into a French or Arabic sentence is the shape the `document.state.*` rule below forbids. Worse than `{state}`, in fact: the noun is gendered and pluralised per locale (`une ligne` / `un frais`; `بند` / `رسم`), so no single sentence can host it grammatically in any language |
+| a CONFIGURATION value an administrator can fix — a number-pattern width of zero, or one wider than `NumberPattern::MAX_WIDTH` | **yes** | **TWO keys, one per bound**: `document.number_pattern_invalid` for the floor and `document.number_pattern_too_wide` for the ceiling. Admin-facing is still user-facing; the person who set it is the person who can correct it. The ceiling had no key for a round while `MAX_WIDTH` existed, so an administrator who set 25 was told the width *"must be at least 1"* — round 16's `document.quantity_too_large` defect verbatim (*"The quantity 2 is too large"* when the price was the oversized factor), recurring on the guard added at that finding's own closure. One refusal, one key: a message that names the wrong bound fails this section's own test |
 | our own fault — a number from the wrong sequence, a sequence adapter returning 0, a `\LogicException` of any kind | **no** | `error.internal`. Naming internals to a client is noise at best and an information leak at worst |
 | a currency mismatch **inside a document** — a line or charge in another currency | **no** | the API fixes the currency per document, so a mismatch reaching `DocumentCalculator` means our own layer built the request wrong |
 | an unsupported CURRENCY code | **yes** | `money.currency_unknown`. The administrator picked it, so the person
@@ -932,6 +936,35 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   clause" — which is the tell that the underlying mistake was treating the column as a free variable at all.
   Anchored to `TENANT_COLUMN`, known independently of the input. The generalisation is the rule stated at the
   top of this entry, and it is worth checking against every other pure validator in this codebase.
+- **2026-07-31 — the PER-LINE VAT ALLOCATION RULE is unfixable-later, exactly like the gapless sequence and
+  money-is-never-a-float.** A per-line VAT figure is required (developer ruling), and under `PerRateGroup` the
+  group's VAT is rounded ONCE on the summed base — so the rounded per-line figures do not add up to it and a
+  share must be **allocated**. The rule is **largest remainder, ties to the earliest line**, and the invariant is
+  that the shares sum EXACTLY to the group VAT. Change the rule after documents are issued and re-rendering an
+  old invoice produces different per-line figures, which breaks the byte-identical-re-download guarantee for
+  documents a client already holds. Two things follow and both were defects when this was written: **allocation
+  applies under `PerRateGroup` ONLY** — under `PerLine` the group VAT is by construction the sum of the per-line
+  rounded figures, so allocating there moves tax onto a line that does not owe it and makes the answer depend on
+  line order; and the allocator **floors with `Floor`, never `Down`**, because truncation toward zero is not a
+  floor for a negative amount and Wave 2's credit note will reach that path. The cross-tier vectors in
+  `docs/spec/pricing-vectors.json` are what stop Angular and Flutter each inventing a third rule.
+- **2026-07-31 — the Symfony ecosystem is the only vocabulary; never transliterate a Laravel/Eloquent
+  pattern** (developer ruling). Graduated here from § "The Symfony ecosystem is the ONLY vocabulary" so it sits
+  in the decision register as well as in its own section. Invariant 1 forbids upstream *code*; this forbids
+  upstream *shape*, and it binds even where copyright does not — we legitimately learn behaviour from Invoice
+  Ninja, and that behaviour is expressed in Laravel idiom, so every time a behaviour is understood the question
+  is *"what is the Symfony-ecosystem way to do this?"* A transliterated pattern is how a Symfony codebase ends
+  up fighting its own framework, and how a clean-room build starts to LOOK like a port even though no line was
+  copied. The mapping table in that section is the record; a pattern met that has no row gets one in the same
+  change.
+- **2026-07-31 — a gate that walks the filesystem reads whatever OTHER checkouts happen to be inside the
+  repo.** A parallel certification round runs reviewer and fix agents in git worktrees, and the harness places
+  them at `.claude/worktrees/<agent>/` — **inside** the working tree. Each carries its own `CLAUDE.md`,
+  `LICENSING.md` and every source file, so `grep -r` sees several repositories at once: `test-gates.sh`'s
+  licence-surface cross-check failed with an "actual" list that was not wrong about this repository, it was
+  reading four. The rule: **enumerate from `git ls-files`, never a recursive walk** — it sees tracked paths of
+  the current work tree only, which is the set every one of these checks actually means. `shell-syntax.sh` and
+  `no-orphaned-docblocks.sh` already do. This also disposes of the `node_modules` special case such walks needed.
 
 ## Git & CI
 

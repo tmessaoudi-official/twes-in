@@ -81,6 +81,10 @@
         <source>document.number_pattern_invalid</source>
         <target>يجب أن يكون عرض رقم الوثيقة 1 على الأقل. العرض صفر سيطبع كل رقم بدون تعبئة مع الظهور كأنه مُهيّأ.</target>
       </trans-unit>
+      <trans-unit id="34" resname="document.number_pattern_too_wide">
+        <source>document.number_pattern_too_wide</source>
+        <target>يجب أن يكون عرض رقم الوثيقة {max} على الأكثر، وقد أُعطي {width}. رقم الوثيقة يُقرأ بصوت عالٍ ويُدخل في تحويل بنكي ويُطبع في عمود؛ {max} رقماً تكفي لترقيم كل الفواتير التي سيصدرها المستأجر.</target>
+      </trans-unit>
       <trans-unit id="23" resname="document.state.draft">
         <source>document.state.draft</source>
         <target>مسوّدة</target>

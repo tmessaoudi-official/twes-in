@@ -250,6 +250,32 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   from the wrong type's sequence. Both raised bare `\DomainException` before, so an HTTP layer could only tell a
   form error from our own fault by matching message text. Same defect class round 13 closed for
   `Rate::fromPercentage()`.
+- [2026-07-31 11:00] RULED: **a PER-LINE VAT figure is REQUIRED, and it is ALLOCATED rather than recomputed**
+  (developer ruling, explicitly **overriding the recommendation to omit it**). EN 16931 requires the breakdown per
+  category group (BG-23) and not per line, so this is a product requirement rather than a standards one — and it
+  forces an allocation rule, because VAT is rounded ONCE per rate group on the summed base while `line_net × rate`
+  rounded per line does not add up to that. The rule is **largest remainder, ties to the earliest line**: floor
+  each line's exact share to the currency's scale, then hand the shortfall out one smallest-unit at a time to the
+  lines that floored away the most. Flooring first is load-bearing — rounding to nearest lets the shares EXCEED
+  the group figure, and taking a unit back then requires picking a victim. Rejected alternative: putting the
+  difference on the LAST line, because that makes document ORDER significant to a tax figure while the total stays
+  right, so no reviewer would see it. The invariant is that the per-line column sums **exactly** to the VAT total,
+  always. Spec: `pricing-and-documents.plan.md` § 1b, pinned by the shared `per-line-vat-allocation-*` vectors.
+  Recorded here at round 17, which found the ruling living only as prose in that file and in **no** Decisions Log —
+  the same omission the 09:00 entry above exists to have stopped.
+- [2026-07-31 11:10] RULED: **the Symfony ecosystem is the ONLY vocabulary — never a Laravel/Eloquent pattern**
+  (developer ruling). Where something is specific to Laravel or Eloquent, find and use its Symfony / Doctrine /
+  API Platform equivalent; never transliterate the Laravel mechanism. This is a **STANDING rule**, not a wave
+  item, and it is not a restatement of licensing invariant 1: that one forbids upstream *code*, this one forbids
+  upstream *shape*. We legitimately learn behaviour from Invoice Ninja under invariant 2 and that behaviour is
+  expressed in Laravel idiom, so every behaviour understood raises the question *"what is the Symfony-ecosystem
+  way to do this?"* rather than *"how do I write this Eloquent thing in PHP"* — which is both how a Symfony
+  codebase ends up fighting its own framework and how a clean-room build starts to *look* like a port with no line
+  copied. The mapping table is `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary"; a pattern met that is
+  not in it gets a row added in the same change. Two consequences already binding waves in this plan: tenancy is
+  RLS first and a Doctrine filter second rather than a global scope (Wave 1), and the contract is declared as API
+  Platform resources rather than assembled per endpoint (Wave 7). Recorded here at round 17, which found the
+  ruling in `CLAUDE.md` and in no Decisions Log.
 
 ---
 
@@ -611,7 +637,9 @@ machinery — discounts and an inclusive-tax flag are exactly that, and Wave 2 i
 vector already waits. Named because round 15 pointed out this paragraph criticised the superseded record for
 naming no destination wave and then named none itself; if the worked examples arrive sooner they can land in
 Wave 1, but an unscheduled item is how the previous record went stale. **They need worked examples from the
-developer**: for discounts, whether a
+developer, and both are now rows in § "Awaiting the developer"** — this paragraph stated the requirement with no
+pointer to any register until round 17, so the register was reachable from Wave 2's paragraph and not from this
+one, which is the section a Wave 1 session actually reads. What is needed: for discounts, whether a
 line discount reduces the VAT base and how a document-level discount is allocated across rate groups; for
 inclusive tax, a worked case showing the extraction. Until then `VatRoundingPoint` is the only parameterisation
 the kernel carries, and it is genuinely one implementation rather than two — which is the invariant that line
@@ -641,8 +669,11 @@ one round earlier — "the savepoint obligation lived in one Decisions Log line 
 session and its load-time-chartered reviewer had no way to find it" — and the identical omission was
 reintroduced for the seventh class in the very next round.
 
-FOUR obligations, and a pool that lands without them is a `completeness-reviewer` **P0**. (This read
-"three calls" until round 14; the fourth is the eviction contract inside item 1.)
+**EVERY obligation below is required, and a pool that lands without any one of them is a
+`completeness-reviewer` P0.** No number is written in this sentence, on purpose: the tally is the numbered
+list *plus* the eviction CONTRACT nested inside item 1, which is an obligation without being a list entry — so
+a count here drifts every time either half changes, and it has twice. It read "three calls" until round 14 and
+"FOUR obligations" until round 17, and each was stale beside the list it counted. Derive it from the list.
 
 1. **`discardSessionState()` when a connection is RETURNED.** A temporary table and a `CURSOR WITH HOLD`
    outlive the transaction-scoped binding and are readable under whatever tenant is bound next. It rolls back
@@ -664,6 +695,20 @@ FOUR obligations, and a pool that lands without them is a `completeness-reviewer
    after a policed one intercepts every unqualified reference to it — the leak arrives under the real table's
    own name. [Verified: with a temporary `shadow_probe` present, `current_schemas(true)` reads
    `{pg_temp_6,pg_catalog,public}` and an unqualified `shadow_probe::regclass` resolves into `pg_temp_6`.]
+4. **`assertConnectionCannotCreateLargeObjects()` in PRODUCTION only**, and not in the composite for the
+   identical reason as item 3: the test database has not run the `REVOKE EXECUTE` statements, so composing it
+   would fail every run. The method's own docblock says "owed as Wave 1 wiring", and **this list was the place
+   that owed it — round 17 found the obligation addressed to nobody.** The paragraph below named
+   `assertNoLargeObjectIsReachable()`, the *detector*, which is already composed into acquisition and therefore
+   needs no wiring, and it named the `REVOKE EXECUTE` statements in `infra/README.md` — so nothing obliged a pool
+   to assert that the revocation had actually happened. On a cluster where it had not, the capability is live and
+   this section's own P0 never fires: the shape CLAUDE.md § Gotchas calls *a control asserted in prose and
+   enforced nowhere*, with the method already written and tested. The untouched cluster is the dangerous case
+   rather than the safe one, because PostgreSQL leaves `proacl` NULL — which means EXECUTE to PUBLIC — on every
+   function in `PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS` except `lo_import`, which ships
+   `{postgres=X/postgres}`. Derive both sets from that constant and from `infra/README.md`'s block rather than
+   from a number here; the detector's list is deliberately LONGER than the remedy's, and round 16 already found
+   a count of them stale beside the thing it counted.
 
 **And the eighth carrier is a RULE *plus* a capability revocation — recorded here as "not a wiring item",
 which was wrong and is corrected at round 14: zero large objects.** `pg_largeobject` is a system
@@ -676,10 +721,14 @@ reach for one.
 **The wiring half that "a RULE, not a wiring item" denied:** detection alone is the wrong shape here, because
 `assertNoLargeObjectIsReachable()` throws on ANY row and is composed into acquisition — so one request reaching
 `lo_from_bytea` permanently refuses **every subsequent acquisition** until a privileged role unlinks the object.
-A permanent object on the hot path is an outage, not a guard. So the CAPABILITY is revoked as well, by the five
-`REVOKE EXECUTE` statements now in `infra/README.md` § "No large objects, ever". `lo_import` is deliberately not
-among them — it ships with a non-NULL `proacl`, so PUBLIC never held it — while the detector still checks all
-six, because a cluster where somebody granted it is exactly what a checker is for.
+A permanent object on the hot path is an outage, not a guard. So the CAPABILITY is revoked as well, by the
+`REVOKE EXECUTE` statements now in `infra/README.md` § "No large objects, ever" — **and item 4 of the wiring list
+above is what asserts the revocation actually happened, which is the half this paragraph left to nobody until
+round 17.** A revocation an operator is trusted to have run is prose; `assertConnectionCannotCreateLargeObjects()`
+is the check, it exists, it is tested, and before round 17 no obligation in this plan called it. `lo_import` is
+deliberately not among the revocations — it ships with a non-NULL `proacl`, so PUBLIC never held it — while the
+detector still checks it, because a cluster where somebody granted it is exactly what a checker is for; that is
+why the detector's list is LONGER than the remedy's rather than inconsistent with it.
 
 **NUMBERING'S ALLOCATOR LANDED, 2026-07-31, AND ITS CONTRACT IS THE PART THAT MATTERS.** Wave 1's scope line
 above reads "numbering with per-tenant counters", and until round 14 only the *rendering* half existed:
@@ -702,9 +751,29 @@ contract is a per-`(tenant, type)` counter **row** taken under `SELECT ... FOR U
 transaction that persists the document, so a rollback returns the number. Accepted cost: issues for one
 `(tenant, type)` serialise. Two invoices sharing a number is worse than a queued request.
 
-**The contract is a TEST CLASS, not a docblock, and the Postgres adapter must extend it.** Four guarantees —
-gapless, starts at 1, independent per type, never backwards — each with cases generated from `DocumentType`
-rather than hand-picked. When persistence unblocks, `PostgresDocumentNumberSequenceTest extends
+**The contract is a TEST CLASS, not a docblock, and the Postgres adapter must extend it.** `DocumentNumberSequence`
+numbers its guarantees `**1. ` … in its own docblock — derive the set from there, never from a number written
+here — and `DocumentNumberSequenceContract` asserts **all of them but ONE**. The asserted ones are gapless,
+starts at 1, independent per type and never reused, each with cases generated from `DocumentType` rather than
+hand-picked.
+
+**THE UNASSERTED ONE IS #5, SERIALISED, AND THE ADAPTER OWES A CONCURRENCY TEST FOR IT** (recorded here at round
+17). The port states it as *"because the counter is gapless, concurrent issues for one `(tenant, type)` must
+serialise"* — the guarantee `SELECT ... FOR UPDATE` exists to deliver, and the only one whose violation is two
+invoices sharing a number, which this plan calls a worse outcome than a queued request. It is not asserted in the
+contract class because the in-memory double is single-process and has no concurrency to violate, so **extending
+`DocumentNumberSequenceContract` does not discharge it**: what it takes is two connections allocating for one
+`(tenant, type)` inside overlapping transactions, asserting the second BLOCKS until the first commits and then
+returns the NEXT value rather than the same one. That is a Wave 1 integration-suite obligation and a
+`completeness-reviewer` P0 if a Postgres adapter lands with zero concurrency assertions. The count is pinned on
+the code side by `DocumentNumberSequenceContract::testTheContractDeclaresItsOwnUnassertedGuarantee()`, which reads
+the port's numbered guarantees and fails if one is added without being asserted or disclosed; **nothing pins this
+file, which is exactly how it drifted** — that class's docblock said round 15 corrected the count "in both this
+docblock and the plan" while this paragraph still read "Four guarantees" and `grep -c Serialised` over this file
+returned **zero** — so the class asserting the plan had been fixed was the only record that it had not. That grep
+is the check either way: it now finds the guarantee named in this paragraph, and a zero means the drift is back.
+
+When persistence unblocks, `PostgresDocumentNumberSequenceTest extends
 DocumentNumberSequenceContract` goes in the **integration** suite against a real row lock, and the assertions do
 not change; only the subject does. The reference in-memory double lives under `tests/Support/` and **not** in
 `src/`, because an in-memory counter in production restarts at 1 in every worker and issues duplicate legal
@@ -872,7 +941,10 @@ exists to prevent, and it means a Wave 2 session could have converged a MAXIMAL 
 `In:` list). **Neither can be built without worked examples from the developer**: for discounts, whether a
 line discount reduces the VAT base and how a document-level discount is allocated across rate groups; for
 inclusive tax, a worked case showing the extraction. Inventing those numbers is precisely what this domain
-exists not to do, so they are BLOCKED rather than merely owed — see § "Awaiting the developer". **Full-set
+exists not to do, so they are BLOCKED rather than merely owed — and § "Awaiting the developer" is where both are
+now recorded as the open items, **which round 17 found it denied**: that section closed with *"Nothing here is
+awaiting the developer"* and sent the reader to Wave 0's owed table, which holds a row for neither, so this
+pointer landed on a refutation of the thing it was cited for. **Full-set
 coverage is the theme:** anything true of Invoice must be true of Quote and Credit, or explicitly not.
 
 **Acceptance:** a calculation change applied to one document type is proven applied to all three — the
@@ -1201,6 +1273,32 @@ the Noto family and `fontFamilyFallback` removed**, which is the state R7-1 desc
 independently at 175 404s in 9 s against my 229 in 12 s — the same ~19–20 req/s mechanism. Recorded this way
 because `CLAUDE.md` already carries the cost of a `[Verified]` that no fresh clone could reproduce.
 
+### Certification round 17 — NOT CLEAN; the FOURTEENTH bypass carrier, and a check that refused honest policies
+
+Frozen at `5492fcf`, diff under review `4254b0c..5492fcf`. On that frozen tree the unit suite reported
+`OK (568 tests, 2067 assertions)` and the integration suite `OK (111 tests, 424 assertions)` both before and after
+the security reviewer's probes — pinned to a commit, so it is a record rather than a moving citation. The finding
+counts live in `var/claude/reviews/round-17.md` and are deliberately not restated here; a total written in prose
+beside the file that holds it is the drift this plan keeps finding.
+
+Headline of the diff: **per-line VAT by largest-remainder allocation** — a new feature, never reviewed, whose
+allocation rule was mine rather than the developer's — plus the **Symfony-ecosystem rule**. Both are now entries in
+the Decisions Log above, which is where round 17 found they were not.
+
+Two closures worth carrying forward, because both are about a check that reported the wrong verdict rather than
+about missing code:
+
+| # | Finding | State |
+|---|---|---|
+| **security P0** | **THE FOURTEENTH BYPASS CARRIER: `pg_range.rngsubdiff` is an unchecked `fmgr` call site.** The function query's reachability filter enumerated `p.proacl`, `pg_trigger`, `pg_event_trigger`, `pg_aggregate` and `pg_amproc`, and did **not** read `pg_range`. A range type's `subtype_diff` is invoked by GiST at DML time through `fmgr` with **no `EXECUTE` check**, while `fmgr_security_definer` still honours `prosecdef` — the identical asymmetry that closed carriers 9, 12 and 13. Reproduced with **no superuser**: `twes_owner`, the migration role, built the function, range type, policed table, policy and GiST index end to end; acquisition printed `CLEAN (2 policed tables)`, the connection's own direct read correctly returned 2 rows, and an ordinary `INSERT` into its own `FORCE`d policed table delivered another tenant's rows to the client by `RAISE NOTICE`. `RAISE` is the channel because `subtype_diff` must be `IMMUTABLE` — PostgreSQL got as far as refusing a *write* inside the body and never refused the *call*, which is the finding. Mechanism isolated by control: GRANTing `EXECUTE` to the runtime role — strictly *less* dangerous — makes the same function REFUSE, so the row passes the `prosecdef` arm and was dropped solely by the reachability filter. | **CLOSED** at `08e0373`; the filter now reads `pg_range` — `grep -n 'pg_range' api/src/Infrastructure/Tenancy/PostgresRowLevelSecurityIsolation.php` |
+| **security P2** | **`polroles` was fetched by nothing, so an ordinary safe policy permanently REFUSED every acquisition.** The policy query selected `polpermissive` and never `polroles`, and PostgreSQL applies a policy only to the roles listed in `polroles` — so a policy `TO twes_owner`, which cannot apply to the runtime role at all, was read as though it did. A false **refusal** rather than a false clean, and therefore the shape that gets a check disabled by whoever is on call — the argument `PostgresRowLevelSecurityIsolation`'s own docblock makes against asserting cross-database `CONNECT`, that *"a check that always fails is a check somebody disables"*. | **CLOSED** at `06f9506`; `polroles` is now unnested with `0` (PUBLIC) treated as reaching every role |
+
+**Fifth instance of the `[Inferred]`-impossibility shape**, and the reason CLAUDE.md § Gotchas says to spend ten
+minutes trying one before believing it: round 16 recorded `pg_range.rngcanonical` as the same class but unreachable,
+needing a direct catalogue write. That is **true of `rngcanonical`** — its own type is a shell at
+`CREATE FUNCTION` time — and **false of its sibling `rngsubdiff`**, which needs no catalogue write at all. Round 16
+looked at the right catalogue, the wrong column, and then dropped the catalogue.
+
 ### Certification round 12 — 29 findings, TWO P0s, all 29 CLOSED
 
 **Counts: security 12 (two P0), completeness 10 (six P1), correctness 7 (one P1).** Frozen at `3bc855a`.
@@ -1257,8 +1355,14 @@ therefore never assumable — the test now ALTERs the owner to the runtime role)
 broke five `TenantIsolationTest` cases by shifting every catalogue-derived count by one — the exact Gotcha this
 plan already records for reviewer agents, done to myself. Drop stray probes before running the suite.
 
-**Round 13 is owed**, and its scope is the round-12 diff plus **Wave 1's new `Domain/Document/` code**, which
-landed after the round closed and has been reviewed by nobody.
+**Round 13 RAN, and so did rounds 14 to 17** — this line read "Round 13 is owed" until round 17, four rounds after
+it stopped being true. Its scope was the round-12 diff plus **Wave 1's new `Domain/Document/` code**, which landed
+after round 12 closed. Rounds 13 to 16 have no section of their own here: what each found is recorded as **in-place
+annotations throughout this file**, and `grep -n 'round 1[3-7]' docs/plans/build-waves.plan.md` is the index to
+them. The round records themselves are `var/claude/reviews/round-1[4-7].md` — **round 13 has no file at all**, and
+`var/` is **gitignored**, so none of them survives the container and the in-place annotations are the durable
+half. Round 17 gets a section of its own below, because its two security findings are about a check that reported
+the wrong verdict — the class this plan carries forward.
 
 ### Certification round 11 — 17 findings, FOUR P0s, and a SIXTH and SEVENTH bypass class
 
@@ -1508,7 +1612,7 @@ kernel, because it feeds line pricing. Non-negotiable regardless of the open dec
 selling price is snapshotted onto the invoice line** at issue time. A later change to a product's cost
 or profit rate must never retroactively alter an issued document.
 
-## Awaiting the developer — **ALL FIVE NOW RULED, 2026-07-29**
+## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **TWO ITEMS ARE OPEN AGAIN**
 
 This section listed five open decisions; every one has since been settled and the rulings live in
 `pricing-and-documents.plan.md` § Decisions Log. Kept as a record rather than deleted, with the outcomes:
@@ -1516,4 +1620,24 @@ profit-rate formula → **markup on cost**, VAT on the profit-inclusive net; inv
 only**; delivery notes → **their own persistent, independently numbered documents**; multi-currency →
 **in from the start, default TND**; VAT rounding → **once per rate group on the summed base**.
 
-Nothing here is awaiting the developer. The open items are in the owed table under Wave 0.
+**TWO ITEMS ARE AWAITING THE DEVELOPER AGAIN, and this paragraph denied it until round 17.** It read *"Nothing
+here is awaiting the developer. The open items are in the owed table under Wave 0."* — while **§ Wave 2 cited this
+very section** for two items that are ruled neither here nor in that owed table, and **§ Wave 1 stated the same
+requirement with no pointer at all**, so the register was reachable from one side only. Derive it rather than trust
+it: `grep -n -i discount docs/plans/build-waves.plan.md` finds every mention there is — the Decisions Log, § Wave 1,
+§ Wave 2 and this table — and **not one line inside Wave 0's owed table**, whose rows begin at the
+`| Owed | Why it is not closed here |` header. A pointer that lands on a section denying
+the thing it is cited for is worse than a dangling one, because it reads as a resolution; both wave sections now
+point here, and this table is the one place either of them resolves to.
+
+| Open, and BLOCKED rather than owed | What the developer has to supply | Destination |
+|---|---|---|
+| **Discounts** | Two worked examples: does a **LINE** discount reduce the VAT base, and how is a **DOCUMENT-level** discount allocated across rate groups? Both are arithmetic choices with no default that is obviously right, and either answer changes every downstream total. | **Wave 2** |
+| **Inclusive-vs-exclusive tax** | One worked extraction at **TND's three decimals**, so the rounding point is pinned by a number rather than by a reading of a sentence. The default currency has three decimal places, which is where a 2-decimal habit produces a wrong legal document rather than an edge case. | **Wave 2** |
+
+**Why BLOCKED and not merely owed:** inventing money numbers is the one thing this domain must not do, and
+neither item is specified by any fixture in `docs/spec/pricing-vectors.json`. Until they land, `VatRoundingPoint`
+is the only parameterisation the calculation kernel carries, and it is genuinely one implementation rather than
+two — which is the invariant Wave 1's scope line was really about, and it is unweakened by the deferral. If the
+worked examples arrive before Wave 2 opens they can land in Wave 1; an unscheduled item is how the previous
+record went stale, which is why a destination is named here rather than left to the wave that discovers it.

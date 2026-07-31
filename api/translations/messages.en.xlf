@@ -80,6 +80,10 @@
         <source>document.number_pattern_invalid</source>
         <target>The document number width must be at least 1. A width of zero would print every number unpadded while looking configured.</target>
       </trans-unit>
+      <trans-unit id="34" resname="document.number_pattern_too_wide">
+        <source>document.number_pattern_too_wide</source>
+        <target>The document number width must be at most {max}, and {width} was given. A document number is read aloud, typed into a bank transfer and printed in a column; {max} digits number every invoice a tenant will ever issue.</target>
+      </trans-unit>
       <trans-unit id="23" resname="document.state.draft">
         <source>document.state.draft</source>
         <target>a draft</target>

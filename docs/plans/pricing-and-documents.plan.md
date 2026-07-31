@@ -36,6 +36,17 @@ F1, F2, F3 and the charge model are not. Read `build-waves.plan.md` for exactly 
   Dart's half-away-from-zero. That discriminator is **Wave 2's obligation**, listed in its scope in
   `build-waves.plan.md`. Until then no tier is pinned against it, which is a gap with a name and an owner rather
   than a silent one.
+- [2026-07-31 11:00] RULED **a PER-LINE VAT figure is required** (developer rejecting the recommendation to omit
+  it: *"i still need a per line vat"*). Logged here as well as in `build-waves.plan.md` because this file is the
+  pricing spec and round 17 found the ruling living only in prose. It forces an allocation rule, since under
+  `PerRateGroup` the group's VAT is rounded ONCE on the summed base and the rounded per-line figures therefore do
+  not add up to it — two `0.013 TND` lines at 19% give a group VAT of `0.005` while each line's own rounded VAT
+  is `0.002`, leaving a millime nobody owns. The rule is **largest remainder, ties to the earliest line**, with
+  the invariant that the shares sum EXACTLY to the group VAT; "put the difference on the last line" was rejected
+  because it makes document ORDER significant to a tax figure. **Allocation applies under `PerRateGroup` only** —
+  under `PerLine` the group VAT is by construction the sum of the per-line rounded figures, so allocating there
+  moves tax onto a line that does not owe it, which round 17 found it doing. Unfixable once documents are issued:
+  see `CLAUDE.md` § Gotchas.
 
 - [2026-07-29 14:30] RULED **merging invoices: drafts only.** Anything carrying a real invoice number
   cannot be merged in either direction — legally an issued numbered invoice is undone only by a credit

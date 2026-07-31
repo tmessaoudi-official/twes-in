@@ -75,6 +75,10 @@
         <source>document.number_pattern_invalid</source>
         <target>La largeur du numéro de document doit être au moins 1. Une largeur de zéro imprimerait chaque numéro sans remplissage tout en paraissant configurée.</target>
       </trans-unit>
+      <trans-unit id="34" resname="document.number_pattern_too_wide">
+        <source>document.number_pattern_too_wide</source>
+        <target>La largeur du numéro de document doit être au plus {max}, et {width} a été fournie. Un numéro de document est lu à voix haute, saisi dans un virement bancaire et imprimé dans une colonne ; {max} chiffres suffisent à numéroter toutes les factures qu'un locataire émettra jamais.</target>
+      </trans-unit>
       <trans-unit id="23" resname="document.state.draft">
         <source>document.state.draft</source>
         <target>brouillon</target>

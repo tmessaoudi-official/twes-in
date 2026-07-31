@@ -431,7 +431,25 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * Isolation that is silently bypassed is worse than none, because everything looks correct. A
      * superuser or a `BYPASSRLS` role sees every tenant while every policy remains in place and every
-     * test that only checks the happy path still passes. Call this at boot, and in CI.
+     * test that only checks the happy path still passes.
+     *
+     * **CALL THIS WHEN A CONNECTION IS ACQUIRED, and in CI — NOT once at boot.** The docblock said "at boot" for
+     * a round, which contradicted `build-waves.plan.md`'s own wiring obligation and understated the exposure by
+     * the whole life of the process. Every question below is answered **point-in-time**, and a privileged role —
+     * the migration or "support tooling" this class already assumes exists — can change the answer under a
+     * connection that has already been certified. [Verified: a connection was certified CLEAN with 1 policed
+     * table and read 1 row; another session then ran `CREATE POLICY oops ON invoices USING (true)`; the held
+     * connection read 2 rows, including the other tenant's, while a fresh acquisition would have said REFUSED.]
+     *
+     * So the exposure window is **one connection lifetime**, and these are the catalogue facts that take effect
+     * on the very next statement of an already-certified connection: `pg_policy`, `pg_class.relrowsecurity`,
+     * `relforcerowsecurity`, `relowner` and `relacl`, `pg_inherits`, and `pg_rewrite`. Per-acquisition checking
+     * shrinks that window to a single connection's checkout rather than closing it — nothing here can prevent a
+     * privileged role from doing this, which is why the boundary is stated rather than implied. The same honesty
+     * this class already applies to cross-database `CONNECT` and to `pg_stat_activity`.
+     *
+     * {@see assertStillBoundTo()} covers the narrower savepoint case within a transaction, and the temporary-
+     * object note further down states the same point-in-time property for temp objects specifically.
      *
      * Three separate questions, because a round found this method answering only the first and being
      * named as though it answered all of them: can a reachable role bypass policies *by attribute*, can

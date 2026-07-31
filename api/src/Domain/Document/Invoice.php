@@ -68,7 +68,10 @@ final readonly class Invoice
      *
      * A thousand, because a document a human reads is not a data feed: at a thousand lines an invoice is already
      * unprintable, and anything wanting more is a statement or an export rather than a document. It fits
-     * `smallint` with two orders of magnitude to spare, so the column stays comfortable if this is ever raised.
+     * `smallint`, whose maximum is 32 767 — so this bound leaves a factor of about **32**, not the "two orders
+     * of magnitude" this line claimed for a round (`log10(32767 / 1000)` is 1.5). Ample either way, and the
+     * correction is kept rather than quietly deleted because the number is what a future reader would rely on
+     * when deciding whether raising `MAX_LINES` also needs a column change: it does, above 32 767.
      * Like `DocumentLine::MAX_SCALE` this is derived rather than ruled — one constant and one column type if the
      * developer needs more.
      */
@@ -326,6 +329,24 @@ final readonly class Invoice
      *
      * Cost is O(n) per edit, which is accepted for the same reason the currency check is: a wrong legal document
      * is worse than a slow one, and the alternative is an unrenderable document with a spent number.
+     *
+     * **MEASURED, because "O(n) per edit" makes the AGGREGATE quadratic and the previous version of this note
+     * left that to be inferred** (round 17's F6). Building a document one `withLine()` at a time, on this
+     * container, PHP 8.5.8:
+     *
+     *     n =  100   all edits    176.8 ms    one totals()   3.30 ms
+     *     n =  250    "         1 094.4 ms      "            8.73 ms
+     *     n =  500    "         4 681.7 ms      "           18.57 ms
+     *     n = 1000    "        18 399.7 ms      "           36.14 ms
+     *
+     * The interactive case is comfortable: the LAST edit of a 1000-line document costs ~36 ms, so
+     * one-edit-per-request HTTP editing is never the problem, and that is the only caller today.
+     *
+     * **A BULK PATH MUST NOT USE THIS METHOD PER LINE.** An importer building a 1000-line invoice in one request
+     * would pay ~18 s of CPU. When such a caller exists it needs a `withLines(iterable $lines)` that appends all
+     * of them and totals ONCE — same guarantee, paid once, O(n) overall rather than O(n²). Deliberately not built
+     * yet: there is no importer, and inventing API for an absent caller is how a signature ends up wrong. The
+     * numbers are recorded here so that decision is made against measurements instead of re-measured.
      *
      * @throws \InvalidArgumentException if the document could not be totalled
      */
