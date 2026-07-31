@@ -121,7 +121,7 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 - [2026-07-30 08:30] RULED (developer accepting the recommendation): **freeze the gates; round 11 verifies the
   DOMAIN only, and I write no new gate code in response to it.** Findings by round are
-  48 → 26 → 20 → 21 → 29 → 17 → 20 → 23 → 29 → 28 → 17: not converging, and rounds 10 and 11 each made the reason legible from a different side. The
+  48 → 26 → 20 → 21 → 29 → 17 → 20 → 23 → 29 → 28 → 17 → 29: not converging, and rounds 10 and 11 each made the reason legible from a different side. The
   findings **had, through round 10, moved out of Wave 0's product code and into the gates and records the loop
   itself produced** — all three round-10 lenses independently found that round 9's two P1 fixes were deletable
   with the suite green, and the copyleft veto I wrote to close a licensing bypass did not work at all because
@@ -991,6 +991,65 @@ artifact*) at the parent would measure 0 and conclude the record was fabricated.
 the Noto family and `fontFamilyFallback` removed**, which is the state R7-1 described. Round 8 reproduced it
 independently at 175 404s in 9 s against my 229 in 12 s — the same ~19–20 req/s mechanism. Recorded this way
 because `CLAUDE.md` already carries the cost of a `[Verified]` that no fresh clone could reproduce.
+
+### Certification round 12 — 29 findings, TWO P0s, all 29 CLOSED
+
+**Counts: security 12 (two P0), completeness 10 (six P1), correctness 7 (one P1).** Frozen at `3bc855a`.
+Thirteen rounds, still zero consecutive clean — but this is the first round whose findings are **all closed
+before the next round is spawned**, and the first run under the concurrency change below.
+
+**PROCESS CHANGE, adopted this round and worth keeping:** the next wave is built in an isolated scratch tree
+**while the panel reads**, instead of the tree sitting idle. The freeze stays absolute — the reviewers' tree is
+untouched, no branch is created, nothing is pushed — and the work lands once they report. Wave 1's calculation
+kernel was built and mutant-proven during round 12's read.
+
+**Both P0s were in the object filter round 11 had just rewritten**, whose new helper docblock claimed
+reachability now had ONE correct definition. It had one definition and two blind spots:
+
+| # | Finding |
+|---|---|
+| **security P0-1** | **Column privileges are not in `relacl`.** They live in `pg_attribute.attacl`, and a column grant records nothing in the relation's own ACL — so a non-`security_invoker` view reachable only by `GRANT SELECT (label)` was excluded from the result set entirely and the verdict read CLEAN while every tenant's rows were readable through it. [Verified: `has_table_privilege` false, `has_column_privilege` true, `attacl` = `label={twes=r/postgres}`.] The pre-round-11 `has_table_privilege` had the identical hole, so it was long-standing rather than a regression — which is why a rewrite of that line that did not widen it was worth catching. **CLOSED** by `anyAccessIsReachableSql()`. |
+| **security P0-2** | **A cross-tenant WRITE needs no SELECT.** Writes through a view without `security_invoker` execute with the view OWNER's privileges and the base table's policies are evaluated as that owner, so a plain `INSERT … VALUES` — requiring no read privilege — plants a row in whatever tenant the caller names. The filter asked only about `SELECT`. An insert-only journal or audit view is an ordinary shape. **CLOSED** in the same helper; M2/M3 each kill exactly one test, so the column arm and the write arm are independently load-bearing. |
+| **security P1-3** | The `policed` CTE had no `relpersistence` filter, and it was **fail-open**: every session's temporary relations are visible in `pg_class` to every other session, so a concurrent session holding a policed temp table satisfies the vacuity guard — the check reports "1 policed table inspected, clean" on a database where **no permanent table is policed**. The sibling method added in the *same diff* filters with `pg_my_temp_schema()` and documents the hazard; the insight was applied in one place only. |
+| **security P1-4** | **THE EIGHTH CARRIER: `pg_largeobject`.** Permanent, cannot carry RLS at any privilege level, `lo_get` needs nothing the runtime role lacks, default ACL owner-only — which, because every request connects as the *same* role, means every tenant's blob is readable under every binding — and `DISCARD ALL` cannot clear it. [Verified as the restricted role: created an object with a NULL ACL and read its bytes back while bound to a different tenant.] Invoice PDFs are the canonical use, so this constrains Wave 4. **The rule is ZERO**: there is no way to police them, so the only enforceable statement is that none exists. |
+| **security P1-5** | **`pg_temp` SHADOWS `public`.** A temporary table named after a policed one intercepts every UNQUALIFIED reference — the next holder of the connection reads the previous tenant's rows *under the real table's own name*. [Verified: `current_schemas(true)` → `{pg_temp_6,pg_catalog,public}` and an unqualified `shadow_probe::regclass` resolves into `pg_temp_6`. The resolution was verified; the row read through it was not, and the code claims only the former.] |
+| **security P2-11** | **`proconfig` — the one the reviewer marked `[Inferred]`, and it is REAL.** PostgreSQL saves and restores GUCs around any call whose `proconfig` is non-null, *independent of `prosecdef`*, so `SET "twes.tenant_id" = '<other tenant>'` scopes every policy inside the call to that tenant. [Verified: `prosecdef=false`, and a connection bound to tenant B read tenant A's row through it while its direct read returned 0.] Severity established rather than assumed: **only a superuser can create one** — `twes_owner` gets `permission denied to set parameter`. Still detected, because once it exists any role holding EXECUTE calls it forever. |
+
+**The completeness lens found that my round-11 "full-set" fix was itself a full-set miss, in three places** —
+each verified independently before being accepted: `shell-syntax.sh` ran from **no** command
+(`grep -c shell-syntax api/composer.json` → 0) one commit after being documented as first in the gate command;
+the reviewer charter still said "Six gates", the one surface where the count is load-bearing because a reviewer
+is chartered at load time; and the stale tier claim survived in **11 of 13** surfaces, with the fixing commit
+having edited a line two rows above the false sentence in every one of those eleven diffs.
+
+**Three of my own fixes were caught by my own mutants, which is the part worth keeping:**
+
+1. **The meta-case written to catch the gate-wiring miss was theatre.** It grepped `composer.json` whole and
+   matched the gate's name in `scripts-descriptions` — prose that runs nothing — so the unwiring mutant
+   survived. Now parses the runnable `scripts` object.
+2. **Guarding the DERIVED selling price left the TYPED one wide open**, under a comment claiming the guard sat
+   where "every construction path reaches". A price-authored instance derives nothing, so
+   `fromNetPrice($cost, -5.000)` persisted a product sold at negative money. And my first test for it used a
+   −90% pair through `withCost()`, which stays *positive* at a larger cost — a wrong test that would have
+   passed once the real gap was closed elsewhere.
+3. **Fixing `assertScale`'s upper bound at bcmath's ceiling was also wrong.** At that end bcmath does not
+   refuse, it **allocates**: a `ratioTo()` at scale 2147483640 raised nothing and ran until a 120-second probe
+   was killed. So the hazard up there is a hung request rather than a leaked exception, and a guard at the
+   theoretical ceiling passes every such call while reporting the containment promise as kept. `MAX_SCALE` is
+   now **1000**, stated as a policy choice with its rationale.
+
+**And two mutants exposed arms nothing exercised** — the same shape as `PERMISSIVE_FOR_FONT_ASSETS`: the
+TEMPORARY guard's NULL-`datacl` arm (the fixture REVOKEs then GRANTs, which *materialises* `datacl`, so the
+default-grants-PUBLIC arm was never reached — pinned now against `postgres`, whose `datacl` IS NULL), and the
+`proconfig` owner-filter widening (the probe function is owned by the superuser that created it and is
+therefore never assumable — the test now ALTERs the owner to the runtime role).
+
+**Recorded for the next session:** I left a policed `proconfig_probe` table behind from a `psql` probe and it
+broke five `TenantIsolationTest` cases by shifting every catalogue-derived count by one — the exact Gotcha this
+plan already records for reviewer agents, done to myself. Drop stray probes before running the suite.
+
+**Round 13 is owed**, and its scope is the round-12 diff plus **Wave 1's new `Domain/Document/` code**, which
+landed after the round closed and has been reviewed by nobody.
 
 ### Certification round 11 — 17 findings, FOUR P0s, and a SIXTH and SEVENTH bypass class
 
