@@ -72,6 +72,17 @@ DB="${TWES_TEST_DB_NAME:-twes_in_test}"
 
 RUNTIME_ROLE="${TWES_TEST_DB_USER:-twes}"
 RUNTIME_PASSWORD="${TWES_TEST_DB_PASSWORD:-twes}"
+# The SUPERUSER's own password. Round 16 found that making the superuser credential REQUIRED (round 15) broke the
+# documented path: nothing in this repo ever set a password on `postgres`, TCP auth here is scram-sha-256, and so
+# `api/phpunit.xml`'s postgres/postgres default could not authenticate against a cluster this script produced. A
+# fresh checkout got 22 integration failures whose message pointed at the two-cluster trap -- the wrong cause.
+#
+# Set here because this script already runs AS a superuser and is explicitly a LOCAL TEST fixture; a real
+# deployment neither runs it nor wants a password-authenticated superuser. Nine tests need one to build privileged
+# fixtures and four are the only evidence a security fix is load-bearing, so the credential has to work or the
+# suite fails closed -- which it now does, loudly, rather than skipping.
+SUPERUSER_ROLE="${TWES_TEST_DB_SUPERUSER:-postgres}"
+SUPERUSER_PASSWORD="${TWES_TEST_DB_SUPERUSER_PASSWORD:-postgres}"
 OWNER_ROLE="${TWES_TEST_DB_OWNER_USER:-twes_owner}"
 OWNER_PASSWORD="${TWES_TEST_DB_OWNER_PASSWORD:-twes_owner}"
 BYPASS_ROLE="${TWES_TEST_DB_BYPASS_USER:-twes_bypass}"
@@ -168,6 +179,10 @@ ALTER ROLE ${MEMBER_ROLE}  WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCR
 -- both of those were already detected and this one was not.
 ALTER ROLE ${REPLICATOR_ROLE} WITH LOGIN NOSUPERUSER NOBYPASSRLS REPLICATION NOCREATEROLE NOCREATEDB
     PASSWORD '${REPLICATOR_PASSWORD}';
+-- The superuser's password, so the REQUIRED credential in api/phpunit.xml can actually authenticate. Only the
+-- password is touched: no attribute of the superuser role is altered.
+ALTER ROLE "${SUPERUSER_ROLE}" WITH PASSWORD '${SUPERUSER_PASSWORD}';
+
 ALTER ROLE ${TRUNCATOR_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${PROBE_OWNER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${UNSETTABLE_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;

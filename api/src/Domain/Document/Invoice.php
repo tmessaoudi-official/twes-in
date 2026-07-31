@@ -127,13 +127,13 @@ final readonly class Invoice
             throw CurrencyMismatch::between($this->currency, $line->unitNet()->currency());
         }
 
-        return new self(
+        return self::totallable(new self(
             $this->currency,
             $this->state,
             $this->number,
             [...$this->lines, $line],
             $this->fixedCharges,
-        );
+        ), 'line');
     }
 
     /**
@@ -165,13 +165,13 @@ final readonly class Invoice
             throw CurrencyMismatch::between($this->currency, $charge->amount()->currency());
         }
 
-        return new self(
+        return self::totallable(new self(
             $this->currency,
             $this->state,
             $this->number,
             $this->lines,
             [...$this->fixedCharges, $charge],
-        );
+        ), 'fixed charge');
     }
 
     /**
@@ -281,6 +281,50 @@ final readonly class Invoice
     }
 
     // ---------------------------------------------------------------- internals
+
+    /**
+     * **A DRAFT MAY NEVER HOLD A LINE SET IT CANNOT TOTAL, and round 16 found that it could.**
+     *
+     * `DocumentLine` bounds one line's `quantity × unitNet`; nothing bounded the SUM. So two in-bounds lines, or
+     * even a single line whose net fits while `net + VAT` does not, produced a draft that could be ISSUED — number
+     * consumed permanently from a gapless legal sequence, state frozen — after which `totals()` raised forever,
+     * `cancel()` included, so the audit record could never be rendered. `Money`'s own docblock already stated the
+     * shape the line guard missed: *"two representable amounts can sum to an unrepresentable one"*.
+     *
+     * That is the THIRD iteration of one defect — `ProductPricing` at rounds 5–6, the line product at round 15,
+     * the sum here — and each fix bounded one level and asserted the next was therefore safe. The invariant is not
+     * about factors or products; it is that **every figure a document will ever be asked for must be computable
+     * before the document can hold the input**. So this checks the whole document rather than the increment.
+     *
+     * `withLine()`'s own comment already required this: *"Refused HERE and not left to the calculator, so a draft
+     * can never hold a line it cannot total."* That sentence was true of currency and false of magnitude.
+     *
+     * `RoundingMode::Up` is away-from-zero and therefore the largest magnitude any mode can produce, so passing
+     * this proves the document totals under EVERY mode a caller may later choose. `PerRateGroup` is used because
+     * `PerLine` cannot exceed it: rounding each line up and summing is bounded by rounding the summed base up.
+     *
+     * Cost is O(n) per edit, which is accepted for the same reason the currency check is: a wrong legal document
+     * is worse than a slow one, and the alternative is an unrenderable document with a spent number.
+     *
+     * @throws \InvalidArgumentException if the document could not be totalled
+     */
+    private static function totallable(self $document, string $what): self
+    {
+        try {
+            $document->totals(VatRoundingPoint::PerRateGroup, RoundingMode::Up);
+        } catch (\Twes\Domain\Money\Exception\InvalidMoneyAmount $overflow) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Adding that %s would make this document impossible to total: %s. Every figure is individually '
+                . 'in bounds — a sum of representable amounts can be unrepresentable — and refusing it here is '
+                . 'what stops the document being ISSUED, its number consumed permanently from a gapless legal '
+                . 'sequence, and its totals raising forever afterwards including once cancelled.',
+                $what,
+                $overflow->getMessage(),
+            ), 0, $overflow);
+        }
+
+        return $document;
+    }
 
     /**
      * @throws DocumentIsNotMutable

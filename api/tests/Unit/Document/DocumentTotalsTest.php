@@ -820,4 +820,94 @@ final class DocumentTotalsTest extends TestCase
         self::assertSame('12000.000', $line->net(RoundingMode::HalfUp)->amount());
     }
 
+    /**
+     * **A DOCUMENT whose SUM cannot be totalled is refused at the edit — round 16 P1.**
+     *
+     * The line guard bounds `quantity × unitNet`; nothing bounded the sum, so an invoice could be ISSUED — number
+     * consumed permanently from a gapless legal sequence, state frozen — and `totals()` then raised forever,
+     * `cancel()` included. `Money`'s own docblock already named the shape: *"two representable amounts can sum to
+     * an unrepresentable one"*. Third iteration of one defect: `ProductPricing` (r5-6), the line product (r15),
+     * the sum (r16).
+     *
+     * @param callable(): mixed $build
+     */
+    #[DataProvider('documentsThatCannotBeTotalled')]
+    public function testADocumentWhoseSumCannotBeTotalledIsRefusedAtTheEdit(callable $build): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('impossible to total');
+
+        $build();
+    }
+
+    /** @return iterable<string, array{callable}> */
+    public static function documentsThatCannotBeTotalled(): iterable
+    {
+        $tnd = Currency::of('TND');
+        $huge = str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS);
+
+        // ONE line: the net fits and net + VAT does not. The single-line route matters because it shows the
+        // defect was never about accumulation.
+        yield 'one line whose net fits but whose gross does not' => [
+            static fn(): Invoice => Invoice::draft($tnd)
+                ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
+        ];
+        // TWO lines, each exactly representable, summing past the bound.
+        yield 'two lines each in bounds, summing out of bounds' => [
+            static fn(): Invoice => Invoice::draft($tnd)
+                ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero()))
+                ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero())),
+        ];
+        // And through the CHARGE door, which is the paired path and was equally open.
+        yield 'a fixed charge pushing the total out of bounds' => [
+            static fn(): Invoice => Invoice::draft($tnd)
+                ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero()))
+                ->withFixedCharge(new FixedCharge('stamp_duty', Money::of($huge . '.000', $tnd))),
+        ];
+    }
+
+    /**
+     * The line guard rounds with `RoundingMode::Up` — pinned, because reverting it to `Down` reinstates the
+     * defect and round 16 found nothing caught that.
+     *
+     * `Up` is away-from-zero and therefore the largest magnitude any mode can produce, which is what makes the
+     * check complete rather than leaving the carry edge open. The distinguishing input is a quantity whose exact
+     * product is just under the bound and rounds OVER it.
+     */
+    public function testTheLineGuardRoundsAwayFromZero(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        new DocumentLine(
+            str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS) . '.999999',
+            Money::of('1.000', Currency::of('TND')),
+            Rate::zero(),
+        );
+    }
+
+    /**
+     * And it rounds at the CURRENCY's own scale, not a hardcoded one — pinned, because hardcoding 2 survived and
+     * that is this project's headline invariant (TND has three).
+     *
+     * The distinguishing input is a legitimate three-decimal TND line that a two-decimal assumption refuses.
+     */
+    public function testTheLineGuardUsesTheCurrencysOwnScale(): void
+    {
+        // THE DISTINGUISHING INPUT, and the first version of this test did not have it: with 14 integer digits a
+        // scale-2 rounding never crosses the bound, so both scales accepted and the mutant survived. At 15 the
+        // exact product is 999999999999999.995 — scale 3 keeps 15 integer digits, scale 2 carries to SIXTEEN and
+        // refuses a legitimate TND line. A test whose input cannot tell two behaviours apart is not a test.
+        $quantity = str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS) . '.995';
+
+        $line = new DocumentLine($quantity, Money::of('1.000', Currency::of('TND')), Rate::zero());
+
+        self::assertSame(
+            $quantity,
+            $line->net(RoundingMode::HalfUp)->amount(),
+            'A three-decimal TND quantity at the magnitude bound is legitimate. A hardcoded scale of 2 rounds it '
+            . 'up to sixteen integer digits and refuses it — and TND having three decimals is this project\'s '
+            . 'headline invariant.',
+        );
+    }
+
 }
