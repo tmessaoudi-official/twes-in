@@ -2045,6 +2045,39 @@ final class TenantIsolationTest extends TestCase
         ]);
         self::assertCount(2, $omitted, 'an absent applies flag must not wave the policy through');
 
+        // AND NEITHER DOES AN UNRECOGNISED SPELLING — round 18's finding that `!isTrue()` was the fail-OPEN
+        // direction for this one flag. `'on'`, `'true'` and `'y'` are all read as not-true by `isTrue()`, so
+        // `!isTrue()` skipped the policy; `isFalse()` judges anything it does not recognise as definitely false.
+        foreach (['on', 'true', 'y', 'TRUE', ''] as $spelling) {
+            $unrecognised = PostgresRowLevelSecurityIsolation::policedTableViolations([
+                [
+                    'policies' => json_encode([
+                        ['qual' => 'true', 'check' => 'true', 'permissive' => true, 'applies' => $spelling],
+                    ], \JSON_THROW_ON_ERROR),
+                ] + $safe,
+            ]);
+            self::assertCount(2, $unrecognised, \sprintf(
+                'applies=%s is not a recognised FALSE, so the policy must be judged rather than skipped',
+                var_export($spelling, true),
+            ));
+        }
+
+        // And the two spellings that DO mean false still skip, or the guard above would have made the flag inert.
+        foreach ([false, 'f', '0'] as $spelling) {
+            $recognised = PostgresRowLevelSecurityIsolation::policedTableViolations([
+                [
+                    'policies' => json_encode([
+                        ['qual' => $canonical, 'check' => $canonical, 'permissive' => true, 'applies' => true],
+                        ['qual' => 'true', 'check' => 'true', 'permissive' => true, 'applies' => $spelling],
+                    ], \JSON_THROW_ON_ERROR),
+                ] + $safe,
+            ]);
+            self::assertSame([], $recognised, \sprintf(
+                'applies=%s means false, so an inapplicable policy must still be skipped',
+                var_export($spelling, true),
+            ));
+        }
+
         $owned = PostgresRowLevelSecurityIsolation::policedTableViolations(
             [['owner_reachable' => 't'] + $safe],
         );
@@ -3888,7 +3921,15 @@ final class TenantIsolationTest extends TestCase
         $unreachable = getenv('TWES_TEST_DB_OWNER_USER') ?: 'twes_owner';
         $reachable = getenv('TWES_TEST_DB_TRUNCATOR_ROLE') ?: 'twes_truncator';
 
-        foreach ([$unreachable => false, $reachable => true] as $role => $expectRefusal) {
+        // THREE grant shapes, and the third is what makes the predicate PRECISE rather than merely wide.
+        // `twes_unsettable` is granted WITH INHERIT FALSE, SET FALSE — a membership HELD BUT UNREACHABLE — so
+        // `pg_has_role(..., 'MEMBER')` is true while the policy can never apply by either route. Judging it
+        // refused every acquisition permanently (round 18's S-P2), reproducing round 17's own false refusal on
+        // the one grant shape this fixture provisions on purpose. It is the ONLY shape that tells `MEMBER` apart
+        // from `USAGE ∪ SET`, and without it the narrowing fix is revertible with the whole suite green.
+        $unsettable = getenv('TWES_TEST_DB_UNSETTABLE_ROLE') ?: 'twes_unsettable';
+
+        foreach ([$unreachable => false, $unsettable => false, $reachable => true] as $role => $expectRefusal) {
             try {
                 $this->owner->exec(\sprintf(
                     'CREATE POLICY applies_probe ON %s FOR SELECT TO %s USING (true)',

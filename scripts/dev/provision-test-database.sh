@@ -168,10 +168,20 @@ printf 'provision-test-database: provisioning into %s\n' \
 # directly, and a failure REFUSES. It does not skip the statement and carry on: CLAUDE.md § Gotchas records
 # four separate instances of a control that silently did not run, one of them this script's own warning.
 #
-# The precondition is deliberately two-part, because either half alone is satisfiable by accident:
-#   1. ${DB} is absent, or exists and holds ZERO relations -- a database with tables in it is somebody's
-#      state, and this fixture's own suite leaves none behind, so an empty ${DB} is the normal case.
-#   2. TWES_TEST_DB_SUPERUSER_PASSWORD was named EXPLICITLY. A default cannot express consent.
+# The precondition is two-part, and the two halves are NOT equally strong -- round 18 corrected the earlier
+# claim here that "either half alone is satisfiable by accident", which overstated the first:
+#   1. ${DB} is absent, or exists and holds ZERO relations. This half only ever rules out overwriting a
+#      database that already has somebody's tables in it. It rules out very LITTLE otherwise, because an
+#      absent database is the default state of every cluster including a production one -- and the refusal
+#      message itself tells the operator how to satisfy it, by naming a different TWES_TEST_DB_NAME. Kept
+#      because "do not touch a database holding relations" is worth enforcing on its own, not because it
+#      identifies a throwaway cluster.
+#   2. TWES_TEST_DB_SUPERUSER_PASSWORD was named EXPLICITLY. **This is the half that discriminates**, and
+#      the only one: a default cannot express consent, so naming it is the operator saying "this cluster is
+#      mine to change". Deleting this half leaves the guard nearly vacuous; deleting half 1 leaves it
+#      substantially intact.
+# Stated this way because a guard whose headline attributes its protection to the weaker of its two checks
+# invites the next author to relax the stronger one.
 refusals=()
 
 if [[ "$SUPERUSER_PASSWORD_CONSENTED" -ne 1 ]]; then

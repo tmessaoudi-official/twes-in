@@ -362,7 +362,7 @@ number is written here, because one written beside the thing it counts is the fi
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
-| `no-orphaned-docblocks.sh` | no `*/` immediately followed by a `/**` in a tracked PHP file, because PHP attaches only the SECOND block to the declaration and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded docblock and round 16's own fix created a fresh one — moving a corrected block above another block while the superseded text stayed attached to the method, so both were wrong at once. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying four, and PHPStan would only catch the subset that also loses a `@param`/`@return` generic |
+| `no-orphaned-docblocks.php` | no doc comment that attaches to no declaration — two `T_DOC_COMMENT`s with nothing but whitespace, a comment or an attribute between them, because PHP attaches only the LATER one and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded doc comment and round 16's own fix created a fresh one. **Rewritten as a tokenizer pass at round 18**, which found the original line-pattern version missing three of five genuine shapes — a blank line between the blocks (the most natural way to author them), an attribute between them, and a single-line second block — and found its comment asserting that a closing and opening delimiter on ONE line "is not this defect", which was false. A positional rule enforces one SPELLING; the defect is a question about tokens. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying seven, and PHPStan would catch only the subset that also loses a `@param`/`@return` generic |
 
 The two layer gates are **separate on purpose, and merging them would be a mistake**: a framework
 dependency arrives as a `use` statement and an import check finds it, but `time()`, `random_int()`,
@@ -517,7 +517,7 @@ bash  scripts/gates/no-orm-attributes-in-domain.sh
 php   scripts/gates/layer-dependencies.php
 php   scripts/gates/no-ambient-calls-in-domain.php
 bash  scripts/gates/spdx-headers.sh
-bash  scripts/gates/no-orphaned-docblocks.sh
+php   scripts/gates/no-orphaned-docblocks.php
 php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
 bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Gotchas on why this one matters
@@ -964,7 +964,7 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   licence-surface cross-check failed with an "actual" list that was not wrong about this repository, it was
   reading four. The rule: **enumerate from `git ls-files`, never a recursive walk** — it sees tracked paths of
   the current work tree only, which is the set every one of these checks actually means. `shell-syntax.sh` and
-  `no-orphaned-docblocks.sh` already do. This also disposes of the `node_modules` special case such walks needed.
+  `no-orphaned-docblocks.php` already do. This also disposes of the `node_modules` special case such walks needed.
 
 ## Git & CI
 

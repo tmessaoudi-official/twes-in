@@ -25,6 +25,7 @@ use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
+use Twes\Domain\Pricing\PriceCalculator;
 use Twes\Domain\Pricing\Rate;
 use Twes\Domain\Shared\RoundingMode;
 
@@ -1086,21 +1087,155 @@ final class DocumentTotalsTest extends TestCase
      * And it holds for EVERY document the fixture describes, plus a randomised sweep — because a rounding
      * allocation that is right on one example and wrong on another is worse than none.
      *
+     * **BOTH ROUNDING POINTS, and that is the whole reason this loop exists** (round 18's F1). Every `PerLine`
+     * assertion in this file used to be a two-line single-rate document, and this test — the only one driven by
+     * the fixture's own multi-rate cases — passed `PerRateGroup` alone. So `sharesAsRounded()` was covered by
+     * nothing under the mode it exists to serve, and reading its per-line array by the loop's group-relative
+     * POSITION instead of the line's absolute position survived the entire suite: a one-token change that
+     * printed a VAT column 78% over its own total on the fixture's interleaved case. Group-relative position
+     * equals absolute position for every single-group document, which is exactly why single-rate tests cannot
+     * see it.
+     *
      * @param array<string, mixed> $case
      */
     #[DataProvider('documentCases')]
     public function testPerLineVatSumsToTheTotalForEveryFixtureCase(array $case): void
     {
-        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
-        $sum = Money::zero($totals->vatTotal()->currency());
+        foreach ([VatRoundingPoint::PerRateGroup, VatRoundingPoint::PerLine] as $roundingPoint) {
+            $totals = self::calculate($case, $roundingPoint);
+            $sum = Money::zero($totals->vatTotal()->currency());
+            $where = $roundingPoint->value . ' ' . $case['id'];
 
-        foreach ($totals->vatByLine() as $share) {
-            $sum = $sum->plus($share);
-            self::assertFalse($share->isNegative(), 'no line may carry a negative share of a positive VAT');
+            foreach ($totals->vatByLine() as $share) {
+                $sum = $sum->plus($share);
+                self::assertFalse(
+                    $share->isNegative(),
+                    'no line may carry a negative share of a positive VAT: ' . $where,
+                );
+            }
+
+            self::assertSame($totals->vatTotal()->amount(), $sum->amount(), $where);
+            self::assertCount(
+                \count($totals->lineNets()),
+                $totals->vatByLine(),
+                'one share per line, always: ' . $where,
+            );
+        }
+    }
+
+    /**
+     * **Under `PerLine`, every line's share is its OWN rounded VAT — asserted per line, on a MULTI-RATE document.**
+     *
+     * The sum assertion above catches a share that is wrong in magnitude; it cannot catch one that is wrong in
+     * ATTRIBUTION, because a permutation sums identically. This asserts the identity itself against
+     * `PriceCalculator::vat()` for each line independently, which is the property `sharesAsRounded()`'s docblock
+     * claims and which nothing checked. Driven by the fixture's interleaved case rather than a hand-built one, so
+     * a tier reading the vectors is held to the same rule.
+     */
+    public function testUnderPerLineEachLinesShareIsItsOwnRoundedVatOnAMultiRateDocument(): void
+    {
+        $cases = array_filter(
+            self::documentCases(),
+            static fn(array $case): bool => \count(array_unique(array_column($case[0]['lines'], 'vat_rate'))) > 1,
+        );
+
+        self::assertNotEmpty($cases, 'the fixture must keep at least one MULTI-RATE document; F1 hid behind that');
+
+        $prices = new PriceCalculator();
+
+        foreach ($cases as [$case]) {
+            $totals = self::calculate($case, VatRoundingPoint::PerLine);
+            $currency = $totals->vatTotal()->currency();
+
+            foreach ($case['lines'] as $position => $line) {
+                self::assertSame(
+                    $prices->vat(
+                        $totals->lineNets()[$position],
+                        Rate::fromPercentage($line['vat_rate']),
+                        RoundingMode::HalfUp,
+                    )->amount(),
+                    $totals->vatByLine()[$position]->amount(),
+                    \sprintf('%s line %d must keep its own rounded VAT', $case['id'], $position),
+                );
+            }
+
+            unset($currency);
+        }
+    }
+
+    /**
+     * **The allocator REFUSES a group VAT the floored shares already exceed, rather than clamping.**
+     *
+     * Round 18's F3. Replacing the old `max(0, $units)` clamp with a loud `\LogicException` was a deliberate
+     * behavioural change — the anti-bandaid gate forbids a clamp with no stated failure mode — and it was
+     * observed by nothing: both the throw and the un-clamped `array_slice` were deletable with the suite green.
+     *
+     * Unreachable through `calculate()`, and that is proven rather than assumed: every rounding mode returns at
+     * least `floor(exact)` and flooring is superadditive, so the group VAT can never be below the sum of the
+     * floored shares. Reached here by reflection with a `groupVat` inconsistent with the nets — which is not a
+     * contrivance but the standard this file already set for
+     * {@see testTheAllocatorSumInvariantHoldsForANegativeGroupVat}. CLAUDE.md § Gotchas: say *not covered, and
+     * here is what it would take* — here it takes six lines of the reflection the sibling test already uses.
+     */
+    public function testTheAllocatorRefusesAGroupVatBelowItsOwnFlooredShares(): void
+    {
+        $tnd = Currency::of('TND');
+        $allocate = new \ReflectionMethod(DocumentCalculator::class, 'allocate');
+
+        $this->expectException(\LogicException::class);
+        // The MESSAGE, not just the class: a crash and a detection are indistinguishable otherwise, which this
+        // repo has recorded three times.
+        $this->expectExceptionMessage('exceed the group VAT');
+
+        $allocate->invoke(
+            null,
+            // Two lines of 0.013 at 19% floor to 0.002 each, so the shares total 0.004 — more than this.
+            Money::of('0.001', $tnd),
+            [0, 1],
+            [Money::of('0.013', $tnd), Money::of('0.013', $tnd)],
+            Rate::fromPercentage('19'),
+        );
+    }
+
+    /**
+     * **The column is ordered NUMERICALLY, which only a document of TEN OR MORE lines can prove.**
+     *
+     * Round 18's F2. `ksort($vatByLine)` was pinned against deletion and against `asort` by the fixture's
+     * interleaved three-line case, but not against `ksort($vatByLine, SORT_STRING)` — with fewer than ten lines,
+     * string and numeric key order agree, so the flag is invisible. At ten it diverges (`'10' < '2'`), and a
+     * sort-flag change is a PERMUTATION, so no sum-based or count-based assertion can see it either: the total
+     * stays bit-identical while a line is told it owes another line's tax. `Invoice::MAX_LINES` is 1000 and a
+     * twelve-line invoice is ordinary.
+     *
+     * Twelve lines with DISTINCT nets, so every share is a different number and a permutation cannot hide behind
+     * two equal values. Expected values come from `PriceCalculator` per line rather than being written out: this
+     * file must not carry hand-computed money literals, and under `PerLine` each line's share IS its own rounded
+     * VAT, so the identity is the assertion.
+     */
+    public function testThePerLineColumnIsOrderedNumericallyNotAsStrings(): void
+    {
+        $tnd = Currency::of('TND');
+        $prices = new PriceCalculator();
+        $rates = [Rate::fromPercentage('19'), Rate::fromPercentage('7')];
+
+        $lines = [];
+        $expected = [];
+
+        for ($position = 0; $position < 12; ++$position) {
+            // Alternating rates, so the two groups interleave and the group-visit order is not the line order —
+            // which is what makes the key ordering observable at all.
+            $rate = $rates[$position % 2];
+            $net = Money::of(\sprintf('%d.000', $position + 1), $tnd);
+            $lines[] = new DocumentLine('1', $net, $rate);
+            $expected[] = $prices->vat($net, $rate, RoundingMode::HalfUp)->amount();
         }
 
-        self::assertSame($totals->vatTotal()->amount(), $sum->amount());
-        self::assertCount(\count($totals->lineNets()), $totals->vatByLine(), 'one share per line, always');
+        $totals = new DocumentCalculator()->calculate($lines, [], VatRoundingPoint::PerLine, RoundingMode::HalfUp, $tnd);
+
+        self::assertSame($expected, array_map(
+            static fn(Money $m): string => $m->amount(),
+            $totals->vatByLine(),
+        ), 'line 3 must not be shown line 11\'s tax; SORT_STRING orders 10, 11, 12 before 2');
     }
 
     /**
@@ -1156,6 +1291,20 @@ final class DocumentTotalsTest extends TestCase
         );
 
         $cases = self::documentCases();
+
+        // **THE INTERLEAVED CASE'S OWN `vat_by_line`, asserted by NAME — the whole closure of the document-order
+        // finding rested on it and nothing held it there** (round 18's CP-P1). It is the only multi-rate case
+        // carrying the column, so deleting that one field makes `ksort($vatByLine)` deletable again with the suite
+        // green; the count assertion above cannot see it, because there are four such cases and it requires three.
+        // The same change that added this field pinned the two `_WRONG` fields by name for exactly this reason and
+        // did not extend the treatment to the field it was adding.
+        self::assertArrayHasKey(
+            'vat_by_line',
+            $cases['multi-rate-vat-breakdown-with-stamp-duty'][0],
+            'The ONLY multi-rate per-line column. Without it nothing exercises a document whose rate groups are '
+            . 'visited in an order that is not the line order, so a column that misattributes one line\'s tax to '
+            . 'another passes every remaining assertion — the total is unchanged by a permutation.',
+        );
 
         // The two DIRECTIONS a wrong per-line column can miss in — short and over — one committed case each. They
         // are separate fields rather than one, because flooring is required by the OVER case alone: a rule that
@@ -1229,7 +1378,12 @@ final class DocumentTotalsTest extends TestCase
     }
 
     /**
-     * **THE OVER NEAR MISS — and it is a different defect, which is why it is a second field rather than a synonym.**
+     * **THE OVER NEAR MISS — the second DIRECTION a wrong column can miss in, not a second defect.**
+     *
+     * The wording matters and the earlier version had it wrong (round 18's C-F5): both near-miss columns come from
+     * the SAME computation — each line keeping its own rounded VAT — so they are one rule observed twice, once
+     * where it undershoots and once where it overshoots. Two fields rather than one because the DIRECTIONS carry
+     * different weight, not because the rules differ: only the over case justifies flooring.
      *
      * Same P2-8 gap, same treatment. What this one adds: rounding each exact share to NEAREST instead of flooring
      * makes the column EXCEED the group VAT, and a column that is over cannot be corrected without taking a millime

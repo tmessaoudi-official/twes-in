@@ -66,7 +66,7 @@ clones; figures are labelled accordingly.
   zero Composer dependencies. (2) is now **PostgreSQL row-level security**, because a Doctrine filter
   only scopes queries the ORM builds and is bypassed by a native query, a migration, a reporting job or
   `psql` — it cannot deliver the "forgetting is impossible" property that motivated it. See
-  `CLAUDE.md` § Gotchas and `build-waves.plan.md` § "Decisions Log". (3) Permissions are Symfony Voters over a real `role_permissions` table, never substring matching on a string column. Recorded in `CLAUDE.md` § Gotchas.
+  `CLAUDE.md` § Gotchas and `build-waves.plan.md` § "Decisions Log". (3) Permissions are Symfony Voters over a real `role_permissions` table, never substring matching on a string column. Recorded in `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" — the **Policies / Gates** row of its mapping table. (Round 17 filed this pointer as dangling because it said § Gotchas and the ruling is not there; round 18 found it still dangling, because the row was added at the correct destination and the pointer was left naming the wrong one. Correcting the ORIGINAL sentence is the rule § Gotchas states, and appending the correction elsewhere is what it forbids.)
 - [2026-07-29 11:15] AGREED: this plan file is the record of truth; it is committed. Four questions remain OPEN for the developer and are listed at the end. No work beyond the Claude bundle proceeds until Questions 1 and 2 are ruled.
 
 ---

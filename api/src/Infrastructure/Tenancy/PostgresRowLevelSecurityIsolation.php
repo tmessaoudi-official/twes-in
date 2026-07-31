@@ -441,9 +441,32 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * table and read 1 row; another session then ran `CREATE POLICY oops ON invoices USING (true)`; the held
      * connection read 2 rows, including the other tenant's, while a fresh acquisition would have said REFUSED.]
      *
-     * So the exposure window is **one connection lifetime**, and these are the catalogue facts that take effect
-     * on the very next statement of an already-certified connection: `pg_policy`, `pg_class.relrowsecurity`,
-     * `relforcerowsecurity`, `relowner` and `relacl`, `pg_inherits`, and `pg_rewrite`. Per-acquisition checking
+     * So the exposure window is **one connection lifetime**. The catalogue facts that take effect on the very
+     * next statement of an already-certified connection are, as far as this has been established:
+     *
+     * - **`pg_authid`** — the most severe, because it defeats the FIRST question this method asks. [Verified:
+     *   certified CLEAN reading 1 row, then `ALTER ROLE twes BYPASSRLS` from another session, then 2 rows
+     *   including the other tenant's.]
+     * - **`pg_auth_members`** — and note *this class's own `applies` sub-select is what made it load-bearing*.
+     *   Before `polroles` was read, a `USING (true)` policy was judged regardless of membership; now a policy is
+     *   SKIPPED by membership, and membership is re-resolved per statement. [Verified: CLEAN at 1 row, then
+     *   `GRANT twes_probe_owner TO twes` by the migration role using a grant it holds `WITH ADMIN OPTION`, then
+     *   2 rows.]
+     * - **`pg_class` as a whole**, not the four columns below: a NEW relation is enough, since the exempt-object
+     *   arm enumerates what exists at acquisition. [Verified: a view created and granted afterwards was readable
+     *   by the held connection.] Within it, `relrowsecurity`, `relforcerowsecurity`, `relowner` and `relacl` all
+     *   change the answer for a relation already counted.
+     * - **`pg_policy`**, **`pg_inherits`** and **`pg_rewrite`**.
+     * - `[Inferred, same mechanism, not separately reproduced]` **`pg_proc`** together with the carrier
+     *   catalogues (`pg_trigger`, `pg_event_trigger`, `pg_aggregate`, `pg_amproc`, `pg_range`) and
+     *   **`pg_largeobject_metadata`** — a carrier or large object created after certification is invisible until
+     *   the next one.
+     *
+     * **This list is stated as "as far as established", NOT as exhaustive, and the distinction is the finding
+     * that produced it** (round 18): the previous version presented seven entries as the complete set while
+     * omitting the catalogue that carries a total bypass and the one this very diff had just made matter. An
+     * incomplete list written as exhaustive is read once and trusted, which makes it worse than an open one.
+     * Per-acquisition checking
      * shrinks that window to a single connection's checkout rather than closing it — nothing here can prevent a
      * privileged role from doing this, which is why the boundary is stated rather than implied. The same honesty
      * this class already applies to cross-database `CONNECT` and to `pg_stat_activity`.
@@ -742,24 +765,35 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // acquisition, permanently, on an entirely ordinary `CREATE POLICY … TO <reporting role>`, with a
             // message asserting isolation was not in force when it demonstrably was.
             //
-            // **The direction is deliberately the WIDEST one, because narrowing it reopens a reproduced
-            // cross-tenant read.** `PUBLIC OR current_user` is NOT enough: `twes` can `SET ROLE twes_truncator`,
-            // and a permissive `USING (true)` policy granted to that role then applies — verified as a real
-            // cross-tenant read, 1 row before `SET ROLE` and 2 after.
+            // **EXACTLY the two ways a policy can reach this connection, and neither one more.**
+            // `PUBLIC OR current_user` is too NARROW — `twes` can `SET ROLE twes_truncator`, and a permissive
+            // `USING (true)` policy granted to that role then applies, verified as a real cross-tenant read at
+            // 1 row before `SET ROLE` and 2 after. `MEMBER` is too WIDE, which round 18 found: PostgreSQL
+            // selects policies with `has_privs_of_role` (USAGE semantics), so the two routes are
             //
-            // `MEMBER` is that widest notion and `SET` is **redundant beside it**, which is worth stating
-            // because the first version of this arm ORed both and the `SET` disjunct was provably dead: a role
-            // can only be `SET ROLE`d to by a member of it, so `pg_has_role(x, 'SET')` implies
-            // `pg_has_role(x, 'MEMBER')`. [Verified: deleting the `SET` disjunct left the live both-directions
-            // test green — an equivalent mutant, not a coverage gap.] `MEMBER` also covers both ways a policy
-            // can reach the connection: inherited privileges at query time, and a `SET ROLE` away. This is the
-            // mirror of `roleCanBeAssumedSql()`'s usage elsewhere, where the question is negated and `SET` is
-            // therefore the correct, narrower predicate — see its own docblock.
+            //   1. `USAGE` — the privileges are INHERITED, so the policy applies to statements as issued; and
+            //   2. `SET`   — the connection can become the role and the policy applies after it does.
+            //
+            // `MEMBER` is strictly wider than their union: a grant made `WITH INHERIT FALSE, SET FALSE` is a
+            // membership that is HELD BUT UNREACHABLE, so `MEMBER` is true while the policy can never apply by
+            // either route. That is not a hypothetical shape — it is exactly what `twes_unsettable` exists to
+            // provision, and with `MEMBER` a policy `TO twes_unsettable` was judged and refused, reproducing
+            // round 17's own S-P2 false refusal verbatim on the one grant shape this repo creates on purpose.
+            // [Verified: `MEMBER=true USAGE=false SET=false`, the policy inert at 1 visible row, `SET ROLE`
+            // refused outright with `permission denied to set role`, and the acquisition REFUSED anyway.]
+            //
+            // Round 17 removed a `SET` disjunct here as dead, correctly — `pg_has_role(x,'SET')` does imply
+            // `pg_has_role(x,'MEMBER')` [re-verified on PostgreSQL 18.4 across the whole cluster role graph:
+            // zero rows satisfy `SET AND NOT MEMBER`]. The error was the conclusion drawn from it: `MEMBER`
+            // was kept because it is the widest, when the question here needs the PRECISE predicate. Width is
+            // safety only when the question is negated — which is what `roleCanBeAssumedSql()`'s own docblock
+            // records, and this is the mirror case.
             //
             // `0` is PUBLIC, which applies to everybody.
             . "    'applies', EXISTS ("
             . '      SELECT 1 FROM unnest(p2.polroles) AS pr(rid) WHERE pr.rid = 0'
-            . '        OR ' . self::roleIsReachableSql('pr.rid')
+            . '        OR ' . self::roleHasInheritedPrivilegesSql('pr.rid')
+            . '        OR ' . self::roleCanBeAssumedSql('pr.rid')
             . '    )'
             . '  )) FROM pg_policy p2 WHERE p2.polrelid = c.oid'
             . "), '[]') AS policies "
@@ -828,6 +862,35 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     {
         return \sprintf(
             "(pg_has_role(session_user, %s, 'MEMBER') OR pg_has_role(current_user, %s, 'MEMBER'))",
+            $roleOid,
+            $roleOid,
+        );
+    }
+
+    /**
+     * Whether this connection holds a role's privileges by INHERITANCE — `USAGE`, not `MEMBER`.
+     *
+     * The distinction is the whole point and it is invisible until a grant is made `WITH INHERIT FALSE`.
+     * `MEMBER` answers *"is this connection a member of that role, by any route?"*; `USAGE` answers *"does it
+     * hold that role's privileges on the statement it is issuing right now?"* — which is the question
+     * PostgreSQL itself asks when it decides whether a row-level-security policy applies, via
+     * `has_privs_of_role`.
+     *
+     * So this is the predicate for *"does that policy apply to me"*, and `MEMBER` is the wrong one there:
+     * a grant made `WITH INHERIT FALSE, SET FALSE` is held but unreachable, and using `MEMBER` made the class
+     * judge a policy that can never apply — round 18's S-P2, which reproduced an earlier false refusal on
+     * exactly the grant shape `twes_unsettable` provisions.
+     *
+     * Pairs with {@see roleCanBeAssumedSql()} rather than replacing it: privileges reached by `SET ROLE` are
+     * not inherited, so a policy granted to a `SET`-reachable role still applies once the connection becomes
+     * it. Their UNION is the complete answer; neither alone is.
+     *
+     * BOTH `session_user` and `current_user`, for the reason {@see roleIsReachableSql()} gives.
+     */
+    private static function roleHasInheritedPrivilegesSql(string $roleOid): string
+    {
+        return \sprintf(
+            "(pg_has_role(session_user, %s, 'USAGE') OR pg_has_role(current_user, %s, 'USAGE'))",
             $roleOid,
             $roleOid,
         );
@@ -1168,7 +1231,16 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 // waved through. The query above always supplies it, so absence can only come from a
                 // hand-built row — and defaulting the other way would make a caller that forgot the key
                 // silently skip every policy on the table while reporting a clean bill.
-                if (!self::isTrue($policy['applies'] ?? true)) {
+                //
+                // **`isFalse()`, NOT `!isTrue()`** (round 18). `isTrue()` recognises `true`, `'t'` and `'1'` and
+                // reads every other spelling as false — which for the flags it was written for produces a noisy
+                // false positive, and for THIS one produced a silent SKIP: `'false'`, `'y'`, `'on'` or any
+                // unrecognised truthy string would leave a policy unjudged on a table then certified clean. The
+                // safe direction here is to skip only on a spelling that definitely MEANS false, and to judge
+                // anything unrecognised. The real query yields a genuine bool (`json_build_object` renders a
+                // PostgreSQL boolean as a JSON literal), so this is reachable only from a hand-built row — which
+                // is exactly the caller the `?? true` default above already exists for.
+                if (self::isFalse($policy['applies'] ?? true)) {
                     continue;
                 }
 
@@ -1567,6 +1639,17 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             //
             // `rngsubopc` holds an operator CLASS rather than a function and is therefore covered by the
             // `pg_amproc` arm above; `rngsubtype`, `rngcollation` and `rngmultitypid` name no function at all.
+            //
+            // **FOUR MORE `pg_proc`-referencing columns, ruled out at round 18 and recorded HERE rather than only
+            // in a review file**, because the sweep is what a later round will trust and a review file is
+            // gitignored: `pg_language.lanplcallfoid`, `pg_language.lanvalidator`,
+            // `pg_foreign_data_wrapper.fdwhandler` and `pg_foreign_data_wrapper.fdwvalidator`. Note the earlier
+            // sweep's `internal`/`cstring` reasoning does NOT cover them — `lanvalidator(oid)` and
+            // `fdwvalidator(text[], oid)` are both registrable for a PL/pgSQL function by signature. They are
+            // ruled out on PRIVILEGE and TIMING instead: creating either needs a superuser [Verified:
+            // `must be superuser to create custom procedural language`, `permission denied to create
+            // foreign-data wrapper`] and both fire at DDL time rather than on the runtime role's DML. No arm is
+            // owed for any of the four; they are named so the next round does not have to rediscover why.
             . ' OR EXISTS (SELECT 1 FROM pg_range r WHERE p.oid IN (r.rngsubdiff, r.rngcanonical))) '
             . 'ORDER BY 1',
         );
@@ -2307,5 +2390,23 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     private static function isTrue(bool|string $value): bool
     {
         return true === $value || 't' === $value || '1' === $value;
+    }
+
+    /**
+     * Whether a catalogue flag definitely means FALSE — the deliberate non-complement of {@see isTrue()}.
+     *
+     * The two are not opposites and must not be, because they are used for opposite QUESTIONS. `isTrue()` answers
+     * *"may I rely on this being on?"*, so anything unrecognised is treated as off and produces a conservative
+     * false positive. This answers *"may I SKIP a check because of this?"*, where the same treatment would be
+     * fail-open: `!isTrue('on')` is true, and skipping on that leaves a policy unjudged while the table is
+     * certified clean (round 18's finding against `applies`).
+     *
+     * So an unrecognised spelling is `false` here — meaning "do not skip, judge it" — and only the spellings
+     * PostgreSQL and PDO actually emit for a false boolean are honoured. The pair together has the property each
+     * call site needs: whichever way an unexpected value arrives, the SAFE branch is taken.
+     */
+    private static function isFalse(bool|string $value): bool
+    {
+        return false === $value || 'f' === $value || '0' === $value;
     }
 }

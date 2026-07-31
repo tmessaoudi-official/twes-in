@@ -1578,11 +1578,14 @@ else
   failed=$((failed + 1))
 fi
 
-echo "== orphaned docblocks: a */ immediately followed by a /** documents nothing =="
+echo "== orphaned doc comments: a doc comment that attaches to no declaration =="
 # The gate added at round 17, after this defect was filed by three successive rounds -- and after round 16's own
 # FIX created a fresh instance of it, moving a corrected docblock to sit above another docblock while the
 # superseded text stayed attached to the method. Nothing else in the repo can see it: `php -l` treats comments as
-# comments and `php-cs-fixer` reported 0 of 69 fixable over a tree carrying four.
+# comments and `php-cs-fixer` reported 0 of 69 fixable over a tree carrying seven. It is a `token_get_all()` pass
+# since round 18, which found the original line-pattern version missing three of five genuine shapes -- a BLANK LINE
+# between the two blocks most importantly, since that is how anyone would naturally author them, and it was also
+# the "fix" the gate's own failure message invited.
 #
 # NOTE the explicit `git add` in every case. `fresh_fixture` runs `git init` but stages nothing, and this gate
 # reads `git ls-files` -- so without staging the sweep would inspect ZERO files and every assertion here would be
@@ -1615,7 +1618,7 @@ final class Orphan
 }
 PHP
 git -C "$WORK/repo" add -A >/dev/null 2>&1
-assert_gate 'catches a stranded docblock' no-orphaned-docblocks.sh 1 'Orphan.php'
+assert_gate 'catches a stranded docblock' no-orphaned-docblocks.php 1 'Orphan.php'
 
 # THE NEGATIVE CONTROL, and it is the case that matters most for a positional pattern: two docblocks with a
 # declaration BETWEEN them are the normal shape of every class in this repository. A gate that fired on this
@@ -1653,7 +1656,7 @@ final class TwoBlocks
 }
 PHP
 git -C "$WORK/repo" add -A >/dev/null 2>&1
-assert_gate 'accepts consecutive documented declarations' no-orphaned-docblocks.sh 0 'carry no stranded docblock'
+assert_gate 'accepts consecutive documented declarations' no-orphaned-docblocks.php 0 'carry no stranded doc comment'
 
 # UNTRACKED IS OUT OF SCOPE, asserted rather than assumed. This gate reads tracked paths only -- deliberately,
 # because a parallel review round puts whole copies of this repository under .claude/worktrees/, and a recursive
@@ -1685,15 +1688,15 @@ final class NeverAdded
     }
 }
 PHP
-assert_gate 'ignores an untracked file, by design' no-orphaned-docblocks.sh 0 'carry no stranded docblock'
+assert_gate 'ignores an untracked file, by design' no-orphaned-docblocks.php 0 'carry no stranded doc comment'
 
 # ANTI-VACUITY: with nothing tracked to inspect it must FAIL rather than print OK. Fifth instance of this shape
 # in this repository, and the reason every gate here prints a `counts —` line before its verdict.
 rm -rf "$WORK/nodocs"
 mkdir -p "$WORK/nodocs/scripts/gates"
-cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.sh" "$WORK/nodocs/scripts/gates/"
+cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" "$WORK/nodocs/scripts/gates/"
 git -C "$WORK/nodocs" init -q
-vacuity_output="$(cd "$WORK/nodocs" && bash scripts/gates/no-orphaned-docblocks.sh 2>&1)" && vacuity_rc=0 || vacuity_rc=$?
+vacuity_output="$(cd "$WORK/nodocs" && php scripts/gates/no-orphaned-docblocks.php 2>&1)" && vacuity_rc=0 || vacuity_rc=$?
 
 if (( vacuity_rc != 0 )) && printf '%s' "$vacuity_output" | grep -qF 'inspected NO files'; then
   printf '  ok   — %s\n' 'refuses to report OK after inspecting zero php files'
@@ -1703,17 +1706,65 @@ else
   failed=$((failed + 1))
 fi
 
-# And the rule set is non-empty, generated from the gate's own --dump-rules, so emptying EXTENSIONS deletes the
-# gate's reach and fails here rather than reporting OK over nothing.
-orphan_rules="$(bash "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.sh" --dump-rules | grep -c '^extension')"
+# THE SEPARATOR RULE SET, asserted through the gate's own FAILURE PATH rather than through --dump-rules.
+# Round 18 found the previous version of this case VACUOUS: it counted `--dump-rules` lines, and
+# `printf 'fmt\t%s\n' "${ARR[@]}"` emits the format string once even for an EMPTY array, so the count stayed 1
+# with the rule set emptied and the assertion whose stated purpose was proving non-emptiness could not fail for
+# the one input it names. Introspection describes a rule; it does not apply one -- § Gotchas records exactly that
+# under "a permission that nothing consults permits everything".
+#
+# So this drives the gate with an emptied separator set and requires it to REFUSE. With no separators only
+# immediately adjacent doc comments would be found, which is every shape round 18 filed missing again.
+rm -rf "$WORK/norules"
+mkdir -p "$WORK/norules/scripts/gates" "$WORK/norules/src"
+sed 's/^const ORPHAN_SEPARATORS = \[$/const ORPHAN_SEPARATORS = [];const UNUSED_SEPARATORS = [/' \
+  "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" > "$WORK/norules/scripts/gates/no-orphaned-docblocks.php"
+printf '<?php\nclass A { public function m(): int { return 1; } }\n' > "$WORK/norules/src/A.php"
+git -C "$WORK/norules" init -q
+git -C "$WORK/norules" add -A >/dev/null 2>&1
+norules_output="$(cd "$WORK/norules" && php scripts/gates/no-orphaned-docblocks.php 2>&1)" && norules_rc=0 || norules_rc=$?
 
-if (( orphan_rules >= 1 )); then
-  printf '  ok   — %s (%s extension(s))\n' 'the gate declares at least one extension to inspect' "$orphan_rules"
+if (( norules_rc != 0 )) && printf '%s' "$norules_output" | grep -qF 'separator set is EMPTY'; then
+  printf '  ok   — %s\n' 'refuses to run with an emptied separator set'
   passed=$((passed + 1))
 else
-  printf '  FAIL — %s\n' 'the gate declares NO extensions, so its sweep covers nothing'
+  printf '  FAIL — %s (rc=%s) %s\n' 'refuses to run with an emptied separator set' "$norules_rc" "$norules_output"
   failed=$((failed + 1))
 fi
+
+# And a case per SHAPE round 18 proved orphaned, generated from the list rather than hand-picked -- the blank
+# line, the attribute, the single-line second block and the same-line delimiters. A positional rule passed four
+# of these; the tokenizer must catch all four.
+orphan_shape_failures=0
+for shape in blank attribute oneline sameline; do
+  rm -rf "$WORK/shape"
+  mkdir -p "$WORK/shape/scripts/gates" "$WORK/shape/src"
+  cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" "$WORK/shape/scripts/gates/"
+  case "$shape" in
+    blank)     between=$'\n' ;;
+    attribute) between=$'    #[Deprecated]\n' ;;
+    oneline)   between='' ;;
+    sameline)  between='' ;;
+  esac
+  if [[ "$shape" == 'oneline' ]]; then
+    printf '<?php\nclass A {\n    /**\n     * A.\n     */\n    /** B. */\n    public function m(): int { return 1; }\n}\n' > "$WORK/shape/src/S.php"
+  elif [[ "$shape" == 'sameline' ]]; then
+    printf '<?php\nclass A {\n    /**\n     * A.\n     */ /**\n     * B.\n     */\n    public function m(): int { return 1; }\n}\n' > "$WORK/shape/src/S.php"
+  else
+    printf '<?php\nclass A {\n    /**\n     * A.\n     */\n%s    /**\n     * B.\n     */\n    public function m(): int { return 1; }\n}\n' "$between" > "$WORK/shape/src/S.php"
+  fi
+  git -C "$WORK/shape" init -q
+  git -C "$WORK/shape" add -A >/dev/null 2>&1
+  shape_output="$(cd "$WORK/shape" && php scripts/gates/no-orphaned-docblocks.php 2>&1)" && shape_rc=0 || shape_rc=$?
+  if (( shape_rc != 0 )) && printf '%s' "$shape_output" | grep -qF 'src/S.php'; then
+    printf '  ok   — catches the %s orphan shape\n' "$shape"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — catches the %s orphan shape (rc=%s)\n' "$shape" "$shape_rc"
+    failed=$((failed + 1))
+    orphan_shape_failures=$((orphan_shape_failures + 1))
+  fi
+done
 
 echo "== twes-in's OWN licence identifier, in the manifests where a comment is impossible =="
 # Round 7 recorded that no gate checked the `license` field Composer and npm define -- the only

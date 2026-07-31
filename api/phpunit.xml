@@ -65,7 +65,7 @@
             express a dangerous shape cannot detect it, which is how three cross-tenant breaches survived
             into round 5. What each role is for is documented in scripts/dev/provision-test-database.sh,
             which creates them. THE SUPERUSER PAIR BELOW IS REQUIRED — it was documented here as optional
-            "only grants a predefined role inside one test" until round 15, when nine tests gated on it and
+            "only grants a predefined role inside one test" until round 15, when MANY tests came to gate on it and
             four of those were the only evidence that a security fix is load-bearing. A missing or wrong
             credential now FAILS rather than skipping, exactly as an unreachable database does.
         -->
