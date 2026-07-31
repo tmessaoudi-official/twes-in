@@ -16,6 +16,8 @@ use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\PriceCalculator;
+use Twes\Domain\Pricing\Rate;
+use Twes\Domain\Shared\Decimal;
 use Twes\Domain\Shared\RoundingMode;
 
 /**
@@ -74,6 +76,7 @@ final readonly class DocumentCalculator
         $bases = [];
         $perLineVat = [];
         $rates = [];
+        $linesInGroup = [];
 
         foreach ($lines as $line) {
             $net = $line->net($mode);
@@ -81,6 +84,9 @@ final readonly class DocumentCalculator
 
             $key = $line->vatRate()->percentage();
             $rates[$key] ??= $line->vatRate();
+            // Which LINES belong to this rate group, in document order — needed to allocate the group's VAT back
+            // across them. Indexes rather than the lines themselves, so the allocation can address `$lineNets`.
+            $linesInGroup[$key][] = \count($lineNets) - 1;
             $bases[$key] = isset($bases[$key]) ? $bases[$key]->plus($net) : $net;
 
             // Computed on every path, not only when PerLine is asked for. The alternative — branching here —
@@ -93,6 +99,7 @@ final readonly class DocumentCalculator
 
         $vatByRate = [];
         $vatTotal = $zero;
+        $vatByLine = [];
 
         foreach ($bases as $key => $base) {
             // THE ROUNDING POINT. PerRateGroup rounds the summed base once; PerLine sums figures that were
@@ -104,6 +111,16 @@ final readonly class DocumentCalculator
 
             $vatByRate[] = new VatGroup($rates[$key], $base, $groupVat);
             $vatTotal = $vatTotal->plus($groupVat);
+
+            // ALLOCATE the group's VAT back across its own lines — developer ruling, 2026-07-31: a per-line VAT
+            // figure is required. It cannot simply be `lineNet × rate` rounded: under PerRateGroup the group's VAT
+            // is rounded ONCE on the summed base, so the rounded per-line figures do not add up to it. Two 0.013
+            // TND lines at 19% give a group VAT of 0.005 while each line's own rounded VAT is 0.002 — 0.004, a
+            // millime short. A document whose line column does not sum to its VAT total is a document a tax
+            // authority reads as arithmetically wrong.
+            foreach (self::allocate($groupVat, $linesInGroup[$key], $lineNets, $rates[$key], $mode) as $i => $share) {
+                $vatByLine[$i] = $share;
+            }
         }
 
         $subtotalNet = $zero;
@@ -127,10 +144,13 @@ final readonly class DocumentCalculator
         // somebody has to remember.
         $total = $subtotalNet->plus($vatTotal)->plus($fixedChargesTotal);
 
+        ksort($vatByLine);
+
         return new DocumentTotals(
             $lineNets,
             $subtotalNet,
             $vatByRate,
+            array_values($vatByLine),
             $vatTotal,
             $fixedChargesTotal,
             $total,
@@ -144,12 +164,88 @@ final readonly class DocumentCalculator
      * would refuse it partway through a sum with a message about two amounts — this fails before any figure
      * is computed, so the error names the document rather than an intermediate value.
      *
-     * @param list<DocumentLine> $lines
-     * @param list<FixedCharge> $fixedCharges
      *
      * @throws CurrencyMismatch
      * @throws \InvalidArgumentException
      */
+    /**
+     * Split a rate group's VAT across its own lines by **LARGEST REMAINDER**, ties to the earliest line.
+     *
+     * Developer ruling, 2026-07-31: a per-line VAT figure is required. That makes an allocation rule unavoidable,
+     * because under `PerRateGroup` the group's VAT is rounded ONCE on the summed base and the rounded per-line
+     * figures therefore do not add up to it — two `0.013 TND` lines at 19% give a group VAT of `0.005` while each
+     * line's own rounded VAT is `0.002`, leaving a millime nobody owns.
+     *
+     * **The invariant this method exists to hold is that the allocated shares sum EXACTLY to the group VAT**, for
+     * every input. A line column that does not add up to the VAT total is a document a tax authority reads as
+     * arithmetically wrong, and it is the only reason to allocate rather than to recompute per line.
+     *
+     * Largest remainder rather than "put the difference on the last line": that alternative makes DOCUMENT ORDER
+     * significant to a tax figure, so re-ordering two lines would change which line is taxed what — a defect in a
+     * legal document, and one no reviewer would see because the total stays right. Largest remainder gives the
+     * millime to the line with the strongest claim to it, and the earliest-line tie-break makes the result
+     * deterministic, which the cross-tier vectors need in order to pin anything at all.
+     *
+     * The remainder is distributed in whole units of the currency's smallest unit, so the sum is exact by
+     * construction rather than by a final correction — there is no "and then fix the last one" step to get wrong.
+     *
+     * @param list<int> $lineIndexes the positions, in document order, of the lines carrying this rate
+     * @param list<Money> $lineNets every line's net, indexed by position
+     *
+     * @return array<int, Money> share per line position
+     */
+    private static function allocate(
+        Money $groupVat,
+        array $lineIndexes,
+        array $lineNets,
+        Rate $rate,
+        RoundingMode $mode,
+    ): array {
+        $scale = $groupVat->currency()->scale();
+        $shares = [];
+        $allocated = Money::zero($groupVat->currency());
+
+        // FLOOR each line's exact share first, so the running sum can only ever be short — never over. Rounding
+        // to nearest here would allow the sum to EXCEED the group VAT, and there is no way to take a millime back
+        // from a line without choosing a victim, which is the arbitrariness this method exists to avoid.
+        $remainders = [];
+
+        foreach ($lineIndexes as $i) {
+            $exact = Decimal::multiplyExact($lineNets[$i]->amount(), $rate->fraction());
+            $floor = Decimal::rescale($exact, $scale, RoundingMode::Down)
+                ?? throw new \LogicException('RoundingMode::Down cannot need rounding.');
+
+            $shares[$i] = Money::of($floor, $groupVat->currency());
+            $allocated = $allocated->plus($shares[$i]);
+            // What this line gave up when floored. The comparison below is on the exact remainder, not on a
+            // rounded one, so two lines are tied only when they are genuinely equally deserving.
+            $remainders[$i] = Decimal::subtract($exact, $floor, Decimal::scaleOf($exact));
+        }
+
+        // The currency's SMALLEST UNIT as a decimal string: `1` at scale 0, `0.001` at TND's scale 3. Built here
+        // rather than taken from `Money`, because `Money` has no notion of a minor unit and must not acquire one —
+        // CLAUDE.md forbids "cents" in a name precisely because the default currency has three decimals.
+        $unit = 0 === $scale ? '1' : '0.' . str_repeat('0', $scale - 1) . '1';
+
+        // How many of those units are still unallocated. Exact division, since the shortfall is a whole number of
+        // units by construction: both operands are at the currency's scale.
+        $shortfall = Decimal::subtract($groupVat->amount(), $allocated->amount(), $scale);
+        $units = (int) (Decimal::divide($shortfall, $unit, 0, RoundingMode::Down) ?? '0');
+
+        // Order by remainder DESC, then by position ASC. `uasort` is stable in PHP 8, but the position tie-break is
+        // written explicitly rather than relied upon: "stable sort" is an implementation guarantee and this is a
+        // tax figure.
+        $order = $lineIndexes;
+        usort($order, static fn(int $a, int $b): int
+            => Decimal::compare($remainders[$b], $remainders[$a]) ?: $a <=> $b);
+
+        foreach (\array_slice($order, 0, max(0, $units)) as $i) {
+            $shares[$i] = $shares[$i]->plus(Money::of($unit, $groupVat->currency()));
+        }
+
+        return $shares;
+    }
+
     private function resolveCurrency(array $lines, array $fixedCharges, ?Currency $currency): Currency
     {
         // NAMED POSITIONS, because `Money::plus()` raises the same exception CLASS a few lines downstream and

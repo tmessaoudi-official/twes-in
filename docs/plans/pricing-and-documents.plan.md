@@ -243,6 +243,19 @@ Rules that follow, each from a developer requirement:
    are also allocated at **issue**, never at draft, or every abandoned draft leaves a hole. The contract is
    stated by `Domain/Document/DocumentNumberSequence` and enforced as an executable test class,
    `DocumentNumberSequenceContract`, that every adapter must extend.
+1b. **A PER-LINE VAT figure is REQUIRED, and it is ALLOCATED rather than recomputed** (developer ruling,
+   2026-07-31, overriding the recommendation to omit it). EN 16931 requires the breakdown per *category group*
+   (BG-23) and not per line, so this is a product requirement rather than a standards one — and it forces an
+   allocation rule, because under per-rate-group rounding the group's VAT is rounded ONCE on the summed base and
+   `line_net × rate` rounded per line does not add up to it.
+   *The rule:* **largest remainder, ties to the earliest line.** Floor each line's exact share to the currency's
+   scale, then hand the shortfall out one smallest-unit at a time to the lines that floored away the most.
+   Flooring first is load-bearing — rounding to nearest lets the shares EXCEED the group figure, and taking a unit
+   back then requires picking a victim. Chosen over "put the difference on the last line" because that makes
+   document ORDER significant to a tax figure while the total stays right, so no reviewer would see it.
+   *The invariant:* the per-line column sums **exactly** to the VAT total, always. Pinned by three shared vectors
+   (`per-line-vat-allocation-*`), one per property: the tie-break, the comparison direction, and the flooring.
+
 2. **Prices are snapshotted per delivery-note line.** The same product may carry a different price on a
    later delivery note — the price is captured at issue time, never looked up from the product when the
    invoice is built.

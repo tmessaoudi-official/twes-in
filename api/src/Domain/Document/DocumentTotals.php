@@ -25,11 +25,13 @@ final readonly class DocumentTotals
     /**
      * @param list<Money> $lineNets each line's own net, in document order
      * @param list<VatGroup> $vatByRate the breakdown, ordered by first appearance of the rate
+     * @param list<Money> $vatByLine each line's share of its rate group's VAT, in document order
      */
     public function __construct(
         private array $lineNets,
         private Money $subtotalNet,
         private array $vatByRate,
+        private array $vatByLine,
         private Money $vatTotal,
         private Money $fixedChargesTotal,
         private Money $total,
@@ -44,6 +46,22 @@ final readonly class DocumentTotals
     public function subtotalNet(): Money
     {
         return $this->subtotalNet;
+    }
+
+    /**
+     * Each line's share of its rate group's VAT — **required by developer ruling, 2026-07-31.**
+     *
+     * These are ALLOCATED, not recomputed: under `PerRateGroup` the group's VAT is rounded once on the summed
+     * base, so `lineNet × rate` rounded per line does not add up to it. `DocumentCalculator::allocate()` splits
+     * the group figure by largest remainder, and the invariant is that **`array_sum` of these equals
+     * `vatTotal()` exactly**. Anything downstream that needs a per-line VAT column must read these rather than
+     * multiplying, or the column will not sum to the total printed beneath it.
+     *
+     * @return list<Money>
+     */
+    public function vatByLine(): array
+    {
+        return $this->vatByLine;
     }
 
     /** @return list<VatGroup> */

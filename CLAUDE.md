@@ -198,6 +198,39 @@ These are not guidelines. Breaking one changes what this repository legally *is*
     licence question by picking the convenient reading. This is a one-way door — Rule 18's
     `[Speculative]` grade is not good enough to build on.
 
+## The Symfony ecosystem is the ONLY vocabulary — never a Laravel/Eloquent pattern
+
+**Developer ruling, 2026-07-31: if something is specific to Laravel or Eloquent, find and use its
+Symfony / Doctrine / API Platform equivalent. Never transliterate the Laravel mechanism.**
+
+This is not a restatement of the licensing invariants and it binds even where copyright does not. Invariant 1
+forbids upstream *code*; this rule forbids upstream *shape*. We legitimately learn behaviour from Invoice Ninja
+(invariant 2), and that behaviour is expressed in Laravel idiom — so every time a behaviour is understood, the
+question is **"what is the Symfony-ecosystem way to do this?"**, never "how do I write this Eloquent thing in
+PHP". A transliterated Laravel pattern is how a Symfony codebase ends up fighting its own framework, and it is
+also how a clean-room build starts to *look* like a port even when no line was copied.
+
+The mapping, for the patterns this product actually meets:
+
+| Laravel / Eloquent | What we use instead | Why it is not a straight swap |
+|---|---|---|
+| Eloquent Active Record (`Model` with persistence on the entity) | **Doctrine ORM, data-mapper**: a framework-free entity plus XML mapping under `Infrastructure/` | This is the whole reason `Domain/` can be pure. An Active Record entity cannot satisfy § Architecture's first rule |
+| Global/local **Eloquent scopes** for tenancy | **PostgreSQL row-level security** first, a Doctrine filter second | Ruled already — see § Gotchas. A scope is opt-in per query and a filter is bypassed by native SQL; RLS is applied by the server to every statement |
+| **Laravel migrations** (`Schema::` builder) | **Doctrine Migrations** + `scripts/gates/schema-tenancy.php` | The gate is ours regardless: no migration framework enforces the RLS statements a tenant-owned table needs |
+| **Form Requests** / `Validator` facade | **Symfony Validator** on DTOs at the UI boundary — and the domain still refuses invalid state itself | Validation at the edge is a message-quality feature; the invariant lives in the value object. Both, not either |
+| **API Resources** / `toArray()` | **API Platform** resources + Symfony Serializer | § "The API contract is ours to design" — the contract is declared, not assembled per endpoint |
+| **Eloquent events / observers** | **Doctrine events** for persistence concerns, **domain events** for business ones | Do not put business meaning in a persistence hook; that is how tax logic ends up firing on a flush |
+| **Facades** (`DB::`, `Cache::`, `Mail::`) | **Constructor-injected services**, always | A facade is ambient access, which § Architecture forbids in `Domain/` outright and discourages everywhere |
+| **Jobs / Horizon** | **Symfony Messenger** | |
+| **Blade** for documents | the PDF pipeline in `docs/plans/` (Wave 4) — Twig where a template engine is wanted | |
+| **Artisan commands** | **Symfony Console** | |
+| `Carbon` for time | our `ClockInterface` port; `DateTimeImmutable` behind it | Ambient time is a P0 in `Domain/` — see § Architecture |
+| **Laravel Sanctum / Passport** | Symfony Security, decided in Wave 7 | |
+
+**When a pattern is met that is not in this table**, the rule still applies: find the ecosystem equivalent before
+writing anything, and add a row here in the same change. If no equivalent exists, that is worth saying out loud
+rather than reaching for the Laravel shape by default.
+
 ## The API contract is ours to design — and still load-bearing
 
 Because all three clients are ours, **the contract is designed, not inherited.** None of Invoice

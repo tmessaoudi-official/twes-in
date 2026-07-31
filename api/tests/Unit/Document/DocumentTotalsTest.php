@@ -943,4 +943,173 @@ final class DocumentTotalsTest extends TestCase
         }
     }
 
+    /**
+     * **PER-LINE VAT: the shares sum EXACTLY to the VAT total.** Required by developer ruling, 2026-07-31.
+     *
+     * This is the whole reason the figure is ALLOCATED rather than recomputed. Under `PerRateGroup` the group's VAT
+     * is rounded once on the summed base, so `lineNet × rate` rounded per line does not add up to it: two `0.013`
+     * TND lines at 19% give a group VAT of `0.005` while each line's own rounded VAT is `0.002` — `0.004`, a
+     * millime short. A line column that does not sum to the total printed beneath it is a document a tax authority
+     * reads as arithmetically wrong.
+     */
+    public function testPerLineVatSumsExactlyToTheVatTotal(): void
+    {
+        $tnd = Currency::of('TND');
+        $totals = new DocumentCalculator()->calculate(
+            [
+                new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')),
+                new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')),
+            ],
+            [],
+            VatRoundingPoint::PerRateGroup,
+            RoundingMode::HalfUp,
+            $tnd,
+        );
+
+        self::assertSame('0.005', $totals->vatTotal()->amount(), 'the group figure is rounded once on the base');
+        self::assertCount(2, $totals->vatByLine());
+
+        // The millime goes to ONE of the two lines, and which one is deterministic — but the assertion that
+        // matters is the SUM, because that is the property a document is judged on.
+        $sum = Money::zero($tnd);
+
+        foreach ($totals->vatByLine() as $share) {
+            $sum = $sum->plus($share);
+        }
+
+        self::assertSame(
+            $totals->vatTotal()->amount(),
+            $sum->amount(),
+            'The per-line VAT column MUST sum to the VAT total. Recomputing lineNet x rate per line gives 0.004 '
+            . 'against a total of 0.005.',
+        );
+        self::assertSame(['0.003', '0.002'], array_map(
+            static fn(Money $m): string => $m->amount(),
+            $totals->vatByLine(),
+        ), 'largest remainder, ties to the earliest line');
+    }
+
+    /**
+     * **The shares are FLOORED before the remainder is handed out, so the sum can only ever be SHORT.**
+     *
+     * Rounding each line to NEAREST instead lets the shares EXCEED the group figure — and there is then no way to
+     * take a millime back from a line without picking a victim, which is the arbitrariness the allocator exists to
+     * avoid. The distinguishing input needs per-line rounding to overshoot: three `0.008 TND` lines at 19% give an
+     * exact `0.00152` each, which rounds to `0.002` and sums to `0.006` against a group VAT of `0.005`. My first
+     * version of these tests used two `0.013` lines, where per-line rounding UNDERshoots — so a
+     * round-to-nearest mutant survived a test written to catch it.
+     */
+    public function testPerLineSharesAreFlooredSoTheSumIsNeverOverTheGroupFigure(): void
+    {
+        $tnd = Currency::of('TND');
+        $totals = new DocumentCalculator()->calculate(
+            array_fill(0, 3, new DocumentLine('1', Money::of('0.008', $tnd), Rate::fromPercentage('19'))),
+            [],
+            VatRoundingPoint::PerRateGroup,
+            RoundingMode::HalfUp,
+            $tnd,
+        );
+
+        self::assertSame('0.005', $totals->vatTotal()->amount());
+        self::assertSame(['0.002', '0.002', '0.001'], array_map(
+            static fn(Money $m): string => $m->amount(),
+            $totals->vatByLine(),
+        ), 'Rounding each line to nearest would give 0.002 x3 = 0.006, which exceeds the group VAT of 0.005.');
+    }
+
+    /**
+     * **The remainder goes to the LARGEST claim, not the smallest** — with unequal remainders, so the direction of
+     * the comparison is observable.
+     *
+     * Two `0.013` lines have EQUAL remainders, so largest-first and smallest-first pick the same set there and a
+     * reversed comparison survived. Here the nets differ: `0.013` gives an exact `0.00247` (remainder `0.00047`)
+     * and `0.021` gives `0.00399` (remainder `0.00099`), so the second line has the stronger claim to the odd
+     * millime and must receive it.
+     */
+    public function testTheRemainderGoesToTheLineWithTheLargestClaim(): void
+    {
+        $tnd = Currency::of('TND');
+        $totals = new DocumentCalculator()->calculate(
+            [
+                new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')),
+                new DocumentLine('1', Money::of('0.021', $tnd), Rate::fromPercentage('19')),
+            ],
+            [],
+            VatRoundingPoint::PerRateGroup,
+            RoundingMode::HalfUp,
+            $tnd,
+        );
+
+        self::assertSame('0.006', $totals->vatTotal()->amount());
+        self::assertSame(['0.002', '0.004'], array_map(
+            static fn(Money $m): string => $m->amount(),
+            $totals->vatByLine(),
+        ), 'The 0.021 line has the larger remainder (0.00099 vs 0.00047) and must get the odd millime.');
+    }
+
+    /**
+     * And it holds for EVERY document the fixture describes, plus a randomised sweep — because a rounding
+     * allocation that is right on one example and wrong on another is worse than none.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('documentCases')]
+    public function testPerLineVatSumsToTheTotalForEveryFixtureCase(array $case): void
+    {
+        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $sum = Money::zero($totals->vatTotal()->currency());
+
+        foreach ($totals->vatByLine() as $share) {
+            $sum = $sum->plus($share);
+            self::assertFalse($share->isNegative(), 'no line may carry a negative share of a positive VAT');
+        }
+
+        self::assertSame($totals->vatTotal()->amount(), $sum->amount());
+        self::assertCount(\count($totals->lineNets()), $totals->vatByLine(), 'one share per line, always');
+    }
+
+    /**
+     * The per-line VAT column matches the SHARED VECTORS — so Angular and Flutter cannot invent their own rule.
+     *
+     * The three `per-line-vat-allocation-*` cases carry `vat_by_line`, plus a
+     * `vat_by_line_if_*_which_is_WRONG` field on two of them recording what the natural mistake produces. Without
+     * a shared vector each tier would recompute `line_net x rate` and get a column that does not sum to the total.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('documentCasesWithAPerLineVatColumn')]
+    public function testThePerLineVatColumnMatchesTheSharedVectors(array $case): void
+    {
+        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+
+        self::assertSame(
+            $case['vat_by_line'],
+            array_map(static fn(Money $m): string => $m->amount(), $totals->vatByLine()),
+            'per-line VAT for ' . $case['id'],
+        );
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function documentCasesWithAPerLineVatColumn(): array
+    {
+        return array_filter(
+            self::documentCases(),
+            static fn(array $case): bool => isset($case[0]['vat_by_line']),
+        );
+    }
+
+    /**
+     * And the fixture must KEEP at least three such cases — one per property the allocator has (tie-break,
+     * comparison direction, flooring). Generated cases move with the data, so a deletion is otherwise silent.
+     */
+    public function testTheFixtureStillPinsEveryPropertyOfTheAllocation(): void
+    {
+        self::assertGreaterThanOrEqual(
+            3,
+            \count(self::documentCasesWithAPerLineVatColumn()),
+            'One case per allocator property: the earliest-line tie-break, the largest-remainder direction, and '
+            . 'flooring before distributing. Deleting one leaves a property pinned by nothing.',
+        );
+    }
+
 }

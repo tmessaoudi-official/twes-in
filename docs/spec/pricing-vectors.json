@@ -14,7 +14,8 @@
     "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact. **This applies to EXPECTED OUTPUT as well as to input, which round 15 found it did not:** `vat_by_rate[].rate` was written as `19`, so an Angular tier emitting `19` and a Flutter tier emitting `19.0000000000` for the required per-rate VAT table both passed the cross-tier contract. Both consumers normalise the declared value before comparing, so nothing pinned a RENDERING until the fixture-shape assertion added at round 15.",
     "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties. OWED TO WAVE 2, recorded rather than dropped: no case in this file currently carries a negative tie. One was added at round 11 and REMOVED at round 12 by developer ruling (2026-07-30), because the only way to reach a negative tie from a product is a profit rate below -100%, which derives a negative selling price -- now refused by ProductPricing, since a negative gross on a document line is a CREDIT NOTE rather than a sale. The Credit document type lands in Wave 2 and carries this obligation: until then no tier is pinned against Math.round(-0.5) === -0 or Dart's half-away-from-zero, and that is a gap with a name and an owner rather than a silent one.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error.",
-    "owed_document_vectors": "OWED, recorded rather than dropped -- the same treatment as the negative-tie gap above. Two document scenarios have NO case here and were disclosed only in a test docblock until round 14, which is not where Wave 8's Angular implementer or Wave 11's Flutter one will look: (1) an EMPTY document, so nothing pins whether a TND invoice with no lines renders 0.000, 0.00 or 0 -- the kernel is correct and the RENDERING is unspecified, which is a cross-tier disagreement waiting to happen; (2) a FIXED CHARGE in a currency other than the document's, which is now refused by DocumentCalculator and by Invoice::withFixedCharge() but has no vector, so the two client tiers have nothing to validate against. Both are Wave 8/11 obligations; a tier that invents its own answer is what these vectors exist to prevent."
+    "owed_document_vectors": "OWED, recorded rather than dropped -- the same treatment as the negative-tie gap above. Two document scenarios have NO case here and were disclosed only in a test docblock until round 14, which is not where Wave 8's Angular implementer or Wave 11's Flutter one will look: (1) an EMPTY document, so nothing pins whether a TND invoice with no lines renders 0.000, 0.00 or 0 -- the kernel is correct and the RENDERING is unspecified, which is a cross-tier disagreement waiting to happen; (2) a FIXED CHARGE in a currency other than the document's, which is now refused by DocumentCalculator and by Invoice::withFixedCharge() but has no vector, so the two client tiers have nothing to validate against. Both are Wave 8/11 obligations; a tier that invents its own answer is what these vectors exist to prevent.",
+    "per_line_vat": "PER-LINE VAT IS ALLOCATED, NEVER RECOMPUTED (developer ruling, 2026-07-31: a per-line VAT figure is required). Under per_rate_group the group's VAT is rounded ONCE on the summed base, so `line_net x rate` rounded per line does not add up to it. The rule is LARGEST REMAINDER with ties to the EARLIEST line: floor each line's exact share to the currency's scale, then hand the shortfall out one smallest-unit at a time to the lines with the largest floored-away remainder. Flooring first is load-bearing -- rounding to nearest lets the shares EXCEED the group figure, and there is then no way to take a unit back from a line without picking a victim. **The invariant every tier must satisfy: the per-line column sums EXACTLY to vat. A line column that does not add up to the total printed beneath it is a document a tax authority reads as arithmetically wrong.** Largest-remainder rather than 'put the difference on the last line' because the latter makes DOCUMENT ORDER significant to a tax figure, so re-ordering two lines would change which line is taxed what -- while the total stays right, so no reviewer would see it."
   },
   "cases": [
     {
@@ -441,6 +442,105 @@
       "fixed_charges": [],
       "expected": {
         "total": "1.4692"
+      }
+    },
+    {
+      "id": "per-line-vat-allocation-equal-remainders",
+      "why": "The base case for per-line VAT, and the one that shows why it must be ALLOCATED: the group VAT is 0.005 while each line's own rounded VAT is 0.002, so recomputing per line gives a column summing to 0.004 under a total of 0.005. Equal remainders, so this pins the TIE-BREAK (earliest line) and nothing else.",
+      "currency": "TND",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        }
+      ],
+      "subtotal_net": "0.026",
+      "vat_rate": "19.0000000000",
+      "vat": "0.005",
+      "vat_by_line": [
+        "0.003",
+        "0.002"
+      ],
+      "vat_by_line_if_recomputed_which_is_WRONG": [
+        "0.002",
+        "0.002"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.031"
+      }
+    },
+    {
+      "id": "per-line-vat-allocation-unequal-remainders",
+      "why": "Unequal remainders, so this pins the DIRECTION of the comparison: 0.013 floors away 0.00047 and 0.021 floors away 0.00099, so the second line has the stronger claim to the odd millime. With equal remainders a reversed comparison is invisible.",
+      "currency": "TND",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.021",
+          "line_net": "0.021"
+        }
+      ],
+      "subtotal_net": "0.034",
+      "vat_rate": "19.0000000000",
+      "vat": "0.006",
+      "vat_by_line": [
+        "0.002",
+        "0.004"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.040"
+      }
+    },
+    {
+      "id": "per-line-vat-allocation-floors-before-distributing",
+      "why": "Three lines whose per-line rounding OVERSHOOTS: each exact share is 0.00152, which rounds to 0.002 and sums to 0.006 against a group VAT of 0.005. Pins that shares are FLOORED before the remainder is handed out -- rounding to nearest would exceed the group figure, and taking a unit back requires picking a victim.",
+      "currency": "TND",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.008",
+          "line_net": "0.008"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.008",
+          "line_net": "0.008"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.008",
+          "line_net": "0.008"
+        }
+      ],
+      "subtotal_net": "0.024",
+      "vat_rate": "19.0000000000",
+      "vat": "0.005",
+      "vat_by_line": [
+        "0.002",
+        "0.002",
+        "0.001"
+      ],
+      "vat_by_line_if_rounded_to_nearest_which_is_WRONG": [
+        "0.002",
+        "0.002",
+        "0.002"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.029"
       }
     }
   ],
