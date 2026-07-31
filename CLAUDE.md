@@ -581,7 +581,9 @@ locale carries the same SET; nothing checks COVERAGE, and that direction stays d
 | Exception kind | Key? | Why |
 |---|---|---|
 | the user typed something invalid — a bad quantity, a negative price, a rate too precise | **yes** | they can retype it, and the message is the only instruction they get. `document.quantity_invalid`, `document.quantity_too_precise`, `document.quantity_too_large`, `document.unit_price_negative`, `document.vat_rate_invalid`, `document.charge_amount_negative`, `document.charge_label_empty`, `pricing.rate_too_precise`, `pricing.net_price_negative` |
-| the user acted on stale state — issuing twice, editing an issued document, removing a line that is gone | **yes** | plausible double-click or stale page, and a 409/422 the UI must explain. `document.illegal_transition`, `document.not_mutable`, `document.line_not_found` |
+| the user acted on stale state — issuing twice, editing an issued document, removing a line that is gone | **yes** | plausible double-click or stale page, and a 409/422 the UI must explain. `document.illegal_transition`, `document.not_mutable`, `document.line_not_found` — plus the three
+`document.state.*` LABELS their `{state}`/`{from}`/`{to}` placeholders resolve through, which are not
+refusals of their own |
 | the CONTENT is not issuable — an empty invoice | **yes** | `document.empty_cannot_be_issued` |
 | a CONFIGURATION value an administrator can fix — a number-pattern width of zero | **yes** | `document.number_pattern_invalid`. Admin-facing is still user-facing; the person who set it is the person who can correct it |
 | our own fault — a number from the wrong sequence, a sequence adapter returning 0, a `\LogicException` of any kind | **no** | `error.internal`. Naming internals to a client is noise at best and an information leak at worst |
@@ -595,6 +597,14 @@ which is the nearest thing to automation available for a judgement call.
 
 The test of it: **would a competent user, reading only this message, know what to change?** If not, it is
 `error.internal`.
+
+**A placeholder carrying an ENUM takes a translated LABEL, never the backed value** (round 15). Backing
+`DocumentState` fixed `{state}`, `{from}` and `{to}` to the wire values, which is right for the wire and wrong for
+the only instruction a user gets: `document.not_mutable` would have rendered *"Ce document est issued"* in French
+and an English token in Arabic. So `document.state.draft`, `document.state.issued` and `document.state.cancelled`
+exist, and the HTTP layer must resolve `{state}` through them rather than interpolating `->value`. The same rule
+applies to any future enum reaching a message — the backed value is an identifier, and an identifier is not a
+sentence in anybody's language.
 
 ## Gotchas
 

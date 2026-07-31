@@ -80,6 +80,18 @@
         <source>document.number_pattern_invalid</source>
         <target>The document number width must be at least 1. A width of zero would print every number unpadded while looking configured.</target>
       </trans-unit>
+      <trans-unit id="23" resname="document.state.draft">
+        <source>document.state.draft</source>
+        <target>a draft</target>
+      </trans-unit>
+      <trans-unit id="24" resname="document.state.issued">
+        <source>document.state.issued</source>
+        <target>issued</target>
+      </trans-unit>
+      <trans-unit id="25" resname="document.state.cancelled">
+        <source>document.state.cancelled</source>
+        <target>cancelled</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>This document is {state} and can no longer be changed. Cancel it and issue a new one with the correct figures.</target>

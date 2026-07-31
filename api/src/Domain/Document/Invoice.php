@@ -40,8 +40,13 @@ use Twes\Domain\Shared\RoundingMode;
  * CLAUDE.md names as a P0 for `domain-correctness-reviewer` because a status set by assignment is how an
  * illegal transition enters a billing system.
  *
- * **Deliberately absent: discounts, and inclusive-vs-exclusive tax.** Both are named in Wave 1's `In:` list and
- * neither is specified by any fixture. Building them would mean inventing money numbers, and this domain's whole
+ * **Deliberately absent: discounts, and inclusive-vs-exclusive tax.** Both are DEFERRED TO WAVE 2, and neither
+ * is specified by any fixture.
+ *
+ * The claim that "both are named in Wave 1's `In:` list" was false for discounts by the time it was written
+ * (round 15): the same commit that annotated the deferral had already deleted the word from that list, so the
+ * deferral was expressed by DELETION for one item and by ANNOTATION for the other, and this cross-reference was
+ * not re-read against either. Building them would mean inventing money numbers, and this domain's whole
  * point is that it does not do that: they need worked examples from the developer first.
  *
  * Round 14 found this pointing at "the Wave 1 section, where they are recorded as owed with the reason" — and

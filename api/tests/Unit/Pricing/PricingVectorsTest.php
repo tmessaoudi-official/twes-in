@@ -121,6 +121,27 @@ final class PricingVectorsTest extends TestCase
             . 'is where the scale is used most (line nets, per-rate VAT, the sum), so TND-only coverage here '
             . 'leaves the kernel free to assume three decimals.',
         );
+
+        // AND THE EXPECTED RATES ARE CANONICAL, which round 15 found nothing pinned. `conventions.rates` mandates
+        // "exactly 10 decimal places" and `vat_by_rate[].rate` was written as `19`, so a tier emitting `19` and a
+        // tier emitting `19.0000000000` for the same required table BOTH passed — because each consumer
+        // normalises the declared value through `Rate::fromPercentage()->percentage()` before comparing, which
+        // makes the fixture's own spelling unobservable. Asserted on the RAW string for exactly that reason.
+        foreach ($vectors['document_totals'] as $case) {
+            foreach ($case['vat_by_rate'] ?? [] as $group) {
+                self::assertMatchesRegularExpression(
+                    '/^-?\d+\.\d{10}$/',
+                    (string) $group['rate'],
+                    \sprintf(
+                        'Case "%s" declares a VAT-breakdown rate of "%s". conventions.rates requires exactly 10 '
+                        . 'decimal places, and this section is EXPECTED OUTPUT — two tiers rendering the same '
+                        . 'rate differently must not both pass.',
+                        (string) $case['id'],
+                        (string) $group['rate'],
+                    ),
+                );
+            }
+        }
     }
 
     #[DataProvider('pricingCases')]

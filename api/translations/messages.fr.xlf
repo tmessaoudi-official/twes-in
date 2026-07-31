@@ -75,6 +75,18 @@
         <source>document.number_pattern_invalid</source>
         <target>La largeur du numéro de document doit être au moins 1. Une largeur de zéro imprimerait chaque numéro sans remplissage tout en paraissant configurée.</target>
       </trans-unit>
+      <trans-unit id="23" resname="document.state.draft">
+        <source>document.state.draft</source>
+        <target>un brouillon</target>
+      </trans-unit>
+      <trans-unit id="24" resname="document.state.issued">
+        <source>document.state.issued</source>
+        <target>émis</target>
+      </trans-unit>
+      <trans-unit id="25" resname="document.state.cancelled">
+        <source>document.state.cancelled</source>
+        <target>annulé</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>Ce document est {state} et ne peut plus être modifié. Annulez-le et émettez-en un nouveau avec les montants corrects.</target>

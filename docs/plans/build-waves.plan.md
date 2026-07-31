@@ -604,7 +604,12 @@ status written by assignment · numbering with per-tenant counters.
 14). Both were listed above as in-scope with no annotation, while the deferral lived only in a Decisions Log
 entry ~515 lines up that named no destination wave — and `Invoice`'s docblock pointed *here* for "the reason",
 which was not here. Neither is specified by any fixture, and building them would mean inventing money numbers,
-which this domain exists not to do. **They need worked examples from the developer**: for discounts, whether a
+which this domain exists not to do. **Destination: WAVE 2**, whose stated theme is the shared document
+machinery — discounts and an inclusive-tax flag are exactly that, and Wave 2 is also where the negative-tie
+vector already waits. Named because round 15 pointed out this paragraph criticised the superseded record for
+naming no destination wave and then named none itself; if the worked examples arrive sooner they can land in
+Wave 1, but an unscheduled item is how the previous record went stale. **They need worked examples from the
+developer**: for discounts, whether a
 line discount reduces the VAT base and how a document-level discount is allocated across rate groups; for
 inclusive tax, a worked case showing the extraction. Until then `VatRoundingPoint` is the only parameterisation
 the kernel carries, and it is genuinely one implementation rather than two — which is the invariant that line
