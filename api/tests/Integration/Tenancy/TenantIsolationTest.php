@@ -3074,11 +3074,6 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
-     * A superuser connection, or null.
-     *
-     * Only used to grant and revoke a predefined role inside a test — the owner role cannot, deliberately.
-     * Returns null rather than skipping the whole suite, because every other test must run without it.
-     */
     /**
      * **A `SECURITY DEFINER` function owned by a role this connection HOLDS BUT CANNOT BECOME is refused.**
      *
@@ -3513,25 +3508,6 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
-     * The superuser connection the privileged fixtures need. **FAILS rather than skipping when it is absent.**
-     *
-     * It returned null and every caller called `markTestSkipped()` until round 15, and `CLAUDE.md` blessed the
-     * credential as "optional and used only in one test". Both halves were wrong and dangerously so: MANY test
-     * methods gate on it — no count is written here, because it has been wrong in three successive rounds;
-     * `grep -c 'self::superuserConnection()' ` this file, and among them are the two mutants that make round 14's `'SET'`-versus-`'MEMBER'` and
-     * `pg_roles`-versus-`regrole` fixes load-bearing, plus the two that pin round 15's rule and event-trigger
-     * carriers. In a CI without this credential the whole suite reports `OK` while four security controls are
-     * unexercised — and round 15 demonstrated the `'SET'`→`'MEMBER'` mutant surviving in exactly that shape.
-     *
-     * So this follows the ruling already applied to an unreachable database, for the identical reason recorded in
-     * `CLAUDE.md` § "Quality gate": *with no database reachable the integration suite FAILS rather than passing,
-     * deliberately, since a green run that silently skipped the tenancy proof is the worst outcome available.* A
-     * green run that silently skipped four of them is the same outcome.
-     *
-     * A connection FAILURE fails too, not only a missing variable — wrong credentials produce the same silent
-     * green otherwise.
-     */
-    /**
      * **Another session's TEMPORARY `SECURITY DEFINER` function must NOT refuse this connection.**
      *
      * Round 14 added `pg_is_other_temp_schema()` to the function query for this reason, and round 15 found the
@@ -3950,6 +3926,32 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
+    /**
+     * The superuser connection the privileged fixtures need. **FAILS rather than skipping when it is absent.**
+     *
+     * It returned null and every caller called `markTestSkipped()` until round 15, and `CLAUDE.md` blessed the
+     * credential as "optional and used only in one test". Both halves were wrong and dangerously so: MANY test
+     * methods gate on it — no count is written here, because it has been wrong in three successive rounds, so
+     * derive it with `grep -c 'self::superuserConnection()'` over this file. Among them are the mutants that make
+     * round 14's `'SET'`-versus-`'MEMBER'` and `pg_roles`-versus-`regrole` fixes load-bearing, and the ones that
+     * pin round 15's rule and event-trigger carriers. In a CI without this credential the whole suite reports
+     * `OK` while several security controls go unexercised — round 15 demonstrated the `'SET'`→`'MEMBER'` mutant
+     * surviving in exactly that shape.
+     *
+     * So this follows the ruling already applied to an unreachable database, for the identical reason recorded in
+     * `CLAUDE.md` § "Quality gate": *with no database reachable the integration suite FAILS rather than passing,
+     * deliberately, since a green run that silently skipped the tenancy proof is the worst outcome available.* A
+     * green run that silently skipped several of them is the same outcome.
+     *
+     * A connection FAILURE fails too, not only a missing variable — wrong credentials produce the same silent
+     * green otherwise.
+     *
+     * **This docblock was ORPHANED for a round** (round 17's P1-4): it sat above a temp-schema test while the
+     * superseded version — *"A superuser connection, or null … Returns null rather than skipping"*, both halves
+     * false since round 15 — sat above the method it no longer described. Round 16 had filed the same correction
+     * as reaching `phpunit.xml` and `CLAUDE.md` and missing this file; it then missed it again by moving the
+     * text to the wrong place. A docblock's position is part of its truth.
+     */
     private static function superuserConnection(): \PDO
     {
         $dsn = getenv('TWES_TEST_DSN');

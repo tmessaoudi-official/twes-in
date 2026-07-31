@@ -38,14 +38,6 @@ final class InvalidCost extends \InvalidArgumentException
     }
 
     /**
-     * The net price this cost and rate imply cannot be held by a `Money`.
-     *
-     * Refused when the pair is *combined* rather than when the price is *read*, because `netPrice()` is an
-     * accessor and an accessor must not throw on state that was persisted legally. The two bounds being
-     * individually satisfied says nothing about their product: a 0.001 cost with a 99999999 rate is two
-     * perfectly storable values whose product needs sixteen integer digits.
-     */
-    /**
      * The derived selling price is below zero — developer ruling, 2026-07-30.
      *
      * Separate from {@see self::netPriceWouldNotBeRepresentable()} because the remedies are opposite: that one
@@ -66,6 +58,14 @@ final class InvalidCost extends \InvalidArgumentException
         ));
     }
 
+    /**
+     * The net price this cost and rate imply cannot be held by a `Money`.
+     *
+     * Refused when the pair is *combined* rather than when the price is *read*, because `netPrice()` is an
+     * accessor and an accessor must not throw on state that was persisted legally. The two bounds being
+     * individually satisfied says nothing about their product: a 0.001 cost with a 99999999 rate is two
+     * perfectly storable values whose product needs sixteen integer digits.
+     */
     public static function netPriceWouldNotBeRepresentable(
         \Twes\Domain\Money\Money $cost,
         \Twes\Domain\Pricing\Rate $profitRate,

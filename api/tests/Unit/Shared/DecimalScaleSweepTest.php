@@ -42,8 +42,9 @@ use Twes\Domain\Shared\RoundingMode;
  * next consumer would — a formatter, or a `NUMERIC(19,4)` decimal-count check in a Doctrine type — and it would
  * break silently. Pinned directly here, so the function is covered by its own contract rather than by whoever
  * happens to call it.
- */
-/**
+ *
+ * ---
+ *
  * AN UNKILLED MUTANT, recorded rather than hidden: the `+ 1` on the working scale survives removal.
  *
  * `$working = max(armA, armB) + 1`. With the `+ 1` deleted, every case here still passes, and I could not

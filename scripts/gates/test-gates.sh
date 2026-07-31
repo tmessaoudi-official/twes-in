@@ -1578,6 +1578,143 @@ else
   failed=$((failed + 1))
 fi
 
+echo "== orphaned docblocks: a */ immediately followed by a /** documents nothing =="
+# The gate added at round 17, after this defect was filed by three successive rounds -- and after round 16's own
+# FIX created a fresh instance of it, moving a corrected docblock to sit above another docblock while the
+# superseded text stayed attached to the method. Nothing else in the repo can see it: `php -l` treats comments as
+# comments and `php-cs-fixer` reported 0 of 69 fixable over a tree carrying four.
+#
+# NOTE the explicit `git add` in every case. `fresh_fixture` runs `git init` but stages nothing, and this gate
+# reads `git ls-files` -- so without staging the sweep would inspect ZERO files and every assertion here would be
+# vacuous while the suite stayed green. That is the exact shape this suite exists to prevent, and it would have
+# been self-inflicted.
+fresh_fixture
+cat > "$WORK/repo/api/src/Domain/Probe/Orphan.php" <<'PHP'
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Domain\Probe;
+
+final class Orphan
+{
+    /**
+     * This block documents nothing: PHP attaches only the one below to the method.
+     */
+    /**
+     * This is the block that actually attaches.
+     */
+    public function documented(): int
+    {
+        return 1;
+    }
+}
+PHP
+git -C "$WORK/repo" add -A >/dev/null 2>&1
+assert_gate 'catches a stranded docblock' no-orphaned-docblocks.sh 1 'Orphan.php'
+
+# THE NEGATIVE CONTROL, and it is the case that matters most for a positional pattern: two docblocks with a
+# declaration BETWEEN them are the normal shape of every class in this repository. A gate that fired on this
+# would be unusable, and "it passes on the real tree" is not evidence -- the real tree is what the gate was
+# written against, so it cannot distinguish a correct rule from one that never fires.
+fresh_fixture
+cat > "$WORK/repo/api/src/Domain/Probe/TwoBlocks.php" <<'PHP'
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Domain\Probe;
+
+final class TwoBlocks
+{
+    /**
+     * The first method.
+     */
+    public function first(): int
+    {
+        return 1;
+    }
+
+    /**
+     * The second method, whose docblock follows the first one's CLOSING BRACE, not its docblock.
+     */
+    public function second(): int
+    {
+        return 2;
+    }
+}
+PHP
+git -C "$WORK/repo" add -A >/dev/null 2>&1
+assert_gate 'accepts consecutive documented declarations' no-orphaned-docblocks.sh 0 'carry no stranded docblock'
+
+# UNTRACKED IS OUT OF SCOPE, asserted rather than assumed. This gate reads tracked paths only -- deliberately,
+# because a parallel review round puts whole copies of this repository under .claude/worktrees/, and a recursive
+# walk then reports findings belonging to another checkout. Round 17 hit exactly that in this very file.
+fresh_fixture
+git -C "$WORK/repo" add -A >/dev/null 2>&1
+cat > "$WORK/repo/api/src/Domain/Probe/NeverAdded.php" <<'PHP'
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Domain\Probe;
+
+final class NeverAdded
+{
+    /**
+     * Stranded, but in a file git does not track.
+     */
+    /**
+     * Attached.
+     */
+    public function method(): int
+    {
+        return 1;
+    }
+}
+PHP
+assert_gate 'ignores an untracked file, by design' no-orphaned-docblocks.sh 0 'carry no stranded docblock'
+
+# ANTI-VACUITY: with nothing tracked to inspect it must FAIL rather than print OK. Fifth instance of this shape
+# in this repository, and the reason every gate here prints a `counts —` line before its verdict.
+rm -rf "$WORK/nodocs"
+mkdir -p "$WORK/nodocs/scripts/gates"
+cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.sh" "$WORK/nodocs/scripts/gates/"
+git -C "$WORK/nodocs" init -q
+vacuity_output="$(cd "$WORK/nodocs" && bash scripts/gates/no-orphaned-docblocks.sh 2>&1)" && vacuity_rc=0 || vacuity_rc=$?
+
+if (( vacuity_rc != 0 )) && printf '%s' "$vacuity_output" | grep -qF 'inspected NO files'; then
+  printf '  ok   — %s\n' 'refuses to report OK after inspecting zero php files'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (rc=%s)\n' 'refuses to report OK after inspecting zero php files' "$vacuity_rc"
+  failed=$((failed + 1))
+fi
+
+# And the rule set is non-empty, generated from the gate's own --dump-rules, so emptying EXTENSIONS deletes the
+# gate's reach and fails here rather than reporting OK over nothing.
+orphan_rules="$(bash "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.sh" --dump-rules | grep -c '^extension')"
+
+if (( orphan_rules >= 1 )); then
+  printf '  ok   — %s (%s extension(s))\n' 'the gate declares at least one extension to inspect' "$orphan_rules"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s\n' 'the gate declares NO extensions, so its sweep covers nothing'
+  failed=$((failed + 1))
+fi
+
 echo "== twes-in's OWN licence identifier, in the manifests where a comment is impossible =="
 # Round 7 recorded that no gate checked the `license` field Composer and npm define -- the only
 # machine-readable place invariant 8(c)'s identifier can live in a JSON file. Round 11 found that record

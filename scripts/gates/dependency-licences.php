@@ -196,24 +196,6 @@ const FONT_NAME_TABLE_EVIDENCE = [
 ];
 
 /**
- * How a pub package's licence TEXT is classified, and why this list is ORDERED.
- *
- * `pubspec.lock` records no licence field — unlike `composer.lock` and npm's lockfileVersion 3 — which is why
- * this tier had no licence check for the whole of Wave 0. What it does have is a licence FILE per package in
- * the pub cache, and classification turns out to be unambiguous rather than heuristic: measured across the
- * whole locked tree, 24 of 24 hosted packages classified, none left over.
- *
- * ORDER STILL MATTERS, but for RECORDING rather than for accept/reject — and the earlier version of this
- * docblock described behaviour that no longer exists ("first match wins"), which round 10 filed. The walk now
- * collects EVERY match, refuses when any of them is non-permissive, and collapses the BSD-3/BSD-2 pair because
- * the 3-clause text contains the 2-clause disclaimer verbatim. Since both are permissive, reordering changes
- * only which identifier is REPORTED — and a BSD-3 package recorded as BSD-2 is a wrong licence record, so the
- * gate tallies identifiers on stdout and the meta-suite pins that tally in both directions.
- *
- * Every identifier here must also be on PERMISSIVE; the check below asserts that rather than assuming it, so
- * adding a signature cannot quietly widen what is accepted.
- */
-/**
  * Phrases that mean a licence text contains a COPYLEFT grant, whatever else it also contains.
  *
  * WHY THIS EXISTS — round 9 defeated the classifier without any trickery. `str_contains`, first match wins,
@@ -254,6 +236,24 @@ const PUB_COPYLEFT_MARKERS = [
     'ShareAlike',
 ];
 
+/**
+ * How a pub package's licence TEXT is classified, and why this list is ORDERED.
+ *
+ * `pubspec.lock` records no licence field — unlike `composer.lock` and npm's lockfileVersion 3 — which is why
+ * this tier had no licence check for the whole of Wave 0. What it does have is a licence FILE per package in
+ * the pub cache, and classification turns out to be unambiguous rather than heuristic: measured across the
+ * whole locked tree, 24 of 24 hosted packages classified, none left over.
+ *
+ * ORDER STILL MATTERS, but for RECORDING rather than for accept/reject — and the earlier version of this
+ * docblock described behaviour that no longer exists ("first match wins"), which round 10 filed. The walk now
+ * collects EVERY match, refuses when any of them is non-permissive, and collapses the BSD-3/BSD-2 pair because
+ * the 3-clause text contains the 2-clause disclaimer verbatim. Since both are permissive, reordering changes
+ * only which identifier is REPORTED — and a BSD-3 package recorded as BSD-2 is a wrong licence record, so the
+ * gate tallies identifiers on stdout and the meta-suite pins that tally in both directions.
+ *
+ * Every identifier here must also be on PERMISSIVE; the check below asserts that rather than assuming it, so
+ * adding a signature cannot quietly widen what is accepted.
+ */
 const PUB_LICENCE_SIGNATURES = [
     ['BSD-3-Clause', 'Neither the name of'],
     ['Apache-2.0', 'Apache License'],
@@ -1452,13 +1452,6 @@ function fontLicenceDescription(string $path): ?array
 }
 
 /**
- * Direct requirements per tier, read from the manifest rather than the lock.
- *
- * Only direct ones: the notices file records these individually and the full tree in aggregate.
- *
- * @return array<string, list<string>>
- */
-/**
  * twes-in's OWN licence identifier, in the two manifests where a comment is impossible.
  *
  * Licensing invariant 8(c) requires every source file to carry `SPDX-License-Identifier: AGPL-3.0-or-later`
@@ -1538,6 +1531,13 @@ function ownLicenceDeclarationViolations(int &$checkedManifests): array
     return $violations;
 }
 
+/**
+ * Direct requirements per tier, read from the manifest rather than the lock.
+ *
+ * Only direct ones: the notices file records these individually and the full tree in aggregate.
+ *
+ * @return array<string, list<string>>
+ */
 function directRequirements(): array
 {
     $manifestPath = REPO_ROOT . '/api/composer.json';

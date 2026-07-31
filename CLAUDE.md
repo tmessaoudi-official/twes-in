@@ -346,8 +346,9 @@ api/src/
   UI/              # REST controllers, CLI commands, serializers.
 ```
 
-**Enforcement landed in Wave 0.** The P0s above are no longer prose — seven gates in `scripts/gates/`
-check them, each proven to fail on an injected violation before being trusted:
+**Enforcement landed in Wave 0.** The P0s above are no longer prose — the gates in `scripts/gates/` check
+them, each proven to fail on an injected violation before being trusted (`ls scripts/gates/` is the tally; no
+number is written here, because one written beside the thing it counts is the first thing to drift):
 
 | Gate | Enforces |
 |---|---|
@@ -358,6 +359,7 @@ check them, each proven to fail on an injected violation before being trusted:
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
+| `no-orphaned-docblocks.sh` | no `*/` immediately followed by a `/**` in a tracked PHP file, because PHP attaches only the SECOND block to the declaration and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded docblock and round 16's own fix created a fresh one — moving a corrected block above another block while the superseded text stayed attached to the method, so both were wrong at once. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying four, and PHPStan would only catch the subset that also loses a `@param`/`@return` generic |
 
 The two layer gates are **separate on purpose, and merging them would be a mistake**: a framework
 dependency arrives as a `use` statement and an import check finds it, but `time()`, `random_int()`,
@@ -492,7 +494,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Tier | Green means | State |
 |---|---|---|
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
-| **Architecture fitness** | the seven gates in `scripts/gates/` — see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
+| **Architecture fitness** | the gates in `scripts/gates/` — `ls` that directory for the tally; see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus **every locked pub package's own licence read out of the pub cache** (`mobile/pubspec.lock` records no licence field, so the cache is the only place they exist — a copyleft grant is vetoed even when the same file also states a permissive one, more than one match is refused as ambiguous, a non-`hosted`/non-`sdk` source is refused, and a version that is not plain semver is refused because it becomes a filesystem path), plus every **vendored font** under `mobile/assets/fonts/`, recursively: a REUSE sidecar declaring exactly one identifier, an acceptable one, **every one of the font's own `name`-table licence records corroborating it**, the licence text beside the binary *and* declared under `flutter:`→`assets:` so it ships, and — the direction that was missing — **every font path the manifest declares must have been examined**, because a forward walk says nothing about the files it never reached. A font arrives as a committed binary rather than a manifest entry, so no lock file can see it; it is not the only such asset (13 of the 37 tracked `.png`/`.ico` files are template-derived and ship too), which is why that sentence no longer says "the one" | **Runs** |
 | Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
@@ -512,6 +514,7 @@ bash  scripts/gates/no-orm-attributes-in-domain.sh
 php   scripts/gates/layer-dependencies.php
 php   scripts/gates/no-ambient-calls-in-domain.php
 bash  scripts/gates/spdx-headers.sh
+bash  scripts/gates/no-orphaned-docblocks.sh
 php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
 bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Gotchas on why this one matters
