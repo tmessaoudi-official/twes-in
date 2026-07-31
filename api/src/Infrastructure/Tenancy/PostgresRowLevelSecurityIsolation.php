@@ -791,25 +791,6 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
-     * The NARROW form: "this connection can actually BECOME the role", for use under a negation.
-     *
-     * `MEMBER` is the widest of `pg_has_role`'s modes and is the correct one everywhere this class asks
-     * *positively* — "could this connection reach a dangerous privilege" must err wide. Under a **negation** the
-     * same width inverts the safety direction, and round 12 found exactly that in the `SECURITY DEFINER`
-     * filter: `NOT (… 'MEMBER' …)` excludes a function whose owner the connection is a *member* of but cannot
-     * `SET ROLE` to — which is precisely the case where calling the function is the ONLY route to that role's
-     * rights, and therefore the one that most needs flagging.
-     *
-     * PostgreSQL 16 separated the three grant options, so this is a live distinction rather than a theoretical
-     * one. [Verified on this server, for this fixture's own `GRANT twes_truncator TO twes WITH INHERIT FALSE`:
-     * `MEMBER` true, `USAGE` false, `SET` true, and `pg_auth_members` records `inherit_option=false`,
-     * `set_option=true` as separate columns.]
-     *
-     * `SET` is the mode asked here because `SET ROLE` is what "become" means. A grant made `WITH SET FALSE`
-     * yields `MEMBER` true and `SET` false: the connection cannot become the role by any ordinary means, so a
-     * `SECURITY DEFINER` function owned by it IS an escalation and must be reported.
-     */
-    /**
      * Whether a `proconfig` array pins the tenant setting, as an SQL expression.
      *
      * Built from {@see self::TENANT_SETTING} rather than written out, for the reason this class keeps
@@ -842,6 +823,25 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         );
     }
 
+    /**
+     * The NARROW form: "this connection can actually BECOME the role", for use under a negation.
+     *
+     * `MEMBER` is the widest of `pg_has_role`'s modes and is the correct one everywhere this class asks
+     * *positively* — "could this connection reach a dangerous privilege" must err wide. Under a **negation** the
+     * same width inverts the safety direction, and round 12 found exactly that in the `SECURITY DEFINER`
+     * filter: `NOT (… 'MEMBER' …)` excludes a function whose owner the connection is a *member* of but cannot
+     * `SET ROLE` to — which is precisely the case where calling the function is the ONLY route to that role's
+     * rights, and therefore the one that most needs flagging.
+     *
+     * PostgreSQL 16 separated the three grant options, so this is a live distinction rather than a theoretical
+     * one. [Verified on this server, for this fixture's own `GRANT twes_truncator TO twes WITH INHERIT FALSE`:
+     * `MEMBER` true, `USAGE` false, `SET` true, and `pg_auth_members` records `inherit_option=false`,
+     * `set_option=true` as separate columns.]
+     *
+     * `SET` is the mode asked here because `SET ROLE` is what "become" means. A grant made `WITH SET FALSE`
+     * yields `MEMBER` true and `SET` false: the connection cannot become the role by any ordinary means, so a
+     * `SECURITY DEFINER` function owned by it IS an escalation and must be reported.
+     */
     private static function roleCanBeAssumedSql(string $roleOid): string
     {
         return \sprintf(
@@ -1516,23 +1516,16 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
-     * Which readable `SECURITY DEFINER` functions hand this connection a role it could not otherwise become.
+     * Whether one `proconfig` entry list pins the tenant setting — the PHP-side twin of
+     * {@see self::tenantSettingIsPinnedSql()}, for classifying a row already fetched.
      *
-     * Pure, for the same reason the two sibling `*Violations()` methods are: arranging a privileged owner needs
-     * privileges the runtime role must never hold, so the branches are unit-testable here and separately
-     * proven live against the real catalogue by the integration suite.
+     * Matches the entry's NAME half for equality after `lower()`, because PostgreSQL stores a custom GUC name
+     * VERBATIM and resolves it case-INSENSITIVELY — so `SET "TWES.TENANT_ID"` pins the same setting as
+     * `SET "twes.tenant_id"` and a case-sensitive match misses it. Round 13 found exactly that.
      *
-     * The message distinguishes the two reasons, because the remedies differ. An **exempt** owner (superuser or
-     * `BYPASSRLS`) means row security never applies inside the call at all. A merely **unreachable** owner
-     * means the call runs as somebody else — which is a cross-tenant read whenever that somebody is the
-     * tables' owner and the tables are not `FORCE`d, and is an unaudited privilege transfer regardless.
-     *
-     * A **third** reason was added at round 12 and is independent of ownership entirely: a non-null
-     * `proconfig` pinning the tenant setting. PostgreSQL saves and restores GUCs around any such call, so the
-     * function scopes the policy to whatever tenant it names for the duration of the call. Naming that one
-     * "SECURITY DEFINER" would be false — `prosecdef` is false — and would send a reader to check an ownership
-     * chain that is irrelevant.
-     *
+     * **The prose that sat here until round 16 described `securityDefinerFunctionViolations()`** — it argued about
+     * which of two reasons a violation should name, which is not a question a `bool` helper answers. That method
+     * has its own docblock now; this one describes this method.
      *
      * @return bool whether the entry pins it — the `@return list<string>` this carried until round 15 belonged to
      *              `securityDefinerFunctionViolations()` further down, and would have failed `gate:static` on the

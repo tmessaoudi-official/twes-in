@@ -647,6 +647,8 @@ which is the nearest thing to automation available for a judgement call.
 The test of it: **would a competent user, reading only this message, know what to change?** If not, it is
 `error.internal`.
 
+**NOTHING READS THIS CATALOGUE YET, and that is stated rather than left to be discovered** (round 16). There is no HTTP layer — `functional` and `e2e` are empty suites — so `locale-key-parity.php` is the only consumer the tier permits, and it checks that the three locales carry the same SET, never that a key is used. Deleting every key would leave the suite green. Acceptable *only* while no transport exists: the moment one does, resolving these keys is part of it, and a key nothing resolves is then the declared-but-unconsulted shape § Gotchas records rather than an honest placeholder.
+
 **A placeholder carrying an ENUM takes a translated LABEL, never the backed value** (round 15). Backing
 `DocumentState` fixed `{state}`, `{from}` and `{to}` to the wire values, which is right for the wire and wrong for
 the only instruction a user gets: `document.not_mutable` would have rendered *"Ce document est issued"* in French

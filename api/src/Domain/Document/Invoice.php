@@ -58,6 +58,23 @@ use Twes\Domain\Shared\RoundingMode;
 final readonly class Invoice
 {
     /**
+     * The most lines or charges a document may hold — a **derived** bound, and the constant
+     * `build-waves.plan.md` records `document_line.position smallint` as owing.
+     *
+     * Round 16 filed the gap: `position` was specified as a `smallint` with no constant behind it, which is the
+     * same domain-admits-what-persistence-rejects mismatch the `document.number integer -> bigint` and
+     * `NumberPattern::MAX_WIDTH` fixes closed. Nothing bounded the number of lines at all, so a document could
+     * hold more than the column could address.
+     *
+     * A thousand, because a document a human reads is not a data feed: at a thousand lines an invoice is already
+     * unprintable, and anything wanting more is a statement or an export rather than a document. It fits
+     * `smallint` with two orders of magnitude to spare, so the column stays comfortable if this is ever raised.
+     * Like `DocumentLine::MAX_SCALE` this is derived rather than ruled — one constant and one column type if the
+     * developer needs more.
+     */
+    public const int MAX_LINES = 1000;
+
+    /**
      * @param list<DocumentLine> $lines
      * @param list<FixedCharge> $fixedCharges
      */
@@ -127,6 +144,8 @@ final readonly class Invoice
             throw CurrencyMismatch::between($this->currency, $line->unitNet()->currency());
         }
 
+        self::assertRoomFor($this->lines, 'line');
+
         return self::totallable(new self(
             $this->currency,
             $this->state,
@@ -164,6 +183,8 @@ final readonly class Invoice
         if (!$this->currency->equals($charge->amount()->currency())) {
             throw CurrencyMismatch::between($this->currency, $charge->amount()->currency());
         }
+
+        self::assertRoomFor($this->fixedCharges, 'fixed charge');
 
         return self::totallable(new self(
             $this->currency,
@@ -324,6 +345,26 @@ final readonly class Invoice
         }
 
         return $document;
+    }
+
+    /**
+     * @param list<mixed> $existing
+     *
+     * @throws \InvalidArgumentException if the document is already at MAX_LINES
+     */
+    private static function assertRoomFor(array $existing, string $what): void
+    {
+        if (\count($existing) < self::MAX_LINES) {
+            return;
+        }
+
+        throw new \InvalidArgumentException(\sprintf(
+            'This document already holds %d %ss, which is the maximum. A document a human reads is not a data '
+            . 'feed: past this it is a statement or an export rather than an invoice, and the persisted position '
+            . 'column is sized from this bound.',
+            self::MAX_LINES,
+            $what,
+        ));
     }
 
     /**

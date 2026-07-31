@@ -1112,4 +1112,33 @@ final class DocumentTotalsTest extends TestCase
         );
     }
 
+    /**
+     * A document is bounded in the NUMBER of lines and charges it may hold, and the bound has a committed value.
+     *
+     * Round 16 filed `document_line.position smallint` as specified with no constant behind it — the same
+     * domain-admits-what-persistence-rejects mismatch the `document.number` and `NumberPattern::MAX_WIDTH` fixes
+     * closed. Nothing bounded the count at all, so a document could hold more lines than the column could address.
+     */
+    public function testADocumentIsBoundedInTheNumberOfLinesItHolds(): void
+    {
+        self::assertSame(1000, Invoice::MAX_LINES, 'The smallint position column is sized from this; change both.');
+
+        $tnd = Currency::of('TND');
+        $line = new DocumentLine('1', Money::of('0.001', $tnd), Rate::zero());
+        $invoice = Invoice::draft($tnd);
+
+        for ($i = 0; $i < Invoice::MAX_LINES; ++$i) {
+            $invoice = $invoice->withLine($line);
+        }
+
+        // The boundary is ACCEPTED — without this half, `<` and `<=` are indistinguishable and the off-by-one
+        // would refuse a document one line short of the limit.
+        self::assertCount(Invoice::MAX_LINES, $invoice->lines());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('which is the maximum');
+
+        $invoice->withLine($line);
+    }
+
 }

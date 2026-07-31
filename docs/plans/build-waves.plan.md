@@ -810,7 +810,7 @@ migration has nothing to invent:
 | `document_charge.label` | non-null `text` | trimmed on store by `FixedCharge` |
 | `document_charge.amount` | non-null `NUMERIC(19,4)` | a document-scope charge, never in a VAT base |
 | `document_line.document_id` / `document_charge.document_id` | non-null, `(company_id, document_id)` FK | **omitted at round 15 along with `position` below.** The FK is composite because a single-column one lets one tenant delete another's rows — the rule already stated for every table in this wave, which is exactly why leaving these two rows out was a gap rather than an oversight |
-| `document_line.position` / `document_charge.position` | non-null `smallint`, `UNIQUE (company_id, document_id, position)`, **and `Invoice` owes a `MAX_LINES` constant it does not have** (round 16) | **LOAD-BEARING, and it had no column** (round 15). `Invoice::withoutLine(int $position)` addresses lines BY POSITION and `removeAt()` re-indexes to keep them contiguous; `CurrencyMismatch::inContext('document line %d')` reports one to a client. Without a persisted order, positions are not stable across a database round-trip — so "remove line 2" issued against a rehydrated document can remove a DIFFERENT line, which is precisely the stale-page hazard `removeAt()`'s own comment says it exists to prevent |
+| `document_line.position` / `document_charge.position` | non-null `smallint`, `UNIQUE (company_id, document_id, position)`, **sized from `Invoice::MAX_LINES` (1000)** — the constant round 16 found missing, added at round 16's closure | **LOAD-BEARING, and it had no column** (round 15). `Invoice::withoutLine(int $position)` addresses lines BY POSITION and `removeAt()` re-indexes to keep them contiguous; `CurrencyMismatch::inContext('document line %d')` reports one to a client. Without a persisted order, positions are not stable across a database round-trip — so "remove line 2" issued against a rehydrated document can remove a DIFFERENT line, which is precisely the stale-page hazard `removeAt()`'s own comment says it exists to prevent |
 
 **AND THE GAPLESS COUNTER TABLE, which the numbering feature requires and which this table omitted** (round 15
 — the preamble above says the point of this section is that "the wave writing the first migration has no record
@@ -829,8 +829,7 @@ create anyway: `number_pattern_width` non-null `smallint CHECK (>= 1)` — whose
 `NumberPattern::padded()`'s own refusal and whose **upper** bound is now
 `NumberPattern::MAX_WIDTH` (20). Round 16 found this and `position` to be two NEW instances of the
 domain-admits-what-persistence-rejects mismatch, added in the same table that fixed one for `document.number`:
-`padded()` accepted any width up to `PHP_INT_MAX`. The constant closes this one; `position` still owes an
-`Invoice::MAX_LINES` — and
+`padded()` accepted any width up to `PHP_INT_MAX`. Both constants now exist: `NumberPattern::MAX_WIDTH` (20) and `Invoice::MAX_LINES` (1000) — and
 `default_vat_rounding_point` non-null enum over `VatRoundingPoint`'s backed values. The per-DOCUMENT
 snapshot in the table above is separate and both are needed: a company changing its default must not restate a
 document a client already holds.
