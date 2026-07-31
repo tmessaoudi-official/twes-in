@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentCalculator;
 use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\DocumentTotals;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
@@ -292,12 +293,15 @@ final class RoundingModeIsForwardedTest extends TestCase
      */
     public function testEveryRoundingModeEntryPointHasAForwardingCase(): void
     {
-        $covered = [];
-
-        foreach (array_keys(iterator_to_array(self::entryPointsTakingARoundingMode())) as $key) {
-            // Provider keys carry a parenthetical for the two DocumentCalculator arms; the method is the stem.
-            $covered[] = trim(explode('(', (string) $key)[0]);
-        }
+        // EACH provider checked SEPARATELY against the full set — not their union, which is what the first
+        // version of this widening did and which round 15's own mutant then survived: deleting `Invoice::totals`
+        // from the refusal provider stayed green because the divergence provider still listed it. A union tells
+        // you an entry point is covered SOMEWHERE, and "somewhere" is exactly the answer that let three methods
+        // sit in only one of the two lists for three consecutive rounds.
+        $providers = [
+            'divergence' => iterator_to_array(self::entryPointsTakingARoundingMode()),
+            'refuses Unnecessary' => iterator_to_array(self::entryPointsThatMustRefuseAnUnnecessaryRounding()),
+        ];
 
         $expected = [];
 
@@ -313,13 +317,25 @@ final class RoundingModeIsForwardedTest extends TestCase
             }
         }
 
-        $missing = array_values(array_diff(array_unique($expected), array_unique($covered)));
+        foreach ($providers as $label => $provider) {
+            $covered = [];
 
-        self::assertSame([], $missing, \sprintf(
-            'These take a RoundingMode and have no forwarding case: %s. The provider\'s charter is EVERY '
-            . 'entry point — add a case, or the mode is discardable with the suite green.',
-            implode(', ', $missing),
-        ));
+            foreach (array_keys($provider) as $key) {
+                // Keys carry a parenthetical for the two DocumentCalculator arms; the method is the stem.
+                $covered[] = trim(explode('(', (string) $key)[0]);
+            }
+
+            $missing = array_values(array_diff(array_unique($expected), array_unique($covered)));
+
+            self::assertSame([], $missing, \sprintf(
+                'These take a RoundingMode and are absent from the "%s" provider: %s. BOTH providers must cover '
+                . 'every entry point: a divergence case cannot see a swallowed Unnecessary (HalfUp and Down look '
+                . 'identical either way), and a refusal case cannot see a discarded mode. Add the case, or that '
+                . 'entry point is mutable with the suite green.',
+                $label,
+                implode(', ', $missing),
+            ));
+        }
     }
 
     /**
@@ -409,6 +425,40 @@ final class RoundingModeIsForwardedTest extends TestCase
                 Money::of('3.000', $tnd),
                 Money::of('5.000', $tnd),
             )->withCost(Money::of('6.000', $tnd), $m),
+            InvalidMoneyAmount::class,
+        ];
+
+        // THE THREE DOCUMENT ENTRY POINTS, which this provider stopped short of while the divergence provider
+        // beside it had all of them. Round 15 proved the gap: each of the three swallowed `Unnecessary` — a
+        // `RoundingMode::Unnecessary === $mode ? RoundingMode::HalfUp : $mode` mutant — with the suite green,
+        // because a swallow is INVISIBLE to a divergence case (HalfUp versus Down look identical either way).
+        //
+        // A caller passing `Unnecessary` is asserting "these figures need no rounding". Silently rounding them
+        // instead is the worst possible answer to that: it returns a plausible number where a refusal was asked
+        // for. This is the SAME three entry points rounds 13 and 14 each found missing from the other provider,
+        // found a third time in this one — which is why the reflection guard above now covers both halves.
+        yield 'DocumentLine::net' => [
+            static fn(RoundingMode $m): Money => new DocumentLine(
+                '0.5',
+                Money::of('0.003', $tnd),
+                Rate::zero(),
+            )->net($m),
+            InvalidMoneyAmount::class,
+        ];
+        yield 'DocumentCalculator::calculate' => [
+            static fn(RoundingMode $m): DocumentTotals => new DocumentCalculator()->calculate(
+                [new DocumentLine('0.5', Money::of('0.003', $tnd), Rate::zero())],
+                [],
+                VatRoundingPoint::PerRateGroup,
+                $m,
+                $tnd,
+            ),
+            InvalidMoneyAmount::class,
+        ];
+        yield 'Invoice::totals' => [
+            static fn(RoundingMode $m): DocumentTotals => Invoice::draft($tnd)
+                ->withLine(new DocumentLine('0.5', Money::of('0.003', $tnd), Rate::zero()))
+                ->totals(VatRoundingPoint::PerRateGroup, $m),
             InvalidMoneyAmount::class,
         ];
     }

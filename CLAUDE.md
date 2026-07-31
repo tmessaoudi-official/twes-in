@@ -532,13 +532,26 @@ shape).
 Every role after the first two was added because a certification round proved a real breach that the previous
 topology made untestable.
 
-Overridden in CI by `TWES_TEST_DSN` plus, for the four login roles, a user/password pair
+Overridden in CI by `TWES_TEST_DSN` plus, for the **five** LOGIN roles that connect, a user/password pair
 (`TWES_TEST_DB_{USER,OWNER_USER,BYPASS_USER,MEMBER_USER,REPLICATOR_USER}` and their `_PASSWORD`
-counterparts). The two NOLOGIN probe roles are named by `TWES_TEST_DB_TRUNCATOR_ROLE` and
-`TWES_TEST_DB_PROBE_OWNER_ROLE` — no password, because nothing connects as them. `TWES_TEST_DB_SUPERUSER`
-and its password are optional and used only to grant a predefined role inside one test; without them those
-cases skip rather than fail. The defaults in `api/phpunit.xml` are throwaway local values. With no database reachable the integration suite **fails**
-rather than passing — deliberately, since a green run that silently skipped the tenancy proof is the
+counterparts) — and `TWES_TEST_DB_MIXED_CASE_ROLE` with `_PASSWORD`, the sixth, whose whole point is a name
+that is not all-lowercase. The **three** NOLOGIN probe roles are named by `TWES_TEST_DB_TRUNCATOR_ROLE`,
+`TWES_TEST_DB_PROBE_OWNER_ROLE` and `TWES_TEST_DB_UNSETTABLE_ROLE` — no password, because nothing connects as
+them. **Derive this list rather than trusting it**: `grep -o 'TWES_TEST_DB_[A-Z_]*' api/phpunit.xml | sort -u`
+is the tally, and this paragraph is prose. Round 15 found it still describing "four login roles" and "two
+NOLOGIN probe roles" two rounds after the set grew — so a CI provisioned from it omitted all three new
+variables and silently skipped both of the mutants that make round 14's tenancy fixes load-bearing.
+
+**`TWES_TEST_DB_SUPERUSER` and its password are REQUIRED, and were wrongly documented here as optional
+"used only in one test" until round 15.** Nine tests need a superuser to build privileged fixtures, and four
+of them are the *only* evidence that a security fix is load-bearing — the `'SET'`-versus-`'MEMBER'` mutant,
+the `pg_roles`-versus-`regrole` mutant, and round 15's rule and event-trigger carriers. So a missing or wrong
+superuser credential now **fails** rather than skipping, for the identical reason the next sentence gives about
+an unreachable database. [Verified: removing the two `<env>` entries turns `OK (98 tests)` into
+`Tests: 98, Failures: 14`, where it previously reported `OK, but some tests were skipped!`.]
+
+The defaults in `api/phpunit.xml` are throwaway local values. With no database reachable the integration suite
+**fails** rather than passing — deliberately, since a green run that silently skipped the tenancy proof is the
 worst outcome available.
 
 **Four test suites, deliberately separate** (`api/phpunit.xml`): `unit` (pure domain, no kernel, no

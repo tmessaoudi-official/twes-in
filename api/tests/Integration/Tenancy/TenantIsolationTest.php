@@ -591,9 +591,6 @@ final class TenantIsolationTest extends TestCase
         // than failed when unavailable: the pure-predicate coverage below still applies.
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('No superuser connection available to grant a predefined role.');
-        }
 
         $granter->exec('GRANT ' . $predefinedRole . ' TO ' . $runtimeRole);
 
@@ -1476,9 +1473,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('No superuser connection available to own a SECURITY DEFINER function.');
-        }
 
         $runtimeRole = getenv('TWES_TEST_DB_USER');
         self::assertIsString($runtimeRole);
@@ -2553,12 +2547,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped(
-                'No superuser connection available. Only a superuser (or a role granted SET on the parameter) '
-                . 'can create a proconfig function, which is itself the reason this case exists.',
-            );
-        }
 
         $runtimeRole = getenv('TWES_TEST_DB_USER');
         self::assertIsString($runtimeRole);
@@ -2753,9 +2741,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('No superuser connection available to set a parameter in a function.');
-        }
 
         $runtimeRole = getenv('TWES_TEST_DB_USER');
         self::assertIsString($runtimeRole);
@@ -2820,9 +2805,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('No superuser connection available to own a SECURITY DEFINER function.');
-        }
 
         $runtimeRole = getenv('TWES_TEST_DB_USER');
         self::assertIsString($runtimeRole);
@@ -3086,9 +3068,6 @@ final class TenantIsolationTest extends TestCase
             self::markTestSkipped('TWES_TEST_DB_UNSETTABLE_ROLE and TWES_TEST_DB_USER must be set.');
         }
 
-        if (null === $granter) {
-            self::markTestSkipped('Changing a function owner to a NOLOGIN probe role needs the superuser.');
-        }
 
         // THE PRECONDITION IS ASSERTED, not assumed. If the grant ever drifted to `SET TRUE` this whole case
         // would pass vacuously under both modes — which is the state it was written to escape.
@@ -3170,9 +3149,6 @@ final class TenantIsolationTest extends TestCase
 
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('Creating a candidate object for another role needs the superuser.');
-        }
 
         $mixed = new \PDO($dsn, $role, $password, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
 
@@ -3319,9 +3295,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('Creating a gateway owned by an exempt role needs the superuser.');
-        }
 
         $gate = 'rule_gateway_probe';
 
@@ -3386,9 +3359,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('Creating a table owned by an exempt role needs the superuser.');
-        }
 
         $plain = 'no_rule_probe';
 
@@ -3445,9 +3415,6 @@ final class TenantIsolationTest extends TestCase
     {
         $granter = self::superuserConnection();
 
-        if (null === $granter) {
-            self::markTestSkipped('Creating an event trigger needs the superuser.');
-        }
 
         $function = 'event_trigger_probe';
         $trigger = 'event_trigger_probe_evt';
@@ -3499,22 +3466,52 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
-    private static function superuserConnection(): ?\PDO
+    /**
+     * The superuser connection the privileged fixtures need. **FAILS rather than skipping when it is absent.**
+     *
+     * It returned null and every caller called `markTestSkipped()` until round 15, and `CLAUDE.md` blessed the
+     * credential as "optional and used only in one test". Both halves were wrong and dangerously so: NINE test
+     * methods gate on it, and among them are the two mutants that make round 14's `'SET'`-versus-`'MEMBER'` and
+     * `pg_roles`-versus-`regrole` fixes load-bearing, plus the two that pin round 15's rule and event-trigger
+     * carriers. In a CI without this credential the whole suite reports `OK` while four security controls are
+     * unexercised — and round 15 demonstrated the `'SET'`→`'MEMBER'` mutant surviving in exactly that shape.
+     *
+     * So this follows the ruling already applied to an unreachable database, for the identical reason recorded in
+     * `CLAUDE.md` § "Quality gate": *with no database reachable the integration suite FAILS rather than passing,
+     * deliberately, since a green run that silently skipped the tenancy proof is the worst outcome available.* A
+     * green run that silently skipped four of them is the same outcome.
+     *
+     * A connection FAILURE fails too, not only a missing variable — wrong credentials produce the same silent
+     * green otherwise.
+     */
+    private static function superuserConnection(): \PDO
     {
         $dsn = getenv('TWES_TEST_DSN');
         $user = getenv('TWES_TEST_DB_SUPERUSER');
         $password = getenv('TWES_TEST_DB_SUPERUSER_PASSWORD');
 
         if (!\is_string($dsn) || !\is_string($user) || '' === $user) {
-            return null;
+            self::fail(
+                'TWES_TEST_DSN, TWES_TEST_DB_SUPERUSER and TWES_TEST_DB_SUPERUSER_PASSWORD must all be set. '
+                . 'Nine tests need a superuser to build privileged fixtures, and four of them are the only '
+                . 'evidence that a security fix is load-bearing. Skipping them reports OK while those controls '
+                . 'do not run, which is the outcome this suite already refuses for an unreachable database.',
+            );
         }
 
         try {
             return new \PDO($dsn, $user, \is_string($password) ? $password : null, [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
             ]);
-        } catch (\PDOException) {
-            return null;
+        } catch (\PDOException $failure) {
+            self::fail(\sprintf(
+                'Could not connect as the superuser %s: %s. Wrong credentials produce the same silent green as '
+                . 'missing ones, so this fails rather than skipping. Note this container runs PostgreSQL '
+                . 'clusters 16 and 18 both on 5432 — an authentication failure usually means the wrong one won '
+                . 'the port (pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start).',
+                $user,
+                trim(explode("\n", $failure->getMessage())[0]),
+            ));
         }
     }
 

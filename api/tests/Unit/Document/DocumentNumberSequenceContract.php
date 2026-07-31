@@ -20,7 +20,20 @@ use Twes\Domain\Document\DocumentType;
 /**
  * **The executable form of {@see DocumentNumberSequence}'s contract. Every adapter MUST extend this.**
  *
- * The port's docblock states four guarantees — gapless, starts at 1, independent per type, never backwards —
+ * **The port states FIVE guarantees and this class asserts FOUR. The fifth is named here rather than dropped.**
+ * Round 15 found the count wrong in both this docblock and the plan, and the omitted one is **#5, Serialised** —
+ * the guarantee `SELECT ... FOR UPDATE` exists to deliver, and the only one whose violation is *two invoices
+ * sharing a number*, which the plan calls a worse outcome than a queued request. A
+ * `PostgresDocumentNumberSequenceTest extends DocumentNumberSequenceContract` therefore satisfied "the contract"
+ * with zero concurrency assertions and nothing disclosed the gap.
+ *
+ * It is not asserted here because the in-memory double is single-process and cannot violate it — there is no
+ * concurrency to serialise. **It is owed by the adapter's own test**, and the guarantee-count test below fails if
+ * this disclosure is ever deleted, so the gap cannot go quiet again.
+ * What it will take: two connections, both allocating for one `(tenant, type)` inside overlapping transactions,
+ * asserting the second BLOCKS until the first commits and then returns the next value — not the same one.
+ *
+ * The four asserted guarantees are gapless, starts at 1, independent per type, and never reused —
  * and a guarantee written only in a docblock is enforced by whoever remembers to read it. This repository has
  * recorded five separate times that a control enforced by memory is not a control, so the contract is a test
  * class instead: an adapter that does not extend this has not been shown to satisfy anything.
@@ -140,4 +153,57 @@ abstract class DocumentNumberSequenceContract extends TestCase
             yield $case->value => [$case];
         }
     }
+    /**
+     * **The contract DISCLOSES the guarantee it does not assert.** A guard against the gap going quiet again.
+     *
+     * Round 15 found this class claiming "four guarantees" while the port declares five, so #5 (Serialised) was
+     * neither asserted nor mentioned — and an adapter extending this class would have looked fully certified.
+     * This test reads the port's own docblock and requires the number of numbered guarantees there to match the
+     * number this class accounts for, so ADDING a guarantee to the port without either asserting it here or
+     * disclosing it fails rather than passing silently.
+     */
+    public function testTheContractDeclaresItsOwnUnassertedGuarantee(): void
+    {
+        $port = (string) file_get_contents(
+            \dirname(__DIR__, 3) . '/src/Domain/Document/DocumentNumberSequence.php',
+        );
+
+        // The port numbers its guarantees `**1. `, `**2. ` … so counting them is exact rather than a keyword hunt.
+        preg_match_all('/^\s*\*\s+\*\*(\d+)\. /m', $port, $matches);
+        $declared = \count($matches[1]);
+
+        self::assertSame(
+            5,
+            $declared,
+            \sprintf(
+                'The port declares %d numbered guarantees. This contract class asserts four and DISCLOSES the '
+                . 'fifth (Serialised) as owed by the adapter. If a sixth was added, assert it here or amend '
+                . 'this class\'s docblock and this count — silently widening the port leaves every adapter '
+                . 'certified against a contract it does not meet.',
+                $declared,
+            ),
+        );
+
+        // And the disclosure must actually be present, not merely the count correct.
+        //
+        // **THE NEEDLE COMES FROM THE PORT, not from a literal in this file** — the first version of this
+        // assertion hardcoded the name and compared it against `__FILE__`, so needle and haystack were the same
+        // file and renaming the guarantee in both kept it green. A self-referential check cannot fail. Reading
+        // the name out of the port means mutating either side breaks it: the port alone fails the count above,
+        // this file alone fails the containment below.
+        preg_match('/^\s*\*\s+\*\*5\. ([A-Za-z ]+?)\.\*\*/m', $port, $fifth);
+        self::assertArrayHasKey(1, $fifth, 'The port must name its fifth guarantee so this can check for it.');
+
+        self::assertStringContainsString(
+            trim($fifth[1]),
+            (string) file_get_contents(__FILE__),
+            \sprintf(
+                'The port\'s guarantee "%s" is asserted by no case here, so this class must NAME it as owed by '
+                . 'the adapter. Without that, an adapter extending this class looks fully certified against a '
+                . 'contract it does not meet.',
+                trim($fifth[1]),
+            ),
+        );
+    }
+
 }

@@ -59,12 +59,15 @@
             at four rounds now. The tenancy proof is only worth something against the topology production
             uses: a role that owns the policed tables can remove their policies or TRUNCATE them in one
             statement, so a suite provisioned with a single role certifies a connection that could step
-            around the thing being certified. The other six each exist to make one refusal branch provable
-            against a real connection rather than only through a pure predicate — a fixture that cannot
+            around the thing being certified. EVERY ROLE BEYOND THE FIRST TWO exists to make one refusal
+            branch provable against a real connection rather than only through a pure predicate — a fixture
+            that cannot
             express a dangerous shape cannot detect it, which is how three cross-tenant breaches survived
             into round 5. What each role is for is documented in scripts/dev/provision-test-database.sh,
-            which creates them. The superuser pair below is OPTIONAL and only grants a predefined role
-            inside one test; without it those cases skip.
+            which creates them. THE SUPERUSER PAIR BELOW IS REQUIRED — it was documented here as optional
+            "only grants a predefined role inside one test" until round 15, when nine tests gated on it and
+            four of those were the only evidence that a security fix is load-bearing. A missing or wrong
+            credential now FAILS rather than skipping, exactly as an unreachable database does.
         -->
         <env name="TWES_TEST_DSN" value="pgsql:host=127.0.0.1;port=5432;dbname=twes_in_test"/>
         <env name="TWES_TEST_DB_USER" value="twes"/>
@@ -94,7 +97,11 @@
         -->
         <env name="TWES_TEST_DB_MIXED_CASE_ROLE" value="twesMixedCase"/>
         <env name="TWES_TEST_DB_MIXED_CASE_PASSWORD" value="twesMixedCase"/>
-        <!-- Optional: only used to GRANT a predefined role inside a test. Absent =&gt; those cases skip. -->
+        <!--
+            REQUIRED. Nine tests build privileged fixtures with it, and four are the only proof that a
+            security fix is load-bearing (the 'SET'-vs-'MEMBER' and pg_roles-vs-regrole mutants, and round
+            15's rule and event-trigger carriers). Absent or wrong =&gt; the suite FAILS, not skips.
+        -->
         <env name="TWES_TEST_DB_SUPERUSER" value="postgres"/>
         <env name="TWES_TEST_DB_SUPERUSER_PASSWORD" value="postgres"/>
     </php>

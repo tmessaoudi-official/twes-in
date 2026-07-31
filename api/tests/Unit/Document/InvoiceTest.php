@@ -427,4 +427,60 @@ final class InvoiceTest extends TestCase
             ->withLine(new DocumentLine('2', Money::of('10.000', $tnd), Rate::fromPercentage('19')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41));
     }
+    /**
+     * `DocumentIsNotMutable`'s message names the state by its BACKED VALUE — the untested half of a pair.
+     *
+     * Round 14 changed both this site and `DocumentState::transitionTo()` from `->name` to `->value`, and only
+     * the latter got its test updated; round 15 found this one revertible with the suite green. It is a
+     * `\DomainException` — a 422 whose `{state}` placeholder is interpolated in all three locales — so the PHP
+     * case name reaching the wire is exactly the outcome the change existed to prevent, and it was the half left
+     * unpinned.
+     */
+    public function testTheNotMutableMessageNamesTheStateByItsBackedValue(): void
+    {
+        $issued = self::issuedDraft();
+
+        try {
+            $issued->withLine(new DocumentLine('1', Money::of('1.000', Currency::of(self::TENANT_TND)), Rate::zero()));
+
+            self::fail('An issued invoice must refuse a new line.');
+        } catch (DocumentIsNotMutable $refusal) {
+            self::assertStringContainsString(DocumentState::Issued->value, $refusal->getMessage());
+            self::assertStringNotContainsString(
+                DocumentState::Issued->name,
+                $refusal->getMessage(),
+                'The PHP case name must NOT reach a user-facing message: renaming an identifier would then '
+                . 'change a translated string and an API-visible value.',
+            );
+        }
+    }
+
+    /**
+     * **`issue()` asks the TRANSITION first, and the order is asserted rather than only commented.**
+     *
+     * The comment states the order is deliberate — "the state is the more fundamental fact and the one a caller
+     * must fix" — and round 15 found two reorderings surviving with the suite green. The distinguishing input is
+     * an ALREADY-ISSUED invoice handed another type's number: correct code raises `IllegalTransition`, a
+     * `\DomainException` and a 409; a reordered version raises `NumberTypeMismatch`, a `\LogicException` and a
+     * 500. That inverts the 422/500 split both classes were created for at round 14, and turns a plausible
+     * double-click into an internal error.
+     */
+    public function testIssuingAnAlreadyIssuedInvoiceReportsTheSTATEEvenWhenTheNumberIsAlsoWrong(): void
+    {
+        $issued = self::issuedDraft();
+
+        try {
+            $issued->issue(new DocumentNumber(DocumentType::DeliveryNote, NumberPattern::padded(7), 99));
+
+            self::fail('Issuing twice must be refused.');
+        } catch (\DomainException $refusal) {
+            self::assertInstanceOf(
+                IllegalTransition::class,
+                $refusal,
+                'The STATE must be reported, not the number type: a double-click is a 409, and reporting the '
+                . 'type instead makes it a 500 for something the client did not cause.',
+            );
+        }
+    }
+
 }

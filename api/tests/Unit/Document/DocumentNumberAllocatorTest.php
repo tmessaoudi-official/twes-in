@@ -16,6 +16,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentNumberAllocator;
+use Twes\Domain\Document\DocumentNumberSequence;
 use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\Exception\SequenceContractViolated;
 use Twes\Domain\Document\NumberPattern;
@@ -157,4 +158,52 @@ final class DocumentNumberAllocatorTest extends TestCase
             self::assertStringContainsString('delivery_note', $violation->getMessage());
         }
     }
+    /**
+     * **The allocator FORWARDS the requested type to the port — asserted, because replacing it with a constant
+     * left the suite green** (round 15).
+     *
+     * The mutant put permanent holes in BOTH legal sequences: invoice 1, quote 2, invoice 3, quote 4 instead of
+     * invoice 1, quote 1, invoice 2, quote 2. A missing invoice number is what a tax authority reads as a
+     * suppressed sale, so this is the most expensive thing the allocator can get wrong.
+     *
+     * It survived because `testTheAllocatedNumberCarriesTheRequestedType` checks the type stamped ON the
+     * `DocumentNumber`, which the mutant still did correctly — and the per-type guarantee was explicitly scoped
+     * OUT of this class as "the port's, asserted by DocumentNumberSequenceContract". But the FORWARDING is the
+     * allocator's own behaviour, not the port's, and it fell in the gap between the two. The
+     * "exemption inside a cross-check is where the drift hides" shape.
+     *
+     * A recording double rather than the in-memory one, because what is under test is the ARGUMENT passed, which
+     * no return value reveals.
+     */
+    public function testTheRequestedTypeIsForwardedToTheSequence(): void
+    {
+        $recorder = new class implements DocumentNumberSequence {
+            /** @var list<DocumentType> */
+            public array $asked = [];
+
+            public function allocateNext(DocumentType $type): int
+            {
+                $this->asked[] = $type;
+
+                return \count($this->asked);
+            }
+        };
+
+        $allocator = new DocumentNumberAllocator($recorder);
+        $pattern = NumberPattern::padded(4);
+
+        // EVERY type, generated from the enum — a hand-picked pair would let a mutant forwarding a constant that
+        // happens to be one of them survive.
+        foreach (DocumentType::cases() as $type) {
+            $allocator->allocate($type, $pattern);
+        }
+
+        self::assertSame(
+            DocumentType::cases(),
+            $recorder->asked,
+            'The allocator must ask the sequence for the type it was given. Forwarding a constant instead gaps '
+            . 'every sequence permanently while the allocated numbers still LOOK right.',
+        );
+    }
+
 }
