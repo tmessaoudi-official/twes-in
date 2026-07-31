@@ -2093,12 +2093,41 @@ final class TenantIsolationTest extends TestCase
             ], \JSON_THROW_ON_ERROR)] + $safe,
         ]), 'A RESTRICTIVE policy narrows access; it is not a hole.');
 
-        // A different tenant column is legitimate — policySqlFor() takes one — so the column name is the
-        // only degree of freedom the comparison allows.
+        // A COLUMN OTHER THAN THE TENANT COLUMN IS NOW REFUSED, reversing what this case asserted until round
+        // 14. It used to read "a different tenant column is legitimate — policySqlFor() takes one — so the
+        // column name is the only degree of freedom", and that flexibility was the hole: the expected expression
+        // is built from the identifier read out of the policy being checked, so the comparison was circular and
+        // agreed with itself for ANY identifier. `label = current_setting('twes.tenant_id')` passed as canonical.
+        // A policy scoping the wrong column leaves the table unscoped by tenant while every other check reports
+        // clean, and a cross-tenant INSERT follows.
+        foreach (['tenant_id', 'id', 'label'] as $wrongColumn) {
+            $refused = PostgresRowLevelSecurityIsolation::policedTableViolations([
+                ['policies' => json_encode([[
+                    'qual' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression($wrongColumn),
+                    'check' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression($wrongColumn),
+                    'permissive' => true,
+                ]], \JSON_THROW_ON_ERROR)] + $safe,
+            ]);
+
+            self::assertCount(1, $refused, \sprintf(
+                'A policy scoping %s must be refused: it is well-formed and self-consistent, which is what '
+                . 'makes it dangerous.',
+                $wrongColumn,
+            ));
+            self::assertStringContainsString('is not the tenant column', $refused[0]);
+            self::assertStringContainsString($wrongColumn, $refused[0]);
+        }
+
+        // And the tenant column itself still passes, so the guard refuses the wrong column rather than all of
+        // them — without this half, hardcoding a refusal would be indistinguishable from the fix.
         self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([
             ['policies' => json_encode([[
-                'qual' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression('tenant_id'),
-                'check' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression('tenant_id'),
+                'qual' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression(
+                    PostgresRowLevelSecurityIsolation::TENANT_COLUMN,
+                ),
+                'check' => PostgresRowLevelSecurityIsolation::canonicalPolicyExpression(
+                    PostgresRowLevelSecurityIsolation::TENANT_COLUMN,
+                ),
                 'permissive' => true,
             ]], \JSON_THROW_ON_ERROR)] + $safe,
         ]));
@@ -3022,6 +3051,173 @@ final class TenantIsolationTest extends TestCase
      * Only used to grant and revoke a predefined role inside a test — the owner role cannot, deliberately.
      * Returns null rather than skipping the whole suite, because every other test must run without it.
      */
+    /**
+     * **A `SECURITY DEFINER` function owned by a role this connection HOLDS BUT CANNOT BECOME is refused.**
+     *
+     * This case exists to kill one mutant, and nothing else: reverting {@see
+     * PostgresRowLevelSecurityIsolation::roleCanBeAssumedSql()} from the narrow `'SET'` mode back to `'MEMBER'`
+     * — the exact defect round 12 recorded finding — left the entire suite green through round 14. Not an
+     * equivalent mutant: the distinguishing input is a `GRANT ... WITH SET FALSE`, and none of the seven roles
+     * the fixture provisioned could express it. `twes_truncator` is `INHERIT FALSE` but `SET true`, so `MEMBER`
+     * and `SET` agree on it, and they agreed on all seven.
+     *
+     * Why the distinction is load-bearing rather than pedantic: the predicate is **negated**. Under `'MEMBER'`,
+     * a function owned by a role the connection is a member of but cannot `SET ROLE` to was excluded as "no
+     * escalation" — when that is precisely the case where the function is the ONLY route to that role's rights.
+     * Calling it therefore grants exactly what the connection could not otherwise reach.
+     *
+     * The eighth role is provisioned by `scripts/dev/provision-test-database.sh`, which explains itself there.
+     */
+    public function testASecurityDefinerFunctionOwnedByAnUnreachableRoleIsRefused(): void
+    {
+        $unsettable = getenv('TWES_TEST_DB_UNSETTABLE_ROLE');
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        $granter = self::superuserConnection();
+
+        if (false === $unsettable || '' === $unsettable || false === $runtimeRole || '' === $runtimeRole) {
+            self::markTestSkipped('TWES_TEST_DB_UNSETTABLE_ROLE and TWES_TEST_DB_USER must be set.');
+        }
+
+        if (null === $granter) {
+            self::markTestSkipped('Changing a function owner to a NOLOGIN probe role needs the superuser.');
+        }
+
+        // THE PRECONDITION IS ASSERTED, not assumed. If the grant ever drifted to `SET TRUE` this whole case
+        // would pass vacuously under both modes — which is the state it was written to escape.
+        $modes = $this->connection->query(\sprintf(
+            "SELECT pg_has_role(current_user, '%s', 'MEMBER') AS is_member, "
+            . "pg_has_role(current_user, '%s', 'SET') AS can_set",
+            $unsettable,
+            $unsettable,
+        ));
+        self::assertNotFalse($modes);
+        /** @var array{is_member: bool|string, can_set: bool|string} $flags */
+        $flags = $modes->fetch(\PDO::FETCH_ASSOC);
+        self::assertContains($flags['is_member'], [true, 't', '1'], 'must be a MEMBER of the probe role');
+        self::assertNotContains(
+            $flags['can_set'],
+            [true, 't', '1'],
+            'must NOT be able to SET ROLE to it — that disagreement is the entire point of this fixture.',
+        );
+
+        $function = 'unreachable_owner_probe';
+
+        try {
+            $granter->exec(\sprintf(
+                'CREATE FUNCTION public.%s() RETURNS int LANGUAGE sql SECURITY DEFINER AS $$ SELECT 1 $$',
+                $function,
+            ));
+            $granter->exec(\sprintf('ALTER FUNCTION public.%s() OWNER TO %s', $function, $unsettable));
+            $granter->exec(\sprintf('GRANT EXECUTE ON FUNCTION public.%s() TO %s', $function, $runtimeRole));
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'A SECURITY DEFINER function owned by a role this connection cannot BECOME must be refused: '
+                . 'the function is the only route to that role, so calling it is the escalation. Under the '
+                . "'MEMBER' mode this returned clean.",
+            );
+            self::assertStringContainsString($function, $caught->getMessage());
+        } finally {
+            $granter->exec(\sprintf('DROP FUNCTION IF EXISTS public.%s()', $function));
+        }
+    }
+
+    /**
+     * **The object check answers for a MIXED-CASE runtime role instead of raising.**
+     *
+     * `current_user::regrole` downcases — PostgreSQL folds an unquoted identifier inside the cast — so for a role
+     * created as `"twesApp"` the cast raises `role "twesapp" does not exist` and
+     * {@see PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable()} raised instead of answering.
+     * A total outage, and traced to entirely the wrong cause: the message names a role nobody created.
+     * [Verified independently of this suite: `SELECT 'twesApp'::regrole` errors on this server.]
+     *
+     * Round 13 replaced the cast with a `pg_roles` lookup. **Round 14 found that fix revertible with all 559
+     * tests green**, because every other role the fixture provisions is lowercase — so this case is the whole
+     * evidence that the fix is load-bearing, and a ninth role exists solely to make it expressible.
+     *
+     * Asserted as "does not raise about a missing role" rather than as a verdict: whether this particular
+     * connection is clean or refused depends on grants that are not the subject here, and pinning the verdict
+     * would make the case fail for reasons unrelated to the cast.
+     */
+    public function testTheObjectCheckAnswersForAMixedCaseRole(): void
+    {
+        $role = getenv('TWES_TEST_DB_MIXED_CASE_ROLE');
+        $password = getenv('TWES_TEST_DB_MIXED_CASE_PASSWORD');
+        $dsn = getenv('TWES_TEST_DSN');
+
+        if (false === $role || '' === $role || false === $password || false === $dsn || '' === $dsn) {
+            self::markTestSkipped('TWES_TEST_DB_MIXED_CASE_ROLE, its password and TWES_TEST_DSN must be set.');
+        }
+
+        // The PRECONDITION: the name must actually contain an uppercase letter, or this case is about nothing.
+        self::assertMatchesRegularExpression('/[A-Z]/', $role, 'The role name must be mixed-case.');
+
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('Creating a candidate object for another role needs the superuser.');
+        }
+
+        $mixed = new \PDO($dsn, $role, $password, [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION]);
+
+        // And the connection really is that role, folding included — `current_user` must round-trip.
+        $who = $mixed->query('SELECT current_user');
+        self::assertNotFalse($who);
+        self::assertSame($role, $who->fetchColumn());
+
+        // **A CANDIDATE OBJECT MUST EXIST, and getting this wrong is why the first version of this test passed
+        // against the broken code.** The downcasing cast sits in the SELECT list, so PostgreSQL only evaluates
+        // it for a row the WHERE clause actually produces. This database normally holds zero public relations,
+        // so the query returned nothing, the cast never ran, and the mutant survived a test written to kill it.
+        // A test that cannot reach the expression it is about proves nothing.
+        $view = 'mixed_case_candidate';
+
+        try {
+            $granter->exec(\sprintf('CREATE VIEW public.%s AS SELECT 1 AS one', $view));
+            $granter->exec(\sprintf('GRANT SELECT ON public.%s TO "%s"', $view, $role));
+
+            $raised = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($mixed);
+            } catch (\RuntimeException $exception) {
+                $raised = $exception;
+            }
+
+            // A REFUSAL naming the view is an acceptable outcome — that is the check doing its job. Raising
+            // about a role NOBODY CREATED is not: `role "…" does not exist` is the signature of the downcasing
+            // cast, and it is an outage rather than a verdict.
+            if (null !== $raised) {
+                self::assertStringNotContainsString(
+                    'does not exist',
+                    $raised->getMessage(),
+                    'The check must ANSWER for a mixed-case role, not raise that the downcased name is '
+                    . 'unknown. That message names a role the fixture never created.',
+                );
+            }
+
+            // Asserted positively too, so this case cannot pass by the check silently doing nothing: the
+            // candidate view must be visible to the query the cast lives in.
+            $visible = $mixed->query(\sprintf(
+                "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace "
+                . "WHERE n.nspname = 'public' AND c.relname = '%s'",
+                $view,
+            ));
+            self::assertNotFalse($visible);
+            self::assertSame('1', (string) $visible->fetchColumn(), 'the candidate row must be reachable');
+        } finally {
+            $granter->exec(\sprintf('DROP VIEW IF EXISTS public.%s', $view));
+        }
+    }
+
     private static function superuserConnection(): ?\PDO
     {
         $dsn = getenv('TWES_TEST_DSN');

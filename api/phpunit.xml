@@ -55,7 +55,8 @@
             Integration suite target. Overridden by the real environment in CI, and these defaults are
             throwaway local values.
 
-            SEVEN roles, not one. The tenancy proof is only worth something against the topology production
+            MANY roles, not one. The count lives in provision-test-database.sh, not here, because it has grown
+            at four rounds now. The tenancy proof is only worth something against the topology production
             uses: a role that owns the policed tables can remove their policies or TRUNCATE them in one
             statement, so a suite provisioned with a single role certifies a connection that could step
             around the thing being certified. The other six each exist to make one refusal branch provable
@@ -78,6 +79,21 @@
         <env name="TWES_TEST_DB_REPLICATOR_PASSWORD" value="twes_replicator"/>
         <env name="TWES_TEST_DB_TRUNCATOR_ROLE" value="twes_truncator"/>
         <env name="TWES_TEST_DB_PROBE_OWNER_ROLE" value="twes_probe_owner"/>
+        <!--
+            The EIGHTH role, and the only one under which pg_has_role(..., 'MEMBER') and
+            pg_has_role(..., 'SET') disagree: granted to the runtime role WITH INHERIT FALSE, SET
+            FALSE, so it is held but unreachable. Without it, reverting roleCanBeAssumedSql()'s
+            narrow 'SET' mode to 'MEMBER' left the whole suite green — round 14.
+        -->
+        <env name="TWES_TEST_DB_UNSETTABLE_ROLE" value="twes_unsettable"/>
+        <!--
+            The NINTH role, and the only one whose name is not all-lowercase. `current_user::regrole`
+            downcases, so the cast raised `role "twesmixedcase" does not exist` and the object check raised
+            instead of answering. Round 13 replaced the cast; round 14 found the fix revertible with the suite
+            green, because the other eight roles cannot express the shape.
+        -->
+        <env name="TWES_TEST_DB_MIXED_CASE_ROLE" value="twesMixedCase"/>
+        <env name="TWES_TEST_DB_MIXED_CASE_PASSWORD" value="twesMixedCase"/>
         <!-- Optional: only used to GRANT a predefined role inside a test. Absent =&gt; those cases skip. -->
         <env name="TWES_TEST_DB_SUPERUSER" value="postgres"/>
         <env name="TWES_TEST_DB_SUPERUSER_PASSWORD" value="postgres"/>

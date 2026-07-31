@@ -506,7 +506,8 @@ database prerequisites** are:
 sudo -u postgres bash scripts/dev/provision-test-database.sh
 ```
 
-**SEVEN roles, not one, and the script explains why each one exists** — this replaced three `createuser`
+**NINE roles, not one, and the script explains why each one exists** (nine as of round 14; the script's own
+comment block is the tally, because this list has now grown at four separate rounds) — this replaced three `createuser`
 lines after round 4 found a **P0** in what they produced. A single role that owns the tenant-owned tables
 can `ALTER TABLE … DISABLE ROW LEVEL SECURITY` or `TRUNCATE` them in one statement (`FORCE` stops an owner
 *skipping* policies, not *removing* them), so every isolation assertion was being made against a connection
@@ -519,7 +520,13 @@ bypass), `twes_bypass` (`BYPASSRLS`), `twes_member` (harmless attributes of its 
 looks clean), `twes_replicator` (`REPLICATION` — which reads the whole cluster through `pg_basebackup` with
 row security never involved), `twes_truncator` (granted to the runtime role **`WITH INHERIT FALSE`**, the
 shape `has_table_privilege` cannot see) and `twes_probe_owner` (granted to the owner **`WITH ADMIN OPTION`**,
-so a test can own a table with a role the runtime role can *reach* but not *inherit*).
+so a test can own a table with a role the runtime role can *reach* but not *inherit*), `twes_unsettable`
+(granted **`WITH INHERIT FALSE, SET FALSE`** — held but unreachable, the ONLY shape under which
+`pg_has_role(..., 'MEMBER')` and `pg_has_role(..., 'SET')` disagree, without which round 12's `'SET'` fix was
+revertible with the whole suite green) and **`twesMixedCase`** (the one role whose name is not all-lowercase,
+because `current_user::regrole` DOWNCASES and raised `role "twesmixedcase" does not exist` — an outage, not a
+verdict; round 13 fixed it and round 14 found the fix revertible, since eight lowercase roles cannot express the
+shape).
 
 **The principle, learned the hard way:** a fixture that cannot express a dangerous shape cannot detect it.
 Every role after the first two was added because a certification round proved a real breach that the previous
@@ -789,6 +796,29 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   being modelled is context rather than data**; and a findings-closure note is exactly where a contradiction with
   a standing invariant slips in, because the author is reading the new finding rather than grepping for the old
   ruling — this file records that shape three times already and this was the fourth.
+
+- **2026-07-31 — a test cannot kill a mutant in an expression it never REACHES, and a SELECT-list expression is
+  only evaluated for rows the WHERE clause produces.** Round 14 reported the `current_user::regrole` →
+  `pg_roles` fix as revertible with 559 tests green. I wrote the missing test — a real mixed-case login role,
+  connected as it, calling the check — and **the mutant still survived**. The cast sits in the query's SELECT
+  list, and `twes_in_test` normally holds zero public relations, so the query returned no rows, the cast never
+  evaluated, and a test written specifically to kill that mutant passed against the broken code. It needed a
+  candidate view to exist first. Two general lessons: **when a mutant survives a test written to kill it, the
+  test is not weak — it is not arriving**, so find the shortest path from the test to the mutated line before
+  strengthening assertions; and a value cast in a projection is conditional code, not a statement. Also worth
+  keeping: the reviewer's evidence was `SELECT 'twesApp'::regrole` — a *literal* cast — while the code casts
+  `current_user`, a `name` value. I checked whether the two behave the same rather than assuming, and here they
+  do; that check is the cheap step that stops a wrong fix.
+- **2026-07-31 — a control may not derive its own expected value from the input it is validating.**
+  `policyExpressionColumn()` read the column name out of the policy being checked and then compared the policy
+  to a canonical expression built from *that same name*, so the comparison always agreed with itself — and a
+  policy reading `label = current_setting('twes.tenant_id')` was certified as "the canonical tenant predicate".
+  [Verified: `policyExpressionIsCanonical()` returned true for `company_id`, `id`, `tenant_id` and `label`
+  alike.] The table is then unscoped by tenant while every other check reports clean, and a cross-tenant INSERT
+  follows. Round 7 had already closed the sibling half of this — "one column per TABLE rather than one per
+  clause" — which is the tell that the underlying mistake was treating the column as a free variable at all.
+  Anchored to `TENANT_COLUMN`, known independently of the input. The generalisation is the rule stated at the
+  top of this entry, and it is worth checking against every other pure validator in this codebase.
 
 ## Git & CI
 

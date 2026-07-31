@@ -16,7 +16,9 @@
 # dangerous shapes with no way to be exercised: creating a BYPASSRLS role needs a privilege the runtime
 # role must never hold, so the refusal branches stay untested for as long as there is one role.
 #
-# SEVEN roles, each earning its place by making one refusal branch testable:
+# Each role earns its place by making ONE refusal branch testable. No count is written here: this list
+# has grown at four separate certification rounds and a number in a comment beside the thing it counts
+# is the first thing to drift. `grep -c '^#   twes' ` this block, or read pg_roles.
 #
 #   twes          the runtime role. Restricted: no SUPERUSER, no BYPASSRLS, no CREATEROLE, member of
 #                 nothing privileged, and NOT the owner of the tenant-owned tables. This is the role the
@@ -42,6 +44,26 @@
 #                 this deliberately, not by default". That grant is invisible to has_table_privilege and one
 #                 SET ROLE away from the privilege, which is how round 5 erased every tenant's rows with
 #                 current_user == session_user throughout. Exists so that gap stays closed.
+#   twes_unsettable
+#                 plain, NOLOGIN, and granted to the runtime role **WITH INHERIT FALSE, SET FALSE** — a
+#                 membership the runtime role holds but CANNOT SET ROLE to. The eighth role, added at round 14
+#                 because the seven above could not express the shape: every one of them is either inherited or
+#                 settable, so pg_has_role(..., 'MEMBER') and pg_has_role(..., 'SET') agreed on all of them and
+#                 reverting roleCanBeAssumedSql()'s 'SET' to 'MEMBER' left the whole suite green. 'MEMBER' is
+#                 true here and 'SET' is false, which is the only input that tells the two apart — so this role
+#                 is what makes round 12's fix load-bearing instead of merely present.
+#   twesMixedCase
+#                 the NINTH role, and the only one whose name is not all-lowercase. It exists because
+#                 `current_user::regrole` DOWNCASES: PostgreSQL folds an unquoted identifier, so the cast raises
+#                 `role "twesmixedcase" does not exist` and every object check that used it raised instead of
+#                 answering — a total outage traced to entirely the wrong cause. Round 13 replaced the cast with
+#                 a `pg_roles` lookup and round 14 found the fix REVERTIBLE with the whole suite green, because
+#                 all eight roles above are lowercase and cannot express the shape. LOGIN, because the check
+#                 reads `current_user` and therefore has to be REACHED as this role rather than named.
+#
+#                 It matters because the predicate is NEGATED: under 'MEMBER', a function owned by a role the
+#                 connection is a member of but cannot become was excluded as "no escalation", when that is
+#                 precisely the case where the function is the ONLY route to that role's rights.
 #
 # Run as a superuser. Idempotent — safe to re-run.
 set -euo pipefail
@@ -59,6 +81,11 @@ MEMBER_PASSWORD="${TWES_TEST_DB_MEMBER_PASSWORD:-twes_member}"
 REPLICATOR_ROLE="${TWES_TEST_DB_REPLICATOR_USER:-twes_replicator}"
 REPLICATOR_PASSWORD="${TWES_TEST_DB_REPLICATOR_PASSWORD:-twes_replicator}"
 TRUNCATOR_ROLE="${TWES_TEST_DB_TRUNCATOR_ROLE:-twes_truncator}"
+UNSETTABLE_ROLE="${TWES_TEST_DB_UNSETTABLE_ROLE:-twes_unsettable}"
+# Quoted everywhere it appears in SQL below, deliberately: unquoted, PostgreSQL folds it and the
+# role this fixture creates would not be the role the test connects as.
+MIXED_CASE_ROLE="${TWES_TEST_DB_MIXED_CASE_ROLE:-twesMixedCase}"
+MIXED_CASE_PASSWORD="${TWES_TEST_DB_MIXED_CASE_PASSWORD:-twesMixedCase}"
 PROBE_OWNER_ROLE="${TWES_TEST_DB_PROBE_OWNER_ROLE:-twes_probe_owner}"
 
 # ── THE TWO-CLUSTER GUARD, drafted 2026-07-30 ──────────────────────────────────────────────────
@@ -115,6 +142,12 @@ DO \$\$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${PROBE_OWNER_ROLE}') THEN
         CREATE ROLE ${PROBE_OWNER_ROLE};
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${UNSETTABLE_ROLE}') THEN
+        CREATE ROLE ${UNSETTABLE_ROLE};
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${MIXED_CASE_ROLE}') THEN
+        CREATE ROLE "${MIXED_CASE_ROLE}" LOGIN;
+    END IF;
 END \$\$;
 
 -- NOSUPERUSER NOBYPASSRLS NOCREATEROLE spelled out rather than left to the default: the whole suite is
@@ -137,6 +170,10 @@ ALTER ROLE ${REPLICATOR_ROLE} WITH LOGIN NOSUPERUSER NOBYPASSRLS REPLICATION NOC
     PASSWORD '${REPLICATOR_PASSWORD}';
 ALTER ROLE ${TRUNCATOR_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${PROBE_OWNER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
+ALTER ROLE ${UNSETTABLE_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
+-- Restricted exactly like the runtime role: the point is the NAME, not extra privilege.
+ALTER ROLE "${MIXED_CASE_ROLE}" WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCREATEROLE
+    NOCREATEDB PASSWORD '${MIXED_CASE_PASSWORD}';
 
 -- The two grants that make the reachability tests possible, and ONLY on the probe role. Granting
 -- either of these to ${RUNTIME_ROLE} is the misconfiguration the suite exists to detect.
@@ -147,6 +184,13 @@ GRANT ${RUNTIME_ROLE} TO ${MEMBER_ROLE};
 -- so has_table_privilege() answers "no" while one SET ROLE reaches them. This is the shape the isolation
 -- check must refuse, and it cannot be tested unless the fixture can express it.
 GRANT ${TRUNCATOR_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE;
+
+-- WITH INHERIT FALSE, SET FALSE: held, but unreachable. This is the ONLY grant shape under which
+-- pg_has_role(..., 'MEMBER') and pg_has_role(..., 'SET') disagree, and therefore the only fixture that can tell
+-- roleCanBeAssumedSql()'s two modes apart. Re-granted unconditionally rather than guarded by an existence check,
+-- because a grant that drifted to SET TRUE would silently make every assertion about it vacuous again.
+REVOKE ${UNSETTABLE_ROLE} FROM ${RUNTIME_ROLE};
+GRANT ${UNSETTABLE_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE, SET FALSE;
 
 -- ADMIN OPTION so the OWNER connection can grant and revoke this role inside a test. Needed because the
 -- ownership-reachability axis is otherwise untestable: the existing test connects AS the table's owner, and a
@@ -178,6 +222,8 @@ ALTER DATABASE ${DB} OWNER TO ${OWNER_ROLE};
 -- security not involved at all.
 REVOKE CONNECT, TEMPORARY ON DATABASE ${DB} FROM PUBLIC;
 GRANT CONNECT ON DATABASE ${DB} TO ${RUNTIME_ROLE}, ${BYPASS_ROLE}, ${MEMBER_ROLE}, ${REPLICATOR_ROLE};
+-- Quoted, or PostgreSQL folds the name and grants to a role that does not exist.
+GRANT CONNECT ON DATABASE ${DB} TO "${MIXED_CASE_ROLE}";
 -- TEMPORARY, granted back explicitly after the REVOKE above took it from PUBLIC. The column-fidelity suite
 -- creates a TEMPORARY table so it needs no DDL on the schema and leaves nothing behind — a stray permanent
 -- table would break the tenancy suite's policed-table counts.

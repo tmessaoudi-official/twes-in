@@ -77,6 +77,29 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     public const string TENANT_SETTING = 'twes.tenant_id';
 
     /**
+     * The column every policed table scopes by — ONE convention per database, not one per policy.
+     *
+     * **This exists because the canonicality check was CIRCULAR, and round 14 proved it with a plain text
+     * column.** {@see self::policyExpressionColumn()} extracts whatever identifier a policy names and then
+     * compares the expression to {@see self::canonicalPolicyExpression()} built from *that same identifier*, so
+     * the comparison always agreed with itself: a policy reading `label = current_setting('twes.tenant_id')`
+     * was certified as "the canonical tenant predicate". [Verified: `policyExpressionIsCanonical()` returns true
+     * for `company_id`, `id`, `tenant_id` AND `label`.] A policy scoping the wrong column leaves the table
+     * unscoped by tenant while every existing check reports clean, and a cross-tenant INSERT follows.
+     *
+     * Round 7 closed "one column per TABLE"; this closes "which column". Both were the same underlying mistake
+     * — treating the column as a free variable read out of the data being validated rather than as a fact known
+     * independently of it. A control cannot derive its own expected value from its input.
+     *
+     * **This narrows {@see self::policySqlFor()}'s contract, deliberately.** That method still takes a
+     * `$tenantColumn` — tests need it to EMIT a non-canonical policy and prove detection fires — but a policy
+     * naming anything other than this constant is now a violation. `docs/plans/build-waves.plan.md` § Wave 1
+     * already rules that every tenant-owned table carries `company_id` with `PRIMARY KEY (company_id, id)`, so
+     * the flexibility was never a product requirement; it was the hole.
+     */
+    public const string TENANT_COLUMN = 'company_id';
+
+    /**
      * @throws NoCurrentTenant if no tenant is bound — binding "no tenant" is refused rather than
      *                         leaving the session unscoped
      * @throws \RuntimeException if not inside a transaction, where SET LOCAL would have no effect; if the
@@ -306,7 +329,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * @return list<string> statements to run in order, in a migration
      */
-    public static function policySqlFor(string $table, string $tenantColumn = 'company_id'): array
+    public static function policySqlFor(string $table, string $tenantColumn = self::TENANT_COLUMN): array
     {
         $scoped = \sprintf(
             '%s = nullif(current_setting(%s, true), \'\')::uuid',
@@ -865,7 +888,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * suite asserts the canonical policy passes, so such a change breaks the build loudly on the first run —
      * which is the correct direction for a control whose failure mode is a silent cross-tenant read.
      */
-    public static function canonicalPolicyExpression(string $tenantColumn = 'company_id'): string
+    public static function canonicalPolicyExpression(string $tenantColumn = self::TENANT_COLUMN): string
     {
         return \sprintf(
             "(%s = (NULLIF(current_setting('%s'::text, true), ''::text))::uuid)",
@@ -1074,6 +1097,29 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                     . 'so the loosest one decides — a table has one tenant column',
                     $table['table'],
                     implode(' vs ', $distinct),
+                );
+            }
+
+            // AND THE COLUMN MUST BE THE TENANT COLUMN. Everything above asks whether the policy is
+            // self-consistent; none of it asks whether the column it scopes has anything to do with tenancy.
+            // Because the expected expression is built from the identifier read out of the policy itself, the
+            // comparison is circular and `label = current_setting('twes.tenant_id')` passed as canonical —
+            // leaving the table unscoped by tenant with every check reporting clean, and a cross-tenant INSERT
+            // one statement away. Anchored to {@see self::TENANT_COLUMN}, which is known independently of the
+            // input rather than derived from it.
+            foreach ($distinct as $column) {
+                if (self::TENANT_COLUMN === $column) {
+                    continue;
+                }
+
+                $violations[] = \sprintf(
+                    '%s has a policy scoping %s, which is not the tenant column (%s). The predicate is '
+                    . 'well-formed and self-consistent, which is exactly what makes it dangerous: the table is '
+                    . 'not scoped by tenant at all while every other check reports clean, so a row can be '
+                    . 'written into another tenant. One tenant column per database, not one per policy',
+                    $table['table'],
+                    $column,
+                    self::TENANT_COLUMN,
                 );
             }
         }
