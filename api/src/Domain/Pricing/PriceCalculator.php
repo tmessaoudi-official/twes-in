@@ -46,6 +46,8 @@ final readonly class PriceCalculator
      *
      * One multiplication, not `cost + (cost x rate)` — the two-step form rounds twice and can land a
      * millime away from this.
+     *
+     * @throws InvalidMoneyAmount if \$mode is RoundingMode::Unnecessary and the product needs rounding
      */
     public function netFromCost(Money $cost, Rate $profitRate, RoundingMode $mode): Money
     {
@@ -86,6 +88,8 @@ final readonly class PriceCalculator
 
     /**
      * VAT on a net amount. The base is the net — never the cost, and never the gross.
+     *
+     * @throws InvalidMoneyAmount if \$mode is RoundingMode::Unnecessary and the VAT needs rounding
      */
     public function vat(Money $net, Rate $vatRate, RoundingMode $mode): Money
     {
@@ -98,6 +102,9 @@ final readonly class PriceCalculator
      * Trivial, and here on purpose — so that "gross" has one definition in the codebase rather than an
      * addition open-coded at each call site, which is how inclusive and exclusive tax handling drifts
      * apart into two implementations.
+     *
+     * @throws CurrencyMismatch if the VAT is not in the net's currency
+     * @throws InvalidMoneyAmount if the sum is not representable
      */
     public function grossFromNet(Money $net, Money $vat): Money
     {

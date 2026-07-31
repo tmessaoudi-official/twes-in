@@ -77,7 +77,12 @@ final readonly class ProductPricing
         }
     }
 
-    /** The user typed a profit rate. It is authoritative and exact; the price is derived from it. */
+    /**
+     * The user typed a profit rate. It is authoritative and exact; the price is derived from it.
+     *
+     * @throws InvalidCost if the cost is negative, if the derived price would not be representable, or if the
+     *                     derived price would be NEGATIVE (a negative selling price is a credit note)
+     */
     public static function fromProfitRate(Money $cost, Rate $profitRate): self
     {
         // REFUSE AT THE EDIT, not at the read. `cost x (1 + rate)` can exceed what a Money can hold even
@@ -151,6 +156,8 @@ final readonly class ProductPricing
      * The user typed a selling price. It is authoritative and exact; the rate is derived for display.
      *
      * @throws CurrencyMismatch if the price is not in the cost's currency
+     * @throws InvalidCost if the cost is negative, or the typed price is NEGATIVE — both raised by the
+     *                     constructor, which is why they were undocumented here until round 12
      */
     public static function fromNetPrice(Money $cost, Money $netPrice): self
     {
@@ -175,6 +182,12 @@ final readonly class ProductPricing
      * The selling price, net of VAT.
      *
      * Exact and unrounded when the user typed it. Derived from cost and rate otherwise, rounding once.
+     *
+     * @throws InvalidMoneyAmount if $mode is RoundingMode::Unnecessary and the derivation cannot be exact.
+     *                            Documented at round 12: this is `profitRate()`'s twin, with the same
+     *                            signature shape and the same Unnecessary behaviour, and it carried no
+     *                            `@throws` at all while its sibling's was being corrected — the "guard on one
+     *                            of a class of call sites" defect, applied to documentation
      */
     public function netPrice(RoundingMode $mode): Money
     {

@@ -1809,6 +1809,7 @@ final class TenantIsolationTest extends TestCase
             'owner' => 'twes_owner',
             'owner_exempt' => 'f',
             'security_invoker' => 't',
+            'owned_by_caller' => 'f',
         ];
 
         // security_invoker wins over ownership: RLS applies as the QUERYING role, so an exempt owner is
@@ -2489,6 +2490,171 @@ final class TenantIsolationTest extends TestCase
             . 'certifies every untouched database as safe.',
         );
         self::assertStringContainsString('NULL datacl', $caught->getMessage());
+    }
+
+    /**
+     * A `proconfig` function that PINS the tenant setting is refused — independent of `SECURITY DEFINER`.
+     *
+     * PostgreSQL saves and restores GUCs around any call whose `proconfig` is non-null, and that mechanism has
+     * nothing to do with `prosecdef`. So a function declared `SET "twes.tenant_id" = '<other tenant>'` scopes
+     * every policy inside it to that tenant for the duration of the call, while the caller remains bound to its
+     * own — and `prosecdef` is false, so the SECURITY DEFINER query never saw it, and it is not a relation, so
+     * the view query never saw it either.
+     *
+     * VERIFIED as a real leak before this was written, not inferred: a connection bound to tenant B read tenant
+     * A's row through such a function while its direct read of the same table correctly returned 0.
+     *
+     * **The threat actor is a superuser or somebody holding `GRANT SET ON PARAMETER`, NOT the runtime role.**
+     * `twes_owner` cannot create one — `permission denied to set parameter "twes.tenant_id"`, and
+     * `has_parameter_privilege('twes_owner', 'twes.tenant_id', 'SET')` is false. That is why this needs a
+     * superuser connection to arrange and skips without one. It is still worth detecting for exactly the reason
+     * the leaking-view case is: once such a function exists, any role holding EXECUTE calls it forever, so it is
+     * a persistent delegated bypass rather than a one-off act by a privileged role.
+     */
+    public function testAFunctionPinningTheTenantSettingViaProconfigIsRefused(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped(
+                'No superuser connection available. Only a superuser (or a role granted SET on the parameter) '
+                . 'can create a proconfig function, which is itself the reason this case exists.',
+            );
+        }
+
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        self::assertIsString($runtimeRole);
+
+        $function = self::TABLE . '_proconfig';
+
+        $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        $granter->exec(
+            'CREATE FUNCTION ' . $function . '() RETURNS bigint LANGUAGE sql '
+            . 'SET "' . PostgresRowLevelSecurityIsolation::TENANT_SETTING . '" = \'' . self::TENANT_A . '\' '
+            . 'AS \'SELECT count(*) FROM ' . self::TABLE . '\'',
+        );
+
+        try {
+            $granter->exec('GRANT EXECUTE ON FUNCTION ' . $function . '() TO ' . $runtimeRole);
+
+            // The preconditions: NOT security definer, and proconfig really carries the setting.
+            $shape = $this->connection->query(
+                'SELECT prosecdef, coalesce(array_to_string(proconfig, \', \'), \'\') AS cfg '
+                . 'FROM pg_proc WHERE proname = \'' . $function . '\'',
+            );
+            self::assertNotFalse($shape);
+            /** @var array{prosecdef: bool|string, cfg: string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotContains($flags['prosecdef'], [true, 't', '1'], 'deliberately NOT security definer');
+            self::assertStringContainsString(
+                PostgresRowLevelSecurityIsolation::TENANT_SETTING,
+                $flags['cfg'],
+                'proconfig must pin the tenant setting, or this case is about nothing',
+            );
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A proconfig function pinning the tenant setting must be refused.');
+            self::assertStringContainsString($function, $caught->getMessage());
+            // And the REASON must be the proconfig one. Calling it "SECURITY DEFINER" would be false and would
+            // send a reader to check an ownership chain that has nothing to do with the leak.
+            self::assertStringContainsString('pins the tenant setting', $caught->getMessage());
+            self::assertStringContainsString('which it is not', $caught->getMessage());
+
+            // AND WITH THE OWNER SET TO THE CONNECTION'S OWN ROLE, which is the case the owner filter would
+            // otherwise swallow. The SECURITY DEFINER arm legitimately excludes a function whose owner this
+            // connection can already become — calling it is then no escalation — but a `proconfig` function
+            // does not borrow the owner's rights at all, it rewrites the tenant binding, so ownership is
+            // irrelevant to its danger. A mutant re-applying the owner filter to this arm survived until this
+            // assertion existed, because the function above is owned by the superuser that created it and is
+            // therefore never assumable.
+            $granter->exec('ALTER FUNCTION ' . $function . '() OWNER TO ' . $runtimeRole);
+
+            $assumable = $this->connection->query(
+                'SELECT pg_has_role(current_user, proowner, \'SET\') AS owner_assumable '
+                . 'FROM pg_proc WHERE proname = \'' . $function . '\'',
+            );
+            self::assertNotFalse($assumable);
+            self::assertContains(
+                $assumable->fetchColumn(),
+                [true, 't', '1'],
+                'The owner must now be assumable, or this half of the case is the same as the half above.',
+            );
+
+            $stillCaught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $stillCaught = $exception;
+            }
+
+            self::assertNotNull(
+                $stillCaught,
+                'A proconfig function must be refused even when its owner IS assumable: it does not borrow '
+                . 'the owner\'s rights, it rewrites the binding.',
+            );
+            self::assertStringContainsString($function, $stillCaught->getMessage());
+        } finally {
+            // Ownership may have moved to the runtime role, which the superuser can still drop.
+            $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        }
+    }
+
+    /**
+     * A view owned by the QUERYING role is not reported, because it is genuinely safe.
+     *
+     * "Evaluate row-level security as the owner" and "evaluate it as the caller" are the same evaluation when
+     * the owner IS the caller, so a `security_invoker`-less view owned by the connection's own role leaks
+     * nothing. Reporting it would be a false positive, and a check that fires on a safe shape is precisely the
+     * argument this class makes elsewhere for NOT asserting cross-database `CONNECT` — a check somebody
+     * disables is worse than a documented boundary.
+     *
+     * Latent in this project today: the runtime role holds `CREATE` on no schema, so it cannot create such a
+     * view. Tested as a pure classification for that reason, and tested at all because the arm is otherwise a
+     * rule nothing exercises — the defect CLAUDE.md § Gotchas records for `PERMISSIVE_FOR_FONT_ASSETS`.
+     */
+    public function testAViewOwnedByTheQueryingRoleIsNotReported(): void
+    {
+        $base = [
+            'object' => 'public.mine',
+            'kind' => 'v',
+            'owner' => 'twes',
+            'owner_exempt' => 'f',
+            'security_invoker' => 'f',
+        ];
+
+        // Owned by somebody else and not security_invoker: reported.
+        self::assertCount(
+            1,
+            PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([
+                [...$base, 'owner' => 'twes_owner', 'owned_by_caller' => 'f'],
+            ]),
+        );
+
+        // Same shape, owned by the caller: NOT reported.
+        self::assertSame(
+            [],
+            PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([
+                [...$base, 'owned_by_caller' => 't'],
+            ]),
+        );
+
+        // And ownership does NOT rescue a MATERIALISED view: a matview carries no row-level security at all,
+        // so who owns it is irrelevant. Asserted because the new arm is placed after the kind check and a
+        // later edit could reorder them.
+        self::assertCount(
+            1,
+            PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([
+                [...$base, 'kind' => 'm', 'owned_by_caller' => 't'],
+            ]),
+        );
     }
 
     // ------------------------------------------------------------------ fixture

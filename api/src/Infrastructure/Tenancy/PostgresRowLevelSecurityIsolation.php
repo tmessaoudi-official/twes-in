@@ -705,6 +705,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * yields `MEMBER` true and `SET` false: the connection cannot become the role by any ordinary means, so a
      * `SECURITY DEFINER` function owned by it IS an escalation and must be reported.
      */
+    /**
+     * A quoted SQL LIKE pattern matching a `proconfig` entry that pins the tenant setting.
+     *
+     * Built from {@see self::TENANT_SETTING} rather than written out, for the reason this class keeps
+     * relearning: a second spelling of the setting name is a second thing to keep in step, and the policy
+     * expression, `bind()` and this check must all mean the same GUC. `proconfig` entries are `name=value`,
+     * so the prefix match is `twes.tenant_id=%`.
+     */
+    private static function quotedTenantSettingPrefix(): string
+    {
+        return "'" . self::TENANT_SETTING . "=%'";
+    }
+
     private static function roleCanBeAssumedSql(string $roleOid): string
     {
         return \sprintf(
@@ -907,7 +920,11 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                         '%s is an unpoliced ANCESTOR of a policed table, and a child\'s policy is NOT applied '
                         . 'when the child is read through its parent — so every descendant\'s rows are '
                         . 'readable and writable through it by every tenant, however correct the '
-                        . "descendants' own policies are. Police the parent too",
+                        . "descendants' own policies are. Police the parent too -- AND check its other "
+                        . 'descendants: an unpoliced SIBLING of the policed table is not reported here, '
+                        . 'because reaching a policed table\'s rows through another relation requires '
+                        . 'ancestry and a sibling has none. It is still an unpoliced tenant-owned table, and '
+                        . 'the schema gate is what finds it',
                         $table['table'],
                     )
                     : \sprintf(
@@ -1059,6 +1076,12 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             'SELECT n.nspname || \'.\' || c.relname AS "object", '
             . 'c.relkind::text AS kind, o.rolname AS owner, '
             . 'o.rolsuper OR o.rolbypassrls AS owner_exempt, '
+            // Whether the OWNER IS THE QUERYING ROLE ITSELF. For such a view, "evaluate RLS as the owner" IS
+            // "evaluate RLS as the caller", so the view is safe and reporting it is a false positive — and a
+            // check that fires on a safe shape is the argument this class itself makes for not asserting
+            // cross-database CONNECT. Latent today (the runtime role holds no CREATE anywhere, so it cannot
+            // create one), which is exactly why it needs stating rather than discovering later.
+            . 'c.relowner = current_user::regrole::oid AS owned_by_caller, '
             // Compared to the literal 'true' IN SQL, so PHP receives a real boolean. `pg_options_to_table`
             // yields the *string* 'true', which isTrue() does not recognise — it accepts `t` and `1`, the
             // spellings pdo_pgsql produces for an actual boolean column. Normalising here rather than
@@ -1088,7 +1111,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not inspect views and materialised views.');
         }
 
-        /** @var list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string}> $objects */
+        /** @var list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string, owned_by_caller: bool|string}> $objects */
         $objects = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
         $violations = self::rlsExemptObjectViolations($objects);
@@ -1105,16 +1128,38 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         // anyway, and that reachability is itself reported by assertPolicedTablesAreBeyondThisRolesReach().
         $functions = $connection->query(
             'SELECT n.nspname || \'.\' || p.proname AS "function", o.rolname AS owner, '
-            . 'o.rolsuper OR o.rolbypassrls AS owner_exempt '
+            . 'o.rolsuper OR o.rolbypassrls AS owner_exempt, '
+            . 'p.prosecdef AS security_definer, '
+            . 'coalesce(array_to_string(p.proconfig, \', \'), \'\') AS proconfig '
             . 'FROM pg_proc p '
             . 'JOIN pg_roles o ON o.oid = p.proowner '
             . 'JOIN pg_namespace n ON n.oid = p.pronamespace '
-            . 'WHERE p.prosecdef '
+            // `prosecdef` OR a `proconfig` that pins the tenant setting. The second arm is round 12's finding
+            // and it is INDEPENDENT of SECURITY DEFINER: PostgreSQL saves and restores GUCs around any call
+            // whose `proconfig` is non-null, so a function declared
+            // `SET "twes.tenant_id" = '<other tenant>'` scopes the policy to that tenant for the duration of
+            // the call while the caller is bound to its own. [Verified on this server: a function with
+            // `prosecdef=false` and `proconfig={twes.tenant_id=...}` returned another tenant's row to a
+            // connection bound to tenant B, whose direct read of the same table correctly returned 0.]
+            //
+            // The threat actor is the same as for the leaking view this path exists to refuse — a migration or
+            // "support tooling" — and NOT the runtime role: creating one needs `SET` on the parameter, which
+            // `twes_owner` does not have (`permission denied to set parameter "twes.tenant_id"`, and
+            // `has_parameter_privilege('twes_owner', 'twes.tenant_id', 'SET')` is false). But a
+            // `GRANT SET ON PARAMETER` is an entirely ordinary thing for somebody to hand migration tooling,
+            // and once such a function exists any role holding EXECUTE calls it forever. That is exactly the
+            // persistent delegated bypass this method exists to detect.
+            . 'WHERE (p.prosecdef OR EXISTS ('
+            . '  SELECT 1 FROM unnest(coalesce(p.proconfig, \'{}\'::text[])) AS cfg '
+            . '  WHERE cfg LIKE ' . self::quotedTenantSettingPrefix() . '))'
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
             // The NARROW mode, because this predicate is NEGATED — see roleCanBeAssumedSql(). With 'MEMBER'
             // here, a function whose owner the connection is a member of but cannot SET ROLE to was excluded
             // as "no escalation", when it is the case where the function is the only route to that role.
-            . 'AND NOT ' . self::roleCanBeAssumedSql('p.proowner') . ' '
+            // The owner filter applies to the SECURITY DEFINER arm only. A `proconfig` function is dangerous
+            // regardless of who owns it — it does not borrow the owner's rights, it rewrites the tenant GUC —
+            // so excluding it because its owner is assumable would drop the whole new arm on the floor.
+            . 'AND (NOT p.prosecdef OR NOT ' . self::roleCanBeAssumedSql('p.proowner') . ') '
             // EXECUTE resolved through the ACL, with the default-grants-PUBLIC arm that
             // `has_function_privilege` was silently supplying. Dropping that arm along with the function would
             // have made every untouched SECURITY DEFINER function invisible — the commonest case there is.
@@ -1155,7 +1200,13 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * means the call runs as somebody else — which is a cross-tenant read whenever that somebody is the
      * tables' owner and the tables are not `FORCE`d, and is an unaudited privilege transfer regardless.
      *
-     * @param list<array{function: string, owner: string, owner_exempt: bool|string}> $functions
+     * A **third** reason was added at round 12 and is independent of ownership entirely: a non-null
+     * `proconfig` pinning the tenant setting. PostgreSQL saves and restores GUCs around any such call, so the
+     * function scopes the policy to whatever tenant it names for the duration of the call. Naming that one
+     * "SECURITY DEFINER" would be false — `prosecdef` is false — and would send a reader to check an ownership
+     * chain that is irrelevant.
+     *
+     * @param list<array{function: string, owner: string, owner_exempt: bool|string, security_definer?: bool|string, proconfig?: string}> $functions
      *
      * @return list<string>
      */
@@ -1164,6 +1215,25 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         $violations = [];
 
         foreach ($functions as $function) {
+            $proconfig = $function['proconfig'] ?? '';
+
+            // The proconfig arm FIRST, because a function can be both and this is the reason that does not
+            // depend on who owns it — reporting the ownership reason for a `prosecdef = false` function would
+            // be a false statement in an error message.
+            if ('' !== $proconfig && str_contains($proconfig, self::TENANT_SETTING . '=')) {
+                $violations[] = \sprintf(
+                    '%s carries a configuration override that pins the tenant setting (%s), so PostgreSQL '
+                    . 'scopes the policies to THAT tenant for the duration of the call whatever the caller is '
+                    . 'bound to. This is independent of SECURITY DEFINER (%s) and of ownership: the function '
+                    . 'does not borrow the owner\'s rights, it rewrites the binding',
+                    $function['function'],
+                    $proconfig,
+                    self::isTrue($function['security_definer'] ?? false) ? 'which it also is' : 'which it is not',
+                );
+
+                continue;
+            }
+
             $violations[] = \sprintf(
                 '%s is SECURITY DEFINER and owned by %s, %s, so calling it runs as that role',
                 $function['function'],
@@ -1184,7 +1254,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * Pure, so the branches are testable without arranging a privileged owner — the same reason
      * {@see self::roleCanBypassPolicies()} and {@see self::policedTableViolations()} are.
      *
-     * @param list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string}> $objects
+     * @param list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string, owned_by_caller?: bool|string}> $objects
      *
      * @return list<string>
      */
@@ -1216,6 +1286,13 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // privileges are irrelevant and the view is safe even when a superuser owns it. The first version
             // of this check tested ownership first and refused exactly that safe shape.
             if (self::isTrue($object['security_invoker'])) {
+                continue;
+            }
+
+            // A view owned by the QUERYING role is safe without security_invoker: evaluating policies as the
+            // owner and evaluating them as the caller are the same evaluation. Checked after security_invoker
+            // for the same precedence reason recorded above — ownership only ever narrows the question.
+            if (self::isTrue($object['owned_by_caller'] ?? false)) {
                 continue;
             }
 

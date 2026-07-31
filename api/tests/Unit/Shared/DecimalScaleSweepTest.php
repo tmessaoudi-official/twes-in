@@ -347,6 +347,9 @@ final class DecimalScaleSweepTest extends TestCase
      * Reflection rather than a written list, because a written list is what goes stale the day a fifth
      * scale-taking method is added — and then the two tests above look exhaustive while covering four of
      * five. This fails on that day, which is the only way the word "every" in their names stays true.
+     *
+     * Matched on the parameter's TYPE rather than on the name `scale`, because round 12 found the name match
+     * too narrow for its own claim: `$places`, `$decimals` or `$precision` would each be invisible to it.
      */
     public function testTheProviderCoversEveryPublicScaleTakingMethod(): void
     {
@@ -355,7 +358,14 @@ final class DecimalScaleSweepTest extends TestCase
 
         foreach (new \ReflectionClass(Decimal::class)->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             foreach ($method->getParameters() as $parameter) {
-                if ('scale' === $parameter->getName()) {
+                // Matched on the parameter's TYPE and POSITION-independent role, not on the literal name
+                // `scale`. Round 12 pointed out that a fifth method whose parameter is called `$places`,
+                // `$decimals` or `$precision` would be invisible to a name match: reflection would return the
+                // same four names, the assertion would pass, and both generated sweeps would look exhaustive
+                // while covering four of five. So every `int` parameter counts, and the provider must cover
+                // every method that takes one — which is a wider net than the sentence originally claimed and
+                // is the only way "every" stays true under renaming.
+                if ('int' === (string) $parameter->getType()) {
                     $withScale[] = $method->getName();
 
                     break;
