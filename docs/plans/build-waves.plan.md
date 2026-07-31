@@ -794,7 +794,7 @@ migration has nothing to invent:
 | `document.type` | non-null enum `('invoice','quote','credit','delivery_note')` | `DocumentType`'s **backed values**, not its case names. A PHP rename must not be a data migration |
 | `document.state` | non-null enum `('draft','issued','cancelled')` | `DocumentState`'s backed values, same argument |
 | `document.currency` | non-null `CHAR(3)` | the DOCUMENT's currency, fixed at `Invoice::draft()` and not inferred from the first line. A `Money` is *(amount, currency)*; see the `product` table above for why one column per row rather than one per amount |
-| `document.number` | nullable `integer` | the raw counter, **null until issued** — `Invoice::number()` returns null for a draft. Stored as the integer rather than the rendered string because the pattern is per-tenant configuration and may change: `NumberPattern` renders, it does not identify |
+| `document.number` | nullable `bigint` | the raw counter, **null until issued** — `Invoice::number()` returns null for a draft. **`bigint`, not `integer`** (round 15): `DocumentNumber` accepts any `int >= 1` up to `PHP_INT_MAX` and PostgreSQL `integer` stops at 2 147 483 647, so the domain admitted a value persistence would reject — the identical mismatch the quantity bound was added to eliminate, unnoticed one table over. `bigint` matches PHP's own integer width exactly, which is why it is the right answer rather than a wider `NUMERIC`: there is then no value the domain can hold and the column cannot. Stored as the integer rather than the rendered string because the pattern is per-tenant configuration and may change: `NumberPattern` renders, it does not identify |
 | `document.vat_rounding_point` | non-null enum `('per_rate_group','per_line')` | per-company configuration, so it is persisted per document as issued — a company changing it must not restate a document a client holds |
 | **`UNIQUE (company_id, type, number)`** | — | **the gapless sequence's only real guarantee.** `DocumentNumberSequence` cannot promise uniqueness across processes; this constraint is what makes a broken adapter loud instead of silent |
 | `document_line.quantity` | non-null `NUMERIC(21,6)` | `DocumentLine::MAX_INTEGER_DIGITS` (15) + `DocumentLine::MAX_SCALE` (6). Both constants exist because round 14 found this the ONE persisted decimal in the domain bounded at neither end — it accepted 601 decimals and 40 integer digits, so no `NUMERIC` could have stored what the domain admitted |
@@ -802,6 +802,26 @@ migration has nothing to invent:
 | `document_line.vat_rate` | non-null `NUMERIC(27,12)` | `Rate::FRACTION_SCALE` + `Rate::MAX_INTEGER_DIGITS`, exactly as `product.profit_rate`. Per LINE, not per document: multiple rates on one document is the normal Tunisian and French case |
 | `document_charge.label` | non-null `text` | trimmed on store by `FixedCharge` |
 | `document_charge.amount` | non-null `NUMERIC(19,4)` | a document-scope charge, never in a VAT base |
+| `document_line.document_id` / `document_charge.document_id` | non-null, `(company_id, document_id)` FK | **omitted at round 15 along with `position` below.** The FK is composite because a single-column one lets one tenant delete another's rows — the rule already stated for every table in this wave, which is exactly why leaving these two rows out was a gap rather than an oversight |
+| `document_line.position` / `document_charge.position` | non-null `smallint`, `UNIQUE (company_id, document_id, position)` | **LOAD-BEARING, and it had no column** (round 15). `Invoice::withoutLine(int $position)` addresses lines BY POSITION and `removeAt()` re-indexes to keep them contiguous; `CurrencyMismatch::inContext('document line %d')` reports one to a client. Without a persisted order, positions are not stable across a database round-trip — so "remove line 2" issued against a rehydrated document can remove a DIFFERENT line, which is precisely the stale-page hazard `removeAt()`'s own comment says it exists to prevent |
+
+**AND THE GAPLESS COUNTER TABLE, which the numbering feature requires and which this table omitted** (round 15
+— the preamble above says the point of this section is that "the wave writing the first migration has no record
+that the column exists", and the counter existed only in prose in three places):
+
+| Column | Type | Why |
+|---|---|---|
+| `document_number_sequence.company_id` | non-null `uuid` | `TENANT_COLUMN`. **This table is tenant-owned**, so it is in `schema-tenancy.php`'s subject set and in `assertPolicedTablesAreBeyondThisRolesReach()`'s — it carries the three RLS statements like every other tenant-owned table. Nothing said so before |
+| `document_number_sequence.type` | non-null enum, `DocumentType`'s backed values | sequences are per type |
+| `document_number_sequence.next_value` | non-null `bigint`, `CHECK (next_value >= 1)` | the counter. `bigint` for the same reason `document.number` is |
+| — | `PRIMARY KEY (company_id, type)` | **one row per `(tenant, type)`, and the primary key is what makes it so.** `DocumentNumberSequence`'s contract is a row taken under `SELECT ... FOR UPDATE`; two rows for one pair would silently allow two concurrent issues to take the same number, which is the outcome guarantee 5 exists to prevent |
+
+**And the per-tenant `NumberPattern`, plus the per-company `vat_rounding_point` DEFAULT** — both named as persisted
+configuration and neither specified (round 15). They belong on the company/tenant settings table that Wave 1 must
+create anyway: `number_pattern_width` non-null `smallint CHECK (>= 1)` matching `NumberPattern::padded()`'s own
+refusal, and `default_vat_rounding_point` non-null enum over `VatRoundingPoint`'s backed values. The per-DOCUMENT
+snapshot in the table above is separate and both are needed: a company changing its default must not restate a
+document a client already holds.
 
 No `currency` column on the line or charge tables, and that is the same argument as `profit_rate`'s seen from the
 other side: the document owns the currency and the domain refuses to mix them, so a per-line column could only

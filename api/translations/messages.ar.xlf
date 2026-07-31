@@ -53,6 +53,34 @@
         <source>document.empty_cannot_be_issued</source>
         <target>هذه الفاتورة لا تحتوي على أي بند، لذلك لا يمكن إصدارها. الإصدار يستهلك نهائياً رقم وثيقة لا يُعاد استخدامه أبداً. أضف بنداً، أو احذف المسوّدة.</target>
       </trans-unit>
+      <trans-unit id="16" resname="document.quantity_too_precise">
+        <source>document.quantity_too_precise</source>
+        <target>الكمية {quantity} تحتوي على عدد كبير جداً من الخانات العشرية (الحد الأقصى {max}). الكمية هي عدد أو قياس — ساعات، كيلوغرامات، لترات.</target>
+      </trans-unit>
+      <trans-unit id="17" resname="document.quantity_too_large">
+        <source>document.quantity_too_large</source>
+        <target>الكمية {quantity} كبيرة جداً. مع سعر الوحدة ستنتج مبلغاً إجمالياً لا يمكن للنظام تمثيله.</target>
+      </trans-unit>
+      <trans-unit id="18" resname="document.unit_price_negative">
+        <source>document.unit_price_negative</source>
+        <target>سعر الوحدة {price} سالب. لرد مبلغ إلى عميل، أصدر إشعار دائن بدلاً من بند سالب.</target>
+      </trans-unit>
+      <trans-unit id="19" resname="document.charge_amount_negative">
+        <source>document.charge_amount_negative</source>
+        <target>الرسم {label} له مبلغ سالب ({amount}). الرسم يُضاف إلى الإجمالي؛ لتخفيضه، استخدم إشعار دائن.</target>
+      </trans-unit>
+      <trans-unit id="20" resname="document.charge_label_empty">
+        <source>document.charge_label_empty</source>
+        <target>يجب أن يكون للرسم عنوان. فهو يُطبع على الوثيقة، ويجب أن يتمكن العميل من قراءة ما يُحاسب عليه.</target>
+      </trans-unit>
+      <trans-unit id="21" resname="document.line_not_found">
+        <source>document.line_not_found</source>
+        <target>لا يوجد بند في الموضع {position} — الوثيقة تحتوي على {count}. قد تكون الصفحة قديمة؛ أعد تحميلها وحاول مرة أخرى.</target>
+      </trans-unit>
+      <trans-unit id="22" resname="document.number_pattern_invalid">
+        <source>document.number_pattern_invalid</source>
+        <target>يجب أن يكون عرض رقم الوثيقة 1 على الأقل. العرض صفر سيطبع كل رقم بدون تعبئة مع الظهور كأنه مُهيّأ.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>هذه الوثيقة {state} ولم يعد من الممكن تغييرها. ألغها وأصدر وثيقة جديدة بالمبالغ الصحيحة.</target>

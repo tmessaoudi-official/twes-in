@@ -47,10 +47,20 @@ final class Decimal
      * **Phrased as `assertScale()`'s bound rather than "the largest scale this class will compute at",
      * which is what it said until round 14 and which `multiplyExact()` falsifies.** That method is a fifth
      * entry point, computes at `scaleOf(left) + scaleOf(right)`, and asserts nothing — correctly, because
-     * it needs no rounding and so has no target scale to check against. The hazard was MEASURED rather
-     * than assumed: a factor at scale 400000 costs 2ms and the cost is linear, so this constant's own
-     * rationale below (a hostile caller failing in microseconds instead of allocating gigabytes) still
-     * holds. What was wrong was only the claim to bound everything the class computes.
+     * it needs no rounding and so has no target scale to check against. What was wrong was only the claim to
+     * bound everything the class computes.
+     *
+     * **`multiplyExact()`'s cost is Θ(n·m), NOT linear — round 15 corrected that claim, which was measured on the
+     * wrong axis.** Round 14 timed only the shape where ONE operand is wide, which is the shape every in-domain
+     * caller happens to have. With both wide it quadruples per doubling: 100k×100k = 79ms, 200k×200k = 307ms,
+     * 400k×400k = 1274ms, 800k×800k = 5951ms.
+     *
+     * Still not a live hazard, and the reason is the bound on the OTHER operand rather than anything about this
+     * method: all three callers multiply a caller-supplied factor by something already capped — `Money`'s amount
+     * at the currency's scale, `ProductPricing`'s cost, `Rate`'s fraction at `FRACTION_SCALE`. **A fourth caller
+     * multiplying two caller-supplied values WOULD be one**, which is what an allocation/split or a compound-tax
+     * multiplier looks like — so the true complexity is recorded here rather than left as a comforting adjective
+     * for its next reader.
      *
      * bcmath's own ceiling is `INT_MAX` (2147483647), and enforcing *that* was the first fix attempted here.
      * It is the wrong bound, and finding out why was worth more than the finding that prompted it: a scale of

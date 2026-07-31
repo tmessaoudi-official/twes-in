@@ -364,6 +364,13 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *    `UNIQUE (invoice_number)` is an existence oracle for another tenant's invoice numbers.
      *    Every unique constraint on tenant-owned data includes the tenant column.
      *
+     * **`$tenantColumn` MUST be {@see self::TENANT_COLUMN}.** It is a parameter only so a test can emit a
+     * NON-canonical policy and prove detection fires; {@see self::policedTableViolations()} refuses any other
+     * column, because the canonicality check used to build its expectation from the identifier it read out of
+     * the policy under test and therefore agreed with itself for `label` as readily as for `company_id`. Round
+     * 15 noted the constraint was documented on the constant and enforced in the checker but absent HERE, which
+     * is the docblock a migration author actually reads.
+     *
      * @return list<string> statements to run in order, in a migration
      */
     public static function policySqlFor(string $table, string $tenantColumn = self::TENANT_COLUMN): array
@@ -789,12 +796,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * `SECURITY DEFINER` function owned by it IS an escalation and must be reported.
      */
     /**
-     * A quoted SQL LIKE pattern matching a `proconfig` entry that pins the tenant setting.
+     * Whether a `proconfig` array pins the tenant setting, as an SQL expression.
      *
      * Built from {@see self::TENANT_SETTING} rather than written out, for the reason this class keeps
      * relearning: a second spelling of the setting name is a second thing to keep in step, and the policy
      * expression, `bind()` and this check must all mean the same GUC. `proconfig` entries are `name=value`,
-     * so the prefix match is `twes.tenant_id=%`.
+     * The entry's NAME half is compared for EQUALITY after `lower()`, not with a `LIKE` over the whole entry —
+     * this docblock described a `LIKE` and a `twes.tenant_id=%` prefix that the code has not used since round 13,
+     * and contradicted the inline comment eight lines below it (round 15 found both halves).
      */
     private static function tenantSettingIsPinnedSql(string $proconfig): string
     {
@@ -1447,7 +1456,9 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         );
 
         if (false !== $functions) {
-            /** @var list<array{function: string, owner: string, owner_exempt: bool|string}> $rows */
+            // `proconfig` and `security_definer` were MISSING from this annotation while the classifier reads
+            // both — round 15. An incomplete shape on the one call that had no documented shape at all.
+            /** @var list<array{function: string, owner: string, owner_exempt: bool|string, security_definer: bool|string, proconfig: string}> $rows */
             $rows = $functions->fetchAll(\PDO::FETCH_ASSOC);
 
             $violations = [...$violations, ...self::securityDefinerFunctionViolations($rows)];
@@ -1486,7 +1497,9 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * chain that is irrelevant.
      *
      *
-     * @return list<string>
+     * @return bool whether the entry pins it — the `@return list<string>` this carried until round 15 belonged to
+     *              `securityDefinerFunctionViolations()` further down, and would have failed `gate:static` on the
+     *              day PHPStan lands
      */
     private static function pinsTenantSetting(string $proconfig): bool
     {
@@ -1502,6 +1515,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         return false;
     }
 
+    /**
+     * Which readable functions hand this connection a role or a tenant binding it could not otherwise reach.
+     *
+     * Pure, for the same reason its siblings are: the interesting branches need privileges the runtime role must
+     * never hold. **It was the only `*Violations()` method with no docblock and no array shape** (round 15) — and
+     * an undocumented shape on a method whose caller reads `proconfig` and `security_definer` is how a `@var`
+     * comes to omit the very fields the code uses, which is what that caller's own annotation did.
+     *
+     * @param list<array{function: string, owner: string, owner_exempt: bool|string, security_definer: bool|string, proconfig: string}> $functions
+     *
+     * @return list<string> one human-readable violation per problem found, empty when the role is safe
+     */
     public static function securityDefinerFunctionViolations(array $functions): array
     {
         $violations = [];
@@ -1546,7 +1571,9 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
-     * Which readable views, materialised views or foreign tables borrow an exemption.
+     * Which readable objects borrow an exemption: views, materialised views, foreign tables — **and, since
+     * round 15, tables carrying a rewrite RULE**, which reach the same `pg_rewrite` machinery through an
+     * ordinary relation and were the eleventh bypass carrier.
      *
      * Pure, so the branches are testable without arranging a privileged owner — the same reason
      * {@see self::roleCanBypassPolicies()} and {@see self::policedTableViolations()} are.

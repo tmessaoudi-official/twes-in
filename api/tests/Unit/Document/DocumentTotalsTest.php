@@ -795,8 +795,18 @@ final class DocumentTotalsTest extends TestCase
      */
     public function testTheQuantityBoundsHaveNotDrifted(): void
     {
-        self::assertGreaterThanOrEqual(6, DocumentLine::MAX_SCALE, 'A quantity needs at least 6 decimals: '
-            . 'hours, kilograms, cubic metres. Lowering this refuses ordinary measures.');
+        // EXACT, not a minimum — which is what round 15's surviving `6 -> 7` mutant showed a minimum cannot do.
+        // `build-waves.plan.md` derives `document_line.quantity NUMERIC(21,6)` from this constant, so RAISING it
+        // is as much a divergence as lowering it: the domain would accept a 7-decimal quantity the column cannot
+        // store, which is the exact mismatch this constant was introduced to eliminate. Changing it is therefore
+        // a MIGRATION, and this assertion is what makes that a deliberate act rather than an edit.
+        self::assertSame(
+            6,
+            DocumentLine::MAX_SCALE,
+            'MAX_SCALE is the scale of document_line.quantity NUMERIC(21,6). Changing it here without changing '
+            . 'the column makes the domain accept values persistence rejects (raising) or refuse ordinary '
+            . 'measures like hours and cubic metres (lowering). Change both, in one commit.',
+        );
         self::assertSame(
             Money::MAX_INTEGER_DIGITS,
             DocumentLine::MAX_INTEGER_DIGITS,

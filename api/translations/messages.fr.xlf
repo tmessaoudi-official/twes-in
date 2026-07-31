@@ -47,6 +47,34 @@
         <source>document.empty_cannot_be_issued</source>
         <target>Cette facture n'a aucune ligne et ne peut donc pas être émise. L'émission consomme définitivement un numéro de document, qui n'est jamais réutilisé. Ajoutez une ligne, ou supprimez le brouillon.</target>
       </trans-unit>
+      <trans-unit id="16" resname="document.quantity_too_precise">
+        <source>document.quantity_too_precise</source>
+        <target>La quantité {quantity} comporte trop de décimales ({max} au maximum). Une quantité est un nombre ou une mesure — heures, kilogrammes, litres.</target>
+      </trans-unit>
+      <trans-unit id="17" resname="document.quantity_too_large">
+        <source>document.quantity_too_large</source>
+        <target>La quantité {quantity} est trop grande. Combinée au prix unitaire, elle produirait un total que le système ne peut pas représenter.</target>
+      </trans-unit>
+      <trans-unit id="18" resname="document.unit_price_negative">
+        <source>document.unit_price_negative</source>
+        <target>Le prix unitaire {price} est négatif. Pour rembourser un client, émettez un avoir plutôt qu'une ligne négative.</target>
+      </trans-unit>
+      <trans-unit id="19" resname="document.charge_amount_negative">
+        <source>document.charge_amount_negative</source>
+        <target>Le frais {label} a un montant négatif ({amount}). Un frais s'ajoute au total ; pour le réduire, utilisez un avoir.</target>
+      </trans-unit>
+      <trans-unit id="20" resname="document.charge_label_empty">
+        <source>document.charge_label_empty</source>
+        <target>Le frais doit avoir un libellé. Il est imprimé sur le document : le client doit pouvoir lire ce qui lui est facturé.</target>
+      </trans-unit>
+      <trans-unit id="21" resname="document.line_not_found">
+        <source>document.line_not_found</source>
+        <target>Il n'y a pas de ligne à la position {position} — le document en compte {count}. La page est peut-être obsolète : rechargez-la et réessayez.</target>
+      </trans-unit>
+      <trans-unit id="22" resname="document.number_pattern_invalid">
+        <source>document.number_pattern_invalid</source>
+        <target>La largeur du numéro de document doit être au moins 1. Une largeur de zéro imprimerait chaque numéro sans remplissage tout en paraissant configurée.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>Ce document est {state} et ne peut plus être modifié. Annulez-le et émettez-en un nouveau avec les montants corrects.</target>

@@ -570,19 +570,28 @@ are expensive.
 ## Translation keys — which refusals get one
 
 A domain exception gets its own key **only when a user can fix the thing it refuses**. Everything else maps to
-`error.internal` and carries its detail in the log, not in a response. Written down because round 14 found five
-of roughly fourteen user-reachable document refusals keyed and no rule recorded anywhere — so the split looked
+`error.internal` and carries its detail in the log, not in a response. Written down because round 14 found FOUR
+of roughly sixteen user-reachable document refusals keyed and no rule recorded anywhere (round 15 corrected the
+count: four `document.*` keys existed at `a474b0d`, not five — counting `money.currency_mismatch` as the fifth
+would have contradicted this very table) — so the split looked
 arbitrary and the next author had nothing to follow. `scripts/gates/locale-key-parity.php` checks that every
 locale carries the same SET; nothing checks COVERAGE, and that direction stays deliberately unautomated because
 "is this user-fixable" is a judgement rather than a grep.
 
 | Exception kind | Key? | Why |
 |---|---|---|
-| the user typed something invalid — a bad quantity, a negative price, a rate too precise | **yes** | they can retype it, and the message is the only instruction they get |
-| the user acted on stale state — issuing twice, editing an issued document, removing a line that is gone | **yes** | plausible double-click or stale page, and a 409/422 the UI must explain |
+| the user typed something invalid — a bad quantity, a negative price, a rate too precise | **yes** | they can retype it, and the message is the only instruction they get. `document.quantity_invalid`, `document.quantity_too_precise`, `document.quantity_too_large`, `document.unit_price_negative`, `document.vat_rate_invalid`, `document.charge_amount_negative`, `document.charge_label_empty`, `pricing.rate_too_precise`, `pricing.net_price_negative` |
+| the user acted on stale state — issuing twice, editing an issued document, removing a line that is gone | **yes** | plausible double-click or stale page, and a 409/422 the UI must explain. `document.illegal_transition`, `document.not_mutable`, `document.line_not_found` |
 | the CONTENT is not issuable — an empty invoice | **yes** | `document.empty_cannot_be_issued` |
+| a CONFIGURATION value an administrator can fix — a number-pattern width of zero | **yes** | `document.number_pattern_invalid`. Admin-facing is still user-facing; the person who set it is the person who can correct it |
 | our own fault — a number from the wrong sequence, a sequence adapter returning 0, a `\LogicException` of any kind | **no** | `error.internal`. Naming internals to a client is noise at best and an information leak at worst |
-| a currency mismatch reaching the domain | **no** | the API fixes the currency per document; a mismatch here means our own layer built the request wrong |
+| a currency mismatch **inside a document** — a line or charge in another currency | **no** | the API fixes the currency per document, so a mismatch reaching `DocumentCalculator` means our own layer built the request wrong |
+| a currency mismatch **while pricing a product** | **yes** | `money.currency_mismatch`, which has existed since Wave 0. Round 15 found the single coarse row above claiming this got no key while the key was there, translated, in all three locales — the row was right about documents and wrong about pricing, where a user really can type a cost and a price in two currencies |
+
+**The keys are LISTED above on purpose.** Round 15 found the previous version of this section promising a key for
+three case classes that had none, in the same commit that introduced the rule — so the rule was violated by the
+artefact stating it. Naming them makes the two sides checkable by `grep -o 'resname="[^"]*"'` against this table,
+which is the nearest thing to automation available for a judgement call.
 
 The test of it: **would a competent user, reading only this message, know what to change?** If not, it is
 `error.internal`.

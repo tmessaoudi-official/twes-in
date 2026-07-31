@@ -3484,6 +3484,151 @@ final class TenantIsolationTest extends TestCase
      * A connection FAILURE fails too, not only a missing variable — wrong credentials produce the same silent
      * green otherwise.
      */
+    /**
+     * **Another session's TEMPORARY `SECURITY DEFINER` function must NOT refuse this connection.**
+     *
+     * Round 14 added `pg_is_other_temp_schema()` to the function query for this reason, and round 15 found the
+     * closure REVERTIBLE with the whole suite green — so the fix was present and unpinned. Every session's
+     * temporary functions are visible in `pg_proc` to every other session, so a migration connection holding one
+     * refused EVERY other acquisition, naming an object the refused connection can neither call, locate nor drop
+     * (`DROP` gives `schema "pg_temp" does not exist`). A whole-pool outage from any single connection, needing
+     * only the `TEMPORARY` grant PostgreSQL gives PUBLIC by default.
+     *
+     * Two live connections are the only way to express it: a temp object is per-session by definition, so no
+     * single-connection fixture can produce "another backend's".
+     */
+    public function testAnotherSessionsTemporarySecurityDefinerFunctionDoesNotRefuseThisOne(): void
+    {
+        $dsn = getenv('TWES_TEST_DSN');
+        $owner = getenv('TWES_TEST_DB_OWNER_USER');
+        $ownerPassword = getenv('TWES_TEST_DB_OWNER_PASSWORD');
+
+        if (!\is_string($dsn) || !\is_string($owner) || '' === $owner) {
+            self::fail('TWES_TEST_DSN and TWES_TEST_DB_OWNER_USER must be set.');
+        }
+
+        // The OTHER session. Its temp schema dies with this connection, so there is nothing to clean up.
+        $other = new \PDO($dsn, $owner, \is_string($ownerPassword) ? $ownerPassword : null, [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        // Baseline first: this connection is clean BEFORE the other session creates anything, or a pre-existing
+        // refusal would make the assertion below pass for the wrong reason.
+        PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+
+        $other->exec(
+            'CREATE FUNCTION pg_temp.migration_helper() RETURNS int LANGUAGE sql SECURITY DEFINER AS $$ SELECT 1 $$',
+        );
+
+        // THE PRECONDITION: this connection really can SEE it, and it really is in ANOTHER backend's temp schema.
+        // Without both halves the case proves nothing — an invisible function would pass trivially.
+        $seen = $this->connection->query(
+            "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            . "WHERE p.proname = 'migration_helper' AND pg_is_other_temp_schema(n.oid)",
+        );
+        self::assertNotFalse($seen);
+        self::assertSame(
+            1,
+            (int) $seen->fetchColumn(),
+            "This connection must see the other session's temp function, or the filter under test is not "
+            . 'exercised at all.',
+        );
+
+        $caught = null;
+
+        try {
+            PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+        } catch (\RuntimeException $exception) {
+            $caught = $exception;
+        }
+
+        self::assertNull(
+            $caught,
+            "Another session's temporary SECURITY DEFINER function must not refuse this connection: it cannot "
+            . 'call it, locate it or drop it, so refusing is a whole-pool outage rather than a guard. A check '
+            . 'that always fails is a check somebody disables.',
+        );
+    }
+
+    /**
+     * **Every boolean spelling PostgreSQL accepts for `security_invoker` is read correctly.**
+     *
+     * Round 14 replaced a `= 'true'` string comparison with `::boolean` because PostgreSQL stores a boolean
+     * reloption VERBATIM, so `on` and `1` are valid and were reported as UNSAFE — a false statement about a safe
+     * object, and the same class as the `current_user::regrole` outage. Round 15 found that closure revertible
+     * with the suite green.
+     *
+     * One case per spelling, generated, and BOTH polarities: a fix that read every spelling as `true` would pass a
+     * true-only matrix while certifying every unsafe view as safe.
+     *
+     * @param string $spelling how the reloption is written
+     * @param bool $invoker whether that spelling means "evaluate as the caller"
+     */
+    #[DataProvider('securityInvokerSpellings')]
+    public function testEverySecurityInvokerSpellingIsReadCorrectly(string $spelling, bool $invoker): void
+    {
+        $granter = self::superuserConnection();
+        $view = 'si_spelling_probe';
+
+        try {
+            // Owned by the SUPERUSER deliberately: an exempt owner is what makes a non-invoker view unsafe, so
+            // this is the shape where the two polarities actually differ.
+            $granter->exec(\sprintf(
+                'CREATE VIEW public.%s WITH (security_invoker = %s) AS SELECT * FROM %s',
+                $view,
+                $spelling,
+                self::TABLE,
+            ));
+            $granter->exec(\sprintf(
+                'GRANT SELECT ON public.%s TO %s',
+                $view,
+                (string) getenv('TWES_TEST_DB_USER'),
+            ));
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            if ($invoker) {
+                self::assertNull($caught, \sprintf(
+                    'security_invoker = %s means "evaluate as the caller", so the view is SAFE and must not be '
+                    . 'refused. Reading it as false states something untrue about the object.',
+                    $spelling,
+                ));
+
+                return;
+            }
+
+            self::assertNotNull($caught, \sprintf(
+                'security_invoker = %s means "evaluate as the owner", so a view owned by an exempt role must be '
+                . 'REFUSED.',
+                $spelling,
+            ));
+            self::assertStringContainsString($view, $caught->getMessage());
+        } finally {
+            $granter->exec(\sprintf('DROP VIEW IF EXISTS public.%s', $view));
+        }
+    }
+
+    /** @return iterable<string, array{string, bool}> */
+    public static function securityInvokerSpellings(): iterable
+    {
+        // PostgreSQL's own boolean input set, both polarities. `true`/`false` are the spellings the pre-fix string
+        // comparison happened to get right, which is why they are here as controls rather than as the whole case.
+        yield 'on' => ['on', true];
+        yield '1' => ['1', true];
+        yield 'yes' => ['yes', true];
+        yield 'true' => ['true', true];
+        yield 'off' => ['off', false];
+        yield '0' => ['0', false];
+        yield 'no' => ['no', false];
+        yield 'false' => ['false', false];
+    }
+
     private static function superuserConnection(): \PDO
     {
         $dsn = getenv('TWES_TEST_DSN');

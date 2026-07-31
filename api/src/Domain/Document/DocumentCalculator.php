@@ -156,6 +156,13 @@ final readonly class DocumentCalculator
         // round 14 found both of these guards deletable with the suite green — the test asserted only the class,
         // so a crash and a detection were indistinguishable. The context string is what a test can pin, and it
         // is also what tells a reader WHICH line of a fifty-line invoice is wrong.
+        // `array_values` FIRST, so the reported position is the position, not the array key. `list<DocumentLine>`
+        // is a docblock claim and PHPStan — which would enforce it — is blocked on Composer egress, so a caller
+        // passing `[7 => $line]` made the message name line 7 while `DocumentTotals::lineNets()` exposes 0 and 1.
+        // An index a client is told to fix must be the index the client can see (round 15).
+        $lines = array_values($lines);
+        $fixedCharges = array_values($fixedCharges);
+
         foreach ($lines as $position => $line) {
             $currency ??= $line->unitNet()->currency();
 

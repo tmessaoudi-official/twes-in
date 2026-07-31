@@ -52,6 +52,34 @@
         <source>document.empty_cannot_be_issued</source>
         <target>This invoice has no lines, so it cannot be issued. Issuing permanently consumes a document number that is never reused. Add a line, or delete the draft.</target>
       </trans-unit>
+      <trans-unit id="16" resname="document.quantity_too_precise">
+        <source>document.quantity_too_precise</source>
+        <target>The quantity {quantity} has too many decimal places (at most {max} are allowed). A quantity is a count or a measure — hours, kilograms, litres.</target>
+      </trans-unit>
+      <trans-unit id="17" resname="document.quantity_too_large">
+        <source>document.quantity_too_large</source>
+        <target>The quantity {quantity} is too large. Together with the unit price it would produce a total this system cannot represent.</target>
+      </trans-unit>
+      <trans-unit id="18" resname="document.unit_price_negative">
+        <source>document.unit_price_negative</source>
+        <target>The unit price {price} is negative. To refund a client, issue a credit note rather than a negative line.</target>
+      </trans-unit>
+      <trans-unit id="19" resname="document.charge_amount_negative">
+        <source>document.charge_amount_negative</source>
+        <target>The charge {label} has a negative amount ({amount}). A charge adds to the total; to reduce it, use a credit note.</target>
+      </trans-unit>
+      <trans-unit id="20" resname="document.charge_label_empty">
+        <source>document.charge_label_empty</source>
+        <target>The charge needs a label. It is printed on the document, so a client has to be able to read what they are being charged for.</target>
+      </trans-unit>
+      <trans-unit id="21" resname="document.line_not_found">
+        <source>document.line_not_found</source>
+        <target>There is no line at position {position} — the document has {count}. The page may be out of date; reload it and try again.</target>
+      </trans-unit>
+      <trans-unit id="22" resname="document.number_pattern_invalid">
+        <source>document.number_pattern_invalid</source>
+        <target>The document number width must be at least 1. A width of zero would print every number unpadded while looking configured.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>This document is {state} and can no longer be changed. Cancel it and issue a new one with the correct figures.</target>
