@@ -2657,6 +2657,146 @@ final class TenantIsolationTest extends TestCase
         );
     }
 
+    /**
+     * A MIXED-CASE quoted GUC name in `proconfig` is caught — the defeat of round 12's own closure.
+     *
+     * `SET "TWES.TENANT_ID" = '<tenant>'` stores `proconfig = {TWES.TENANT_ID=...}` **verbatim**, because
+     * PostgreSQL normalises a custom GUC's name only when a placeholder for it already exists in that backend.
+     * At call time the GUC resolves CASE-INSENSITIVELY, so the function pins the parameter the policy reads —
+     * while a case-sensitive `LIKE 'twes.tenant_id=%'` misses it entirely. One keystroke defeated the fix.
+     *
+     * The attacker needs no extra privilege for the quoted spelling: `pg_parameter_acl` lowercases its keys, so
+     * a `GRANT SET ON PARAMETER twes.tenant_id` covers `"TWES.TENANT_ID"` too.
+     */
+    public function testAMixedCaseQuotedTenantSettingInProconfigIsCaught(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('No superuser connection available to set a parameter in a function.');
+        }
+
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        self::assertIsString($runtimeRole);
+
+        $function = self::TABLE . '_proconfig_mixedcase';
+        $setting = strtoupper(PostgresRowLevelSecurityIsolation::TENANT_SETTING);
+
+        $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        $granter->exec(
+            'CREATE FUNCTION ' . $function . '() RETURNS bigint LANGUAGE sql '
+            . 'SET "' . $setting . '" = \'' . self::TENANT_A . '\' '
+            . 'AS \'SELECT count(*) FROM ' . self::TABLE . '\'',
+        );
+
+        try {
+            $granter->exec('GRANT EXECUTE ON FUNCTION ' . $function . '() TO ' . $runtimeRole);
+
+            // The precondition: PostgreSQL really stored the name UPPERCASE, so a case-sensitive match fails.
+            $stored = $this->connection->query(
+                'SELECT array_to_string(proconfig, \', \') AS cfg FROM pg_proc WHERE proname = \''
+                . $function . '\'',
+            );
+            self::assertNotFalse($stored);
+            $cfg = (string) $stored->fetchColumn();
+            self::assertStringContainsString($setting, $cfg, 'stored verbatim, in upper case');
+            self::assertStringNotContainsString(
+                PostgresRowLevelSecurityIsolation::TENANT_SETTING . '=',
+                $cfg,
+                'and NOT in the lower-case spelling a case-sensitive match looks for',
+            );
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A mixed-case quoted GUC name must not defeat the check.');
+            self::assertStringContainsString($function, $caught->getMessage());
+            self::assertStringContainsString('pins the tenant setting', $caught->getMessage());
+        } finally {
+            $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');
+        }
+    }
+
+    /**
+     * THE NINTH CARRIER: a TRIGGER function runs without EXECUTE, so the EXECUTE filter excluded exactly the
+     * functions that fire anyway.
+     *
+     * PostgreSQL checks `EXECUTE` against the trigger's CREATOR at `CREATE TRIGGER` and performs **no** ACL
+     * check when the trigger fires. So a trigger function with `EXECUTE` revoked from PUBLIC and no grant to the
+     * runtime role runs on every INSERT/UPDATE/DELETE that role issues — while
+     * `privilegeIsReachableSql('p.proacl','EXECUTE',true)` is false and the row is dropped from the result set.
+     * That neutralised BOTH the `prosecdef` arm and round 12's new `proconfig` arm at once.
+     *
+     * [Verified independently: `has_function_privilege('twes', fn, 'EXECUTE')` is false while the trigger fires
+     * under `current_user = twes`.]
+     */
+    public function testATriggerFunctionIsInspectedEvenWithoutExecutePrivilege(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('No superuser connection available to own a SECURITY DEFINER function.');
+        }
+
+        $runtimeRole = getenv('TWES_TEST_DB_USER');
+        self::assertIsString($runtimeRole);
+
+        $function = self::TABLE . '_trigfn';
+        $table = self::TABLE . '_trigtarget';
+
+        $granter->exec('DROP TABLE IF EXISTS ' . $table . ' CASCADE');
+        $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '() CASCADE');
+        $granter->exec('CREATE TABLE ' . $table . ' (id integer)');
+        // SECURITY DEFINER and owned by the superuser: the dangerous shape. What makes this case distinct is
+        // that EXECUTE is REVOKED, so the pre-fix filter never saw it.
+        $granter->exec(
+            'CREATE FUNCTION ' . $function . '() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER '
+            . 'AS \'BEGIN RETURN NEW; END\'',
+        );
+
+        try {
+            $granter->exec('REVOKE EXECUTE ON FUNCTION ' . $function . '() FROM PUBLIC');
+            $granter->exec(
+                'CREATE TRIGGER tg BEFORE INSERT ON ' . $table
+                . ' FOR EACH ROW EXECUTE FUNCTION ' . $function . '()',
+            );
+            $granter->exec('GRANT INSERT ON ' . $table . ' TO ' . $runtimeRole);
+
+            // The precondition, and the whole point: NOT executable, yet it fires.
+            $priv = $this->connection->query(
+                'SELECT has_function_privilege(current_user, \'' . $function . '()\', \'EXECUTE\') AS can',
+            );
+            self::assertNotFalse($priv);
+            self::assertNotContains(
+                $priv->fetchColumn(),
+                [true, 't', '1'],
+                'EXECUTE must be revoked, or this case is the same as the ordinary one',
+            );
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'A trigger function must be inspected regardless of EXECUTE: the trigger fires without it.',
+            );
+            self::assertStringContainsString($function, $caught->getMessage());
+        } finally {
+            $granter->exec('DROP TABLE IF EXISTS ' . $table . ' CASCADE');
+            $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '() CASCADE');
+        }
+    }
+
     // ------------------------------------------------------------------ fixture
 
     /** The restricted runtime role — the one every isolation assertion is made against. */

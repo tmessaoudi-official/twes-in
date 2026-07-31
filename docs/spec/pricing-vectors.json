@@ -344,6 +344,31 @@
       "expected": {
         "total": "53.436"
       }
+    },
+    {
+      "id": "fractional-quantity-pins-line-net-rounding",
+      "why": "THE case that pins the line-net rounding ORDER, and it was absent: every other document line has an EXACT product (10 x 12.000, 1 x 0.013, 3 x 10.000 ...) and no quantity was fractional, so nothing distinguished sum-of-ROUNDED-line-nets from rounded-once-on-the-exact-sum. A mutant computing the subtotal as round(sum(exact)) passed the whole suite. Here 0.5 x 0.003 = 0.0015 exactly, a tie at the millime, so each line rounds to 0.002 and the subtotal is 0.004 -- while rounding the exact sum (0.003) once gives 0.003. Rounding per line is CORRECT and required: DocumentLine rounds each line because the line net is printed on the document and summed into the printed subtotal, and printed lines that do not add up to the printed subtotal are an EN 16931 validation failure rather than a cosmetic complaint. Fractional quantities are also the ordinary case for services -- 2.5 hours, 0.750 kg -- so this is the default shape rather than an edge case.",
+      "currency": "TND",
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_net": "0.003",
+          "line_net": "0.002"
+        },
+        {
+          "quantity": "0.5",
+          "unit_net": "0.003",
+          "line_net": "0.002"
+        }
+      ],
+      "subtotal_net": "0.004",
+      "subtotal_if_rounded_once_which_is_WRONG": "0.003",
+      "vat_rate": "19",
+      "vat": "0.001",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.005"
+      }
     }
   ],
   "schema": "No JSON Schema yet — owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",

@@ -42,6 +42,8 @@ use Twes\Domain\Shared\RoundingMode;
 #[CoversClass(DocumentCalculator::class)]
 #[CoversClass(DocumentLine::class)]
 #[CoversClass(FixedCharge::class)]
+#[CoversClass(\Twes\Domain\Document\DocumentTotals::class)]
+#[CoversClass(\Twes\Domain\Document\VatGroup::class)]
 final class DocumentTotalsTest extends TestCase
 {
     private const string VECTORS = __DIR__ . '/../../../../docs/spec/pricing-vectors.json';
@@ -76,6 +78,21 @@ final class DocumentTotalsTest extends TestCase
                 && \count($case[0]['vat_by_rate']) > 1,
         );
         self::assertNotEmpty($multiRate, 'No case carries lines at different VAT rates.');
+
+        // And at least one must carry a FRACTIONAL quantity whose line net needs rounding, or nothing
+        // distinguishes sum-of-rounded-line-nets from rounded-once-on-the-exact-sum. Round 13 proved that gap
+        // live: every line in every case had an exact product, and a mutant computing the subtotal as
+        // round(sum(exact)) passed the whole suite. A count floor cannot notice a missing property — this file
+        // has now learned that twice, once for a negative tie and once here.
+        $fractional = array_filter(
+            $cases,
+            static fn(array $case): bool => isset($case[0]['subtotal_if_rounded_once_which_is_WRONG']),
+        );
+        self::assertNotEmpty(
+            $fractional,
+            'No case pins the LINE-NET rounding order. One line with a fractional quantity whose product is a '
+            . 'tie is enough, and fractional quantities are the ordinary case for services.',
+        );
     }
 
     /**
@@ -264,6 +281,130 @@ final class DocumentTotalsTest extends TestCase
             [],
             VatRoundingPoint::PerRateGroup,
             RoundingMode::HalfUp,
+        );
+    }
+
+    /**
+     * A negative UNIT PRICE is refused, like a negative quantity — the same rule through the other door.
+     *
+     * Round 13 found the quantity guarded and the price not, so a line net of −5.000 and a document total of
+     * −5.950 were constructible. That is the THIRD distinct route into the state the 2026-07-30 ruling refuses;
+     * round 12 closed the second. A negative-total document is a credit note — EN 16931 type code 381, not
+     * 380 — so this is a tax-document distinction, not a presentation one.
+     */
+    public function testANegativeUnitPriceIsRefusedLikeANegativeQuantity(): void
+    {
+        $tnd = Currency::of('TND');
+
+        $refusals = 0;
+
+        foreach ([['1', '-5.000'], ['-1', '5.000']] as [$quantity, $unit]) {
+            try {
+                new DocumentLine($quantity, Money::of($unit, $tnd), Rate::fromPercentage('19'));
+            } catch (\InvalidArgumentException) {
+                ++$refusals;
+            }
+        }
+
+        self::assertSame(2, $refusals, 'Both doors into a negative line must be shut, not one.');
+
+        // And ZERO is accepted on both, because a free-of-charge line is legitimate — a sample, a warranty
+        // replacement, a promotional line. A guard written `<= 0` would refuse it.
+        self::assertSame(
+            '0.000',
+            new DocumentLine('0', Money::of('5.000', $tnd), Rate::zero())
+                ->net(RoundingMode::HalfUp)->amount(),
+        );
+        self::assertSame(
+            '0.000',
+            new DocumentLine('1', Money::of('0.000', $tnd), Rate::zero())
+                ->net(RoundingMode::HalfUp)->amount(),
+        );
+    }
+
+    /**
+     * A FLOAT quantity is refused, and the union exists so that refusal is reachable.
+     *
+     * The parameter was a bare `string` while the docblock claimed "never a float … this refuses one for the
+     * same reason [as `Money`]". It did not: from a weak-mode caller PHP coerced, and `0.1 + 0.2` —
+     * `0.30000000000000004` in IEEE-754 — arrived as the string `'0.3'`, because implicit float-to-string uses
+     * `precision=14`. The float's real value was discarded silently, which is the same laundering `Money`'s own
+     * float guard exists to stop. Worse, the refusal that did happen (`1.0E+20`) was accidental — it depended
+     * on the magnitude triggering exponent notation — so the invariant held for some floats and not others.
+     *
+     * THIS FILE CANNOT PROVE THE WEAK-MODE CASE, exactly as `MoneyTest` cannot: it declares `strict_types`, so
+     * a float never reaches the constructor by coercion here. What it proves is that the arm exists and fires,
+     * which is what a weak-mode caller then reaches. See `MoneyWeakModeTest` for the sibling proof.
+     *
+     */
+    #[DataProvider('floatQuantities')]
+    public function testAFloatQuantityIsRefused(float $quantity): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/float/');
+
+        new DocumentLine($quantity, Money::of('5.000', Currency::of('TND')), Rate::zero());
+    }
+
+    /** @return iterable<string, array{float}> */
+    public static function floatQuantities(): iterable
+    {
+        yield 'a plain fractional float' => [1.5];
+        yield 'the canonical IEEE-754 artefact' => [0.1 + 0.2];
+        yield 'a float that happens to be integral' => [1.0];
+        yield 'a magnitude that renders in exponent form' => [1.0E+20];
+    }
+
+    /**
+     * An INTEGER quantity is accepted, because it loses nothing.
+     *
+     * The union permits `int` for the same reason `Money::of()` does — `2` is exactly 2 — and refusing it would
+     * make every caller cast for no benefit. Pinned so the float arm cannot be widened into an int refusal.
+     */
+    public function testAnIntegerQuantityIsAccepted(): void
+    {
+        self::assertSame(
+            '10.000',
+            new DocumentLine(2, Money::of('5.000', Currency::of('TND')), Rate::zero())
+                ->net(RoundingMode::HalfUp)->amount(),
+        );
+    }
+
+    /**
+     * The SUBTOTAL is the sum of ROUNDED line nets, not the exact sum rounded once.
+     *
+     * Asserted against the fixture's own divergent value, exactly as the VAT rounding order is. `DocumentLine`
+     * rounds each line because the line net is **printed** and summed into the printed subtotal, so printed
+     * lines that do not add up to the printed subtotal are an EN 16931 validation failure. If both orders
+     * produced the same number the rounding point would be pinned by nothing.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('documentCasesThatPinTheLineNetRoundingOrder')]
+    public function testTheSubtotalIsTheSumOfRoundedLineNets(array $case): void
+    {
+        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+
+        self::assertSame($case['subtotal_net'], $totals->subtotalNet()->amount());
+        self::assertNotSame(
+            $case['subtotal_if_rounded_once_which_is_WRONG'],
+            $totals->subtotalNet()->amount(),
+            'This case exists because the two orders DIVERGE. If they agree, it is testing nothing.',
+        );
+
+        // And every line net individually, so the subtotal cannot be right by two compensating errors.
+        self::assertSame(
+            array_map(static fn(array $line): string => $line['line_net'], $case['lines']),
+            array_map(static fn(Money $net): string => $net->amount(), $totals->lineNets()),
+        );
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function documentCasesThatPinTheLineNetRoundingOrder(): array
+    {
+        return array_filter(
+            self::documentCases(),
+            static fn(array $case): bool => isset($case[0]['subtotal_if_rounded_once_which_is_WRONG']),
         );
     }
 

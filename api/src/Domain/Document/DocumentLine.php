@@ -33,16 +33,44 @@ use Twes\Domain\Shared\Decimal;
  */
 final readonly class DocumentLine
 {
+    /** Canonical decimal string. Never a float — see the constructor's float arm for why the union permits one. */
+    private string $quantity;
+
     /**
      * @param string $quantity decimal string or integer-valued string; never a float
      *
      * @throws \InvalidArgumentException if the quantity is malformed or negative
      */
     public function __construct(
-        private string $quantity,
+        string|int|float $quantity,
         private Money $unitNet,
         private Rate $vatRate,
     ) {
+        // THE FLOAT ARM EXISTS TO REFUSE, and widening the union is what makes the refusal REACHABLE — the
+        // same construction `Money::of()` and `Rate::fromPercentage()` use, and for the same reason. Round 13
+        // found this parameter typed as a bare `string` while the docblock above claimed "never a float …
+        // this refuses one for the same reason". It did not: from a caller without `declare(strict_types=1)`,
+        // PHP coerced instead, and `0.1 + 0.2` — which is `0.30000000000000004` in IEEE-754 — arrived as the
+        // string `'0.3'`, because implicit float-to-string uses `precision=14`. The float's actual value was
+        // silently discarded, which is the exact laundering `Money`'s own float guard exists to stop.
+        //
+        // Worse, the refusal that DID happen was accidental: `1.0E+20` was rejected only because its
+        // magnitude triggers exponent notation, which `isWellFormed()` refuses. So the invariant held for
+        // some floats and not others. JSON decodes `"quantity": 1.5` as a PHP float, so this goes live the
+        // moment a transport layer lands.
+        if (\is_float($quantity)) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Quantity %s is a float. A quantity multiplies a money amount, so a float here reintroduces '
+                . 'the one defect this domain exists to prevent, at the point where it does the most damage. '
+                . 'Pass a decimal string: 0.1 + 0.2 is 0.30000000000000004 in IEEE-754 and would arrive as '
+                . '"0.3", silently discarding the value it actually held.',
+                var_export($quantity, true),
+            ));
+        }
+
+        $quantity = (string) $quantity;
+        $this->quantity = $quantity;
+
         if (!Decimal::isWellFormed($quantity)) {
             throw new \InvalidArgumentException(\sprintf(
                 'Quantity "%s" is not a well-formed decimal. A quantity is a decimal string — never a '
@@ -59,6 +87,25 @@ final readonly class DocumentLine
                 'Quantity "%s" is negative. A credit is its own document type (Wave 2), not a negative '
                 . 'line on an invoice — two ways to express one thing is how the two drift apart.',
                 $quantity,
+            ));
+        }
+
+        // AND THE UNIT PRICE, which is the SAME rule through the other door. Round 13 found the quantity
+        // guarded and the price not, so `new DocumentLine('1', Money::of('-5.000', $tnd), ...)` produced a
+        // line net of -5.000 and a document total of -5.950 — the third distinct route into the state the
+        // 2026-07-30 ruling refuses. Round 12 closed the second (`fromNetPrice($cost, -5.000)`) and recorded
+        // the lesson; `DocumentLine` takes a raw `Money`, so `ProductPricing`'s two guards are bypassed
+        // entirely and a third guard is needed rather than a third comment about the first two.
+        //
+        // A negative-total document is a CREDIT NOTE — EN 16931 type code 381, not 380 — which is a
+        // tax-document distinction rather than a presentation one.
+        if ($unitNet->isNegative()) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Unit price %s is negative. A negative line is how a credit note gets expressed in some '
+                . 'systems, and twes-in has a Credit document type (Wave 2) instead — EN 16931 gives a credit '
+                . 'note its own type code (381, not 380), so a negative line on an invoice is a second, '
+                . 'unmodelled way to say the same thing.',
+                $unitNet->amount(),
             ));
         }
     }

@@ -15,6 +15,9 @@ namespace Twes\Tests\Unit\Pricing;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Twes\Domain\Document\DocumentCalculator;
+use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
@@ -207,6 +210,55 @@ final class RoundingModeIsForwardedTest extends TestCase
                 ?->fraction(),
             RoundingMode::HalfUp, '0.666666666667',
             RoundingMode::Down, '0.666666666666',
+        ];
+        // ---- Document: Wave 1's two new mode-taking entry points. Added at round 13, which found them
+        // ABSENT from this provider while its own charter says "EVERY entry point that takes a RoundingMode" —
+        // and proved the omission live: a mutant hard-coding HalfUp inside DocumentCalculator's three
+        // arithmetic sites, and another hard-coding Down inside DocumentLine::net(), each survived the whole
+        // suite. The shipped arithmetic was correct and pinned by nothing, which this project treats as
+        // undelivered. Exactly the precedent recorded in this class's own docblock.
+        yield 'DocumentLine::net' => [
+            // 0.5 x 0.003 = 0.0015 exactly — a tie at TND's millime, so HalfUp and Down diverge. My first
+            // attempt used 3 x 0.0005 in CLF, which is EXACT at four decimals: both modes returned 0.0015 and
+            // this class's own anti-vacuity guard refused the case. That guard exists because a
+            // mode-forwarding case whose operands do not diverge cannot detect a discarded mode.
+            static fn(RoundingMode $m): string => new DocumentLine(
+                '0.5',
+                Money::of('0.003', $tnd),
+                Rate::zero(),
+            )->net($m)->amount(),
+            RoundingMode::HalfUp, '0.002',
+            RoundingMode::Down, '0.001',
+        ];
+        yield 'DocumentCalculator::calculate (VAT)' => [
+            static fn(RoundingMode $m): string => new DocumentCalculator()->calculate(
+                [
+                    new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')),
+                    new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')),
+                ],
+                [],
+                VatRoundingPoint::PerRateGroup,
+                $m,
+                $tnd,
+            )->vatTotal()->amount(),
+            // 0.026 x 0.19 = 0.00494. HalfUp gives 0.005; Down truncates to 0.004. A company configured for
+            // Down was getting HalfUp figures on its legal documents with nothing noticing.
+            RoundingMode::HalfUp, '0.005',
+            RoundingMode::Down, '0.004',
+        ];
+        yield 'DocumentCalculator::calculate (line net)' => [
+            static fn(RoundingMode $m): string => new DocumentCalculator()->calculate(
+                [new DocumentLine('0.5', Money::of('0.003', $tnd), Rate::zero())],
+                [],
+                VatRoundingPoint::PerRateGroup,
+                $m,
+                $tnd,
+            )->subtotalNet()->amount(),
+            // 0.5 x 0.003 = 0.0015, a tie at the millime. This is also the line-net rounding that no committed
+            // vector exercises, because every fixture line has an exact product — see the fixture case added
+            // alongside this.
+            RoundingMode::HalfUp, '0.002',
+            RoundingMode::Down, '0.001',
         ];
     }
 

@@ -713,9 +713,27 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * expression, `bind()` and this check must all mean the same GUC. `proconfig` entries are `name=value`,
      * so the prefix match is `twes.tenant_id=%`.
      */
-    private static function quotedTenantSettingPrefix(): string
+    private static function tenantSettingIsPinnedSql(string $proconfig): string
     {
-        return "'" . self::TENANT_SETTING . "=%'";
+        // The NAME HALF, lower-cased, compared for EQUALITY — not a `LIKE` over the whole entry.
+        //
+        // Round 13 defeated the first version with one keystroke: `SET "TWES.TENANT_ID" = '<tenant>'` stores
+        // `proconfig = {TWES.TENANT_ID=...}` VERBATIM, because PostgreSQL normalises a custom GUC's name only
+        // when a placeholder for it already exists in that backend. At call time the GUC is resolved
+        // CASE-INSENSITIVELY, so the function pins the very parameter the policy reads — while a
+        // case-sensitive `LIKE 'twes.tenant_id=%'` misses it entirely. [Verified: proconfig stored as
+        // `TWES.TENANT_ID=...`, the old pattern matched false, the name-half comparison matches true.] The
+        // attacker needs no extra privilege for the quoted spelling: `pg_parameter_acl` lowercases its keys.
+        //
+        // Lower-casing only the NAME is deliberate. `lower(cfg)` over the whole entry would also lower-case an
+        // attacker-controlled VALUE — harmless for a UUID, wrong in principle, and the kind of shortcut that
+        // becomes a bug when the next GUC's value is case-significant.
+        return \sprintf(
+            'EXISTS (SELECT 1 FROM unnest(coalesce(%s, \'{}\'::text[])) AS cfg '
+            . 'WHERE lower(split_part(cfg, \'=\', 1)) = %s)',
+            $proconfig,
+            "'" . self::TENANT_SETTING . "'",
+        );
     }
 
     private static function roleCanBeAssumedSql(string $roleOid): string
@@ -1149,9 +1167,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // `GRANT SET ON PARAMETER` is an entirely ordinary thing for somebody to hand migration tooling,
             // and once such a function exists any role holding EXECUTE calls it forever. That is exactly the
             // persistent delegated bypass this method exists to detect.
-            . 'WHERE (p.prosecdef OR EXISTS ('
-            . '  SELECT 1 FROM unnest(coalesce(p.proconfig, \'{}\'::text[])) AS cfg '
-            . '  WHERE cfg LIKE ' . self::quotedTenantSettingPrefix() . '))'
+            . 'WHERE (p.prosecdef OR ' . self::tenantSettingIsPinnedSql('p.proconfig') . ')'
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
             // The NARROW mode, because this predicate is NEGATED — see roleCanBeAssumedSql(). With 'MEMBER'
             // here, a function whose owner the connection is a member of but cannot SET ROLE to was excluded
@@ -1163,7 +1179,25 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // EXECUTE resolved through the ACL, with the default-grants-PUBLIC arm that
             // `has_function_privilege` was silently supplying. Dropping that arm along with the function would
             // have made every untouched SECURITY DEFINER function invisible — the commonest case there is.
-            . 'AND ' . self::privilegeIsReachableSql('p.proacl', 'EXECUTE', true) . ' '
+            // EXECUTE-reachability **OR** the function is a TRIGGER function — the ninth carrier, and the
+            // filter's premise ("a function this connection cannot call leaks nothing") is simply false for
+            // one. PostgreSQL checks EXECUTE against the trigger's CREATOR at `CREATE TRIGGER` and performs no
+            // ACL check when the trigger FIRES, so a trigger function with EXECUTE revoked from PUBLIC and no
+            // grant to the runtime role runs on every INSERT/UPDATE/DELETE that role issues — while the
+            // reachability test says false and the row is dropped from the result set. Round 13 demonstrated a
+            // cross-tenant exfiltration through exactly that shape, neutralising BOTH the `prosecdef` arm and
+            // the `proconfig` arm at once. [Verified: has_function_privilege('twes', fn, 'EXECUTE') is false
+            // while the trigger fires under current_user = twes.]
+            //
+            // `NOT tgisinternal` excludes the triggers PostgreSQL creates for foreign-key and unique
+            // constraints, whose functions are `RI_FKey_*` in pg_catalog and already out of scope by schema.
+            //
+            // STILL OWED, stated rather than implied: a function reached through a CHECK constraint, an index
+            // expression or a column DEFAULT on a table this role can write is ACL-checked at DDL time in the
+            // same way. Recorded in Wave 1's scope; this closes the trigger case, which is the one that was
+            // demonstrated.
+            . 'AND (' . self::privilegeIsReachableSql('p.proacl', 'EXECUTE', true)
+            . ' OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = p.oid AND NOT t.tgisinternal)) '
             . 'ORDER BY 1',
         );
 
@@ -1206,10 +1240,23 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * "SECURITY DEFINER" would be false — `prosecdef` is false — and would send a reader to check an ownership
      * chain that is irrelevant.
      *
-     * @param list<array{function: string, owner: string, owner_exempt: bool|string, security_definer?: bool|string, proconfig?: string}> $functions
      *
      * @return list<string>
      */
+    private static function pinsTenantSetting(string $proconfig): bool
+    {
+        // `proconfig` arrives as a comma-joined list of `name=value` entries. Split, take each name half,
+        // lower-case it, compare for equality — the same rule as the SQL arm, so the query and the classifier
+        // cannot disagree about what "pins the tenant setting" means.
+        foreach (explode(', ', $proconfig) as $entry) {
+            if (self::TENANT_SETTING === strtolower(explode('=', $entry, 2)[0])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static function securityDefinerFunctionViolations(array $functions): array
     {
         $violations = [];
@@ -1220,7 +1267,12 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // The proconfig arm FIRST, because a function can be both and this is the reason that does not
             // depend on who owns it — reporting the ownership reason for a `prosecdef = false` function would
             // be a false statement in an error message.
-            if ('' !== $proconfig && str_contains($proconfig, self::TENANT_SETTING . '=')) {
+            // Case-insensitive on the NAME HALF, matching the SQL arm. Round 13 found this `str_contains`
+            // carrying the identical defect: had a mixed-case function reached here by ALSO being prosecdef,
+            // the classifier would have fallen through to the "is SECURITY DEFINER and owned by %s" branch —
+            // a false statement in an error message, which is the exact ordering defect the arm was added to
+            // prevent.
+            if ('' !== $proconfig && self::pinsTenantSetting($proconfig)) {
                 $violations[] = \sprintf(
                     '%s carries a configuration override that pins the tenant setting (%s), so PostgreSQL '
                     . 'scopes the policies to THAT tenant for the duration of the call whatever the caller is '
