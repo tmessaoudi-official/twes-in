@@ -3772,18 +3772,28 @@ final class TenantIsolationTest extends TestCase
      * `SELECT agg(x)` for the aggregate, and through an index scan for the opclass — while the check said CLEAN.
      *
      * @param string $ddl how to attach the function to the catalogue under test
+     * @param string $returns the function's return type, which the attachment dictates — a range type's
+     *                        `subtype_diff` must return `double precision`, an aggregate's transition function
+     *                        and a btree opclass's comparison function must return `int`
      */
     #[DataProvider('functionAttachmentsWithNoExecuteCheck')]
-    public function testAFunctionAttachedWithoutAnExecuteCheckIsInspected(string $ddl, string $cleanup): void
-    {
+    public function testAFunctionAttachedWithoutAnExecuteCheckIsInspected(
+        string $ddl,
+        string $cleanup,
+        string $returns = 'int',
+    ): void {
         $granter = self::superuserConnection();
         $function = 'no_execute_check_probe';
 
         try {
             $granter->exec(\sprintf(
-                'CREATE FUNCTION public.%s(a int, b int) RETURNS int LANGUAGE sql SECURITY DEFINER '
+                // IMMUTABLE because a range type's `subtype_diff` must be — PostgreSQL refuses the attachment
+                // otherwise. Harmless for the other two attachments, and it is also the volatility a real
+                // exploit would use, since a read is permitted inside an immutable function.
+                'CREATE FUNCTION public.%s(a int, b int) RETURNS %s LANGUAGE sql IMMUTABLE SECURITY DEFINER '
                 . 'AS $$ SELECT 1 $$',
                 $function,
+                $returns,
             ));
             $granter->exec(\sprintf('REVOKE EXECUTE ON FUNCTION public.%s(int, int) FROM PUBLIC', $function));
             $granter->exec(\sprintf($ddl, $function));
@@ -3818,9 +3828,22 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
-    /** @return iterable<string, array{string, string}> */
+    /** @return iterable<string, array{string, string}|array{string, string, string}> */
     public static function functionAttachmentsWithNoExecuteCheck(): iterable
     {
+        // **A RANGE TYPE'S `subtype_diff` — the fourteenth carrier, round 17's P0.** GiST invokes it at DML time
+        // with no `EXECUTE` check, so a `SECURITY DEFINER` function registered ONLY here — no `pg_trigger`,
+        // `pg_event_trigger`, `pg_aggregate` or `pg_amproc` row — exfiltrated another tenant's rows through an
+        // ordinary INSERT into the caller's OWN policed table, while the verdict was CLEAN.
+        //
+        // Note this case asserts DETECTION, which needs only the catalogue row. Reproducing the READ additionally
+        // needs a GiST index and enough rows to force a page SPLIT: my first reproduction used three rows, never
+        // reached `subtype_diff` at all, and looked exactly like a refutation of a real finding.
+        yield 'range type subtype_diff' => [
+            'CREATE TYPE public.probe_range AS RANGE (subtype = integer, subtype_diff = public.%s)',
+            'DROP TYPE IF EXISTS public.probe_range CASCADE /* %s */',
+            'double precision',
+        ];
         yield 'aggregate transition function' => [
             "CREATE AGGREGATE public.probe_agg(int) (SFUNC = public.%s, STYPE = int, INITCOND = '0')",
             'DROP AGGREGATE IF EXISTS public.probe_agg(int) /* %s */',

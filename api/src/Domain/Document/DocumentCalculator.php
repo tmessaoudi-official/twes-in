@@ -69,6 +69,7 @@ final readonly class DocumentCalculator
         $prices = new PriceCalculator();
 
         $lineNets = [];
+        $lineVatByIndex = [];
         // Keyed by the rate's canonical percentage string, which is what makes two lines "the same rate":
         // Rate canonicalises to a fixed scale, so `19`, `19.0` and `19.0000000000` are one group rather than
         // three. Grouping on the object would make them three, and each would round separately — silently
@@ -95,6 +96,9 @@ final readonly class DocumentCalculator
             // difference the parameter can have.
             $lineVat = $prices->vat($net, $line->vatRate(), $mode);
             $perLineVat[$key] = isset($perLineVat[$key]) ? $perLineVat[$key]->plus($lineVat) : $lineVat;
+            // KEPT PER LINE as well as summed per group, because under PerLine this figure IS the line's
+            // share and must not be re-derived by allocation — see the `PerLine` arm below.
+            $lineVatByIndex[] = $lineVat;
         }
 
         $vatByRate = [];
@@ -118,7 +122,22 @@ final readonly class DocumentCalculator
             // TND lines at 19% give a group VAT of 0.005 while each line's own rounded VAT is 0.002 — 0.004, a
             // millime short. A document whose line column does not sum to its VAT total is a document a tax
             // authority reads as arithmetically wrong.
-            foreach (self::allocate($groupVat, $linesInGroup[$key], $lineNets, $rates[$key], $mode) as $i => $share) {
+            // **AND ONLY UNDER PerRateGroup.** Under PerLine the group's VAT is BY CONSTRUCTION the sum of the
+            // per-line rounded figures computed above, so those figures already add up to it exactly and there
+            // is nothing to allocate. Allocating anyway moved a millime away from the line that actually owed
+            // it — round 17's F1: `allocate()` floors with `RoundingMode::Down` regardless of the caller's
+            // mode, so with HalfEven two lines of `0.150` and `0.050 TND` at 19% reported `[0.029, 0.009]`
+            // where each line's own rounded VAT is `[0.028, 0.010]`, and the answer changed when the two lines
+            // were swapped. Order-dependence in a tax figure is exactly what largest-remainder exists to
+            // prevent, so the bug was in applying it where it does not belong rather than in the rule.
+            $shares = match ($vatRoundingPoint) {
+                VatRoundingPoint::PerRateGroup
+                    => self::allocate($groupVat, $linesInGroup[$key], $lineNets, $rates[$key]),
+                VatRoundingPoint::PerLine
+                    => self::sharesAsRounded($linesInGroup[$key], $lineVatByIndex),
+            };
+
+            foreach ($shares as $i => $share) {
                 $vatByLine[$i] = $share;
             }
         }
@@ -158,17 +177,6 @@ final readonly class DocumentCalculator
     }
 
     /**
-     * The document's single currency, inferred where possible and asserted everywhere.
-     *
-     * A document is single-currency by definition. `Money` would refuse the mixed arithmetic anyway, but it
-     * would refuse it partway through a sum with a message about two amounts — this fails before any figure
-     * is computed, so the error names the document rather than an intermediate value.
-     *
-     *
-     * @throws CurrencyMismatch
-     * @throws \InvalidArgumentException
-     */
-    /**
      * Split a rate group's VAT across its own lines by **LARGEST REMAINDER**, ties to the earliest line.
      *
      * Developer ruling, 2026-07-31: a per-line VAT figure is required. That makes an allocation rule unavoidable,
@@ -199,7 +207,6 @@ final readonly class DocumentCalculator
         array $lineIndexes,
         array $lineNets,
         Rate $rate,
-        RoundingMode $mode,
     ): array {
         $scale = $groupVat->currency()->scale();
         $shares = [];
@@ -208,12 +215,22 @@ final readonly class DocumentCalculator
         // FLOOR each line's exact share first, so the running sum can only ever be short — never over. Rounding
         // to nearest here would allow the sum to EXCEED the group VAT, and there is no way to take a millime back
         // from a line without choosing a victim, which is the arbitrariness this method exists to avoid.
+        //
+        // **`Floor`, NOT `Down`** (round 17's F3). `Down` truncates TOWARD ZERO, which is not a floor for a
+        // negative amount: two lines of an exact `-0.0025` truncate to `-0.002` each, so the running sum
+        // OVERSHOOTS a group VAT of `-0.005` and the shortfall goes negative — the invariant this method exists
+        // to hold, broken, and silently absorbed by a `max(0, …)` clamp that used to sit below. Unreachable
+        // today because `DocumentLine` refuses a negative quantity, unit price and rate, but Wave 2's credit
+        // note is named in this very file and a clamp with no stated failure mode is what CLAUDE.md's
+        // anti-bandaid gate forbids. `Floor` makes the algorithm correct for either sign instead of guarding
+        // one, and it is what keeps `$units` non-negative below: `floor(a) + floor(b) <= floor(a + b)` holds for
+        // negatives too, while truncation toward zero does not.
         $remainders = [];
 
         foreach ($lineIndexes as $i) {
             $exact = Decimal::multiplyExact($lineNets[$i]->amount(), $rate->fraction());
-            $floor = Decimal::rescale($exact, $scale, RoundingMode::Down)
-                ?? throw new \LogicException('RoundingMode::Down cannot need rounding.');
+            $floor = Decimal::rescale($exact, $scale, RoundingMode::Floor)
+                ?? throw new \LogicException('RoundingMode::Floor cannot need rounding.');
 
             $shares[$i] = Money::of($floor, $groupVat->currency());
             $allocated = $allocated->plus($shares[$i]);
@@ -230,7 +247,24 @@ final readonly class DocumentCalculator
         // How many of those units are still unallocated. Exact division, since the shortfall is a whole number of
         // units by construction: both operands are at the currency's scale.
         $shortfall = Decimal::subtract($groupVat->amount(), $allocated->amount(), $scale);
-        $units = (int) (Decimal::divide($shortfall, $unit, 0, RoundingMode::Down) ?? '0');
+        // `?? throw` rather than `?? '0'` (round 17's F8): `Decimal::divide()` returns null only under
+        // `RoundingMode::Unnecessary` and this call passes `Down`, so the fallback was unreachable — and a
+        // fallback with no failure mode silently substitutes "allocate nothing" for a broken invariant. This is
+        // the form `DocumentLine` already uses two files over, for the reason stated there.
+        $units = (int) (Decimal::divide($shortfall, $unit, 0, RoundingMode::Down)
+            ?? throw new \LogicException('An exact division at scale 0 cannot need rounding.'));
+
+        // NON-NEGATIVE BY CONSTRUCTION, asserted rather than clamped. Every rounding mode returns at least
+        // `floor(exact)`, and flooring is superadditive, so the group VAT can never be less than the sum of the
+        // floored shares. The old `max(0, $units)` turned a violation of that into a silently wrong column.
+        if ($units < 0) {
+            throw new \LogicException(\sprintf(
+                'The floored shares (%s) exceed the group VAT (%s), which flooring makes impossible. '
+                . 'Allocating on would under-report the tax on some line.',
+                $allocated->amount(),
+                $groupVat->amount(),
+            ));
+        }
 
         // Order by remainder DESC, then by position ASC. `uasort` is stable in PHP 8, but the position tie-break is
         // written explicitly rather than relied upon: "stable sort" is an implementation guarantee and this is a
@@ -239,13 +273,56 @@ final readonly class DocumentCalculator
         usort($order, static fn(int $a, int $b): int
             => Decimal::compare($remainders[$b], $remainders[$a]) ?: $a <=> $b);
 
-        foreach (\array_slice($order, 0, max(0, $units)) as $i) {
+        foreach (\array_slice($order, 0, $units) as $i) {
             $shares[$i] = $shares[$i]->plus(Money::of($unit, $groupVat->currency()));
         }
 
         return $shares;
     }
 
+    /**
+     * Each line's share under `PerLine`: the line's OWN already-rounded VAT, unaltered.
+     *
+     * Not an allocation, and deliberately not routed through {@see allocate()}. Under `PerLine` the group's VAT
+     * is defined as the sum of exactly these figures, so they add up to it by construction — there is no
+     * remainder to distribute and any redistribution is therefore a wrong number, not a rounding choice. Round
+     * 17 found `allocate()` being applied here and moving a millime between two lines, which also made the
+     * result depend on line order.
+     *
+     * @param list<int> $lineIndexes the positions, in document order, of the lines carrying this rate
+     * @param list<Money> $lineVat every line's own rounded VAT, indexed by position
+     *
+     * @return array<int, Money> share per line position
+     */
+    private static function sharesAsRounded(array $lineIndexes, array $lineVat): array
+    {
+        $shares = [];
+
+        foreach ($lineIndexes as $i) {
+            $shares[$i] = $lineVat[$i];
+        }
+
+        return $shares;
+    }
+
+    /**
+     * The document's single currency, inferred where possible and asserted everywhere.
+     *
+     * A document is single-currency by definition. `Money` would refuse the mixed arithmetic anyway, but it
+     * would refuse it partway through a sum with a message about two amounts — this fails before any figure
+     * is computed, so the error names the document rather than an intermediate value.
+     *
+     * **The two `list<>` generics are load-bearing and were lost once** (round 17's P1-2): this docblock was
+     * orphaned onto `allocate()` — which throws no `CurrencyMismatch` — leaving this method with no annotation
+     * at all, in the commit whose message claimed it had fixed two orphaned docblocks. PHPStan at max level
+     * enforces these and would have caught it; PHPStan is blocked on Composer egress, so nothing did.
+     *
+     * @param list<DocumentLine> $lines
+     * @param list<FixedCharge> $fixedCharges
+     *
+     * @throws CurrencyMismatch
+     * @throws \InvalidArgumentException
+     */
     private function resolveCurrency(array $lines, array $fixedCharges, ?Currency $currency): Currency
     {
         // NAMED POSITIONS, because `Money::plus()` raises the same exception CLASS a few lines downstream and

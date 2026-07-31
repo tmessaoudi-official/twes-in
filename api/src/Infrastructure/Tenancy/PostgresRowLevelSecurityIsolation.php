@@ -1488,7 +1488,30 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . ' OR EXISTS (SELECT 1 FROM pg_aggregate a WHERE p.oid IN ('
             . 'a.aggtransfn, a.aggfinalfn, a.aggcombinefn, a.aggserialfn, a.aggdeserialfn, '
             . 'a.aggmtransfn, a.aggminvtransfn, a.aggmfinalfn))'
-            . ' OR EXISTS (SELECT 1 FROM pg_amproc ap WHERE ap.amproc = p.oid)) '
+            . ' OR EXISTS (SELECT 1 FROM pg_amproc ap WHERE ap.amproc = p.oid)'
+            // **AND A RANGE TYPE'S SUPPORT FUNCTION — the FOURTEENTH carrier** (round 17 P0). The same `fmgr`
+            // asymmetry a third time: GiST invokes a range type's `subtype_diff` at DML time with NO `EXECUTE`
+            // check, while `fmgr_security_definer` still honours `prosecdef`. So a `SECURITY DEFINER` function
+            // owned by an exempt role, with EXECUTE revoked from PUBLIC, no `pg_trigger`/`pg_event_trigger`/
+            // `pg_aggregate`/`pg_amproc` row, and registered ONLY as `rngsubdiff`, was dropped from the result
+            // set while running under the runtime role's own statements.
+            //
+            // [Verified as `twes` bound to tenant B, against a policed FORCEd table it owns no part of: the
+            // verdict was CLEAN, its own direct read correctly returned only tenant B's row, and an ordinary
+            // INSERT into its own table returned tenant A's row to the client through the function. Granting
+            // EXECUTE to `twes` — strictly LESS dangerous — makes the same function REFUSE, which isolates the
+            // reachability filter as the sole reason it was invisible. Built end to end by `twes_owner`, the
+            // migration role: no superuser is required.]
+            //
+            // **The whole catalogue, not just the reachable column.** `rngcanonical` is not registrable for a
+            // PL/pgSQL function today — the canonical function's own type is still a shell at `CREATE FUNCTION`
+            // time — so it is listed to close `pg_range` rather than because it is reachable. Enumerating only
+            // the column that happened to be exploitable is the partial closure the `pg_aggregate` arm above
+            // already had to be widened to fix, and a C-language function has no such obstacle.
+            //
+            // `rngsubopc` holds an operator CLASS rather than a function and is therefore covered by the
+            // `pg_amproc` arm above; `rngsubtype`, `rngcollation` and `rngmultitypid` name no function at all.
+            . ' OR EXISTS (SELECT 1 FROM pg_range r WHERE p.oid IN (r.rngsubdiff, r.rngcanonical))) '
             . 'ORDER BY 1',
         );
 

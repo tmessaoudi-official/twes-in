@@ -132,6 +132,14 @@
         <source>pricing.net_price_negative</source>
         <target>A cost of {cost} at a profit rate of {rate}% would give a selling price of {price}. A product is not sold at a negative price; use a credit note.</target>
       </trans-unit>
+      <trans-unit id="32" resname="document.line_count_too_large">
+        <source>document.line_count_too_large</source>
+        <target>This document already holds {max} lines, which is the maximum. Remove a line, or split it into two documents.</target>
+      </trans-unit>
+      <trans-unit id="33" resname="document.charge_count_too_large">
+        <source>document.charge_count_too_large</source>
+        <target>This document already holds {max} charges, which is the maximum. Remove a charge, or split it into two documents.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

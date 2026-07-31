@@ -127,6 +127,14 @@
         <source>pricing.net_price_negative</source>
         <target>Un coût de {cost} avec un taux de marge de {rate} % donnerait un prix de vente de {price}. Un produit ne se vend pas à un prix négatif ; utilisez un avoir.</target>
       </trans-unit>
+      <trans-unit id="32" resname="document.line_count_too_large">
+        <source>document.line_count_too_large</source>
+        <target>Ce document contient déjà {max} lignes, ce qui est le maximum. Supprimez une ligne, ou scindez-le en deux documents.</target>
+      </trans-unit>
+      <trans-unit id="33" resname="document.charge_count_too_large">
+        <source>document.charge_count_too_large</source>
+        <target>Ce document contient déjà {max} frais, ce qui est le maximum. Supprimez un frais, ou scindez-le en deux documents.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

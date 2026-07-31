@@ -133,6 +133,14 @@
         <source>pricing.net_price_negative</source>
         <target>تكلفة {cost} بنسبة ربح {rate}% تعطي سعر بيع {price}. لا يُباع المنتج بسعر سالب؛ استخدم إشعار دائن.</target>
       </trans-unit>
+      <trans-unit id="32" resname="document.line_count_too_large">
+        <source>document.line_count_too_large</source>
+        <target>تحتوي هذه الوثيقة بالفعل على {max} بند، وهذا هو الحد الأقصى. احذف بنداً، أو قسّمها إلى وثيقتين.</target>
+      </trans-unit>
+      <trans-unit id="33" resname="document.charge_count_too_large">
+        <source>document.charge_count_too_large</source>
+        <target>تحتوي هذه الوثيقة بالفعل على {max} رسم، وهذا هو الحد الأقصى. احذف رسماً، أو قسّمها إلى وثيقتين.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentCalculator;
 use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\DocumentTotals;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\VatGroup;
@@ -1139,6 +1140,129 @@ final class DocumentTotalsTest extends TestCase
         $this->expectExceptionMessage('which is the maximum');
 
         $invoice->withLine($line);
+    }
+
+    /**
+     * **Under `PerLine`, a line's VAT share is its OWN rounded figure — nothing is allocated.**
+     *
+     * Round 17's F1, and it was a real wrong number in a legal document rather than a style point. `allocate()`
+     * declared a `RoundingMode` parameter and never read it, flooring with `Down` whatever the caller asked for,
+     * and it was applied under BOTH rounding points. Under `PerLine` that is simply invalid: the group's VAT is
+     * DEFINED as the sum of the per-line rounded figures, so they add up to it exactly and any redistribution
+     * moves tax onto a line that does not owe it.
+     *
+     * The distinguishing input needs a mode whose result differs from flooring, which is why this is `HalfEven`
+     * and why the earlier tests could not see it: every one of them used `PerRateGroup`.
+     */
+    public function testUnderPerLineRoundingEachLineKeepsItsOwnRoundedVat(): void
+    {
+        $tnd = Currency::of('TND');
+        $lines = [
+            // 0.150 x 19% = 0.02850 exactly -- a HALF, so the mode decides: HalfEven gives 0.028.
+            new DocumentLine('1', Money::of('0.150', $tnd), Rate::fromPercentage('19')),
+            // 0.050 x 19% = 0.00950 exactly -- also a half; HalfEven gives 0.010.
+            new DocumentLine('1', Money::of('0.050', $tnd), Rate::fromPercentage('19')),
+        ];
+
+        $totals = new DocumentCalculator()->calculate(
+            $lines,
+            [],
+            VatRoundingPoint::PerLine,
+            RoundingMode::HalfEven,
+            $tnd,
+        );
+
+        self::assertSame(['0.028', '0.010'], array_map(
+            static fn(Money $m): string => $m->amount(),
+            $totals->vatByLine(),
+        ), 'each line keeps the figure PriceCalculator::vat() gave it; allocation reported 0.029 and 0.009');
+
+        // And the sum still holds, which is what makes allocating unnecessary rather than merely wrong here.
+        self::assertSame('0.038', $totals->vatTotal()->amount());
+    }
+
+    /**
+     * **And the column does not depend on the ORDER the lines were entered in.**
+     *
+     * Separate from the assertion above because it fails for a different reason: allocation handed the remainder
+     * to whichever line had the largest floored-away part, so swapping two lines moved the millime. A tax figure
+     * that changes when a user drags a row is a defect no total-based assertion can see.
+     */
+    public function testUnderPerLineRoundingTheColumnDoesNotDependOnLineOrder(): void
+    {
+        $tnd = Currency::of('TND');
+        $big = new DocumentLine('1', Money::of('0.150', $tnd), Rate::fromPercentage('19'));
+        $small = new DocumentLine('1', Money::of('0.050', $tnd), Rate::fromPercentage('19'));
+
+        $forwards = new DocumentCalculator()->calculate(
+            [$big, $small],
+            [],
+            VatRoundingPoint::PerLine,
+            RoundingMode::HalfEven,
+            $tnd,
+        );
+        $backwards = new DocumentCalculator()->calculate(
+            [$small, $big],
+            [],
+            VatRoundingPoint::PerLine,
+            RoundingMode::HalfEven,
+            $tnd,
+        );
+
+        $amounts = static fn(DocumentTotals $t): array => array_map(
+            static fn(Money $m): string => $m->amount(),
+            $t->vatByLine(),
+        );
+
+        self::assertSame(['0.028', '0.010'], $amounts($forwards));
+        self::assertSame(
+            array_reverse($amounts($forwards)),
+            $amounts($backwards),
+            'reversing the lines must reverse the column and change nothing else',
+        );
+    }
+
+    /**
+     * **The allocator's sum invariant holds for a NEGATIVE group VAT too, which is why it floors rather than
+     * truncating.**
+     *
+     * Round 17's F3. `RoundingMode::Down` truncates toward zero, so for negative amounts it rounds UP and the
+     * floored shares overshoot the group figure — the shortfall goes negative and a `max(0, $units)` clamp
+     * silently absorbed it, leaving a column that does not sum to the total. `Floor` is correct for either sign.
+     *
+     * Reached by reflection deliberately: `DocumentLine` refuses a negative quantity, unit price and rate, so
+     * there is no public path to it TODAY. Wave 2's credit note is named in `DocumentCalculator`'s own comments,
+     * and CLAUDE.md § Gotchas records four cases this session where an untested branch was assumed unreachable
+     * and was not — so the branch is pinned before it acquires a caller, not after.
+     */
+    public function testTheAllocatorSumInvariantHoldsForANegativeGroupVat(): void
+    {
+        $tnd = Currency::of('TND');
+        $allocate = new \ReflectionMethod(DocumentCalculator::class, 'allocate');
+
+        $shares = $allocate->invoke(
+            null,
+            Money::of('-0.005', $tnd),
+            [0, 1],
+            [Money::of('-0.013', $tnd), Money::of('-0.013', $tnd)],
+            Rate::fromPercentage('19'),
+        );
+
+        $sum = Money::zero($tnd);
+
+        foreach ($shares as $share) {
+            $sum = $sum->plus($share);
+        }
+
+        self::assertSame(
+            '-0.005',
+            $sum->amount(),
+            'Truncating toward zero gives -0.004 -- a credit note whose line column under-refunds by a millime.',
+        );
+        self::assertSame(['-0.002', '-0.003'], array_map(
+            static fn(Money $m): string => $m->amount(),
+            $shares,
+        ), 'the extra millime goes to the earliest line on a tie, exactly as for positive amounts');
     }
 
 }

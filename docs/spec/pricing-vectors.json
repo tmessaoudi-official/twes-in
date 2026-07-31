@@ -337,6 +337,12 @@
         }
       ],
       "vat": "7.003",
+      "vat_by_line_why": "THE INTERLEAVED CASE, and the only one that pins DOCUMENT-ORDER correspondence. Its rates run 19, 7, 19, so the rate groups are visited in an order that is not the line order: a tier that returns shares in group order rather than line order produces 5.700, 0.253, 1.050 -- a column that still sums to the same total while telling line 2 it owes line 3's tax. The three single-rate allocation cases cannot detect that, and round 17 found the guard against it deletable with the whole suite green.",
+      "vat_by_line": [
+        "5.700",
+        "1.050",
+        "0.253"
+      ],
       "fixed_charges": [
         {
           "label": "stamp_duty",
