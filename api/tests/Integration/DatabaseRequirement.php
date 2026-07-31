@@ -31,9 +31,13 @@ namespace Twes\Tests\Integration;
  * meta-gate reporting 33/33 for a gate that detected nothing, a permission nothing consulted): **a control
  * that silently does not run is worse than one that is openly owed.** So: fail, and say what to do about it.
  *
- * The ONE legitimate skip in this suite is different in kind and stays a skip: `TWES_TEST_DB_SUPERUSER` is
- * documented as optional, and the two cases needing it (granting a predefined role, owning a
- * `SECURITY DEFINER` function) skip when it is absent. That is a narrower proof, not an absent one.
+ * **THERE IS NO LEGITIMATE SKIP IN THIS SUITE, and this paragraph said the opposite until round 16.** It
+ * read that `TWES_TEST_DB_SUPERUSER` is "documented as optional" and that "the two cases needing it"
+ * skip when it is absent. Both halves were wrong: round 15 made the credential REQUIRED and
+ * `superuserConnection()` now calls `self::fail()`, and ELEVEN test methods call it — four of them the only
+ * evidence that a security fix is load-bearing. The correction reached `api/phpunit.xml` and `CLAUDE.md`
+ * and missed the one file whose entire purpose is documenting this invariant, which is the
+ * "a correction that does not reach the full set of sites" shape § Gotchas records.
  */
 final class DatabaseRequirement
 {

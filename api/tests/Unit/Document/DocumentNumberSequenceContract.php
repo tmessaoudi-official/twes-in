@@ -196,7 +196,11 @@ abstract class DocumentNumberSequenceContract extends TestCase
 
         self::assertStringContainsString(
             trim($fifth[1]),
-            (string) file_get_contents(__FILE__),
+            // THE CLASS DOCBLOCK ONLY, not the whole file — round 16 found the needle had moved to the port
+            // while the HAYSTACK was still `__FILE__`, and this guard's own docblock and failure message both
+            // contain the word, so deleting the disclosure paragraph left it green. Half a fix for a
+            // self-referential check is still self-referential.
+            self::disclosureParagraph(),
             \sprintf(
                 'The port\'s guarantee "%s" is asserted by no case here, so this class must NAME it as owed by '
                 . 'the adapter. Without that, an adapter extending this class looks fully certified against a '
@@ -204,6 +208,18 @@ abstract class DocumentNumberSequenceContract extends TestCase
                 trim($fifth[1]),
             ),
         );
+    }
+
+    /**
+     * The CLASS docblock alone — the only place a disclosure of an unasserted guarantee is addressed to an adapter
+     * author. Deliberately excludes this file's test bodies and their messages, which is what made the containment
+     * check pass while the disclosure was deleted.
+     */
+    private static function disclosureParagraph(): string
+    {
+        $docblock = new \ReflectionClass(self::class)->getDocComment();
+
+        return false === $docblock ? '' : $docblock;
     }
 
 }

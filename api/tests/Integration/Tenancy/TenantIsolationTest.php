@@ -3065,7 +3065,12 @@ final class TenantIsolationTest extends TestCase
         $granter = self::superuserConnection();
 
         if (false === $unsettable || '' === $unsettable || false === $runtimeRole || '' === $runtimeRole) {
-            self::markTestSkipped('TWES_TEST_DB_UNSETTABLE_ROLE and TWES_TEST_DB_USER must be set.');
+            // FAILS, not skips — CP-F3 was closed for the superuser half only, so this test (which is the ONLY
+            // thing killing round 12's 'SET'-versus-'MEMBER' mutant) still skipped with exit 0 when the role
+            // name was unset. A control that silently does not run is worse than one openly owed.
+            self::fail('TWES_TEST_DB_UNSETTABLE_ROLE and TWES_TEST_DB_USER must be set. This test is the only '
+                . "thing that kills the 'SET'-versus-'MEMBER' mutant; skipping it reports OK while round 12's "
+                . 'fix is unproven.');
         }
 
 
@@ -3141,7 +3146,10 @@ final class TenantIsolationTest extends TestCase
         $dsn = getenv('TWES_TEST_DSN');
 
         if (false === $role || '' === $role || false === $password || false === $dsn || '' === $dsn) {
-            self::markTestSkipped('TWES_TEST_DB_MIXED_CASE_ROLE, its password and TWES_TEST_DSN must be set.');
+            // FAILS, not skips — same reason: this is the only thing killing round 13's regrole mutant.
+            self::fail('TWES_TEST_DB_MIXED_CASE_ROLE, its password and TWES_TEST_DSN must be set. This test is '
+                . "the only thing that kills the current_user::regrole mutant; skipping it reports OK while "
+                . "round 13's fix is unproven.");
         }
 
         // The PRECONDITION: the name must actually contain an uppercase letter, or this case is about nothing.
@@ -3627,6 +3635,144 @@ final class TenantIsolationTest extends TestCase
         yield '0' => ['0', false];
         yield 'no' => ['no', false];
         yield 'false' => ['false', false];
+    }
+
+    /**
+     * **A `security_invoker` VIEW carrying a `DO INSTEAD` rule is refused — round 16 P0.**
+     *
+     * The rule arm was keyed on `relkind`, so only tables and partitioned tables reached it and a VIEW carrying a
+     * rule fell through to the `security_invoker` short-circuit, where it was declared safe. `has_user_rule` was
+     * selected and read by NOTHING. A cross-tenant read AND write were reachable while the check returned CLEAN.
+     *
+     * The remediation the old message printed — "use a view with `security_invoker = true` instead" — is what
+     * steered an operator into this shape, because adding the `DO INSTEAD` rule that makes such a view writable is
+     * the standard pre-9.3 updatable-view idiom. `security_invoker` governs the view BODY; it says nothing about a
+     * rule's own rewritten query.
+     */
+    public function testASecurityInvokerViewCarryingARewriteRuleIsRefused(): void
+    {
+        $granter = self::superuserConnection();
+        $view = 'rule_bearing_view_probe';
+
+        try {
+            $granter->exec(\sprintf(
+                'CREATE VIEW public.%s WITH (security_invoker = true) AS SELECT * FROM %s',
+                $view,
+                self::TABLE,
+            ));
+            $granter->exec(\sprintf('CREATE RULE %s_ins AS ON INSERT TO public.%s DO INSTEAD NOTHING', $view, $view));
+            $granter->exec(\sprintf(
+                'GRANT SELECT, INSERT ON public.%s TO %s',
+                $view,
+                (string) getenv('TWES_TEST_DB_USER'),
+            ));
+
+            // THE PRECONDITIONS, both halves: it really is a VIEW, and `security_invoker` really is on — so the
+            // only thing that can refuse it is the rule. Without these the case could pass as an ordinary
+            // non-invoker-view refusal and prove nothing about the arm under test.
+            $shape = $this->connection->query(\sprintf(
+                "SELECT c.relkind::text AS kind, "
+                . "coalesce((SELECT option_value FROM pg_options_to_table(c.reloptions) "
+                . "WHERE option_name = 'security_invoker'), 'false')::boolean AS invoker "
+                . "FROM pg_class c WHERE c.relname = '%s'",
+                $view,
+            ));
+            self::assertNotFalse($shape);
+            /** @var array{kind: string, invoker: bool|string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            self::assertSame('v', $flags['kind'], 'must be a VIEW, not a table');
+            self::assertContains($flags['invoker'], [true, 't', '1'], 'and security_invoker must be ON');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'A rule-bearing view must be refused however it is configured: security_invoker governs the view '
+                . 'BODY, not a DO INSTEAD rule\'s rewritten query. Reported CLEAN until round 16, with a '
+                . 'reproduced cross-tenant read AND write.',
+            );
+            self::assertStringContainsString($view, $caught->getMessage());
+            self::assertStringContainsString('rewrite RULE', $caught->getMessage());
+        } finally {
+            $granter->exec(\sprintf('DROP VIEW IF EXISTS public.%s CASCADE', $view));
+        }
+    }
+
+    /**
+     * **An AGGREGATE support function and an OPERATOR-CLASS support function are inspected even with EXECUTE
+     * revoked — the thirteenth carrier, round 16 P0.**
+     *
+     * The same asymmetry the trigger and event-trigger arms exist for: PostgreSQL invokes both through `fmgr` with
+     * no `EXECUTE` check at call time while `fmgr_security_definer` still honours `prosecdef`. So a
+     * `SECURITY DEFINER` function unreachable by name ran under the runtime role's own statements — through
+     * `SELECT agg(x)` for the aggregate, and through an index scan for the opclass — while the check said CLEAN.
+     *
+     * @param string $ddl how to attach the function to the catalogue under test
+     */
+    #[DataProvider('functionAttachmentsWithNoExecuteCheck')]
+    public function testAFunctionAttachedWithoutAnExecuteCheckIsInspected(string $ddl, string $cleanup): void
+    {
+        $granter = self::superuserConnection();
+        $function = 'no_execute_check_probe';
+
+        try {
+            $granter->exec(\sprintf(
+                'CREATE FUNCTION public.%s(a int, b int) RETURNS int LANGUAGE sql SECURITY DEFINER '
+                . 'AS $$ SELECT 1 $$',
+                $function,
+            ));
+            $granter->exec(\sprintf('REVOKE EXECUTE ON FUNCTION public.%s(int, int) FROM PUBLIC', $function));
+            $granter->exec(\sprintf($ddl, $function));
+
+            // THE PRECONDITION: EXECUTE really is unreachable, so the reachability filter alone would drop this
+            // row. That is what makes the attachment arm the only thing that can report it.
+            $callable = $this->connection->query(\sprintf(
+                "SELECT has_function_privilege(current_user, p.oid, 'EXECUTE') AS callable "
+                . "FROM pg_proc p WHERE p.proname = '%s'",
+                $function,
+            ));
+            self::assertNotFalse($callable);
+            self::assertNotContains($callable->fetchColumn(), [true, 't', '1'], 'EXECUTE must be unreachable');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'PostgreSQL performs no ACL check when it invokes this function, so it must be inspected '
+                . 'regardless of EXECUTE — exactly as for a DML or event trigger.',
+            );
+            self::assertStringContainsString($function, $caught->getMessage());
+        } finally {
+            $granter->exec(\sprintf($cleanup, $function));
+            $granter->exec(\sprintf('DROP FUNCTION IF EXISTS public.%s(int, int) CASCADE', $function));
+        }
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function functionAttachmentsWithNoExecuteCheck(): iterable
+    {
+        yield 'aggregate transition function' => [
+            "CREATE AGGREGATE public.probe_agg(int) (SFUNC = public.%s, STYPE = int, INITCOND = '0')",
+            'DROP AGGREGATE IF EXISTS public.probe_agg(int) /* %s */',
+        ];
+        yield 'operator-class support function' => [
+            'CREATE OPERATOR CLASS public.probe_ops FOR TYPE int4 USING btree AS '
+            . 'OPERATOR 1 <, OPERATOR 2 <=, OPERATOR 3 =, OPERATOR 4 >=, OPERATOR 5 >, '
+            . 'FUNCTION 1 public.%s(int, int)',
+            'DROP OPERATOR CLASS IF EXISTS public.probe_ops USING btree /* %s */',
+        ];
     }
 
     private static function superuserConnection(): \PDO

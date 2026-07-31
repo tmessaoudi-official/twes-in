@@ -1451,7 +1451,30 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // PUBLIC exfiltrated tenant A's rows to a tenant-B-bound session that issued no DDL whatsoever,
             // while this check reported CLEAN.] So no capability guard is a mitigation for it and detection is
             // the only control there is.
-            . ' OR EXISTS (SELECT 1 FROM pg_event_trigger e WHERE e.evtfoid = p.oid)) '
+            . ' OR EXISTS (SELECT 1 FROM pg_event_trigger e WHERE e.evtfoid = p.oid)'
+            // **AND AN AGGREGATE SUPPORT FUNCTION, AND AN OPERATOR-CLASS SUPPORT FUNCTION — the THIRTEENTH
+            // carrier** (round 16 P0). Same asymmetry as the two arms above, applied to the remaining two
+            // catalogues that carry it: PostgreSQL invokes both through `fmgr` with NO `EXECUTE` check at call
+            // time, while `fmgr_security_definer` still honours `prosecdef`. So a `SECURITY DEFINER` function with
+            // EXECUTE revoked from PUBLIC, no `pg_trigger` row and no `pg_event_trigger` row was dropped from the
+            // result set while running under the runtime role's own statements.
+            //
+            // [Verified twice, as `twes` bound to tenant B: a direct `SELECT public.leak(1,1)` gives
+            // `permission denied for function leak`, while `SELECT public.agg(x) FROM (VALUES (1)) v(x)` — the same
+            // function as an aggregate's `SFUNC` — exfiltrated tenant A's rows; and the same function as a btree
+            // opclass support function leaked through an index scan under `SET LOCAL enable_seqscan = off`. Both
+            // verdicts were CLEAN.]
+            //
+            // ALL of `pg_aggregate`'s function columns, not just `aggtransfn`: the final, combine, serial,
+            // deserial and moving-aggregate variants are each reached the same way, and enumerating one of six
+            // would be the same partial closure this arm is fixing. `pg_amproc` covers operator-class support
+            // functions; `pg_amop` holds operators rather than functions and `pg_operator.oprcode` IS ACL-checked
+            // [Verified: `1 OPERATOR(public.###) 1` gives permission denied], as is `pg_cast.castfunc`, so
+            // neither is a carrier and neither is listed.
+            . ' OR EXISTS (SELECT 1 FROM pg_aggregate a WHERE p.oid IN ('
+            . 'a.aggtransfn, a.aggfinalfn, a.aggcombinefn, a.aggserialfn, a.aggdeserialfn, '
+            . 'a.aggmtransfn, a.aggminvtransfn, a.aggmfinalfn))'
+            . ' OR EXISTS (SELECT 1 FROM pg_amproc ap WHERE ap.amproc = p.oid)) '
             . 'ORDER BY 1',
         );
 
@@ -1614,7 +1637,27 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // to it later would reopen the leak silently, with nothing in this database changing. twes-in emits
             // no rules, so the conservative direction costs nothing and the message names the supported
             // alternative.
-            if ('r' === $object['kind'] || 'p' === $object['kind']) {
+            // **KEYED ON `has_user_rule`, NOT ON KIND — and round 16 filed a P0 because it was keyed on kind.**
+            // `has_user_rule` was selected, declared in both array shapes, and read by NOTHING; the arm tested
+            // `'r' === kind || 'p' === kind`, so a **VIEW** carrying a `DO INSTEAD` rule fell straight through to
+            // the `security_invoker` short-circuit below and its rule was never judged. Reproduced: a
+            // cross-tenant read AND a cross-tenant write through a `security_invoker = true` view with two rules,
+            // while this method returned CLEAN.
+            //
+            // **The message below made it worse, which is the part worth remembering.** It said "use a view with
+            // `security_invoker = true` instead" — and adding the `DO INSTEAD` rule that makes such a view
+            // writable is the standard pre-9.3 updatable-view idiom, so the remediation steered an operator
+            // directly into the one shape the arm could not see. A guard that names a workaround it does not
+            // cover is worse than one that names none.
+            //
+            // `security_invoker` does NOT save a rule-bearing view: the option governs how the VIEW BODY is
+            // evaluated, while a `DO INSTEAD` rule's own rewritten query is judged against the rule's host
+            // relation owner regardless. So a rule is judged BEFORE the view arms, for every kind.
+            //
+            // This is the "a permission that nothing consults permits everything" shape § Gotchas records, and it
+            // was committed inside the fix for the previous instance of it. The rule now is the one that entry
+            // states: a column added to a query must be READ by that query's failure path in the same change.
+            if (self::isTrue($object['has_user_rule'] ?? false)) {
                 if (self::isTrue($object['owned_by_caller'] ?? false)) {
                     continue;
                 }
@@ -1622,10 +1665,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 $violations[] = \sprintf(
                     '%s is a %s carrying a rewrite RULE and owned by %s. A rule rewrites into its HOST '
                     . 'relation\'s owner (`checkAsUser`), exactly as a view body does, so row-level security is '
-                    . 'SKIPPED rather than evaluated as the caller when that owner is exempt%s. There is no '
-                    . '`security_invoker` for a rule — use a view with `security_invoker = true` instead',
+                    . 'SKIPPED rather than evaluated as the caller when that owner is exempt%s. `security_invoker` '
+                    . 'does not help: it governs the view BODY, not a DO INSTEAD rule\'s own rewritten query. '
+                    . 'Drop the rule — an auto-updatable view owned by a role that is itself subject to the '
+                    . 'policies is the supported shape',
                     $object['object'],
-                    'p' === $object['kind'] ? 'partitioned table' : 'table',
+                    match ($object['kind']) {
+                        'p' => 'partitioned table',
+                        'v' => 'view',
+                        'm' => 'materialised view',
+                        'f' => 'foreign table',
+                        default => 'table',
+                    },
                     $object['owner'],
                     self::isTrue($object['owner_exempt'])
                         ? ', WHICH IT IS (superuser or BYPASSRLS) — a cross-tenant read AND write are reachable '
