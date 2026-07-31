@@ -46,7 +46,7 @@
       </trans-unit>
       <trans-unit id="10" resname="document.illegal_transition">
         <source>document.illegal_transition</source>
-        <target>This document cannot move from {from} to {to}. A correction is a new document, never an edit.</target>
+        <target>This document cannot move from “{from}” to “{to}”. A correction is a new document, never an edit.</target>
       </trans-unit>
       <trans-unit id="15" resname="document.empty_cannot_be_issued">
         <source>document.empty_cannot_be_issued</source>
@@ -92,9 +92,33 @@
         <source>document.state.cancelled</source>
         <target>cancelled</target>
       </trans-unit>
+      <trans-unit id="26" resname="document.line_total_too_large">
+        <source>document.line_total_too_large</source>
+        <target>The line total for quantity {quantity} at {price} each is too large for this system to represent. Reduce either.</target>
+      </trans-unit>
+      <trans-unit id="27" resname="document.total_too_large">
+        <source>document.total_too_large</source>
+        <target>This document’s total would be too large for this system to represent. Remove a line or a charge, or split it into two documents.</target>
+      </trans-unit>
+      <trans-unit id="28" resname="pricing.rate_invalid">
+        <source>pricing.rate_invalid</source>
+        <target>The rate {rate} is not a valid number. Enter a percentage using a decimal point, such as 19 or 7.5.</target>
+      </trans-unit>
+      <trans-unit id="29" resname="pricing.rate_too_large">
+        <source>pricing.rate_too_large</source>
+        <target>The rate {rate} is too large. A percentage this big is almost always a typo.</target>
+      </trans-unit>
+      <trans-unit id="30" resname="pricing.cost_negative">
+        <source>pricing.cost_negative</source>
+        <target>The cost {cost} is negative. A cost is what you paid; enter zero if the item was free.</target>
+      </trans-unit>
+      <trans-unit id="31" resname="pricing.net_price_not_representable">
+        <source>pricing.net_price_not_representable</source>
+        <target>That cost and profit rate give a selling price too large for this system to represent. Lower one of them.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
-        <target>This document is {state} and can no longer be changed. Cancel it and issue a new one with the correct figures.</target>
+        <target>This document is “{state}” and can no longer be changed. Cancel it and issue a new one with the correct figures.</target>
       </trans-unit>
       <trans-unit id="12" resname="document.quantity_invalid">
         <source>document.quantity_invalid</source>

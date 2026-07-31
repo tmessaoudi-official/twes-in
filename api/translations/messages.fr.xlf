@@ -41,7 +41,7 @@
       </trans-unit>
       <trans-unit id="10" resname="document.illegal_transition">
         <source>document.illegal_transition</source>
-        <target>Ce document ne peut pas passer de {from} à {to}. Une correction est un nouveau document, jamais une modification.</target>
+        <target>Ce document ne peut pas passer du statut « {from} » au statut « {to} ». Une correction est un nouveau document, jamais une modification.</target>
       </trans-unit>
       <trans-unit id="15" resname="document.empty_cannot_be_issued">
         <source>document.empty_cannot_be_issued</source>
@@ -77,7 +77,7 @@
       </trans-unit>
       <trans-unit id="23" resname="document.state.draft">
         <source>document.state.draft</source>
-        <target>un brouillon</target>
+        <target>brouillon</target>
       </trans-unit>
       <trans-unit id="24" resname="document.state.issued">
         <source>document.state.issued</source>
@@ -87,9 +87,33 @@
         <source>document.state.cancelled</source>
         <target>annulé</target>
       </trans-unit>
+      <trans-unit id="26" resname="document.line_total_too_large">
+        <source>document.line_total_too_large</source>
+        <target>Le total de la ligne pour une quantité de {quantity} à {price} l'unité est trop grand pour être représenté. Réduisez l'un des deux.</target>
+      </trans-unit>
+      <trans-unit id="27" resname="document.total_too_large">
+        <source>document.total_too_large</source>
+        <target>Le total de ce document serait trop grand pour être représenté. Supprimez une ligne ou un frais, ou scindez-le en deux documents.</target>
+      </trans-unit>
+      <trans-unit id="28" resname="pricing.rate_invalid">
+        <source>pricing.rate_invalid</source>
+        <target>Le taux {rate} n'est pas un nombre valide. Saisissez un pourcentage avec un point décimal, par exemple 19 ou 7.5.</target>
+      </trans-unit>
+      <trans-unit id="29" resname="pricing.rate_too_large">
+        <source>pricing.rate_too_large</source>
+        <target>Le taux {rate} est trop grand. Un pourcentage aussi élevé est presque toujours une faute de saisie.</target>
+      </trans-unit>
+      <trans-unit id="30" resname="pricing.cost_negative">
+        <source>pricing.cost_negative</source>
+        <target>Le coût {cost} est négatif. Un coût est ce que vous avez payé ; saisissez zéro si l'article était gratuit.</target>
+      </trans-unit>
+      <trans-unit id="31" resname="pricing.net_price_not_representable">
+        <source>pricing.net_price_not_representable</source>
+        <target>Ce coût et ce taux de marge donnent un prix de vente trop grand pour être représenté. Réduisez l'un des deux.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
-        <target>Ce document est {state} et ne peut plus être modifié. Annulez-le et émettez-en un nouveau avec les montants corrects.</target>
+        <target>Ce document est au statut « {state} » et ne peut plus être modifié. Annulez-le et émettez-en un nouveau avec les montants corrects.</target>
       </trans-unit>
       <trans-unit id="12" resname="document.quantity_invalid">
         <source>document.quantity_invalid</source>

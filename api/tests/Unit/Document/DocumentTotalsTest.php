@@ -910,4 +910,37 @@ final class DocumentTotalsTest extends TestCase
         );
     }
 
+    /**
+     * The reported position is the POSITION, not the array key — round 16 found round 15's `array_values()` fix
+     * revertible with the suite green.
+     *
+     * `list<DocumentLine>` is a docblock claim and PHPStan, which would enforce it, is blocked on Composer egress.
+     * So a non-sequential caller made the message name "document line 8" while `DocumentTotals::lineNets()` exposes
+     * 0 and 1. An index a client is told to fix has to be the index the client can see.
+     */
+    public function testTheReportedPositionIsThePositionAndNotTheArrayKey(): void
+    {
+        $tnd = Currency::of('TND');
+        $eur = Currency::of('EUR');
+
+        try {
+            new DocumentCalculator()->calculate(
+                [7 => new DocumentLine('1', Money::of('1.000', $tnd), Rate::zero()),
+                    8 => new DocumentLine('1', Money::of('1.00', $eur), Rate::zero())],
+                [],
+                VatRoundingPoint::PerRateGroup,
+                RoundingMode::HalfUp,
+            );
+
+            self::fail('A document mixing currencies must be refused.');
+        } catch (CurrencyMismatch $mismatch) {
+            self::assertStringContainsString('document line 1', $mismatch->getMessage());
+            self::assertStringNotContainsString(
+                'document line 8',
+                $mismatch->getMessage(),
+                'The array KEY must not reach the message: DocumentTotals::lineNets() exposes 0 and 1.',
+            );
+        }
+    }
+
 }

@@ -27,9 +27,22 @@ use Twes\Domain\Document\DocumentState;
  */
 final class DocumentIsNotMutable extends \DomainException
 {
+    /**
+     * **The state is carried STRUCTURALLY, not only interpolated** — round 16 found the `{state}` ruling had no
+     * implementation path. `document.state.draft`/`issued`/`cancelled` exist so a translated label replaces the
+     * backed value, and neither this class nor {@see IllegalTransition} exposed the state, so an HTTP layer
+     * catching them had nothing to resolve the label FROM. A rule with no way to be obeyed is not a rule.
+     */
+    private DocumentState $refusedState;
+
+    public function state(): DocumentState
+    {
+        return $this->refusedState;
+    }
+
     public static function forOperation(string $operation, DocumentState $state): self
     {
-        return new self(\sprintf(
+        $refusal = new self(\sprintf(
             'Cannot %s: this document is %s, and only a Draft is mutable. %s',
             $operation,
             $state->value,
@@ -40,5 +53,8 @@ final class DocumentIsNotMutable extends \DomainException
                 : 'A cancelled document is an audit record of what was issued; it is never edited, and the '
                     . 'correction is a separate document.',
         ));
+        $refusal->refusedState = $state;
+
+        return $refusal;
     }
 }

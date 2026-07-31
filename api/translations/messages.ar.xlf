@@ -93,9 +93,33 @@
         <source>document.state.cancelled</source>
         <target>ملغاة</target>
       </trans-unit>
+      <trans-unit id="26" resname="document.line_total_too_large">
+        <source>document.line_total_too_large</source>
+        <target>إجمالي البند للكمية {quantity} بسعر {price} للوحدة كبير جداً بحيث لا يمكن تمثيله. قلّل أحدهما.</target>
+      </trans-unit>
+      <trans-unit id="27" resname="document.total_too_large">
+        <source>document.total_too_large</source>
+        <target>سيكون إجمالي هذه الوثيقة كبيراً جداً بحيث لا يمكن تمثيله. احذف بنداً أو رسماً، أو قسّمها إلى وثيقتين.</target>
+      </trans-unit>
+      <trans-unit id="28" resname="pricing.rate_invalid">
+        <source>pricing.rate_invalid</source>
+        <target>النسبة {rate} ليست رقماً صالحاً. أدخل نسبة مئوية باستخدام الفاصلة العشرية، مثل 19 أو 7.5.</target>
+      </trans-unit>
+      <trans-unit id="29" resname="pricing.rate_too_large">
+        <source>pricing.rate_too_large</source>
+        <target>النسبة {rate} كبيرة جداً. نسبة بهذا الحجم تكون غالباً خطأ في الإدخال.</target>
+      </trans-unit>
+      <trans-unit id="30" resname="pricing.cost_negative">
+        <source>pricing.cost_negative</source>
+        <target>التكلفة {cost} سالبة. التكلفة هي ما دفعته؛ أدخل صفراً إذا كان العنصر مجانياً.</target>
+      </trans-unit>
+      <trans-unit id="31" resname="pricing.net_price_not_representable">
+        <source>pricing.net_price_not_representable</source>
+        <target>هذه التكلفة ونسبة الربح تعطيان سعر بيع كبيراً جداً بحيث لا يمكن تمثيله. خفّض أحدهما.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
-        <target>هذه الوثيقة {state} ولم يعد من الممكن تغييرها. ألغها وأصدر وثيقة جديدة بالمبالغ الصحيحة.</target>
+        <target>هذه الوثيقة في حالة «{state}» ولم يعد من الممكن تغييرها. ألغها وأصدر وثيقة جديدة بالمبالغ الصحيحة.</target>
       </trans-unit>
       <trans-unit id="12" resname="document.quantity_invalid">
         <source>document.quantity_invalid</source>

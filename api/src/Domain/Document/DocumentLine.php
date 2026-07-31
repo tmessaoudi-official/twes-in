@@ -164,9 +164,21 @@ final readonly class DocumentLine
         $exactProduct = Decimal::multiplyExact($quantity, $unitNet->amount());
         $atCurrencyScale = Decimal::rescale($exactProduct, $unitNet->currency()->scale(), RoundingMode::Up);
 
-        if (null === $atCurrencyScale
-            || Decimal::integerDigits($atCurrencyScale) > Money::MAX_INTEGER_DIGITS
-        ) {
+        // SPLIT FROM THE OVERFLOW CHECK, because they are different faults and round 16 filed them being merged.
+        // `rescale()` returns null only under `RoundingMode::Unnecessary`, which this call does not use — so this
+        // arm is unreachable today, and folding it into the message below would have stated something FALSE
+        // ("gives %s, which has more integer digits") about a value that did not overflow, and keyed it as a
+        // quantity error rather than `error.internal`. `ProductPricing` uses `?? throw new \LogicException` at the
+        // same junction for exactly this reason: if the mode ever changes, it must fail loudly and honestly rather
+        // than blame the user.
+        $atCurrencyScale ??= throw new \LogicException(\sprintf(
+            'Decimal::rescale() returned null for %s at scale %d under RoundingMode::Up, which it does not do. '
+            . 'If the rounding mode above changed, this is our fault and not the caller\'s.',
+            $exactProduct,
+            $unitNet->currency()->scale(),
+        ));
+
+        if (Decimal::integerDigits($atCurrencyScale) > Money::MAX_INTEGER_DIGITS) {
             throw new \InvalidArgumentException(\sprintf(
                 'Quantity "%s" times unit price %s gives %s, which has more integer digits than an amount can '
                 . 'hold (%d). Both factors are individually within bounds — matching two bounds says nothing '

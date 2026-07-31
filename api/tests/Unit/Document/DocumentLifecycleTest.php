@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentNumber;
 use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\DocumentType;
+use Twes\Domain\Document\Exception\DocumentIsNotMutable;
 use Twes\Domain\Document\Exception\IllegalTransition;
 use Twes\Domain\Document\NumberPattern;
 use Twes\Domain\Document\VatRoundingPoint;
@@ -378,6 +379,29 @@ final class DocumentLifecycleTest extends TestCase
                 self::assertNotSame('', $expected->getMessage());
             }
         }
+    }
+
+    /**
+     * **Both lifecycle refusals carry the STATE structurally**, so the `document.state.*` labels are reachable.
+     *
+     * Round 16 found the ruling — *"a placeholder carrying an enum takes a translated LABEL, never the backed
+     * value"* — had no implementation path: `DocumentIsNotMutable` baked the value into an English `sprintf` with
+     * no accessor, and `IllegalTransition::between` took `string`, so the enum was lost at the throw site. An HTTP
+     * layer catching either had nothing to resolve the label from. A rule with no way to be obeyed is not a rule.
+     */
+    public function testTheLifecycleRefusalsCarryTheStateStructurally(): void
+    {
+        try {
+            DocumentState::Issued->transitionTo(DocumentState::Draft);
+
+            self::fail('Issued -> Draft must be refused.');
+        } catch (IllegalTransition $refusal) {
+            self::assertSame(DocumentState::Issued, $refusal->from());
+            self::assertSame(DocumentState::Draft, $refusal->to());
+        }
+
+        $notMutable = DocumentIsNotMutable::forOperation('withLine', DocumentState::Cancelled);
+        self::assertSame(DocumentState::Cancelled, $notMutable->state());
     }
 
 }
