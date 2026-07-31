@@ -129,6 +129,25 @@ final readonly class Rate
             throw InvalidRate::malformed($value);
         }
 
+        // REFUSED BEFORE `Decimal::divide()`, and that ordering is the whole fix. Round 13 found this factory
+        // raising `\LogicException` for an over-precise percentage while its sibling `fromFraction()` correctly
+        // raised `InvalidRate` — a regression from round 12's own MAX_SCALE work. The two take different routes:
+        // `fromFraction` goes through `Decimal::rescale()`, which returns null and lets the null arm below
+        // report a domain error; `fromPercentage` goes through `Decimal::divide()`, whose DERIVED working-scale
+        // guard fires FIRST and raises the exception type this codebase reserves for "a programming error at the
+        // call site, never invalid user input". So a form field yielded a 500 rather than a 422, and the message
+        // named `Decimal::divide()`'s internals to a caller that chose no scale at all — `FRACTION_SCALE` is a
+        // constant.
+        //
+        // `PERCENTAGE_SCALE` is the exact bound rather than an arbitrary one: dividing by 100 shifts the point
+        // two places, so a percentage holds exactly `FRACTION_SCALE - 2` decimals, and this class already names
+        // that number. Checking it here also means the null arm below stays reachable for nothing — it is kept
+        // because `divide()` may legitimately return null for a value this guard accepts, and a `?? throw` would
+        // be a claim about unreachability that the next edit could quietly falsify.
+        if (Decimal::scaleOf($value) > self::PERCENTAGE_SCALE) {
+            throw InvalidRate::tooPrecise($value);
+        }
+
         $fraction = Decimal::divide($value, '100', self::FRACTION_SCALE, RoundingMode::Unnecessary);
 
         if (null === $fraction) {

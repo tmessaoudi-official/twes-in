@@ -15,6 +15,7 @@ namespace Twes\Tests\Integration\Tenancy;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Twes\Infrastructure\Tenancy\Exception\ConnectionMustBeEvicted;
 use Twes\Infrastructure\Tenancy\Exception\NoCurrentTenant;
 use Twes\Infrastructure\Tenancy\InMemoryTenantContext;
 use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
@@ -2868,6 +2869,100 @@ final class TenantIsolationTest extends TestCase
         // Named individually, so a reader knows which REVOKE to issue rather than being told "large objects".
         self::assertStringContainsString('lo_from_bytea()', $caught->getMessage());
         self::assertStringContainsString('REVOKE EXECUTE', $caught->getMessage());
+    }
+
+    /**
+     * A live `LISTEN` registration is session-lifetime state, and the check now asks about it.
+     *
+     * `LISTEN` needs **no privilege**, carries no row security, is scoped to no tenant and survives COMMIT, so a
+     * connection released to the pool while listening delivers the PREVIOUS tenant's `NOTIFY` payloads to the
+     * next holder. Round 13 found the asymmetry that made this worth catching: `DISCARD ALL` already cleared it,
+     * so the REMEDY covered it while the DETECTION did not — and detection is the half wired into acquisition.
+     *
+     * There is also no capability to revoke here, unlike `TEMPORARY` and the large-object writers, so detection
+     * is the only control available.
+     */
+    public function testALiveListenRegistrationIsReportedAndDiscardable(): void
+    {
+        try {
+            $this->connection->exec('LISTEN tenant_events');
+
+            // The precondition: no temp relation, no held cursor — so ONLY the LISTEN can be reported, and a
+            // pass here cannot be coming from one of the other two arms.
+            $others = $this->connection->query(
+                'SELECT (SELECT count(*) FROM pg_class WHERE pg_my_temp_schema() <> 0 '
+                . 'AND relnamespace = pg_my_temp_schema()) AS temps, '
+                . '(SELECT count(*) FROM pg_cursors WHERE is_holdable) AS cursors',
+            );
+            self::assertNotFalse($others);
+            /** @var array{temps: int|string, cursors: int|string} $counts */
+            $counts = $others->fetch(\PDO::FETCH_ASSOC);
+            self::assertSame(0, (int) $counts['temps'], 'no temporary relation');
+            self::assertSame(0, (int) $counts['cursors'], 'no held cursor');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull($caught, 'A live LISTEN registration must be reported.');
+            self::assertStringContainsString('tenant_events', $caught->getMessage());
+            self::assertStringContainsString('LISTENing', $caught->getMessage());
+
+            // And DISCARD ALL clears it, so the guard is satisfiable.
+            PostgresRowLevelSecurityIsolation::discardSessionState($this->connection);
+            PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised($this->connection);
+        } finally {
+            $this->connection->exec('UNLISTEN *');
+        }
+    }
+
+    /**
+     * A BROKEN connection is reported as needing EVICTION, not as a raw `PDOException`.
+     *
+     * `pdo_pgsql` implements `inTransaction()` as `PQtransactionStatus(...) > PQTRANS_IDLE`, and a dead backend
+     * answers `PQTRANS_UNKNOWN` — so a broken connection reports `true`, the rollback raises, and round 13 found
+     * that `PDOException` REPLACING the in-flight business exception in a `finally`-shaped release path. That is
+     * the masked-failure shape this repository records four times, introduced by the round-12 fix that got the
+     * direction right for the healthy case.
+     *
+     * The remedy is not a swallow: a connection whose cleanup failed is unusable and must be thrown away rather
+     * than returned, so the type says so and carries the driver's exception as its cause.
+     */
+    public function testABrokenConnectionIsReportedAsNeedingEvictionRatherThanMaskingTheCause(): void
+    {
+        $doomed = self::connect();
+        $doomed->beginTransaction();
+        $doomed->exec('CREATE TEMPORARY TABLE evict_probe (id integer)');
+
+        // Terminated from ANOTHER connection, which is how this happens in production: a failover, an
+        // idle-in-transaction timeout, or an operator.
+        $pid = $doomed->query('SELECT pg_backend_pid()');
+        self::assertNotFalse($pid);
+        $this->connection->exec('SELECT pg_terminate_backend(' . (int) $pid->fetchColumn() . ')');
+
+        // The precondition, and the trap: a DEAD connection still reports being in a transaction.
+        self::assertTrue(
+            $doomed->inTransaction(),
+            'pdo_pgsql reads PQtransactionStatus(), and a dead backend answers PQTRANS_UNKNOWN — which is '
+            . '> PQTRANS_IDLE. If this is false, the trap is gone and this test is about nothing.',
+        );
+
+        $caught = null;
+
+        try {
+            PostgresRowLevelSecurityIsolation::discardSessionState($doomed);
+        } catch (ConnectionMustBeEvicted $exception) {
+            $caught = $exception;
+        }
+
+        self::assertNotNull($caught, 'Cleanup on a broken connection must report that it needs evicting.');
+        self::assertStringContainsString('EVICTED', $caught->getMessage());
+        // The driver's exception must survive as the cause, or the diagnosis is lost.
+        self::assertInstanceOf(\PDOException::class, $caught->getPrevious());
     }
 
     // ------------------------------------------------------------------ fixture

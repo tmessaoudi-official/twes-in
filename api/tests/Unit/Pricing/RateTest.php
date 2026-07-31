@@ -260,4 +260,54 @@ final class RateTest extends TestCase
         self::assertSame(Rate::FRACTION_SCALE - 2, Rate::PERCENTAGE_SCALE);
         self::assertSame(12, Rate::FRACTION_SCALE);
     }
+    /**
+     * An over-precise PERCENTAGE is an `InvalidRate`, not a `\LogicException` naming bcmath.
+     *
+     * Round 13 found the two factories disagreeing, and it was a regression from round 12's own `MAX_SCALE`
+     * work: `fromFraction()` routes through `Decimal::rescale()` and correctly returned null → `InvalidRate`,
+     * while `fromPercentage()` routes through `Decimal::divide()`, whose DERIVED working-scale guard fired
+     * first and raised `\LogicException` — a type this codebase defines as "a programming error at the call
+     * site, never invalid user input". So a form field yielded a 500 instead of a 422, and the message named
+     * `Decimal::divide()`'s internals to a caller that chose no scale at all (`FRACTION_SCALE` is a constant).
+     *
+     * The bound is `PERCENTAGE_SCALE`, which is exact rather than arbitrary: dividing by 100 shifts the point
+     * two places, so a percentage can hold exactly `FRACTION_SCALE - 2` decimals and the class already names
+     * that number.
+     *
+     * @param int $scale decimal places in the percentage string
+     */
+    #[DataProvider('overPrecisePercentageScales')]
+    public function testAnOverPrecisePercentageIsADomainErrorAtEveryScale(int $scale): void
+    {
+        $this->expectException(InvalidRate::class);
+
+        Rate::fromPercentage('19.' . str_repeat('0', $scale - 1) . '1');
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function overPrecisePercentageScales(): iterable
+    {
+        // Just past the bound, and far past it. The far case is the one that used to leak: at scale >= 1000 the
+        // derived working scale in Decimal::divide() exceeds MAX_SCALE and raised \LogicException, so a
+        // single-scale test would have passed while the leak stayed open.
+        yield 'one decimal past the bound' => [Rate::PERCENTAGE_SCALE + 1];
+        yield 'far past it, but below MAX_SCALE' => [988];
+        yield 'at MAX_SCALE, where the derived guard used to fire' => [1000];
+        yield 'above MAX_SCALE' => [1500];
+    }
+
+    /**
+     * And the BOUNDARY is accepted, so the guard refuses over-precision rather than precision.
+     *
+     * `PERCENTAGE_SCALE` decimals is exactly representable as a 12-decimal fraction. A guard written `>=`
+     * would refuse the most precise legitimate rate the product supports, which is the value the
+     * twelve-decimal decision exists to protect.
+     */
+    public function testAPercentageAtExactlyTheBoundIsAccepted(): void
+    {
+        $exact = '19.' . str_repeat('0', Rate::PERCENTAGE_SCALE - 1) . '1';
+
+        self::assertSame($exact, Rate::fromPercentage($exact)->percentage());
+    }
+
 }

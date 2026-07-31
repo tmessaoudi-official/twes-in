@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Twes\Infrastructure\Tenancy;
 
+use Twes\Infrastructure\Tenancy\Exception\ConnectionMustBeEvicted;
 use Twes\Infrastructure\Tenancy\Exception\NoCurrentTenant;
 
 /**
@@ -1428,12 +1429,29 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not inspect this session\'s held cursors.');
         }
 
+        // A LIVE `LISTEN` REGISTRATION — the carrier round 13 found this method not asking about. `LISTEN` needs
+        // **no privilege**, carries no row security, is scoped to no tenant, survives COMMIT, and delivers to
+        // every listener in the database. A connection released to the pool while listening delivers the
+        // PREVIOUS tenant's NOTIFY payloads to the next holder.
+        //
+        // Note the asymmetry that made it worth finding: `DISCARD ALL` DOES clear it (`UNLISTEN *`), so the
+        // REMEDY already covered it and the DETECTION did not — and detection is the half wired into
+        // acquisition. This method's own argument applies more strongly here than to a temp table, because
+        // there is no capability to revoke: any role may LISTEN.
+        $channels = $connection->query('SELECT pg_listening_channels() AS name ORDER BY 1');
+
+        if (false === $channels) {
+            throw new \RuntimeException('Could not inspect this session\'s LISTEN registrations.');
+        }
+
         /** @var list<array{name: string, kind: string}> $relationRows */
         $relationRows = $relations->fetchAll(\PDO::FETCH_ASSOC);
         /** @var list<array{name: string}> $cursorRows */
         $cursorRows = $cursors->fetchAll(\PDO::FETCH_ASSOC);
+        /** @var list<array{name: string}> $channelRows */
+        $channelRows = $channels->fetchAll(\PDO::FETCH_ASSOC);
 
-        $violations = self::sessionLifetimeDataViolations($relationRows, $cursorRows);
+        $violations = self::sessionLifetimeDataViolations($relationRows, $cursorRows, $channelRows);
 
         if ([] !== $violations) {
             throw new \RuntimeException(
@@ -1455,11 +1473,15 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * @param list<array{name: string, kind: string}> $relations
      * @param list<array{name: string}> $cursors
+     * @param list<array{name: string}> $channels LISTEN registrations, which any role may create
      *
      * @return list<string>
      */
-    public static function sessionLifetimeDataViolations(array $relations, array $cursors): array
-    {
+    public static function sessionLifetimeDataViolations(
+        array $relations,
+        array $cursors,
+        array $channels = [],
+    ): array {
         $violations = [];
 
         foreach ($relations as $relation) {
@@ -1483,6 +1505,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             $violations[] = \sprintf(
                 'the held cursor %s was materialised at COMMIT and can be FETCHed under any later binding',
                 $cursor['name'],
+            );
+        }
+
+        foreach ($channels as $channel) {
+            $violations[] = \sprintf(
+                'this session is LISTENing on %s, which survives COMMIT and is scoped to no tenant — the next '
+                . 'holder of this connection receives the previous tenant\'s NOTIFY payloads',
+                $channel['name'],
             );
         }
 
@@ -1514,10 +1544,29 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         // already an error, and rolling it back is the only safe interpretation: committing would persist
         // whatever half-finished work raised the exception.
         if ($connection->inTransaction()) {
-            $connection->rollBack();
+            try {
+                $connection->rollBack();
+            } catch (\PDOException $exception) {
+                // A BROKEN connection reports `inTransaction() === true`, because pdo_pgsql implements it as
+                // `PQtransactionStatus(...) > PQTRANS_IDLE` and a dead backend answers `PQTRANS_UNKNOWN`. So the
+                // rollback raises — and round 13 found that PDOException REPLACING the in-flight business
+                // exception in a `finally`-shaped release path, which is the masked-failure shape this
+                // repository records four times. Introduced by the round-12 fix that got the direction right for
+                // the healthy case and left the adjacent one throwing.
+                //
+                // NOT a swallow: a rollback that fails means the connection is unusable, so it must be EVICTED
+                // rather than returned, and the caller has to be told which. Re-thrown as a dedicated type
+                // carrying the original as its cause, so a pool can distinguish "clean me again" from "throw me
+                // away" without string-matching a driver message.
+                throw ConnectionMustBeEvicted::becauseCleanupFailed($exception);
+            }
         }
 
-        $connection->exec('DISCARD ALL');
+        try {
+            $connection->exec('DISCARD ALL');
+        } catch (\PDOException $exception) {
+            throw ConnectionMustBeEvicted::becauseCleanupFailed($exception);
+        }
     }
 
     /**
