@@ -524,7 +524,7 @@ cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check
 |---|---|---|
 | PHP 8.5.8, PostgreSQL 18.4 | sury.org and PGDG apt repositories | yes |
 | PHPUnit, php-cs-fixer | `bash scripts/dev/fetch-tools.sh` — official phars, pinned SHA-256 | yes (`phar.phpunit.de`, `cs.symfony.com`) |
-| PostgreSQL roles for the tenancy proof | `sudo -u postgres bash scripts/dev/provision-test-database.sh` | n/a |
+| PostgreSQL roles for the tenancy proof | `sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres bash scripts/dev/provision-test-database.sh` | n/a |
 | Node 26.5.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
 | Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` | yes (`registry.npmjs.org`) |
 | Flutter 3.44.8 | `flutter_linux_3.44.8-stable.tar.xz` from `storage.googleapis.com` | yes |
@@ -536,8 +536,15 @@ running as root but works; the warning is not a failure. The **integration suite
 database prerequisites** are:
 
 ```
-sudo -u postgres bash scripts/dev/provision-test-database.sh
+sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres bash scripts/dev/provision-test-database.sh
 ```
+
+**The `TWES_TEST_DB_SUPERUSER_PASSWORD` is not optional and the script REFUSES without it** (round 17). It sets
+a password on the cluster's pre-existing superuser, and `pg_authid` is a **shared** catalogue — so that one
+statement escapes `twes_in_test` and applies to every database on the cluster, including `twes_in`. Setting the
+variable explicitly is the consent; a default would be indistinguishable from a choice. The script also refuses
+when the target database already holds relations, because the only cluster it is safe to do this to is a
+throwaway one. A run that refuses creates nothing — verified atomic.
 
 **NINE roles, not one, and the script explains why each one exists** (nine as of round 14; the script's own
 comment block is the tally, because this list has now grown at four separate rounds) — this replaced three `createuser`

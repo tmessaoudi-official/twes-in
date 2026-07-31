@@ -2007,6 +2007,44 @@ final class TenantIsolationTest extends TestCase
 
         self::assertSame([], PostgresRowLevelSecurityIsolation::policedTableViolations([$safe]));
 
+        // **A POLICY THAT DOES NOT APPLY TO THIS CONNECTION IS NOT A VIOLATION** (round 17). PostgreSQL applies
+        // a policy only to the roles in `polroles`, so `CREATE POLICY reporting ON invoices TO twes_owner
+        // USING (true)` is inert for the runtime role — and judging it anyway REFUSED every acquisition
+        // permanently, with a message asserting isolation was not in force when it was.
+        $inert = PostgresRowLevelSecurityIsolation::policedTableViolations([
+            [
+                'policies' => json_encode([
+                    ['qual' => $canonical, 'check' => $canonical, 'permissive' => true, 'applies' => true],
+                    ['qual' => 'true', 'check' => 'true', 'permissive' => true, 'applies' => false],
+                ], \JSON_THROW_ON_ERROR),
+            ] + $safe,
+        ]);
+        self::assertSame([], $inert, 'an unscoped policy that cannot apply to this role is a deny, not a leak');
+
+        // And the DANGEROUS direction, which is why the SQL asks about `SET`-reachability as well as membership:
+        // the same unscoped policy, when it DOES apply, is fatal. Without this half the fix above degenerates
+        // into "ignore every policy" and the whole check becomes vacuous.
+        $live = PostgresRowLevelSecurityIsolation::policedTableViolations([
+            [
+                'policies' => json_encode([
+                    ['qual' => $canonical, 'check' => $canonical, 'permissive' => true, 'applies' => true],
+                    ['qual' => 'true', 'check' => 'true', 'permissive' => true, 'applies' => true],
+                ], \JSON_THROW_ON_ERROR),
+            ] + $safe,
+        ]);
+        self::assertCount(2, $live, 'an applicable unscoped policy reopens the table for both reads and writes');
+
+        // A HAND-BUILT ROW THAT OMITS THE FLAG IS JUDGED, never skipped. Fail-closed: defaulting the other way
+        // would let a caller who forgot the key skip every policy while reporting a clean bill.
+        $omitted = PostgresRowLevelSecurityIsolation::policedTableViolations([
+            [
+                'policies' => json_encode([
+                    ['qual' => 'true', 'check' => 'true', 'permissive' => true],
+                ], \JSON_THROW_ON_ERROR),
+            ] + $safe,
+        ]);
+        self::assertCount(2, $omitted, 'an absent applies flag must not wave the policy through');
+
         $owned = PostgresRowLevelSecurityIsolation::policedTableViolations(
             [['owner_reachable' => 't'] + $safe],
         );
@@ -3854,6 +3892,62 @@ final class TenantIsolationTest extends TestCase
             . 'FUNCTION 1 public.%s(int, int)',
             'DROP OPERATOR CLASS IF EXISTS public.probe_ops USING btree /* %s */',
         ];
+    }
+
+    /**
+     * **A real `TO <role>` policy: inert for a role that cannot reach it, fatal for one that can.**
+     *
+     * The pure predicate above pins the classification; this pins the SQL that feeds it, which is the half that
+     * was missing entirely — `polroles` was fetched by nothing. Both directions in one test on purpose: the
+     * permissive direction alone would be satisfied by a query that always reports "does not apply", which is
+     * the vacuous fix, and the restrictive direction alone was the pre-existing false refusal.
+     *
+     * `twes_truncator` is the load-bearing fixture role here. It is granted to the runtime role
+     * `WITH INHERIT FALSE`, so inheritance does not carry the policy — but `twes` can still `SET ROLE` to it,
+     * which makes a policy granted to it live. So a check asking only `PUBLIC OR current_user` reopens a
+     * reproduced cross-tenant read, and `MEMBER` is the predicate wide enough to catch it.
+     */
+    public function testAPolicyIsJudgedOnlyIfItAppliesToThisConnection(): void
+    {
+        $unreachable = getenv('TWES_TEST_DB_OWNER_USER') ?: 'twes_owner';
+        $reachable = getenv('TWES_TEST_DB_TRUNCATOR_ROLE') ?: 'twes_truncator';
+
+        foreach ([$unreachable => false, $reachable => true] as $role => $expectRefusal) {
+            try {
+                $this->owner->exec(\sprintf(
+                    'CREATE POLICY applies_probe ON %s FOR SELECT TO %s USING (true)',
+                    self::TABLE,
+                    $role,
+                ));
+
+                $caught = null;
+
+                try {
+                    new PostgresRowLevelSecurityIsolation()
+                        ->assertPolicedTablesAreBeyondThisRolesReach($this->connection);
+                } catch (\RuntimeException $exception) {
+                    $caught = $exception;
+                }
+
+                if ($expectRefusal) {
+                    self::assertNotNull($caught, \sprintf(
+                        'A permissive USING (true) policy granted to %s IS live for the runtime role, which can '
+                        . 'SET ROLE to it, so the table is unscoped and must be refused.',
+                        $role,
+                    ));
+                    self::assertStringContainsString('not the canonical tenant predicate', $caught->getMessage());
+                } else {
+                    self::assertNull($caught, \sprintf(
+                        'A policy granted only to %s cannot be used by the runtime role at all, so its '
+                        . 'non-application is a deny. Refusing here is a false statement about the system: %s',
+                        $role,
+                        $caught?->getMessage() ?? '',
+                    ));
+                }
+            } finally {
+                $this->owner->exec(\sprintf('DROP POLICY IF EXISTS applies_probe ON %s', self::TABLE));
+            }
+        }
     }
 
     private static function superuserConnection(): \PDO

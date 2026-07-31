@@ -32,8 +32,22 @@ final class DocumentIsNotMutable extends \DomainException
      * implementation path. `document.state.draft`/`issued`/`cancelled` exist so a translated label replaces the
      * backed value, and neither this class nor {@see IllegalTransition} exposed the state, so an HTTP layer
      * catching them had nothing to resolve the label FROM. A rule with no way to be obeyed is not a rule.
+     *
+     * **PRIVATE, and promoted, so the payload cannot be absent** — the same closure as
+     * {@see IllegalTransition::__construct()}, and for the same reason. Assigning the state after construction in
+     * {@see self::forOperation()} left `\DomainException`'s PUBLIC constructor inherited and reachable, and an
+     * instance obtained that way answers {@see self::state()} with
+     * `Error: Typed property ... must not be accessed before initialization` — a 500 in the HTTP layer this
+     * payload exists to serve, in place of the 409 an edit to a frozen document must return.
+     *
+     * @param string $message built by the factory, because it names the operation and branches on the state
      */
-    private DocumentState $refusedState;
+    private function __construct(
+        private DocumentState $refusedState,
+        string $message,
+    ) {
+        parent::__construct($message);
+    }
 
     public function state(): DocumentState
     {
@@ -42,7 +56,7 @@ final class DocumentIsNotMutable extends \DomainException
 
     public static function forOperation(string $operation, DocumentState $state): self
     {
-        $refusal = new self(\sprintf(
+        return new self($state, \sprintf(
             'Cannot %s: this document is %s, and only a Draft is mutable. %s',
             $operation,
             $state->value,
@@ -53,8 +67,5 @@ final class DocumentIsNotMutable extends \DomainException
                 : 'A cancelled document is an audit record of what was issued; it is never edited, and the '
                     . 'correction is a separate document.',
         ));
-        $refusal->refusedState = $state;
-
-        return $refusal;
     }
 }

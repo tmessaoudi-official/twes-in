@@ -1509,8 +1509,15 @@ docs/plans/build-waves.plan.md
 docs/plans/reimplementation-strategy.plan.md
 .claude/agents/completeness-reviewer.md"
 
-actual_licence_surfaces="$(cd "$REPO_ROOT" && grep -rl "BSD-2-Clause" --include='*.md' . 2>/dev/null \
-  | sed 's|^\./||' | grep -v node_modules | sort)"
+# Enumerated from `git ls-files`, NOT `grep -r`. A recursive walk reads whatever happens to be sitting in the
+# working tree, and this repo now sometimes contains full copies of ITSELF: a parallel review round runs agents in
+# git worktrees, and the harness places them at `.claude/worktrees/<agent>/`, INSIDE the repo. Each copy carries
+# its own `CLAUDE.md`, `LICENSING.md` and so on, so the walk returned every licence surface twice over and this
+# check failed with an "actual" list that was not wrong about the repository at all — it was reading four
+# repositories. Round 17 hit exactly that. `git ls-files` sees tracked paths of THIS working tree only, which is
+# the set the check means, and it also drops the `node_modules` special case that the walk needed.
+actual_licence_surfaces="$(cd "$REPO_ROOT" && git ls-files -z -- '*.md' \
+  | xargs -0 grep -l "BSD-2-Clause" 2>/dev/null | sort)"
 
 if [[ "$(printf '%s' "$expected_licence_surfaces" | sort)" == "$actual_licence_surfaces" ]]; then
   printf '  ok   — exactly the known documents state a licence rule; no new surface appeared\n'

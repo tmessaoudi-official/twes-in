@@ -34,6 +34,8 @@ use Twes\Domain\Document\VatRoundingPoint;
 #[CoversClass(DocumentNumber::class)]
 #[CoversClass(NumberPattern::class)]
 #[CoversClass(DocumentType::class)]
+#[CoversClass(IllegalTransition::class)]
+#[CoversClass(DocumentIsNotMutable::class)]
 final class DocumentLifecycleTest extends TestCase
 {
     // ------------------------------------------------------------------ the transition guard
@@ -404,4 +406,77 @@ final class DocumentLifecycleTest extends TestCase
         self::assertSame(DocumentState::Cancelled, $notMutable->state());
     }
 
+    /**
+     * **A refusal carrying state cannot be built WITHOUT that state**, because both classes extend
+     * `\DomainException` and would otherwise inherit its PUBLIC constructor.
+     *
+     * The structural payload above was added so an HTTP layer could resolve `document.state.*` from the enum
+     * instead of matching English message text. Assigning it after construction in a named factory left the
+     * inherited constructor as a second, payload-less way in — and an instance obtained that way answers the
+     * accessor with `Error: Typed property ... must not be accessed before initialization`, i.e. a fatal in the
+     * very layer the payload exists to serve, in place of the 409 the state machine meant to raise. A carrier
+     * that can arrive empty is not a carrier.
+     *
+     * Asserted through reflection rather than a literal `new`, so the case states the invariant without itself
+     * being a private-constructor call for a static analyser to reject.
+     */
+    public function testALifecycleRefusalCannotBeBuiltWithoutItsState(): void
+    {
+        foreach ([IllegalTransition::class, DocumentIsNotMutable::class] as $refusal) {
+            try {
+                new \ReflectionClass($refusal)->newInstance('a message no factory ever wrote');
+
+                self::fail(\sprintf(
+                    '%s must be constructible only through its own factory. Reached any other way it carries '
+                    . 'no state, so the accessor an HTTP layer calls is a fatal Error rather than a refusal.',
+                    $refusal,
+                ));
+            } catch (\ReflectionException $expected) {
+                self::assertStringContainsString('Access to non-public constructor', $expected->getMessage());
+            }
+        }
+    }
+
+    /**
+     * The state is never PRE-INITIALISED to a placeholder, so a constructor-less instance fails loudly.
+     *
+     * The case above closes every *reachable* way to obtain a payload-less refusal; a deliberate reflection
+     * bypass remains, and this pins what happens on it. The wrong fix for that residue is to give the property a
+     * value it can hold before anyone assigns one — `private ?DocumentState $state = null;` as a declared
+     * property — because the accessor would then answer `null` to an HTTP layer with no null branch, and a
+     * missing `document.state.*` label is harder to notice than a fatal. Asserting the message rather than merely
+     * a throw is what makes that distinction visible.
+     *
+     * **Scope stated exactly, because a mutant refuted the broader claim first written here.** A `= null` default
+     * on the PROMOTED parameter does not silence this: promoted defaults are applied by the constructor, so a
+     * `newInstanceWithoutConstructor()` instance still holds an uninitialised property and still raises. What
+     * this case detects is a property-level default — verified by making one, not by reasoning about it.
+     */
+    public function testTheCarriedStateIsNeverPreInitialisedToAPlaceholder(): void
+    {
+        $transition = new \ReflectionClass(IllegalTransition::class)->newInstanceWithoutConstructor();
+        $notMutable = new \ReflectionClass(DocumentIsNotMutable::class)->newInstanceWithoutConstructor();
+
+        // Deliberately untyped: a return type here would raise the TypeError itself and report the widening as a
+        // type failure of this closure, hiding which accessor answered a placeholder.
+        $accessors = [
+            'IllegalTransition::from' => static fn() => $transition->from(),
+            'IllegalTransition::to' => static fn() => $transition->to(),
+            'DocumentIsNotMutable::state' => static fn() => $notMutable->state(),
+        ];
+
+        foreach ($accessors as $name => $read) {
+            try {
+                $read();
+
+                self::fail(\sprintf('%s() must not answer an uninitialised property.', $name));
+            } catch (\Error $expected) {
+                self::assertStringContainsString(
+                    'must not be accessed before initialization',
+                    $expected->getMessage(),
+                    $name,
+                );
+            }
+        }
+    }
 }

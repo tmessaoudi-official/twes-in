@@ -717,7 +717,32 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             . '  SELECT json_agg(json_build_object('
             . "    'qual', pg_get_expr(p2.polqual, p2.polrelid),"
             . "    'check', pg_get_expr(p2.polwithcheck, p2.polrelid),"
-            . "    'permissive', p2.polpermissive"
+            . "    'permissive', p2.polpermissive,"
+            // **WHETHER THE POLICY APPLIES TO THIS CONNECTION AT ALL** (round 17). PostgreSQL applies a policy
+            // only to the roles in `polroles`, so a policy `TO twes_owner` is inert for the runtime role — and
+            // its non-application is a DENY, never a leak. Judging it for canonicality anyway REFUSED every
+            // acquisition, permanently, on an entirely ordinary `CREATE POLICY … TO <reporting role>`, with a
+            // message asserting isolation was not in force when it demonstrably was.
+            //
+            // **The direction is deliberately the WIDEST one, because narrowing it reopens a reproduced
+            // cross-tenant read.** `PUBLIC OR current_user` is NOT enough: `twes` can `SET ROLE twes_truncator`,
+            // and a permissive `USING (true)` policy granted to that role then applies — verified as a real
+            // cross-tenant read, 1 row before `SET ROLE` and 2 after.
+            //
+            // `MEMBER` is that widest notion and `SET` is **redundant beside it**, which is worth stating
+            // because the first version of this arm ORed both and the `SET` disjunct was provably dead: a role
+            // can only be `SET ROLE`d to by a member of it, so `pg_has_role(x, 'SET')` implies
+            // `pg_has_role(x, 'MEMBER')`. [Verified: deleting the `SET` disjunct left the live both-directions
+            // test green — an equivalent mutant, not a coverage gap.] `MEMBER` also covers both ways a policy
+            // can reach the connection: inherited privileges at query time, and a `SET ROLE` away. This is the
+            // mirror of `roleCanBeAssumedSql()`'s usage elsewhere, where the question is negated and `SET` is
+            // therefore the correct, narrower predicate — see its own docblock.
+            //
+            // `0` is PUBLIC, which applies to everybody.
+            . "    'applies', EXISTS ("
+            . '      SELECT 1 FROM unnest(p2.polroles) AS pr(rid) WHERE pr.rid = 0'
+            . '        OR ' . self::roleIsReachableSql('pr.rid')
+            . '    )'
             . '  )) FROM pg_policy p2 WHERE p2.polrelid = c.oid'
             . "), '[]') AS policies "
             . 'FROM subject s '
@@ -1101,7 +1126,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 );
             }
 
-            /** @var list<array{qual: string|null, check: string|null, permissive: bool}> $policies */
+            /** @var list<array{qual: string|null, check: string|null, permissive: bool, applies: bool}> $policies */
             $policies = json_decode($table['policies'], true, 512, \JSON_THROW_ON_ERROR);
 
             // Every column any permissive policy on this table scopes. One table has one tenant column; more
@@ -1113,6 +1138,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 // RESTRICTIVE policies are ANDed, so an unscoped one only ever narrows access and cannot be
                 // a bypass. PERMISSIVE policies are ORed, which is what makes a single unscoped one fatal.
                 if (!self::isTrue($policy['permissive'])) {
+                    continue;
+                }
+
+                // A policy that does not apply to this connection cannot widen what it may read — see the
+                // `applies` sub-select above for why the reachability test there is deliberately the wide one.
+                // Skipped rather than reported: an inert policy is a DENY, and a check that fires on a safe
+                // shape is the same false-refusal defect this class already records for a `security_invoker`
+                // view and for another session's temporary matview.
+                // `?? true` is FAIL-CLOSED and deliberate: an absent flag means the policy is JUDGED, never
+                // waved through. The query above always supplies it, so absence can only come from a
+                // hand-built row — and defaulting the other way would make a caller that forgot the key
+                // silently skip every policy on the table while reporting a clean bill.
+                if (!self::isTrue($policy['applies'] ?? true)) {
                     continue;
                 }
 

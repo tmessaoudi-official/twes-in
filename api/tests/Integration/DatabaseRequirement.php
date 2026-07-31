@@ -34,10 +34,21 @@ namespace Twes\Tests\Integration;
  * **THERE IS NO LEGITIMATE SKIP IN THIS SUITE, and this paragraph said the opposite until round 16.** It
  * read that `TWES_TEST_DB_SUPERUSER` is "documented as optional" and that "the two cases needing it"
  * skip when it is absent. Both halves were wrong: round 15 made the credential REQUIRED and
- * `superuserConnection()` now calls `self::fail()`, and ELEVEN test methods call it — four of them the only
+ * `superuserConnection()` now calls `self::fail()`, and MANY test methods call it — four of them the only
  * evidence that a security fix is load-bearing. The correction reached `api/phpunit.xml` and `CLAUDE.md`
  * and missed the one file whose entire purpose is documenting this invariant, which is the
  * "a correction that does not reach the full set of sites" shape § Gotchas records.
+ *
+ * **NO COUNT IS WRITTEN HERE, deliberately.** The sentence above said "ELEVEN" for one commit and was wrong
+ * when written — and it was written by the very commit that removed the figure from `api/phpunit.xml` on the
+ * grounds that counts drift. That figure has now been "one", "nine" and "eleven" across successive rounds and
+ * was stale each time, so it is derived rather than restated, exactly as `CLAUDE.md` § "Quality gate" does:
+ *
+ *     grep -c 'self::superuserConnection()' api/tests/Integration/Tenancy/TenantIsolationTest.php
+ *
+ * Note that call sites and test METHODS are different tallies — a method may need more than one privileged
+ * fixture — so the grep above counts call sites, which is the figure that matters for "is the credential
+ * required". Neither number belongs in prose.
  */
 final class DatabaseRequirement
 {
@@ -46,6 +57,12 @@ final class DatabaseRequirement
      *
      * Names the two-cluster trap explicitly, because diagnosing it from
      * `password authentication failed` alone sends a reader hunting for a wrong password that is correct.
+     *
+     * Step 1 carries `TWES_TEST_DB_SUPERUSER_PASSWORD` explicitly because the provisioning script now REFUSES
+     * without it: that script overwrites the password of the cluster-global superuser role in the shared
+     * `pg_authid` catalogue, which reaches every database on the cluster and cannot be undone by a re-run, so
+     * it demands consent rather than assuming a throwaway cluster. Printing the bare invocation here would
+     * hand a developer a command that refuses — the failure message must name the command that WORKS.
      */
     public static function unreachable(\PDOException $exception): string
     {
@@ -55,7 +72,12 @@ final class DatabaseRequirement
             . "This is a FAILURE and not a skip on purpose (CLAUDE.md \u{a7} \"Quality gate\"): a green run that "
             . "silently omitted the tenancy proof is the worst outcome available here.\n\n"
             . "To fix it:\n"
-            . "  1. sudo -u postgres bash scripts/dev/provision-test-database.sh\n"
+            . "  1. sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres \\\n"
+            . "       bash scripts/dev/provision-test-database.sh\n"
+            . "     (that variable is REQUIRED: the script refuses without it, because it overwrites the "
+            . "password of the cluster-global superuser role in the shared pg_authid catalogue, which reaches "
+            . "every database on the cluster and no re-run can restore. `postgres` matches the default in "
+            . "api/phpunit.xml. It also refuses if the target database already holds relations.)\n"
             . "  2. If the error above is an AUTHENTICATION failure rather than a refused connection, check "
             . "whether TWO clusters are bound to the same port: `pg_lsclusters`. This container ships "
             . "PostgreSQL 16 and 18 both configured on 5432, and whichever wins the port after a restart may "

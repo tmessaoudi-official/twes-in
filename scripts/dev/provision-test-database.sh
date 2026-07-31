@@ -65,7 +65,14 @@
 #                 connection is a member of but cannot become was excluded as "no escalation", when that is
 #                 precisely the case where the function is the ONLY route to that role's rights.
 #
-# Run as a superuser. Idempotent — safe to re-run.
+# Run as a superuser, and ONLY against a throwaway test cluster — see THE THROWAWAY-CLUSTER CONSENT GUARD
+# below for why that is now checked rather than assumed.
+#
+# Idempotent for everything it CREATES: every role is guarded by an existence check and every grant and
+# privilege is re-asserted to the same value, so a re-run repairs drift and changes nothing else. It is NOT
+# idempotent with respect to operator state in one place: it overwrites the superuser's own password, which
+# no re-run can restore. That single statement is therefore gated on explicit consent, and the closing
+# summary names the role whose password it set.
 set -euo pipefail
 
 DB="${TWES_TEST_DB_NAME:-twes_in_test}"
@@ -78,10 +85,25 @@ RUNTIME_PASSWORD="${TWES_TEST_DB_PASSWORD:-twes}"
 # fresh checkout got 22 integration failures whose message pointed at the two-cluster trap -- the wrong cause.
 #
 # Set here because this script already runs AS a superuser and is explicitly a LOCAL TEST fixture; a real
-# deployment neither runs it nor wants a password-authenticated superuser. Nine tests need one to build privileged
-# fixtures and four are the only evidence a security fix is load-bearing, so the credential has to work or the
-# suite fails closed -- which it now does, loudly, rather than skipping.
+# deployment neither runs it nor wants a password-authenticated superuser. MANY tests need one to build
+# privileged fixtures and four of them are the only evidence a security fix is load-bearing, so the credential
+# has to work or the suite fails closed -- which it now does, loudly, rather than skipping.
+#
+# NO COUNT IS WRITTEN HERE. The number was "nine" for one commit and was wrong when written; it is derived with
+#   grep -c 'self::superuserConnection()' api/tests/Integration/Tenancy/TenantIsolationTest.php
+# which is the same derivation CLAUDE.md § "Quality gate" gives, for the same reason: this figure has been
+# written as "one", "nine" and "eleven" in three successive rounds and was stale every time. It was introduced
+# here by the very commit that DELETED it from api/phpunit.xml because counts drift.
 SUPERUSER_ROLE="${TWES_TEST_DB_SUPERUSER:-postgres}"
+# Consent is captured BEFORE the default is applied, and it is the ONLY thing that distinguishes "the operator
+# named this password" from "the operator got postgres/postgres because they said nothing". Read once into a
+# variable that every later path consults, because CLAUDE.md § Gotchas records a guard implemented on one write
+# path and not the other.
+if [[ -n "${TWES_TEST_DB_SUPERUSER_PASSWORD:+set}" ]]; then
+    SUPERUSER_PASSWORD_CONSENTED=1
+else
+    SUPERUSER_PASSWORD_CONSENTED=0
+fi
 SUPERUSER_PASSWORD="${TWES_TEST_DB_SUPERUSER_PASSWORD:-postgres}"
 OWNER_ROLE="${TWES_TEST_DB_OWNER_USER:-twes_owner}"
 OWNER_PASSWORD="${TWES_TEST_DB_OWNER_PASSWORD:-twes_owner}"
@@ -128,7 +150,99 @@ fi
 printf 'provision-test-database: provisioning into %s\n' \
   "$(psql --no-psqlrc -tAc "select 'PostgreSQL ' || current_setting('server_version') || ' on port ' || current_setting('port') || ', database ' || current_database()" 2>/dev/null || echo 'an unknown server')"
 
-psql --no-psqlrc --set ON_ERROR_STOP=1 <<SQL
+# ── THE THROWAWAY-CLUSTER CONSENT GUARD ────────────────────────────────────────────────────────
+# WHY: one statement below sets the SUPERUSER's own password, and it is the only statement in this script that
+# mutates a pre-existing, cluster-global role. Every other ALTER ROLE targets a role this script created under
+# an existence check, and every grant is scoped to ${DB}. That one is different in three ways that matter:
+#
+#   (a) it converts a password-less superuser into one authenticable OVER THE WIRE with a dictionary default,
+#       so `PGPASSWORD=postgres psql ...` starts succeeding. That this container only listens on loopback is
+#       the CLUSTER's property, not this script's, and infra/ is not written yet -- so the script cannot
+#       inherit the containment as an assumption.
+#   (b) pg_authid is a SHARED catalogue. The change escapes ${DB} and applies to every database on the
+#       cluster, including twes_in. Nothing else here leaves ${DB}.
+#   (c) it is the one thing a re-run cannot restore. An operator's password is overwritten and gone.
+#
+# The two-cluster block above is a WARNING and cannot answer "is this a throwaway cluster?" -- it does not even
+# fire when one cluster is configured on 5432 while another listens elsewhere. So the precondition is checked
+# directly, and a failure REFUSES. It does not skip the statement and carry on: CLAUDE.md § Gotchas records
+# four separate instances of a control that silently did not run, one of them this script's own warning.
+#
+# The precondition is deliberately two-part, because either half alone is satisfiable by accident:
+#   1. ${DB} is absent, or exists and holds ZERO relations -- a database with tables in it is somebody's
+#      state, and this fixture's own suite leaves none behind, so an empty ${DB} is the normal case.
+#   2. TWES_TEST_DB_SUPERUSER_PASSWORD was named EXPLICITLY. A default cannot express consent.
+refusals=()
+
+if [[ "$SUPERUSER_PASSWORD_CONSENTED" -ne 1 ]]; then
+    refusals+=("TWES_TEST_DB_SUPERUSER_PASSWORD is not set to a non-empty value, so nothing here consents to overwriting the password of the cluster-global superuser role \"${SUPERUSER_ROLE}\".")
+fi
+
+# Fail CLOSED on a probe that cannot answer, and KEEP psql's own error text when it cannot. `set -e` does not
+# fire inside a command substitution feeding an assignment, so the status is not trusted -- but neither is the
+# output discarded on failure: a refusal reading only "probe failed" sends a reader hunting for the wrong cause,
+# which is the mistake this script's own two-cluster message was written to avoid. stderr is folded into the
+# capture so the refusal below can quote it verbatim.
+db_probe="$(psql --no-psqlrc -tA --set ON_ERROR_STOP=1 --set DB="$DB" <<'PROBE' 2>&1
+SELECT count(*) FROM pg_database WHERE datname = :'DB';
+PROBE
+)" && db_probe_ok=1 || db_probe_ok=0
+
+if [[ "$db_probe_ok" -eq 1 && "$db_probe" == '1' ]]; then
+    relation_probe="$(psql --no-psqlrc -tA --set ON_ERROR_STOP=1 --dbname "$DB" <<'PROBE' 2>&1
+SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+   AND n.nspname NOT LIKE 'pg_temp%' AND n.nspname NOT LIKE 'pg_toast_temp%';
+PROBE
+)" && relation_probe_ok=1 || relation_probe_ok=0
+
+    if [[ "$relation_probe_ok" -ne 1 || ! "$relation_probe" =~ ^[0-9]+$ ]]; then
+        refusals+=("could not count the relations in database \"${DB}\", so it cannot be shown to be a throwaway. psql said: ${relation_probe}")
+    elif [[ "$relation_probe" -ne 0 ]]; then
+        refusals+=("database \"${DB}\" already holds ${relation_probe} relation(s), so it is not a throwaway test database. This fixture's own suite drops everything it creates, so a non-empty ${DB} is somebody else's state.")
+    fi
+elif [[ "$db_probe_ok" -ne 1 || "$db_probe" != '0' ]]; then
+    refusals+=("could not determine whether database \"${DB}\" exists, so this cluster cannot be shown to be a throwaway. psql said: ${db_probe}")
+fi
+
+if [[ "${#refusals[@]}" -gt 0 ]]; then
+    printf '\n!! REFUSING TO PROVISION: this cannot be shown to be a throwaway test cluster.\n\n' >&2
+    printf '%s\n' "${refusals[@]}" | sed 's/^/   - /' >&2
+    printf '\n   Nothing was changed. This script sets the password of the cluster-global superuser role\n' >&2
+    printf '   "%s" in the SHARED pg_authid catalogue -- that reaches every database on this cluster,\n' "${SUPERUSER_ROLE}" >&2
+    printf '   including twes_in, and no re-run can restore the password it overwrites.\n\n' >&2
+    printf '   To consent, name the password explicitly:\n' >&2
+    printf '     sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=<password> \\\n' >&2
+    printf '       bash scripts/dev/provision-test-database.sh\n\n' >&2
+    printf '   api/phpunit.xml expects postgres/postgres by default, so on a throwaway cluster that is\n' >&2
+    printf '     sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres \\\n' >&2
+    printf '       bash scripts/dev/provision-test-database.sh\n\n' >&2
+    printf '   If %s is NOT empty and you meant to reprovision it, drop it first, or point this script\n' "${DB}" >&2
+    printf '   elsewhere with TWES_TEST_DB_NAME.\n\n' >&2
+    exit 1
+fi
+
+# Every PASSWORD, and the superuser's role NAME, are passed as psql variables and written below as :'VAR'
+# (a literal) or :"VAR" (an identifier), so psql does the quoting and a value containing a quote character
+# cannot terminate the statement it sits in. Shell-interpolating a password into '...' means a single
+# apostrophe in it changes the statement rather than the password.
+#
+# WHAT IS STILL SHELL-INTERPOLATED, and why: the role NAMES of the roles this script creates. They appear in
+# the DO block below, and psql does NOT substitute variables inside a dollar-quoted body -- verified, not
+# assumed. Making those escape-safe means replacing the DO block with `SELECT format('CREATE ROLE %I ...')
+# ... \gexec`, which is a rewrite of the block rather than a change to it, so it is left here deliberately and
+# named rather than described as impossible. Note the consequence is bounded: those names come from the
+# operator's own environment on a fixture they are already running as a superuser, so this is a robustness
+# defect -- a name with a quote in it produces a wrong statement -- not a privilege boundary.
+psql --no-psqlrc --set ON_ERROR_STOP=1 \
+    --set SUPERUSER_ROLE="$SUPERUSER_ROLE" \
+    --set SUPERUSER_PASSWORD="$SUPERUSER_PASSWORD" \
+    --set RUNTIME_PASSWORD="$RUNTIME_PASSWORD" \
+    --set OWNER_PASSWORD="$OWNER_PASSWORD" \
+    --set BYPASS_PASSWORD="$BYPASS_PASSWORD" \
+    --set MEMBER_PASSWORD="$MEMBER_PASSWORD" \
+    --set REPLICATOR_PASSWORD="$REPLICATOR_PASSWORD" \
+    --set MIXED_CASE_PASSWORD="$MIXED_CASE_PASSWORD" <<SQL
 -- CREATE ROLE has no IF NOT EXISTS, so each one is guarded. ALTER after CREATE rather than instead of
 -- it, so that re-running also repairs a role whose attributes drifted.
 DO \$\$ BEGIN
@@ -168,27 +282,29 @@ END \$\$;
 -- pg_basebackup. Round 5 demonstrated that the "re-running repairs a drifted role" promise above was false
 -- for exactly this attribute.
 ALTER ROLE ${RUNTIME_ROLE} WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCREATEROLE NOCREATEDB
-    PASSWORD '${RUNTIME_PASSWORD}';
+    PASSWORD :'RUNTIME_PASSWORD';
 ALTER ROLE ${OWNER_ROLE}   WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCREATEROLE CREATEDB
-    PASSWORD '${OWNER_PASSWORD}';
+    PASSWORD :'OWNER_PASSWORD';
 ALTER ROLE ${BYPASS_ROLE}  WITH LOGIN NOSUPERUSER BYPASSRLS NOREPLICATION NOCREATEROLE NOCREATEDB
-    PASSWORD '${BYPASS_PASSWORD}';
+    PASSWORD :'BYPASS_PASSWORD';
 ALTER ROLE ${MEMBER_ROLE}  WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCREATEROLE NOCREATEDB
-    PASSWORD '${MEMBER_PASSWORD}';
+    PASSWORD :'MEMBER_PASSWORD';
 -- REPLICATION and nothing else. Note it is NOT BYPASSRLS and NOT superuser: that is the whole point, since
 -- both of those were already detected and this one was not.
 ALTER ROLE ${REPLICATOR_ROLE} WITH LOGIN NOSUPERUSER NOBYPASSRLS REPLICATION NOCREATEROLE NOCREATEDB
-    PASSWORD '${REPLICATOR_PASSWORD}';
+    PASSWORD :'REPLICATOR_PASSWORD';
 -- The superuser's password, so the REQUIRED credential in api/phpunit.xml can actually authenticate. Only the
--- password is touched: no attribute of the superuser role is altered.
-ALTER ROLE "${SUPERUSER_ROLE}" WITH PASSWORD '${SUPERUSER_PASSWORD}';
+-- password is touched: no attribute of the superuser role is altered. Reached only with explicit consent --
+-- see THE THROWAWAY-CLUSTER CONSENT GUARD above; this is the one statement that leaves ${DB} and the one a
+-- re-run cannot undo.
+ALTER ROLE :"SUPERUSER_ROLE" WITH PASSWORD :'SUPERUSER_PASSWORD';
 
 ALTER ROLE ${TRUNCATOR_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${PROBE_OWNER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${UNSETTABLE_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 -- Restricted exactly like the runtime role: the point is the NAME, not extra privilege.
 ALTER ROLE "${MIXED_CASE_ROLE}" WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCREATEROLE
-    NOCREATEDB PASSWORD '${MIXED_CASE_PASSWORD}';
+    NOCREATEDB PASSWORD :'MIXED_CASE_PASSWORD';
 
 -- The two grants that make the reachability tests possible, and ONLY on the probe role. Granting
 -- either of these to ${RUNTIME_ROLE} is the misconfiguration the suite exists to detect.
@@ -273,4 +389,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE ${OWNER_ROLE} IN SCHEMA public
     GRANT USAGE, SELECT ON SEQUENCES TO ${RUNTIME_ROLE};
 SQL
 
+# The superuser is named here, not only in the guard above. It is the one role this script changes that it did
+# not create and that lives outside ${DB}, so a summary listing only the database and the runtime role leaves
+# the cluster-global change with no trace in the output at all -- which is how an overwritten operator password
+# becomes undiagnosable.
 echo "provision-test-database: OK — ${DB} owned by ${OWNER_ROLE}; ${RUNTIME_ROLE} is a restricted non-owner."
+echo "provision-test-database: the PASSWORD of cluster-global superuser role \"${SUPERUSER_ROLE}\" was OVERWRITTEN (shared pg_authid — this reaches every database on this cluster, not just ${DB})."
