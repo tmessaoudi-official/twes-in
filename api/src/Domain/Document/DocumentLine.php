@@ -53,9 +53,18 @@ final readonly class DocumentLine
     /**
      * Integer digits, matching `Money::MAX_INTEGER_DIGITS` deliberately.
      *
-     * A quantity times a unit price must stay inside `Money`'s own magnitude, and a quantity that alone exceeds
-     * what an amount can hold cannot produce a representable line net — so the refusal belongs here, where the
-     * message can name the quantity, rather than surfacing later as an unrepresentable amount.
+     * **This bound alone is NOT sufficient, and the sentence that used to sit here claiming it was is the reason
+     * round 15 filed a P1.** It read: "a quantity that alone exceeds what an amount can hold cannot produce a
+     * representable line net — so the refusal belongs here". False, and in the direction that matters:
+     * `999999999999999` is accepted at exactly this bound, and multiplied by a unit price of `2.000` it gives
+     * `1999999999999998.000` — SIXTEEN integer digits. `Invoice::issue()` computes nothing, so the invoice was
+     * issued, its number consumed permanently and its state frozen, and `totals()` then raised forever;
+     * `cancel()` did not help, so the audit record could never be rendered.
+     *
+     * That is verbatim the defect rounds 5 and 6 closed for `ProductPricing`, whose own docblock states the
+     * remedy in the words this one ignored: **matching two bounds says nothing about their product.** So the
+     * PRODUCT is checked too — see the constructor. This constant stays, because refusing an absurd quantity
+     * with a message about the quantity is still better than one about an amount, but it is the cheap half.
      */
     public const int MAX_INTEGER_DIGITS = 15;
     /** Canonical decimal string. Never a float — see the constructor's float arm for why the union permits one. */
@@ -136,6 +145,37 @@ final readonly class DocumentLine
                 $quantity,
                 Decimal::integerDigits($quantity),
                 self::MAX_INTEGER_DIGITS,
+            ));
+        }
+
+        // **THE PRODUCT, not just the two factors.** Round 15 found an invoice ISSUED — number consumed
+        // permanently, state frozen — whose `totals()` then raised forever, because the two bounds above were
+        // each satisfied while `quantity × unitNet` was not representable. `Invoice::issue()` computes no
+        // figures, so nothing else stood between a legal document number and a document that can never be
+        // rendered, and `cancel()` could not undo it.
+        //
+        // `RoundingMode::Up` is away-from-zero, so it yields the LARGEST magnitude any mode can produce for this
+        // product — checking it therefore proves the line net is representable under EVERY mode the caller may
+        // later pass to `net()`, which is what makes this a complete check rather than one with a carry edge left
+        // open (a product at exactly 15 integer digits with a `.9995` tail rounds up to 16).
+        //
+        // Checked HERE rather than in `net()` because `net()` is called after issuing, and by then the number is
+        // spent. The whole point is that an unrenderable document must be unconstructable.
+        $exactProduct = Decimal::multiplyExact($quantity, $unitNet->amount());
+        $atCurrencyScale = Decimal::rescale($exactProduct, $unitNet->currency()->scale(), RoundingMode::Up);
+
+        if (null === $atCurrencyScale
+            || Decimal::integerDigits($atCurrencyScale) > Money::MAX_INTEGER_DIGITS
+        ) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Quantity "%s" times unit price %s gives %s, which has more integer digits than an amount can '
+                . 'hold (%d). Both factors are individually within bounds — matching two bounds says nothing '
+                . 'about their product — and refusing it here is what stops an invoice being ISSUED, its number '
+                . 'consumed permanently, and its totals raising forever afterwards.',
+                $quantity,
+                $unitNet->amount(),
+                $exactProduct,
+                Money::MAX_INTEGER_DIGITS,
             ));
         }
 

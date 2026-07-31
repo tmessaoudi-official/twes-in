@@ -691,12 +691,16 @@ final class DocumentTotalsTest extends TestCase
         );
         self::assertSame('1.000', $atScale->net(RoundingMode::HalfUp)->amount());
 
+        // A NON-ZERO unit price, because the version of this assertion written at round 14 used `0.000` — so the
+        // product was zero and the case could not see that the two bounds together admit an unrepresentable line
+        // net. A test paired with a zero factor does not exercise a multiplication. Unit price `1.000` keeps the
+        // product at exactly the accepted magnitude.
         $atDigits = new DocumentLine(
             str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS),
-            Money::of('0.000', $tnd),
+            Money::of('1.000', $tnd),
             Rate::zero(),
         );
-        self::assertSame('0.000', $atDigits->net(RoundingMode::HalfUp)->amount());
+        self::assertSame(str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS) . '.000', $atDigits->net(RoundingMode::HalfUp)->amount());
     }
 
     /**
@@ -733,6 +737,77 @@ final class DocumentTotalsTest extends TestCase
 
         Invoice::draft(Currency::of('TND'))
             ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.10', Currency::of('EUR'))));
+    }
+
+    /**
+     * **THE PRODUCT OF TWO IN-BOUNDS FACTORS IS REFUSED WHEN IT OVERFLOWS — round 15's P1.**
+     *
+     * `999999999999999` is accepted at exactly `MAX_INTEGER_DIGITS`, and `2.000 TND` is an ordinary unit price;
+     * their product has SIXTEEN integer digits. `Invoice::issue()` computes no figures, so before this guard the
+     * invoice was issued, its number consumed permanently and its state frozen, and `totals()` raised forever —
+     * `cancel()` included, so the audit record could never be rendered.
+     *
+     * Verbatim the defect rounds 5 and 6 closed for `ProductPricing`: **matching two bounds says nothing about
+     * their product.** Reinstalled at the next door, and the round-14 docblock actively asserted it could not
+     * happen.
+     */
+    public function testTwoInBoundsFactorsWhoseProductOverflowsAreRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('more integer digits than an amount can hold');
+
+        new DocumentLine(
+            str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS),
+            Money::of('2.000', Currency::of('TND')),
+            Rate::zero(),
+        );
+    }
+
+    /**
+     * And the document can never be ISSUED in that state — asserted through the aggregate, not only the line.
+     *
+     * The line guard is the fix; this is the consequence that made it a P1 rather than a P3, and it is asserted
+     * separately because a future refactor could move the check somewhere `Invoice` does not reach.
+     */
+    public function testAnInvoiceCannotBeIssuedWithAnUnrepresentableLineNet(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        Invoice::draft(Currency::of('TND'))->withLine(new DocumentLine(
+            str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS),
+            Money::of('2.000', Currency::of('TND')),
+            Rate::zero(),
+        ));
+    }
+
+    /**
+     * **The two quantity bounds have COMMITTED MINIMA**, because every refusal case is generated from the
+     * constants — so raising either silently moves its own case and the suite stays green.
+     *
+     * Round 15 proved it: `MAX_SCALE` 6→7, `MAX_INTEGER_DIGITS` 15→16 and 15→**3** all survived with 523/523
+     * green, and the last of those refuses a quantity of `1000` — an ordinary bulk line. That is verbatim round
+     * 4's `Rate::MAX_INTEGER_DIGITS = 3` P1. CLAUDE.md records the remedy for exactly this shape under
+     * `test-gates.sh`: "committed minimum rule-set SIZES, because generating a case from the data means deleting
+     * an entry deletes its own case".
+     *
+     * `MAX_INTEGER_DIGITS` is asserted EQUAL to `Money`'s rather than merely bounded, because the docblock's
+     * stated reason for the value is that it matches — and nothing enforced that either.
+     */
+    public function testTheQuantityBoundsHaveNotDrifted(): void
+    {
+        self::assertGreaterThanOrEqual(6, DocumentLine::MAX_SCALE, 'A quantity needs at least 6 decimals: '
+            . 'hours, kilograms, cubic metres. Lowering this refuses ordinary measures.');
+        self::assertSame(
+            Money::MAX_INTEGER_DIGITS,
+            DocumentLine::MAX_INTEGER_DIGITS,
+            'MAX_INTEGER_DIGITS is documented as matching Money deliberately; nothing enforced it. Lowering it '
+            . 'refuses ordinary bulk quantities, and raising it admits products Money cannot hold.',
+        );
+
+        // And an ORDINARY quantity is accepted, which is the assertion a lowered bound actually breaks. Generated
+        // cases cannot catch that: they move with the constant.
+        $line = new DocumentLine('1000', Money::of('12.000', Currency::of('TND')), Rate::zero());
+        self::assertSame('12000.000', $line->net(RoundingMode::HalfUp)->amount());
     }
 
 }
