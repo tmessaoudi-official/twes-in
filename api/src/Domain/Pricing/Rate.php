@@ -141,15 +141,37 @@ final readonly class Rate
         //
         // `PERCENTAGE_SCALE` is the exact bound rather than an arbitrary one: dividing by 100 shifts the point
         // two places, so a percentage holds exactly `FRACTION_SCALE - 2` decimals, and this class already names
-        // that number. Checking it here also means the null arm below stays reachable for nothing — it is kept
-        // because `divide()` may legitimately return null for a value this guard accepts, and a `?? throw` would
-        // be a claim about unreachability that the next edit could quietly falsify.
-        if (Decimal::scaleOf($value) > self::PERCENTAGE_SCALE) {
+        // that number.
+        //
+        // **NORMALISED THROUGH `rescale()` RATHER THAN MEASURED WITH `scaleOf()`, WHICH ROUND 13 GOT WRONG.**
+        // `scaleOf()` counts the decimals that are WRITTEN; the question is how many are SIGNIFICANT. So round
+        // 13's version refused `19.00000000000` — a value needing *zero* decimals beyond `0.19` — while its
+        // sibling `fromFraction()` accepted a scale-20 spelling of the same rate, and `Money::of()` documents
+        // trailing zeros as losing nothing ("`0.1000` in TND is `0.100`"). It also told the caller the value
+        // "needs more than 12 decimal places", which was simply untrue of it. Round 14 found it as a REGRESSION
+        // against `da4d731`, reachable from any client that formats a rate field with `toStringAsFixed`.
+        //
+        // Two things have to happen in this order, and doing only the first leaves the 500 in place:
+        //   1. refuse a value that cannot be held at `PERCENTAGE_SCALE` WITHOUT rounding — `Unnecessary` is what
+        //      makes "significant" the test, since dropping trailing zeros needs no rounding;
+        //   2. divide the NORMALISED string, never the original. `Decimal::divide()`'s derived working scale is
+        //      `max(scaleOf(dividend), scale + scaleOf(divisor)) + 1`, so a legitimate `19.` + 2000 zeros passes
+        //      step 1 and then asks for a working scale of 2001 against `MAX_SCALE` of 1000 — the same
+        //      `\LogicException`-instead-of-`InvalidRate` fault, one door further along.
+        //      [Verified: dividing the raw value raises "needs an internal working scale of 2001"; dividing the
+        //      normalised `19.0000000000` returns `0.190000000000`.]
+        $normalised = Decimal::rescale($value, self::PERCENTAGE_SCALE, RoundingMode::Unnecessary);
+
+        if (null === $normalised) {
             throw InvalidRate::tooPrecise($value);
         }
 
-        $fraction = Decimal::divide($value, '100', self::FRACTION_SCALE, RoundingMode::Unnecessary);
+        $fraction = Decimal::divide($normalised, '100', self::FRACTION_SCALE, RoundingMode::Unnecessary);
 
+        // DEFENSIVE, and now honestly so: `$normalised` holds exactly `PERCENTAGE_SCALE` decimals, so dividing
+        // it by 100 at `FRACTION_SCALE` is always exact and this arm is unreachable today. Kept rather than
+        // replaced by `?? throw` because a `?? throw` asserts unreachability, and the next edit to either
+        // constant could falsify that silently — whereas this arm just keeps reporting a domain error.
         if (null === $fraction) {
             throw InvalidRate::tooPrecise($value);
         }

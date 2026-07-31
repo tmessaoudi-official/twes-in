@@ -19,8 +19,10 @@ use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\DocumentNumber;
 use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\DocumentType;
+use Twes\Domain\Document\Exception\DocumentCannotBeIssued;
 use Twes\Domain\Document\Exception\DocumentIsNotMutable;
 use Twes\Domain\Document\Exception\IllegalTransition;
+use Twes\Domain\Document\Exception\NumberTypeMismatch;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\NumberPattern;
@@ -227,7 +229,10 @@ final class InvoiceTest extends TestCase
     {
         $number = new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 1);
 
-        $this->expectException(\DomainException::class);
+        // The NAMED type, not the shared `\DomainException` base this asserted until the two causes were split.
+        // `NumberTypeMismatch` is a `\LogicException` and no longer a `\DomainException`, so this assertion is
+        // now what pins the 422-versus-500 distinction rather than merely observing that something was thrown.
+        $this->expectException(DocumentCannotBeIssued::class);
         $this->expectExceptionMessageMatches('/no lines|empty/i');
 
         self::draft()->issue($number);
@@ -249,8 +254,16 @@ final class InvoiceTest extends TestCase
             new DocumentLine('1', Money::of('10.000', $tnd), Rate::zero()),
         );
 
-        $this->expectException(\DomainException::class);
-        $this->expectExceptionMessageMatches('/DeliveryNote|type/i');
+        // A `\LogicException`, so ASSERTED AS NOT BEING A `\DomainException` as well as being the named type.
+        // Being handed another type's number is our own allocation fault, never something a client can cause,
+        // and the negative half is what stops the split silently collapsing back into one 422.
+        self::assertNotInstanceOf(\DomainException::class, NumberTypeMismatch::between(
+            DocumentType::Invoice,
+            new DocumentNumber(DocumentType::DeliveryNote, NumberPattern::padded(7), 41),
+        ));
+
+        $this->expectException(NumberTypeMismatch::class);
+        $this->expectExceptionMessageMatches('/delivery_note/');
 
         // Sequences are per type and the digits alone are ambiguous — which is why DocumentNumber carries its
         // type. An invoice must refuse a delivery note's number outright rather than storing it.

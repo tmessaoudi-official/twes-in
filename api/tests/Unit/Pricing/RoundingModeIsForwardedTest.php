@@ -17,6 +17,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentCalculator;
 use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\InvalidMoneyAmount;
@@ -260,6 +261,92 @@ final class RoundingModeIsForwardedTest extends TestCase
             RoundingMode::HalfUp, '0.002',
             RoundingMode::Down, '0.001',
         ];
+
+        // THE AGGREGATE, which round 14 found missing from a provider whose own charter says EVERY entry point.
+        // It is the entry point an Application or HTTP handler actually calls, and BOTH of its parameters were
+        // discardable with the whole suite green: hardcoding `RoundingMode::Down` here changed 0.005 to 0.004 on
+        // a real two-line document. The kernel's own forwarding was covered; the aggregate's was not, which is
+        // the "guard on one of a pair of doors" shape this repo records more often than any other.
+        yield 'Invoice::totals' => [
+            static fn(RoundingMode $m): string => Invoice::draft($tnd)
+                ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')))
+                ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')))
+                ->totals(VatRoundingPoint::PerRateGroup, $m)
+                ->vatTotal()->amount(),
+            // 0.026 x 19% = 0.00494, a rounding decision at the millime.
+            RoundingMode::HalfUp, '0.005',
+            RoundingMode::Down, '0.004',
+        ];
+    }
+
+    /**
+     * **THE PROVIDER MAY NOT DRIFT FROM THE CODE AGAIN.** Derived by reflection, because round 13 added two
+     * entry points after finding them absent from a provider whose docblock already said "EVERY", and round 14
+     * then found a third absent for exactly the same reason: a hand-listed inventory is a claim about the code
+     * that nothing checks.
+     *
+     * So the inventory is COMPUTED — every public method in `Domain/` taking a `RoundingMode` — and compared
+     * against the provider's keys. Adding such a method without a forwarding case now fails here rather than
+     * being noticed a round later. This is the same remedy `test-gates.sh` uses for its own rule sets and that
+     * `InvoiceTest::testTheMutatorInventoryIsComplete` uses for the mutators.
+     */
+    public function testEveryRoundingModeEntryPointHasAForwardingCase(): void
+    {
+        $covered = [];
+
+        foreach (array_keys(iterator_to_array(self::entryPointsTakingARoundingMode())) as $key) {
+            // Provider keys carry a parenthetical for the two DocumentCalculator arms; the method is the stem.
+            $covered[] = trim(explode('(', (string) $key)[0]);
+        }
+
+        $expected = [];
+
+        foreach (self::domainClassesUnder(\dirname(__DIR__, 3) . '/src/Domain') as $class) {
+            foreach (new \ReflectionClass($class)->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+                foreach ($method->getParameters() as $parameter) {
+                    $type = $parameter->getType();
+
+                    if ($type instanceof \ReflectionNamedType && RoundingMode::class === $type->getName()) {
+                        $expected[] = new \ReflectionClass($class)->getShortName() . '::' . $method->getName();
+                    }
+                }
+            }
+        }
+
+        $missing = array_values(array_diff(array_unique($expected), array_unique($covered)));
+
+        self::assertSame([], $missing, \sprintf(
+            'These take a RoundingMode and have no forwarding case: %s. The provider\'s charter is EVERY '
+            . 'entry point — add a case, or the mode is discardable with the suite green.',
+            implode(', ', $missing),
+        ));
+    }
+
+    /**
+     * @return list<class-string>
+     */
+    private static function domainClassesUnder(string $directory): array
+    {
+        $classes = [];
+        /** @var \SplFileInfo $file */
+        foreach (new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($directory)) as $file) {
+            if ('php' !== $file->getExtension()) {
+                continue;
+            }
+
+            $relative = substr($file->getPathname(), \strlen($directory) + 1, -4);
+            $class = 'Twes\\Domain\\' . str_replace('/', '\\', $relative);
+
+            // Interfaces and enums have no forwarding behaviour of their own; `class_exists` with autoload keeps
+            // this honest about what actually loads rather than trusting the path-to-class convention.
+            if (class_exists($class) && !new \ReflectionClass($class)->isAbstract()) {
+                $classes[] = $class;
+            }
+        }
+
+        sort($classes);
+
+        return $classes;
     }
 
     /** @return iterable<string, array{callable}> */

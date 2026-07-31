@@ -48,6 +48,10 @@
         <source>document.illegal_transition</source>
         <target>This document cannot move from {from} to {to}. A correction is a new document, never an edit.</target>
       </trans-unit>
+      <trans-unit id="15" resname="document.empty_cannot_be_issued">
+        <source>document.empty_cannot_be_issued</source>
+        <target>This invoice has no lines, so it cannot be issued. Issuing permanently consumes a document number that is never reused. Add a line, or delete the draft.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>This document is {state} and can no longer be changed. Cancel it and issue a new one with the correct figures.</target>

@@ -49,6 +49,10 @@
         <source>document.illegal_transition</source>
         <target>لا يمكن نقل هذه الوثيقة من {from} إلى {to}. التصحيح وثيقة جديدة، وليس تعديلاً.</target>
       </trans-unit>
+      <trans-unit id="15" resname="document.empty_cannot_be_issued">
+        <source>document.empty_cannot_be_issued</source>
+        <target>هذه الفاتورة لا تحتوي على أي بند، لذلك لا يمكن إصدارها. الإصدار يستهلك نهائياً رقم وثيقة لا يُعاد استخدامه أبداً. أضف بنداً، أو احذف المسوّدة.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>هذه الوثيقة {state} ولم يعد من الممكن تغييرها. ألغها وأصدر وثيقة جديدة بالمبالغ الصحيحة.</target>

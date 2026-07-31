@@ -29,25 +29,43 @@ namespace Twes\Domain\Document;
  * names both. Two documents sharing digits across types are not equal, which is what stops a delivery note
  * being paid against an invoice.
  *
- * **THE IDENTITY IS ACTUALLY `(tenant, type, sequence)` AND THIS CLASS CARRIES TWO OF THE THREE.** Round 13
- * found it, and the gap is real rather than theoretical: the sequence is per-TENANT, so tenant A's Invoice 41
- * and tenant B's Invoice 41 are different documents that {@see self::equals()} reports as equal and
- * {@see self::toString()} renders identically. Row-level security stops a single *scoped* query holding both —
- * but the tenant-LESS paths this codebase deliberately supports do not: `TenantContext`'s installation and
- * global-health-check cases, and `assertStillBoundTo()`'s tenant-less branch, which exists precisely because
- * "the application believes it holds NO tenant, so it expects to see every tenant's rows". A dedup, a batch
- * import or a cross-tenant report over that set conflates two tenants' documents by this class's own equality.
+ * **THE IDENTITY IS `(tenant, type, sequence)` AND THIS CLASS DELIBERATELY CARRIES TWO OF THE THREE.** The
+ * observation is round 13's and it is correct: the sequence is per-TENANT, so tenant A's Invoice 41 and tenant
+ * B's Invoice 41 are different documents that {@see self::equals()} reports as equal and {@see self::toString()}
+ * renders identically. Round 13 prescribed moving `TenantId` into `Domain/` so the type could carry all three.
+ * **Round 14 REVERSED that prescription** — the observation stands, the remedy was wrong, and three things say
+ * so:
  *
- * **Why it is not simply fixed here, stated rather than glossed:** `TenantId` lives in
- * `Twes\Infrastructure\Tenancy`, so referencing it from `Domain/` would be an OUTWARD dependency — a P0 by
- * `layer-dependencies.php`. The correct fix is to move `TenantId` into `Domain/`, because a tenant identifier is
- * a domain concept that every aggregate is scoped by and it sits in `Infrastructure/` only because tenancy
- * arrived as an RLS implementation detail. That is a wave-boundary change touching the tenancy seam, not a
- * findings-closure edit, so it is recorded as a **Wave 1 obligation** in `build-waves.plan.md`.
+ *   1. **It contradicted a standing invariant nobody re-read.** `TenantId`'s own docblock already rules that it
+ *      lives in `Infrastructure/` *on purpose* and calls a `company_id` reaching `Domain/` a P0 for
+ *      `tenancy-security-reviewer`. Round 13's note was written against that without noticing it — precisely the
+ *      "two contradictory statements and no way to tell which is current" shape CLAUDE.md § Gotchas records
+ *      three times in one session.
+ *   2. **It would end the database-per-tenant mode.**
+ *      {@see \Twes\Infrastructure\Tenancy\TenantIsolationStrategy} documents two modes chosen by configuration,
+ *      and under `database` there is no tenant column anywhere: the tenant *is* the connection. A `TenantId`
+ *      inside a domain value object would have nothing to bind to, so the seam that makes the two modes
+ *      interchangeable would stop being a seam.
+ *   3. **The prescription does not stop here, and that is the tell.** If a tenant must sit inside a value object
+ *      for its equality to be safe in a cross-tenant collection, it must equally sit inside `Invoice`, inside
+ *      every `DocumentLine` and inside `Money` — any of them can land in that same collection. A field that
+ *      every type needs is not a field; it is **ambient context**, which is exactly what tenancy is and exactly
+ *      where `Infrastructure/` holds it.
  *
- * **Until then, the constraint is a documented one and that is weaker than the type-carrying approach used for
- * TYPE — deliberately and visibly so:** {@see self::equals()} and {@see self::toString()} are valid only
- * WITHIN a bound tenant. No cross-tenant collection may key, dedup or compare on them.
+ * **So the hazard is real and is closed where it lives, which is not here.** The dangerous act is not comparing
+ * two numbers; it is *materialising a collection spanning two tenants in the first place*. The tenant-less paths
+ * this codebase deliberately supports — `TenantContext`'s installation and global-health-check cases, and
+ * `assertStillBoundTo()`'s tenant-less branch, which exists because "the application believes it holds NO
+ * tenant, so it expects to see every tenant's rows" — are the only way to reach one. The rule is therefore a
+ * **boundary** rule: *no tenant-less path may hydrate a domain aggregate.* It is owed by Wave 1's repositories,
+ * recorded in `build-waves.plan.md`, and it is strictly stronger than a tenant field would be, because it also
+ * stops the cross-tenant total, the cross-tenant PDF and the cross-tenant export that no amount of value-object
+ * equality would have caught.
+ *
+ * Two layers stand behind it: row-level security, which makes a *scoped* query incapable of returning both; and
+ * a composite unique constraint on `(company_id, type, number)`, a Wave 1 schema obligation asserted by
+ * `scripts/gates/schema-tenancy.php`. Within a bound tenant — every ordinary path — {@see self::equals()} and
+ * {@see self::toString()} are exact.
  */
 final readonly class DocumentNumber
 {
@@ -105,9 +123,9 @@ final readonly class DocumentNumber
      * Equal only when the TYPE and the sequence both match — **within one tenant.**
      *
      * See the class docblock: the sequence is per-tenant, so this returns true for tenant A's Invoice 41 and
-     * tenant B's Invoice 41. Valid inside a bound tenant, which is every ordinary path; NOT valid in a
-     * tenant-less or cross-tenant collection, and the type cannot express that until `TenantId` moves into
-     * `Domain/` (a Wave 1 obligation).
+     * tenant B's Invoice 41. Valid inside a bound tenant, which is every ordinary path. It is NOT valid across
+     * tenants, and by design that is not this type's problem to solve: a collection spanning two tenants is the
+     * defect, and Wave 1's boundary rule — no tenant-less path may hydrate an aggregate — is what forbids one.
      *
      * Comparing digits alone is how a delivery note gets paid against an invoice. The pattern is deliberately
      * NOT compared: `0000041` and `041` are the same document rendered under two configurations, and a

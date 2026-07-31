@@ -91,15 +91,6 @@ final readonly class DocumentLine
             ));
         }
 
-        // AND THE UNIT PRICE, which is the SAME rule through the other door. Round 13 found the quantity
-        // guarded and the price not, so `new DocumentLine('1', Money::of('-5.000', $tnd), ...)` produced a
-        // line net of -5.000 and a document total of -5.950 — the third distinct route into the state the
-        // 2026-07-30 ruling refuses. Round 12 closed the second (`fromNetPrice($cost, -5.000)`) and recorded
-        // the lesson; `DocumentLine` takes a raw `Money`, so `ProductPricing`'s two guards are bypassed
-        // entirely and a third guard is needed rather than a third comment about the first two.
-        //
-        // A negative-total document is a CREDIT NOTE — EN 16931 type code 381, not 380 — which is a
-        // tax-document distinction rather than a presentation one.
         // A NEGATIVE VAT RATE. `Rate` permits negatives and is right to — it also serves as the PROFIT rate,
         // where "selling below cost" is a real commercial decision (clearance, a loss leader). But no
         // jurisdiction has a negative VAT rate, and `DocumentLine` performed no range check on the rate it was
@@ -115,6 +106,20 @@ final readonly class DocumentLine
             ));
         }
 
+        // AND THE UNIT PRICE, which is the SAME rule through the other door. Round 13 found the quantity
+        // guarded and the price not, so `new DocumentLine('1', Money::of('-5.000', $tnd), ...)` produced a
+        // line net of -5.000 and a document total of -5.950 — the third distinct route into the state the
+        // 2026-07-30 ruling refuses. Round 12 closed the second (`fromNetPrice($cost, -5.000)`) and recorded
+        // the lesson; `DocumentLine` takes a raw `Money`, so `ProductPricing`'s two guards are bypassed
+        // entirely and a third guard is needed rather than a third comment about the first two.
+        //
+        // A negative-total document is a CREDIT NOTE — EN 16931 type code 381, not 380 — which is a
+        // tax-document distinction rather than a presentation one.
+        //
+        // MOVED HERE at round 14. It sat ABOVE the negative-VAT-rate comment that round 13 inserted, so the
+        // paragraph arguing the unit-price rule read as a preamble to the RATE guard and the unit-price guard
+        // read as undocumented. In a codebase where the comment is the documentation, a rationale attached to
+        // the wrong guard is the artifact that gets read once and believed.
         if ($unitNet->isNegative()) {
             throw new \InvalidArgumentException(\sprintf(
                 'Unit price %s is negative. A negative line is how a credit note gets expressed in some '

@@ -234,6 +234,15 @@ Rules that follow, each from a developer requirement:
    `0000041` can both exist. That is normal and correct on a printed document, where the title
    disambiguates — but any internal reference, search result or API payload must name the document
    **type alongside the number**, never the number alone.
+   *And the sequence is **GAPLESS**, which decides its implementation* (round 14, 2026-07-31): a missing number
+   is what a tax authority reads as a suppressed sale, and France and Tunisia both audit for it. So a PostgreSQL
+   `SEQUENCE` / `nextval()` is **forbidden** — it is deliberately non-transactional, so a rolled-back issue burns
+   its number permanently — as are `SERIAL`, `IDENTITY` and any `CACHE n`. The counter is a per-`(tenant, type)`
+   **row** taken under `SELECT ... FOR UPDATE` in the same transaction that persists the document, so a rollback
+   returns the number; issues for one `(tenant, type)` therefore serialise, which is the accepted cost. Numbers
+   are also allocated at **issue**, never at draft, or every abandoned draft leaves a hole. The contract is
+   stated by `Domain/Document/DocumentNumberSequence` and enforced as an executable test class,
+   `DocumentNumberSequenceContract`, that every adapter must extend.
 2. **Prices are snapshotted per delivery-note line.** The same product may carry a different price on a
    later delivery note — the price is captured at issue time, never looked up from the product when the
    invoice is built.

@@ -43,6 +43,10 @@
         <source>document.illegal_transition</source>
         <target>Ce document ne peut pas passer de {from} à {to}. Une correction est un nouveau document, jamais une modification.</target>
       </trans-unit>
+      <trans-unit id="15" resname="document.empty_cannot_be_issued">
+        <source>document.empty_cannot_be_issued</source>
+        <target>Cette facture n'a aucune ligne et ne peut donc pas être émise. L'émission consomme définitivement un numéro de document, qui n'est jamais réutilisé. Ajoutez une ligne, ou supprimez le brouillon.</target>
+      </trans-unit>
       <trans-unit id="11" resname="document.not_mutable">
         <source>document.not_mutable</source>
         <target>Ce document est {state} et ne peut plus être modifié. Annulez-le et émettez-en un nouveau avec les montants corrects.</target>

@@ -2602,6 +2602,49 @@ final class TenantIsolationTest extends TestCase
                 . 'the owner\'s rights, it rewrites the binding.',
             );
             self::assertStringContainsString($function, $stillCaught->getMessage());
+
+            // AND NOW ALSO `SECURITY DEFINER`, WHICH IS THE COMBINATION ROUND 14 FOUND OPEN AS A **P0**.
+            // The two halves above cover `prosecdef = false` with an unassumable owner and then with an
+            // assumable one. The third combination — pinning AND `SECURITY DEFINER` AND an assumable owner —
+            // was reported CLEAN, and a connection bound to tenant B read tenant A's rows through the function
+            // while its own direct read was correctly scoped. The filter read
+            // `NOT prosecdef OR NOT <owner assumable>`, so both disjuncts were false and the row was dropped.
+            //
+            // The failure is INVERTED, which is why no reviewer found it by reading the happy path: making the
+            // function MORE dangerous is what silenced the check. That is also why this assertion belongs here
+            // rather than in a case of its own — the mutation is one `ALTER`, and keeping it beside the other
+            // two halves is what makes the missing third obvious next time.
+            $granter->exec('ALTER FUNCTION ' . $function . '() SECURITY DEFINER');
+
+            $shapeNow = $this->connection->query(
+                'SELECT prosecdef, pg_has_role(current_user, proowner, \'SET\') AS owner_assumable '
+                . 'FROM pg_proc WHERE proname = \'' . $function . '\'',
+            );
+            self::assertNotFalse($shapeNow);
+            /** @var array{prosecdef: bool|string, owner_assumable: bool|string} $now */
+            $now = $shapeNow->fetch(\PDO::FETCH_ASSOC);
+            self::assertContains($now['prosecdef'], [true, 't', '1'], 'must now BE security definer');
+            self::assertContains(
+                $now['owner_assumable'],
+                [true, 't', '1'],
+                'and its owner must still be assumable, or this is the same as the half above.',
+            );
+
+            $definerCaught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $definerCaught = $exception;
+            }
+
+            self::assertNotNull(
+                $definerCaught,
+                'A function that pins the tenant setting must be refused even when it is ALSO security '
+                . 'definer with an assumable owner. Reported CLEAN until round 14, with a reproduced '
+                . 'cross-tenant read: adding SECURITY DEFINER made the check stop seeing it.',
+            );
+            self::assertStringContainsString($function, $definerCaught->getMessage());
         } finally {
             // Ownership may have moved to the runtime role, which the superuser can still drop.
             $granter->exec('DROP FUNCTION IF EXISTS ' . $function . '()');

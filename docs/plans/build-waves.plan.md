@@ -229,6 +229,25 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   any Composer, npm or pub *package*. This closes R7-1: Noto Sans Arabic is vendored, referenced by
   `ThemeData.fontFamilyFallback`, shipped with its licence text, and verified against the binary's own
   OpenType `name` table. See § "R7-1 closed" for the three further defects the work uncovered.
+- [2026-07-31 10:20] AGREED: **`TenantId` STAYS in `Infrastructure/` — round 13's "move it into `Domain/`"
+  obligation is REVERSED, and its observation kept.** Tenancy is ambient context, not a field: the remedy would
+  have contradicted `TenantId`'s own standing invariant, ended the database-per-tenant mode the
+  `TenantIsolationStrategy` seam exists to allow, and applied equally to `Invoice`, `DocumentLine` and `Money` —
+  which is the tell that it is not a field at all. Replaced by a **boundary rule** — no tenant-less path may
+  hydrate a domain aggregate — which also covers the cross-tenant total, PDF and export that a tenant field
+  would not have. See § Wave 1.
+- [2026-07-31 10:20] AGREED: **a document number sequence is GAPLESS, so a PostgreSQL `SEQUENCE` / `nextval()`
+  is FORBIDDEN as its implementation.** `nextval` is deliberately non-transactional, so a rolled-back issue
+  burns its number permanently — correct for a surrogate key, disqualifying for a legal document number that a
+  tax authority audits for gaps. The shape that satisfies the contract is a per-`(tenant, type)` counter ROW
+  under `SELECT ... FOR UPDATE` in the same transaction that persists the document. Recorded in
+  `DocumentNumberSequence`'s contract and enforced by `DocumentNumberSequenceContract`, which every adapter
+  must extend.
+- [2026-07-31 10:20] AGREED: **`Invoice::issue()`'s two failure causes get distinct exception types** — a
+  `\DomainException` (422) for the user-fixable empty invoice, a `\LogicException` (500) for a number allocated
+  from the wrong type's sequence. Both raised bare `\DomainException` before, so an HTTP layer could only tell a
+  form error from our own fault by matching message text. Same defect class round 13 closed for
+  `Rate::fromPercentage()`.
 
 ---
 
@@ -627,22 +646,78 @@ every tenant's blob is readable under every binding. `DISCARD ALL` does not clea
 tenant-owned table or outside the database. Invoice PDFs are the canonical large-object use, so Wave 4 must not
 reach for one.
 
-**WAVE 1 ALSO OWES MOVING `TenantId` INTO `Domain/`** (round 13). `DocumentNumber` makes the document TYPE
-inseparable from the number — because the plan's own "never the number alone" rule would otherwise depend on
-every caller remembering it — and leaves the TENANT separable. The identity is really *(tenant, type,
-sequence)*, so tenant A's Invoice 41 and tenant B's Invoice 41 compare EQUAL and render identically. RLS stops a
-single *scoped* query holding both, but the tenant-less paths this codebase deliberately supports do not:
-`TenantContext`'s installation and global-health-check cases, and `assertStillBoundTo()`'s tenant-less branch,
-which exists precisely because the application "expects to see every tenant's rows".
+**NUMBERING'S ALLOCATOR LANDED, 2026-07-31, AND ITS CONTRACT IS THE PART THAT MATTERS.** Wave 1's scope line
+above reads "numbering with per-tenant counters", and until round 14 only the *rendering* half existed:
+`DocumentNumber` and `NumberPattern` could format a sequence **nobody allocated**, and `Invoice::issue()` took a
+finished number from its caller. Three things landed, all framework-free and therefore not blocked on Composer:
 
-**It could not be fixed in place**, and the reason is the interesting part: `TenantId` lives in
-`Twes\Infrastructure\Tenancy`, so referencing it from `Domain/` is an OUTWARD dependency and a P0 by
-`layer-dependencies.php`. A tenant identifier is a **domain** concept — every aggregate is scoped by it — and it
-sits in `Infrastructure/` only because tenancy arrived as an RLS implementation detail. Moving it is a
-wave-boundary change touching the tenancy seam, so it is owed here rather than done as a findings-closure edit.
-Until then the constraint is documented on `equals()`/`toString()`: valid within a bound tenant, never in a
-cross-tenant collection — which is weaker than the type-carrying approach used for TYPE, deliberately and
-visibly so.
+| Landed | What it is |
+|---|---|
+| `Domain/Document/DocumentNumberSequence.php` | the **port** — the counter's contract, stated by the domain |
+| `Domain/Document/DocumentNumberAllocator.php` | the domain service turning a counter into a `DocumentNumber` |
+| `tests/Unit/Document/DocumentNumberSequenceContract.php` | the contract as an **executable test class** |
+
+**THE COUNTER IS GAPLESS, WHICH FORBIDS A POSTGRESQL `SEQUENCE`.** This is the decision in the wave that is
+unfixable later, and it is recorded in the same class as money-never-being-a-float. A missing number in an
+invoice sequence is what a tax authority reads as a suppressed sale, and France and Tunisia both audit for it.
+`nextval()` is *deliberately* non-transactional — it does not roll back — so every failed or rolled-back issue
+burns its number and leaves a permanent hole. That is correct for a surrogate primary key and disqualifying
+here, and it rules out `SERIAL`, `IDENTITY` and any `CACHE n` along with it. The shape that satisfies the
+contract is a per-`(tenant, type)` counter **row** taken under `SELECT ... FOR UPDATE` inside the same
+transaction that persists the document, so a rollback returns the number. Accepted cost: issues for one
+`(tenant, type)` serialise. Two invoices sharing a number is worse than a queued request.
+
+**The contract is a TEST CLASS, not a docblock, and the Postgres adapter must extend it.** Four guarantees —
+gapless, starts at 1, independent per type, never backwards — each with cases generated from `DocumentType`
+rather than hand-picked. When persistence unblocks, `PostgresDocumentNumberSequenceTest extends
+DocumentNumberSequenceContract` goes in the **integration** suite against a real row lock, and the assertions do
+not change; only the subject does. The reference in-memory double lives under `tests/Support/` and **not** in
+`src/`, because an in-memory counter in production restarts at 1 in every worker and issues duplicate legal
+document numbers — the one failure mode worse than having no implementation at all, because it looks like it
+works. The double is itself held to the contract rather than trusted.
+
+**Still owed here:** nothing forces a number to come from the allocator — `Invoice::issue()` accepts any
+well-typed `DocumentNumber`, which is correct for rehydration from a database row and means the *application*
+layer is what must never mint one by hand. That is a Wave 1 use-case-handler obligation and a
+`completeness-reviewer` P0 if a handler constructs a `DocumentNumber` directly.
+
+**WAVE 1 OWES A BOUNDARY RULE, NOT A `TenantId` MOVE — round 13's finding stands, its REMEDY IS REVERSED**
+(round 14). `DocumentNumber` makes the document TYPE inseparable from the number and leaves the TENANT
+separable. The identity is really *(tenant, type, sequence)*, so tenant A's Invoice 41 and tenant B's Invoice 41
+compare EQUAL and render identically. RLS stops a single *scoped* query holding both, but the tenant-less paths
+this codebase deliberately supports do not: `TenantContext`'s installation and global-health-check cases, and
+`assertStillBoundTo()`'s tenant-less branch, which exists precisely because the application "expects to see
+every tenant's rows". **All of that is accurate and none of it is retracted.**
+
+What round 13 got wrong was the fix. It prescribed moving `TenantId` into `Domain/` so the value object could
+carry all three parts, and recorded that as this wave's obligation. Three things refute it:
+
+1. **It contradicted a standing invariant nobody re-read.** `TenantId`'s own docblock already rules that it lives
+   in `Infrastructure/` *on purpose*, and calls a `company_id` reaching `Domain/` a **P0** for
+   `tenancy-security-reviewer`. The round-13 note was written straight past that — the same "two contradictory
+   statements and no way to tell which is current" shape CLAUDE.md § Gotchas records three times in one session,
+   committed this time by the note that was *closing* findings.
+2. **It would end the database-per-tenant mode.** `TenantIsolationStrategy` documents two modes chosen by
+   configuration, and under `database` there is no tenant column at all: the tenant *is* the connection. A
+   `TenantId` threaded into a domain value object would have nothing to bind to, so the seam whose entire job is
+   to make that choice invisible would stop working.
+3. **The prescription does not stop at `DocumentNumber`, and that is the tell.** If a tenant must sit inside a
+   value object for its equality to be safe in a cross-tenant collection, it must equally sit inside `Invoice`,
+   inside every `DocumentLine`, and inside `Money` — every one of them can land in that same collection. A field
+   that every type needs is not a field; it is **ambient context**, which is what tenancy is and where
+   `Infrastructure/` correctly holds it.
+
+**So the obligation is a boundary rule: NO TENANT-LESS PATH MAY HYDRATE A DOMAIN AGGREGATE.** The dangerous act
+was never comparing two numbers; it was materialising a collection spanning two tenants, and the tenant-less
+paths above are the only way to reach one. A repository or query handler reachable without a bound tenant is a
+`tenancy-security-reviewer` **P0** in this wave. That rule is strictly stronger than a tenant field would have
+been: it also stops the cross-tenant total, the cross-tenant PDF and the cross-tenant export, none of which any
+amount of value-object equality would have caught.
+
+Two layers stand behind it and both are already owed here: RLS, which makes a scoped query incapable of
+returning two tenants' rows; and the composite unique constraint on `(company_id, type, number)` in the schema
+table below, asserted by `scripts/gates/schema-tenancy.php`. `TenantId` **stays in `Infrastructure/`** and this
+item is closed rather than carried.
 
 **THE SCHEMA GATE IS A WAVE 1 BLOCKER — the first migration does not land without it** (developer ruling,
 2026-07-30). Every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply

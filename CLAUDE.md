@@ -764,6 +764,31 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   A harness artefact, not an app defect [Verified: the same build renders with
   `newContext({locale: 'en-US'})` and crashes without it]. Always set a locale explicitly when driving the
   Flutter web build, and read a blank Flutter screenshot as "check `pageerror` first", not "the app is fine".
+- **2026-07-31 — a document number sequence is GAPLESS, so `nextval()` is FORBIDDEN. Recorded beside
+  money-is-never-a-float because it is the same kind of decision: unfixable once data exists.** A PostgreSQL
+  `SEQUENCE` is *deliberately* non-transactional — it does not roll back — so every failed or rolled-back issue
+  burns its number and leaves a permanent hole in the sequence. That is exactly right for a surrogate primary key
+  and disqualifying for a legal document number: a missing invoice number is what a tax authority reads as a
+  suppressed sale, and France and Tunisia both audit for it. `SERIAL`, `IDENTITY` and any `CACHE n` are ruled out
+  by the same objection. The shape that satisfies the contract is a per-`(tenant, type)` counter **row** taken
+  under `SELECT ... FOR UPDATE` inside the same transaction that persists the document. Accepted cost: issues for
+  one `(tenant, type)` serialise — two invoices sharing a number is worse than a queued request. The contract is
+  a **test class** (`DocumentNumberSequenceContract`) that every adapter must extend, not a docblock, because
+  this file already records five times that a rule enforced by memory is not a rule.
+- **2026-07-31 — tenancy is AMBIENT CONTEXT, not a field, and the reductio is how you tell.** Round 13 found
+  that `DocumentNumber` leaves the TENANT separable — tenant A's Invoice 41 equals tenant B's — and prescribed
+  moving `TenantId` into `Domain/` so the value object could carry it. Round 14 reversed that: the prescription
+  contradicted `TenantId`'s own standing invariant (which calls a `company_id` in `Domain/` a P0), it would have
+  ended the database-per-tenant mode the `TenantIsolationStrategy` seam exists to allow — under that mode the
+  tenant *is* the connection and there is no column to carry — and, decisively, **it does not stop at
+  `DocumentNumber`**: if a tenant must sit inside a value object for its equality to be safe in a cross-tenant
+  collection, it must equally sit inside `Invoice`, `DocumentLine` and `Money`. A field that every type needs is
+  not a field. The remedy is a **boundary** rule — *no tenant-less path may hydrate a domain aggregate* — which
+  is strictly stronger, because it also stops the cross-tenant total, PDF and export that value-object equality
+  would never have caught. Two general lessons: **when a fix must be applied to every type in a layer, the thing
+  being modelled is context rather than data**; and a findings-closure note is exactly where a contradiction with
+  a standing invariant slips in, because the author is reading the new finding rather than grepping for the old
+  ruling — this file records that shape three times already and this was the fourth.
 
 ## Git & CI
 

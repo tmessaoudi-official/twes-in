@@ -258,10 +258,14 @@ final readonly class ProductPricing
      * silently discard it. Both are guarded, and both have fixture cases; an earlier version guarded only
      * the first, and the fixture only ever moved *away* from a zero cost, so the gap was invisible.
      *
+     * The two conditions this block used to add — a price/cost currency mismatch and a negative TYPED price —
+     * are unreachable from here and were removed at round 14: `withCost()` never calls `fromNetPrice()`, which
+     * is the only method comparing a price's currency to a cost's, and the constructor's typed-price check reads
+     * `$this->authoredNetPrice`, already validated non-negative when this instance was built. This class's own
+     * standard applies: a docblock that promises more than the code delivers is the more expensive artifact.
+     *
      * @throws CurrencyMismatch if the new cost is in a different currency
      * @throws InvalidCost if the cost is negative, or the derived price would be unrepresentable or NEGATIVE
-     * @throws CurrencyMismatch if the price is not in the cost's currency
-     * @throws InvalidCost if the typed price is negative
      */
     public function withCost(Money $newCost, RoundingMode $mode): self
     {

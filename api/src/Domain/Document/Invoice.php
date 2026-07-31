@@ -12,7 +12,9 @@ declare(strict_types=1);
 
 namespace Twes\Domain\Document;
 
+use Twes\Domain\Document\Exception\DocumentCannotBeIssued;
 use Twes\Domain\Document\Exception\DocumentIsNotMutable;
+use Twes\Domain\Document\Exception\NumberTypeMismatch;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
@@ -184,8 +186,13 @@ final readonly class Invoice
     /**
      * Issue the invoice: assign its number and freeze it.
      *
+     * The number comes from {@see DocumentNumberAllocator} and is NOT allocated here — the aggregate has no
+     * collaborators. That also puts the allocation at issue time structurally: `draft()` takes no number, so an
+     * abandoned draft cannot consume one, and a consumed number cannot fail to belong to a document.
+     *
      * @throws Exception\IllegalTransition if this is not a draft
-     * @throws \DomainException if the number is for another document type, or the invoice is empty
+     * @throws NumberTypeMismatch if the number was allocated from another type's sequence
+     * @throws DocumentCannotBeIssued if the invoice has no lines
      */
     public function issue(DocumentNumber $number): self
     {
@@ -196,13 +203,13 @@ final readonly class Invoice
         // Sequences are per TYPE and the digits alone are ambiguous — invoice 0000041 and delivery note
         // 0000041 both legitimately exist. `DocumentNumber` carries its type precisely so this is checkable
         // rather than a convention, and storing a foreign type's number would defeat the whole point of it.
+        // A `\LogicException` (500), NOT the `\DomainException` (422) the emptiness check below raises, and the
+        // split is deliberate: no API lets a client pick a document number, so reaching here means OUR
+        // application layer allocated from the wrong sequence. Both conditions raised bare `\DomainException`
+        // until these types existed, which left an HTTP layer matching message text to tell a fault from a
+        // form error — the same defect round 13 closed for `Rate::fromPercentage()`.
         if (DocumentType::Invoice !== $number->type()) {
-            throw new \DomainException(\sprintf(
-                'An invoice cannot be issued with a %s number (%s). Sequences are per document type, so the '
-                . 'digits alone are ambiguous — that is why a DocumentNumber carries its type.',
-                $number->type()->name,
-                $number->toString(),
-            ));
+            throw NumberTypeMismatch::between(DocumentType::Invoice, $number);
         }
 
         // AN EMPTY INVOICE IS REFUSED, and this is a DERIVED decision rather than a ruled one — flagged so it
@@ -212,12 +219,7 @@ final readonly class Invoice
         // recycled. Issuing an empty invoice therefore burns a legal document number on a document with no
         // content, unrecoverably. If the developer rules otherwise this is one condition to delete.
         if ([] === $this->lines) {
-            throw new \DomainException(
-                'An invoice with no lines cannot be issued. Issuing consumes a number from a per-tenant '
-                . 'sequence permanently — numbers are never reused and a cancelled document keeps its number '
-                . 'on file — so this would burn a legal document number on an empty document. Add a line, or '
-                . 'delete the draft.',
-            );
+            throw DocumentCannotBeIssued::becauseItHasNoLines();
         }
 
         return new self($this->currency, $state, $number, $this->lines, $this->fixedCharges);

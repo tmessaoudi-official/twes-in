@@ -297,6 +297,63 @@ final class RateTest extends TestCase
     }
 
     /**
+     * **TRAILING ZEROS ARE NOT PRECISION, at any scale.** Round 14 found the round-13 guard refusing these — a
+     * REGRESSION against `da4d731`, which accepted them.
+     *
+     * The guard measured `Decimal::scaleOf()`, which counts the decimals that are WRITTEN, when the question is
+     * how many are SIGNIFICANT. `19.00000000000` needs *zero* decimals beyond `0.19`, and the refusal told the
+     * caller it "needs more than 12 decimal places" — untrue of that value. Two things in the codebase already
+     * said so and were not consulted: `fromFraction()` accepts a scale-20 spelling of the same rate, and
+     * `Money::of()`'s docblock states trailing zeros lose nothing ("`0.1000` in TND is `0.100`").
+     *
+     * **The old provider could not have caught it**, which is the reusable lesson: it generates
+     * `'19.' + '0'*(n-1) + '1'`, so every case ends in a significant digit and the trailing-zero shape is
+     * unrepresentable in the fixture. A fixture that cannot express a shape cannot detect it — this repo's own
+     * § Gotchas records the same thing about a test database that could not express a dangerous role topology.
+     *
+     * Reachability is ordinary, not exotic: a Dart `toStringAsFixed(12)` or a JS `toFixed(11)` on a rate field
+     * emits exactly this.
+     *
+     * @param int $scale how many trailing zeros to write after `19.`
+     */
+    #[DataProvider('insignificantTrailingZeroScales')]
+    public function testTrailingZerosAreAcceptedAtEveryScale(int $scale): void
+    {
+        $rate = Rate::fromPercentage('19.' . str_repeat('0', $scale));
+
+        self::assertSame('19.0000000000', $rate->percentage());
+        self::assertTrue($rate->equals(Rate::fromPercentage('19')), 'It is the same rate, written longer.');
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function insignificantTrailingZeroScales(): iterable
+    {
+        // Straddling BOTH bounds on purpose. `PERCENTAGE_SCALE + 1` is the case round 13 broke; 2000 is past
+        // `Decimal::MAX_SCALE`, and it is the one that proves the fix had to normalise BEFORE dividing rather
+        // than merely widen the guard — the derived working scale of the raw value is 2001 against a maximum of
+        // 1000, so a version that only relaxed the check would have swapped this 422 for a 500.
+        yield 'at the bound' => [Rate::PERCENTAGE_SCALE];
+        yield 'one past the bound — the exact regression' => [Rate::PERCENTAGE_SCALE + 1];
+        yield 'far past it' => [988];
+        yield 'past Decimal::MAX_SCALE, where divide() would blow its working scale' => [2000];
+    }
+
+    /**
+     * A trailing-zero percentage and its short spelling are the SAME rate — including through the fraction door.
+     *
+     * Pins the symmetry that was broken rather than just the acceptance: the bug was not "this value is
+     * refused", it was "these three factories disagree about what a rate is".
+     */
+    public function testThePercentageAndFractionDoorsAgreeOnTrailingZeros(): void
+    {
+        $viaPercentage = Rate::fromPercentage('19.' . str_repeat('0', 40));
+        $viaFraction = Rate::fromFraction('0.19' . str_repeat('0', 40));
+
+        self::assertTrue($viaPercentage->equals($viaFraction));
+        self::assertSame('19.0000000000', $viaPercentage->percentage());
+    }
+
+    /**
      * And the BOUNDARY is accepted, so the guard refuses over-precision rather than precision.
      *
      * `PERCENTAGE_SCALE` decimals is exactly representable as a 12-decimal fraction. A guard written `>=`

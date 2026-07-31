@@ -18,8 +18,10 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentCalculator;
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\FixedCharge;
+use Twes\Domain\Document\VatGroup;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
+use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
 use Twes\Domain\Shared\RoundingMode;
@@ -599,4 +601,36 @@ final class DocumentTotalsTest extends TestCase
             static fn(array $case): bool => isset($case[0]['vat_if_rounded_per_line_which_is_WRONG']),
         );
     }
+    /**
+     * **`VatGroup` IS A SECOND DOOR and round 14 found it unguarded.** These two cases exist because the object
+     * that becomes the legal EN 16931 `TaxSubtotal` validated nothing while `DocumentLine` — the other way in —
+     * refused both of these.
+     */
+    public function testAVatGroupRefusesANegativeRate(): void
+    {
+        $tnd = Currency::of('TND');
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('cannot carry a negative rate');
+
+        new VatGroup(Rate::fromPercentage('-19'), Money::of('100.000', $tnd), Money::of('-19.000', $tnd));
+    }
+
+    /**
+     * A EUR VAT figure beside a TND base is a legal document stating tax owed in neither currency.
+     *
+     * `Money` refuses to ADD across currencies, which is why this got through: nothing stopped the two amounts
+     * being STORED side by side, and the pair is summed downstream and rendered as one `TaxSubtotal` row.
+     */
+    public function testAVatGroupRefusesABaseAndVatInDifferentCurrencies(): void
+    {
+        $this->expectException(CurrencyMismatch::class);
+
+        new VatGroup(
+            Rate::fromPercentage('19'),
+            Money::of('100.000', Currency::of('TND')),
+            Money::of('19.00', Currency::of('EUR')),
+        );
+    }
+
 }

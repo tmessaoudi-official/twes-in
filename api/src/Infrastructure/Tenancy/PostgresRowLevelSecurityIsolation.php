@@ -1139,8 +1139,16 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // spellings pdo_pgsql produces for an actual boolean column. Normalising here rather than
             // widening isTrue() keeps that helper's contract to what the driver emits: the first version of
             // this check read every security_invoker view as unsafe because of exactly this mismatch.
+            // CAST, NOT A STRING COMPARISON. PostgreSQL stores a boolean reloption VERBATIM as the user wrote
+            // it, so `security_invoker = on` and `security_invoker = 1` are both valid and both make the view
+            // evaluate policies as the invoker — while `= 'true'` reports them as unsafe. Round 14 found it: a
+            // SAFE view refused, with a message stating "the view returns and accepts every tenant", which is
+            // a false statement about the object. Same class as the `current_user::regrole` outage closed the
+            // round before — a total refusal traced to entirely the wrong cause. `::boolean` accepts every
+            // spelling PostgreSQL does (`on/off`, `true/false`, `1/0`, `yes/no`), and the comparison stays in
+            // SQL so PHP still receives a real boolean.
             . "coalesce((SELECT option_value FROM pg_options_to_table(c.reloptions) "
-            . "WHERE option_name = 'security_invoker'), 'false') = 'true' AS security_invoker "
+            . "WHERE option_name = 'security_invoker'), 'false')::boolean AS security_invoker "
             . 'FROM pg_class c '
             . 'JOIN pg_roles o ON o.oid = c.relowner '
             . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
@@ -1216,13 +1224,44 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // persistent delegated bypass this method exists to detect.
             . 'WHERE (p.prosecdef OR ' . self::tenantSettingIsPinnedSql('p.proconfig') . ')'
             . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+            // NOT ANOTHER BACKEND'S TEMP SCHEMA — round 12's finding in its FOURTH place, and the comment on
+            // the view query above says so in as many words: "the policed-table query got `relpersistence = 'p'`
+            // and the session-lifetime check got `pg_my_temp_schema()`, and this query got neither". That
+            // sentence was written about the view query in this same method while the FUNCTION query, twenty
+            // lines below it, also had neither. Every session's temporary functions are visible in `pg_proc` to
+            // every other session, so one connection creating a temporary SECURITY DEFINER function refused
+            // every OTHER acquisition — naming an object the refused connection can neither call, locate nor
+            // drop (`DROP` gives `schema "pg_temp" does not exist`). A whole-pool outage triggered by any single
+            // connection, needing only the TEMPORARY grant PostgreSQL gives PUBLIC by default.
+            //
+            // `pg_is_other_temp_schema()` rather than excluding all temp schemas, which is the narrower and
+            // therefore correct filter: this connection's OWN temporary functions stay in scope, because a
+            // hazard inside this session is this session's problem to refuse. What is excluded is only the
+            // objects belonging to a backend this one cannot act on at all.
+            . 'AND NOT pg_is_other_temp_schema(n.oid) '
             // The NARROW mode, because this predicate is NEGATED — see roleCanBeAssumedSql(). With 'MEMBER'
             // here, a function whose owner the connection is a member of but cannot SET ROLE to was excluded
             // as "no escalation", when it is the case where the function is the only route to that role.
             // The owner filter applies to the SECURITY DEFINER arm only. A `proconfig` function is dangerous
             // regardless of who owns it — it does not borrow the owner's rights, it rewrites the tenant GUC —
             // so excluding it because its owner is assumable would drop the whole new arm on the floor.
-            . 'AND (NOT p.prosecdef OR NOT ' . self::roleCanBeAssumedSql('p.proowner') . ') '
+            //
+            // **THE `proconfig` DISJUNCT IS WHAT MAKES THAT PARAGRAPH TRUE, and round 14 found it missing — a
+            // P0 with a reproduced cross-tenant read.** With only `NOT p.prosecdef OR NOT <owner assumable>`, a
+            // function that is BOTH `SECURITY DEFINER` and GUC-pinning, owned by an assumable role, has both
+            // disjuncts false and is dropped from the result set. So the comment above described an intent the
+            // SQL did not implement, and the failure is INVERTED: adding `SECURITY DEFINER` to a pinning
+            // function — strictly more dangerous — is what makes the check stop reporting it.
+            // [Verified against a real policed table: with `SECURITY DEFINER`, the acquisition check returns
+            // CLEAN while a connection bound to tenant B reads `TENANT-A-SECRET-CLIENT-LIST` through the
+            // function and its own direct read correctly returns only `tenant-B-own-row`. Flipping the same
+            // function to `SECURITY INVOKER` — less dangerous — makes the check REFUSE it.]
+            //
+            // The precondition is `GRANT SET ON PARAMETER "twes.tenant_id"`, which migration tooling holds and
+            // which round 12 already accepted as sufficient for the `prosecdef = false` case. Nothing about
+            // that precondition gets harder when the function also becomes SECURITY DEFINER.
+            . 'AND (NOT p.prosecdef OR ' . self::tenantSettingIsPinnedSql('p.proconfig')
+            . ' OR NOT ' . self::roleCanBeAssumedSql('p.proowner') . ') '
             // EXECUTE resolved through the ACL, with the default-grants-PUBLIC arm that
             // `has_function_privilege` was silently supplying. Dropping that arm along with the function would
             // have made every untouched SECURITY DEFINER function invisible — the commonest case there is.
