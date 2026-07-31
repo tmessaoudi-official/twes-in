@@ -114,12 +114,27 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * resolves to a real `pg_catalog` function.
      *
      * Note `lo_import` ships with a non-NULL `proacl` (`{postgres=X/postgres}`) so PUBLIC never held it, unlike
-     * the other four. It stays here anyway — a cluster where somebody granted it is exactly what a detector is
+     * the other five. It stays here anyway — a cluster where somebody granted it is exactly what a detector is
      * for — which is why this list is deliberately LONGER than the `REVOKE` set in `infra/README.md`.
      *
      * @var list<string>
      */
-    public const array LARGE_OBJECT_WRITERS = ['lo_create', 'lo_from_bytea', 'lo_import', 'lo_put', 'lowrite'];
+    public const array LARGE_OBJECT_WRITERS = [
+        // `lo_creat` — the LEGACY spelling, and the one round 15 found MISSING from both this list and the
+        // `REVOKE` block in `infra/README.md`. Two letters short of `lo_create` and easy to read past, and it is
+        // the one `PDO::pgsqlLOBCreate()` reaches through libpq — so it is the API an application would actually
+        // use, not an exotic path. With it absent the remedy did not remove the capability AND the detector could
+        // not see it, so a connection created a large object and the acquisition check then refused every
+        // subsequent acquisition until a privileged role unlinked it: precisely the outage the remedy exists to
+        // prevent. [Verified: `lo_creat(integer)` has a NULL `proacl` and `has_function_privilege('twes', …)` is
+        // true on an untouched cluster.]
+        'lo_creat',
+        'lo_create',
+        'lo_from_bytea',
+        'lo_import',
+        'lo_put',
+        'lowrite',
+    ];
 
     /**
      * @throws NoCurrentTenant if no tenant is bound — binding "no tenant" is refused rather than
@@ -1239,11 +1254,36 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // spelling PostgreSQL does (`on/off`, `true/false`, `1/0`, `yes/no`), and the comparison stays in
             // SQL so PHP still receives a real boolean.
             . "coalesce((SELECT option_value FROM pg_options_to_table(c.reloptions) "
-            . "WHERE option_name = 'security_invoker'), 'false')::boolean AS security_invoker "
+            . "WHERE option_name = 'security_invoker'), 'false')::boolean AS security_invoker, "
+            // Whether this relation carries a USER rule. `_RETURN` is the rule PostgreSQL creates for every
+            // view's own body, so excluding it by name is what separates "a view" from "a table somebody
+            // attached a DO INSTEAD rule to".
+            . "EXISTS (SELECT 1 FROM pg_rewrite w WHERE w.ev_class = c.oid AND w.rulename <> '_RETURN') "
+            . 'AS has_user_rule '
             . 'FROM pg_class c '
             . 'JOIN pg_roles o ON o.oid = c.relowner '
             . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
-            . "WHERE c.relkind IN ('v', 'm', 'f') "
+            // **KINDS `'r'` AND `'p'` TOO WHEN THEY CARRY A USER RULE — the ELEVENTH carrier** (round 15 P0).
+            // This method exists because "PostgreSQL will happily execute part of a query as a role you cannot
+            // reach". A VIEW is one way to arrange that; a **RULE** is the other, it lives in the same
+            // `pg_rewrite` catalogue, and it reaches it through an ordinary TABLE. PostgreSQL sets `checkAsUser`
+            // on the rewritten query to the rule's HOST relation owner exactly as it does for a view body, so
+            // `check_enable_rls()` returns `RLS_NONE` when that owner is exempt and every policy is SKIPPED
+            // rather than evaluated as somebody else.
+            //
+            // A table was in NEITHER query's subject set: `relrowsecurity` is false so the policed-table check
+            // never sees it, it has no inheritance edge, and its kind was not in the list here. [Verified: a
+            // `DO INSTEAD` rule on a gateway table owned by an exempt role gave a tenant-B-bound connection both
+            // a cross-tenant READ (through the outer RETURNING) and a cross-tenant WRITE — a row planted
+            // carrying tenant A's `company_id` — while this check reported CLEAN. Control: re-owning the gateway
+            // to a non-exempt role leaks nothing, which is the same precondition the view arm already refuses.]
+            //
+            // Filtered on the rule's EXISTENCE rather than widening the kinds outright, because otherwise every
+            // tenant-owned table in the database would enter this query and be judged by view rules that do not
+            // apply to it.
+            . "WHERE (c.relkind IN ('v', 'm', 'f') "
+            . "OR (c.relkind IN ('r', 'p') "
+            . "AND EXISTS (SELECT 1 FROM pg_rewrite w2 WHERE w2.ev_class = c.oid AND w2.rulename <> '_RETURN'))) "
             // PERMANENT only. Every session's temporary relations are visible in `pg_class` to every other
             // session, and `rlsExemptObjectViolations()` refuses kind `'m'` on kind ALONE — before the
             // `owned_by_caller` exclusion — so ONE connection creating a `pg_temp` materialised view made
@@ -1275,7 +1315,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not inspect views and materialised views.');
         }
 
-        /** @var list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string, owned_by_caller: bool|string}> $objects */
+        /** @var list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string, has_user_rule: bool|string, owned_by_caller: bool|string}> $objects */
         $objects = $statement->fetchAll(\PDO::FETCH_ASSOC);
 
         $violations = self::rlsExemptObjectViolations($objects);
@@ -1386,7 +1426,23 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // the first probe I wrote to check it AGREED with the claim, because it supplied a value for the
             // defaulted column so the DEFAULT never evaluated. A test that does not arrive proves nothing.
             . 'AND (' . self::privilegeIsReachableSql('p.proacl', 'EXECUTE', true)
-            . ' OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = p.oid AND NOT t.tgisinternal)) '
+            . ' OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = p.oid AND NOT t.tgisinternal)'
+            // **AND AN EVENT TRIGGER — the TWELFTH carrier, and the trigger arm's exact twin** (round 15 P0).
+            // The paragraph above argues that PostgreSQL checks EXECUTE at `CREATE TRIGGER` and performs NO ACL
+            // check when the trigger FIRES, so a function with EXECUTE revoked is dropped from the result set
+            // while still running under the runtime role's statements. `EventTriggerInvoke()` has the identical
+            // property and `pg_event_trigger.evtfoid` was read by nothing — so the argument was made and then
+            // applied to one of the two catalogues that carry it.
+            //
+            // **The `login` event makes this worse than the DML trigger, not merely equal to it** (PostgreSQL
+            // 17+): a `ddl_command_end` trigger needs the runtime role to issue DDL, which
+            // `assertConnectionCannotCreateTemporaryObjects()` at least constrains in production — but a `login`
+            // trigger fires on CONNECT, with no statement from the runtime role at all and no privilege it could
+            // be denied. [Verified: a SECURITY DEFINER function owned by `postgres` with EXECUTE revoked from
+            // PUBLIC exfiltrated tenant A's rows to a tenant-B-bound session that issued no DDL whatsoever,
+            // while this check reported CLEAN.] So no capability guard is a mitigation for it and detection is
+            // the only control there is.
+            . ' OR EXISTS (SELECT 1 FROM pg_event_trigger e WHERE e.evtfoid = p.oid)) '
             . 'ORDER BY 1',
         );
 
@@ -1495,7 +1551,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * Pure, so the branches are testable without arranging a privileged owner — the same reason
      * {@see self::roleCanBypassPolicies()} and {@see self::policedTableViolations()} are.
      *
-     * @param list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string, owned_by_caller?: bool|string}> $objects
+     * @param list<array{object: string, kind: string, owner: string, owner_exempt: bool|string, security_invoker: bool|string, has_user_rule?: bool|string, owned_by_caller?: bool|string}> $objects
      *
      * @return list<string>
      */
@@ -1515,6 +1571,40 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                     'm' === $object['kind']
                         ? ' — it is a plaintext snapshot of whatever the refreshing role could read'
                         : ' — its rows are not policed by this server',
+                );
+
+                continue;
+            }
+
+            // **A RULE-BEARING TABLE, judged BEFORE the view arms because it is not a view and they do not
+            // apply to it.** A rule has no `security_invoker` option — there is no way to ask PostgreSQL to
+            // rewrite it as the caller — so the only escape is that this connection owns the host relation
+            // itself, in which case evaluating as the owner and as the caller are the same evaluation. That is
+            // the view arm's own logic minus the option that does not exist here.
+            //
+            // Refused whoever owns it and not only for an exempt owner, deliberately: `checkAsUser` becomes the
+            // host owner, and this connection cannot audit that role's exemption over time — a `BYPASSRLS` added
+            // to it later would reopen the leak silently, with nothing in this database changing. twes-in emits
+            // no rules, so the conservative direction costs nothing and the message names the supported
+            // alternative.
+            if ('r' === $object['kind'] || 'p' === $object['kind']) {
+                if (self::isTrue($object['owned_by_caller'] ?? false)) {
+                    continue;
+                }
+
+                $violations[] = \sprintf(
+                    '%s is a %s carrying a rewrite RULE and owned by %s. A rule rewrites into its HOST '
+                    . 'relation\'s owner (`checkAsUser`), exactly as a view body does, so row-level security is '
+                    . 'SKIPPED rather than evaluated as the caller when that owner is exempt%s. There is no '
+                    . '`security_invoker` for a rule — use a view with `security_invoker = true` instead',
+                    $object['object'],
+                    'p' === $object['kind'] ? 'partitioned table' : 'table',
+                    $object['owner'],
+                    self::isTrue($object['owner_exempt'])
+                        ? ', WHICH IT IS (superuser or BYPASSRLS) — a cross-tenant read AND write are reachable '
+                            . 'through it right now'
+                        : '. That owner is not exempt today, which is not a property this connection can rely '
+                            . 'on: a BYPASSRLS granted to it later reopens the leak with nothing here changing',
                 );
 
                 continue;

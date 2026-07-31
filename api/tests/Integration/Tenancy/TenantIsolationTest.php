@@ -3283,7 +3283,7 @@ final class TenantIsolationTest extends TestCase
     public function testTheLargeObjectWriterRuleSetHasNotShrunk(): void
     {
         self::assertGreaterThanOrEqual(
-            5,
+            6,
             \count(PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS),
             'The writer list must not shrink; each entry is a way to create a large object.',
         );
@@ -3300,6 +3300,203 @@ final class TenantIsolationTest extends TestCase
             'lo_import is documented as the one writer PUBLIC never held. If that changed, infra/README.md\'s '
             . 'REVOKE set is now incomplete and must gain a fifth statement.',
         );
+    }
+
+    /**
+     * **A `DO INSTEAD` RULE on an ordinary table is the ELEVENTH bypass carrier** — round 15 **P0**.
+     *
+     * This method exists because PostgreSQL will execute part of a query as a role the caller cannot reach. A
+     * VIEW is one way to arrange that; a RULE is the other, it lives in the same `pg_rewrite` catalogue, and it
+     * reaches it through a table. PostgreSQL sets `checkAsUser` on the rewritten query to the rule's HOST
+     * relation owner exactly as it does for a view body, so `check_enable_rls()` returns `RLS_NONE` when that
+     * owner is exempt and every policy is SKIPPED rather than evaluated as somebody else.
+     *
+     * The table was in NEITHER query's subject set: `relrowsecurity` is false so the policed-table check never
+     * sees it, it has no inheritance edge, and `'r'` was not among the object query's kinds. A cross-tenant READ
+     * and WRITE were both reachable while this check reported CLEAN.
+     */
+    public function testATableCarryingARewriteRuleIsRefused(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('Creating a gateway owned by an exempt role needs the superuser.');
+        }
+
+        $gate = 'rule_gateway_probe';
+
+        try {
+            $granter->exec(\sprintf('CREATE TABLE public.%s (company_id uuid, label text)', $gate));
+            // `DO INSTEAD NOTHING` rather than a rule that actually rewrites into the policed table: what this
+            // check detects is the rule's EXISTENCE and the host relation's ownership, not what the rule does, so
+            // coupling the case to the probe table's column types would make it fail for reasons unrelated to the
+            // carrier. The exploitability is demonstrated separately and recorded in the docblock above.
+            $granter->exec(\sprintf(
+                'CREATE RULE %s_ins AS ON INSERT TO public.%s DO INSTEAD NOTHING',
+                $gate,
+                $gate,
+            ));
+            $granter->exec(\sprintf('GRANT SELECT, INSERT ON public.%s TO %s', $gate, (string) getenv('TWES_TEST_DB_USER')));
+
+            // PRECONDITIONS, asserted rather than assumed: the gateway is NOT policed and NOT a view, so nothing
+            // else in this class has a reason to look at it.
+            $shape = $this->connection->query(\sprintf(
+                "SELECT c.relkind::text AS kind, c.relrowsecurity AS policed, "
+                . "(SELECT count(*) FROM pg_rewrite w WHERE w.ev_class = c.oid AND w.rulename <> '_RETURN') "
+                . "AS rules FROM pg_class c WHERE c.relname = '%s'",
+                $gate,
+            ));
+            self::assertNotFalse($shape);
+            /** @var array{kind: string, policed: bool|string, rules: int|string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            self::assertSame('r', $flags['kind'], 'the gateway must be an ordinary table, not a view');
+            self::assertNotContains($flags['policed'], [true, 't', '1'], 'and must carry no RLS of its own');
+            self::assertSame(1, (int) $flags['rules'], 'and must carry exactly one user rule');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'A table carrying a rewrite rule must be refused: the rule rewrites into its host owner, so '
+                . 'row-level security is skipped. Reported CLEAN until round 15, with a reproduced cross-tenant '
+                . 'read AND write.',
+            );
+            self::assertStringContainsString($gate, $caught->getMessage());
+            self::assertStringContainsString('rewrite RULE', $caught->getMessage());
+        } finally {
+            $granter->exec(\sprintf('DROP TABLE IF EXISTS public.%s CASCADE', $gate));
+        }
+    }
+
+    /**
+     * A table with NO rule is NOT refused — the half that stops this becoming a blanket refusal of every table.
+     *
+     * Without it, widening the object query's kinds to include `'r'` would be indistinguishable from the fix, and
+     * every tenant-owned table in the database would be reported. Round 14 shipped two false refusals of exactly
+     * that shape (a foreign session's temp function, a `security_invoker = on` view), so the negative half is not
+     * optional here.
+     */
+    public function testAnOrdinaryTableWithoutARuleIsNotRefused(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('Creating a table owned by an exempt role needs the superuser.');
+        }
+
+        $plain = 'no_rule_probe';
+
+        try {
+            $granter->exec(\sprintf('CREATE TABLE public.%s (a int)', $plain));
+            $granter->exec(\sprintf('GRANT SELECT ON public.%s TO %s', $plain, (string) getenv('TWES_TEST_DB_USER')));
+
+            // The PRECONDITION: readable by this connection and owned by an EXEMPT role, so the ONLY thing
+            // keeping it out of the violation set is the absence of a rule. Without this the case would pass for
+            // an unreadable table and prove nothing.
+            $reachable = $this->connection->query(\sprintf(
+                "SELECT has_table_privilege(current_user, c.oid, 'SELECT') AS readable, "
+                . 'o.rolsuper OR o.rolbypassrls AS owner_exempt '
+                . "FROM pg_class c JOIN pg_roles o ON o.oid = c.relowner WHERE c.relname = '%s'",
+                $plain,
+            ));
+            self::assertNotFalse($reachable);
+            /** @var array{readable: bool|string, owner_exempt: bool|string} $flags */
+            $flags = $reachable->fetch(\PDO::FETCH_ASSOC);
+            self::assertContains($flags['readable'], [true, 't', '1'], 'must be readable by this connection');
+            self::assertContains($flags['owner_exempt'], [true, 't', '1'], 'and owned by an exempt role');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNull(
+                $caught,
+                'A table with no rule must NOT be refused, however it is owned. Widening the object query to '
+                . 'kind \'r\' without the rule filter would report every tenant-owned table in the database.',
+            );
+        } finally {
+            $granter->exec(\sprintf('DROP TABLE IF EXISTS public.%s CASCADE', $plain));
+        }
+    }
+
+    /**
+     * **An EVENT TRIGGER function is the TWELFTH carrier, and the DML trigger arm's exact twin** — round 15 P0.
+     *
+     * Round 13 closed the `pg_trigger` case on the argument that PostgreSQL checks `EXECUTE` at `CREATE TRIGGER`
+     * and performs NO ACL check when the trigger fires. `EventTriggerInvoke()` has the identical property and
+     * `pg_event_trigger.evtfoid` was read by nothing — so the argument was made and then applied to one of the
+     * two catalogues that carry it.
+     *
+     * Worse than its twin rather than equal to it: a `ddl_command_end` trigger needs the runtime role to issue
+     * DDL, but PostgreSQL 17+'s `login` event fires on CONNECT with no statement and no privilege that could be
+     * denied — so `assertConnectionCannotCreateTemporaryObjects()` is not a mitigation for it.
+     */
+    public function testAnEventTriggerFunctionIsInspectedEvenWithoutExecutePrivilege(): void
+    {
+        $granter = self::superuserConnection();
+
+        if (null === $granter) {
+            self::markTestSkipped('Creating an event trigger needs the superuser.');
+        }
+
+        $function = 'event_trigger_probe';
+        $trigger = 'event_trigger_probe_evt';
+
+        try {
+            $granter->exec(\sprintf(
+                'CREATE FUNCTION public.%s() RETURNS event_trigger LANGUAGE plpgsql SECURITY DEFINER '
+                . 'AS $$ BEGIN END $$',
+                $function,
+            ));
+            $granter->exec(\sprintf('REVOKE EXECUTE ON FUNCTION public.%s() FROM PUBLIC', $function));
+            $granter->exec(\sprintf(
+                'CREATE EVENT TRIGGER %s ON ddl_command_end EXECUTE FUNCTION public.%s()',
+                $trigger,
+                $function,
+            ));
+
+            // THE PRECONDITIONS, which are the whole point: EXECUTE is unreachable and there is no `pg_trigger`
+            // row, so the existing arms cannot see this function.
+            $shape = $this->connection->query(\sprintf(
+                "SELECT has_function_privilege(current_user, p.oid, 'EXECUTE') AS callable, "
+                . '(SELECT count(*) FROM pg_trigger t WHERE t.tgfoid = p.oid) AS dml_triggers '
+                . "FROM pg_proc p WHERE p.proname = '%s'",
+                $function,
+            ));
+            self::assertNotFalse($shape);
+            /** @var array{callable: bool|string, dml_triggers: int|string} $flags */
+            $flags = $shape->fetch(\PDO::FETCH_ASSOC);
+            self::assertNotContains($flags['callable'], [true, 't', '1'], 'EXECUTE must be unreachable');
+            self::assertSame(0, (int) $flags['dml_triggers'], 'and there must be no pg_trigger row');
+
+            $caught = null;
+
+            try {
+                PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
+            } catch (\RuntimeException $exception) {
+                $caught = $exception;
+            }
+
+            self::assertNotNull(
+                $caught,
+                'An event trigger function must be inspected even with EXECUTE revoked: PostgreSQL performs no '
+                . 'ACL check when the trigger fires, exactly as for a DML trigger. Reported CLEAN until round 15.',
+            );
+            self::assertStringContainsString($function, $caught->getMessage());
+        } finally {
+            $granter->exec(\sprintf('DROP EVENT TRIGGER IF EXISTS %s', $trigger));
+            $granter->exec(\sprintf('DROP FUNCTION IF EXISTS public.%s()', $function));
+        }
     }
 
     private static function superuserConnection(): ?\PDO

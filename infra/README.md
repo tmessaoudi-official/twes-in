@@ -87,6 +87,10 @@ object on the hot path is an outage, not a guard.
 ```sql
 -- Run once per database, as a superuser. PostgreSQL leaves proacl NULL on these, which means
 -- "EXECUTE to PUBLIC", so a fresh cluster grants all of them to the runtime role.
+-- lo_creat is the LEGACY spelling, two letters short of lo_create, and it was MISSING here until round 15 --
+-- which meant this block did not remove the capability at all. It is also the one PDO::pgsqlLOBCreate() reaches
+-- through libpq, so it is the spelling an application actually uses.
+REVOKE EXECUTE ON FUNCTION lo_creat(integer)            FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION lo_create(oid)               FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION lo_from_bytea(oid, bytea)    FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION lo_put(oid, bigint, bytea)   FROM PUBLIC;
@@ -94,7 +98,7 @@ REVOKE EXECUTE ON FUNCTION lowrite(integer, bytea)      FROM PUBLIC;
 -- lo_import is NOT in that list on purpose: it ships with `{postgres=X/postgres}` rather than a NULL proacl,
 -- so PUBLIC never held it and there is nothing to revoke. [Verified on PostgreSQL 18.4:
 -- has_function_privilege('twes', 'lo_import(text)', 'EXECUTE') is false on an untouched cluster, while the
--- four above are true.] The detector still checks all five, because a cluster where somebody GRANTed it is
+-- five above are true.] The detector still checks all six, because a cluster where somebody GRANTed it is
 -- exactly the case a checker exists for -- so the detector's list being LONGER than this one is correct, not
 -- a discrepancy.
 ```
