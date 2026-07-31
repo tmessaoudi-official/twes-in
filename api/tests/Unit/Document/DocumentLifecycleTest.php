@@ -280,4 +280,54 @@ final class DocumentLifecycleTest extends TestCase
             yield $type->name => [$type];
         }
     }
+    /**
+     * `NumberPattern::format()` refuses a non-positive sequence itself.
+     *
+     * It is public, and it rendered `format(0)` as `"0000000"` — exactly the string `DocumentNumber` refuses a
+     * sequence of zero to prevent — and `format(-5)` as `"00000-5"`, a legal-looking number with a minus inside
+     * it. A value object that refuses a state while a collaborator renders it on request has not refused it.
+     *
+     */
+    #[DataProvider('nonPositiveSequences')]
+    public function testFormatRefusesANonPositiveSequence(int $sequence): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        NumberPattern::padded(7)->format($sequence);
+    }
+
+    /** @return iterable<string, array{int}> */
+    public static function nonPositiveSequences(): iterable
+    {
+        yield 'zero, which rendered as 0000000' => [0];
+        yield 'negative, which rendered as 00000-5' => [-5];
+    }
+
+    /**
+     * The enum VALUES are pinned, because they are wire format and a persisted column.
+     *
+     * `DocumentNumber::toString()` is documented as being for "a log line, a search result, an API payload", so
+     * these strings reach consumers. CLAUDE.md § "The API contract is ours to design" makes an enum-value change
+     * a breaking change with a migration plan, never an incidental edit — and a non-backed enum would put a PHP
+     * case NAME on the wire, making a pure refactor a breaking change. Pinned here so that renaming a case
+     * without deciding to break the contract fails loudly.
+     */
+    public function testTheEnumValuesArePinnedBecauseTheyAreWireFormat(): void
+    {
+        self::assertSame(
+            ['invoice', 'quote', 'credit', 'delivery_note'],
+            array_map(static fn(DocumentType $t): string => $t->value, DocumentType::cases()),
+        );
+        self::assertSame(
+            ['draft', 'issued', 'cancelled'],
+            array_map(static fn(DocumentState $s): string => $s->value, DocumentState::cases()),
+        );
+
+        // And the printable identity uses the backed VALUE, not the case name.
+        self::assertSame(
+            'delivery_note 0000041',
+            new DocumentNumber(DocumentType::DeliveryNote, NumberPattern::padded(7), 41)->toString(),
+        );
+    }
+
 }

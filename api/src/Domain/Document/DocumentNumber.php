@@ -28,6 +28,26 @@ namespace Twes\Domain\Document;
  * number here: the type travels with it, {@see self::equals()} compares both, and {@see self::toString()}
  * names both. Two documents sharing digits across types are not equal, which is what stops a delivery note
  * being paid against an invoice.
+ *
+ * **THE IDENTITY IS ACTUALLY `(tenant, type, sequence)` AND THIS CLASS CARRIES TWO OF THE THREE.** Round 13
+ * found it, and the gap is real rather than theoretical: the sequence is per-TENANT, so tenant A's Invoice 41
+ * and tenant B's Invoice 41 are different documents that {@see self::equals()} reports as equal and
+ * {@see self::toString()} renders identically. Row-level security stops a single *scoped* query holding both —
+ * but the tenant-LESS paths this codebase deliberately supports do not: `TenantContext`'s installation and
+ * global-health-check cases, and `assertStillBoundTo()`'s tenant-less branch, which exists precisely because
+ * "the application believes it holds NO tenant, so it expects to see every tenant's rows". A dedup, a batch
+ * import or a cross-tenant report over that set conflates two tenants' documents by this class's own equality.
+ *
+ * **Why it is not simply fixed here, stated rather than glossed:** `TenantId` lives in
+ * `Twes\Infrastructure\Tenancy`, so referencing it from `Domain/` would be an OUTWARD dependency — a P0 by
+ * `layer-dependencies.php`. The correct fix is to move `TenantId` into `Domain/`, because a tenant identifier is
+ * a domain concept that every aggregate is scoped by and it sits in `Infrastructure/` only because tenancy
+ * arrived as an RLS implementation detail. That is a wave-boundary change touching the tenancy seam, not a
+ * findings-closure edit, so it is recorded as a **Wave 1 obligation** in `build-waves.plan.md`.
+ *
+ * **Until then, the constraint is a documented one and that is weaker than the type-carrying approach used for
+ * TYPE — deliberately and visibly so:** {@see self::equals()} and {@see self::toString()} are valid only
+ * WITHIN a bound tenant. No cross-tenant collection may key, dedup or compare on them.
  */
 final readonly class DocumentNumber
 {
@@ -77,11 +97,17 @@ final readonly class DocumentNumber
      */
     public function toString(): string
     {
-        return $this->type->name . ' ' . $this->number();
+        // `->value`, not `->name`: the backed value is the stable identifier, and a PHP case name is not.
+        return $this->type->value . ' ' . $this->number();
     }
 
     /**
-     * Equal only when the TYPE and the sequence both match.
+     * Equal only when the TYPE and the sequence both match — **within one tenant.**
+     *
+     * See the class docblock: the sequence is per-tenant, so this returns true for tenant A's Invoice 41 and
+     * tenant B's Invoice 41. Valid inside a bound tenant, which is every ordinary path; NOT valid in a
+     * tenant-less or cross-tenant collection, and the type cannot express that until `TenantId` moves into
+     * `Domain/` (a Wave 1 obligation).
      *
      * Comparing digits alone is how a delivery note gets paid against an invoice. The pattern is deliberately
      * NOT compared: `0000041` and `041` are the same document rendered under two configurations, and a

@@ -509,6 +509,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * sibling database on the cluster, where this check has said nothing at all. That matters the day twes-in
      * runs more than one tenant database on one cluster.
      *
+     * **A second documented boundary, added at round 13: every connection can read every other connection's
+     * in-flight SQL.** `pg_stat_activity` exposes `query` to the *same role* with no `pg_read_all_stats`
+     * membership required — and every request connects as the same runtime role, so one tenant's request can
+     * read the statement text of another's. [Verified: two ordinary `twes` connections; one saw the other's
+     * `set_config('twes.tenant_id', '<uuid>', true)` verbatim.] Rows do not cross; STATEMENT TEXT does — tenant
+     * ids, and any literal an ORM interpolates: a client-name search, an `IN (…)` of invoice numbers, an e-mail
+     * in a filter.
+     *
+     * Not removable for a shared role, which is why it belongs here as a documented scope rather than as an
+     * assertion. Two consequences that ARE actionable and are recorded in `infra/README.md`:
+     * **`application_name` must never carry tenant identity**, and **no statement may interpolate personal
+     * data** — which the domain already enforces by binding parameters rather than building SQL.
+     *
      * It is deliberately NOT asserted here. An assertion would fail on essentially every development cluster
      * on earth, because those PUBLIC grants are the shipped default — and a check that always fails is a check
      * somebody disables, which is strictly worse than a documented scope. The requirement belongs to the
@@ -796,9 +809,23 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * names. `UPDATE`/`DELETE` give overwrite and erase, and `UPDATE ... RETURNING` gives the read back too, so
      * "it is only a write" is not a mitigation. An insert-only journal or audit view is an ordinary shape.
      *
-     * `TRUNCATE` and `REFERENCES` are deliberately absent: neither reaches through a view, and the policed
-     * tables' own TRUNCATE reachability is asserted separately by
-     * {@see self::assertPolicedTablesAreBeyondThisRolesReach()}.
+     * **Four of PostgreSQL 18's twelve relation privileges, with every exclusion argued** — round 13 pointed
+     * out that the previous version named two and left six unmentioned, in a class whose whole style is
+     * exhaustive enumeration with a stated reason per exclusion. The full set `aclexplode` can yield is
+     * `CONNECT, CREATE, DELETE, EXECUTE, INSERT, MAINTAIN, REFERENCES, SELECT, TEMPORARY, TRIGGER, TRUNCATE,
+     * UPDATE, USAGE`. Excluded, and why:
+     *
+     *  - `TRUNCATE` — does not reach through a view; the policed tables' own TRUNCATE reachability is asserted
+     *    separately by {@see self::assertPolicedTablesAreBeyondThisRolesReach()}.
+     *  - `REFERENCES` — creates a foreign key, which reads nothing through the view.
+     *  - `TRIGGER` — creating a trigger needs a companion DML grant, which is already in the set above. (Note
+     *    the separate matter of a trigger FUNCTION firing without EXECUTE, closed in the function query.)
+     *  - `MAINTAIN` (PG17+) — grants `REFRESH MATERIALIZED VIEW` without `SELECT`, so it can refresh a matview's
+     *    contents but not read them. A matview is refused on KIND alone here, so it is covered already.
+     *  - `CONNECT`, `TEMPORARY` — database privileges, not relation ones; `TEMPORARY` is handled by
+     *    {@see self::assertConnectionCannotCreateTemporaryObjects()}.
+     *  - `CREATE`, `USAGE`, `EXECUTE` — schema and routine privileges; `EXECUTE` is handled by the function
+     *    query, and the runtime role holds `CREATE` nowhere.
      */
     private static function anyAccessIsReachableSql(): string
     {
@@ -1100,7 +1127,13 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // check that fires on a safe shape is the argument this class itself makes for not asserting
             // cross-database CONNECT. Latent today (the runtime role holds no CREATE anywhere, so it cannot
             // create one), which is exactly why it needs stating rather than discovering later.
-            . 'c.relowner = current_user::regrole::oid AS owned_by_caller, '
+            // Looked up in `pg_roles` rather than cast through `regrole`. `regrolein` DOWNCASES an unquoted
+            // name and `current_user` renders unquoted, so a deployment whose runtime role is
+            // `CREATE ROLE "twesApp"` made this query raise `role "twesapp" does not exist` — and the whole
+            // method then failed with "Could not inspect views and materialised views", a total outage traced
+            // to entirely the wrong cause. [Verified: `'POSTGRES'::regrole` resolves to `postgres`, while
+            // `'"POSTGRES"'::regrole` errors.] Fail-closed, but for a reason nobody could find.
+            . '(SELECT r.oid FROM pg_roles r WHERE r.rolname = current_user) = c.relowner AS owned_by_caller, '
             // Compared to the literal 'true' IN SQL, so PHP receives a real boolean. `pg_options_to_table`
             // yields the *string* 'true', which isTrue() does not recognise — it accepts `t` and `1`, the
             // spellings pdo_pgsql produces for an actual boolean column. Normalising here rather than

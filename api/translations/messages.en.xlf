@@ -44,6 +44,26 @@
         <source>pricing.profit_rate_undefined</source>
         <target>The profit rate is undefined while the cost is zero.</target>
       </trans-unit>
+      <trans-unit id="10" resname="document.illegal_transition">
+        <source>document.illegal_transition</source>
+        <target>This document cannot move from {from} to {to}. A correction is a new document, never an edit.</target>
+      </trans-unit>
+      <trans-unit id="11" resname="document.not_mutable">
+        <source>document.not_mutable</source>
+        <target>This document is {state} and can no longer be changed. Cancel it and issue a new one with the correct figures.</target>
+      </trans-unit>
+      <trans-unit id="12" resname="document.quantity_invalid">
+        <source>document.quantity_invalid</source>
+        <target>The quantity {quantity} is not valid. Enter a positive number, using a decimal point.</target>
+      </trans-unit>
+      <trans-unit id="13" resname="document.vat_rate_invalid">
+        <source>document.vat_rate_invalid</source>
+        <target>The VAT rate {rate}% is not valid. A VAT rate is never negative.</target>
+      </trans-unit>
+      <trans-unit id="14" resname="pricing.net_price_negative">
+        <source>pricing.net_price_negative</source>
+        <target>A cost of {cost} at a profit rate of {rate}% would give a selling price of {price}. A product is not sold at a negative price; use a credit note.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

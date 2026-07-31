@@ -627,6 +627,23 @@ every tenant's blob is readable under every binding. `DISCARD ALL` does not clea
 tenant-owned table or outside the database. Invoice PDFs are the canonical large-object use, so Wave 4 must not
 reach for one.
 
+**WAVE 1 ALSO OWES MOVING `TenantId` INTO `Domain/`** (round 13). `DocumentNumber` makes the document TYPE
+inseparable from the number — because the plan's own "never the number alone" rule would otherwise depend on
+every caller remembering it — and leaves the TENANT separable. The identity is really *(tenant, type,
+sequence)*, so tenant A's Invoice 41 and tenant B's Invoice 41 compare EQUAL and render identically. RLS stops a
+single *scoped* query holding both, but the tenant-less paths this codebase deliberately supports do not:
+`TenantContext`'s installation and global-health-check cases, and `assertStillBoundTo()`'s tenant-less branch,
+which exists precisely because the application "expects to see every tenant's rows".
+
+**It could not be fixed in place**, and the reason is the interesting part: `TenantId` lives in
+`Twes\Infrastructure\Tenancy`, so referencing it from `Domain/` is an OUTWARD dependency and a P0 by
+`layer-dependencies.php`. A tenant identifier is a **domain** concept — every aggregate is scoped by it — and it
+sits in `Infrastructure/` only because tenancy arrived as an RLS implementation detail. Moving it is a
+wave-boundary change touching the tenancy seam, so it is owed here rather than done as a findings-closure edit.
+Until then the constraint is documented on `equals()`/`toString()`: valid within a bound tenant, never in a
+cross-tenant collection — which is weaker than the type-carrying approach used for TYPE, deliberately and
+visibly so.
+
 **THE SCHEMA GATE IS A WAVE 1 BLOCKER — the first migration does not land without it** (developer ruling,
 2026-07-30). Every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply
 omits `ENABLE ROW LEVEL SECURITY` produces a tenant-owned table that is completely unpoliced and that **no

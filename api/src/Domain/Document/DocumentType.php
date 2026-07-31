@@ -23,10 +23,16 @@ namespace Twes\Domain\Document;
  * **Sequences are per type**, so invoice `0000041` and delivery note `0000041` both legitimately exist — see
  * {@see DocumentNumber} for why that ambiguity is made unrepresentable rather than merely documented.
  */
-enum DocumentType
+enum DocumentType: string
 {
-    case Invoice;
-    case Quote;
-    case Credit;
-    case DeliveryNote;
+    // BACKED, because these values reach the wire and the database. `DocumentNumber::toString()` is documented
+    // as being for "a log line, a search result, an API payload", and a non-backed enum would put a PHP CASE
+    // NAME there — making a rename of a PHP identifier a breaking API change, which CLAUDE.md § "The API
+    // contract is ours to design" says must never be incidental. Both enums are also persisted type/status
+    // columns. A backed enum gives a stable identifier at no cost; snake_case because that is what the rest of
+    // the contract will use.
+    case Invoice = 'invoice';
+    case Quote = 'quote';
+    case Credit = 'credit';
+    case DeliveryNote = 'delivery_note';
 }

@@ -36,11 +36,13 @@ use Twes\Domain\Document\Exception\IllegalTransition;
  * lifecycle under time pressure. The enum is closed and the exhaustive test over its cartesian product fails
  * the day a case is added without a rule — which is the point at which the ruling gets made.
  */
-enum DocumentState
+enum DocumentState: string
 {
-    case Draft;
-    case Issued;
-    case Cancelled;
+    // BACKED, for the same reason as DocumentType: this is a persisted status column and a wire value, so a
+    // rename of the PHP identifier must not be a breaking change.
+    case Draft = 'draft';
+    case Issued = 'issued';
+    case Cancelled = 'cancelled';
 
     /**
      * Whether the document's figures and lines may still change.

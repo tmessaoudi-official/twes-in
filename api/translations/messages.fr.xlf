@@ -39,6 +39,26 @@
         <source>pricing.profit_rate_undefined</source>
         <target>Le taux de marge est indéfini lorsque le coût est nul.</target>
       </trans-unit>
+      <trans-unit id="10" resname="document.illegal_transition">
+        <source>document.illegal_transition</source>
+        <target>Ce document ne peut pas passer de {from} à {to}. Une correction est un nouveau document, jamais une modification.</target>
+      </trans-unit>
+      <trans-unit id="11" resname="document.not_mutable">
+        <source>document.not_mutable</source>
+        <target>Ce document est {state} et ne peut plus être modifié. Annulez-le et émettez-en un nouveau avec les montants corrects.</target>
+      </trans-unit>
+      <trans-unit id="12" resname="document.quantity_invalid">
+        <source>document.quantity_invalid</source>
+        <target>La quantité {quantity} n'est pas valide. Saisissez un nombre positif, avec un point décimal.</target>
+      </trans-unit>
+      <trans-unit id="13" resname="document.vat_rate_invalid">
+        <source>document.vat_rate_invalid</source>
+        <target>Le taux de TVA {rate} % n'est pas valide. Un taux de TVA n'est jamais négatif.</target>
+      </trans-unit>
+      <trans-unit id="14" resname="pricing.net_price_negative">
+        <source>pricing.net_price_negative</source>
+        <target>Un coût de {cost} avec un taux de marge de {rate} % donnerait un prix de vente de {price}. Un produit ne se vend pas à un prix négatif ; utilisez un avoir.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

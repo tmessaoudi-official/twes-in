@@ -76,3 +76,23 @@ readable under every binding**. `DISCARD ALL` does not clear them, so there is n
 Blobs belong in a policed tenant-owned table or outside the database entirely. Invoice PDFs are the canonical
 large-object use, so this is a constraint on Wave 4 rather than a theoretical one. Asserted by
 `assertNoLargeObjectIsReachable()`, which is composed into the acquisition check.
+
+### Statement text is shared between connections of the same role
+
+`pg_stat_activity` exposes the `query` column to the **same role** with no `pg_read_all_stats` membership, and
+every request connects as the same runtime role — so one tenant's request can read the in-flight SQL of another's.
+[Verified at round 13: two ordinary `twes` connections; one read the other's
+`set_config('twes.tenant_id', '<uuid>', true)` verbatim.]
+
+Rows do not cross. **Statement text does**, and that includes tenant ids and any literal an ORM interpolates: a
+client-name search, an `IN (…)` of invoice numbers, an e-mail in a filter. This is not removable for a shared
+role, so it is a documented boundary owned by the cluster and the application — like cross-database `CONNECT`.
+
+Two rules follow, and both are actionable:
+
+1. **`application_name` must never carry tenant identity.** It is visible in `pg_stat_activity` to every
+   connection of the same role, so `application_name = 'worker tenant-<uuid>'` publishes the tenant of every
+   in-flight request.
+2. **No statement may interpolate personal data.** Bind parameters instead — which is what
+   `PostgresRowLevelSecurityIsolation::bind()` already does for the tenant id, and for the same reason:
+   interpolating an identifier from a request into SQL is the shape of an injection as well as a disclosure.

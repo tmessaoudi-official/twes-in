@@ -63,6 +63,21 @@ final readonly class NumberPattern
      */
     public function format(int $sequence): string
     {
+        // GUARDED HERE TOO, not only in DocumentNumber. Round 13 pointed out that this method is public and
+        // rendered `format(0)` as `"0000000"` and `format(-5)` as `"00000-5"` — the first being exactly the
+        // string `DocumentNumber` refuses a sequence of zero to prevent ("what an uninitialised counter holds"),
+        // and the second a legal-looking document number. A value object that refuses a state while a
+        // collaborator will render it on request has not refused it.
+        if ($sequence < 1) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Cannot format sequence %d: a document sequence starts at 1. Zero is what an uninitialised '
+                . 'counter holds and would render as "%s", and a negative renders as a legal-looking number '
+                . 'with a minus inside it.',
+                $sequence,
+                str_pad('0', $this->width, '0', \STR_PAD_LEFT),
+            ));
+        }
+
         return str_pad((string) $sequence, $this->width, '0', \STR_PAD_LEFT);
     }
 }

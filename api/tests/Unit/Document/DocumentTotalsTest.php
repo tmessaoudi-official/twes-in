@@ -490,6 +490,43 @@ final class DocumentTotalsTest extends TestCase
         self::assertSame('stamp_duty', $charge->label());
     }
 
+    /**
+     * A negative VAT RATE is refused on a line, even though `Rate` permits negatives.
+     *
+     * `Rate` is right to permit them: it also serves as the PROFIT rate, where selling below cost is a real
+     * commercial decision. But no jurisdiction has a negative VAT rate, and `DocumentLine` performed no range
+     * check on the rate it was handed — so `Rate::fromPercentage('-19')` produced a document with VAT −19.000
+     * and a total BELOW its net. One type serving two roles is exactly why the constraint belongs at the use
+     * site rather than in `Rate`.
+     */
+    public function testANegativeVatRateIsRefusedOnALine(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/no jurisdiction has a negative VAT rate/i');
+
+        new DocumentLine('1', Money::of('100.000', Currency::of('TND')), Rate::fromPercentage('-19'));
+    }
+
+    /**
+     * And a ZERO VAT rate is accepted, because zero-rated and exempt supplies are ordinary.
+     *
+     * A guard written `<= 0` would refuse every zero-rated line — the export, the exempt medical supply, the
+     * intra-EU reverse charge — which is a large fraction of real invoices rather than an edge case.
+     */
+    public function testAZeroVatRateIsAccepted(): void
+    {
+        $totals = new DocumentCalculator()->calculate(
+            [new DocumentLine('1', Money::of('100.000', Currency::of('TND')), Rate::zero())],
+            [],
+            VatRoundingPoint::PerRateGroup,
+            RoundingMode::HalfUp,
+        );
+
+        self::assertSame('0.000', $totals->vatTotal()->amount());
+        // And it is still its own GROUP, because a zero-rate subtotal is a required line on the document.
+        self::assertCount(1, $totals->vatByRate());
+    }
+
     // ------------------------------------------------------------------ fixture plumbing
 
     /**

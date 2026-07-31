@@ -45,6 +45,26 @@
         <source>pricing.profit_rate_undefined</source>
         <target>نسبة الربح غير معرّفة عندما تكون الكلفة صفراً.</target>
       </trans-unit>
+      <trans-unit id="10" resname="document.illegal_transition">
+        <source>document.illegal_transition</source>
+        <target>لا يمكن نقل هذه الوثيقة من {from} إلى {to}. التصحيح وثيقة جديدة، وليس تعديلاً.</target>
+      </trans-unit>
+      <trans-unit id="11" resname="document.not_mutable">
+        <source>document.not_mutable</source>
+        <target>هذه الوثيقة {state} ولم يعد من الممكن تغييرها. ألغها وأصدر وثيقة جديدة بالمبالغ الصحيحة.</target>
+      </trans-unit>
+      <trans-unit id="12" resname="document.quantity_invalid">
+        <source>document.quantity_invalid</source>
+        <target>الكمية {quantity} غير صالحة. أدخل رقماً موجباً باستخدام الفاصلة العشرية.</target>
+      </trans-unit>
+      <trans-unit id="13" resname="document.vat_rate_invalid">
+        <source>document.vat_rate_invalid</source>
+        <target>نسبة الضريبة {rate}% غير صالحة. لا تكون نسبة الضريبة سالبة أبداً.</target>
+      </trans-unit>
+      <trans-unit id="14" resname="pricing.net_price_negative">
+        <source>pricing.net_price_negative</source>
+        <target>تكلفة {cost} بنسبة ربح {rate}% تعطي سعر بيع {price}. لا يُباع المنتج بسعر سالب؛ استخدم إشعار دائن.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

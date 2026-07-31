@@ -15,6 +15,7 @@ namespace Twes\Domain\Document;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
 use Twes\Domain\Shared\Decimal;
+use Twes\Domain\Shared\RoundingMode;
 
 /**
  * One line of a document: a quantity, a unit price net of VAT, and the VAT rate that applies to it.
@@ -99,6 +100,21 @@ final readonly class DocumentLine
         //
         // A negative-total document is a CREDIT NOTE — EN 16931 type code 381, not 380 — which is a
         // tax-document distinction rather than a presentation one.
+        // A NEGATIVE VAT RATE. `Rate` permits negatives and is right to — it also serves as the PROFIT rate,
+        // where "selling below cost" is a real commercial decision (clearance, a loss leader). But no
+        // jurisdiction has a negative VAT rate, and `DocumentLine` performed no range check on the rate it was
+        // handed, so `Rate::fromPercentage('-19')` produced a document with vat -19.000 and a total BELOW its
+        // net. The same type serving two roles is why the constraint belongs at the use site rather than in
+        // `Rate`: a rate is a dimensionless number, and what a VAT rate may be is a property of documents.
+        if ($vatRate->isNegative()) {
+            throw new \InvalidArgumentException(\sprintf(
+                'VAT rate %s%% is negative. No jurisdiction has a negative VAT rate. `Rate` permits negatives '
+                . 'because it also serves as the PROFIT rate, where selling below cost is legitimate — so the '
+                . 'constraint belongs here, at the use site, not in Rate.',
+                $vatRate->percentage(),
+            ));
+        }
+
         if ($unitNet->isNegative()) {
             throw new \InvalidArgumentException(\sprintf(
                 'Unit price %s is negative. A negative line is how a credit note gets expressed in some '
@@ -133,7 +149,7 @@ final readonly class DocumentLine
      * lines fail to add up to the printed subtotal, which is the single most common complaint about
      * generated invoices and, for an EN 16931 payload, a validation failure rather than a cosmetic one.
      */
-    public function net(\Twes\Domain\Shared\RoundingMode $mode): Money
+    public function net(RoundingMode $mode): Money
     {
         return $this->unitNet->multipliedBy($this->quantity, $mode);
     }
