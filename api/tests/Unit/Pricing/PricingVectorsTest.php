@@ -102,6 +102,25 @@ final class PricingVectorsTest extends TestCase
             'The fixture must exercise a zero-, two-, three- AND four-decimal currency. TND has three, so '
             . 'three is the DEFAULT case here and neither the minimum nor the maximum a tier may assume.',
         );
+
+        // AND THE SAME REQUIREMENT ON `document_totals`, which had it made in prose one section up and enforced
+        // nowhere. Round 14 found every document case was TND, so substituting the literal 3 for the currency's
+        // own scale inside `DocumentCalculator` survived the ENTIRE suite — twice, once on the total and once on
+        // the subtotal accumulator. The argument above ("an implementation hardcoding at most three decimals
+        // passes the whole fixture") was true of this section and untested in it, which is the exemption-inside-
+        // a-cross-check shape § Gotchas records.
+        $documentScales = array_values(array_unique(array_map(
+            static fn(array $case): int => Currency::of($case['currency'])->scale(),
+            $vectors['document_totals'],
+        )));
+        sort($documentScales);
+        self::assertSame(
+            [0, 2, 3, 4],
+            $documentScales,
+            'A whole DOCUMENT must be totalled in a zero-, two-, three- and four-decimal currency. Totalling '
+            . 'is where the scale is used most (line nets, per-rate VAT, the sum), so TND-only coverage here '
+            . 'leaves the kernel free to assume three decimals.',
+        );
     }
 
     #[DataProvider('pricingCases')]

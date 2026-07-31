@@ -100,6 +100,28 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     public const string TENANT_COLUMN = 'company_id';
 
     /**
+     * The large-object WRITE entry points. A `public const` rather than a local array, so a test can generate
+     * one case per entry instead of pinning one instance of the rule.
+     *
+     * Writes only. `lo_get`/`loread` are reads, and a connection that cannot create a large object has nothing
+     * of its own to read — while revoking the readers too would break `pg_dump`, which is the kind of collateral
+     * damage that gets a control reverted wholesale.
+     *
+     * **A name list's real failure mode is a TYPO, and nothing caught it:** an entry misspelled here matches no
+     * `pg_proc` row, `bool_or` over an empty set returns NULL, and the writer is silently never checked while
+     * the gate reports clean. Round 14 found four of the five entries individually deletable with the test
+     * green, which is the same hole seen from the other side. `LargeObjectWritersTest` now asserts every entry
+     * resolves to a real `pg_catalog` function.
+     *
+     * Note `lo_import` ships with a non-NULL `proacl` (`{postgres=X/postgres}`) so PUBLIC never held it, unlike
+     * the other four. It stays here anyway — a cluster where somebody granted it is exactly what a detector is
+     * for — which is why this list is deliberately LONGER than the `REVOKE` set in `infra/README.md`.
+     *
+     * @var list<string>
+     */
+    public const array LARGE_OBJECT_WRITERS = ['lo_create', 'lo_from_bytea', 'lo_import', 'lo_put', 'lowrite'];
+
+    /**
      * @throws NoCurrentTenant if no tenant is bound — binding "no tenant" is refused rather than
      *                         leaving the session unscoped
      * @throws \RuntimeException if not inside a transaction, where SET LOCAL would have no effect; if the
@@ -1764,10 +1786,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * missing: it stated a rule and offered no way to enforce it. [Verified: the restricted runtime role could
      * call `lo_create`, `lo_from_bytea`, `lo_get`, `lo_put`, `lo_unlink` and `lowrite` — all six.]
      *
-     * PostgreSQL grants `EXECUTE` on these to `PUBLIC` by default, so a NULL `proacl` is the dangerous case
-     * here exactly as it is for any other function. The remedy is in `infra/README.md`:
-     * `REVOKE EXECUTE ON FUNCTION lo_from_bytea(oid, bytea), lo_create(oid), lo_put(oid, bigint, bytea),
-     * lowrite(integer, bytea) FROM PUBLIC`.
+     * PostgreSQL leaves `proacl` NULL on FOUR of the five checked here — `lo_create`, `lo_from_bytea`, `lo_put`
+     * and `lowrite` — and a NULL `proacl` means "EXECUTE to PUBLIC", so a fresh cluster grants them to the
+     * runtime role. **`lo_import` is the exception and the docblock used to lump it in with the rest:** it ships
+     * as `{postgres=X/postgres}`, so PUBLIC never held it. [Verified on PostgreSQL 18.4:
+     * `has_function_privilege('twes', lo_import, 'EXECUTE')` is false on an untouched cluster while the other
+     * four are true.] It stays in the DETECTOR's list regardless — a cluster where somebody granted it is
+     * precisely what a checker is for — so the detector covering five while the remedy revokes four is correct
+     * rather than a discrepancy, which is the sort of off-by-one that otherwise reads as an oversight.
+     *
+     * The remedy is `infra/README.md` § "No large objects, ever", which now actually contains it: round 14
+     * found this docblock pointing at a `REVOKE` that appeared nowhere in that file, and the exception message
+     * below sends an operator to the same place.
      *
      * Not composed into {@see self::assertConnectionCannotBypassPolicies()}, for the same reason the
      * `TEMPORARY` guard is not: the test database has not revoked these, so composing it would fail every run.
@@ -1777,13 +1807,9 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      */
     public static function assertConnectionCannotCreateLargeObjects(\PDO $connection): void
     {
-        // The WRITE functions only. `lo_get`/`loread` are reads, and a connection that cannot create one has
-        // nothing of its own to read — while revoking the readers too would break `pg_dump`, which is the kind
-        // of collateral damage that gets a control reverted wholesale.
-        $writers = ['lo_create', 'lo_from_bytea', 'lo_import', 'lo_put', 'lowrite'];
         $callable = [];
 
-        foreach ($writers as $writer) {
+        foreach (self::LARGE_OBJECT_WRITERS as $writer) {
             $statement = $connection->query(\sprintf(
                 'SELECT bool_or(%s) AS callable FROM pg_proc p '
                 . 'JOIN pg_namespace n ON n.oid = p.pronamespace '

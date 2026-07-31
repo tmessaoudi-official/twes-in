@@ -624,11 +624,20 @@ one round earlier — "the savepoint obligation lived in one Decisions Log line 
 session and its load-time-chartered reviewer had no way to find it" — and the identical omission was
 reintroduced for the seventh class in the very next round.
 
-Three calls, and a pool that lands without them is a `completeness-reviewer` **P0**:
+FOUR obligations, and a pool that lands without them is a `completeness-reviewer` **P0**. (This read
+"three calls" until round 14; the fourth is the eviction contract inside item 1.)
 
 1. **`discardSessionState()` when a connection is RETURNED.** A temporary table and a `CURSOR WITH HOLD`
    outlive the transaction-scoped binding and are readable under whatever tenant is bound next. It rolls back
    an open transaction rather than refusing, because release most often happens on an exception path.
+   **AND IT THROWS `ConnectionMustBeEvicted` WHEN THE CLEANUP ITSELF FAILS** — added round 12, recorded here at
+   round 14, because this list said "three calls" while a fourth obligation existed only in a docblock. That is
+   the omission the paragraph above says this section exists to prevent, now for the third time. A connection
+   whose rollback or `DISCARD` failed is not dirty, it is *unknowable*: it may still carry a temp table, a
+   `WITH HOLD` cursor or a `LISTEN` registration readable under whatever tenant is bound next. The pool must
+   **close and discard it**, never return it — catching and ignoring that exception re-creates the eighth
+   carrier in full. The driver failure travels as `$previous`, so the release path never masks an in-flight
+   business exception.
 2. **`assertConnectionCannotBypassPolicies()` when one is ACQUIRED** — which now composes the session-lifetime
    and large-object checks, so this is one call rather than three. Round 12 found the seventh-class guard
    reachable only from its own test; composing it is what makes "a check nobody calls is not a check" hold.
@@ -639,12 +648,21 @@ Three calls, and a pool that lands without them is a `completeness-reviewer` **P
    own name. [Verified: with a temporary `shadow_probe` present, `current_schemas(true)` reads
    `{pg_temp_6,pg_catalog,public}` and an unqualified `shadow_probe::regclass` resolves into `pg_temp_6`.]
 
-**And the eighth carrier is a RULE, not a wiring item: zero large objects.** `pg_largeobject` is a system
+**And the eighth carrier is a RULE *plus* a capability revocation — recorded here as "not a wiring item",
+which was wrong and is corrected at round 14: zero large objects.** `pg_largeobject` is a system
 catalogue that cannot carry row-level security at any privilege level, `lo_get` needs no privilege the runtime
 role lacks, and the default ACL is owner-only — which, because every request connects as the same role, means
 every tenant's blob is readable under every binding. `DISCARD ALL` does not clear them. Blobs go in a policed
 tenant-owned table or outside the database. Invoice PDFs are the canonical large-object use, so Wave 4 must not
 reach for one.
+
+**The wiring half that "a RULE, not a wiring item" denied:** detection alone is the wrong shape here, because
+`assertNoLargeObjectIsReachable()` throws on ANY row and is composed into acquisition — so one request reaching
+`lo_from_bytea` permanently refuses **every subsequent acquisition** until a privileged role unlinks the object.
+A permanent object on the hot path is an outage, not a guard. So the CAPABILITY is revoked as well, by the four
+`REVOKE EXECUTE` statements now in `infra/README.md` § "No large objects, ever". `lo_import` is deliberately not
+among them — it ships with a non-NULL `proacl`, so PUBLIC never held it — while the detector still checks all
+five, because a cluster where somebody granted it is exactly what a checker is for.
 
 **NUMBERING'S ALLOCATOR LANDED, 2026-07-31, AND ITS CONTRACT IS THE PART THAT MATTERS.** Wave 1's scope line
 above reads "numbering with per-tenant counters", and until round 14 only the *rendering* half existed:

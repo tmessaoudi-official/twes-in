@@ -77,6 +77,39 @@ Blobs belong in a policed tenant-owned table or outside the database entirely. I
 large-object use, so this is a constraint on Wave 4 rather than a theoretical one. Asserted by
 `assertNoLargeObjectIsReachable()`, which is composed into the acquisition check.
 
+**Remove the CAPABILITY, not only the residue — and this section is where the remedy belongs, which round 14
+found it did not.** `assertConnectionCannotCreateLargeObjects()`'s docblock pointed here for the `REVOKE` below
+and nothing here said it; the claim was read once and believed. Detection alone is also the wrong shape on its
+own: the check throws on ANY row and is composed into acquisition, so one request reaching `lo_from_bytea`
+permanently refuses **every subsequent acquisition** until a privileged role unlinks the object — a permanent
+object on the hot path is an outage, not a guard.
+
+```sql
+-- Run once per database, as a superuser. PostgreSQL leaves proacl NULL on these, which means
+-- "EXECUTE to PUBLIC", so a fresh cluster grants all of them to the runtime role.
+REVOKE EXECUTE ON FUNCTION lo_create(oid)               FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION lo_from_bytea(oid, bytea)    FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION lo_put(oid, bigint, bytea)   FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION lowrite(integer, bytea)      FROM PUBLIC;
+-- lo_import is NOT in that list on purpose: it ships with `{postgres=X/postgres}` rather than a NULL proacl,
+-- so PUBLIC never held it and there is nothing to revoke. [Verified on PostgreSQL 18.4:
+-- has_function_privilege('twes', 'lo_import(text)', 'EXECUTE') is false on an untouched cluster, while the
+-- four above are true.] The detector still checks all five, because a cluster where somebody GRANTed it is
+-- exactly the case a checker exists for -- so the detector's list being LONGER than this one is correct, not
+-- a discrepancy.
+```
+
+### A connection that fails cleanup must be EVICTED, not reused
+
+`discardSessionState()` rolls back and clears a connection when it is returned to the pool. If either statement
+fails the connection is not merely dirty, it is **unknowable** — it may still carry a temporary table, a
+`WITH HOLD` cursor or a `LISTEN` registration readable under whatever tenant is bound next. It therefore raises
+`ConnectionMustBeEvicted`, and the pool's obligation is to **close and discard that connection** rather than
+return it. Catching and ignoring it re-creates the eighth carrier in full.
+
+The exception carries the driver failure as `$previous`, so it never masks an in-flight business exception on
+the release path — release most often happens while another exception is already propagating.
+
 ### Statement text is shared between connections of the same role
 
 `pg_stat_activity` exposes the `query` column to the **same role** with no `pg_read_all_stats` membership, and

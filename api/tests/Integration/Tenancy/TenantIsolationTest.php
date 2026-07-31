@@ -3218,6 +3218,82 @@ final class TenantIsolationTest extends TestCase
         }
     }
 
+    /**
+     * **Every entry in {@see PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS} resolves to a real
+     * function — one case per entry, GENERATED from the rule set.**
+     *
+     * A name list's real failure mode is a typo, and it fails SILENTLY: a misspelled entry matches no `pg_proc`
+     * row, `bool_or` over an empty set returns NULL, and that writer is never checked while the gate reports
+     * clean. Round 14 found four of the five entries individually deletable with the single existing test green,
+     * which is the same hole from the other side — the test pinned `lo_from_bytea` and nothing else.
+     *
+     * Generated rather than hand-listed, which is the remedy `test-gates.sh` already uses for its own rule sets:
+     * "generating a case from the data means deleting an entry deletes its own case". Deleting an entry from the
+     * constant therefore removes a case rather than leaving a passing one behind, and the count assertion below
+     * is what makes that removal visible instead of silent.
+     *
+     * @param string $writer one large-object write entry point
+     */
+    #[DataProvider('largeObjectWriters')]
+    public function testEveryLargeObjectWriterResolvesToARealFunction(string $writer): void
+    {
+        $statement = $this->connection->query(\sprintf(
+            "SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace "
+            . "WHERE n.nspname = 'pg_catalog' AND p.proname = '%s'",
+            $writer,
+        ));
+
+        self::assertNotFalse($statement);
+        self::assertGreaterThan(
+            0,
+            (int) $statement->fetchColumn(),
+            \sprintf(
+                '%s matches no pg_catalog function, so bool_or() over an empty set returns NULL and this '
+                . 'writer is silently never checked while the gate reports clean.',
+                $writer,
+            ),
+        );
+    }
+
+    /** @return iterable<string, array{string}> */
+    public static function largeObjectWriters(): iterable
+    {
+        foreach (PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS as $writer) {
+            yield $writer => [$writer];
+        }
+    }
+
+    /**
+     * The rule set has not SHRUNK — a committed minimum, because generating cases from the data means an entry
+     * deleted takes its own case with it and the suite still passes with fewer.
+     *
+     * Also pins the one documented asymmetry: `lo_import` ships with a non-NULL `proacl`, so PUBLIC never held
+     * it, which is why `infra/README.md`'s `REVOKE` set is deliberately SHORTER than this list. Asserting it
+     * live rather than trusting the comment — if a future PostgreSQL grants it to PUBLIC, the README's claim
+     * becomes wrong and this fails.
+     */
+    public function testTheLargeObjectWriterRuleSetHasNotShrunk(): void
+    {
+        self::assertGreaterThanOrEqual(
+            5,
+            \count(PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS),
+            'The writer list must not shrink; each entry is a way to create a large object.',
+        );
+
+        $acl = $this->connection->query(
+            "SELECT proacl IS NOT NULL AS restricted FROM pg_proc p "
+            . "JOIN pg_namespace n ON n.oid = p.pronamespace "
+            . "WHERE n.nspname = 'pg_catalog' AND p.proname = 'lo_import' LIMIT 1",
+        );
+        self::assertNotFalse($acl);
+        self::assertContains(
+            $acl->fetchColumn(),
+            [true, 't', '1'],
+            'lo_import is documented as the one writer PUBLIC never held. If that changed, infra/README.md\'s '
+            . 'REVOKE set is now incomplete and must gain a fifth statement.',
+        );
+    }
+
     private static function superuserConnection(): ?\PDO
     {
         $dsn = getenv('TWES_TEST_DSN');

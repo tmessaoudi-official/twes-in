@@ -369,6 +369,78 @@
       "expected": {
         "total": "0.005"
       }
+    },
+    {
+      "id": "zero-decimal-currency-document",
+      "why": "A WHOLE DOCUMENT in a zero-decimal currency, and it was absent: every document_totals case was TND, so a kernel hardcoding TND's three decimals passed all of them. Round 14 proved it -- substituting the literal 3 for the currency's own scale survived the entire suite. JPY has scale 0, so 334 x 10% = 33.4 must round to 33, not to 33.400.",
+      "currency": "JPY",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "333",
+          "line_net": "333"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1",
+          "line_net": "1"
+        }
+      ],
+      "subtotal_net": "334",
+      "vat_rate": "10",
+      "vat": "33",
+      "fixed_charges": [],
+      "expected": {
+        "total": "367"
+      }
+    },
+    {
+      "id": "two-decimal-currency-document-with-a-vat-tie",
+      "why": "The ordinary two-decimal case, with a rounding decision so it is not merely exact arithmetic in a different scale. 59.98 x 20% = 11.996, which rounds HALF-UP to 12.00 at EUR's scale. A kernel that assumed three decimals would carry 11.996 into the total and produce 71.976, which is not a payable amount in euros.",
+      "currency": "EUR",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit_net": "19.99",
+          "line_net": "59.97"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.01",
+          "line_net": "0.01"
+        }
+      ],
+      "subtotal_net": "59.98",
+      "vat_rate": "20",
+      "vat": "12.00",
+      "fixed_charges": [],
+      "expected": {
+        "total": "71.98"
+      }
+    },
+    {
+      "id": "four-decimal-currency-document",
+      "why": "The OTHER side of the same hazard: a kernel capped at three decimals truncates here rather than growing. CLF has scale 4, and 1.2346 x 19% = 0.234574 rounds to 0.2346 -- a figure a three-decimal assumption cannot even represent. Three decimals is TND's DEFAULT, never the maximum a tier may assume, which is the argument the `cases` section already makes and this section did not.",
+      "currency": "CLF",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "1.2345",
+          "line_net": "1.2345"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.0001",
+          "line_net": "0.0001"
+        }
+      ],
+      "subtotal_net": "1.2346",
+      "vat_rate": "19",
+      "vat": "0.2346",
+      "fixed_charges": [],
+      "expected": {
+        "total": "1.4692"
+      }
     }
   ],
   "schema": "No JSON Schema yet — owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",
