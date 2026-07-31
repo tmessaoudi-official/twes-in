@@ -557,10 +557,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * **A second documented boundary, added at round 13: every connection can read every other connection's
      * in-flight SQL.** `pg_stat_activity` exposes `query` to the *same role* with no `pg_read_all_stats`
      * membership required — and every request connects as the same runtime role, so one tenant's request can
-     * read the statement text of another's. [Verified: two ordinary `twes` connections; one saw the other's
-     * `set_config('twes.tenant_id', '<uuid>', true)` verbatim.] Rows do not cross; STATEMENT TEXT does — tenant
-     * ids, and any literal an ORM interpolates: a client-name search, an `IN (…)` of invoice numbers, an e-mail
-     * in a filter.
+     * read the statement text of another's.
+     *
+     * **The round-13 citation here was FALSE and is replaced** (round 14): it claimed one connection saw the
+     * other's `set_config('twes.tenant_id', '<uuid>', true)` verbatim. It cannot — PDO defaults to server-side
+     * prepares, so `bind()`'s parameters never enter statement text and a spy sees `DEALLOCATE pdo_stmt_…`. That
+     * citation also contradicted this very docblock's own rule below, which says the domain binds parameters
+     * rather than building SQL; the two could not both be true, and the wrong one was the evidence.
+     * [Verified at round 14: an INTERPOLATED literal is fully visible — a second `twes` connection read
+     * `SELECT pg_sleep(2) WHERE 'client-dupont@example.com' <> 'x'` in full from `pg_stat_activity`.]
+     *
+     * So the boundary is real and the threat is precise: rows do not cross, and neither do bound parameters.
+     * STATEMENT TEXT does — every literal somebody interpolates instead of binding: a client-name search, an
+     * `IN (…)` of invoice numbers, an e-mail in a filter.
      *
      * Not removable for a shared role, which is why it belongs here as a documented scope rather than as an
      * assertion. Two consequences that ARE actionable and are recorded in `infra/README.md`:
@@ -854,11 +863,25 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * names. `UPDATE`/`DELETE` give overwrite and erase, and `UPDATE ... RETURNING` gives the read back too, so
      * "it is only a write" is not a mitigation. An insert-only journal or audit view is an ordinary shape.
      *
-     * **Four of PostgreSQL 18's twelve relation privileges, with every exclusion argued** — round 13 pointed
+     * **Four of PostgreSQL 18's EIGHT relation privileges, with every exclusion argued** — round 13 pointed
      * out that the previous version named two and left six unmentioned, in a class whose whole style is
-     * exhaustive enumeration with a stated reason per exclusion. The full set `aclexplode` can yield is
-     * `CONNECT, CREATE, DELETE, EXECUTE, INSERT, MAINTAIN, REFERENCES, SELECT, TEMPORARY, TRIGGER, TRUNCATE,
-     * UPDATE, USAGE`. Excluded, and why:
+     * exhaustive enumeration with a stated reason per exclusion.
+     *
+     * Two counting errors of round 13's own, both found at round 14 and both corrected in place rather than
+     * annotated below — in a docblock whose security argument RESTS on exhaustive enumeration, a completeness
+     * claim that is not complete is the specific failure mode this file records for `PriceCalculator`:
+     *
+     *   - it said "twelve" and then listed **thirteen** identifiers. The relevant number is neither: a RELATION
+     *     has exactly **eight** privileges — `SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER,
+     *     MAINTAIN` — four checked below and four argued away. The other five in that list belong to databases,
+     *     schemas, functions and languages, so they can never appear in a `relacl` at all.
+     *   - it called that list "the full set `aclexplode` can yield", which it is not: `aclexplode` also yields
+     *     `SET` and `ALTER SYSTEM` (parameter ACLs). [Verified on PostgreSQL 18.4:
+     *     `SELECT (aclexplode('{twes=sA/postgres}'::aclitem[])).privilege_type` returns `SET` and
+     *     `ALTER SYSTEM`.] The list is right for a `relacl`, which is all this method reads; the "full set"
+     *     wording was the overreach.
+     *
+     * Excluded, and why:
      *
      *  - `TRUNCATE` — does not reach through a view; the policed tables' own TRUNCATE reachability is asserted
      *    separately by {@see self::assertPolicedTablesAreBeyondThisRolesReach()}.
@@ -1346,10 +1369,22 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // `NOT tgisinternal` excludes the triggers PostgreSQL creates for foreign-key and unique
             // constraints, whose functions are `RI_FKey_*` in pg_catalog and already out of scope by schema.
             //
-            // STILL OWED, stated rather than implied: a function reached through a CHECK constraint, an index
-            // expression or a column DEFAULT on a table this role can write is ACL-checked at DDL time in the
-            // same way. Recorded in Wave 1's scope; this closes the trigger case, which is the one that was
-            // demonstrated.
+            // **NOT A GAP, and this comment used to claim it was** (corrected round 14). It read: "a function
+            // reached through a CHECK constraint, an index expression or a column DEFAULT ... is ACL-checked at
+            // DDL time in the same way", i.e. that three more carriers were owed. PostgreSQL enforces EXECUTE at
+            // **DML** time for all three, so none of them is a bypass and a guard for them would be dead code.
+            // [Verified on PostgreSQL 18.4 as the restricted role, against a SECURITY DEFINER function with
+            // EXECUTE revoked from PUBLIC: a column DEFAULT gives `permission denied for function leak_imm` on
+            // INSERT, as do a GENERATED ... STORED column and a CHECK constraint.]
+            //
+            // Worth keeping because it states WHY the trigger is special rather than leaving it as one item in a
+            // list: PostgreSQL checks EXECUTE against the trigger's CREATOR at `CREATE TRIGGER` and performs no
+            // check when the trigger FIRES. That asymmetry is unique to triggers among these four, and it is the
+            // whole reason the arm above exists.
+            //
+            // Recorded here because the residue as written invited Wave 1 to build a guard for a non-gap — and
+            // the first probe I wrote to check it AGREED with the claim, because it supplied a value for the
+            // defaulted column so the DEFAULT never evaluated. A test that does not arrive proves nothing.
             . 'AND (' . self::privilegeIsReachableSql('p.proacl', 'EXECUTE', true)
             . ' OR EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgfoid = p.oid AND NOT t.tgisinternal)) '
             . 'ORDER BY 1',
@@ -1620,7 +1655,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     public static function sessionLifetimeDataViolations(
         array $relations,
         array $cursors,
-        array $channels = [],
+        // REQUIRED, not defaulted, and round 14 was right to flag it. `$relations` and `$cursors` are required
+        // and this was optional, which made the LISTEN arm the one a forgetful caller silently skipped — and it
+        // is the arm where that costs most, because this method's own docblock says a `LISTEN` registration needs
+        // NO privilege and therefore has no capability to revoke: detection is the only control that exists for
+        // it. A fail-open default on the only detectable-and-not-preventable carrier is the "permission that
+        // nothing consults" shape § Gotchas records. There is exactly one caller in `src/`, so making it
+        // required costs nothing but forces the next caller to decide rather than inherit a blank.
+        array $channels,
     ): array {
         $violations = [];
 

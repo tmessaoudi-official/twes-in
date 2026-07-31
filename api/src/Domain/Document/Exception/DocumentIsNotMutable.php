@@ -32,7 +32,7 @@ final class DocumentIsNotMutable extends \DomainException
         return new self(\sprintf(
             'Cannot %s: this document is %s, and only a Draft is mutable. %s',
             $operation,
-            $state->name,
+            $state->value,
             DocumentState::Issued === $state
                 ? 'An issued document is corrected by cancel-and-reissue — cancel it and issue a new one with '
                     . 'the correct figures — because the client may already hold its PDF and a re-render could '

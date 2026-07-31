@@ -82,7 +82,7 @@ enum DocumentState: string
     public function transitionTo(self $target): self
     {
         if (!$this->canTransitionTo($target)) {
-            throw IllegalTransition::between($this->name, $target->name);
+            throw IllegalTransition::between($this->value, $target->value);
         }
 
         return $target;

@@ -34,6 +34,30 @@ use Twes\Domain\Shared\RoundingMode;
  */
 final readonly class DocumentLine
 {
+    /**
+     * The most decimals a quantity may carry — a **derived** bound, flagged as such because no plan rules it.
+     *
+     * Round 14 found `quantity` was the one persisted decimal in this domain with NO bound at either end:
+     * `Money` caps integer digits at 15 and fractions at the currency's scale, `Rate` caps both, and a quantity
+     * — which MULTIPLIES a money amount and is itself a line column — accepted 601 decimals and 40 integer
+     * digits. So a value the domain accepted could not be stored by any `NUMERIC` a migration might choose, and
+     * there was no constant for the migration to derive a precision FROM.
+     *
+     * Six, because a quantity is a count or a measure: hours, kilograms, cubic metres, litres. EN 16931's
+     * invoiced quantity (BT-129) fixes no scale and practical Peppol implementations sit at 2–4, so six is
+     * generous without being unbounded. **If the developer needs more, this is one constant and one column
+     * type** — the point is that the bound EXISTS and is named, not that six is sacred.
+     */
+    public const int MAX_SCALE = 6;
+
+    /**
+     * Integer digits, matching `Money::MAX_INTEGER_DIGITS` deliberately.
+     *
+     * A quantity times a unit price must stay inside `Money`'s own magnitude, and a quantity that alone exceeds
+     * what an amount can hold cannot produce a representable line net — so the refusal belongs here, where the
+     * message can name the quantity, rather than surfacing later as an unrepresentable amount.
+     */
+    public const int MAX_INTEGER_DIGITS = 15;
     /** Canonical decimal string. Never a float — see the constructor's float arm for why the union permits one. */
     private string $quantity;
 
@@ -88,6 +112,30 @@ final readonly class DocumentLine
                 'Quantity "%s" is negative. A credit is its own document type (Wave 2), not a negative '
                 . 'line on an invoice — two ways to express one thing is how the two drift apart.',
                 $quantity,
+            ));
+        }
+
+        // BOUNDED AT BOTH ENDS, which round 14 found it was not. See the two constants above: this is the only
+        // persisted decimal in the domain that had no bound, and it is the one that multiplies money.
+        if (Decimal::scaleOf($quantity) > self::MAX_SCALE) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Quantity "%s" carries %d decimal places; at most %d are allowed. A quantity is a count or a '
+                . 'measure, and one with more decimals than this cannot be stored by the line column at all — '
+                . 'so accepting it here means the domain admits a value persistence will reject.',
+                $quantity,
+                Decimal::scaleOf($quantity),
+                self::MAX_SCALE,
+            ));
+        }
+
+        if (Decimal::integerDigits($quantity) > self::MAX_INTEGER_DIGITS) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Quantity "%s" has %d integer digits; at most %d are allowed, matching Money. A quantity this '
+                . 'large cannot produce a representable line net, and refusing it here names the quantity '
+                . 'rather than surfacing later as an unrepresentable amount.',
+                $quantity,
+                Decimal::integerDigits($quantity),
+                self::MAX_INTEGER_DIGITS,
             ));
         }
 

@@ -203,6 +203,14 @@ final readonly class Money
      * @throws InvalidMoneyAmount if the divisor is malformed, or rounding is needed under
      *                            RoundingMode::Unnecessary
      * @throws \DivisionByZeroError
+     * @throws \LogicException if the divisor's own scale is large enough that `Decimal::divide()`'s DERIVED
+     *                         working scale exceeds `Decimal::MAX_SCALE`. Documented rather than converted
+     *                         (round 14 found it undeclared): unlike `Rate::fromPercentage()`, where the
+     *                         scale was a CONSTANT the caller never chose and a `\LogicException` therefore
+     *                         reached an HTTP boundary as a 500 for valid input, the scale here comes from
+     *                         the caller's own divisor — so a programming-fault exception is the right type.
+     *                         No caller exists in `Domain/` today; this becomes reachable when a transport
+     *                         layer or an allocation/split feature calls it.
      */
     public function dividedBy(string|int|float $divisor, RoundingMode $mode): self
     {

@@ -40,10 +40,15 @@ use Twes\Domain\Shared\RoundingMode;
  * CLAUDE.md names as a P0 for `domain-correctness-reviewer` because a status set by assignment is how an
  * illegal transition enters a billing system.
  *
- * **Deliberately absent: discounts, and inclusive-vs-exclusive tax.** Both are in Wave 1's scope and neither
- * is specified by any fixture. Building them would mean inventing money numbers, and this domain's whole
- * point is that it does not do that — see the Wave 1 section of `docs/plans/build-waves.plan.md`, where they
- * are recorded as owed with the reason.
+ * **Deliberately absent: discounts, and inclusive-vs-exclusive tax.** Both are named in Wave 1's `In:` list and
+ * neither is specified by any fixture. Building them would mean inventing money numbers, and this domain's whole
+ * point is that it does not do that: they need worked examples from the developer first.
+ *
+ * Round 14 found this pointing at "the Wave 1 section, where they are recorded as owed with the reason" — and
+ * that section contained only the `In:` list still claiming both in scope, unannotated; the deferral lived in a
+ * Decisions Log entry ~515 lines above with no destination wave named. So a Wave 1 session reading its own
+ * section was told both were in scope and sent here for a correction that was somewhere else. Both places are
+ * now annotated in place.
  */
 final readonly class Invoice
 {

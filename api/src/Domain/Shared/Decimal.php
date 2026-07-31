@@ -42,7 +42,15 @@ final class Decimal
     private function __construct() {}
 
     /**
-     * The largest scale this class will compute at — a PRACTICAL bound, and deliberately not bcmath's.
+     * The largest scale `assertScale()` admits — a PRACTICAL bound, and deliberately not bcmath's.
+     *
+     * **Phrased as `assertScale()`'s bound rather than "the largest scale this class will compute at",
+     * which is what it said until round 14 and which `multiplyExact()` falsifies.** That method is a fifth
+     * entry point, computes at `scaleOf(left) + scaleOf(right)`, and asserts nothing — correctly, because
+     * it needs no rounding and so has no target scale to check against. The hazard was MEASURED rather
+     * than assumed: a factor at scale 400000 costs 2ms and the cost is linear, so this constant's own
+     * rationale below (a hostile caller failing in microseconds instead of allocating gigabytes) still
+     * holds. What was wrong was only the claim to bound everything the class computes.
      *
      * bcmath's own ceiling is `INT_MAX` (2147483647), and enforcing *that* was the first fix attempted here.
      * It is the wrong bound, and finding out why was worth more than the finding that prompted it: a scale of

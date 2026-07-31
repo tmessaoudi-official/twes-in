@@ -114,8 +114,13 @@ the release path — release most often happens while another exception is alrea
 
 `pg_stat_activity` exposes the `query` column to the **same role** with no `pg_read_all_stats` membership, and
 every request connects as the same runtime role — so one tenant's request can read the in-flight SQL of another's.
-[Verified at round 13: two ordinary `twes` connections; one read the other's
-`set_config('twes.tenant_id', '<uuid>', true)` verbatim.]
+[Verified at round 14, and the round-13 citation it replaces was FALSE: it claimed one connection saw the
+other's `set_config('twes.tenant_id', '<uuid>', true)` verbatim. PDO defaults to server-side prepares
+(`ATTR_EMULATE_PREPARES` is `false`), so `bind()`'s parameters never enter statement text — the spy sees
+`DEALLOCATE pdo_stmt_00000003`. That citation also contradicted rule 2 four lines below it, which correctly
+says `bind()` binds parameters; the two could not both be true. What IS visible is any literal a caller
+INTERPOLATES: a spy connection read
+`SELECT pg_sleep(2) WHERE 'client-dupont@example.com' <> 'x'` in full.]
 
 Rows do not cross. **Statement text does**, and that includes tenant ids and any literal an ORM interpolates: a
 client-name search, an `IN (…)` of invoice numbers, an e-mail in a filter. This is not removable for a shared

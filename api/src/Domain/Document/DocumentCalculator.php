@@ -152,19 +152,31 @@ final readonly class DocumentCalculator
      */
     private function resolveCurrency(array $lines, array $fixedCharges, ?Currency $currency): Currency
     {
-        foreach ($lines as $line) {
+        // NAMED POSITIONS, because `Money::plus()` raises the same exception CLASS a few lines downstream and
+        // round 14 found both of these guards deletable with the suite green — the test asserted only the class,
+        // so a crash and a detection were indistinguishable. The context string is what a test can pin, and it
+        // is also what tells a reader WHICH line of a fifty-line invoice is wrong.
+        foreach ($lines as $position => $line) {
             $currency ??= $line->unitNet()->currency();
 
             if (!$currency->equals($line->unitNet()->currency())) {
-                throw CurrencyMismatch::between($currency, $line->unitNet()->currency());
+                throw CurrencyMismatch::inContext(
+                    $currency,
+                    $line->unitNet()->currency(),
+                    \sprintf('document line %d', $position),
+                );
             }
         }
 
-        foreach ($fixedCharges as $charge) {
+        foreach ($fixedCharges as $position => $charge) {
             $currency ??= $charge->amount()->currency();
 
             if (!$currency->equals($charge->amount()->currency())) {
-                throw CurrencyMismatch::between($currency, $charge->amount()->currency());
+                throw CurrencyMismatch::inContext(
+                    $currency,
+                    $charge->amount()->currency(),
+                    \sprintf('document charge %d', $position),
+                );
             }
         }
 

@@ -596,9 +596,19 @@ precisely because they are unfixable later.
 ## Wave 1 — Client & the invoice core — **PURE DOMAIN LANDED, 2026-07-31; persistence BLOCKED**
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
-totals, discounts, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
+totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
 tax is a *flag*, never a parallel class hierarchy · invoice state machine behind a **transition guard**, no
 status written by assignment · numbering with per-tenant counters.
+
+**DISCOUNTS and INCLUSIVE-VS-EXCLUSIVE TAX are DEFERRED, and this line is where that had to be said** (round
+14). Both were listed above as in-scope with no annotation, while the deferral lived only in a Decisions Log
+entry ~515 lines up that named no destination wave — and `Invoice`'s docblock pointed *here* for "the reason",
+which was not here. Neither is specified by any fixture, and building them would mean inventing money numbers,
+which this domain exists not to do. **They need worked examples from the developer**: for discounts, whether a
+line discount reduces the VAT base and how a document-level discount is allocated across rate groups; for
+inclusive tax, a worked case showing the extraction. Until then `VatRoundingPoint` is the only parameterisation
+the kernel carries, and it is genuinely one implementation rather than two — which is the invariant that line
+was really about.
 
 **WAVE 1 ALSO OWES THE SAVEPOINT RE-CHECK WIRING** (round 9, P2-2 — the obligation existed only in a
 Decisions Log line and a docblock, i.e. in neither place a Wave 1 session or its reviewer would look).
@@ -772,6 +782,30 @@ wave that writes the migration with no record of it):
 | `profit_rate` | `NUMERIC(27,12)` nullable | 12 fraction decimals (`Rate::FRACTION_SCALE`) plus 15 integer digits (`Rate::MAX_INTEGER_DIGITS`, matching `Money`'s). **Widened from `NUMERIC(15,12)` at round 4**: three integer digits was too narrow, and a one-millime cost with a typed price of 1000.000 derives 999999. Null when the price was the authored field |
 | `net_price` | `NUMERIC(19,4)` nullable | null when the rate was the authored field |
 | `authored_by` | non-null enum `('profit_rate','net_price')` | **the load-bearing one.** Without it both fields look equally real and the derived one gets rebuilt from a rounded copy — see `pricing-and-documents.plan.md` § F4 |
+
+**And the DOCUMENT tables' columns, which round 14 found missing for the same reason `product`'s were** — R2-10
+recurring verbatim: "new persisted state that never reaches Wave 1's scope, so the wave writing the first
+migration has no record that the column exists". Every one below is derived from a named domain constant, so the
+migration has nothing to invent:
+
+| Column | Type | Why |
+|---|---|---|
+| `document.company_id` | non-null `uuid` | the tenant column, `PostgresRowLevelSecurityIsolation::TENANT_COLUMN`. Anchored there rather than chosen per table — round 14 found a policy scoping any identifier passed as canonical |
+| `document.type` | non-null enum `('invoice','quote','credit','delivery_note')` | `DocumentType`'s **backed values**, not its case names. A PHP rename must not be a data migration |
+| `document.state` | non-null enum `('draft','issued','cancelled')` | `DocumentState`'s backed values, same argument |
+| `document.currency` | non-null `CHAR(3)` | the DOCUMENT's currency, fixed at `Invoice::draft()` and not inferred from the first line. A `Money` is *(amount, currency)*; see the `product` table above for why one column per row rather than one per amount |
+| `document.number` | nullable `integer` | the raw counter, **null until issued** — `Invoice::number()` returns null for a draft. Stored as the integer rather than the rendered string because the pattern is per-tenant configuration and may change: `NumberPattern` renders, it does not identify |
+| `document.vat_rounding_point` | non-null enum `('per_rate_group','per_line')` | per-company configuration, so it is persisted per document as issued — a company changing it must not restate a document a client holds |
+| **`UNIQUE (company_id, type, number)`** | — | **the gapless sequence's only real guarantee.** `DocumentNumberSequence` cannot promise uniqueness across processes; this constraint is what makes a broken adapter loud instead of silent |
+| `document_line.quantity` | non-null `NUMERIC(21,6)` | `DocumentLine::MAX_INTEGER_DIGITS` (15) + `DocumentLine::MAX_SCALE` (6). Both constants exist because round 14 found this the ONE persisted decimal in the domain bounded at neither end — it accepted 601 decimals and 40 integer digits, so no `NUMERIC` could have stored what the domain admitted |
+| `document_line.unit_net` | non-null `NUMERIC(19,4)` | never a float; the document's currency governs its scale |
+| `document_line.vat_rate` | non-null `NUMERIC(27,12)` | `Rate::FRACTION_SCALE` + `Rate::MAX_INTEGER_DIGITS`, exactly as `product.profit_rate`. Per LINE, not per document: multiple rates on one document is the normal Tunisian and French case |
+| `document_charge.label` | non-null `text` | trimmed on store by `FixedCharge` |
+| `document_charge.amount` | non-null `NUMERIC(19,4)` | a document-scope charge, never in a VAT base |
+
+No `currency` column on the line or charge tables, and that is the same argument as `profit_rate`'s seen from the
+other side: the document owns the currency and the domain refuses to mix them, so a per-line column could only
+ever record an impossible state.
 
 `profit_rate` carries **no** currency, and that is the same rule seen from the other side: a rate is
 dimensionless. `Money::ratioTo()` returns a plain string rather than a `Money` for exactly this reason, and

@@ -1782,9 +1782,14 @@ final class TenantIsolationTest extends TestCase
             ['name' => 'tmp_x', 'kind' => 'Z'],
         ], [
             ['name' => 'held_one'],
+        ], [
+            // THE THIRD ARM, which this call omitted while `$channels` was optional — so the classifier's LISTEN
+            // branch was covered by nothing, on the one carrier that has no capability to revoke and where
+            // detection is therefore the only control that exists.
+            ['name' => 'tenant_events'],
         ]);
 
-        self::assertCount(8, $violations);
+        self::assertCount(9, $violations);
         self::assertStringContainsString('temporary table tmp_t', $violations[0]);
         self::assertStringContainsString('temporary view tmp_v', $violations[1]);
         self::assertStringContainsString('temporary sequence tmp_s', $violations[2]);
@@ -1793,9 +1798,12 @@ final class TenantIsolationTest extends TestCase
         self::assertStringContainsString('temporary index tmp_i', $violations[5]);
         self::assertStringContainsString('relation of kind Z tmp_x', $violations[6]);
         self::assertStringContainsString('held cursor held_one', $violations[7]);
+        self::assertStringContainsString('tenant_events', $violations[8]);
 
         // And a connection with nothing on it is clean — the guard must be satisfiable.
-        self::assertSame([], PostgresRowLevelSecurityIsolation::sessionLifetimeDataViolations([], []));
+        // All THREE arms passed explicitly. `$channels` was optional until round 14, so this call omitted it
+        // and the LISTEN arm was never exercised by the empty-case assertion at all.
+        self::assertSame([], PostgresRowLevelSecurityIsolation::sessionLifetimeDataViolations([], [], []));
     }
 
     /**

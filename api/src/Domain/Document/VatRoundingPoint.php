@@ -30,11 +30,19 @@ namespace Twes\Domain\Document;
  * `InvoiceSum`/`InvoiceSumInclusive` plus `InvoiceItemSum`/`InvoiceItemSumInclusive` as four classes kept
  * numerically in step by hand, and that duplication is a large part of why their test suite is 167k LOC.
  */
-enum VatRoundingPoint
+enum VatRoundingPoint: string
 {
+    // BACKED, for the same reason `DocumentType` and `DocumentState` are, and round 14 found this the one of the
+    // three that was not. Its own docblock calls the rounding point "configurable per company" and `Invoice`'s
+    // calls it "per-company configuration" — so it is a persisted column and an API field, and a non-backed enum
+    // would put a PHP CASE NAME in both. Renaming `PerRateGroup` would then be a data migration and a breaking
+    // API change, which CLAUDE.md § "The API contract is ours to design" says must never be incidental.
+    // snake_case to match the rest of the contract. `RoundingMode` is correctly NOT backed: it belongs to an
+    // operation, is never persisted, and never reaches the wire.
+
     /** Sum every line sharing a rate, then round that group's VAT ONCE. The default. */
-    case PerRateGroup;
+    case PerRateGroup = 'per_rate_group';
 
     /** Round each line's VAT, then sum. Supported, and numerically different — see the class docblock. */
-    case PerLine;
+    case PerLine = 'per_line';
 }

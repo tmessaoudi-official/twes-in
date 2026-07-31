@@ -18,6 +18,7 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentCalculator;
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\FixedCharge;
+use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\VatGroup;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
@@ -279,6 +280,10 @@ final class DocumentTotalsTest extends TestCase
     public function testADocumentMixingCurrenciesIsRefused(): void
     {
         $this->expectException(\Twes\Domain\Money\Exception\CurrencyMismatch::class);
+        // THE MESSAGE, not just the class. `Money::plus()` throws the same class three lines downstream of this
+        // guard, so asserting only the type left the guard entirely deletable with the suite green — round 14.
+        // A crash and a detection are indistinguishable otherwise; this repo has recorded that twice.
+        $this->expectExceptionMessage('document line 1');
 
         new DocumentCalculator()->calculate(
             [
@@ -631,6 +636,103 @@ final class DocumentTotalsTest extends TestCase
             Money::of('100.000', Currency::of('TND')),
             Money::of('19.00', Currency::of('EUR')),
         );
+    }
+
+    /**
+     * **A quantity is BOUNDED AT BOTH ENDS**, which round 14 found it was not — the one persisted decimal in
+     * this domain with no bound at either end, and the one that multiplies money.
+     *
+     * `Money` caps integer digits and fractions; `Rate` caps both; `quantity` accepted 601 decimals and 40
+     * integer digits, so the domain admitted values no `NUMERIC` a migration might choose could store, and there
+     * was no constant for the migration to derive a precision from.
+     *
+     * @param string $quantity a quantity past one of the two bounds
+     */
+    #[DataProvider('unboundedQuantities')]
+    public function testAQuantityPastEitherBoundIsRefused(string $quantity, string $expected): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage($expected);
+
+        new DocumentLine($quantity, Money::of('10.000', Currency::of('TND')), Rate::zero());
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function unboundedQuantities(): iterable
+    {
+        // GENERATED from the constants, so raising either bound moves its own case rather than leaving a stale
+        // literal that passes for the wrong reason.
+        yield 'one decimal past MAX_SCALE' => [
+            '1.' . str_repeat('0', DocumentLine::MAX_SCALE) . '1',
+            'decimal places',
+        ];
+        yield 'far past MAX_SCALE' => ['1.' . str_repeat('1', 601), 'decimal places'];
+        yield 'one integer digit too many' => [
+            str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS + 1),
+            'integer digits',
+        ];
+        yield 'far past MAX_INTEGER_DIGITS' => [str_repeat('9', 40), 'integer digits'];
+    }
+
+    /**
+     * And BOTH boundaries are ACCEPTED, so the guards refuse excess rather than precision.
+     *
+     * Without this half, `>` and `>=` are indistinguishable — and the `>=` version would refuse a perfectly
+     * ordinary six-decimal measure while looking like a working bound.
+     */
+    public function testAQuantityExactlyAtEitherBoundIsAccepted(): void
+    {
+        $tnd = Currency::of('TND');
+
+        $atScale = new DocumentLine(
+            '1.' . str_repeat('0', DocumentLine::MAX_SCALE - 1) . '1',
+            Money::of('1.000', $tnd),
+            Rate::zero(),
+        );
+        self::assertSame('1.000', $atScale->net(RoundingMode::HalfUp)->amount());
+
+        $atDigits = new DocumentLine(
+            str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS),
+            Money::of('0.000', $tnd),
+            Rate::zero(),
+        );
+        self::assertSame('0.000', $atDigits->net(RoundingMode::HalfUp)->amount());
+    }
+
+    /**
+     * **A mismatching FIXED CHARGE is refused too — the paired door, which had no test at all.**
+     *
+     * Both `resolveCurrency()` guards were deletable with the suite green; this one was not merely unasserted on
+     * its message, it was unexercised. A charge is added straight to the total, so a EUR stamp duty on a TND
+     * invoice is a wrong payable amount rather than a formatting problem.
+     */
+    public function testADocumentWhoseFixedChargeIsInAnotherCurrencyIsRefused(): void
+    {
+        $this->expectException(CurrencyMismatch::class);
+        $this->expectExceptionMessage('document charge 0');
+
+        new DocumentCalculator()->calculate(
+            [new DocumentLine('1', Money::of('1.000', Currency::of('TND')), Rate::zero())],
+            [new FixedCharge('stamp_duty', Money::of('0.10', Currency::of('EUR')))],
+            VatRoundingPoint::PerRateGroup,
+            RoundingMode::HalfUp,
+        );
+    }
+
+    /**
+     * And `Invoice::withFixedCharge()`'s own currency guard, whose `withLine()` twin was tested and it was not.
+     *
+     * Round 14: removing `withLine`'s guard killed a test; removing this one left the suite green. The guard was
+     * present on both paths and the TEST on one — the "guard on one write path" shape inverted, and the reason
+     * `testTheMutatorInventoryIsComplete` did not catch it is that it enforces the MUTABILITY dimension, not
+     * this one.
+     */
+    public function testAnInvoiceRefusesAFixedChargeInAnotherCurrency(): void
+    {
+        $this->expectException(CurrencyMismatch::class);
+
+        Invoice::draft(Currency::of('TND'))
+            ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.10', Currency::of('EUR'))));
     }
 
 }

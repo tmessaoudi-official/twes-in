@@ -20,6 +20,7 @@ use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\Exception\IllegalTransition;
 use Twes\Domain\Document\NumberPattern;
+use Twes\Domain\Document\VatRoundingPoint;
 
 /**
  * The generic document lifecycle and numbering, both ruled in `pricing-and-documents.plan.md`.
@@ -99,10 +100,12 @@ final class DocumentLifecycleTest extends TestCase
             $from->transitionTo($to);
             self::assertTrue(false, \sprintf('%s -> %s must throw', $from->name, $to->name));
         } catch (IllegalTransition $exception) {
-            // The message must name BOTH states. A bare "illegal transition" in a log is unactionable, and
-            // this exception will surface in a support ticket rather than in a debugger.
-            self::assertStringContainsString($from->name, $exception->getMessage());
-            self::assertStringContainsString($to->name, $exception->getMessage());
+            // The message must name BOTH states, by their BACKED VALUES. This asserted `->name` until round 14,
+            // which pinned the PHP case name INTO a user-facing message — so renaming a PHP identifier would
+            // have changed a translated string and an API-visible value. The backed value is the stable
+            // identifier; a case name is not.
+            self::assertStringContainsString($from->value, $exception->getMessage());
+            self::assertStringContainsString($to->value, $exception->getMessage());
         }
     }
 
@@ -327,6 +330,26 @@ final class DocumentLifecycleTest extends TestCase
         self::assertSame(
             'delivery_note 0000041',
             new DocumentNumber(DocumentType::DeliveryNote, NumberPattern::padded(7), 41)->toString(),
+        );
+    }
+
+    /**
+     * `VatRoundingPoint`'s BACKED VALUES are pinned, exactly as the other two enums' are.
+     *
+     * It was the one of three that round 14 found unbacked, while its own docblock calls the rounding point
+     * "configurable per company" — so it is a persisted column and an API field. These strings are therefore
+     * data, not identifiers: changing one is a migration plus a contract change, and this test is what makes
+     * that a deliberate act rather than a rename.
+     */
+    public function testTheVatRoundingPointValuesArePinned(): void
+    {
+        self::assertSame('per_rate_group', VatRoundingPoint::PerRateGroup->value);
+        self::assertSame('per_line', VatRoundingPoint::PerLine->value);
+
+        // Every case covered, so adding one without a pinned value fails here rather than reaching a column.
+        self::assertSame(
+            ['per_rate_group', 'per_line'],
+            array_map(static fn(VatRoundingPoint $p): string => $p->value, VatRoundingPoint::cases()),
         );
     }
 
