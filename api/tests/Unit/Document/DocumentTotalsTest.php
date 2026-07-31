@@ -102,6 +102,40 @@ final class DocumentTotalsTest extends TestCase
             'No case pins the LINE-NET rounding order. One line with a fractional quantity whose product is a '
             . 'tie is enough, and fractional quantities are the ordinary case for services.',
         );
+
+        // AND EVERY INPUT RATE IS IN HUMAN FORM — the mirror of `PricingVectorsTest`'s assertion that every
+        // EXPECTED rate is canonical, which existed while this direction did not. `conventions.rates` rules that
+        // inputs are written the way a user types them (`19`, not `19.0000000000`) precisely so these vectors
+        // prove a tier CANONICALISES, and a pre-canonicalised input silently removes the only evidence of that:
+        // both spellings parse to the identical rate, so no expected value moves and nothing goes red.
+        //
+        // Round 17's P2-5 was exactly that — the three `per-line-vat-allocation-*` cases carried
+        // `19.0000000000`, landing one commit BEFORE the convention forbidding it, and the fix was revertible
+        // with the whole suite green until this assertion existed. `document_totals` is the section THIS file
+        // consumes; the `cases`, `edit_directions` and `authored_field` inputs are `PricingVectorsTest`'s to
+        // guard, and that half is still owed.
+        foreach ($cases as $id => [$case]) {
+            $rates = [$case['vat_rate'] ?? null];
+
+            foreach ($case['lines'] as $line) {
+                $rates[] = $line['vat_rate'] ?? null;
+            }
+
+            foreach (array_filter($rates, static fn(?string $rate): bool => null !== $rate) as $rate) {
+                self::assertDoesNotMatchRegularExpression(
+                    '/^-?\d+\.\d{10}$/',
+                    $rate,
+                    \sprintf(
+                        'Case "%s" supplies the INPUT rate "%s" already canonicalised to 10 decimals. An input '
+                        . 'written the way `Rate::fromPercentage()` renders it cannot prove any tier performs '
+                        . 'that canonicalisation — write it the way a human types it (`19`). Only '
+                        . 'vat_by_rate[].rate, which is EXPECTED OUTPUT, is canonical.',
+                        (string) $id,
+                        $rate,
+                    ),
+                );
+            }
+        }
     }
 
     /**
@@ -1072,9 +1106,13 @@ final class DocumentTotalsTest extends TestCase
     /**
      * The per-line VAT column matches the SHARED VECTORS — so Angular and Flutter cannot invent their own rule.
      *
-     * The three `per-line-vat-allocation-*` cases carry `vat_by_line`, plus a
-     * `vat_by_line_if_*_which_is_WRONG` field on two of them recording what the natural mistake produces. Without
-     * a shared vector each tier would recompute `line_net x rate` and get a column that does not sum to the total.
+     * The three `per-line-vat-allocation-*` cases carry `vat_by_line`. Two of them also carry a
+     * `vat_by_line_if_*_which_is_WRONG` field recording what the natural mistake produces, and this docblock used
+     * to be the ONLY thing that mentioned them — prose, not a check, so deleting both left the suite green and a
+     * wrong value in either was undetectable (round 17's P2-8). They are consumed by
+     * {@see testRecomputingThePerLineColumnProducesTheFixturesShortColumn} and
+     * {@see testRoundingTheSharesToNearestProducesTheFixturesOverColumn} below. Without a shared vector each tier
+     * would recompute `line_net x rate` and get a column that does not sum to the total.
      *
      * @param array<string, mixed> $case
      */
@@ -1102,6 +1140,11 @@ final class DocumentTotalsTest extends TestCase
     /**
      * And the fixture must KEEP at least three such cases — one per property the allocator has (tie-break,
      * comparison direction, flooring). Generated cases move with the data, so a deletion is otherwise silent.
+     *
+     * **The two NEAR-MISS columns are asserted present by NAME here, and that half was missing.** An empty data
+     * provider is an error PHPUnit reports against a method name rather than against the fixture, so deleting a
+     * `_WRONG` field would read as "this test lost its data" instead of "the shared contract lost the number that
+     * pins the wrong answer". Named here, a deletion says which field and which case.
      */
     public function testTheFixtureStillPinsEveryPropertyOfTheAllocation(): void
     {
@@ -1111,6 +1154,171 @@ final class DocumentTotalsTest extends TestCase
             'One case per allocator property: the earliest-line tie-break, the largest-remainder direction, and '
             . 'flooring before distributing. Deleting one leaves a property pinned by nothing.',
         );
+
+        $cases = self::documentCases();
+
+        // The two DIRECTIONS a wrong per-line column can miss in — short and over — one committed case each. They
+        // are separate fields rather than one, because flooring is required by the OVER case alone: a rule that
+        // only ever came out short would need no flooring step at all.
+        self::assertArrayHasKey(
+            'vat_by_line_if_recomputed_which_is_WRONG',
+            $cases['per-line-vat-allocation-equal-remainders'][0],
+            'The SHORT near miss: the column a tier gets by recomputing line_net x rate. Without it, nothing '
+            . 'states what the natural mistake produces and every tier is free to rediscover it.',
+        );
+        self::assertArrayHasKey(
+            'vat_by_line_if_rounded_to_nearest_which_is_WRONG',
+            $cases['per-line-vat-allocation-floors-before-distributing'][0],
+            'The OVER near miss, which is the one that justifies flooring: rounding each share to nearest gives a '
+            . 'column that EXCEEDS the group VAT, and there is then no way to take a millime back from a line '
+            . 'without picking a victim.',
+        );
+    }
+
+    /**
+     * **THE SHORT NEAR MISS — the column a tier gets by recomputing, asserted against the fixture's own value.**
+     *
+     * Round 17's P2-8. `vat_by_line_if_recomputed_which_is_WRONG` was consulted by nothing: it was described in a
+     * docblock and read by no assertion, so deleting it left the whole suite green and a wrong number in it was
+     * undetectable — while the older sibling `vat_if_rounded_per_line_which_is_WRONG` beside it WAS load-bearing,
+     * which is what makes this a gap rather than a property of such fields. CLAUDE.md § Gotchas records the shape:
+     * *"a permission that nothing consults permits everything"*, and *"introspection describes a rule, it does not
+     * apply one"* — a docblock even less so.
+     *
+     * **`assertNotSame` alone would be vacuous**, because it passes for every wrong value the field could hold. So
+     * the near miss is also asserted EQUAL to what recomputation actually yields, which is `VatRoundingPoint::PerLine`
+     * — each line keeping its own `lineNet × rate` rounded at the currency's scale, per
+     * {@see testUnderPerLineRoundingEachLineKeepsItsOwnRoundedVat}. That is the same two-armed treatment
+     * {@see testPerLineRoundingProducesTheFixturesDivergentValue} gives the VAT *total*, applied to the *column*.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('documentCasesWhoseRecomputedColumnIsShort')]
+    public function testRecomputingThePerLineColumnProducesTheFixturesShortColumn(array $case): void
+    {
+        $allocated = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $recomputed = self::calculate($case, VatRoundingPoint::PerLine);
+        $wrong = $case['vat_by_line_if_recomputed_which_is_WRONG'];
+
+        self::assertSame(
+            $case['vat_by_line'],
+            self::amountsOf($allocated->vatByLine()),
+            'the ALLOCATED column for ' . $case['id'],
+        );
+        self::assertNotSame(
+            $wrong,
+            self::amountsOf($allocated->vatByLine()),
+            'The allocator must not produce the recomputed column. If it does, this case pins nothing.',
+        );
+        self::assertSame(
+            $wrong,
+            self::amountsOf($recomputed->vatByLine()),
+            'The committed WRONG value must be the column recomputation actually yields. A near miss nobody can '
+            . 'produce is an invented figure, and a tier comparing against it would be told it is right when it '
+            . 'is wrong in some other way.',
+        );
+
+        // AND IT IS SHORT — the defect this field exists to record. Asserted against the kernel's own total rather
+        // than against the fixture's `vat` string, so this is a statement about behaviour and not about JSON.
+        $currency = Currency::of($case['currency']);
+        self::assertTrue(
+            self::sumOf($wrong, $currency)->isLessThan($allocated->vatTotal()),
+            'The recomputed column must fall SHORT of the group VAT — that shortfall is the millime nobody owns '
+            . 'and the entire reason the figure is allocated rather than recomputed.',
+        );
+    }
+
+    /**
+     * **THE OVER NEAR MISS — and it is a different defect, which is why it is a second field rather than a synonym.**
+     *
+     * Same P2-8 gap, same treatment. What this one adds: rounding each exact share to NEAREST instead of flooring
+     * makes the column EXCEED the group VAT, and a column that is over cannot be corrected without taking a millime
+     * back from a line — choosing a victim, which is the arbitrariness largest-remainder exists to avoid. A rule
+     * that only ever came out short (the case above) would need no flooring step at all, so deleting this field
+     * would leave `allocate()`'s `RoundingMode::Floor` argued for by nothing in the shared contract.
+     *
+     * The same three `0.008 TND` lines at 19% are what make the direction observable: an exact share of `0.00152`
+     * rounds to `0.002` and three of them sum to `0.006` against a group VAT of `0.005`.
+     *
+     * @param array<string, mixed> $case
+     */
+    #[DataProvider('documentCasesWhoseRoundedToNearestColumnIsOver')]
+    public function testRoundingTheSharesToNearestProducesTheFixturesOverColumn(array $case): void
+    {
+        $allocated = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $toNearest = self::calculate($case, VatRoundingPoint::PerLine);
+        $wrong = $case['vat_by_line_if_rounded_to_nearest_which_is_WRONG'];
+
+        self::assertSame(
+            $case['vat_by_line'],
+            self::amountsOf($allocated->vatByLine()),
+            'the ALLOCATED column for ' . $case['id'],
+        );
+        self::assertNotSame(
+            $wrong,
+            self::amountsOf($allocated->vatByLine()),
+            'Flooring is what stops the allocator producing this column. If it produces it anyway, the shares were '
+            . 'rounded to nearest and the column exceeds the tax actually owed.',
+        );
+        // `HalfUp` at the currency's scale IS rounding the exact share to nearest, so the fixture's number is
+        // reachable rather than asserted into existence — the same argument as the SHORT case above.
+        self::assertSame(
+            $wrong,
+            self::amountsOf($toNearest->vatByLine()),
+            'The committed WRONG value must be the column rounding-to-nearest actually yields.',
+        );
+
+        $currency = Currency::of($case['currency']);
+        self::assertTrue(
+            self::sumOf($wrong, $currency)->isGreaterThan($allocated->vatTotal()),
+            'Rounding to nearest must OVERSHOOT the group VAT. If it merely fell short, flooring would be an '
+            . 'arbitrary choice instead of the only order that keeps the column correctable.',
+        );
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function documentCasesWhoseRecomputedColumnIsShort(): array
+    {
+        return array_filter(
+            self::documentCases(),
+            static fn(array $case): bool => isset($case[0]['vat_by_line_if_recomputed_which_is_WRONG']),
+        );
+    }
+
+    /** @return array<string, array{array<string, mixed>}> */
+    public static function documentCasesWhoseRoundedToNearestColumnIsOver(): array
+    {
+        return array_filter(
+            self::documentCases(),
+            static fn(array $case): bool => isset($case[0]['vat_by_line_if_rounded_to_nearest_which_is_WRONG']),
+        );
+    }
+
+    /**
+     * @param list<Money> $amounts
+     *
+     * @return list<string>
+     */
+    private static function amountsOf(array $amounts): array
+    {
+        return array_map(static fn(Money $amount): string => $amount->amount(), $amounts);
+    }
+
+    /**
+     * A committed column of decimal STRINGS summed as money, so a near miss is compared to the group figure with
+     * the same exact arithmetic the kernel uses rather than with a float.
+     *
+     * @param list<string> $amounts
+     */
+    private static function sumOf(array $amounts, Currency $currency): Money
+    {
+        $sum = Money::zero($currency);
+
+        foreach ($amounts as $amount) {
+            $sum = $sum->plus(Money::of($amount, $currency));
+        }
+
+        return $sum;
     }
 
     /**

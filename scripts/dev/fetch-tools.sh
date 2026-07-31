@@ -28,8 +28,21 @@
 # Note the URLs. PHPUnit's is VERSION-PINNED (phpunit-12.5.33.phar), not the moving `phpunit-12.phar`:
 # with a moving URL, the next 12.5.x release turns a fresh clone's setup into a hard failure whose own
 # message says not to fix it by updating the hash. php-cs-fixer publishes no versioned URL on that host
-# (php-cs-fixer-v3.95.17.phar is a 404), so for that one the moving URL is forced and a version bump will
-# surface here as a mismatch — which is the correct place for it to surface.
+# (both `php-cs-fixer-v3.95.17.phar` and `-v3.95.18.phar` are 404s [Verified: `curl -o /dev/null -w '%{http_code}'`
+# → 404 for the versioned name, 200 for the moving one]), so for that one the moving URL is forced and a version
+# bump surfaces here as a mismatch.
+#
+# **THAT MISMATCH IS A TASK, NOT A RESTING STATE**, and the previous wording — "which is the correct place for it
+# to surface" — read as though surfacing were the whole story. It is not: until the pin is bumped, a FRESH
+# container cannot obtain php-cs-fixer at all, so `composer gate`'s style step is unrunnable there while every
+# existing checkout stays green off its already-downloaded phar. Round 17 found exactly that, four commits into a
+# session, because the failure is invisible to anyone who already has the file.
+#
+# The procedure when it fires, which is what "a deliberate version bump" above means concretely: fetch the phar,
+# run `--version` and record that version in the entry's comment, run `check` over the repo and confirm the
+# verdict is unchanged (a bump that alters a style rule is a separate decision from a bump that restores the
+# download), then update the hash. Do NOT point this at a mirror or a third-party rebuild — that is a provenance
+# decision this project cannot make casually, for the reason § "Licensing invariants" gives.
 
 set -euo pipefail
 
@@ -40,7 +53,13 @@ readonly TOOLS_DIR="$REPO_ROOT/api/tools/bin"
 # name|url|sha256
 readonly -a TOOLS=(
   "phpunit-12.phar|https://phar.phpunit.de/phpunit-12.5.33.phar|c8af6400e0cd81da027e2b4d6387733983f1f97f64fe80ae639c84b421e9cd55"
-  "php-cs-fixer.phar|https://cs.symfony.com/download/php-cs-fixer-v3.phar|918b9cc56969d4aa8a8d3e6520a9872b7491614e9b1d4387fb44c9b5f8717ba0"
+  # php-cs-fixer 3.95.18. The VERSION is written here even though the URL cannot carry it, so the pin identifies
+  # an artifact rather than only asserting a hash — otherwise a mismatch tells you the bytes changed and nothing
+  # about what they changed to. Bumped at round 17: the pin held 3.95.17's hash while the host served 3.95.18, so
+  # a FRESH container could not obtain php-cs-fixer at all and the style gate was unrunnable there. Verified
+  # before bumping: the served phar reports `PHP CS Fixer 3.95.18 (d1fc711)`, and `check` over this repo reports
+  # `Found 0 of 69 files that can be fixed` — same verdict as 3.95.17, so the bump changes no style rule.
+  "php-cs-fixer.phar|https://cs.symfony.com/download/php-cs-fixer-v3.phar|4109a4ea6b9a40a411b9bf15536813de656f548d4c5be492af2adb4e94972212"
 )
 
 mkdir -p "$TOOLS_DIR"

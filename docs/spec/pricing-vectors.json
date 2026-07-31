@@ -11,7 +11,7 @@
   },
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
-    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact. **This applies to EXPECTED OUTPUT ONLY, and the previous wording said \"as well as to input\", which round 16 found false for all 22 input rate values in this file.** INPUT rates are written the way a human types them -- `19`, `30`, `33.3333` -- deliberately, because a fixture whose inputs are pre-canonicalised cannot prove a tier canonicalises them, and `Rate::fromPercentage()` accepting `19` is part of what these vectors test. It is the EXPECTED side that must be canonical, for the reason round 15 gave: `vat_by_rate[].rate` was written as `19`, so an Angular tier emitting `19` and a Flutter tier emitting `19.0000000000` for the required per-rate VAT table both passed the cross-tier contract. Both consumers normalise the declared value before comparing, so nothing pinned a RENDERING until the fixture-shape assertion added at round 15.",
+    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact. **This applies to EXPECTED OUTPUT ONLY, and the previous wording said \"as well as to input\", which round 16 found false.** INPUT rates are written the way a human types them -- `19`, `30`, `33.3333` -- deliberately, because a fixture whose inputs are pre-canonicalised cannot prove a tier canonicalises them, and `Rate::fromPercentage()` accepting `19` is part of what these vectors test. **WHICH FIELDS ARE INPUTS IS DERIVED, AND NEVER COUNTED HERE** (round 17's P3-2: the previous wording said \"all 22 input rate values in this file\" and no criterion reproduces 22 -- not the number of such values, not the distinct ones, not the lines matching either field name). The criterion is the consumers' own: a rate value is an INPUT exactly where a consumer passes it to `Rate::fromPercentage()` as an argument, rather than normalising it through the same call in order to COMPARE against it. That is `cases[].profit_rate`, `cases[].vat_rate`, `edit_directions[].profit_rate`, `document_totals[].vat_rate`, `document_totals[].lines[].vat_rate` and `authored_field[].profit_rate`; everything under `expected`, `expected_after` and `vat_by_rate[].rate` is an OUTPUT. **And this convention was FALSE ON THE DAY IT WAS WRITTEN** (round 17's P2-5): the three `per-line-vat-allocation-*` cases already carried `19.0000000000` in `document_totals[].vat_rate` -- an input path, and the only pre-canonicalised inputs in the file -- landing one commit BEFORE the sentence forbidding them, so the file contradicted its own rule from the moment it stated it. They are now `19`, and no expected value moves, because `Rate::fromPercentage()` canonicalises both spellings to the identical rate. The canonical-string PARSE stays exercised regardless, since both consumers put `vat_by_rate[].rate` through `Rate::fromPercentage()` before comparing. It is the EXPECTED side that must be canonical, for the reason round 15 gave: `vat_by_rate[].rate` was written as `19`, so an Angular tier emitting `19` and a Flutter tier emitting `19.0000000000` for the required per-rate VAT table both passed the cross-tier contract. Both consumers normalise the declared value before comparing, so nothing pinned a RENDERING until the fixture-shape assertion added at round 15.",
     "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties. OWED TO WAVE 2, recorded rather than dropped: no case in this file currently carries a negative tie. One was added at round 11 and REMOVED at round 12 by developer ruling (2026-07-30), because the only way to reach a negative tie from a product is a profit rate below -100%, which derives a negative selling price -- now refused by ProductPricing, since a negative gross on a document line is a CREDIT NOTE rather than a sale. The Credit document type lands in Wave 2 and carries this obligation: until then no tier is pinned against Math.round(-0.5) === -0 or Dart's half-away-from-zero, and that is a gap with a name and an owner rather than a silent one.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error.",
     "owed_document_vectors": "OWED, recorded rather than dropped -- the same treatment as the negative-tie gap above. Two document scenarios have NO case here and were disclosed only in a test docblock until round 14, which is not where Wave 8's Angular implementer or Wave 11's Flutter one will look: (1) an EMPTY document, so nothing pins whether a TND invoice with no lines renders 0.000, 0.00 or 0 -- the kernel is correct and the RENDERING is unspecified, which is a cross-tier disagreement waiting to happen; (2) a FIXED CHARGE in a currency other than the document's, which is now refused by DocumentCalculator and by Invoice::withFixedCharge() but has no vector, so the two client tiers have nothing to validate against. Both are Wave 8/11 obligations; a tier that invents its own answer is what these vectors exist to prevent.",
@@ -467,7 +467,7 @@
         }
       ],
       "subtotal_net": "0.026",
-      "vat_rate": "19.0000000000",
+      "vat_rate": "19",
       "vat": "0.005",
       "vat_by_line": [
         "0.003",
@@ -499,7 +499,7 @@
         }
       ],
       "subtotal_net": "0.034",
-      "vat_rate": "19.0000000000",
+      "vat_rate": "19",
       "vat": "0.006",
       "vat_by_line": [
         "0.002",
@@ -532,7 +532,7 @@
         }
       ],
       "subtotal_net": "0.024",
-      "vat_rate": "19.0000000000",
+      "vat_rate": "19",
       "vat": "0.005",
       "vat_by_line": [
         "0.002",
