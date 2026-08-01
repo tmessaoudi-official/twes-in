@@ -46,14 +46,23 @@ use Twes\Infrastructure\Tenancy\TenantId;
  * settings table Wave 1 has not built. So reconstituting a number needs a pattern from somewhere, and until that
  * table exists it comes from here as a default.
  *
- * That is a REAL HAZARD rather than a placeholder, and it was filed as one by certification round 21: an
- * administrator widening the width from 7 to 8 re-renders an already-issued invoice as `00000041` instead of
- * `0000041` — a different number on a legal document a client already holds. `build-waves.plan.md` accepts the trade
- * explicitly (*"the pattern is per-tenant configuration and may change: NumberPattern renders, it does not
- * identify"*) while applying the OPPOSITE principle three rows above to `vat_rounding_point` (*"a company changing
- * it must not restate a document a client holds"*). Those two cannot both be right, and resolving it is a product
- * decision owed to the developer — it belongs to whichever wave writes the settings table. Recorded here, at the
- * line of code that would have to change, rather than only in a plan.
+ * That was a REAL HAZARD rather than a placeholder — filed by certification round 21, because an administrator
+ * widening the width from 7 to 8 re-renders an already-issued invoice as `00000041` instead of `0000041`: a different
+ * number on a legal document a client already holds.
+ *
+ * **RULED 2026-08-01: the RENDERED STRING IS PERSISTED alongside the sequence, and this class is where that lands.**
+ * One column. The sequence stays the identity — it is what `(company_id, type, number)` uniqueness and every ORDER BY
+ * are built on — and the string is what makes re-download byte-identical forever, so no later configuration change
+ * can restate a document somebody holds. Rejected: snapshotting the pattern per document (equivalent guarantee, more
+ * indirection) and ruling rendering presentational (the cheaper reading, and unfixable once real invoices exist —
+ * the same class of decision as the gapless sequence and money-is-never-a-float).
+ *
+ * **STILL OWED, and this constructor dependency is the placeholder until it lands:** a migration adding the column,
+ * the field on `DocumentRow`, both directions here, and a round-trip case. Until then `toAggregate()` re-renders
+ * from a default width, which is exactly the behaviour the ruling exists to remove — so a document issued before the
+ * column lands and read after it may render differently, once. `build-waves.plan.md`'s Decisions Log carries the
+ * ruling; this docblock said "a product decision owed to the developer" until the ruling was made, and leaving that
+ * sentence in place afterwards is the stale-prose shape `CLAUDE.md` § Gotchas records repeatedly.
  */
 final readonly class InvoiceMapper
 {
