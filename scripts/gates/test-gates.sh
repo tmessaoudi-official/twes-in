@@ -1583,7 +1583,7 @@ echo "== orphaned doc comments: a doc comment that attaches to no declaration ==
 # FIX created a fresh instance of it, moving a corrected docblock to sit above another docblock while the
 # superseded text stayed attached to the method. Nothing else in the repo can see it: `php -l` treats comments as
 # comments and `php-cs-fixer` reported 0 of 69 fixable over a tree carrying seven. It is a `token_get_all()` pass
-# since round 18, which found the original line-pattern version missing three of five genuine shapes -- a BLANK LINE
+# since round 18, which found the original line-pattern version missing four of five genuine shapes -- a BLANK LINE
 # between the two blocks most importantly, since that is how anyone would naturally author them, and it was also
 # the "fix" the gate's own failure message invited.
 #
@@ -1732,10 +1732,53 @@ else
   failed=$((failed + 1))
 fi
 
-# And a case per SHAPE round 18 proved orphaned, generated from the list rather than hand-picked -- the blank
-# line, the attribute, the single-line second block and the same-line delimiters. A positional rule passed four
-# of these; the tokenizer must catch all four.
-orphan_shape_failures=0
+# ONE GENERATED CASE PER SEPARATOR, read from the gate's own --dump-rules. This is what makes deleting a
+# separator delete its own case: the gate's header claimed this wiring for a commit while nothing consumed the
+# output (round 19), so the T_COMMENT rule was live but unpinned -- removing it reopened a genuine orphan with
+# the meta-suite green.
+orphan_separators="$(php "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" --dump-rules | awk '$1=="separator"{print $2}')"
+
+# A COMMITTED MINIMUM, because generating a case from the rule set means deleting an entry deletes its own case:
+# round 19 removed T_COMMENT and the suite reported 359 passed / 0 failed, one case lighter and none the wiser.
+# This is the same backstop the ambient and layer gates carry, and it is the half that makes generation safe.
+assert_at_least "orphan gate: the separator set has not shrunk" \
+  "$(printf '%s\n' "$orphan_separators" | grep -c .)" 2
+
+if [[ -z "$orphan_separators" ]]; then
+  printf '  FAIL — %s\n' 'the orphan gate declares NO separators, so the generated cases below are vacuous'
+  failed=$((failed + 1))
+fi
+
+for separator in $orphan_separators; do
+  rm -rf "$WORK/sep"
+  mkdir -p "$WORK/sep/scripts/gates" "$WORK/sep/src"
+  cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" "$WORK/sep/scripts/gates/"
+  case "$separator" in
+    T_WHITESPACE) sep_text=$'\n' ;;
+    T_COMMENT)    sep_text=$'    // an ordinary comment\n' ;;
+    *)
+      printf '  FAIL — %s (%s)\n' 'the suite has no fixture for a declared separator' "$separator"
+      failed=$((failed + 1))
+      continue
+      ;;
+  esac
+  printf '<?php\nclass P {\n    /**\n     * A.\n     */\n%s    /**\n     * B.\n     */\n    public function m(): int { return 1; }\n}\n' "$sep_text" > "$WORK/sep/src/P.php"
+  git -C "$WORK/sep" init -q
+  git -C "$WORK/sep" add -A >/dev/null 2>&1
+  sep_out="$(cd "$WORK/sep" && php scripts/gates/no-orphaned-docblocks.php 2>&1)" && sep_rc=0 || sep_rc=$?
+  if (( sep_rc != 0 )) && printf '%s' "$sep_out" | grep -qF 'src/P.php'; then
+    printf '  ok   — catches an orphan separated by %s\n' "$separator"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — catches an orphan separated by %s (rc=%s)\n' "$separator" "$sep_rc"
+    failed=$((failed + 1))
+  fi
+done
+
+# And a case per SHAPE round 18 proved orphaned. HAND-PICKED, and said so: these are five distinct SYNTACTIC
+# shapes rather than members of a rule set, so there is nothing to generate them from -- the previous version of
+# this comment claimed they were generated, which round 19 filed. The old positional gate passed FOUR of the five
+# (every one but the plain adjacent case); the tokenizer must catch all five.
 for shape in blank attribute oneline sameline enumcase; do
   rm -rf "$WORK/shape"
   mkdir -p "$WORK/shape/scripts/gates" "$WORK/shape/src"
@@ -1767,7 +1810,6 @@ for shape in blank attribute oneline sameline enumcase; do
   else
     printf '  FAIL — catches the %s orphan shape (rc=%s)\n' "$shape" "$shape_rc"
     failed=$((failed + 1))
-    orphan_shape_failures=$((orphan_shape_failures + 1))
   fi
 done
 

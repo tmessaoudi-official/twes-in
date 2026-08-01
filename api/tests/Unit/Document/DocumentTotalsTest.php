@@ -1145,7 +1145,6 @@ final class DocumentTotalsTest extends TestCase
 
         foreach ($cases as [$case]) {
             $totals = self::calculate($case, VatRoundingPoint::PerLine);
-            $currency = $totals->vatTotal()->currency();
 
             foreach ($case['lines'] as $position => $line) {
                 self::assertSame(
@@ -1159,7 +1158,6 @@ final class DocumentTotalsTest extends TestCase
                 );
             }
 
-            unset($currency);
         }
     }
 

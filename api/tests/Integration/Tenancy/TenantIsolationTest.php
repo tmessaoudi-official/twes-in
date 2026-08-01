@@ -2062,6 +2062,36 @@ final class TenantIsolationTest extends TestCase
             ));
         }
 
+        // **EVERY DANGER-IF-TRUE FLAG, not just `applies`** (round 19). The `isTrue()`/`isFalse()` pair is safe
+        // only if the right member is chosen PER CALL SITE, and five sites had the wrong one: an unrecognised
+        // spelling SUPPRESSED the check instead of raising it. Each row below certified a genuinely dangerous
+        // shape as clean until round 19, and `'true'` is the spelling that does it — the one a reader would
+        // assume is the safest possible value to write.
+        foreach (['true', 'on', 'y', 'TRUE', 'yes'] as $spelling) {
+            $ownsAndTruncates = PostgresRowLevelSecurityIsolation::policedTableViolations([
+                ['owner_reachable' => $spelling, 'can_truncate' => $spelling] + $safe,
+            ]);
+            self::assertCount(2, $ownsAndTruncates, \sprintf(
+                'owner_reachable=can_truncate=%s must report BOTH violations: an unrecognised spelling may not '
+                . 'certify a connection that owns the policed tables and holds TRUNCATE.',
+                var_export($spelling, true),
+            ));
+
+            // `permissive` gates a SKIP, so it is the mirror case: an unrecognised spelling must NOT be taken as
+            // "restrictive, therefore harmless". This one sits two lines from the flag round 18 fixed.
+            $unscoped = PostgresRowLevelSecurityIsolation::policedTableViolations([
+                [
+                    'policies' => json_encode([
+                        ['qual' => 'true', 'check' => 'true', 'permissive' => $spelling, 'applies' => true],
+                    ], \JSON_THROW_ON_ERROR),
+                ] + $safe,
+            ]);
+            self::assertCount(2, $unscoped, \sprintf(
+                'permissive=%s must be judged: treating it as restrictive certifies a USING (true) policy clean.',
+                var_export($spelling, true),
+            ));
+        }
+
         // And the two spellings that DO mean false still skip, or the guard above would have made the flag inert.
         foreach ([false, 'f', '0'] as $spelling) {
             $recognised = PostgresRowLevelSecurityIsolation::policedTableViolations([
@@ -3929,7 +3959,37 @@ final class TenantIsolationTest extends TestCase
         // from `USAGE ∪ SET`, and without it the narrowing fix is revertible with the whole suite green.
         $unsettable = getenv('TWES_TEST_DB_UNSETTABLE_ROLE') ?: 'twes_unsettable';
 
-        foreach ([$unreachable => false, $unsettable => false, $reachable => true] as $role => $expectRefusal) {
+        // **THE TWO-LINK CHAIN, and it is the case that distinguishes the predicate from its SET-ROLE closure**
+        // (round 19's P0, a regression introduced by round 18's own fix). `twes_chain_inner` is granted to
+        // `twes_chain_outer` WITH INHERIT TRUE, SET FALSE, and that role to the runtime role WITH INHERIT FALSE,
+        // SET TRUE. So `USAGE(inner)` and `SET(inner)` are BOTH false from here — round 18's predicate skipped a
+        // policy granted to it — while `SET ROLE outer` is permitted and outer INHERITS inner, so the policy
+        // applies and the table is unscoped. Reproduced as a real cross-tenant read: 1 row before `SET ROLE`,
+        // 2 including the other tenant's after, with the class reporting CLEAN.
+        //
+        // Sitting beside `$unsettable` on purpose: the two roles have IDENTICAL `USAGE`/`SET`/`MEMBER` answers
+        // and OPPOSITE correct verdicts, so together they pin the predicate from both sides at once. A fixture
+        // with only one of them admits a predicate that is either too wide or too narrow.
+        $chained = getenv('TWES_TEST_DB_CHAIN_INNER_ROLE') ?: 'twes_chain_inner';
+
+        // **AND THE MIRROR: `WITH INHERIT TRUE, SET FALSE`, which pins the OTHER disjunct.** Every other
+        // membership the runtime role holds is `inherit_option=false`, so before this role the `USAGE` half of
+        // the predicate was deletable with the whole suite green — while the shape it guards is a real
+        // cross-tenant read needing no `SET ROLE` at all: a policy granted to a role whose privileges this
+        // connection INHERITS applies to statements exactly as issued.
+        //
+        // The four roles below pin the predicate completely and independently: `$unreachable` (not a member),
+        // `$unsettable` (member, neither route — must NOT be judged), `$chained` (SET-closure only), `$inherited`
+        // (USAGE only), `$reachable` (direct SET). Delete any disjunct and exactly one of them fails.
+        $inherited = getenv('TWES_TEST_DB_INHERIT_ONLY_ROLE') ?: 'twes_inherit_only';
+
+        foreach ([
+            $unreachable => false,
+            $unsettable => false,
+            $chained => true,
+            $inherited => true,
+            $reachable => true,
+        ] as $role => $expectRefusal) {
             try {
                 $this->owner->exec(\sprintf(
                     'CREATE POLICY applies_probe ON %s FOR SELECT TO %s USING (true)',

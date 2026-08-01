@@ -60,6 +60,27 @@
 #                 a `pg_roles` lookup and round 14 found the fix REVERTIBLE with the whole suite green, because
 #                 all eight roles above are lowercase and cannot express the shape. LOGIN, because the check
 #                 reads `current_user` and therefore has to be REACHED as this role rather than named.
+#   twes_inherit_only
+#                 the TWELFTH, added at round 19 for the mirror of the chain above: granted to the runtime role
+#                 WITH INHERIT TRUE, SET FALSE, so USAGE is TRUE and SET is FALSE. Every other membership the
+#                 runtime role holds is inherit_option=false, so before this role the USAGE half of the policy
+#                 predicate was deletable with the whole suite green -- and the shape it guards is a real
+#                 cross-tenant read, since a policy granted to a role whose privileges this connection INHERITS
+#                 applies to statements as issued, with no SET ROLE involved at all. Together with
+#                 twes_chain_inner (SET-closure only) and twes_unsettable (neither), the three roles pin each
+#                 disjunct of the predicate independently.
+#   twes_chain_inner / twes_chain_outer
+#                 the TENTH and ELEVENTH, added at round 19 because the nine above could not express a
+#                 TWO-LINK grant chain -- and a one-link fixture cannot tell a predicate from its SET-ROLE
+#                 closure. inner is granted to outer WITH INHERIT TRUE, SET FALSE; outer is granted to the
+#                 runtime role WITH INHERIT FALSE, SET TRUE. So for the runtime role, USAGE(inner) and
+#                 SET(inner) are BOTH false while MEMBER(inner) is true -- yet SET ROLE outer is permitted and
+#                 outer inherits inner, so a policy granted to inner APPLIES. Round 18 narrowed the policy
+#                 predicate to USAGE|SET on the argument that those are the only two routes; they are the only
+#                 two routes FROM HERE, and the set is not closed under SET ROLE. Round 19 reproduced a
+#                 cross-tenant read through exactly this chain. Note the perversity these roles encode: it is
+#                 the HARDENING of the inner grant (WITH SET FALSE) that opens the hole, because with default
+#                 options SET(runtime, inner) is true and the narrower predicate catches it.
 #
 #                 It matters because the predicate is NEGATED: under 'MEMBER', a function owned by a role the
 #                 connection is a member of but cannot become was excluded as "no escalation", when that is
@@ -115,6 +136,9 @@ REPLICATOR_ROLE="${TWES_TEST_DB_REPLICATOR_USER:-twes_replicator}"
 REPLICATOR_PASSWORD="${TWES_TEST_DB_REPLICATOR_PASSWORD:-twes_replicator}"
 TRUNCATOR_ROLE="${TWES_TEST_DB_TRUNCATOR_ROLE:-twes_truncator}"
 UNSETTABLE_ROLE="${TWES_TEST_DB_UNSETTABLE_ROLE:-twes_unsettable}"
+CHAIN_INNER_ROLE="${TWES_TEST_DB_CHAIN_INNER_ROLE:-twes_chain_inner}"
+CHAIN_OUTER_ROLE="${TWES_TEST_DB_CHAIN_OUTER_ROLE:-twes_chain_outer}"
+INHERIT_ONLY_ROLE="${TWES_TEST_DB_INHERIT_ONLY_ROLE:-twes_inherit_only}"
 # Quoted everywhere it appears in SQL below, deliberately: unquoted, PostgreSQL folds it and the
 # role this fixture creates would not be the role the test connects as.
 MIXED_CASE_ROLE="${TWES_TEST_DB_MIXED_CASE_ROLE:-twesMixedCase}"
@@ -280,6 +304,16 @@ DO \$\$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${UNSETTABLE_ROLE}') THEN
         CREATE ROLE ${UNSETTABLE_ROLE};
     END IF;
+
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${CHAIN_INNER_ROLE}') THEN
+        CREATE ROLE ${CHAIN_INNER_ROLE};
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${CHAIN_OUTER_ROLE}') THEN
+        CREATE ROLE ${CHAIN_OUTER_ROLE};
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${INHERIT_ONLY_ROLE}') THEN
+        CREATE ROLE ${INHERIT_ONLY_ROLE};
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '${MIXED_CASE_ROLE}') THEN
         CREATE ROLE "${MIXED_CASE_ROLE}" LOGIN;
     END IF;
@@ -312,6 +346,9 @@ ALTER ROLE :"SUPERUSER_ROLE" WITH PASSWORD :'SUPERUSER_PASSWORD';
 ALTER ROLE ${TRUNCATOR_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${PROBE_OWNER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 ALTER ROLE ${UNSETTABLE_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
+ALTER ROLE ${CHAIN_INNER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
+ALTER ROLE ${CHAIN_OUTER_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
+ALTER ROLE ${INHERIT_ONLY_ROLE} WITH NOLOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION;
 -- Restricted exactly like the runtime role: the point is the NAME, not extra privilege.
 ALTER ROLE "${MIXED_CASE_ROLE}" WITH LOGIN NOSUPERUSER NOBYPASSRLS NOREPLICATION NOCREATEROLE
     NOCREATEDB PASSWORD :'MIXED_CASE_PASSWORD';
@@ -332,6 +369,29 @@ GRANT ${TRUNCATOR_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE;
 -- because a grant that drifted to SET TRUE would silently make every assertion about it vacuous again.
 REVOKE ${UNSETTABLE_ROLE} FROM ${RUNTIME_ROLE};
 GRANT ${UNSETTABLE_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE, SET FALSE;
+
+-- THE TWO-LINK CHAIN, which no single grant can express and which round 19 needed to catch a reproduced
+-- cross-tenant read. Read the two lines together:
+--   inner -> outer  WITH INHERIT TRUE, SET FALSE   : outer HOLDS inner's privileges, cannot become inner
+--   outer -> twes   WITH INHERIT FALSE, SET TRUE   : twes can BECOME outer, inherits nothing from it
+-- So for the runtime role, USAGE(inner) and SET(inner) are both FALSE while MEMBER(inner) is TRUE -- and yet
+-- `SET ROLE outer` is permitted and outer inherits inner, so a policy granted to inner APPLIES to statements
+-- this connection can issue. That is the input which distinguishes a predicate from its SET-ROLE closure, and
+-- with only single-link grants in the fixture, round 18's narrowing looked correct and shipped a P0.
+--
+-- Re-granted unconditionally for the same reason as the grant above: drift to default options would make
+-- SET(twes, inner) true, the narrower predicate would catch it, and the case would go quietly vacuous.
+REVOKE ${CHAIN_INNER_ROLE} FROM ${CHAIN_OUTER_ROLE};
+GRANT ${CHAIN_INNER_ROLE} TO ${CHAIN_OUTER_ROLE} WITH INHERIT TRUE, SET FALSE;
+REVOKE ${CHAIN_OUTER_ROLE} FROM ${RUNTIME_ROLE};
+GRANT ${CHAIN_OUTER_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT FALSE, SET TRUE;
+
+-- WITH INHERIT TRUE, SET FALSE: the MIRROR of the chain above, and the only grant here under which USAGE is
+-- true while SET is false. A policy granted to this role applies to the runtime role's statements as issued --
+-- no SET ROLE involved -- so it is what makes the USAGE half of the policy predicate load-bearing. Without it
+-- that disjunct was deletable with the whole suite green.
+REVOKE ${INHERIT_ONLY_ROLE} FROM ${RUNTIME_ROLE};
+GRANT ${INHERIT_ONLY_ROLE} TO ${RUNTIME_ROLE} WITH INHERIT TRUE, SET FALSE;
 
 -- ADMIN OPTION so the OWNER connection can grant and revoke this role inside a test. Needed because the
 -- ownership-reachability axis is otherwise untestable: the existing test connects AS the table's owner, and a

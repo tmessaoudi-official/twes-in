@@ -418,12 +418,12 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      */
     public static function roleCanBypassPolicies(array $role): bool
     {
-        return self::isTrue($role['rolsuper'])
-            || self::isTrue($role['rolbypassrls'])
+        return !self::isFalse($role['rolsuper'])
+            || !self::isFalse($role['rolbypassrls'])
             // REPLICATION is a bypass of a different kind and an equal one: it does not defeat the policy,
             // it goes around the query layer the policy lives in. See the query in
             // assertConnectionCannotBypassPolicies() for the proof.
-            || self::isTrue($role['rolreplication'] ?? false);
+            || !self::isFalse($role['rolreplication'] ?? false);
     }
 
     /**
@@ -792,8 +792,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // `0` is PUBLIC, which applies to everybody.
             . "    'applies', EXISTS ("
             . '      SELECT 1 FROM unnest(p2.polroles) AS pr(rid) WHERE pr.rid = 0'
-            . '        OR ' . self::roleHasInheritedPrivilegesSql('pr.rid')
-            . '        OR ' . self::roleCanBeAssumedSql('pr.rid')
+            . '        OR ' . self::policyRoleIsReachableSql('pr.rid')
             . '    )'
             . '  )) FROM pg_policy p2 WHERE p2.polrelid = c.oid'
             . "), '[]') AS policies "
@@ -839,7 +838,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
-     * SQL for "this connection can become the role in `$roleOid`", as a boolean expression.
+     * SQL for "this connection is a MEMBER of the role in `$roleOid`", as a boolean expression.
      *
      * ONE definition, referenced everywhere — and that sentence was FALSE for a round after it was written.
      * Round 12 found `assertPolicedTablesAreBeyondThisRolesReach()` still spelling both predicates out inline,
@@ -868,30 +867,59 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     }
 
     /**
-     * Whether this connection holds a role's privileges by INHERITANCE — `USAGE`, not `MEMBER`.
+     * Whether a POLICY granted to this role can reach this connection — the `SET ROLE` **closure** of `USAGE`.
      *
-     * The distinction is the whole point and it is invisible until a grant is made `WITH INHERIT FALSE`.
-     * `MEMBER` answers *"is this connection a member of that role, by any route?"*; `USAGE` answers *"does it
-     * hold that role's privileges on the statement it is issuing right now?"* — which is the question
-     * PostgreSQL itself asks when it decides whether a row-level-security policy applies, via
-     * `has_privs_of_role`.
+     * **This is not `USAGE OR SET`, and the difference is a reproduced cross-tenant read** (round 19's P0, a
+     * regression introduced by round 18's own fix). PostgreSQL decides policy applicability with
+     * `has_privs_of_role(current_user, polrole)`, and `current_user` CHANGES under `SET ROLE` — so the question is
+     * not "what does this connection inherit" but *"what could it inherit after becoming something it is allowed
+     * to become"*. That set is not `USAGE(me) ∪ SET(me)`: it is the union of `USAGE(r)` over every `r` this
+     * connection can `SET ROLE` to.
      *
-     * So this is the predicate for *"does that policy apply to me"*, and `MEMBER` is the wrong one there:
-     * a grant made `WITH INHERIT FALSE, SET FALSE` is held but unreachable, and using `MEMBER` made the class
-     * judge a policy that can never apply — round 18's S-P2, which reproduced an earlier false refusal on
-     * exactly the grant shape `twes_unsettable` provisions.
+     * The distinguishing shape is a two-link chain, and it is perverse enough to be worth spelling out because
+     * nobody would guess it: it is the HARDENING of the inner grant that opens the hole.
      *
-     * Pairs with {@see roleCanBeAssumedSql()} rather than replacing it: privileges reached by `SET ROLE` are
-     * not inherited, so a policy granted to a `SET`-reachable role still applies once the connection becomes
-     * it. Their UNION is the complete answer; neither alone is.
+     *     GRANT z TO y   WITH INHERIT TRUE,  SET FALSE;   -- y inherits z, cannot become z
+     *     GRANT y TO app WITH INHERIT FALSE, SET TRUE;    -- app can become y, inherits nothing
+     *     CREATE POLICY reporting ON invoices FOR ALL TO z USING (true);
      *
-     * BOTH `session_user` and `current_user`, for the reason {@see roleIsReachableSql()} gives.
+     * For `app`, `USAGE(z)` and `SET(z)` are both FALSE while `MEMBER(z)` is true, so round 18's predicate judged
+     * the policy inapplicable and skipped it — yet `SET ROLE y` is permitted and `y` inherits `z`, so the policy
+     * applies and the table is unscoped. [Verified: `USAGE=false SET=false MEMBER=true`; 1 row before `SET ROLE`,
+     * 2 rows including the other tenant's after; the class returned CLEAN at `3c650ae` and REFUSED at its parent.]
+     * With DEFAULT options on the inner grant, `SET(app,z)` is true and the old predicate caught it — only an
+     * explicit `WITH SET FALSE` there opens the gap.
+     *
+     * `MEMBER` was a superset of this closure and therefore safe, which is why the parent commit did not leak.
+     * But it was a strict superset, which is what made it refuse a policy granted to a role held
+     * `WITH INHERIT FALSE, SET FALSE` — reachable by neither route, ever. **This closure is the exact answer: it
+     * catches the chain above and still excludes that shape**, so round 18's false-refusal closure survives and
+     * this is not a revert. [Verified on the three fixture shapes: the chained role
+     * `USAGE|SET=false MEMBER=true CLOSURE=true`; the unsettable role `USAGE|SET=false MEMBER=true
+     * CLOSURE=false`; the directly-reachable role true under all three.]
+     *
+     * BOTH `session_user` and `current_user`, for the reason {@see roleIsReachableSql()} gives — and note this is
+     * WIDER than PostgreSQL's own test, which consults `current_user` alone. Deliberate: a connection sitting
+     * inside `SET ROLE` can `RESET ROLE` with no privilege at all, so `session_user`'s reach is also this
+     * connection's reach.
      */
-    private static function roleHasInheritedPrivilegesSql(string $roleOid): string
+    private static function policyRoleIsReachableSql(string $roleOid): string
     {
+        // **ONE disjunct, not two, and the second was DEAD** — the third "safety" disjunct in three rounds that a
+        // mutant proved redundant, so it is worth naming the pattern rather than just the instance. The obvious
+        // spelling is `USAGE(me, rid) OR EXISTS(reachable …)`, but `reachable` ranges over ALL of `pg_roles`,
+        // including this connection's own role: `pg_has_role(x, x, 'SET')` is true, so the EXISTS with
+        // `reachable = session_user` IS the direct-`USAGE` test. [Verified: neutralising the explicit `USAGE`
+        // disjunct left the whole integration suite green, including the `twes_inherit_only` case written
+        // specifically to pin it; neutralising the EXISTS gives `FAILURES`.]
+        //
+        // Round 18 removed a dead `SET` disjunct here and round 19 removed this one. Both were added by reaching
+        // for breadth when the precise predicate was already complete, and in both cases the redundancy was
+        // invisible until a mutant was run — which is the argument for running one against every disjunct,
+        // rather than only against the behaviour a fix was written for.
         return \sprintf(
-            "(pg_has_role(session_user, %s, 'USAGE') OR pg_has_role(current_user, %s, 'USAGE'))",
-            $roleOid,
+            '(EXISTS (SELECT 1 FROM pg_roles reachable WHERE %s AND pg_has_role(reachable.oid, %s, \'USAGE\')))',
+            self::roleCanBeAssumedSql('reachable.oid'),
             $roleOid,
         );
     }
@@ -932,8 +960,17 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     /**
      * The NARROW form: "this connection can actually BECOME the role", for use under a negation.
      *
-     * `MEMBER` is the widest of `pg_has_role`'s modes and is the correct one everywhere this class asks
-     * *positively* — "could this connection reach a dangerous privilege" must err wide. Under a **negation** the
+     * `MEMBER` is the widest of `pg_has_role`'s modes and is the correct one where this class asks *"could this
+     * connection reach a dangerous PRIVILEGE"* — that question must err wide.
+     *
+     * **It is NOT correct for every positive question, and this sentence said it was until round 19.** Asking
+     * *"does this POLICY apply to me"* is also positive, and there `MEMBER` is too wide: it is true for a
+     * membership held `WITH INHERIT FALSE, SET FALSE`, which can never carry a policy by any route, so the class
+     * refused a table whose isolation was in force. That question is answered by
+     * {@see policyRoleIsReachableSql()} instead — the `SET`-closure of `USAGE` — and the two predicates are
+     * genuinely different rather than one being a refinement of the other. Width is a safety property only when
+     * being wrong in that direction costs a false refusal; when it costs a false ACCEPTANCE, or when the check
+     * is negated as below, it is the wrong instinct. Under a **negation** the
      * same width inverts the safety direction, and round 12 found exactly that in the `SECURITY DEFINER`
      * filter: `NOT (… 'MEMBER' …)` excludes a function whose owner the connection is a *member* of but cannot
      * `SET ROLE` to — which is precisely the case where calling the function is the ONLY route to that role's
@@ -1146,7 +1183,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         $violations = [];
 
         foreach ($tables as $table) {
-            if (self::isTrue($table['owner_reachable'])) {
+            if (!self::isFalse($table['owner_reachable'])) {
                 $violations[] = \sprintf(
                     '%s is owned by %s, which this connection can reach (DISABLE ROW LEVEL SECURITY, or a '
                     . 'USING (true) policy, is then one statement away)',
@@ -1155,7 +1192,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 );
             }
 
-            if (self::isTrue($table['can_truncate'])) {
+            if (!self::isFalse($table['can_truncate'])) {
                 $violations[] = \sprintf(
                     '%s can be TRUNCATEd by this connection, which removes every tenant\'s rows and is '
                     . 'never subject to row security',
@@ -1218,12 +1255,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             foreach ($policies as $policy) {
                 // RESTRICTIVE policies are ANDed, so an unscoped one only ever narrows access and cannot be
                 // a bypass. PERMISSIVE policies are ORed, which is what makes a single unscoped one fatal.
-                if (!self::isTrue($policy['permissive'])) {
+                if (self::isFalse($policy['permissive'])) {
                     continue;
                 }
 
                 // A policy that does not apply to this connection cannot widen what it may read — see the
-                // `applies` sub-select above for why the reachability test there is deliberately the wide one.
+                // `applies` sub-select above for why that test is the SET-closure of `USAGE` rather than
+                // either `MEMBER` (too wide — it judges a policy that can never apply) or a plain
+                // `USAGE OR SET` (too narrow — it misses a two-link chain, which was a reproduced read).
                 // Skipped rather than reported: an inert policy is a DENY, and a check that fires on a safe
                 // shape is the same false-refusal defect this class already records for a `security_invoker`
                 // view and for another session's temporary matview.
@@ -1640,16 +1679,48 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // `rngsubopc` holds an operator CLASS rather than a function and is therefore covered by the
             // `pg_amproc` arm above; `rngsubtype`, `rngcollation` and `rngmultitypid` name no function at all.
             //
-            // **FOUR MORE `pg_proc`-referencing columns, ruled out at round 18 and recorded HERE rather than only
-            // in a review file**, because the sweep is what a later round will trust and a review file is
-            // gitignored: `pg_language.lanplcallfoid`, `pg_language.lanvalidator`,
-            // `pg_foreign_data_wrapper.fdwhandler` and `pg_foreign_data_wrapper.fdwvalidator`. Note the earlier
-            // sweep's `internal`/`cstring` reasoning does NOT cover them — `lanvalidator(oid)` and
-            // `fdwvalidator(text[], oid)` are both registrable for a PL/pgSQL function by signature. They are
-            // ruled out on PRIVILEGE and TIMING instead: creating either needs a superuser [Verified:
-            // `must be superuser to create custom procedural language`, `permission denied to create
-            // foreign-data wrapper`] and both fire at DDL time rather than on the runtime role's DML. No arm is
-            // owed for any of the four; they are named so the next round does not have to rediscover why.
+            // ---- THE CARRIER SWEEP, recorded HERE because a review file is gitignored ----
+            //
+            // Round 18 moved four ruled-out columns into this comment for exactly that reason and then cited "the
+            // earlier sweep's internal/cstring reasoning", which was in no tracked file — so the citation pointed
+            // at nothing and the argument a later round needs was still only in `var/claude/`. Round 19 filed
+            // that, and it also found `pg_language.laninline` named nowhere despite being the closest sibling of
+            // the two `pg_language` columns that WERE named. The whole argument is therefore written out once,
+            // here, beside the arms it justifies.
+            //
+            // DERIVE THE SURFACE, do not trust this list's membership:
+            //   SELECT fktable::text || '.' || array_to_string(fkcols, ',')
+            //     FROM pg_get_catalog_foreign_keys() WHERE pktable = 'pg_proc'::regclass ORDER BY 1;
+            // [Verified on PostgreSQL 18.4: 43 columns across 16 catalogues.] Every one falls into exactly one
+            // of four classes, and only the first is a carrier:
+            //
+            //  1. INVOKED BY `fmgr` WITH NO `EXECUTE` CHECK — the carriers, each with an arm above:
+            //     `pg_trigger.tgfoid`, `pg_event_trigger.evtfoid`, `pg_aggregate` (all eight function columns),
+            //     `pg_amproc.amproc`, `pg_range.rngsubdiff` (+ `rngcanonical`, listed to close the catalogue).
+            //  2. ACL-CHECKED AT CALL TIME, so an unreachable function simply cannot run:
+            //     `pg_operator.oprcode` [Verified: `1 OPERATOR(public.###) 1` gives permission denied],
+            //     `pg_cast.castfunc`, and — established across rounds 14 and 18 — CHECK constraints, DOMAIN
+            //     CHECKs, index expressions, column DEFAULTs, `GENERATED ... STORED`, partition-key expressions
+            //     and `CREATE STATISTICS` expressions. None is a carrier and a guard for any would be dead code.
+            //  3. NOT REGISTRABLE for a function this connection could author, because the signature requires
+            //     `internal` or `cstring`: `pg_conversion.conproc`, `pg_proc.prosupport`,
+            //     `pg_operator.oprrest`/`oprjoin`, `pg_transform.trffromsql`/`trftosql`, `pg_ts_parser.*`,
+            //     `pg_ts_template.*`, and the `pg_type` I/O family (`typinput`, `typoutput`, `typreceive`,
+            //     `typsend`, `typmodin`, `typmodout`, `typanalyze`, `typsubscript`). [Verified: PL/pgSQL and SQL
+            //     both refuse `internal`; PL/pgSQL refuses `cstring` as parameter and return.]
+            //  4. GATED BEHIND SUPERUSER DDL, and firing at DDL time rather than on the runtime role's DML:
+            //     `pg_am.amhandler`, `pg_language.lanplcallfoid`, `pg_language.lanvalidator`,
+            //     **`pg_language.laninline`** (the `DO`-block handler — `ExecuteDoStmt` checks `ACL_USAGE` on the
+            //     LANGUAGE, never `EXECUTE` on the function, so it would be a carrier if a non-superuser could
+            //     register one), `pg_foreign_data_wrapper.fdwhandler` and `fdwvalidator`, and `pg_type` base-type
+            //     creation. [Verified: `must be superuser to create custom procedural language`; `permission
+            //     denied to create foreign-data wrapper`; `must be superuser to create a base type`.]
+            //
+            // Note classes 3 and 4 are DIFFERENT arguments and were conflated once: `lanvalidator(oid)` and
+            // `fdwvalidator(text[], oid)` are perfectly registrable for a PL/pgSQL function by signature, so the
+            // `internal`/`cstring` reasoning does not cover them and only the privilege gate does. A column that
+            // moves between these classes in a future PostgreSQL — say, if a non-superuser could ever register a
+            // language — becomes a carrier and needs an arm.
             . ' OR EXISTS (SELECT 1 FROM pg_range r WHERE p.oid IN (r.rngsubdiff, r.rngcanonical))) '
             . 'ORDER BY 1',
         );
@@ -1826,7 +1897,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // This is the "a permission that nothing consults permits everything" shape § Gotchas records, and it
             // was committed inside the fix for the previous instance of it. The rule now is the one that entry
             // states: a column added to a query must be READ by that query's failure path in the same change.
-            if (self::isTrue($object['has_user_rule'] ?? false)) {
+            if (!self::isFalse($object['has_user_rule'] ?? false)) {
                 if (self::isTrue($object['owned_by_caller'] ?? false)) {
                     continue;
                 }
@@ -2202,7 +2273,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 throw new \RuntimeException('Could not inspect large-object function privileges.');
             }
 
-            if (self::isTrue((string) $statement->fetchColumn())) {
+            if (!self::isFalse((string) $statement->fetchColumn())) {
                 $callable[] = $writer . '()';
             }
         }
@@ -2280,7 +2351,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not read the current database from pg_database.');
         }
 
-        if (self::isTrue($row['can_create_temp'])) {
+        if (!self::isFalse($row['can_create_temp'])) {
             throw new \RuntimeException(\sprintf(
                 'This connection can create TEMPORARY objects in %s. A temporary table carries no row-level '
                 . 'security and pg_temp PRECEDES public in the search path, so a temporary table named after '
@@ -2395,15 +2466,30 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     /**
      * Whether a catalogue flag definitely means FALSE — the deliberate non-complement of {@see isTrue()}.
      *
-     * The two are not opposites and must not be, because they are used for opposite QUESTIONS. `isTrue()` answers
-     * *"may I rely on this being on?"*, so anything unrecognised is treated as off and produces a conservative
-     * false positive. This answers *"may I SKIP a check because of this?"*, where the same treatment would be
-     * fail-open: `!isTrue('on')` is true, and skipping on that leaves a policy unjudged while the table is
-     * certified clean (round 18's finding against `applies`).
+     * The two are not opposites and must not be, because they are used for opposite QUESTIONS. Unrecognised must
+     * always land on the side that RAISES a violation, and which function delivers that depends on what the flag
+     * means:
      *
-     * So an unrecognised spelling is `false` here — meaning "do not skip, judge it" — and only the spellings
-     * PostgreSQL and PDO actually emit for a false boolean are honoured. The pair together has the property each
-     * call site needs: whichever way an unexpected value arrives, the SAFE branch is taken.
+     * - a flag whose **FALSE** is the danger (`rls_enabled`, `forced`) is read `!isTrue(...)`, so an unrecognised
+     *   spelling reports a violation;
+     * - a flag whose **TRUE** is the danger (`owner_reachable`, `can_truncate`, `has_user_rule`,
+     *   `can_create_temp`, `rolsuper`/`rolbypassrls`/`rolreplication`) is read `!isFalse(...)`, so an
+     *   unrecognised spelling ALSO reports a violation;
+     * - a flag that gates a SKIP (`permissive`, `applies`) is read `isFalse(...)`, so an unrecognised spelling
+     *   does not skip.
+     *
+     * **The previous version of this docblock stated the safety as a property of the PAIR — "whichever way an
+     * unexpected value arrives, the SAFE branch is taken" — and that was false at five call sites** (round 19).
+     * `isTrue()` was read in the positive direction for every danger-if-true flag above, where an unrecognised
+     * spelling SUPPRESSES the check rather than raising it: `permissive => 'true'` skipped a `USING (true)`
+     * policy and certified the table clean, `owner_reachable`/`can_truncate => 'on'` certified a connection that
+     * owns the policed tables and holds TRUNCATE, `rolsuper => 'true'` certified a superuser as unable to bypass,
+     * and `has_user_rule => 'true'` re-opened round 16's reproduced read-and-write through a rule-bearing view.
+     * The safety is a property of choosing the right member PER CALL SITE, which is why the rule is written out
+     * above rather than asserted as an invariant of the pair — a documented impossibility being, as § Gotchas
+     * records, the more expensive artefact than the gap it hides.
+     *
+     * Only the spellings PostgreSQL and PDO actually emit for a false boolean are honoured here.
      */
     private static function isFalse(bool|string $value): bool
     {

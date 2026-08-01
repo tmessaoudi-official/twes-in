@@ -26,7 +26,7 @@ declare(strict_types=1);
  *
  * **WHY THIS IS A TOKENIZER PASS, having started as a two-line `awk` positional rule.** That rule required the
  * closing delimiter and the opening `/**` to be alone on immediately adjacent lines, and round 18 showed it
- * missed THREE of five genuine shapes — every one confirmed orphaned by `ReflectionMethod::getDocComment()`:
+ * missed FOUR of five genuine shapes — every one confirmed orphaned by `ReflectionMethod::getDocComment()`:
  *
  *   1. a BLANK LINE between the two blocks — the most natural way anyone would author them;
  *   2. an `#[Attribute]` between them;
@@ -41,8 +41,10 @@ declare(strict_types=1);
  * an attribute between them. All five shapes collapse into that one rule, and so does any sixth nobody has
  * thought of yet.
  *
- * Registered `--dump-rules` output is the SEPARATOR token set, so the meta-suite can generate a case per
- * separator and deleting one deletes its own case.
+ * `--dump-rules` reports the SEPARATOR token set and the meta-suite generates one case per entry from it, so
+ * deleting an entry deletes its own case. That wiring was CLAIMED here for one commit while nothing consumed
+ * the output (round 19) — the suite's shape cases were hand-picked and its only rule-set assertion counted
+ * `--dump-rules` lines, which a `printf` over an empty array satisfies. Both are now real.
  */
 
 const REPO_ROOT = __DIR__ . '/../..';
@@ -50,14 +52,20 @@ const REPO_ROOT = __DIR__ . '/../..';
 /**
  * Tokens permitted BETWEEN two doc comments while still leaving the first orphaned.
  *
- * Each one is here because PHP skips it when resolving which declaration a doc comment attaches to — verified by
- * reflection rather than reasoned, since that is the whole question this gate answers. `T_ATTRIBUTE` is the
- * non-obvious member: an attribute between two doc comments does not rescue the first.
+ * Each is here because PHP skips it when resolving which declaration a doc comment attaches to — verified by
+ * reflection rather than reasoned, since that is the whole question this gate answers.
+ *
+ * **`T_ATTRIBUTE` is deliberately NOT in this list, having been in it for one commit** (round 19). An attribute
+ * IS a separator, but it cannot be expressed as one token: `T_ATTRIBUTE` is only the opening `#[`, and the name,
+ * arguments and closing `]` inside it are ordinary tokens that would end the run. It is therefore skipped whole
+ * by the bracket-counting branch in the scan below, which runs BEFORE this list is consulted — so listing it here
+ * changed nothing, and removing it changed nothing either. A rule that no failure path reads is the
+ * declared-but-unconsulted shape CLAUDE.md § Gotchas records, and it is worse in a rule set than elsewhere
+ * because `--dump-rules` reports it and the count looked like coverage.
  */
 const ORPHAN_SEPARATORS = [
     'T_WHITESPACE',
     'T_COMMENT',
-    'T_ATTRIBUTE',
 ];
 
 if (($argv[1] ?? '') === '--dump-rules') {

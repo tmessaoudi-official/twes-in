@@ -313,7 +313,7 @@ removes the guard and watches every tenant leak, and one that exercises a *reuse
 | `docs/spec/pricing-vectors.json` **with a live consumer** | `api/tests/Unit/Pricing/PricingVectorsTest.php` |
 | Tenancy seam + shared-DB mode | `api/src/Infrastructure/Tenancy/` — PostgreSQL row-level security |
 | `Clock` + `IdGenerator` ports, UUIDv7 adapter | `api/src/Domain/Shared/`, `api/src/Infrastructure/Shared/` |
-| Six fitness gates | `scripts/gates/` |
+| The fitness gates (`ls scripts/gates/` is the tally — no number here, it has been stale twice) | `scripts/gates/` |
 | Four-suite test taxonomy | `api/phpunit.xml` — unit · integration · functional · e2e |
 | FR/AR/EN catalogues + parity gate | `api/translations/` |
 | Tier skeletons with their owed gates written down | `admin/`, `mobile/`, `infra/` READMEs |
@@ -1355,7 +1355,7 @@ therefore never assumable — the test now ALTERs the owner to the runtime role)
 broke five `TenantIsolationTest` cases by shifting every catalogue-derived count by one — the exact Gotcha this
 plan already records for reviewer agents, done to myself. Drop stray probes before running the suite.
 
-**Round 13 RAN, and so did rounds 14 to 17** — this line read "Round 13 is owed" until round 17, four rounds after
+**Round 13 RAN, and so did rounds 14 to 19** — this line read "Round 13 is owed" until round 17, four rounds after
 it stopped being true. Its scope was the round-12 diff plus **Wave 1's new `Domain/Document/` code**, which landed
 after round 12 closed. Rounds 13 to 16 have no section of their own here: what each found is recorded as **in-place
 annotations throughout this file**, and `grep -n 'round 1[3-7]' docs/plans/build-waves.plan.md` is the index to
@@ -1363,6 +1363,37 @@ them. The round records themselves are `var/claude/reviews/round-1[4-7].md` — 
 `var/` is **gitignored**, so none of them survives the container and the in-place annotations are the durable
 half. Round 17 gets a section of its own below, because its two security findings are about a check that reported
 the wrong verdict — the class this plan carries forward.
+
+### Certification rounds 18 and 19 — the tenancy policy predicate, wrong in BOTH directions
+
+Recorded here rather than only in `var/claude/reviews/`, because that directory is gitignored and dies with the
+container — round 19 filed the omission of round 18 for exactly that reason, on a section whose own text says the
+in-place annotations are the durable half.
+
+Both rounds turned on ONE expression: the `applies` sub-select that decides whether a row-level-security policy is
+relevant to the connection being certified. The sequence is worth keeping because each step was a defensible
+reading of the previous finding, and three of the four were wrong:
+
+| Round | Predicate | Defect |
+|---|---|---|
+| ≤16 | `polroles` not read at all | every policy judged, so a policy `TO <reporting role>` — inert for the runtime role — **refused every acquisition permanently**, asserting isolation was not in force when it was |
+| 17 | `MEMBER` | closed that, but too WIDE: `MEMBER` is true for a grant made `WITH INHERIT FALSE, SET FALSE`, a membership held but unreachable, so the same false refusal survived for the one grant shape the fixture provisions on purpose |
+| 18 | `USAGE ∪ SET` | too NARROW, and a **P0**: the union is not closed under `SET ROLE`. After `SET ROLE y` PostgreSQL evaluates `has_privs_of_role(y, …)`, which is not a subset of the connection's own `USAGE ∪ SET`. A two-link chain (`GRANT z TO y WITH INHERIT TRUE, SET FALSE; GRANT y TO app WITH INHERIT FALSE, SET TRUE`) gave a **reproduced cross-tenant read** while the class reported CLEAN |
+| 19 | the `SET`-closure of `USAGE` | catches the chain AND still excludes the unreachable membership. One disjunct, not two — the explicit `USAGE` test was dead, because `reachable` ranges over `pg_roles` including the connection's own role |
+
+**Two lessons this plan should carry into every later wave.** First, *width is not safety*: it is safety only when
+being wrong in that direction costs a false refusal. Round 17 kept `MEMBER` because it was widest, and round 18
+narrowed on an argument about routes that was right about the routes and wrong about closure. Second, **a fixture
+that cannot express a dangerous shape cannot detect it** — this file's oldest tenancy lesson, and the reason the
+role count grew again: `twes_chain_inner`/`twes_chain_outer` express the two-link chain and `twes_inherit_only`
+expresses inherit-without-set, so each disjunct now has an independent witness and one role must NOT be judged.
+Derive the role list from `grep -c '^#   twes' scripts/dev/provision-test-database.sh`; no number is written here.
+
+Round 19 also found the `isTrue()`/`isFalse()` pair used in the fail-OPEN direction at five call sites, where an
+unrecognised spelling suppressed a check rather than raising one — including `permissive`, two lines from the flag
+round 18 had just fixed. The rule is now written out per call site in `isFalse()`'s docblock: a flag whose TRUE is
+the danger reads `!isFalse()`, a flag whose FALSE is the danger reads `!isTrue()`, and a flag gating a SKIP reads
+`isFalse()`. Safety is a property of choosing the right member per site, never of the pair.
 
 ### Certification round 11 — 17 findings, FOUR P0s, and a SIXTH and SEVENTH bypass class
 
