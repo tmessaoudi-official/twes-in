@@ -1,0 +1,17 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+doctrine_migrations:
+    migrations_paths:
+        'Twes\Migrations': '%kernel.project_dir%/migrations'
+
+    # ALL migrations run in one transaction where the platform allows it. PostgreSQL has transactional DDL, so a
+    # migration that creates a tenant-owned table and then fails to attach its RLS policy must leave NO table
+    # behind -- an unpoliced tenant table is precisely what `schema-tenancy.php` exists to refuse, and a
+    # half-applied migration would create one.
+    all_or_nothing: true
+    transactional: true
+    check_database_platform: true

@@ -117,13 +117,30 @@ for root in "${SEARCH_ROOTS[@]}"; do
       printf 'MISSING SPDX header: %s\n' "${file#"$REPO_ROOT"/}" >&2
       missing=$((missing + 1))
     fi
-  done < <(find "$REPO_ROOT/$root" \
-    -type f \
-    \( "${find_extension_args[@]}" \) \
-    -not -name '*.xlf' \
-    -not -path '*/vendor/*' \
-    -not -path '*/node_modules/*' \
-    -print0)
+    # ENUMERATED FROM GIT, not from a `find` walk. The walk this replaced flagged
+    # `api/config/reference.php` -- 65 KB Symfony regenerates on every kernel boot, whose own header says
+    # "auto-generated and is for apps only". A generated file is not authored, so it carries no copyright and
+    # wants no SPDX identifier; it is gitignored, and only git knows that.
+    #
+    # This is the third instance of the same correction in this repository: `test-gates.sh`'s licence-surface
+    # cross-check (round 17, which was reading four repositories because a parallel review round puts worktrees
+    # inside the tree) and `no-orphaned-docblocks.php` (written this way from the start for that reason). The
+    # `--others --exclude-standard` pair keeps the property that mattered for the original walk -- a file
+    # somebody has just written and not yet committed is exactly when a missing licence header is worth
+    # catching -- while honouring the ignore rules the walk could not see. It also retires the hand-maintained
+    # `vendor/` and `node_modules/` exclusions, since neither is tracked.
+  done < <(git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard -- "$root" \
+    | while IFS= read -r -d '' candidate; do
+        case "$candidate" in
+          *.xlf) continue ;;
+        esac
+        for extension in "${EXTENSIONS[@]}"; do
+          if [[ "$candidate" == *".${extension}" ]]; then
+            printf '%s\0' "$REPO_ROOT/$candidate"
+            break
+          fi
+        done
+      done)
 done
 
 for file in "${SEARCH_FILES[@]}"; do

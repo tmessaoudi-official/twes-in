@@ -38,6 +38,12 @@
 # nothing. Both forms are kept — the root ones in case a tool is ever run from the repo root.
 /vendor/
 /api/vendor/
+
+# Symfony regenerates this on kernel boot as IDE hints for `config/` -- its own header says "auto-generated and
+# is for apps only". 65 KB of derived content that would otherwise land in `config/`, which is a TRACKED tree, so
+# it has to be named explicitly rather than covered by a directory rule. Ignored rather than given an SPDX
+# header, because a generated file is not authored.
+/api/config/reference.php
 # api/var/ holds the PHPUnit cache and the php-cs-fixer cache. Note /var (Claude runtime state)
 # above is a different directory and already ignored.
 /api/var/

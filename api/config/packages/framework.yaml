@@ -1,0 +1,20 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+framework:
+    secret: '%env(APP_SECRET)%'
+
+    # OFF. Method override reads `_method` from a form body and rewrites the HTTP verb -- which is exactly the
+    # upstream shape CLAUDE.md § "The API contract is ours to design" rejects by name ("no `_method=put`
+    # multipart"). Our clients are ours, so they can send a real PUT.
+    http_method_override: false
+
+    php_errors:
+        log: true
+
+    # No session, no CSRF, no form component: there is no HTML surface. Three clients consume a REST API, and a
+    # session would be server state a stateless API must not acquire.
+    session: false

@@ -1,0 +1,51 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+doctrine:
+    dbal:
+        url: '%env(resolve:DATABASE_URL)%'
+
+        # NO `use_savepoints` KEY: DBAL 4 removed it, because savepoints are now the only way it implements a
+        # nested transaction. Recorded rather than silently dropped, because the tenancy concern behind it is
+        # live and unaffected: a rolled-back savepoint RESTORES the transaction-local `twes.tenant_id` set by
+        # `set_config(..., true)`, so a nested rollback can silently rebind a connection to a PREVIOUS tenant.
+        # `PostgresRowLevelSecurityIsolation::assertStillBoundTo()` exists to catch exactly that, and since DBAL
+        # now always uses savepoints the shape is always reachable -- which makes wiring that check a Wave 1
+        # obligation rather than an optional hardening.
+
+    orm:
+        # NATIVE LAZY OBJECTS instead of generated proxy classes. ORM 3 dropped
+        # `auto_generate_proxy_classes`; on PHP 8.4+ Doctrine uses the engine's own lazy objects, so there is no
+        # proxy code generated into `var/` at all. Better here than merely equivalent: a generated class is one
+        # more artifact that can be stale in a container that is reclaimed, and this project already prefers
+        # explicit wiring over generated wiring (see `bin/console` on not using `symfony/runtime`).
+        enable_native_lazy_objects: true
+        controller_resolver:
+            auto_mapping: false
+        default_entity_manager: default
+
+        entity_managers:
+            default:
+                connection: default
+
+                # XML MAPPING, never attributes. CLAUDE.md § Architecture makes `#[ORM\` anywhere under
+                # `Domain/` a P0, and `scripts/gates/no-orm-attributes-in-domain.sh` enforces it -- so the
+                # mapping has to live somewhere the domain cannot see. `is_bundle: false` with an explicit dir is
+                # what allows that: the entities are in `Domain/` and their mapping is in `Infrastructure/`,
+                # which is the whole point of the layer split.
+                #
+                # `validate_xml_mapping` is ON. Hand-written XML is the cost of keeping the domain pure, and the
+                # cost of hand-written XML is a typo that silently maps nothing -- so it is validated against the
+                # Doctrine schema at load. This is the same reasoning as every other gate here: a mapping that
+                # quietly does not apply is worse than one that fails loudly.
+                validate_xml_mapping: true
+
+                mappings:
+                    Document:
+                        type: xml
+                        dir: '%kernel.project_dir%/src/Infrastructure/Persistence/Doctrine/Mapping'
+                        prefix: 'Twes\Domain\Document'
+                        is_bundle: false

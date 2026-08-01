@@ -1,0 +1,34 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# Service wiring. Note what is autowired and what is NOT.
+#
+# `Twes\Domain\` is deliberately ABSENT from autowiring. The domain has no services -- it is entities, value
+# objects and PORT INTERFACES, and CLAUDE.md § Architecture requires it to depend on nothing. Registering it
+# here would let the container instantiate domain objects, which is how a framework starts reaching inside a
+# layer that is supposed to know nothing about it.
+parameters:
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Application/ and Infrastructure/ and UI/ only. Each is a layer permitted to know the framework.
+    Twes\Application\:
+        resource: '../src/Application/'
+
+    Twes\Infrastructure\:
+        resource: '../src/Infrastructure/'
+        exclude:
+            # Value objects and mapping data, not services. `TenantId` in particular is a value object that
+            # lives in Infrastructure/ by ruling (see CLAUDE.md § Gotchas on tenancy as ambient context), so it
+            # must not become an autowired service.
+            - '../src/Infrastructure/Tenancy/TenantId.php'
+            - '../src/Infrastructure/Persistence/Doctrine/Mapping/'
+
+    Twes\UI\:
+        resource: '../src/UI/'
