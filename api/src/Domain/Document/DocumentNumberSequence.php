@@ -60,9 +60,9 @@ namespace Twes\Domain\Document;
  *
  * Uniqueness is **not** this port's promise and cannot be — an adapter cannot see numbers a previous process
  * issued. The final guarantee is a composite unique constraint on `(company_id, type, number)`, which is a
- * Wave 1 schema obligation proven by ATTACK in `api/tests/Integration/Tenancy/BehaviouralIsolationTest.php` rather
- * than by reading the catalogue — the key-shape axis moved out of `scripts/gates/schema-tenancy.php` on 2026-08-01,
- * having produced four reproduced false verdicts. This interface's guarantees are
+ * Wave 1 schema obligation asserted by `scripts/gates/schema-tenancy.php`, with `BehaviouralIsolationTest`'s
+ * GOAL 7 attacking it as defence in depth. The gate is the authoritative half: a probe's reach is bounded by the
+ * values its fixture carries, so it cannot see a partial or predicated key. This interface's guarantees are
  * what make that constraint never fire in practice; the constraint is what makes a broken adapter loud.
  */
 interface DocumentNumberSequence

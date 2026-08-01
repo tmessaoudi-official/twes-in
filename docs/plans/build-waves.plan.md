@@ -1913,8 +1913,11 @@ none is enforceable from application code — a non-superuser **and non-owner** 
 owns the tables, separate from the runtime role — **all of which `scripts/gates/schema-tenancy.php` now
 asserts**, having landed in Wave 1 with the first migration exactly as this paragraph predicted it would have
 to. The **composite-key axis landed too**, at round 21: the gate reads `pg_constraint` and `pg_index` and refuses
-any key on a tenant-owned table that omits the tenant column. This paragraph described the whole gate as owed
-until then. Nothing of it is owed now.
+any key on a tenant-owned relation that omits the tenant column. This paragraph described the whole gate as owed
+until then. Nothing of it is owed now. **That axis was deleted on 2026-08-01 and restored on 2026-08-02**, when
+round 24 reproduced a cross-tenant oracle without it; it now also reads `indnkeyatts` (so an `INCLUDE` payload is
+not mistaken for a key column), `contype = 'x'` (exclusion constraints) and `confkey` in ordinal order (so a key
+composite in the WRONG pair is refused).
 
 **Note:** the *topology* (php-fpm + nginx + db + redis + queue + scheduler + headless Chrome) is an
 idea and free to reuse; upstream's **files** are GPL-2.0 and must never be copied.
@@ -1955,6 +1958,67 @@ This is the most arithmetic-sensitive addition in the list and has **no upstream
 kernel, because it feeds line pricing. Non-negotiable regardless of the open decisions: the **computed
 selling price is snapshotted onto the invoice line** at issue time. A later change to a product's cost
 or profit rate must never retroactively alter an issued document.
+
+### Certification round 23 and 24 — the behavioural suite, the gate deletion, and its reversal
+
+**Recorded here because round 24 found they were recorded NOWHERE.** Every prior round has a table in this file;
+rounds 23's 31 findings and the mutants closing them existed only in a session transcript, which this container
+reclaims. § Gotchas 2026-07-29 already says a closure needs "a re-run mutant recorded in `build-waves.plan.md`" and
+that a one-off manual run no fresh clone can reproduce does not count. This section is that record.
+
+**Round 23** — MAXIMAL, three lenses, frozen at `ad7af75` (the gate cut to 410 lines, eight axes deleted).
+**31 findings, six distinct reproduced P0s.** Outcome: the deletion was REVERTED at `d164be4`.
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R23-1 | **The suite attacks a database it builds; the gate is pointed at a LIVE one.** All three lenses reproduced the narrowed gate exiting 0 on a schema where `ALTER TABLE document DISABLE ROW LEVEL SECURITY` had been run, and on one carrying an unpoliceable matview | **P0** | **CLOSED** — all nine axes restored at `d164be4`. The generalisation is now in `CLAUDE.md`: an attack suite mutates data, so it only ever proves things about the MIGRATION's output |
+| R23-2 | **`rolreplication` bypass is observable by no attack**, because `pg_basebackup` never traverses the query layer. Calling it "replaced by SET ROLE then read" was a false stated equivalence | **P0** | **CLOSED** — axis restored; the suite's docblock corrected at round 24 |
+| R23-3 | **A PARTIAL unique index omitting the tenant was invisible to GOAL 7 by construction** — the two tenants differ in every non-tenant column, and a partial index's predicate is evaluated on exactly those | **P0** | **CLOSED** at `d164be4` for the filed shape (two-direction probe), then found INSUFFICIENT at round 24 — see R24-1 |
+| R23-4 | **GOAL 8 banked its own primary-key collision as a refusal**; a reviewer rode it to a reproduced cross-tenant `ON DELETE CASCADE` delete | **P0** | **CLOSED** — probe row is now tenant A's with only the tenant flipped, and `23503` required. Mutant: revert the construction → `testGoalEightCatchesAForeignKeyThatIsCompositeInTheWrongColumns` red |
+| R23-5 | **`TRUNCATE` reachable only by `SET ROLE` was checked by nothing** — GOAL 6 resolves privileges by inheritance, and the escalation test then only ran a `SELECT` | **P0** | **CLOSED** — escalation probes read/`DELETE`/both `TRUNCATE` forms on every relation. Mutant: restrict to read-only → `testTheEscalationProbeCatchesTruncateReachableOnlyBySetRole` red |
+| R23-6 | **An `EXCLUDE` violation is `23P01`, not `23505`**, so the case closing R22-2 passed on GOAL 7's fallback message — whose text also contains "uniqueness" — leaving the collision arm unpinned | **P0** | **CLOSED** — `COLLISION_SQLSTATES` covers both; the three weak `assertNotSame([], $findings)` assertions now name the specific finding |
+| R23-7 | GOALs 3 and 5 banked ANY failure as a refusal (the shape GOAL 4 was already tightened for) | P2 | **CLOSED** — both report an unattemptable write; pinned by `testCrossTenantWritesThatCannotBeAttemptedAreReportedRatherThanBanked` |
+| R23-8 | The positive control exercised only `SELECT`, so a policy refusing the tenant's own `DELETE` passed | P2 | **CLOSED** by the restored `polcmd` axis in the gate |
+| R23-9 | Eight prose sites asserted controls the deletion removed | P2 | **CLOSED** — the revert made most true again automatically; the rest fixed |
+| R23-10 | `MigratedProbeDatabase` hardcodes `127.0.0.1:5432` and ignores `TWES_TEST_DSN` | P2 | **OPEN** — see the owed list below |
+| R23-11 | The seeding failure message asserted a CHECK-constraint cause for every SQLSTATE, including `55000` | P3 | **CLOSED** — the message now branches on SQLSTATE |
+| R23-12 | `isRowSecurityRefusal()` matches an English server message with `lc_messages` unpinned | P3 | **OPEN** — fails loud, not silent |
+
+**Round 24** — MAXIMAL, three lenses, frozen at `bc62139` (the key axis deleted, other eight kept).
+**38 findings, three distinct reproduced P0s.** Outcome: the key axis RESTORED and its four round-22 P0s FIXED.
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R24-1 | **The two-direction probe does not close the partial-key CLASS, only the filed example.** Reproduced invisible in both directions: `WHERE deleted_at IS NULL` (soft-delete, the most ordinary shape in billing), `WHERE state = 'cancelled'`, `WHERE type = 'credit'`, `WHERE number >= 1000`, and `EXCLUDE (code WITH =) WHERE (deleted_at IS NULL)` — the last caught by NO half at ANY commit. A probe's reach is bounded by its FIXTURE'S VALUE SPACE, and `rowFor()` fills every column so no `IS NULL` predicate is reachable | **P0** | **CLOSED** — key axis RESTORED with all four R22 P0s fixed. Six permanent cases in `SchemaTenancyGateTest`, verified against a ten-shape matrix including the three the probe cannot reach |
+| R24-2 | **GOAL 8 built one row for all foreign keys**, so a correct sibling FK answered for a defective one — round 23's breach survived | **P0** | **CLOSED** — per-FK row with the other FKs neutralised, and the refusal must NAME this constraint. Mutant: build once → `testGoalEightIsNotMaskedByACorrectSiblingForeignKey` red |
+| R24-3 | **A reporting VIEW/MATVIEW that aggregates tenant data away carries no `company_id`**, so both the gate and the suite classify it "not tenant data" and skip it. Reproduced: tenant B reads `sum(amount)` across both tenants | **P0** | **OPEN** — see the owed list. Pre-existing, not introduced by this work |
+| R24-4 | The escalation probe banked a zero-row `DELETE` as a "gain" → false finding on the ordinary group-role grant pattern | P1 | **CLOSED** — row-count guard on the counting verbs, `TRUNCATE` deliberately exempt. Pinned by `testTheEscalationProbeDoesNotReportADeleteThePolicyAlreadyRefused` |
+| R24-5 | GOAL 7 raised a FALSE breach on a correct 1:1 child whose key is exactly `(tenant, parent_ref)` | P1 | **CLOSED** — GOAL 7 restricted to FK-less relations, with the gate authoritative for the rest. Pinned by `testACorrectOneToOneChildRelationProducesNoFinding` |
+| R24-6 | The escalation probe misses `ALTER TABLE … DISABLE ROW LEVEL SECURITY`, and cross-tenant `INSERT`/`UPDATE` | P1 | **OPEN** — mitigated by the gate's ownership axis, which is the sole detector |
+| R24-7 | Four suite docblocks still said axes were "replaced"/"deleted"; believing them reopens two reproduced breaches | P1 | **CLOSED** — all four rewritten to say defence in depth |
+| R24-8 | The four repointed entity docblocks overclaimed: GOAL 7 proves no key OMITS the tenant, not that one EXISTS | P1 | **CLOSED** — all four name the gate as authoritative |
+| R24-9 | `policySqlFor()`'s docblock told migration authors the key rules were "checked by no gate yet" — the 6th citation site, and the one an author actually reads | P1 | **CLOSED** |
+| R24-10 | `plan` claimed the gate reads `pg_constraint`/`pg_index` (5th citation site my sweep under-classified) | P1 | **CLOSED** — true again, and annotated with the round trip |
+| R24-11 | R22-15 recorded CLOSED while `plan:8` and `README.md` still list the mapper as owed | P1 | **OPEN** — see the owed list |
+| R24-12 | `d164be4` claimed `test-gates.sh 375 passed 0 failed` while the gate's `--dump-rules` entry and its assertion were allegedly inconsistent | P1 | **REFUTED** — both were removed together by the revert; `bc62139` never touched `test-gates.sh`. [Verified: `git log -S not_null_capable_relkind -- scripts/gates/test-gates.sh` → removed at `d164be4`] |
+| R24-13 | A DEFERRABLE unique constraint is a tripwire; the remedy the seeding message prescribes turns it into a silent pass, since `attempt()` always rolls back and a deferred constraint fires at COMMIT | P2 | **OPEN** |
+| R24-14 | A single-column SELF-referencing FK: seeding fails naming the wrong cause, and GOAL 8 banks its `23503` | P2 | **OPEN** — Wave 2's credit note referencing its invoice is this shape |
+| R24-15 | Prose counts wrong: "eight violation cases" (18), "nine axes / the other eight" (the gate has 15 failure paths, and the enumerated eight omit `NOT NULL`) | P2 | **CLOSED** — counts removed rather than corrected |
+| R24-16 | `plan` listed R22-4/-5 as "stay OPEN"; both were closed by fix commits, live and ancestral | P2 | **CLOSED** |
+| R24-17 | Two `## Awaiting the developer` headings 17 lines apart disagree about the count | P2 | **CLOSED** |
+| R24-18 | The gate's header "WHAT IT ASSERTS" list omits five live axes, including the bypass-reachability one that reads `rolreplication` | P2/P3 | **CLOSED** |
+| R24-19 | Two independent copies of relation discovery (gate and suite), nothing asserting they agree | P2 | **OPEN** |
+
+**Still owed from these two rounds**, so it is visible rather than implied: R24-3 (the aggregate matview — the
+largest, and it needs a design decision about whether discovery should follow `pg_depend` to a relation's SOURCE),
+R24-6, R24-13, R24-14, R24-19, R23-10, R23-12, R24-11.
+
+**The one lesson worth carrying out of both rounds**, and it cost two reversals to learn: *"the attack covers it"*
+must be tested against the CLASS, not against the counterexample somebody handed you. Round 23 handed me one
+partial index; I fixed exactly that one and reported the class closed. Round 24 found four more shapes and a sixth
+that nothing had ever caught. A probe over synthesised values can never cover a predicate over values it does not
+synthesise — that is a property of the technique, not a bug to fix.
+
 
 ## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **TWO ITEMS ARE OPEN**
 

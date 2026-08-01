@@ -366,8 +366,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * required and all three are returned together: `ENABLE` without `FORCE` leaves the owner exempt,
      * and a policy without either is inert.
      *
-     * Two schema requirements this cannot enforce, which every tenant-owned migration must honour and
-     * which no gate checks yet:
+     * Two schema requirements this cannot enforce, which every tenant-owned migration must honour. **Both
+     * ARE checked** — by `scripts/gates/schema-tenancy.php`'s composite-key axis, which reads key columns
+     * from the catalogue (so a partial or predicated key cannot hide from it) and reads `confkey` in
+     * ordinal order (so a key composite in the WRONG pair is refused too), and additionally attacked by
+     * `BehaviouralIsolationTest`'s GOALs 7 and 8. This paragraph read *"which no gate checks yet"* until
+     * 2026-08-02 — false, and this was the most dangerous place for it to be false, because it is the
+     * docblock a migration author reads, so it invited re-deriving a rule that already exists. What the
+     * two requirements are:
      *
      *  - **Composite keys.** PostgreSQL performs referential-integrity checks with row security
      *    BYPASSED. With a single-column foreign key, a session bound to tenant A can attach its own

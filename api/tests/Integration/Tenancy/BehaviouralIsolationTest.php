@@ -22,7 +22,8 @@ use Twes\Infrastructure\Tenancy\TenantId;
  * TENANT ISOLATION, PROVEN BY ATTACK: two tenants with real rows, and every relation discovery finds is attacked
  * as the restricted runtime role.
  *
- * **WHY THIS EXISTS, and why it replaces most of `schema-tenancy.php` rather than supplementing it** (developer
+ * **WHY THIS EXISTS, and why it SUPPLEMENTS `scripts/gates/schema-tenancy.php` rather than replacing any of it**
+ * (developer
  * ruling, 2026-08-01, recorded in `build-waves.plan.md`). Certification round 22 produced SIX P0s in that gate
  * while the schema it guards survived every attack both security lenses could build — every confirmed breach was
  * in the checker, none in the thing checked. The unifying diagnosis: each P0 came from **inferring a property from
@@ -300,7 +301,10 @@ final class BehaviouralIsolationTest extends TestCase
     /**
      * The OWNER connection is subject to policies too — which is what `FORCE ROW LEVEL SECURITY` buys.
      *
-     * Behavioural replacement for the gate's `relforcerowsecurity` read. Migrations connect as this role, so
+     * Defence in depth ON TOP of the gate's `relforcerowsecurity` read, not a replacement for it — that axis is
+     * live at `scripts/gates/schema-tenancy.php`, and it is the only half that can see a LIVE schema drift.
+     * This one is stronger evidence about the migration's output: the flag being set and the flag WORKING are
+     * different claims. Migrations connect as this role, so
      * without FORCE every migration and any support tooling reads every tenant, and the schema gate's own
      * catalogue check could only ever say the flag was set rather than that it worked.
      */
@@ -342,7 +346,11 @@ final class BehaviouralIsolationTest extends TestCase
      * The runtime role cannot reach a role that bypasses policies — attacked with `SET ROLE`, not read from
      * `pg_roles`.
      *
-     * Behavioural replacement for the gate's role-attribute axis, which was a round-22 P0 in its own right:
+     * Defence in depth ON TOP of the gate's role-attribute axis, which is LIVE and must stay so — round 24
+     * reproduced a reachable owner running `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` while this probe reported
+     * "reached, gained nothing", and `rolreplication` is observable by no attack at all because `pg_basebackup`
+     * never traverses the query layer. So the gate is the sole detector for part of this property. What this adds
+     * is the inheritance question the catalogue got wrong as a round-22 P0:
      * `rolsuper` and `rolbypassrls` are NOT inherited, so a role that is merely a MEMBER of a bypassing role
      * reads `f/f/f` in its own catalogue row, passed that check, and reached the privilege with one `SET ROLE`.
      * Attempting the escalation cannot make that mistake.
@@ -447,12 +455,20 @@ final class BehaviouralIsolationTest extends TestCase
                                 }
                             } else {
                                 $affected = $runtime->exec($sql);
-                                $gained[] = \sprintf(
-                                    '%s on %s (%s rows)',
-                                    $what,
-                                    self::qualify($target),
-                                    false === $affected ? 'unknown' : (string) $affected,
-                                );
+
+                                // A zero-row DELETE is the policy HOLDING, not a gain -- the rows were invisible.
+                                // Round 24 reproduced the false positive: with the ordinary group-role grant
+                                // pattern the escalated role can issue the statement, it affects nothing, and the
+                                // suite called that a reproduced breach. TRUNCATE has no such test (any successful
+                                // TRUNCATE IS the breach), so only the row-counting verbs are guarded.
+                                if (str_starts_with($what, 'TRUNCATE') || (false !== $affected && 0 !== $affected)) {
+                                    $gained[] = \sprintf(
+                                        '%s on %s (%s rows)',
+                                        $what,
+                                        self::qualify($target),
+                                        false === $affected ? 'unknown' : (string) $affected,
+                                    );
+                                }
                             }
                         } catch (\PDOException) {
                             // Refused for this one command. Not evidence about the others, which is the whole fix.
@@ -500,9 +516,14 @@ final class BehaviouralIsolationTest extends TestCase
     }
 
     // ---------------------------------------------------------------------------------------------------------
-    // PROOFS THAT THE DELETED GATE AXES ARE COVERED. Each case introduces the exact defect one retired
-    // catalogue judgement used to look for, and requires the ATTACK to report it. Without these, deleting those
-    // axes would be an act of faith.
+    // PROOFS THAT EACH ATTACK REALLY FIRES. Each case introduces a concrete defect and requires the ATTACK to
+    // report it — or, for the two NEGATIVE cases, requires it NOT to.
+    //
+    // NOTE these are no longer "proofs that a deleted axis is covered". Every axis these cases exercise is LIVE
+    // in `scripts/gates/schema-tenancy.php`: the key-shape axis came back at round 24 after two lenses
+    // reproduced a cross-tenant oracle without it, and nothing else ever left. The cases remain valuable as
+    // defence in depth and as proof this suite can fail, which is the thing a security suite most needs to
+    // demonstrate about itself.
     // ---------------------------------------------------------------------------------------------------------
 
     /**
@@ -812,6 +833,112 @@ final class BehaviouralIsolationTest extends TestCase
         self::assertStringContainsString('the cross-tenant DELETE could not be attempted', $report);
     }
 
+    /**
+     * A CORRECT foreign key beside a DEFECTIVE one — round 24's P0, where the correct key answered for both.
+     *
+     * GOAL 8 built its probe row once, outside the per-FK loop, so the identical insert was retried for every
+     * foreign key and the strictest constraint refused first. A reviewer put `fk_correct` (tenant-composite) beside
+     * a key tied to a second pair of columns, watched `fk_correct`'s `23503` be banked as proof about the other,
+     * then rode the other to a cross-tenant `ON DELETE CASCADE` delete. Latent on today's schema only because
+     * `document_line` has exactly one foreign key — Wave 2's payment table will have two.
+     *
+     * The fix has two halves and this case needs both: the row is built per foreign key with the OTHER keys
+     * neutralised, and the refusal must name THIS constraint rather than merely carry SQLSTATE `23503`.
+     */
+    public function testGoalEightIsNotMaskedByACorrectSiblingForeignKey(): void
+    {
+        $findings = $this->attackDefectiveRelation(
+            'sibling_payment',
+            [
+                'CREATE TABLE sibling_doc (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, id))',
+                'CREATE TABLE sibling_invoice (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, id))',
+                'CREATE TABLE sibling_payment (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' doc_id uuid NOT NULL, inv_company_id uuid NOT NULL, inv_id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, id),'
+                // CORRECT: tenant-composite, and it will refuse the probe row on its own.
+                . ' CONSTRAINT sibling_fk_correct FOREIGN KEY (company_id, doc_id)'
+                . '   REFERENCES sibling_doc (company_id, id),'
+                // DEFECTIVE: composite, but in a second pair of columns with nothing tying it to the row's tenant.
+                . ' CONSTRAINT sibling_fk_defect FOREIGN KEY (inv_company_id, inv_id)'
+                . '   REFERENCES sibling_invoice (company_id, id) ON DELETE CASCADE)',
+            ],
+            seedInto: 'sibling_doc, sibling_invoice, sibling_payment',
+        );
+
+        self::assertStringContainsString(
+            'sibling_fk_defect',
+            implode(' ', $findings),
+            "The defective foreign key must be named. If the correct sibling's refusal is banked instead, a "
+            . 'cross-tenant ON DELETE CASCADE delete passes every attack — reproduced in round 24.',
+        );
+    }
+
+    /**
+     * A reachable role that can ISSUE a `DELETE` but whose rows the policy hides must NOT be reported as a breach.
+     *
+     * Round 24 reproduced this false positive: the escalation probe appended to `$gained` on any successful `exec`,
+     * so with the ordinary grant pattern — privileges on a group role, the group granted to the runtime role — the
+     * escalated role issues the DELETE, it affects ZERO rows because the policy hid tenant A's rows, and the suite
+     * called that a reproduced breach. This repository prices a false finding as badly as a false clean, and the
+     * fix a maintainer would reach for when it fires is deleting the probe, which reopens the round-23 P0 it exists
+     * to close.
+     *
+     * `TRUNCATE` is deliberately still unguarded by row count: any successful TRUNCATE IS the breach.
+     */
+    public function testTheEscalationProbeDoesNotReportADeleteThePolicyAlreadyRefused(): void
+    {
+        $truncator = getenv('TWES_TEST_DB_TRUNCATOR_ROLE') ?: 'twes_truncator';
+        $admin = self::admin();
+        $this->seedBothTenants(self::discoverTenantRelations($admin));
+
+        // SELECT and DELETE but NOT TRUNCATE: the escalated role can issue both statements, and the policy is what
+        // stops them reaching another tenant's rows.
+        $admin->exec(\sprintf('GRANT SELECT, DELETE ON document TO %s', self::quote($truncator)));
+
+        try {
+            $this->testTheRuntimeRoleCannotEscalateToARoleThatBypassesPolicies();
+        } finally {
+            $admin->exec(\sprintf('REVOKE SELECT, DELETE ON document FROM %s', self::quote($truncator)));
+        }
+    }
+
+    /**
+     * A CORRECT 1:1 child relation must produce NO finding — round 24's reproduced false positive.
+     *
+     * `PRIMARY KEY (company_id, document_id)` with a tenant-composite foreign key and nothing else is a perfectly
+     * isolated schema. GOAL 7's probe has to re-point the parent reference at the ATTACKING tenant's parent to
+     * satisfy the foreign key, and on this shape that reproduces the attacking tenant's own key exactly — so the
+     * probe collided with its own row and reported a cross-tenant oracle on a correct schema.
+     *
+     * `document_line` and `document_charge` escape only because `position` differs between the two variants, which
+     * is luck rather than design — hence this case. The fix restricts GOAL 7 to relations with no foreign key, and
+     * `scripts/gates/schema-tenancy.php` owns the axis authoritatively for the rest.
+     */
+    public function testACorrectOneToOneChildRelationProducesNoFinding(): void
+    {
+        $findings = $this->attackDefectiveRelation(
+            'einvoice_payload',
+            [
+                'CREATE TABLE einvoice_doc (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, id))',
+                'CREATE TABLE einvoice_payload (company_id uuid NOT NULL, document_id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, document_id),'
+                . ' CONSTRAINT einvoice_payload_fk FOREIGN KEY (company_id, document_id)'
+                . '   REFERENCES einvoice_doc (company_id, id) ON DELETE CASCADE)',
+            ],
+            seedInto: 'einvoice_doc, einvoice_payload',
+        );
+
+        self::assertSame(
+            [],
+            $findings,
+            "A correct 1:1 child relation must produce NO finding. A false positive here is as damaging as a false "
+            . "clean: it is the red a maintainer learns to dismiss.\n  - " . implode("\n  - ", $findings),
+        );
+    }
+
     // ---------------------------------------------------------------------------------------------------------
     // THE ATTACKS
     // ---------------------------------------------------------------------------------------------------------
@@ -1055,7 +1182,21 @@ final class BehaviouralIsolationTest extends TestCase
         //
         // Probing A-under-B and B-under-A covers a predicate selecting EITHER value, which is the smallest fix
         // that closes the class rather than the one example.
-        foreach ([['a', 'b', self::TENANT_B], ['b', 'a', self::TENANT_A]] as [$values, $parent, $under]) {
+        //
+        // RESTRICTED TO RELATIONS WITH NO FOREIGN KEY, and this is a stated limit rather than a silent one. On a
+        // child relation the probe must re-point the parent reference at the ATTACKING tenant's parent to satisfy
+        // the foreign key -- and on a 1:1 child whose key is exactly `(tenant, parent_ref)` that reproduces the
+        // attacking tenant's OWN key, so the probe collides with its own row and reports a breach on a CORRECT
+        // schema. Round 24 reproduced that false positive, and this repository prices a false finding as badly as a
+        // false clean: the next red gets dismissed.
+        //
+        // Nothing is lost by the restriction, because `scripts/gates/schema-tenancy.php` owns this axis
+        // authoritatively again -- it reads key columns from the catalogue, so a predicate cannot hide a key from it
+        // and a child relation is no harder than a root one. This probe is defence in depth on root relations, which
+        // is where a tenant-scoped counter or a human-facing document number lives.
+        foreach ([] === $relation['fks']
+            ? [['a', 'b', self::TENANT_B], ['b', 'a', self::TENANT_A]]
+            : [] as [$values, $parent, $under]) {
             $probe = self::rowFor($relation, $under, $values, parentVariant: $parent);
             $collision = self::attempt($runtime, $under, self::insertSql($relation, $probe));
             $direction = \sprintf('variant %s under tenant %s', $values, self::TENANT_A === $under ? 'A' : 'B');
@@ -1109,21 +1250,51 @@ final class BehaviouralIsolationTest extends TestCase
         // includes the tenant column the reference is now dangling and PostgreSQL refuses with `23503`; if it does
         // not, the reference still resolves to tenant A's parent and the insert SUCCEEDS -- which is the breach.
         foreach ($relation['fks'] as $fk) {
+            // PER FOREIGN KEY, and the refusal must name THIS constraint. Round 24 filed both halves: the row was
+            // built once outside this loop, so the identical insert was retried for every FK and the STRICTEST
+            // constraint answered for all of them -- a reviewer put a correct FK beside a defective one and watched
+            // the correct one's `23503` be banked as proof about the defective one, then rode the defective one to a
+            // cross-tenant ON DELETE CASCADE delete. Only this relation's OTHER foreign keys are neutralised, by
+            // pointing them at the attacking tenant's own parents, so the one under test is the only thing that can
+            // refuse.
             $reference = self::rowFor($relation, self::TENANT_A, 'a');
             $reference[PostgresRowLevelSecurityIsolation::TENANT_COLUMN] = self::TENANT_B;
+
+            foreach ($relation['fks'] as $other) {
+                if ($other['parent'] === $fk['parent'] && $other['columns'] === $fk['columns']) {
+                    continue;
+                }
+
+                $ownParent = self::rowFor(self::relationNamed($other['parent']), self::TENANT_B, 'b');
+
+                foreach ($other['columns'] as $index => $local) {
+                    if (isset($other['parentColumns'][$index], $ownParent[$other['parentColumns'][$index]])) {
+                        $reference[$local] = $ownParent[$other['parentColumns'][$index]];
+                    }
+                }
+            }
 
             $crossReference = self::attempt($runtime, self::TENANT_B, self::insertSql($relation, $reference));
 
             if ($crossReference['ok']) {
+                // The CONSTRAINT NAME, not just the columns. With one foreign key per relation the columns were
+                // enough; with two, a reader needs to know which constraint to change -- and a case asserting on
+                // this finding cannot otherwise tell the sibling keys apart.
                 $findings[] = \sprintf(
-                    '%s: tenant B inserted a row REFERENCING tenant A\'s row in %s through "%s". Make the foreign '
-                    . 'key composite on both sides — a single-column one lets a tenant reference another\'s row, '
-                    . 'and ON DELETE CASCADE then deletes across the boundary.',
+                    '%s: tenant B inserted a row REFERENCING tenant A\'s row in %s through "%s" (%s). Make the '
+                    . 'foreign key composite on both sides AND tie it to this row\'s own tenant — a key that is '
+                    . 'composite in a DIFFERENT pair of columns satisfies a shape check while still crossing the '
+                    . 'boundary, and ON DELETE CASCADE then deletes across it.',
                     $name,
                     $fk['parent'],
+                    $fk['name'],
                     implode(', ', $fk['columns']),
                 );
-            } elseif ('23503' !== $crossReference['sqlstate']) {
+                // NAMED, not merely `23503`. A sibling foreign key raising the same SQLSTATE is not evidence
+                // about this one -- round 24's reproduction held the string `violates foreign key constraint
+                // "fk_correct"` while the code attributed that refusal to the defective key.
+            } elseif ('23503' !== $crossReference['sqlstate']
+                || !str_contains($crossReference['message'], '"' . $fk['name'] . '"')) {
                 // REQUIRE the foreign-key violation. This was the only goal accepting any failure as evidence,
                 // which is precisely how the collision above hid a real breach -- and the plan's R22-7 closure
                 // claimed this code "requires 23503" when it did not. Anything else means the reference was never
@@ -1241,7 +1412,7 @@ final class BehaviouralIsolationTest extends TestCase
     // silently, which is the asymmetry the whole restructure rests on.
     // ---------------------------------------------------------------------------------------------------------
 
-    /** @var ?list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>}> */
+    /** @var ?list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}> */
     private static ?array $relations = null;
 
     /**
@@ -1251,7 +1422,7 @@ final class BehaviouralIsolationTest extends TestCase
      * materialized view and a foreign table can all hold tenant data, and the last three are precisely the ones a
      * catalogue check keeps getting wrong.
      *
-     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>}>
+     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}>
      */
     private static function discoverTenantRelations(\PDO $admin): array
     {
@@ -1267,7 +1438,7 @@ final class BehaviouralIsolationTest extends TestCase
             . " a.atttypmod), 'nullable', NOT a.attnotnull) ORDER BY a.attnum)"
             . '  FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped)'
             . ' AS columns,'
-            . " (SELECT coalesce(json_agg(json_build_object('columns', ("
+            . " (SELECT coalesce(json_agg(json_build_object('name', con.conname, 'columns', ("
             . '     SELECT json_agg(att.attname ORDER BY k.ord) FROM unnest(con.conkey)'
             . '     WITH ORDINALITY AS k(attnum, ord)'
             . '     JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = k.attnum'
@@ -1295,7 +1466,7 @@ final class BehaviouralIsolationTest extends TestCase
         foreach ($statement->fetchAll(\PDO::FETCH_ASSOC) as $row) {
             /** @var list<array{name: string, type: string, nullable: bool}> $columns */
             $columns = json_decode((string) $row['columns'], true, 512, \JSON_THROW_ON_ERROR);
-            /** @var list<array{columns: list<string>, parent: string, parentColumns: list<string>}> $fks */
+            /** @var list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}> $fks */
             $fks = json_decode((string) $row['fks'], true, 512, \JSON_THROW_ON_ERROR);
 
             $relations[] = [
@@ -1317,9 +1488,9 @@ final class BehaviouralIsolationTest extends TestCase
      * only needs to be good enough that a child's parent row exists when the child is inserted. A cycle cannot
      * hang this — each relation is placed exactly once.
      *
-     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>}> $relations
+     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}> $relations
      *
-     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>}>
+     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}>
      */
     private static function parentsFirst(array $relations): array
     {
@@ -1359,7 +1530,7 @@ final class BehaviouralIsolationTest extends TestCase
     }
 
     /**
-     * @return array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>}
+     * @return array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}
      */
     private static function relationNamed(string $name, bool $refresh = false): array
     {
@@ -1386,7 +1557,7 @@ final class BehaviouralIsolationTest extends TestCase
      *
      * Idempotent, because several cases call it: an existing row is left alone rather than duplicated.
      *
-     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>}> $relations
+     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}> $relations
      */
     private function seedBothTenants(array $relations): void
     {
@@ -1456,7 +1627,7 @@ final class BehaviouralIsolationTest extends TestCase
      * columns from one variant (so it does not collide with the tenant's existing row) and its parent reference
      * from the variant that tenant was actually seeded with.
      *
-     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>} $relation
+     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>} $relation
      *
      * @return array<string, string>
      */
@@ -1550,7 +1721,7 @@ final class BehaviouralIsolationTest extends TestCase
     }
 
     /**
-     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{columns: list<string>, parent: string, parentColumns: list<string>}>} $relation
+     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>} $relation
      * @param array<string, string> $row
      */
     private static function insertSql(array $relation, array $row): string

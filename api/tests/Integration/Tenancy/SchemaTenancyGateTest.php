@@ -488,6 +488,85 @@ final class SchemaTenancyGateTest extends TestCase
             ['DROP TABLE migrations_ran_as_runtime'],
             'is OWNED by',
         ];
+
+        // ---------------------------------------------------------------- COMPOSITE KEYS
+        //
+        // RESTORED 2026-08-02, after certification round 24 reproduced a cross-tenant existence oracle without this
+        // axis. The axis had been deleted the day before on the claim that `BehaviouralIsolationTest` covered it;
+        // two lenses independently refuted that with working exploits. The reason is structural: the probe proves a
+        // key includes the tenant by re-presenting one tenant's values under the other, so its reach is bounded by
+        // the FIXTURE'S value space -- and `rowFor()` fills every column, so no probe row satisfies a
+        // `WHERE ... IS NULL` predicate. The last three cases below are precisely the shapes it cannot reach, and
+        // the EXCLUDE-with-predicate one was caught by NEITHER half at ANY commit.
+        //
+        // Why this belongs in a TENANCY gate: uniqueness, exclusion and foreign-key checks run with row security
+        // BYPASSED -- PostgreSQL must see rows the querying tenant cannot -- so a key omitting the tenant is
+        // enforced across every tenant, and no policy narrows it.
+
+        yield 'a UNIQUE index that omits the tenant column, which is a cross-tenant oracle' => [
+            ['CREATE UNIQUE INDEX document_number_globally_unique ON document (number)'],
+            ['DROP INDEX document_number_globally_unique'],
+            'does not include "company_id"',
+        ];
+
+        yield 'a single-column foreign key, which lets one tenant reference another tenant row' => [
+            [
+                'CREATE UNIQUE INDEX document_id_alone ON document (id)',
+                'ALTER TABLE document_line DROP CONSTRAINT document_line_belongs_to_document',
+                'ALTER TABLE document_line ADD CONSTRAINT document_line_belongs_to_document '
+                . 'FOREIGN KEY (document_id) REFERENCES document (id) ON DELETE CASCADE',
+            ],
+            [
+                'ALTER TABLE document_line DROP CONSTRAINT document_line_belongs_to_document',
+                'ALTER TABLE document_line ADD CONSTRAINT document_line_belongs_to_document '
+                . 'FOREIGN KEY (company_id, document_id) REFERENCES document (company_id, id) ON DELETE CASCADE',
+                'DROP INDEX document_id_alone',
+            ],
+            'does not include "company_id"',
+        ];
+
+        // R22-1. `pg_index.indkey` spans key AND INCLUDE columns while only the first `indnkeyatts` participate in
+        // uniqueness, so this presented the tenant column while enforcing uniqueness across every tenant.
+        yield 'an INCLUDE-column unique index, whose tenant column is only a payload' => [
+            ['CREATE UNIQUE INDEX document_number_include ON document (number) INCLUDE (company_id)'],
+            ['DROP INDEX document_number_include'],
+            'its UNIQUE index "document_number_include" (number) does not include',
+        ];
+
+        // ROUND 24's P0. A predicate the synthesised rows cannot satisfy is invisible to the behavioural probe in
+        // BOTH directions -- `rowFor()` fills every column, and no variant carries 'cancelled'. A predicate is
+        // irrelevant to THIS check, which is the whole reason the axis had to come back.
+        yield 'a PARTIAL unique index whose predicate no probe row satisfies' => [
+            ["CREATE UNIQUE INDEX document_number_cancelled ON document (number) WHERE state = 'cancelled'"],
+            ['DROP INDEX document_number_cancelled'],
+            'its UNIQUE index "document_number_cancelled" (number) does not include',
+        ];
+
+        // R22-2 AND round 24's never-caught shape in one: `contype` omitted 'x' and an exclusion index has
+        // `indisunique = false`, so this was invisible to both halves at once -- and with a predicate added, to the
+        // behavioural probe as well.
+        yield 'an EXCLUDE constraint with a predicate, omitting the tenant' => [
+            [
+                'CREATE EXTENSION IF NOT EXISTS btree_gist',
+                'ALTER TABLE document ADD CONSTRAINT document_number_excluded '
+                . 'EXCLUDE (number WITH =) WHERE (number IS NOT NULL)',
+            ],
+            ['ALTER TABLE document DROP CONSTRAINT document_number_excluded'],
+            'its EXCLUDE constraint "document_number_excluded" (number) does not include',
+        ];
+
+        // R22-7's second half: the tenant column is present on BOTH sides and MIS-PAIRED, so a membership test
+        // passes it while the constraint joins one tenant's identifier to a surrogate key.
+        yield 'a FOREIGN KEY whose tenant column is MIS-PAIRED with the parent' => [
+            [
+                'CREATE UNIQUE INDEX document_id_company_swapped ON document (id, company_id)',
+                'CREATE TABLE mispaired_child (company_id uuid NOT NULL, document_id uuid NOT NULL, '
+                . 'PRIMARY KEY (company_id, document_id), CONSTRAINT mispaired_fk '
+                . 'FOREIGN KEY (company_id, document_id) REFERENCES document (id, company_id))',
+            ],
+            ['DROP TABLE mispaired_child', 'DROP INDEX document_id_company_swapped'],
+            'MIS-PAIRED',
+        ];
     }
 
     /** @return array{int, string} */

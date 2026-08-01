@@ -137,7 +137,9 @@ final readonly class Invoice
      * severity. Currency mismatch is unreachable through `InvoiceMapper`, which builds every `Money` from the
      * document's own currency column — so re-checking it would cost a loop over every line on every read to catch
      * nothing. The line cap and totallability are reachable only by a direct write to the database, which is outside
-     * this domain's threat model and inside `schema-tenancy.php`'s. **An issued document with NO LINES is guarded
+     * this domain's threat model — and NOT inside `schema-tenancy.php`'s either, which this sentence claimed until
+     * 2026-08-02: that gate asserts tenancy properties (row security, policies, keys, ownership), not aggregate
+     * bounds. A direct write past the line cap is guarded by nothing today, which is the honest statement. **An issued document with NO LINES is guarded
      * below**, because that one is reachable through the ordinary repository path — a half-committed rewrite — and
      * it renders as an invoice whose total is 0.000.
      *

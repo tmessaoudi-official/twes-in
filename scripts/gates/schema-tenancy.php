@@ -263,6 +263,7 @@ $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
 
 $tables = $connection->query(
     "SELECT c.relname AS table_name, "
+    . 'c.oid AS oid, '
     . 'c.relkind AS kind, '
     . "  array_to_string(coalesce(c.reloptions, '{}'), ',') AS reloptions, "
     // Can the relation's OWNER bypass policies? For a non-`security_invoker` view, PostgreSQL checks the BASE
@@ -338,7 +339,7 @@ if (false === $tables) {
     exit(1);
 }
 
-/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, kind: string, schema_name: string, reloptions: string, owner_can_bypass: bool|string, columns: string, policies: string}> $rows */
+/** @var list<array{table_name: string, oid: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, kind: string, schema_name: string, reloptions: string, owner_can_bypass: bool|string, columns: string, policies: string}> $rows */
 $rows = $tables->fetchAll(PDO::FETCH_ASSOC);
 
 $inspected = 0;
@@ -474,33 +475,148 @@ foreach ($rows as $row) {
     }
 
     /*
-     * KEY SHAPES ARE NOT CHECKED HERE ANY MORE, and this comment exists so nobody re-adds the axis believing its
-     * absence was an oversight (developer ruling, 2026-08-01, after certification round 23).
+     * COMPOSITE KEYS: every PRIMARY KEY, UNIQUE constraint, unique INDEX, EXCLUDE constraint and FOREIGN KEY on a
+     * tenant-owned relation must include the tenant column.
      *
-     * The property still matters, and it is worth restating because it is not obvious: uniqueness and foreign-key
+     * **RESTORED 2026-08-02 after certification round 24 REPRODUCED a cross-tenant oracle without it.** This axis
+     * was deleted the day before, on my recommendation, on the claim that the behavioural probe covered it. Two
+     * lenses independently refuted that with working exploits, and the reason is structural rather than a bug in
+     * the probe: `BehaviouralIsolationTest` proves a key includes the tenant by re-presenting one tenant's row
+     * values under the other, so its reach is bounded by the FIXTURE'S VALUE SPACE. `rowFor()` deliberately fills
+     * every column, so no probe row can satisfy a `WHERE ... IS NULL` predicate, and no variant ever carries
+     * `'cancelled'` or `'credit'` even though the CHECK constraints permit both. Reproduced invisible to the probe
+     * and caught here:
+     *   - `UNIQUE (number) WHERE deleted_at IS NULL` — a soft-delete partial unique, the most ordinary shape there
+     *     is in a billing product;
+     *   - `UNIQUE (number) WHERE state = 'cancelled'` and `WHERE type = 'credit'`;
+     *   - `UNIQUE (number) WHERE number >= 1000` — any range outside the synthesiser's `{1,2}`;
+     *   - `EXCLUDE (code WITH =) WHERE (deleted_at IS NULL)`, which NO half of this repository caught at any commit.
+     *
+     * A predicate is IRRELEVANT to this check, which is exactly why it covers the class: it asks only whether the
+     * key columns include the tenant. **So key shapes are a CATALOGUE property, not an attackable one** — the same
+     * side of the line as `rolreplication`. The probe stays as defence in depth; it is not a substitute, and the
+     * lesson worth keeping is that "the attack covers it" needs testing against the CLASS, not against the one
+     * counterexample somebody handed you.
+     *
+     * **Why this belongs in a TENANCY gate rather than a modelling one:** uniqueness, exclusion and foreign-key
      * checks run with row-level security BYPASSED. They have to — PostgreSQL must see rows the querying tenant
      * cannot, or a constraint could only be enforced against rows you can already read. So a key omitting the
-     * tenant column is enforced across EVERY tenant, which is a cross-tenant existence oracle and, for a
-     * single-column FK with `ON DELETE CASCADE`, a cross-tenant delete.
+     * tenant is checked across EVERY tenant and no policy narrows it:
+     *   - a unique or exclusion key makes one tenant's insert fail because another already used the value: a
+     *     cross-tenant existence oracle AND a denial of service on their numbering;
+     *   - a foreign key lets one tenant reference another's row, and `ON DELETE CASCADE` then deletes across the
+     *     boundary.
      *
-     * **It is now proven by ATTACK instead**, in `api/tests/Integration/Tenancy/BehaviouralIsolationTest.php`:
-     * GOAL 7 re-presents one tenant's row values under the other and requires the insert to SUCCEED, and GOAL 8
-     * offers tenant A's row with only the tenant flipped and requires `23503`. That is strictly better here, and
-     * the reason is specific rather than a preference for attacks: the catalogue version produced FOUR reproduced
-     * false verdicts in one round (R22-1 `pg_index.indkey` spans `INCLUDE` columns while only `indnkeyatts`
-     * participate in uniqueness; R22-2 `contype` omits `'x'` and an exclusion index has `indisunique = false`;
-     * R22-3 `?::regclass` case-folds a mixed-case relation; R22-7 `confkey` was never read, so a key composite in
-     * the WRONG pair passed). Enumerating key SHAPES is unbounded and PostgreSQL keeps adding to it; a probe
-     * catches `INCLUDE`, `EXCLUDE`, partial, expression and `NULLS NOT DISTINCT` indexes without naming any, and
-     * each of those was verified caught.
-     *
-     * **Why the other eight axes STAYED when this one went** — the distinction round 23 turned on. An attack suite
-     * MUTATES data, so it can only ever run against a throwaway database, which means it proves things about what
-     * the MIGRATION produces. Everything else this gate checks — row security enabled, FORCE, policy canonicality,
-     * TRUNCATE, the runtime role's attributes and ownership — can also DRIFT on a live schema, read-only, and
-     * `rolreplication` cannot be observed by any attack at all. Keys are the one axis where the migration is the
-     * whole story in practice, so it is the one that could move.
+     * ALL FOUR of round 22's P0s in this axis are fixed here, each verified against real catalogue output before
+     * being trusted rather than reasoned about:
+     *   R22-1 `pg_index.indkey` spans key AND `INCLUDE` columns, while only the first `indnkeyatts` participate in
+     *         uniqueness — so `CREATE UNIQUE INDEX ... (number) INCLUDE (company_id)` presented the tenant column
+     *         while enforcing uniqueness across every tenant. The slice below reads KEY columns only. [Verified:
+     *         that index now reports `{number}`; it reported `{company_id,number}` before.]
+     *   R22-2 `contype` omitted `'x'`, and an exclusion index has `indisunique = false`, so an EXCLUDE constraint
+     *         was invisible to both halves at once. `'x'` is in the list now.
+     *   R22-3 `?::regclass` case-folds, so a mixed-case relation mis-resolved silently or raised and exited 255.
+     *         The OID is passed instead, taken from the main query.
+     *   R22-7 `confkey` was never read, so a key composite in the WRONG pair passed — and the tenant column can be
+     *         present on both sides yet MIS-PAIRED. Both sides are read in ORDINAL order and the tenant column
+     *         must map to the tenant column.
      */
+    $keys = $connection->prepare(
+        'SELECT con.conname AS name, con.contype AS kind,'
+        // ORDINAL order on both sides, never sorted by name: sorting loses the PAIRING, which is what R22-7's
+        // second half turns on.
+        . ' (SELECT array_agg(att.attname ORDER BY k.ord) FROM unnest(con.conkey) WITH ORDINALITY AS k(attnum, ord)'
+        . '  JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = k.attnum) AS columns,'
+        . ' (SELECT array_agg(att.attname ORDER BY k.ord) FROM unnest(con.confkey) WITH ORDINALITY AS k(attnum, ord)'
+        . '  JOIN pg_attribute att ON att.attrelid = con.confrelid AND att.attnum = k.attnum) AS referenced'
+        . ' FROM pg_constraint con WHERE con.conrelid = ?'
+        . "   AND con.contype IN ('p', 'u', 'f', 'x')"
+        . ' UNION ALL'
+        . " SELECT ic.relname AS name, 'i' AS kind,"
+        // KEY columns only. `indkey` is an int2vector spanning key AND INCLUDE columns; the 1-based slice to
+        // `indnkeyatts` drops the payload.
+        . ' (SELECT array_agg(att.attname ORDER BY k.ord) FROM'
+        . "    unnest((string_to_array(idx.indkey::text, ' ')::int2[])[1:idx.indnkeyatts])"
+        . '    WITH ORDINALITY AS k(attnum, ord)'
+        . '  JOIN pg_attribute att ON att.attrelid = idx.indrelid AND att.attnum = k.attnum) AS columns,'
+        . ' NULL AS referenced'
+        . ' FROM pg_index idx JOIN pg_class ic ON ic.oid = idx.indexrelid'
+        . ' WHERE idx.indrelid = ? AND idx.indisunique'
+        // The index BACKING a primary key or unique constraint is reported by pg_constraint already; counting it
+        // twice would report the same defect under two names.
+        . '   AND NOT EXISTS (SELECT 1 FROM pg_constraint c2 WHERE c2.conindid = idx.indexrelid)',
+    );
+    $keys->execute([$row['oid'], $row['oid']]);
+
+    /** @var list<array{name: string, kind: string, columns: ?string, referenced: ?string}> $keyRows */
+    $keyRows = $keys->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($keyRows as $key) {
+        // A NULL column list means the catalogue gave us a key we could not resolve. Refused, not skipped: this is
+        // the axis where a silent skip means "no cross-tenant key found" over a key never examined.
+        $keyColumns = null === $key['columns']
+            ? []
+            : array_map('trim', explode(',', trim($key['columns'], '{}')));
+        $referenced = null === $key['referenced']
+            ? []
+            : array_map('trim', explode(',', trim($key['referenced'], '{}')));
+
+        $tenantPosition = array_search($tenantColumn, $keyColumns, true);
+        $kindName = match ($key['kind']) {
+            'p' => 'PRIMARY KEY',
+            'u' => 'UNIQUE constraint',
+            'f' => 'FOREIGN KEY',
+            'x' => 'EXCLUDE constraint',
+            default => 'UNIQUE index',
+        };
+
+        if (false === $tenantPosition) {
+            $violations[] = sprintf(
+                '%s holds tenant data and its %s "%s" (%s) does not include "%s". Uniqueness, exclusion and '
+                . 'foreign-key checks run with row-level security BYPASSED — they must, or a constraint could only '
+                . 'be enforced against rows the querying tenant can already read — so this key is checked across '
+                . 'EVERY tenant and no policy narrows it. %s',
+                $table,
+                $kindName,
+                $key['name'],
+                [] === $keyColumns ? 'columns unreadable' : implode(', ', $keyColumns),
+                $tenantColumn,
+                'f' === $key['kind']
+                    ? 'A foreign key omitting the tenant lets one tenant reference another tenant\'s row, and ON '
+                      . 'DELETE CASCADE then deletes across the boundary. Make it composite on both sides.'
+                    : 'A unique or exclusion key omitting the tenant makes one tenant\'s insert fail because '
+                      . 'another already used the value: a cross-tenant existence oracle, and a denial of service '
+                      . 'on their numbering.',
+            );
+
+            continue;
+        }
+
+        /*
+         * R22-7's SECOND half: the tenant column is PRESENT on both sides and MIS-PAIRED.
+         *
+         * `FOREIGN KEY (company_id, document_id) REFERENCES document (id, company_id)` contains the tenant column
+         * in both lists, so a membership test passes it — while the constraint actually joins one tenant's
+         * identifier to another relation's surrogate key. Checked positionally, which is why both sides are read
+         * in ordinal rather than alphabetical order. [Verified: that shape reports the tenant column mapping onto
+         * `id`, and the correct `REFERENCES document (company_id, id)` is accepted.]
+         */
+        if ('f' === $key['kind'] && ($referenced[$tenantPosition] ?? null) !== $tenantColumn) {
+            $violations[] = sprintf(
+                '%s: FOREIGN KEY "%s" maps "%s" onto "%s" rather than onto the parent\'s own "%s" — the tenant '
+                . 'column is present on both sides but MIS-PAIRED: (%s) REFERENCES (%s). A membership test passes '
+                . 'this while the constraint joins one tenant\'s identifier to another relation\'s surrogate key, '
+                . 'which is a cross-tenant reference wearing the shape of a composite key.',
+                $table,
+                $key['name'],
+                $tenantColumn,
+                $referenced[$tenantPosition] ?? 'nothing',
+                $tenantColumn,
+                implode(', ', $keyColumns),
+                [] === $referenced ? 'unreadable' : implode(', ', $referenced),
+            );
+        }
+    }
 
     if (!isTrue($row['rls_enabled'])) {
         $violations[] = sprintf(
@@ -705,7 +821,7 @@ if (0 === $tenantOwned) {
 
 printf(
     "schema-tenancy: OK — %d tenant-owned table(s) of %d are enabled, FORCED, canonically policed, NOT NULL, and "
-    . "beyond \"%s\"'s ownership and TRUNCATE. KEY SHAPES are proven by attack in BehaviouralIsolationTest.\n",
+    . "beyond \"%s\"'s ownership and TRUNCATE, and every key includes the tenant column.\n",
     $tenantOwned,
     $inspected,
     $runtimeRole,
