@@ -1912,6 +1912,55 @@ assert_gate 'reports an absent manifest instead of skipping it' dependency-licen
 
 fresh_fixture
 
+echo "== schema tenancy: the one gate that needs a DATABASE =="
+# Only the DATABASE-FREE paths are asserted here, deliberately. `test-gates.sh` runs on plain PHP with no server,
+# and making the meta-suite require PostgreSQL would mean the whole suite stops running wherever the database is
+# down -- which in this container is often. The NINE live assertions (RLS enabled, FORCE, canonical policy on both
+# halves, a canonical policy existing at all, NOT NULL tenant column, ownership, TRUNCATE, an unclassifiable
+# table, and an empty schema) are exercised by `SchemaTenancyGateTest` in the integration suite, where a database
+# is already a precondition. Stated rather than left implicit: the split is about WHERE the database lives, not
+# about which half is optional.
+
+no_dsn_output="$(cd "$REPO_ROOT" && env -u TWES_SCHEMA_DSN -u TWES_SCHEMA_USER -u TWES_TEST_DSN -u TWES_TEST_DB_SUPERUSER \
+  php scripts/gates/schema-tenancy.php 2>&1)" && no_dsn_rc=0 || no_dsn_rc=$?
+
+if (( no_dsn_rc != 0 )) && printf '%s' "$no_dsn_output" | grep -qF 'no database to inspect'; then
+  printf '  ok   — %s\n' 'schema-tenancy FAILS rather than skipping when it has no database'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (rc=%s)\n' 'schema-tenancy FAILS rather than skipping when it has no database' "$no_dsn_rc"
+  failed=$((failed + 1))
+fi
+
+# An UNREACHABLE database is a different path from an absent one, and both must fail. A gate that treated "cannot
+# connect" as "nothing to check" would report a clean bill over the one thing no other gate here can see.
+unreachable_output="$(cd "$REPO_ROOT" && TWES_SCHEMA_DSN='pgsql:host=127.0.0.1;port=1;dbname=nope' \
+  TWES_SCHEMA_USER=nobody php scripts/gates/schema-tenancy.php 2>&1)" && unreachable_rc=0 || unreachable_rc=$?
+
+if (( unreachable_rc != 0 )) && printf '%s' "$unreachable_output" | grep -qF 'could not connect'; then
+  printf '  ok   — %s\n' 'schema-tenancy FAILS on an unreachable database, not just an unnamed one'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (rc=%s)\n' 'schema-tenancy FAILS on an unreachable database, not just an unnamed one' "$unreachable_rc"
+  failed=$((failed + 1))
+fi
+
+# The rule set, through --dump-rules, with a committed minimum for the reason the orphan gate has one: generating
+# a case from a rule set means deleting an entry deletes its own case.
+schema_rules="$(php "$REPO_ROOT/scripts/gates/schema-tenancy.php" --dump-rules)"
+schema_tenant_column="$(printf '%s\n' "$schema_rules" | awk '$1=="tenant_column"{print $2}')"
+
+if [[ "$schema_tenant_column" == 'company_id' ]]; then
+  printf '  ok   — %s (%s)\n' 'schema-tenancy anchors the tenant column to the isolation class' "$schema_tenant_column"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — %s (got %s)\n' 'schema-tenancy anchors the tenant column to the isolation class' "$schema_tenant_column"
+  failed=$((failed + 1))
+fi
+
+assert_at_least "schema-tenancy: the tenant-column lookalike set has not shrunk" \
+  "$(printf '%s\n' "$schema_rules" | awk '$1=="lookalike"' | grep -c .)" 10
+
 echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 # Round 12 found shell-syntax.sh absent from `composer gate` one commit after it was added and documented as
 # FIRST in the gate command block. The reason it went unnoticed is that the clean-fixture block above is a
@@ -1921,11 +1970,46 @@ echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 gates_on_disk="$(cd "$REPO_ROOT/scripts/gates" && ls -1 *.php *.sh 2>/dev/null | grep -v '^test-gates.sh$' | sort | tr '\n' ' ')"
 
 # a) every gate on disk has a clean-fixture case in THIS suite
+#
+# A gate may declare its clean case ELSEWHERE, and the redirect is VERIFIED rather than trusted. One gate needs a
+# database -- `schema-tenancy.php` reads a real migrated schema, which is the whole point of it -- and this suite
+# runs on plain PHP with no server, so requiring its clean case here would mean the entire meta-suite stops
+# whenever PostgreSQL is down.
+#
+# The redirect is NOT an exemption, and the distinction matters: § Gotchas records "an exemption inside a
+# cross-check is where the drift hides", where `THIRD-PARTY-NOTICES.md` was excused from half a licence check and
+# then contradicted the gate in its own rule statement. So a redirect must name a FILE and a TEST, and both are
+# checked to exist -- if the test is renamed or deleted, this case fails exactly as a missing local case would.
+#
+# Format, one per line, anywhere in this file:
+#   # clean-case-elsewhere: <gate file> <path relative to repo root> <test method substring>
+# clean-case-elsewhere: schema-tenancy.php api/tests/Integration/Tenancy/SchemaTenancyGateTest.php testTheGateAcceptsTheSchemaOurMigrationProduces
 missing_case=""
 for gate in $gates_on_disk; do
-  grep -qF "assert_gate \"clean: ${gate%%.*}" "$REPO_ROOT/scripts/gates/test-gates.sh" \
-    || grep -qF "$gate 0" "$REPO_ROOT/scripts/gates/test-gates.sh" \
-    || missing_case="$missing_case $gate"
+  if grep -qF "assert_gate \"clean: ${gate%%.*}" "$REPO_ROOT/scripts/gates/test-gates.sh" \
+    || grep -qF "$gate 0" "$REPO_ROOT/scripts/gates/test-gates.sh"; then
+    continue
+  fi
+
+  redirect="$(grep -E "^# clean-case-elsewhere: ${gate} " "$REPO_ROOT/scripts/gates/test-gates.sh" | head -1)"
+
+  if [[ -n "$redirect" ]]; then
+    redirect_file="$(printf '%s' "$redirect" | awk '{print $4}')"
+    redirect_test="$(printf '%s' "$redirect" | awk '{print $5}')"
+
+    if [[ -f "$REPO_ROOT/$redirect_file" ]] && grep -qF "$redirect_test" "$REPO_ROOT/$redirect_file"; then
+      printf '  ok   — %s clean case is verified at %s::%s\n' "$gate" "$redirect_file" "$redirect_test"
+      passed=$((passed + 1))
+      continue
+    fi
+
+    printf '  FAIL — %s redirects its clean case to %s::%s, which does not exist\n' \
+      "$gate" "$redirect_file" "$redirect_test"
+    failed=$((failed + 1))
+    continue
+  fi
+
+  missing_case="$missing_case $gate"
 done
 
 if [[ -z "$missing_case" ]]; then

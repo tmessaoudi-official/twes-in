@@ -263,6 +263,35 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   always. Spec: `pricing-and-documents.plan.md` § 1b, pinned by the shared `per-line-vat-allocation-*` vectors.
   Recorded here at round 17, which found the ruling living only as prose in that file and in **no** Decisions Log —
   the same omission the 09:00 entry above exists to have stopped.
+- [2026-08-01 09:30] AGREED: **persistence was never blocked by the network.** `composer install` runs here with
+  `use-github-api false` + `--prefer-source`; the 403s came from the agent proxy's per-repository authorization on
+  `api.github.com` / `codeload.github.com` only, and `git clone` had always worked. `phpstan/phpstan` is the single
+  package this cannot install, because it is the only lock entry with no `source` URL. My twenty-round
+  `[Verified]` claim that the environment forbade it was wrong in kind and shaped the build order of twelve waves;
+  `CLAUDE.md` § Gotchas carries the entry and the lesson.
+- [2026-08-01 10:00] AGREED: **the Doctrine mapping goes on a SEPARATE MUTABLE PERSISTENCE MODEL in
+  `Infrastructure/Persistence/Doctrine/Entity/`, mapped with ATTRIBUTES, with a repository translating to and from
+  the aggregate** (developer challenge to the previous XML plan — *"why do you need XML mapping? should we not use
+  PHP attributes? challenge me!"*). The challenge was right and the previous argument was weak: attributes do NOT
+  couple a class to Doctrine at runtime, since PHP resolves an attribute class only when something calls
+  `newInstance()` on it. The real reason for the separation is **immutability** — every domain type here is
+  `final readonly` with mutators that `return new self(...)`, and Doctrine's unit of work is an identity map
+  holding one mutable instance per row, diffed against a snapshot. Mapping the aggregate directly is insert-only
+  and fights the ORM under *either* driver, so the driver was the wrong argument to be having. Accepted cost: a
+  mapper per aggregate, paid down by a round-trip contract test rather than by care. ORM 3 also ships only
+  `AttributeDriver` and `XmlDriver` — `PhpDriver` and `YamlDriver` are gone — so the old wording's "XML (or PHP)"
+  named a thing that does not exist.
+- [2026-08-01 11:30] AGREED: **the Wave 1 schema gate is CLOSED** — `scripts/gates/schema-tenancy.php` landed with
+  the first migration, as the 2026-07-30 ruling required, wired as `composer gate:schema`, with a clean case and
+  eight violation cases each proven to fire. Its cases live in the integration suite rather than `test-gates.sh`
+  because the gate needs a database; `test-gates.sh` keeps the database-free paths and a **verified redirect** that
+  fails if the named test file or method disappears. The migration template, deliverable 2 of that ruling, is
+  **still owed** and deliberately not marked done.
+- [2026-08-01 11:30] AGREED: **"enum" in this plan's column tables means `VARCHAR(32)` + `CHECK`, not a native
+  PostgreSQL enum type.** `doctrine_migrations.transactional` is true and PostgreSQL refuses to add an enum value
+  and use it in the same transaction, so a native type would force every future `DocumentType` addition — Wave 2's
+  credit note among them — to split across two migrations or run non-transactionally, for no gain. The constrained
+  values remain the enums' backed values, so a PHP rename is not a data migration.
 - [2026-07-31 11:10] RULED: **the Symfony ecosystem is the ONLY vocabulary — never a Laravel/Eloquent pattern**
   (developer ruling). Where something is specific to Laravel or Eloquent, find and use its Symfony / Doctrine /
   API Platform equivalent; never transliterate the Laravel mechanism. This is a **STANDING rule**, not a wave
@@ -631,7 +660,31 @@ missing its header. **Every one of those four is a test that must be watched fai
 cross-tenant reads — are decided here. `CLAUDE.md` § Gotchas records both as day-zero rulings
 precisely because they are unfixable later.
 
-## Wave 1 — Client & the invoice core — **PURE DOMAIN LANDED, 2026-07-31; persistence BLOCKED**
+## Wave 1 — Client & the invoice core — **DOMAIN LANDED 2026-07-31; SCHEMA LANDED 2026-08-01; repository owed**
+
+**PERSISTENCE IS NO LONGER BLOCKED, and the reason it was is worth keeping because I had it wrong for twenty
+rounds.** The heading here said "persistence BLOCKED" and pointed at network egress; the actual obstacle was
+Composer *configuration* — `use-github-api false` plus `--prefer-source` installs the whole runtime stack, and
+`git clone` had always worked. See `CLAUDE.md` § Gotchas, 2026-08-01. What landed as a consequence, in the order
+the developer approved:
+
+1. **The Symfony application** — `api/src/Kernel.php`, `api/bin/console`, `api/config/**`, `api/public/`. Both
+   `Kernel` and `bin/console` are hand-written rather than Flex-generated, because `symfony/flex` is a Composer
+   *plugin* and this container's Composer configuration disables it; `bin/console` therefore uses the classic
+   bootstrap rather than `vendor/autoload_runtime.php`, which `symfony/runtime` generates from that same plugin.
+2. **The persistence model** — `api/src/Infrastructure/Persistence/Doctrine/Entity/{DocumentRow,DocumentLineRow,
+   DocumentChargeRow,DocumentNumberSequenceRow}.php`, mapped with **attributes**, `Domain/` untouched. The
+   developer challenged the earlier XML plan and the challenge was right: see `CLAUDE.md` § Architecture for why
+   the mapping driver was the wrong argument and immutability is the real one.
+3. **The first migration** — `api/migrations/Version20260801120000.php`, hand-written, taking its RLS statements
+   from `policySqlFor()` so the migration and the checker cannot disagree.
+4. **`scripts/gates/schema-tenancy.php`** — the blocker below, now **CLOSED**.
+
+**Still owed in this wave** and NOT closed by the above: the repository and mapper translating the four rows ↔
+`Invoice`, with the **round-trip contract test** that is the accepted price of the immutability ruling; the
+savepoint re-check wiring below (now live rather than hypothetical — DBAL 4 always uses savepoints for nested
+transactions, so the shape is reachable today); the connection-lifecycle wiring; and the boundary rule that no
+tenant-less path may hydrate an aggregate.
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
@@ -833,8 +886,26 @@ returning two tenants' rows; and the composite unique constraint on `(company_id
 table below, asserted by `scripts/gates/schema-tenancy.php`. `TenantId` **stays in `Infrastructure/`** and this
 item is closed rather than carried.
 
-**THE SCHEMA GATE IS A WAVE 1 BLOCKER — the first migration does not land without it** (developer ruling,
-2026-07-30). Every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply
+**THE SCHEMA GATE WAS A WAVE 1 BLOCKER AND IS NOW CLOSED — 2026-08-01, landed in the same change as the
+migration it was blocking**, which is what the ruling required. `scripts/gates/schema-tenancy.php` exists and is
+wired as `composer gate:schema`. Deliverable 1 below is met in full; **deliverable 2, the migration template, is
+NOT** — one hand-written migration exists and is the de facto template, which is a convention rather than the
+artifact the ruling named, so it stays owed and is deliberately not struck through. How the gate is verified,
+since the ruling was explicit that no gate here is believed on its happy path: its clean-fixture case and **eight**
+violation cases live in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` rather than in `test-gates.sh`,
+because the gate needs a database and the meta-suite has none — putting them there would stop the entire
+meta-suite whenever PostgreSQL is down, which in this container is often. `test-gates.sh` keeps the gate's
+database-free paths (no DSN, unreachable DSN, the rule set) and a **verified redirect** that fails if the named
+test file or the named test method stops existing, so the split cannot become a hiding place. Each of the eight
+cases mutates a correctly migrated schema in exactly one way, requires the gate to name it, reverts, and then
+re-asserts the clean case — so a mutation that failed to revert surfaces as a clean-case failure rather than as a
+confusing pass later. One of them (`NOT NULL` on the tenant column) is unreachable on the current schema, because
+`company_id` is in every primary key and PostgreSQL refuses to drop `NOT NULL` there; it builds a
+surrogate-key table instead, which is precisely the future shape worth guarding before it exists — recorded rather
+than claimed untestable, per § Gotchas on impossibility claims.
+
+The original ruling and its reasoning, kept because the reasoning is what generalises (developer ruling,
+2026-07-30): every gate in `scripts/gates/` reads *code*. None reads the *schema*, so a migration that simply
 omits `ENABLE ROW LEVEL SECURITY` produces a tenant-owned table that is completely unpoliced and that **no
 existing check can see** — `assertPolicedTablesAreBeyondThisRolesReach()` derives its subject set from tables
 that already have RLS, so a table without it is invisible by construction (R7-2 named this precisely).
@@ -890,6 +961,17 @@ migration has nothing to invent:
 | `document_charge.amount` | non-null `NUMERIC(19,4)` | a document-scope charge, never in a VAT base |
 | `document_line.document_id` / `document_charge.document_id` | non-null, `(company_id, document_id)` FK | **omitted at round 15 along with `position` below.** The FK is composite because a single-column one lets one tenant delete another's rows — the rule already stated for every table in this wave, which is exactly why leaving these two rows out was a gap rather than an oversight |
 | `document_line.position` / `document_charge.position` | non-null `smallint`, `UNIQUE (company_id, document_id, position)`, **sized from `Invoice::MAX_LINES` (1000)** — the constant round 16 found missing, added at round 16's closure | **LOAD-BEARING, and it had no column** (round 15). `Invoice::withoutLine(int $position)` addresses lines BY POSITION and `removeAt()` re-indexes to keep them contiguous; `CurrencyMismatch::inContext('document line %d')` reports one to a client. Without a persisted order, positions are not stable across a database round-trip — so "remove line 2" issued against a rehydrated document can remove a DIFFERENT line, which is precisely the stale-page hazard `removeAt()`'s own comment says it exists to prevent |
+
+**"non-null enum" in the three tables above means `VARCHAR(32)` + a `CHECK`, NOT a native PostgreSQL enum
+type** — decided while writing the migration, 2026-08-01, and recorded here because the tables say "enum" and a
+future reader would otherwise read a native type as owed. The reason is our own migration configuration:
+`doctrine_migrations.transactional` is true, and PostgreSQL **refuses to add an enum value and use it in the same
+transaction**. [Verified: `BEGIN; ALTER TYPE t ADD VALUE 'c'; SELECT 'c'::t;` → `ERROR: unsafe use of new value
+"c" of enum type t`.] So every future migration that adds a `DocumentType` — and Wave 2's credit note is one —
+would have to either run non-transactionally or split across two migrations, for no gain. A `CHECK` is dropped
+and recreated inside a transaction freely, so it evolves *with* the migration rather than against it. What is
+unchanged and still load-bearing: the constrained values are the enums' **backed values**, never their case
+names, so a PHP rename is not a data migration.
 
 **AND THE GAPLESS COUNTER TABLE, which the numbering feature requires and which this table omitted** (round 15
 — the preamble above says the point of this section is that "the wave writing the first migration has no record

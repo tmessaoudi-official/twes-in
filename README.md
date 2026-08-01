@@ -8,13 +8,17 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 > profit-rate arithmetic, the multi-tenant isolation seam, and the architecture/licensing gates, under `api/`.
 > **Wave 1's pure domain has landed too**: the document calculation kernel (line nets, VAT grouped by rate,
 > fixed charges, totals), the generic Draft→Issued→Cancelled lifecycle, per-type numbering, and the `Invoice`
-> aggregate — all framework-free, which is why they could land while Composer is blocked.
+> aggregate — all framework-free, which is why they could land first.
+> **The Symfony application, Doctrine and the first migration have now landed too** (2026-08-01): `api/src/Kernel.php`,
+> `api/bin/console`, `api/config/**`, the attribute-mapped persistence model, `api/migrations/`, and
+> `scripts/gates/schema-tenancy.php`, which asserts every tenant-owned table in a real migrated schema is
+> row-level-security-enabled, forced, canonically policed and out of the runtime role's reach. This paragraph said
+> they were "blocked on GitHub egress" until then; that diagnosis was wrong — see `CLAUDE.md` § Gotchas.
 > **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
 > `flutter create`), each green on its own toolchain, and each carrying the branding seam and — for Flutter —
 > the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or transport**
-> code yet: no invoicing, no models, no API client. The
-> Symfony application itself (`bin/`, `config/`, `public/`) and Doctrine do **not** exist: they are blocked on
-> GitHub egress, see `CLAUDE.md` § Gotchas. `infra/` is still a README stub. Read
+> code yet: no invoicing, no models, no API client. There is still **no HTTP surface** on the API, no repository
+> or mapper, and `infra/` is a README stub. Read
 > `docs/plans/build-waves.plan.md` for exactly what is and is not built.
 
 ## Licence — dual

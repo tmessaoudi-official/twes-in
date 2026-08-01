@@ -22,10 +22,13 @@ own statically-typed PHP-inspired language — is **vision, not a target**: the 
 nothing here is built for it. Do not treat it as a requirement, do not design around its unknowns, and
 do not defer a decision waiting for it. See `VISION.md`.
 
-Status: **Wave 0 landed, not yet certified; Wave 1's PURE DOMAIN landed** (2026-07-31). Wave 1's document
-kernel, lifecycle, numbering and `Invoice` aggregate are under `api/src/Domain/Document/` — framework-free,
-which is why they landed while Composer is blocked. Wave 1's persistence, migrations, schema gate and HTTP
-surface remain blocked; `docs/plans/build-waves.plan.md` § Wave 1 is authoritative.
+Status: **Wave 0 landed, not yet certified; Wave 1's domain, Symfony application, Doctrine mapping, first
+migration and schema gate all landed** (2026-08-01). Wave 1's document kernel, lifecycle, numbering and `Invoice`
+aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
+twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. Still owed in Wave 1:
+the **repository and mapper** (with the round-trip contract test the immutability ruling makes necessary), the
+savepoint re-check wiring, the connection-lifecycle wiring, and the HTTP surface.
+`docs/plans/build-waves.plan.md` § Wave 1 is authoritative.
 
 `api/` holds a framework-free `Domain/` (money, pricing, **documents**) and `Infrastructure/` (tenancy, clock,
 identifiers), four PHPUnit suites, and the gates in
@@ -40,12 +43,20 @@ no API client — which is the accurate claim and the one the build-wave plan is
 READMEs described that branding code as implemented while this line said the tiers were empty; round 11
 found the contradiction.
 
-**Not yet built:** the Symfony application itself (`bin/`, `config/`, `public/`, `.env`), Doctrine,
-PHPStan/deptrac — all blocked, see § Gotchas on GitHub egress — and the `infra/` tier. That blocker is why the
-API tier has no skeleton while the two client tiers do: `ng new` and `flutter create` fetch from npm and
-pub.dev, which are reachable; `composer create-project symfony/skeleton` fetches from GitHub, which is not.
-Anything below describing those is the *target*. Read `docs/plans/build-waves.plan.md` for where the build
-actually is.
+`api/` also now holds the **Symfony application** — `src/Kernel.php`, `bin/console`, `config/**`, `public/` and
+`.env` — plus Doctrine ORM, DBAL and Migrations, the attribute-mapped persistence model under
+`src/Infrastructure/Persistence/Doctrine/Entity/`, and `migrations/Version20260801120000.php`, the first
+migration. `Kernel` and `bin/console` are **hand-written rather than Flex-generated**, because `symfony/flex` is a
+Composer plugin this container's configuration disables — which is also why `bin/console` uses the classic
+bootstrap instead of `vendor/autoload_runtime.php`.
+
+**Not yet built:** the HTTP surface (`functional` and `e2e` are empty suites), the repository and mapper, the
+`infra/` tier, and a wired `deptrac`. **PHPStan is the one thing still genuinely uninstallable**, and for a narrow
+reason rather than a network one: `phpstan/phpstan` is the single package in `composer.lock` with no `source`
+URL, so `--prefer-source` cannot route around the 403 on `api.github.com`. Everything else installs — see
+§ Gotchas, which corrects the *"GitHub egress is restricted"* claim this paragraph carried until 2026-08-01.
+Anything below describing what does not yet exist is the *target*. Read `docs/plans/build-waves.plan.md` for
+where the build actually is.
 
 ## Routing
 
@@ -216,7 +227,7 @@ The mapping, for the patterns this product actually meets:
 |---|---|---|
 | Eloquent Active Record (`Model` with persistence on the entity) | **Doctrine ORM, data-mapper**: a framework-free entity plus XML mapping under `Infrastructure/` | This is the whole reason `Domain/` can be pure. An Active Record entity cannot satisfy § Architecture's first rule |
 | Global/local **Eloquent scopes** for tenancy | **PostgreSQL row-level security** first, a Doctrine filter second | Ruled already — see § Gotchas. A scope is opt-in per query and a filter is bypassed by native SQL; RLS is applied by the server to every statement |
-| **Laravel migrations** (`Schema::` builder) | **Doctrine Migrations** + `scripts/gates/schema-tenancy.php` **(Wave 1 — does not exist yet)** | The gate is ours regardless: no migration framework enforces the RLS statements a tenant-owned table needs. The annotation matters because sibling cells in this table annotate future state and this one did not, so it read as extant — and `build-waves.plan.md` makes it a Wave 1 BLOCKER that cannot be built until a real migrated schema exists to check |
+| **Laravel migrations** (`Schema::` builder) | **Doctrine Migrations** + `scripts/gates/schema-tenancy.php` | The gate is ours regardless: no migration framework enforces the RLS statements a tenant-owned table needs. **Both halves landed 2026-08-01** — `api/migrations/Version20260801120000.php` is hand-written rather than `diff`-generated for exactly this reason, and it takes its policy SQL from `policySqlFor()` so the migration and the checker cannot disagree. This cell read *"does not exist yet"* until then, which was accurate when written |
 | **Eloquent pagination** (`paginate()`, `per_page`) | **API Platform's pagination extension** | Already ruled by omission: § "The API contract is ours to design" rejects upstream's `per_page=999999` outright, and pagination is a named contract deliverable in `reimplementation-strategy.plan.md`. A hand-rolled limit/offset on each endpoint is how that ends up inconsistent across resources |
 | **Policies / Gates** (`Gate::allows`, `authorize()`) | **Symfony Voters** over a real `role_permissions` table | Ruled already, in `reimplementation-strategy.plan.md` and `build-waves.plan.md`: permissions are DATA, not a closure per ability, because an administrator must be able to change them without a deploy |
 | **Laravel throttling** (`throttle` middleware) | **`symfony/rate-limiter`** | Wave 10 commits to rate limiting; naming it here stops the middleware shape being reinvented |
@@ -374,8 +385,9 @@ api/src/
   UI/              # REST controllers, CLI commands, serializers.
 ```
 
-**Enforcement landed in Wave 0.** The P0s above are no longer prose — the gates in `scripts/gates/` check
-them, each proven to fail on an injected violation before being trusted (`ls scripts/gates/` is the tally; no
+**Enforcement landed in Wave 0, and grew in Wave 1** (`schema-tenancy.php`, the last row — it could not exist
+until a real migrated schema existed to read). The P0s above are no longer prose — the gates in `scripts/gates/`
+check them, each proven to fail on an injected violation before being trusted (`ls scripts/gates/` is the tally; no
 number is written here, because one written beside the thing it counts is the first thing to drift):
 
 | Gate | Enforces |
@@ -388,6 +400,7 @@ number is written here, because one written beside the thing it counts is the fi
 | `locale-key-parity.php` | every locale carries the same key set |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
 | `no-orphaned-docblocks.php` | no doc comment that attaches to no declaration — two `T_DOC_COMMENT`s with nothing but whitespace, a comment or an attribute between them, because PHP attaches only the LATER one and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded doc comment and round 16's own fix created a fresh one. **Rewritten as a tokenizer pass at round 18**, which found the original line-pattern version missing four of five genuine shapes — a blank line between the blocks (the most natural way to author them), an attribute between them, and a single-line second block — and found its comment asserting that a closing and opening delimiter on ONE line "is not this defect", which was false. A positional rule enforces one SPELLING; the defect is a question about tokens. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying seven, and PHPStan would catch only the subset that also loses a `@param`/`@return` generic |
+| `schema-tenancy.php` | every tenant-owned table in a **real migrated schema** is RLS-enabled, `FORCE`d, canonically policed on **both** halves (`USING` and `WITH CHECK`), `NOT NULL` on its tenant column, and beyond the runtime role's ownership and `TRUNCATE`. **The only gate that needs a database, and the only one that can see an unpoliced tenant table at all**: `assertPolicedTablesAreBeyondThisRolesReach()` derives its subject set from tables that already HAVE row security, so a table missing it is invisible to the runtime check *by construction* (round 7 filed exactly that). It also **fails on a table it cannot classify** rather than ignoring it, because a silent skip is how the next tenant-owned table arrives unpoliced — `customer_id`, `client_id` and `account_id` are deliberately NOT treated as tenant columns, since each names a row's *subject* rather than its owner. Its clean-fixture and violation cases live in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` (the database is there, not in the meta-suite) and `test-gates.sh` verifies that redirect points at a test that really exists |
 
 The two layer gates are **separate on purpose, and merging them would be a mistake**: a framework
 dependency arrives as a `use` statement and an import check finds it, but `time()`, `random_int()`,
@@ -401,7 +414,10 @@ are in `api/composer.json`. **`deptrac` is now installable** and only waits on s
 URL, so `--prefer-source` cannot route around the 403 on `api.github.com`. This sentence claimed until
 2026-08-01 that NEITHER could be installed and that the cause was network egress; both halves were wrong —
 see § Gotchas. They are defence in depth on top of the gates above, not a substitute for them —
-the architecture gates run on plain PHP and need nothing installed. (`gate:licences` is the one exception: its pub-cache walk fails rather than skips when it cannot look, so it needs `flutter pub get` — see § "Quality gate".)
+the architecture gates run on plain PHP and need nothing installed. **Two of the gates are exceptions to that**, and
+both fail rather than skip when they cannot look, which is the whole reason they are exceptions:
+`gate:licences` needs a populated pub cache (`flutter pub get`) for its Flutter walk, and `gate:schema` needs a
+migrated PostgreSQL database, because a schema is not readable from source. See § "Quality gate".
 
 ## Certification ladder — governs every 3C/6C gate
 
@@ -526,7 +542,9 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
 | **Architecture fitness** | the gates in `scripts/gates/` — `ls` that directory for the tally; see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus **every locked pub package's own licence read out of the pub cache** (`mobile/pubspec.lock` records no licence field, so the cache is the only place they exist — a copyleft grant is vetoed even when the same file also states a permissive one, more than one match is refused as ambiguous, a non-`hosted`/non-`sdk` source is refused, and a version that is not plain semver is refused because it becomes a filesystem path), plus every **vendored font** under `mobile/assets/fonts/`, recursively: a REUSE sidecar declaring exactly one identifier, an acceptable one, **every one of the font's own `name`-table licence records corroborating it**, the licence text beside the binary *and* declared under `flutter:`→`assets:` so it ships, and — the direction that was missing — **every font path the manifest declares must have been examined**, because a forward walk says nothing about the files it never reached. A font arrives as a committed binary rather than a manifest entry, so no lock file can see it; it is not the only such asset (13 of the 37 tracked `.png`/`.ico` files are template-derived and ship too), which is why that sentence no longer says "the one" | **Runs** |
-| Symfony API, owed | `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Now installable** — the runtime stack installs (§ Gotchas). These wait on the Symfony application and a migrated schema, not on the network. `deptrac` has a source URL and installs with the dev deps |
+| **Schema tenancy** | `scripts/gates/schema-tenancy.php` — every tenant-owned table in a real migrated schema RLS-enabled, `FORCE`d, canonically policed on both halves, `NOT NULL` on its tenant column, and beyond the runtime role's ownership and `TRUNCATE`; a table it cannot classify is a **failure**, not a skip. See § "Architecture" for why nothing else can see an unpoliced tenant table | **Runs** (landed 2026-08-01 with the first migration, which is what it was blocking). Needs `TWES_SCHEMA_DSN` + `TWES_SCHEMA_USER`, or falls back to the integration suite's `TWES_TEST_DSN` / `TWES_TEST_DB_SUPERUSER` pair. Its clean and violation cases are in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` because the meta-suite has no database |
+| `bin/console lint:container`, `bin/console doctrine:schema:validate --skip-sync` | the service container wires, and the Doctrine mapping agrees with itself, without touching a database | **Run** (both landed with the Symfony application, 2026-08-01 — this row said "owed" until then). `--skip-sync` because the mapped persistence model is deliberately not the whole schema: the migration adds RLS, CHECK constraints and composite FKs that no mapping expresses |
+| Symfony API, owed | `vendor/bin/deptrac` | **Installable, not wired.** It has a `source` URL and installs with the dev deps; what is owed is the `deptrac.yaml` layer definition. Until then `layer-dependencies.php` is the enforcement and deptrac would be defence in depth |
 | Symfony API, still blocked | `vendor/bin/phpstan` (max level) | **`phpstan/phpstan` is the ONE package in `composer.lock` with no `source`**, so `--prefer-source` cannot avoid the 403 on `api.github.com`. Everything else installs. Options when it matters: a VCS `repositories` entry pointing at the official GitHub repo, or the `add_repo` tool if it is ever exposed |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
 | Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
@@ -535,9 +553,19 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | **Shell syntax** | `scripts/gates/shell-syntax.sh` — `bash -n` over every tracked shell script, discovered from `git ls-files` plus a shebang sweep rather than a written list | **Runs** (added at round 11, which pointed out that ten scripts already existed and already passed, while this row deferred the check to the wave that would add *more* — so the ones that existed went unchecked, and a syntax error in a gate is the worst place for one: the gate stops detecting and its non-zero exit reads as a detection) |
 | Infra | `docker compose config` | Wave 12 — `infra/README.md` |
 
-**The one command to run the API tier's gate**, once Composer works, is `composer gate` — it chains
-`gate:licences`, `gate:architecture`, `gate:static`, `gate:style`, `gate:mapping` and `gate:test`. Until
-then, `gate:architecture` runs today with no dependencies at all. **`gate:licences` is plain PHP too but is no longer dependency-free**: its pub-cache walk FAILS rather than skips when it cannot look (developer ruling, 2026-07-30), so it needs `cd mobile && flutter pub get` first, or `PUB_CACHE` pointing at a populated cache. That coupling is the accepted cost of not letting a licence check pass quietly on nothing. The gate prints a `counts —` line unconditionally so the meta-suite's anti-vacuity probes still work on a PHP-only checkout:
+**The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
+`gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
+`gate:test`. `gate:static` is the one step that still fails for want of PHPStan; derive the chain from
+`api/composer.json` rather than this sentence. **`gate:architecture` needs nothing installed at all**; two of
+its siblings do, and both FAIL rather than skip when they cannot look:
+
+- **`gate:licences`** needs a populated pub cache — `cd mobile && flutter pub get`, or `PUB_CACHE` pointing at
+  one (developer ruling, 2026-07-30). It prints a `counts —` line unconditionally so the meta-suite's
+  anti-vacuity probes still work on a PHP-only checkout.
+- **`gate:schema`** needs a migrated PostgreSQL database, because a schema cannot be read from source. It
+  prints its own `counts —` line for the same reason, and refuses a run where `tenant_owned` is 0.
+
+Both couplings are the accepted cost of not letting a check pass quietly on nothing.
 
 ```
 bash  scripts/gates/shell-syntax.sh
@@ -549,8 +577,14 @@ php   scripts/gates/no-orphaned-docblocks.php
 php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
 bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Gotchas on why this one matters
-cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check && composer validate
+php   scripts/gates/schema-tenancy.php     # needs a migrated database; see the table above for the env vars
+cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check && composer validate \
+       && php bin/console lint:container && php bin/console doctrine:schema:validate --skip-sync
 ```
+
+**Never chain a verification step onto `git commit` through a pipe.** `phpunit … | tail && git commit` commits
+on red, because a pipeline's exit status is the last command's — see § Gotchas, 2026-08-01. Run each step and
+read its own status.
 
 **Tooling setup in a fresh container** (nothing here is installed by default):
 

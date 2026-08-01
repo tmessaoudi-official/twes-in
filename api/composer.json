@@ -63,6 +63,7 @@
         "gate": [
             "@gate:licences",
             "@gate:architecture",
+            "@gate:schema",
             "@gate:static",
             "@gate:style",
             "@gate:mapping",
@@ -79,6 +80,7 @@
             "bash ../scripts/gates/test-gates.sh"
         ],
         "gate:licences": "@php ../scripts/gates/dependency-licences.php",
+        "gate:schema": "@php ../scripts/gates/schema-tenancy.php",
         "gate:mapping": [
             "bin/console lint:container",
             "bin/console doctrine:schema:validate --skip-sync"
@@ -90,6 +92,7 @@
     "scripts-descriptions": {
         "gate": "Run the API tier's full quality gate. Green means every step, not most of them.",
         "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies. Also runs shell-syntax.sh: bash -n over every tracked script INCLUDING the other gates, because a syntax error in a gate makes it stop detecting while its non-zero exit reads as a detection. And no-orphaned-docblocks.php, because a doc comment's POSITION is part of its truth and three successive certification rounds filed a stranded one -- the third created by the second's own fix. It is a token_get_all() pass rather than a line-pattern one because round 18 showed a positional rule enforced only ONE spelling of the rule and missed four of five genuine shapes, a blank line between the two blocks among them.",
+        "gate:schema": "Assert every tenant-owned table in a REAL MIGRATED SCHEMA is RLS-enabled, FORCED, canonically policed, NOT NULL on the tenant column, and beyond the runtime role's ownership and TRUNCATE. The ONLY gate here that needs a database -- a schema cannot be read from source, and an unpoliced tenant table is invisible to every check that can. Needs TWES_SCHEMA_DSN + TWES_SCHEMA_USER, or falls back to the integration suite's TWES_TEST_DSN pair. FAILS rather than skipping when it cannot connect.",
         "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md). NEEDS a populated pub cache: run `cd mobile && flutter pub get` first, or set PUB_CACHE.",
         "gate:mapping": "Validate the service container and the Doctrine mapping without touching a database.",
         "gate:static": "PHPStan at max level, including the banned-ambient-function rule for Domain/.",
