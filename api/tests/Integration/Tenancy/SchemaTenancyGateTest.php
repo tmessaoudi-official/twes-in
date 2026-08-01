@@ -38,57 +38,22 @@ use PHPUnit\Framework\TestCase;
 #[CoversNothing]
 final class SchemaTenancyGateTest extends TestCase
 {
+    // The probe-database machinery, shared with `BehaviouralIsolationTest` so the `DATABASE_URL_OWNER` lesson
+    // exists in ONE place. A second hand-written copy is how it gets re-learned.
+    use MigratedProbeDatabase;
+
     private const DATABASE = 'twes_schema_gate_probe';
 
     private static ?\PDO $admin = null;
 
     public static function setUpBeforeClass(): void
     {
-        $superuser = self::superuser();
-        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', self::DATABASE));
-        $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', self::DATABASE, self::ownerRole()));
-
-        // The migration is run by the console, not reimplemented here. That is the point: this test asserts the
-        // gate accepts what OUR migration produces, so a hand-built schema would be testing a different thing.
-        //
-        // **BOTH url variables, and `DATABASE_URL_OWNER` is the load-bearing one.** `doctrine_migrations.yaml`
-        // pins migrations to the `owner` connection, so overriding `DATABASE_URL` alone leaves the migration
-        // pointed at whatever `.env` says — which is the DEV database. That is not a hypothetical either: it is
-        // what this test did for one commit, migrating `twes_in` (already up to date, so exit 0) while its own
-        // probe database stayed empty and every case failed with `tenant_owned=0`. `DATABASE_URL` is set as well
-        // so the default connection cannot reach a different database than the one under test.
-        $migrate = \sprintf(
-            'cd %s && DATABASE_URL=%s DATABASE_URL_OWNER=%s php bin/console doctrine:migrations:migrate'
-            . ' --no-interaction 2>&1',
-            escapeshellarg(\dirname(__DIR__, 3)),
-            escapeshellarg(self::ownerUrl()),
-            escapeshellarg(self::ownerUrl()),
-        );
-        exec($migrate, $output, $status);
-
-        self::assertSame(0, $status, "The migration must succeed before the gate can be tested:\n" . implode("\n", $output));
-
-        // The migration reported success -- but success against WHICH database? A run pointed at an
-        // already-migrated database also exits 0, which is exactly how the failure above stayed invisible at the
-        // one assertion that should have caught it. So assert the tables are HERE.
-        $present = self::admin()->query(
-            "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
-            . " WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname LIKE 'document%'",
-        );
-
-        self::assertNotFalse($present, 'could not count the migrated tables');
-        self::assertSame(
-            4,
-            (int) $present->fetchColumn(),
-            'The migration exited 0 but this database has no document tables, so it migrated a DIFFERENT one. '
-            . 'Check that DATABASE_URL_OWNER is overridden: doctrine_migrations.yaml pins migrations to the '
-            . '"owner" connection, so overriding DATABASE_URL alone silently targets whatever .env names.',
-        );
+        self::createMigratedProbeDatabase(self::DATABASE);
     }
 
     public static function tearDownAfterClass(): void
     {
-        self::superuser()->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', self::DATABASE));
+        self::dropProbeDatabase(self::DATABASE);
         self::$admin = null;
     }
 
@@ -136,7 +101,7 @@ final class SchemaTenancyGateTest extends TestCase
     public function testTheGateRefusesADatabaseWithNoTenantOwnedTable(): void
     {
         $empty = self::DATABASE . '_empty';
-        $superuser = self::superuser();
+        $superuser = self::superuserConnection();
         $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', $empty));
         $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', $empty, self::ownerRole()));
 
@@ -586,54 +551,11 @@ final class SchemaTenancyGateTest extends TestCase
 
     private static function admin(): \PDO
     {
-        return self::$admin ??= new \PDO(
-            \sprintf('pgsql:host=%s;port=%s;dbname=%s', self::host(), self::port(), self::DATABASE),
-            self::superuserName(),
-            self::superuserPassword(),
-            [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION],
-        );
-    }
-
-    private static function superuser(): \PDO
-    {
-        return new \PDO(
-            \sprintf('pgsql:host=%s;port=%s;dbname=postgres', self::host(), self::port()),
-            self::superuserName(),
-            self::superuserPassword(),
-            [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION],
-        );
-    }
-
-    private static function ownerUrl(): string
-    {
-        return \sprintf(
-            'postgresql://%s:%s@%s:%s/%s?serverVersion=18&charset=utf8',
-            self::ownerRole(),
-            getenv('TWES_TEST_DB_OWNER_PASSWORD') ?: 'twes_owner',
-            self::host(),
-            self::port(),
+        return self::$admin ??= self::connectionTo(
             self::DATABASE,
+            self::superuserName(),
+            self::superuserPassword(),
         );
-    }
-
-    private static function host(): string
-    {
-        return '127.0.0.1';
-    }
-
-    private static function port(): string
-    {
-        return '5432';
-    }
-
-    private static function ownerRole(): string
-    {
-        return getenv('TWES_TEST_DB_OWNER_USER') ?: 'twes_owner';
-    }
-
-    private static function runtimeRole(): string
-    {
-        return getenv('TWES_TEST_DB_USER') ?: 'twes';
     }
 
     /** The fixture's BYPASSRLS role. A view it owns reads the base table with row security not applied. */
@@ -651,28 +573,5 @@ final class SchemaTenancyGateTest extends TestCase
     private static function truncatorRole(): string
     {
         return getenv('TWES_TEST_DB_TRUNCATOR_ROLE') ?: 'twes_truncator';
-    }
-
-    private static function superuserName(): string
-    {
-        $name = getenv('TWES_TEST_DB_SUPERUSER');
-
-        if (!\is_string($name) || '' === $name) {
-            self::fail(
-                'TWES_TEST_DB_SUPERUSER must be set: this test creates and drops a database and mutates table '
-                . 'ownership, which needs a superuser. It FAILS rather than skipping for the reason the rest of '
-                . 'this suite does — a skipped run reports OK while the gate that guards every tenant table goes '
-                . 'unexercised.',
-            );
-        }
-
-        return $name;
-    }
-
-    private static function superuserPassword(): string
-    {
-        $password = getenv('TWES_TEST_DB_SUPERUSER_PASSWORD');
-
-        return \is_string($password) ? $password : '';
     }
 }
