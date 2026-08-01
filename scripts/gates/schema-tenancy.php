@@ -380,6 +380,80 @@ foreach ($rows as $row) {
         continue;
     }
 
+    /*
+     * COMPOSITE KEYS: every PRIMARY KEY, UNIQUE constraint, unique INDEX and FOREIGN KEY on a tenant-owned table
+     * must include the tenant column.
+     *
+     * **This belongs in a TENANCY gate, not a modelling one, and the reason is not obvious:** uniqueness and
+     * foreign-key checks run with row-level security BYPASSED. They have to — PostgreSQL must see rows the
+     * querying tenant cannot, or a constraint would only be enforceable against rows you can already read. So a
+     * key that omits the tenant column is checked across EVERY tenant, and no policy narrows it:
+     *
+     *   - a UNIQUE index omitting it makes tenant B's insert fail because tenant A already used the value. That is
+     *     a cross-tenant existence oracle AND a denial of service on somebody else's numbering.
+     *   - a single-column FOREIGN KEY lets one tenant reference another's row, and `ON DELETE CASCADE` then
+     *     deletes across the boundary. `document_line_belongs_to_document` is composite for exactly this reason,
+     *     and the migration's own comment says so.
+     *
+     * Three round records call this "the composite-key schema gate" and rate it P0 at the first Wave 1 migration.
+     * It read no `pg_constraint` and no `pg_index` at all until round 21, so the migration got this right and
+     * nothing checked that the next one would.
+     */
+    $keys = $connection->prepare(
+        "SELECT con.conname AS name, con.contype AS kind,"
+        . ' (SELECT array_agg(att.attname ORDER BY att.attname) FROM pg_attribute att'
+        . '  WHERE att.attrelid = con.conrelid AND att.attnum = ANY(con.conkey)) AS columns'
+        . ' FROM pg_constraint con WHERE con.conrelid = ?::regclass'
+        . "   AND con.contype IN ('p', 'u', 'f')"
+        . ' UNION ALL'
+        . " SELECT ic.relname AS name, 'i' AS kind,"
+        . ' (SELECT array_agg(att.attname ORDER BY att.attname) FROM pg_attribute att'
+        . '  WHERE att.attrelid = idx.indrelid AND att.attnum = ANY(idx.indkey)) AS columns'
+        . ' FROM pg_index idx JOIN pg_class ic ON ic.oid = idx.indexrelid'
+        . ' WHERE idx.indrelid = ?::regclass AND idx.indisunique'
+        // The index BACKING a primary key or unique constraint is reported by pg_constraint already; counting it
+        // twice would report the same defect under two names.
+        . '   AND NOT EXISTS (SELECT 1 FROM pg_constraint c2 WHERE c2.conindid = idx.indexrelid)',
+    );
+    $keys->execute([$table, $table]);
+
+    /** @var list<array{name: string, kind: string, columns: ?string}> $keyRows */
+    $keyRows = $keys->fetchAll(PDO::FETCH_ASSOC);
+
+    foreach ($keyRows as $key) {
+        // A NULL column list means the catalogue gave us a key we could not resolve. Refused, not skipped: this is
+        // the axis where a silent skip means "no cross-tenant FK found" over a key never examined.
+        $keyColumns = null === $key['columns']
+            ? []
+            : array_map('trim', explode(',', trim($key['columns'], '{}')));
+
+        if (in_array($tenantColumn, $keyColumns, true)) {
+            continue;
+        }
+
+        $violations[] = sprintf(
+            '%s holds tenant data and its %s "%s" (%s) does not include "%s". Uniqueness and foreign-key checks '
+            . 'run with row-level security BYPASSED — they must, or a constraint could only be enforced against '
+            . 'rows the querying tenant can already read — so this key is checked across EVERY tenant and no '
+            . 'policy narrows it. %s',
+            $table,
+            match ($key['kind']) {
+                'p' => 'PRIMARY KEY',
+                'u' => 'UNIQUE constraint',
+                'f' => 'FOREIGN KEY',
+                default => 'UNIQUE index',
+            },
+            $key['name'],
+            [] === $keyColumns ? 'columns unreadable' : implode(', ', $keyColumns),
+            $tenantColumn,
+            'f' === $key['kind']
+                ? 'A single-column foreign key lets one tenant reference another tenant\'s row, and ON DELETE '
+                  . 'CASCADE then deletes across the boundary. Make it composite on both sides.'
+                : 'A unique key omitting the tenant makes one tenant\'s insert fail because another already used '
+                  . 'the value: a cross-tenant existence oracle, and a denial of service on their numbering.',
+        );
+    }
+
     if (!isTrue($row['rls_enabled'])) {
         $violations[] = sprintf(
             '%s holds tenant data and has NO row-level security. Nothing else in this repository can see this: '

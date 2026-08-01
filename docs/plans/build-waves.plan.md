@@ -910,10 +910,13 @@ item is closed rather than carried.
 
 **THE SCHEMA GATE WAS A WAVE 1 BLOCKER AND IS NOW CLOSED — 2026-08-01, landed in the same change as the
 migration it was blocking**, which is what the ruling required. `scripts/gates/schema-tenancy.php` exists and is
-wired as `composer gate:schema`. Deliverable 1 below is met **except its composite-key assertion**, which stays owed: three round records
-call this "the composite-key schema gate" and rate it P0 at the first Wave 1 migration, and the gate contains no
-`pg_index`/`pg_constraint` inspection at all — the migration gets the composite keys right and nothing checks that
-the next one will. **Deliverable 2, the migration template, is NOT met either** — one hand-written migration exists and is the de facto template, which is a convention rather than the
+wired as `composer gate:schema`. Deliverable 1 below is met **in full including its composite-key assertion**, added at round 21: the gate reads
+`pg_constraint` and `pg_index` and refuses any PRIMARY KEY, UNIQUE constraint, unique INDEX or FOREIGN KEY on a
+tenant-owned table that omits the tenant column — because uniqueness and FK checks run with row security BYPASSED,
+so such a key is enforced across every tenant. Worth recording from writing it: a single-column FK is
+**unrepresentable** against our own tables, since `document`'s primary key is `(company_id, id)` and PostgreSQL
+refuses `REFERENCES document (id)` with SQLSTATE 42830 — the composite key is self-reinforcing, so the test builds
+a surrogate-key pair to reach the shape at all. **Deliverable 2, the migration template, is NOT met** — one hand-written migration exists and is the de facto template, which is a convention rather than the
 artifact the ruling named, so it stays owed and is deliberately not struck through. How the gate is verified,
 since the ruling was explicit that no gate here is believed on its happy path: its clean-fixture case and **eight**
 violation cases live in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` rather than in `test-gates.sh`,
@@ -1716,9 +1719,9 @@ none is enforceable from application code — a non-superuser **and non-owner** 
 `REVOKE TRUNCATE`, and a connection string carrying no pre-set `twes.tenant_id`. A migration role that
 owns the tables, separate from the runtime role — **all of which `scripts/gates/schema-tenancy.php` now
 asserts**, having landed in Wave 1 with the first migration exactly as this paragraph predicted it would have
-to. What is still owed of it here is the **composite-key axis only**: the gate reads no `pg_index` or
-`pg_constraint`, so a single-column foreign key — which lets one tenant delete another's rows — would pass.
-This paragraph described the whole gate as owed until round 21.
+to. The **composite-key axis landed too**, at round 21: the gate reads `pg_constraint` and `pg_index` and refuses
+any key on a tenant-owned table that omits the tenant column. This paragraph described the whole gate as owed
+until then. Nothing of it is owed now.
 
 **Note:** the *topology* (php-fpm + nginx + db + redis + queue + scheduler + headless Chrome) is an
 idea and free to reuse; upstream's **files** are GPL-2.0 and must never be copied.
