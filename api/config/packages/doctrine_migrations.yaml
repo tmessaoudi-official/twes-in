@@ -8,6 +8,16 @@ doctrine_migrations:
     migrations_paths:
         'Twes\Migrations': '%kernel.project_dir%/migrations'
 
+    # RUN AS THE OWNER, NOT AS THE APPLICATION. This one line is what stops `doctrine:migrations:migrate` with no
+    # arguments creating tenant-owned tables owned by the restricted runtime role -- which can then
+    # `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in one statement, `FORCE` notwithstanding. See
+    # `config/packages/doctrine.yaml` for the connection pair and `.env` for the two credentials.
+    #
+    # `connection` rather than `em`: the bundle rejects both together, and migrations issue raw DDL that no
+    # entity manager is involved in. [Verified: doctrine-migrations-bundle's DoctrineMigrationsExtension throws
+    # "You cannot specify both connection and em".]
+    connection: owner
+
     # ALL migrations run in one transaction where the platform allows it. PostgreSQL has transactional DDL, so a
     # migration that creates a tenant-owned table and then fails to attach its RLS policy must leave NO table
     # behind -- an unpoliced tenant table is precisely what `schema-tenancy.php` exists to refuse, and a

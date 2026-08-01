@@ -50,14 +50,40 @@ final class SchemaTenancyGateTest extends TestCase
 
         // The migration is run by the console, not reimplemented here. That is the point: this test asserts the
         // gate accepts what OUR migration produces, so a hand-built schema would be testing a different thing.
+        //
+        // **BOTH url variables, and `DATABASE_URL_OWNER` is the load-bearing one.** `doctrine_migrations.yaml`
+        // pins migrations to the `owner` connection, so overriding `DATABASE_URL` alone leaves the migration
+        // pointed at whatever `.env` says — which is the DEV database. That is not a hypothetical either: it is
+        // what this test did for one commit, migrating `twes_in` (already up to date, so exit 0) while its own
+        // probe database stayed empty and every case failed with `tenant_owned=0`. `DATABASE_URL` is set as well
+        // so the default connection cannot reach a different database than the one under test.
         $migrate = \sprintf(
-            'cd %s && DATABASE_URL=%s php bin/console doctrine:migrations:migrate --no-interaction 2>&1',
+            'cd %s && DATABASE_URL=%s DATABASE_URL_OWNER=%s php bin/console doctrine:migrations:migrate'
+            . ' --no-interaction 2>&1',
             escapeshellarg(\dirname(__DIR__, 3)),
+            escapeshellarg(self::ownerUrl()),
             escapeshellarg(self::ownerUrl()),
         );
         exec($migrate, $output, $status);
 
         self::assertSame(0, $status, "The migration must succeed before the gate can be tested:\n" . implode("\n", $output));
+
+        // The migration reported success -- but success against WHICH database? A run pointed at an
+        // already-migrated database also exits 0, which is exactly how the failure above stayed invisible at the
+        // one assertion that should have caught it. So assert the tables are HERE.
+        $present = self::admin()->query(
+            "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace"
+            . " WHERE n.nspname = 'public' AND c.relkind = 'r' AND c.relname LIKE 'document%'",
+        );
+
+        self::assertNotFalse($present, 'could not count the migrated tables');
+        self::assertSame(
+            4,
+            (int) $present->fetchColumn(),
+            'The migration exited 0 but this database has no document tables, so it migrated a DIFFERENT one. '
+            . 'Check that DATABASE_URL_OWNER is overridden: doctrine_migrations.yaml pins migrations to the '
+            . '"owner" connection, so overriding DATABASE_URL alone silently targets whatever .env names.',
+        );
     }
 
     public static function tearDownAfterClass(): void
@@ -175,6 +201,24 @@ final class SchemaTenancyGateTest extends TestCase
             ['CREATE TABLE ambiguous (tenant_id uuid NOT NULL, note text)'],
             ['DROP TABLE ambiguous'],
             'cannot tell whether it holds tenant data',
+        ];
+
+        // A table with NO tenant column, owned by the RUNTIME role. It holds no tenant data, so nothing about
+        // this table leaks — and it must still be refused, because of what it PROVES about the connection that
+        // created it: migrations are running as the restricted role, so the next tenant-owned table that
+        // migration creates is owned by the runtime role, which is one `ALTER TABLE … DISABLE ROW LEVEL
+        // SECURITY` from every tenant's data. This is not hypothetical. It is what `doctrine_migration_versions`
+        // in the local `twes_in` database actually was on 2026-08-01, because `.env`'s DATABASE_URL named the
+        // runtime role while the comment beside it claimed migrations used a different one — prose asserting a
+        // control that nothing implemented, the shape CLAUDE.md § Gotchas records repeatedly. The gate skipped
+        // it, because its ownership check was scoped to tables it had already classified as tenant-owned.
+        yield 'a NON-tenant table owned by the runtime role, which proves migrations run as it' => [
+            [
+                'CREATE TABLE migrations_ran_as_runtime (note text)',
+                \sprintf('ALTER TABLE migrations_ran_as_runtime OWNER TO %s', self::runtimeRole()),
+            ],
+            ['DROP TABLE migrations_ran_as_runtime'],
+            'is OWNED by the runtime role',
         ];
     }
 

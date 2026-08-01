@@ -287,6 +287,20 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   because the gate needs a database; `test-gates.sh` keeps the database-free paths and a **verified redirect** that
   fails if the named test file or method disappears. The migration template, deliverable 2 of that ruling, is
   **still owed** and deliberately not marked done.
+- [2026-08-01 12:15] AGREED: **migrations run on their OWN Doctrine connection, as the owning role** — a second
+  DBAL connection `owner` fed by `DATABASE_URL_OWNER`, with `doctrine_migrations.connection: owner`, so the safe
+  role is the default rather than something a developer must remember to pass. `.env` had claimed this in prose
+  with nothing implementing it, and `doctrine_migration_versions` in the local dev database was consequently owned
+  by the runtime role. `scripts/gates/schema-tenancy.php` now refuses **any** table owned by the runtime role,
+  tenant-owned or not, which is what makes the configuration checked rather than merely intended.
+  **STILL OWED as a consequence: a `scripts/dev/provision-dev-database.sh`.** `provision-test-database.sh` gets
+  `twes_in_test` right, but nothing provisions the DEV database — `twes_in` was owned by `twes`, so `public`
+  belonged to `pg_database_owner` and the runtime role held implicit `CREATE`. It was corrected by hand on
+  2026-08-01, which means a fresh container reproduces the wrong shape. The script needs only the small subset:
+  database owned by `twes_owner`, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`, `USAGE` to `twes`, `CREATE` to
+  `twes_owner`, and default privileges granting DML-but-never-TRUNCATE. Deliberately NOT the test script's twelve
+  roles — `BYPASSRLS` and `REPLICATION` fixtures exist to make dangerous shapes testable and have no business in a
+  development database.
 - [2026-08-01 11:30] AGREED: **"enum" in this plan's column tables means `VARCHAR(32)` + `CHECK`, not a native
   PostgreSQL enum type.** `doctrine_migrations.transactional` is true and PostgreSQL refuses to add an enum value
   and use it in the same transaction, so a native type would force every future `DocumentType` addition — Wave 2's
@@ -680,7 +694,9 @@ the developer approved:
    from `policySqlFor()` so the migration and the checker cannot disagree.
 4. **`scripts/gates/schema-tenancy.php`** — the blocker below, now **CLOSED**.
 
-**Still owed in this wave** and NOT closed by the above: the repository and mapper translating the four rows ↔
+**Still owed in this wave** and NOT closed by the above: `scripts/dev/provision-dev-database.sh` (see the
+2026-08-01 12:15 Decisions Log entry — the dev database's ownership was corrected by hand, so a fresh container
+reproduces the wrong shape); the repository and mapper translating the four rows ↔
 `Invoice`, with the **round-trip contract test** that is the accepted price of the immutability ruling; the
 savepoint re-check wiring below (now live rather than hypothetical — DBAL 4 always uses savepoints for nested
 transactions, so the shape is reachable today); the connection-lifecycle wiring; and the boundary rule that no

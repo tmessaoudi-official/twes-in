@@ -31,9 +31,21 @@ declare(strict_types=1);
  *      policy that is not — a permissive policy is ORed, so one unscoped one reopens the whole table;
  *   4. the tenant column is NOT NULL — a NULL `company_id` matches no tenant under the canonical predicate, so
  *      the row becomes invisible to everyone including its owner, which is data loss that looks like isolation;
- *   5. the runtime role neither OWNS the table nor holds TRUNCATE on it. `FORCE` stops an owner *skipping*
- *      policies, not *removing* them: an owner can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in one
- *      statement. That was a real P0 (round 4) found asserted in prose and enforced nowhere.
+ *   5. the runtime role does not hold TRUNCATE on it. TRUNCATE ignores row security entirely.
+ *
+ * AND ONE THING IT ASSERTS ON EVERY TABLE, tenant-owned or not:
+ *   6. the runtime role does not OWN it. `FORCE` stops an owner *skipping* policies, not *removing* them: an
+ *      owner can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in one statement. That was a real P0 (round 4)
+ *      found asserted in prose and enforced nowhere.
+ *
+ *      **This one is deliberately NOT scoped to tenant-owned tables, and that scoping was a real gap.** A table
+ *      with no tenant column leaks nothing by itself, so the obvious reading is that its owner does not matter.
+ *      What matters is what it PROVES about the connection that created it: if migrations run as the runtime
+ *      role, the next tenant-owned table they create is owned by the runtime role. That is not hypothetical —
+ *      `doctrine_migration_versions` in the local `twes_in` database was exactly this on 2026-08-01, because
+ *      `.env`'s `DATABASE_URL` named the runtime role while the comment beside it claimed migrations used a
+ *      different one. The gate skipped it, having classified it as "not tenant data, counted not asserted".
+ *      A precursor to a P0 is worth refusing while it is still only a precursor.
  *
  * The canonical predicate is not written out here. It comes from `canonicalPolicyExpression()`, the same source
  * the migration uses through `policySqlFor()` and the same one the runtime checker compares against — so all
@@ -178,6 +190,24 @@ foreach ($rows as $row) {
     ++$inspected;
     $table = $row['table_name'];
 
+    // FIRST, and for EVERY table rather than only the tenant-owned ones -- see assertion 6 in this file's
+    // docblock for why a non-tenant table's owner is load-bearing. Placed before the classification branch on
+    // purpose: the two `continue`s below skip a table this check must still see, which is precisely how it came
+    // to miss a runtime-owned `doctrine_migration_versions`.
+    if ($row['owner'] === $runtimeRole) {
+        $violations[] = sprintf(
+            '%s is OWNED by the runtime role "%s". FORCE stops an owner skipping policies, not removing them: '
+            . '`ALTER TABLE %s DISABLE ROW LEVEL SECURITY` is one statement away. Migrations must run as a '
+            . 'separate owning role that is never granted to the runtime role — configure a second Doctrine '
+            . 'connection for them rather than reusing DATABASE_URL. This is refused even when the table holds '
+            . 'no tenant data, because it proves the migration connection is the runtime role, so the NEXT '
+            . 'tenant-owned table it creates will be owned by it too.',
+            $table,
+            $runtimeRole,
+            $table,
+        );
+    }
+
     /** @var list<array{name: string, not_null: bool|string}> $columns */
     $columns = json_decode($row['columns'], true, 512, \JSON_THROW_ON_ERROR);
     $columnNames = array_map(static fn(array $column): string => $column['name'], $columns);
@@ -278,17 +308,6 @@ foreach ($rows as $row) {
         );
     }
 
-    if ($row['owner'] === $runtimeRole) {
-        $violations[] = sprintf(
-            '%s is OWNED by the runtime role "%s". FORCE stops an owner skipping policies, not removing them: '
-            . '`ALTER TABLE %s DISABLE ROW LEVEL SECURITY` is one statement away. Migrations must run as a '
-            . 'separate owning role that is never granted to the runtime role.',
-            $table,
-            $runtimeRole,
-            $table,
-        );
-    }
-
     $truncate = $connection->query(sprintf(
         "SELECT has_table_privilege('%s', '%s', 'TRUNCATE') AS can_truncate",
         str_replace("'", "''", $runtimeRole),
@@ -333,7 +352,11 @@ if (0 === $tenantOwned) {
 }
 
 if ([] !== $violations) {
-    fwrite(STDERR, "schema-tenancy: FAIL — a tenant-owned table is not isolated.\n");
+    // "a tenant table is not isolated" was the header until the ownership check widened to every table, at which
+    // point it named the wrong thing for the one violation class that is NOT about a tenant table -- the
+    // wrong-bound message defect CLAUDE.md § "Translation keys" records for `document.quantity_too_large`. The
+    // per-violation lines below say which table and why; this line no longer asserts a category it cannot know.
+    fwrite(STDERR, "schema-tenancy: FAIL — the schema does not satisfy tenant isolation.\n");
 
     foreach ($violations as $violation) {
         fwrite(STDERR, '  ' . $violation . "\n");

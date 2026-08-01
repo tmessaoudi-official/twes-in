@@ -6,21 +6,50 @@
 
 doctrine:
     dbal:
-        url: '%env(resolve:DATABASE_URL)%'
+        # TWO CONNECTIONS, AND THE SPLIT IS A SECURITY BOUNDARY rather than an organisational one. `default`
+        # connects as the restricted runtime role, which owns nothing and cannot TRUNCATE. `owner` connects as
+        # the role that owns the tenant-owned tables, and exists ONLY so migrations have somewhere to run that
+        # is not the application's own credential.
+        #
+        # Why it is configured rather than left to whoever runs the command: a table's OWNER can
+        # `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in one statement, and `FORCE` does not prevent that -- it
+        # stops an owner SKIPPING policies, not REMOVING them (CLAUDE.md § Gotchas, the round-4 P0). So if
+        # `doctrine:migrations:migrate` runs on the default connection, every table it creates is owned by the
+        # runtime role and the whole isolation design is one statement from being switched off. That is not
+        # hypothetical: `.env` claimed "Migrations use a different role" while nothing implemented it, and
+        # `doctrine_migration_versions` in the local `twes_in` database ended up owned by `twes`.
+        #
+        # `scripts/gates/schema-tenancy.php` refuses ANY table owned by the runtime role, tenant-owned or not,
+        # which is what makes this configuration checked rather than merely intended.
+        default_connection: default
+
+        connections:
+            default:
+                url: '%env(resolve:DATABASE_URL)%'
+
+                # NO `use_savepoints` KEY: DBAL 4 removed it, because savepoints are now the only way it
+                # implements a nested transaction. Recorded rather than silently dropped, because the tenancy
+                # concern behind it is live and unaffected: a rolled-back savepoint RESTORES the
+                # transaction-local `twes.tenant_id` set by `set_config(..., true)`, so a nested rollback can
+                # silently rebind a connection to a PREVIOUS tenant.
+                # `PostgresRowLevelSecurityIsolation::assertStillBoundTo()` exists to catch exactly that, and
+                # since DBAL now always uses savepoints the shape is always reachable -- which makes wiring that
+                # check a Wave 1 obligation rather than an optional hardening.
+
+            owner:
+                url: '%env(resolve:DATABASE_URL_OWNER)%'
 
         # The Symfony ecosystem's UUID type, not a hand-rolled one -- CLAUDE.md § "The Symfony ecosystem is the
         # ONLY vocabulary". `symfony/doctrine-bridge` ships it and it maps to a real PostgreSQL `uuid` column
         # rather than to text, so the database can index and compare it properly.
+        #
+        # DELIBERATELY at the `dbal` level rather than inside each connection, and not merely because
+        # `doctrine.dbal.connections.*.types` does not exist [Verified: `lint:container` rejects it, listing the
+        # allowed per-connection keys]. A migration that creates a `uuid` column must agree with the runtime
+        # connection about what a `uuid` IS, so one shared map is the correct shape and two per-connection copies
+        # would be the bug the config format happens to forbid.
         types:
             uuid: Symfony\Bridge\Doctrine\Types\UuidType
-
-        # NO `use_savepoints` KEY: DBAL 4 removed it, because savepoints are now the only way it implements a
-        # nested transaction. Recorded rather than silently dropped, because the tenancy concern behind it is
-        # live and unaffected: a rolled-back savepoint RESTORES the transaction-local `twes.tenant_id` set by
-        # `set_config(..., true)`, so a nested rollback can silently rebind a connection to a PREVIOUS tenant.
-        # `PostgresRowLevelSecurityIsolation::assertStillBoundTo()` exists to catch exactly that, and since DBAL
-        # now always uses savepoints the shape is always reachable -- which makes wiring that check a Wave 1
-        # obligation rather than an optional hardening.
 
     orm:
         # NATIVE LAZY OBJECTS instead of generated proxy classes. ORM 3 dropped
