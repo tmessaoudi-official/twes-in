@@ -279,8 +279,18 @@ services:
 
   # ------------------------------------------------------------------------------------------------------------
   # FRONT-END BUILDERS. One-shot containers that populate the bundle volumes the API serves.
+  #
+  # BOTH ARE BEHIND THE `build` PROFILE, which is not tidiness — without it `docker compose up` starts them like
+  # any other service, and the Flutter stage downloads a ~1 GB SDK and runs `flutter precache` before the stack is
+  # usable. There is no official Flutter image, so that cost is inherent; making it OPT-IN is what keeps `make up`
+  # a couple of minutes instead of fifteen. `docker compose run` enables a service's own profiles automatically,
+  # so `make build-front` needs no extra flag.
+  #
+  # The consequence is honest and stated in infra/README.md: until `make build-front` has run, `/admin/` and
+  # `/app/` return 404 rather than a broken page.
   # ------------------------------------------------------------------------------------------------------------
   admin-build:
+    profiles: ['build']
     build:
       context: ..
       dockerfile: infra/admin/Dockerfile
@@ -295,6 +305,7 @@ services:
     networks: [internal]
 
   flutter-build:
+    profiles: ['build']
     build:
       context: ..
       dockerfile: infra/mobile/Dockerfile

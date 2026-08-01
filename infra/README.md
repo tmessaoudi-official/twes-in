@@ -33,8 +33,10 @@ Then:
 **`make build-front` is slow the first time and that is inherent, not a defect.** There is no official Flutter
 image, so that stage downloads the SDK (~1 GB) and runs `flutter precache`. It is a build-only stage — `scratch`
 at the end means none of it reaches a running container — and Docker caches it, so only the first run pays.
-Skip it entirely if you only want the API; `/admin/` and `/app/` will 404 until it has run, which is honest
-rather than broken.
+
+That is why both front-end builders sit behind Compose's `build` **profile**: `make up` does not start them, so
+it stays a couple of minutes rather than fifteen. Skip `make build-front` entirely if you only want the API —
+`/admin/` and `/app/` return 404 until it has run, which is honest rather than broken.
 
 **Ports.** `HTTP_PORT` defaults to `8080` and is bound to `127.0.0.1` only, never `0.0.0.0` — the short compose
 form would expose the stack to the local network, which on a laptop on café wifi is a real exposure. Change it
