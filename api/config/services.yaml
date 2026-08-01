@@ -28,7 +28,8 @@ services:
             # lives in Infrastructure/ by ruling (see CLAUDE.md § Gotchas on tenancy as ambient context), so it
             # must not become an autowired service.
             - '../src/Infrastructure/Tenancy/TenantId.php'
-            - '../src/Infrastructure/Persistence/Doctrine/Mapping/'
+            # Doctrine entities are ROWS, not services -- the container must never construct one.
+            - '../src/Infrastructure/Persistence/Doctrine/Entity/'
 
     Twes\UI\:
         resource: '../src/UI/'

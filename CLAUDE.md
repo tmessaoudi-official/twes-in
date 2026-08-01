@@ -271,9 +271,34 @@ driving it — phorj is unfinished and nothing here is designed for it.
   `time()`, `random_int()`, `getenv()`, `file_get_contents()` and `date()` are **bare function calls
   with no `use` at all** — so a `use`-grep does not see them. Both are P0; the second needs a
   banned-function rule (PHPStan) rather than an import check.
-- **No Doctrine attributes on entities.** Mapping lives in XML (or PHP) mapping files under
-  `Infrastructure/`. This is the single most common way a "hexagonal" PHP codebase quietly becomes
-  framework-coupled. Detection is a plain grep — `#[ORM\` anywhere under `Domain/` is a P0.
+- **No Doctrine mapping of any kind on a domain type. Persistence uses a SEPARATE MODEL in
+  `Infrastructure/`, mapped with ATTRIBUTES, and a repository translates** (developer ruling, 2026-08-01,
+  after challenging the previous wording). `#[ORM\` anywhere under `Domain/` is still a P0 and
+  `scripts/gates/no-orm-attributes-in-domain.sh` still enforces it — what changed is where the mapping went and
+  *why*.
+  - **The previous wording said "mapping lives in XML (or PHP) mapping files" and was stale twice over.** ORM 3
+    ships exactly two drivers, `AttributeDriver` and `XmlDriver` [Verified: `ls
+    vendor/doctrine/orm/src/Mapping/Driver/`] — `PhpDriver` and `YamlDriver` are gone, so "or PHP" named a
+    thing that does not exist.
+  - **And its stated reason was weaker than it sounded.** Attributes do NOT couple a class to Doctrine at
+    runtime: a `use` statement is compile-time text and PHP resolves an attribute class only when something
+    calls `newInstance()` on it, which only Doctrine ever does. [Verified: an attribute-mapped class
+    instantiated and ran with no Doctrine autoloadable at all — `class_exists(Doctrine\ORM\Mapping\Entity)`
+    false, the object working, and only `newInstance()` throwing.] So "quietly becomes framework-coupled" is a
+    discipline argument, not a technical one, and it should not be presented as the latter.
+  - **The load-bearing reason is a different one, and it applies to attributes and XML equally.** Every domain
+    type here is `final readonly` with a private constructor, and the aggregate's five mutators each
+    `return new self(...)` — immutability is a correctness requirement in this project, so an issued document's
+    snapshot cannot be moved. Doctrine's ORM is the opposite by construction: an identity map holding one
+    MUTABLE instance per row, diffed against a snapshot to emit UPDATEs. A `readonly` property can be
+    initialised once and never updated, and a mutator returning a new object hands the unit of work something
+    it has never seen. **Mapping the aggregate directly is insert-only and fights the ORM, whichever driver you
+    pick** — which is why the driver was the wrong argument to be having.
+  - So the mapped classes are ordinary mutable Doctrine entities under
+    `Infrastructure/Persistence/Doctrine/Entity/`, attributes are correct THERE (IDE support, refactoring,
+    brevity, no DTD), and a repository translates to and from the aggregate. The accepted cost is a mapper per
+    aggregate and a real duplication risk if one is careless — paid down by a round-trip contract test, not by
+    care. That cost is the price of the immutability ruling and was always going to be paid somewhere.
 - **Dependencies point inward.** `Domain` knows nothing. `Application` knows `Domain`.
   `Infrastructure` and `UI` know both. Never the reverse — an **outward**-pointing `use` from `Domain`
   to `Infrastructure`, `UI` or `Application` is a P0.

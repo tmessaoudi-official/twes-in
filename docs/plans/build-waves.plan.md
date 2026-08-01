@@ -322,6 +322,16 @@ removes the guard and watches every tenant leak, and one that exercises a *reuse
 container is restricted by organisation policy to this repository alone, so every Composer `dist` URL
 returns 403 and `composer install` cannot run (`CLAUDE.md` § Gotchas has the verification). That blocks:
 
+- [2026-08-01 09:30] RULED **persistence is a SEPARATE MODEL in `Infrastructure/` mapped with Doctrine
+  ATTRIBUTES, and a repository translates to and from the domain aggregate** (developer challenging the
+  XML-mapping plan and accepting the recommendation that came out of it). Three facts drove it, two of which
+  refuted the reason `CLAUDE.md` had given for XML: ORM 3 ships only `AttributeDriver` and `XmlDriver`, so the
+  documented "XML (or PHP)" named a driver that no longer exists; attributes do not couple a class to Doctrine
+  at RUNTIME, verified by instantiating an attribute-mapped class with no Doctrine autoloadable; and — the
+  decisive one — every domain type here is `final readonly` with a private constructor and the aggregate's
+  mutators return new instances, which Doctrine's identity map and change tracking cannot follow whichever
+  driver is used. So the driver was the wrong argument; the model boundary was the right one. Accepted cost: a
+  mapper per aggregate, pinned by a round-trip contract test.
 - the **Symfony application itself** — kernel, HTTP layer, the RFC 9457 error shape, `bin/console`;
 - **Doctrine** — ORM mapping in XML, the migration that creates the RLS policies, `schema:validate`,
   and the Doctrine filter that becomes isolation's second layer;

@@ -8,6 +8,12 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
 
+        # The Symfony ecosystem's UUID type, not a hand-rolled one -- CLAUDE.md § "The Symfony ecosystem is the
+        # ONLY vocabulary". `symfony/doctrine-bridge` ships it and it maps to a real PostgreSQL `uuid` column
+        # rather than to text, so the database can index and compare it properly.
+        types:
+            uuid: Symfony\Bridge\Doctrine\Types\UuidType
+
         # NO `use_savepoints` KEY: DBAL 4 removed it, because savepoints are now the only way it implements a
         # nested transaction. Recorded rather than silently dropped, because the tenancy concern behind it is
         # live and unaffected: a rolled-back savepoint RESTORES the transaction-local `twes.tenant_id` set by
@@ -31,21 +37,22 @@ doctrine:
             default:
                 connection: default
 
-                # XML MAPPING, never attributes. CLAUDE.md § Architecture makes `#[ORM\` anywhere under
-                # `Domain/` a P0, and `scripts/gates/no-orm-attributes-in-domain.sh` enforces it -- so the
-                # mapping has to live somewhere the domain cannot see. `is_bundle: false` with an explicit dir is
-                # what allows that: the entities are in `Domain/` and their mapping is in `Infrastructure/`,
-                # which is the whole point of the layer split.
+                # ATTRIBUTES, on a SEPARATE PERSISTENCE MODEL -- never on a domain type. The mapped
+                # classes under `Entity/` are ordinary MUTABLE Doctrine entities that exist only to be rows; the
+                # domain aggregate is `final readonly` with a private constructor and mutators that return new
+                # instances, which Doctrine's identity map and change tracking cannot follow. A repository
+                # translates between the two.
                 #
-                # `validate_xml_mapping` is ON. Hand-written XML is the cost of keeping the domain pure, and the
-                # cost of hand-written XML is a typo that silently maps nothing -- so it is validated against the
-                # Doctrine schema at load. This is the same reasoning as every other gate here: a mapping that
-                # quietly does not apply is worse than one that fails loudly.
-                validate_xml_mapping: true
-
+                # So `#[ORM\` is correct here and a P0 under `Domain/`, and
+                # `scripts/gates/no-orm-attributes-in-domain.sh` enforces exactly that boundary. See CLAUDE.md
+                # § Architecture -- and note the reason is the immutability mismatch, NOT runtime coupling:
+                # attributes are inert until Doctrine reflects on them, which was verified rather than assumed.
+                #
+                # `validate_xml_mapping` is gone with the XML: it validated a mapping format no longer in use.
+                # The equivalent guard for attributes is `doctrine:schema:validate`, which is in the gate.
                 mappings:
-                    Document:
-                        type: xml
-                        dir: '%kernel.project_dir%/src/Infrastructure/Persistence/Doctrine/Mapping'
-                        prefix: 'Twes\Domain\Document'
+                    Persistence:
+                        type: attribute
+                        dir: '%kernel.project_dir%/src/Infrastructure/Persistence/Doctrine/Entity'
+                        prefix: 'Twes\Infrastructure\Persistence\Doctrine\Entity'
                         is_bundle: false
