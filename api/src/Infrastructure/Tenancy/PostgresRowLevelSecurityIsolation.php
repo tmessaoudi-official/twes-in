@@ -2273,7 +2273,26 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 throw new \RuntimeException('Could not inspect large-object function privileges.');
             }
 
-            if (!self::isFalse((string) $statement->fetchColumn())) {
+            $granted = $statement->fetchColumn();
+
+            // **THE RAW VALUE, never `(string) $granted`** — round 20's P0, and a self-inflicted one. Round 19
+            // switched eight `isTrue()` call sites to `!isFalse()` because the pair is only safe if the right
+            // member is chosen per site; this was the one site carrying an explicit `(string)` cast, and that
+            // cast existed FOR `isTrue()`, whose `'1'` spelling is exactly what `(string) true` produces.
+            // `(string) false` is the EMPTY STRING, which `isFalse()` does not recognise — so `!isFalse('')` is
+            // TRUE and the guard reported every writer callable on every database, hardened or not. A control
+            // whose answer no longer depends on its input, inverted into the false-refusal direction: once
+            // Wave 1 wires this call in production it would refuse every acquisition on precisely the cluster
+            // `infra/README.md` § "No large objects, ever" tells the operator to build.
+            //
+            // The lesson is narrower than "check your casts": a mechanical transform applied across call sites
+            // is safe only where the sites are actually alike, and this one differed in a way invisible at the
+            // grep that found them.
+            $definitelyNotGranted = \is_bool($granted) || \is_string($granted)
+                ? self::isFalse($granted)
+                : false;
+
+            if (!$definitelyNotGranted) {
                 $callable[] = $writer . '()';
             }
         }
@@ -2351,6 +2370,15 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not read the current database from pg_database.');
         }
 
+        // `!isFalse()` because TRUE is the danger here. **This switch is NOT pinned by a mutant, and that is
+        // stated rather than papered over** (round 20). Unlike `roleCanBypassPolicies()` and
+        // `rlsExemptObjectViolations()` — public predicates taking a caller-supplied row, where an unrecognised
+        // spelling is reachable and now tested — this method builds its own row from a query it wrote, so the
+        // value is always a real boolean or `t`/`f` and the two members cannot be told apart. An equivalent
+        // mutant by construction, not a coverage gap.
+        //
+        // What it would take: decomposing this method into a pure predicate over the row, as the other two
+        // already are. Worth doing when something else needs that seam; not worth inventing a caller for.
         if (!self::isFalse($row['can_create_temp'])) {
             throw new \RuntimeException(\sprintf(
                 'This connection can create TEMPORARY objects in %s. A temporary table carries no row-level '
@@ -2475,8 +2503,19 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * - a flag whose **TRUE** is the danger (`owner_reachable`, `can_truncate`, `has_user_rule`,
      *   `can_create_temp`, `rolsuper`/`rolbypassrls`/`rolreplication`) is read `!isFalse(...)`, so an
      *   unrecognised spelling ALSO reports a violation;
-     * - a flag that gates a SKIP (`permissive`, `applies`) is read `isFalse(...)`, so an unrecognised spelling
+     * - a flag that gates a SKIP is read on the SAME polarity rule, not on the fact that it gates a skip:
+     *   `permissive` and `applies` skip on FALSE, so they are read `isFalse(...)`; `owned_by_caller` and
+     *   `security_invoker` skip on TRUE, so they are read `isTrue(...)`. Either way an unrecognised spelling
      *   does not skip.
+     *
+     * **That third rule was written as a property of "gates a SKIP" and it is a property of POLARITY** (round
+     * 20). Applied literally to `owned_by_caller` it gives `if (isFalse(...)) continue;`, which skips a view NOT
+     * owned by the caller — waving through the borrowed-exemption shape that arm exists to refuse, and on the
+     * recognised `false` value rather than an exotic one. A rule stated on the wrong axis is worse than none,
+     * because the next author applies it mechanically. Which is exactly what happened at the large-object guard
+     * below: the switch was made across sites that looked alike at a grep, one of them carried a `(string)` cast
+     * written FOR `isTrue()`, and `(string) false` is the empty string — so `!isFalse()` there was TRUE for a
+     * false result and the guard reported every writer callable on every database.
      *
      * **The previous version of this docblock stated the safety as a property of the PAIR — "whichever way an
      * unexpected value arrives, the SAFE branch is taken" — and that was false at five call sites** (round 19).

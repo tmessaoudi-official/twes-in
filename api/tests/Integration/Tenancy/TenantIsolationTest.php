@@ -862,6 +862,34 @@ final class TenantIsolationTest extends TestCase
         self::assertFalse(PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
             ['rolsuper' => 'f', 'rolbypassrls' => 'f', 'rolreplication' => 'f'],
         ));
+
+        // **AN UNRECOGNISED SPELLING MUST BE READ AS DANGEROUS, not as harmless** (round 20). All three
+        // attributes here are danger-if-TRUE, so the predicate reads `!isFalse(...)`: only a value that
+        // definitely MEANS false clears the role. Round 19 switched these three sites and nothing observed the
+        // switch — all three were revertible to `isTrue()` with the full suite green, which is how the sibling
+        // switch at the large-object guard shipped INVERTED. This test is the natural home for the case: it is
+        // already parameterised on spelling, and its own comment says pdo_pgsql's boolean rendering is
+        // build-dependent, which is exactly the caller shape the fix claims to protect.
+        foreach (['true', 'on', 'y', 'TRUE', 'yes', '2'] as $spelling) {
+            self::assertTrue(
+                PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+                    ['rolsuper' => $spelling, 'rolbypassrls' => 'f'],
+                ),
+                \sprintf('rolsuper=%s is not a recognised FALSE, so it must not clear the role', $spelling),
+            );
+            self::assertTrue(
+                PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+                    ['rolsuper' => 'f', 'rolbypassrls' => $spelling],
+                ),
+                \sprintf('rolbypassrls=%s must not clear the role', $spelling),
+            );
+            self::assertTrue(
+                PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
+                    ['rolsuper' => 'f', 'rolbypassrls' => 'f', 'rolreplication' => $spelling],
+                ),
+                \sprintf('rolreplication=%s must not clear the role', $spelling),
+            );
+        }
     }
 
     /**
@@ -1818,6 +1846,30 @@ final class TenantIsolationTest extends TestCase
         // security_invoker wins over ownership: RLS applies as the QUERYING role, so an exempt owner is
         // irrelevant. Refusing this shape was the first version's bug.
         self::assertSame([], PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([$view]));
+
+        // **`has_user_rule` IS DANGER-IF-TRUE, so an unrecognised spelling must still be inspected** (round 20).
+        // Round 19 switched this site to `!isFalse()` and nothing observed the switch — it was revertible with
+        // the whole suite green. What it guards is round 16's reproduced P0: a `security_invoker = true` view
+        // carrying `DO INSTEAD` rules gives a cross-tenant read AND write, and the rule arm is what catches it.
+        // With `isTrue()` and a spelling like `'true'` the arm is skipped and the `security_invoker` check two
+        // lines below then short-circuits the object as safe.
+        foreach (['true', 'on', 'y', 'TRUE'] as $spelling) {
+            $ruleBearing = PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([
+                ['has_user_rule' => $spelling, 'owner_exempt' => 't', 'owner' => 'twes_bypass'] + $view,
+            ]);
+            self::assertNotSame([], $ruleBearing, \sprintf(
+                'has_user_rule=%s is not a recognised FALSE, so the rule arm must inspect the object rather '
+                . 'than letting security_invoker short-circuit it as safe.',
+                var_export($spelling, true),
+            ));
+        }
+
+        // And a recognised FALSE still takes the fast path, or the guard above would have made the flag inert.
+        foreach ([false, 'f', '0'] as $spelling) {
+            self::assertSame([], PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations([
+                ['has_user_rule' => $spelling] + $view,
+            ]), 'a security_invoker view with no rule is safe whatever its owner');
+        }
         self::assertSame([], PostgresRowLevelSecurityIsolation::rlsExemptObjectViolations(
             [['owner_exempt' => 't', 'owner' => 'postgres'] + $view],
         ));
@@ -3032,6 +3084,104 @@ final class TenantIsolationTest extends TestCase
         // Named individually, so a reader knows which REVOKE to issue rather than being told "large objects".
         self::assertStringContainsString('lo_from_bytea()', $caught->getMessage());
         self::assertStringContainsString('REVOKE EXECUTE', $caught->getMessage());
+    }
+
+    /**
+     * **AND IT IS SILENT ON A HARDENED DATABASE — the direction that was never checked** (round 20's P0).
+     *
+     * The test above asserts the guard FIRES on an unrevoked database, and its own comment admits the ambiguity:
+     * *"If this passes, either the writers were revoked or the guard reads nothing."* Nothing resolved that, so a
+     * guard whose answer did not depend on its input satisfied it vacuously — and one did. Round 19 switched this
+     * call site from `isTrue()` to `!isFalse()` along with seven others, but this was the only one carrying an
+     * explicit `(string)` cast, and `(string) false` is the empty string, which `isFalse()` does not recognise.
+     * The method reported all six writers callable on every database, hardened or not.
+     *
+     * That matters because `build-waves.plan.md` puts this call in PRODUCTION only, i.e. on exactly the
+     * configuration `infra/README.md` § "No large objects, ever" tells the operator to create — so the inverted
+     * guard would have refused every acquisition on a correctly hardened cluster, and never once in this suite.
+     *
+     * A scratch database rather than `twes_in_test`, because the REVOKEs are database-scoped and the fixture's
+     * own state must not change under the other tests.
+     */
+    public function testTheLargeObjectGuardIsSilentOnceTheWritersAreRevoked(): void
+    {
+        $dsn = getenv('TWES_TEST_DSN');
+        $runtime = getenv('TWES_TEST_DB_USER') ?: 'twes';
+        $runtimePassword = getenv('TWES_TEST_DB_PASSWORD') ?: 'twes';
+
+        if (!\is_string($dsn)) {
+            self::fail('TWES_TEST_DSN must be set.');
+        }
+
+        $superuser = self::superuserConnection();
+        $database = 'twes_lo_hardened_probe';
+        $names = implode(', ', array_map(
+            static fn(string $writer): string => "'" . $writer . "'",
+            PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS,
+        ));
+
+        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', $database));
+        $superuser->exec(\sprintf('CREATE DATABASE %s', $database));
+
+        // Declared out here so `finally` can CLOSE them before dropping: PostgreSQL refuses to drop a database
+        // that still has sessions on it, and a leaked probe database would break every later run of this test.
+        $admin = null;
+        $hardened = null;
+
+        try {
+            $probeDsn = preg_replace('/dbname=[^;]*/', 'dbname=' . $database, $dsn);
+            self::assertIsString($probeDsn);
+
+            $admin = new \PDO($probeDsn, (string) getenv('TWES_TEST_DB_SUPERUSER'), (string) getenv('TWES_TEST_DB_SUPERUSER_PASSWORD'), [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]);
+            $admin->exec(\sprintf('GRANT CONNECT ON DATABASE %s TO %s', $database, $runtime));
+
+            // EVERY OVERLOAD of every writer, which is the remedy `infra/README.md` prescribes. Resolved through
+            // `regprocedure` rather than written out, so a name with more than one signature cannot be revoked
+            // in part -- exactly the half-remedy round 15 found for `lo_creat`.
+            $admin->exec(\sprintf(
+                'DO $$ DECLARE r record; BEGIN '
+                . 'FOR r IN SELECT p.oid::regprocedure AS sig FROM pg_proc p '
+                . 'JOIN pg_namespace n ON n.oid = p.pronamespace '
+                . "WHERE n.nspname = 'pg_catalog' AND p.proname IN (%s) LOOP "
+                . "EXECUTE format('REVOKE EXECUTE ON FUNCTION %%s FROM PUBLIC', r.sig); "
+                . 'END LOOP; END $$',
+                $names,
+            ));
+
+            $hardened = new \PDO($probeDsn, $runtime, $runtimePassword, [
+                \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            ]);
+
+            // THE PRECONDITION: the revocations really took, so silence below is silence about a HARDENED
+            // database rather than silence about nothing -- which is the ambiguity the sibling test admits to.
+            foreach (PostgresRowLevelSecurityIsolation::LARGE_OBJECT_WRITERS as $writer) {
+                $reachable = $hardened->query(\sprintf(
+                    "SELECT bool_or(has_function_privilege(current_user, p.oid, 'EXECUTE')) FROM pg_proc p "
+                    . "JOIN pg_namespace n ON n.oid = p.pronamespace "
+                    . "WHERE n.nspname = 'pg_catalog' AND p.proname = '%s'",
+                    $writer,
+                ));
+                self::assertNotFalse($reachable);
+                self::assertNotContains(
+                    $reachable->fetchColumn(),
+                    [true, 't', '1'],
+                    $writer . '() must be unreachable before the guard is asked',
+                );
+            }
+
+            PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateLargeObjects($hardened);
+
+            self::assertTrue(true, 'a hardened database must not be refused');
+        } finally {
+            $admin = null;
+            $hardened = null;
+            // WITH (FORCE), because a PDOStatement can still hold the connection open after the PDO handle is
+            // released and PostgreSQL refuses to drop a database with sessions on it. A leaked probe database
+            // would break every later run of this test, so the teardown must not depend on refcount timing.
+            $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', $database));
+        }
     }
 
     /**

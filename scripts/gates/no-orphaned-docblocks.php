@@ -36,10 +36,24 @@ declare(strict_types=1);
  *   5. an orphan before a `const` or an `enum` case rather than a method.
  *
  * The lesson is the general one: a positional rule enforces one SPELLING of a rule, and the defect is not
- * positional at all — it is *"this doc comment attaches to no declaration"*, which is a question about tokens.
- * `token_get_all()` answers it directly: two `T_DOC_COMMENT`s with nothing but whitespace, ordinary comments or
- * an attribute between them. All five shapes collapse into that one rule, and so does any sixth nobody has
- * thought of yet.
+ * positional at all. `token_get_all()` answers the token question directly: two `T_DOC_COMMENT`s with nothing
+ * but whitespace, ordinary comments or an attribute between them. All five shapes above collapse into that one
+ * rule, and so does any further shape of the SAME kind.
+ *
+ * **WHAT THIS GATE DOES NOT CATCH, stated because the previous wording claimed it caught everything.** That
+ * wording — *"the defect is … 'this doc comment attaches to no declaration' … and so does any sixth nobody has
+ * thought of yet"* — named a defect strictly WIDER than the rule implemented, which is the same false
+ * universality round 18 filed against this file's predecessor. The rule fires on a RUN OF TWO doc comments. A
+ * doc comment that attaches to nothing with no second one after it is invisible to it: one before a class's
+ * closing brace, one before a plain statement, one before a `return` inside a method body. [Verified by
+ * reflection: all three attach to nothing; the gate reports `violations=0`.]
+ *
+ * That is deliberate for now rather than owed. Catching them means asking "is the next significant token a
+ * DECLARATION", which needs a keyword list (`function`, `class`, `const`, `case`, `enum`, visibility modifiers,
+ * attributes, `readonly`, `static`, …) and would false-positive on the legitimate inline
+ * `/** @var Foo $x *`+`/` annotation before a `foreach` — of which this tree has three. The two-in-a-row rule has
+ * a zero false-positive rate and catches the shape that has actually recurred four rounds running. Widening it
+ * is a real option, not an impossibility; it just needs the annotation case handled first.
  *
  * `--dump-rules` reports the SEPARATOR token set and the meta-suite generates one case per entry from it, so
  * deleting an entry deletes its own case. That wiring was CLAIMED here for one commit while nothing consumed
