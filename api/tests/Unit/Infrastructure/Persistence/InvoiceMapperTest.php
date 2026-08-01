@@ -302,6 +302,36 @@ final class InvoiceMapperTest extends TestCase
     }
 
     /**
+     * An ISSUED document with NO LINES must be refused on hydration, exactly as `issue()` refuses to create one.
+     *
+     * `fromPersistedState()` guarded a missing number and not missing lines, and the stated rationale for the number
+     * guard applies verbatim here: *"it fails at the boundary instead of surfacing later as an invoice with no number
+     * on a PDF"*. This case is strictly worse — it surfaces as an invoice with **total 0.000** on a PDF.
+     *
+     * Reachable through the owed repository, whose docblock says a document is "rewritten whole on every save": a
+     * delete-then-insert of line rows that half-commits, or a line query whose tenant binding differs from the
+     * parent's (`set_config(..., true)` is transaction-local and `document_line` carries its own policy), leaves the
+     * parent present and the children gone. Every later read is then a silent zero invoice.
+     */
+    public function testHydrationRefusesAnIssuedDocumentWithNoLines(): void
+    {
+        $tnd = Currency::of('TND');
+        $mapper = new InvoiceMapper();
+        $tenant = TenantId::fromString(self::COMPANY);
+        $issued = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41));
+
+        [$document, , $charges] = $mapper->toRows($tenant, self::identity(), $issued);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/no lines/');
+
+        // The children lost, the parent kept -- the half-committed rewrite described above.
+        $mapper->toAggregate($tenant, [$document, [], $charges]);
+    }
+
+    /**
      * A non-invoice type must be refused in BOTH directions.
      *
      * One table holds all four document types. Writing an `Invoice` under another type files its number in that

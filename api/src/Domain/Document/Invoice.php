@@ -121,9 +121,25 @@ final readonly class Invoice
      * and why `scripts/gates/` has no business seeing it called from `UI/` or `Application/`.
      *
      * The lines and charges are NOT bypassed. `DocumentLine` and `FixedCharge` have public constructors and
-     * re-validate on the way in, which is deliberate rather than an inconsistency: their bounds are pinned to the
-     * column types (`NUMERIC(21,6)` matches `MAX_INTEGER_DIGITS` 15 + `MAX_SCALE` 6), so the column cannot hold a
-     * value the constructor would refuse. The guard-tightening hazard above simply does not arise for them.
+     * re-validate on the way in, which is deliberate rather than an inconsistency: their PER-LINE bounds are pinned
+     * to the column types (`NUMERIC(21,6)` matches `MAX_INTEGER_DIGITS` 15 + `MAX_SCALE` 6), so the column cannot
+     * hold a value the constructor would refuse, and the guard-tightening hazard above does not arise for THOSE.
+     *
+     * **WHAT IS DELIBERATELY NOT RE-CHECKED, stated because the previous version of this paragraph said the hazard
+     * "simply does not arise for them" full stop — which was false and is the kind of sentence this project has
+     * recorded five times as the expensive sort of error, since a documented impossibility gets read once and never
+     * re-tested.** `withLine()` enforces three AGGREGATE invariants that no column type can pin, and this factory
+     * re-checks none of them: the line's currency matching the document's, `assertRoomFor()` against
+     * {@see self::MAX_LINES}, and `totallable()`. Round 22 got 1005 lines, a foreign-currency line and an
+     * untotallable document through here.
+     *
+     * That is accepted for two of the three and guarded for the third, and the split is on REACHABILITY rather than
+     * severity. Currency mismatch is unreachable through `InvoiceMapper`, which builds every `Money` from the
+     * document's own currency column — so re-checking it would cost a loop over every line on every read to catch
+     * nothing. The line cap and totallability are reachable only by a direct write to the database, which is outside
+     * this domain's threat model and inside `schema-tenancy.php`'s. **An issued document with NO LINES is guarded
+     * below**, because that one is reachable through the ordinary repository path — a half-committed rewrite — and
+     * it renders as an invoice whose total is 0.000.
      *
      * @param list<DocumentLine> $lines in persisted position order
      * @param list<FixedCharge> $fixedCharges in persisted position order
@@ -151,6 +167,25 @@ final readonly class Invoice
                 'An %s document must carry its number — it is allocated at issue and kept forever afterwards, '
                 . 'including once cancelled. A null here means the column was lost, which destroys the audit '
                 . 'trail a tax authority reads.',
+                $state->value,
+            ));
+        }
+
+        // AN ISSUED DOCUMENT MUST HAVE CONTENT. `issue()` refuses to create one from an empty draft
+        // (`DocumentCannotBeIssued`), and the same document must not be able to COME BACK empty. The rationale is the
+        // one the number guard above gives: it fails at the boundary rather than surfacing later on a PDF -- and this
+        // is the worse surface, because the document renders with a total of 0.000 and looks finished.
+        //
+        // Reachable through the ordinary repository path rather than only by hand: a document is rewritten whole on
+        // save, so a delete-then-insert of line rows that half-commits, or a line query bound to a different tenant
+        // than its parent (`set_config(..., true)` is transaction-local and `document_line` carries its own policy),
+        // leaves the parent row present and the children gone.
+        if (DocumentState::Draft !== $state && [] === $lines) {
+            throw new \LogicException(\sprintf(
+                'An %s document has no lines. `issue()` refuses to create one from an empty draft, so a persisted '
+                . 'document that comes back empty means its line rows were lost — a half-committed rewrite, or a '
+                . 'query whose tenant binding differed from its parent\'s. It would render as an invoice whose '
+                . 'total is zero, which looks finished rather than broken.',
                 $state->value,
             ));
         }
