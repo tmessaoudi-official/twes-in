@@ -156,10 +156,37 @@ final class InvoiceMapperTest extends TestCase
         foreach ($invoice->lines() as $position => $line) {
             $restoredLine = $restored->lines()[$position];
 
-            // The DECIMAL STRING, not a float and not a loose comparison. `assertSame` on the string is what pins
-            // scale: '0.100' and '0.1' are the same number and only one of them is TND's three decimals, so an
-            // equality that accepted both would let the mapper silently renormalise a legal amount.
-            self::assertSame($line->quantity(), $restoredLine->quantity(), "line {$position} quantity");
+            // QUANTITY IS COMPARED NUMERICALLY, and MONEY BY EXACT STRING. The asymmetry is deliberate and the
+            // previous version of this had it wrong in a way that only a real database exposes.
+            //
+            // It used to `assertSame` the quantity string with a comment claiming that "pins scale". In this
+            // in-memory test it passes; in production it is FALSE. `DocumentLine` stores the quantity verbatim, so
+            // `'2'` stays `'2'`, and `NUMERIC(21,6)` returns `'2.000000'` — the same number, a different string.
+            // Round 22 measured it. So the assertion pinned nothing and would have failed the moment a real
+            // round-trip test existed, which is the worst kind of green.
+            //
+            // TWO LEVELS, and conflating them is what made the original comment wrong. IN MEMORY the mapper must be
+            // an IDENTITY -- nothing re-scales, so `toRows()` → `toAggregate()` must return the same string, and the
+            // whole-object backstop below enforces exactly that. A mutant re-scaling with `bcadd(…, 6)` is caught
+            // there, correctly: that is the MAPPER renormalising, which it must never do. What is NOT stable is a
+            // round trip through PostgreSQL, where `NUMERIC(21,6)` does the re-scaling.
+            //
+            // So `bccomp` here is deliberately the weaker of the two, and it is the right strength for THIS
+            // assertion: it is the one the repository's integration test will reuse against a real column, where
+            // insisting on the string would fail on correct code. The identity property is not lost — the backstop
+            // holds it.
+            //
+            // Ruled 2026-08-01: quantity representation is NOT stable across a DATABASE round trip; only its VALUE
+            // is.
+            // Scale is semantically meaningful for MONEY — it is the currency's minor unit, and '0.100' TND is three
+            // decimals by definition — and meaningless for a COUNT of things. Hence `bccomp` here and `assertSame`
+            // on every `Money` amount below. The obligation this creates lives in Wave 4: the PDF renderer must
+            // FORMAT quantity, never print the raw string, or an invoice reads "2.000000 ×".
+            self::assertSame(
+                0,
+                bccomp($line->quantity(), $restoredLine->quantity(), DocumentLine::MAX_SCALE),
+                "line {$position} quantity (numerically: representation is deliberately not pinned)",
+            );
             self::assertSame(
                 $line->unitNet()->amount(),
                 $restoredLine->unitNet()->amount(),

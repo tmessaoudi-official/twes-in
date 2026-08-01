@@ -11,6 +11,40 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
+- [2026-08-01 18:00] AGREED: **quantity representation is NOT stable across a save/reload; only its VALUE is.**
+  `DocumentLine` stores the quantity string verbatim and `NUMERIC(21,6)` returns it padded, so `'2'` comes back
+  `'2.000000'`. Accepted rather than normalised, because **scale is semantically meaningful for MONEY and meaningless
+  for a COUNT**: `'0.100'` TND is three decimals by definition, while `2` and `2.000000` are the same number of
+  things. Rejected: normalising on write (changes a domain value object's behaviour so `'2'` returns padded even with
+  no database) and normalising on read (trimming guesses — `'2.5'` and `'2.500000'` are both plausible inputs).
+  **TWO LEVELS, and conflating them is what made the original test comment wrong** (found while mutation-testing the
+  fix): IN MEMORY the mapper must be an IDENTITY, since nothing re-scales — a mutant renormalising with
+  `bcadd(…, 6)` is caught by the whole-object backstop, correctly, because that is the MAPPER changing a value it
+  was handed. What is unstable is a round trip through POSTGRESQL, where `NUMERIC(21,6)` re-scales. So the
+  per-field `bccomp` is deliberately the weaker of the two and is the right strength for the assertion the
+  repository's integration test will reuse against a real column; the identity property is held by the backstop.
+  Two obligations follow. **(a)** `InvoiceMapperTest` compares quantity with `bccomp` and money with `assertSame`;
+  its previous `assertSame` on the quantity string carried a comment claiming it "pins scale", which passed
+  in-memory and was FALSE in production — round 22 measured it. **(b) WAVE 4 OWES IT: the PDF renderer must FORMAT
+  quantity, never print the raw string**, or an issued invoice reads `2.000000 ×`. That is the only place the
+  instability becomes user-visible, and it is where the byte-identical re-download guarantee actually bites.
+- [2026-08-01 18:00] AGREED: **the RENDERED document number is persisted alongside the sequence** — resolving item 3
+  of § "Awaiting the developer" and the contradiction between two adjacent rows of this plan. One column. The
+  SEQUENCE remains the identity for ordering and the `(company_id, type, number)` uniqueness scope; the STRING makes
+  re-download byte-identical forever, so an administrator widening `NumberPattern` from 7 to 8 cannot re-render
+  invoice 41 as `00000041` on a document a client already holds. Rejected: snapshotting the pattern per document
+  (equivalent guarantee, more indirection) and ruling rendering presentational (the cheaper reading, and unfixable
+  once real invoices exist — the same class as the gapless sequence and money-is-never-a-float).
+  **OWED, and deliberately not started here:** a migration adding the column, `DocumentRow`, the mapper writing and
+  reading it, and the round-trip case. `InvoiceMapper`'s class docblock states the hazard at the line that changes.
+- [2026-08-01 18:00] AGREED: **certification rounds PAUSE until the behavioural suite lands**, then one MAXIMAL round
+  against the new shape. Rationale, and it is specific rather than fatigue: **four of round 22's six P0s are in code
+  this plan's 16:00 ruling says to DELETE.** Reviewing axes with no future is the expensive kind of thorough, and the
+  risk moves to the replacement the moment it exists. This is also the honest answer to the tier's own 5-round cap,
+  which 22 rounds have long passed: the loop was not converging because each round reviewed a fresh layer of
+  catalogue inference, which is the thing being removed. NOT a relaxation of the tier — the round against the
+  behavioural suite is MAXIMAL, and the quality gate remains the floor throughout.
+
 - [2026-08-01 16:00] AGREED: **the schema gate is split by DISCOVERY versus VERDICT, and the shape-enumeration
   judgements are DELETED rather than fixed** (developer ruling, after being asked to challenge the alternatives).
   Round 22 produced SIX P0s in the gate while the schema it guards survived every attack both security lenses could
@@ -1461,7 +1495,7 @@ P0 of this round was found by a behavioural probe and none by reading catalogues
 | R22-10 | **Nothing asserted the mapper stamps the tenant.** `company_id` is write-only, so a round trip is a fixed point of any transformation touching only write-only fields — **no round-trip assertion can ever pin one**. Three assignments mutated to a foreign uuid kept 588 tests green | **P1** | **CLOSED** `030550e` — direct row-level assertions |
 | R22-11 | **The charge `usort` was unpinned, and the commit message claimed otherwise.** The order test reversed `$rows[2]` on an invoice holding NO charges, so `array_reverse([])` made it vacuous; "1 failure" was true of the line half only | **P1** | **CLOSED** `030550e` — three charges, order asserted |
 | R22-12 | **Neither direction asserted the document type.** One table holds all four; an `Invoice` written under `type='quote'` files its number in the quote sequence, leaving a permanent hole in the gapless INVOICE sequence. Reading, a query missing `AND type='invoice'` paired an `Invoice` with a `Quote` identity | **P1** | **CLOSED** `030550e` — refused both ways |
-| R22-13 | **The quantity-scale assertion is false in production.** `assertSame($line->quantity(), …)` with a comment saying it "pins scale" is a pure in-memory identity; `DocumentLine` stores the string verbatim and `NUMERIC(21,6)` coerces `'2'` → `'2.000000'`. `assertEquals` is loose (`'2' == '2.000000'`), so the backstop is blind to exactly the renormalisation the per-field assertion was written to catch. Money is unaffected — `Money::of()`'s rescale absorbs it | **P1** | **OPEN** — belongs to the repository's integration test; either normalise on write or state that quantity representation is not stable |
+| R22-13 | **The quantity-scale assertion is false in production.** `assertSame($line->quantity(), …)` with a comment saying it "pins scale" is a pure in-memory identity; `DocumentLine` stores the string verbatim and `NUMERIC(21,6)` coerces `'2'` → `'2.000000'`. `assertEquals` is loose (`'2' == '2.000000'`), so the backstop is blind to exactly the renormalisation the per-field assertion was written to catch. Money is unaffected — `Money::of()`'s rescale absorbs it | **P1** | **CLOSED** — RULED (18:00): representation is not stable, only the value is; scale is meaningful for money and not for a count. The test now uses `bccomp` for quantity and `assertSame` for money, and Wave 4 owes the PDF renderer FORMATTING quantity rather than printing the raw string |
 | R22-14 | **`fromPersistedState()` bypasses AGGREGATE invariants, and the docblock says the hazard "does not arise".** Per-line bounds are pinned to column types; `withLine()` additionally enforces currency match, `MAX_LINES` and totallability, and none is re-checked. Accepted 1005 lines, an EMPTY ISSUED invoice (total 0.000 on a PDF), a foreign-currency line and an untotallable document | **P1** | **CLOSED** — docblock narrowed to PER-LINE bounds, with the three aggregate invariants it does NOT re-check named explicitly and the split justified on REACHABILITY: currency mismatch is unreachable through the mapper (it builds every Money from the document currency column), the line cap and totallability are reachable only by a direct database write, and the EMPTY ISSUED case is now GUARDED because it is reachable through the ordinary repository path — a half-committed rewrite — and renders as an invoice whose total is 0.000, which looks finished |
 | R22-15 | **The mapper landed and three surfaces still list it as owed** — `CLAUDE.md` twice, this plan once. The commit message itself said "still owed: the Doctrine repository", so the author knew | **P1** | **CLOSED** below |
 | R22-16 | **`composer gate` fails at `gate:schema`, third in the chain, not at `gate:static`** — and the documented `TWES_TEST_DSN` fallback names PHPUnit `<env>` entries invisible to a shell, pointing at an unmigrated database. Also needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all here | **P1** | **CLOSED** below |
@@ -1856,10 +1890,13 @@ kernel, because it feeds line pricing. Non-negotiable regardless of the open dec
 selling price is snapshotted onto the invoice line** at issue time. A later change to a product's cost
 or profit rate must never retroactively alter an issued document.
 
-## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **THREE ITEMS ARE OPEN**
+## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **TWO ITEMS ARE OPEN**
 
-**3. THE RENDERED DOCUMENT NUMBER IS NOT REPRODUCIBLE FROM ITS ROW** (round 22, R22-24 — and it had no row here
-until then, so a reader saw the trade as settled). `DocumentNumber` is *(type, pattern, sequence)*. The row stores
+**3. ~~THE RENDERED DOCUMENT NUMBER IS NOT REPRODUCIBLE FROM ITS ROW~~ — RULED 2026-08-01 18:00: the rendered
+string is PERSISTED alongside the sequence.** See the Decisions Log. Kept here with its reasoning rather than
+deleted, because the IMPLEMENTATION is still owed — a migration column, `DocumentRow`, both mapper directions and a
+round-trip case — and because the reasoning is what a future reader needs in order not to reopen it. Original
+statement of the problem: `DocumentNumber` is *(type, pattern, sequence)*. The row stores
 type and sequence; `NumberPattern` is per-tenant configuration on a settings table no wave has built, so
 `InvoiceMapper` takes it as a constructor dependency and defaults to width 7. An administrator widening that to 8
 re-renders an already-issued invoice as `00000041` instead of `0000041` — **a different number on a legal document a
