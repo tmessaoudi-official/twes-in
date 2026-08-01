@@ -148,6 +148,35 @@ try {
     exit(1);
 }
 
+/*
+ * THE RUNTIME ROLE MUST EXIST, checked before anything else uses it.
+ *
+ * Both assertions that reference this role degrade when the name is wrong, and in OPPOSITE directions -- which is
+ * what makes a wrong name worse than an obviously broken one. `$row['owner'] === $runtimeRole` simply never
+ * matches, so the ownership axis reports clean over a schema it never checked; `has_table_privilege('typo', …)`
+ * raises SQLSTATE 42704 and the gate dies with an uncaught PDOException and exit 255. One axis lies, the other
+ * crashes, and a crash is indistinguishable from a detection to anything reading exit codes.
+ *
+ * It is easy to get wrong rather than a theoretical concern: the name falls back through
+ * `TWES_SCHEMA_RUNTIME_ROLE`, then `TWES_TEST_DB_USER`, then the literal `twes`. Any deployment whose runtime role
+ * is called something else and sets neither variable silently checks a role that does not exist.
+ */
+$roleExists = $connection->prepare('SELECT true FROM pg_roles WHERE rolname = ?');
+$roleExists->execute([$runtimeRole]);
+
+if (false === $roleExists->fetchColumn()) {
+    fwrite(STDERR, sprintf(
+        "schema-tenancy: FAIL — the runtime role \"%s\" does not exist in this database.\n"
+        . "  Both runtime-role assertions here are named after it: a role that does not exist can never be found\n"
+        . "  owning a table, so the ownership axis would report CLEAN over a schema it never checked, while the\n"
+        . "  TRUNCATE probe would raise and exit 255. Set TWES_SCHEMA_RUNTIME_ROLE to the role the application\n"
+        . "  actually connects as — it falls back to TWES_TEST_DB_USER and then to the literal \"twes\".\n",
+        $runtimeRole,
+    ));
+
+    exit(1);
+}
+
 $canonical = PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
 $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
 

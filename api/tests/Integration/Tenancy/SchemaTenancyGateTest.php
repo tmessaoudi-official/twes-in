@@ -103,6 +103,25 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /**
+     * A runtime role that does not exist must be a FAILURE, not a clean run.
+     *
+     * Both of this gate's runtime-role assertions degrade silently or violently when the name is wrong, and in
+     * opposite directions: `$row['owner'] === $runtimeRole` simply never matches, so the ownership axis reports
+     * clean on a schema it never checked, while `has_table_privilege('typo', …)` raises and the gate dies. A
+     * silent pass on a security axis is the shape CLAUDE.md § Gotchas records repeatedly, and the name is easy to
+     * get wrong: it falls back through `TWES_SCHEMA_RUNTIME_ROLE`, then `TWES_TEST_DB_USER`, then the literal
+     * `twes`, so any deployment whose runtime role is called something else and sets neither variable lands here.
+     */
+    public function testTheGateRefusesARuntimeRoleThatDoesNotExist(): void
+    {
+        [$status, $output] = self::runGate('twes_no_such_role_exists');
+
+        self::assertSame(1, $status, "A non-existent runtime role must fail the gate, not pass it:\n" . $output);
+        self::assertStringContainsString('twes_no_such_role_exists', $output);
+        self::assertStringContainsString('does not exist', $output);
+    }
+
+    /**
      * @param list<string> $mutation SQL that breaks the schema in exactly one way
      * @param list<string> $revert SQL restoring it
      */
@@ -223,14 +242,14 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /** @return array{int, string} */
-    private static function runGate(): array
+    private static function runGate(?string $runtimeRole = null): array
     {
         $command = \sprintf(
             'TWES_SCHEMA_DSN=%s TWES_SCHEMA_USER=%s TWES_SCHEMA_PASSWORD=%s TWES_SCHEMA_RUNTIME_ROLE=%s php %s 2>&1',
             escapeshellarg(\sprintf('pgsql:host=%s;port=%s;dbname=%s', self::host(), self::port(), self::DATABASE)),
             escapeshellarg(self::superuserName()),
             escapeshellarg(self::superuserPassword()),
-            escapeshellarg(self::runtimeRole()),
+            escapeshellarg($runtimeRole ?? self::runtimeRole()),
             escapeshellarg(\dirname(__DIR__, 4) . '/scripts/gates/schema-tenancy.php'),
         );
         exec($command, $output, $status);
