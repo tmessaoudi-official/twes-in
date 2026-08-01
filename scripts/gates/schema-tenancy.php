@@ -11,51 +11,62 @@
 declare(strict_types=1);
 
 /*
- * SCHEMA TENANCY: every tenant-owned table is actually isolated, checked against a REAL MIGRATED SCHEMA.
+ * SCHEMA TENANCY: the two things about a migrated schema that no ATTACK can observe.
  *
- * WHY THIS EXISTS, and why it is the one gate here that needs a database. Every other gate in this directory
- * reads CODE. None reads the SCHEMA — so a migration that simply omits `ENABLE ROW LEVEL SECURITY` produces a
- * tenant-owned table that is completely unpoliced, and **no existing check can see it**:
- * `assertPolicedTablesAreBeyondThisRolesReach()` derives its subject set from tables that already HAVE row
- * security, so a table without it is invisible to that check by construction. Round 7 filed that precisely, and
- * `build-waves.plan.md` makes this gate a Wave 1 BLOCKER for it — the first migration does not land without it.
+ * **THIS GATE WAS DELIBERATELY MADE SMALLER** (developer ruling, 2026-08-01, recorded in
+ * `docs/plans/build-waves.plan.md`). It used to assert nine properties by reading catalogue metadata. Certification
+ * round 22 produced SIX P0s in those checks while the schema they guard survived every attack both security lenses
+ * could build -- every confirmed breach was in the checker, none in the thing checked. The unifying diagnosis: each
+ * P0 came from **inferring a property from a description** instead of **observing the thing itself**. `indkey` vs
+ * `indnkeyatts`; `contype` missing `'x'`; view-owner semantics; `pg_roles`' own row versus membership;
+ * `text::regclass` versus the oid already in hand.
  *
- * It could not be written until there was a migrated schema to check, and the plan says so explicitly: *"a gate
- * with nothing to check is untestable"*. That is now false, so here it is.
+ * So enumerating implementation SHAPES was abandoned -- it is unbounded, and PostgreSQL keeps adding to it -- in
+ * favour of enumerating attacker GOALS, which is not.
+ * **`api/tests/Integration/Tenancy/BehaviouralIsolationTest.php` is now the authority** on whether tenant data is
+ * isolated: it seeds two tenants and, as the restricted runtime role, attempts to read, write, modify, re-parent,
+ * delete, TRUNCATE, escalate into and probe every relation this gate's discovery finds. Every one of those attacks
+ * is proven load-bearing by its own mutant. Four of round 22's six P0s stopped existing rather than being patched,
+ * and a probe catches `EXCLUDE`, `INCLUDE` and whatever PostgreSQL 19 adds without naming any of them.
  *
- * WHAT IT ASSERTS, per tenant-owned table:
- *   1. `relrowsecurity` — row security is enabled at all;
- *   2. `relforcerowsecurity` — it applies to the table's OWNER too, without which a migration connection reads
- *      every tenant;
- *   3. a PERMISSIVE policy whose USING and WITH CHECK are both the canonical tenant predicate, and no permissive
- *      policy that is not — a permissive policy is ORed, so one unscoped one reopens the whole table;
- *   4. the tenant column is NOT NULL — a NULL `company_id` matches no tenant under the canonical predicate, so
- *      the row becomes invisible to everyone including its owner, which is data loss that looks like isolation;
- *   5. the runtime role does not hold TRUNCATE on it. TRUNCATE ignores row security entirely.
+ * WHAT REMAINS HERE, and why each one genuinely cannot be attacked:
  *
- * AND ONE THING IT ASSERTS ON EVERY TABLE, tenant-owned or not:
- *   6. the runtime role does not OWN it. `FORCE` stops an owner *skipping* policies, not *removing* them: an
- *      owner can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in one statement. That was a real P0 (round 4)
- *      found asserted in prose and enforced nowhere.
+ *   1. **The tenant column is NOT NULL.** Under the canonical predicate a NULL tenant matches NOBODY, so such a row
+ *      is invisible to every tenant including the one that wrote it. That is data loss wearing the appearance of
+ *      isolation, and it is the one failure mode no cross-tenant read would ever reveal -- an attacker looking for
+ *      another tenant's rows and a legitimate owner looking for its own both see nothing, which is exactly what a
+ *      correctly isolated table looks like from outside.
  *
- *      **This one is deliberately NOT scoped to tenant-owned tables, and that scoping was a real gap.** A table
- *      with no tenant column leaks nothing by itself, so the obvious reading is that its owner does not matter.
- *      What matters is what it PROVES about the connection that created it: if migrations run as the runtime
- *      role, the next tenant-owned table they create is owned by the runtime role. That is not hypothetical —
- *      `doctrine_migration_versions` in the local `twes_in` database was exactly this on 2026-08-01, because
- *      `.env`'s `DATABASE_URL` named the runtime role while the comment beside it claimed migrations used a
- *      different one. The gate skipped it, having classified it as "not tenant data, counted not asserted".
- *      A precursor to a P0 is worth refusing while it is still only a precursor.
+ *   2. **The runtime role does not OWN any relation.** `FORCE` stops an owner *skipping* policies, not *removing*
+ *      them: an owner can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in one statement. A probe cannot see this,
+ *      because the dangerous thing has not happened yet -- the schema behaves perfectly until someone runs that
+ *      statement. **Deliberately NOT scoped to tenant-owned relations**, for the same reason: a table with no
+ *      tenant column leaks nothing itself, but its owner PROVES which role migrations run as, so the next
+ *      tenant-owned table they create will be owned by the runtime role too. That is not hypothetical --
+ *      `doctrine_migration_versions` in the local `twes_in` database was exactly this on 2026-08-01. A precursor to
+ *      a P0 is worth refusing while it is still only a precursor.
  *
- * The canonical predicate is not written out here. It comes from `canonicalPolicyExpression()`, the same source
- * the migration uses through `policySqlFor()` and the same one the runtime checker compares against — so all
- * three agree by construction rather than by review. Round 12 found a policy that MENTIONED `twes.tenant_id`
- * without isolating by it, which is exactly what a second copy of the predicate invites.
+ * Plus DISCOVERY itself, which is the input the behavioural suite consumes: which relations hold tenant data, and a
+ * REFUSAL of any relation it cannot classify. A table carrying `tenant_id` or `org_id` but no `company_id` is
+ * neither obviously tenant-owned nor obviously not, so it is refused with the two ways to resolve it. Skipping
+ * would be the shape `CLAUDE.md` § Gotchas records four times over: a control that silently does not run is worse
+ * than one openly owed.
  *
- * **IT FAILS ON A TABLE IT CANNOT CLASSIFY, rather than skipping.** A table with a column that plausibly MEANS
- * the tenant but is not `company_id` — `tenant_id`, `org_id` — is neither obviously tenant-owned nor obviously
- * not, so it is refused with the two ways to resolve it. Skipping would be the fourth instance of the shape
- * CLAUDE.md § Gotchas records: a control that silently does not run is worse than one openly owed.
+ * WHAT WAS DELETED, listed so nobody re-adds it believing it was an oversight. Every item is now proven covered by
+ * a mutant-killed attack in the behavioural suite, and each was a source of false verdicts here:
+ *   - composite-key shapes (PRIMARY KEY / UNIQUE / unique index / FOREIGN KEY containing the tenant column) --
+ *     replaced by inserting tenant A's row verbatim under tenant B and requiring it to SUCCEED;
+ *   - relkind semantics (a materialized view or foreign table cannot be policed; a view is safe only when it is
+ *     `security_invoker` or its owner cannot bypass) -- replaced by reading across tenants from whatever it is;
+ *   - role attributes (`rolsuper`, `rolbypassrls`, `rolreplication`, reachable by membership) -- replaced by
+ *     attempting `SET ROLE` into every reachable role and then trying to read;
+ *   - `relrowsecurity`, `relforcerowsecurity`, policy canonicality, `polcmd` and `polroles` -- replaced by the
+ *     read/write/re-parent/delete attacks and by the POSITIVE control, which fails if the runtime role cannot read
+ *     its own rows;
+ *   - the TRUNCATE privilege -- replaced by attempting `TRUNCATE`, then `TRUNCATE ... CASCADE`.
+ *
+ * It still needs a database, which is inherent: a schema cannot be read from source. It FAILS rather than skipping
+ * when it cannot look, for the reason the whole of this file exists.
  */
 
 const REPO_ROOT = __DIR__ . '/../..';
@@ -106,11 +117,24 @@ const TENANT_COLUMN_LOOKALIKES = [
     'organization_id',
 ];
 
+/**
+ * Relation kinds that can carry a NOT NULL constraint at all.
+ *
+ * A materialized view, a foreign table and a view do NOT: `pg_attribute.attnotnull` is false on their columns
+ * whatever the underlying table says, so applying assertion 1 to them would report a violation on every correct
+ * matview in the schema. The OWNERSHIP assertion is deliberately not scoped this way — see the file docblock.
+ */
+const NOT_NULL_CAPABLE_RELKINDS = ['r', 'p'];
+
 if (($argv[1] ?? '') === '--dump-rules') {
     printf("tenant_column\t%s\n", PostgresRowLevelSecurityIsolation::TENANT_COLUMN);
 
     foreach (TENANT_COLUMN_LOOKALIKES as $lookalike) {
         printf("lookalike\t%s\n", $lookalike);
+    }
+
+    foreach (NOT_NULL_CAPABLE_RELKINDS as $relkind) {
+        printf("not_null_capable_relkind\t%s\n", $relkind);
     }
 
     exit(0);
@@ -127,9 +151,10 @@ if (!is_string($dsn) || '' === $dsn || !is_string($user) || '' === $user) {
         . "  satisfied by reading code. Set TWES_SCHEMA_DSN and TWES_SCHEMA_USER (TWES_SCHEMA_PASSWORD if the\n"
         . "  role needs one), or let it fall back to the integration suite's TWES_TEST_DSN /\n"
         . "  TWES_TEST_DB_SUPERUSER pair.\n"
-        . "  It FAILS rather than skipping, deliberately: an unpoliced tenant table is invisible to every other\n"
-        . "  check in this directory, so a skipped run here reports a clean bill over the one thing nothing else\n"
-        . "  can see. CLAUDE.md § Gotchas records four separate controls that silently did not run.\n");
+        . "  It FAILS rather than skipping, deliberately: a NULLABLE tenant column is invisible to every other\n"
+        . "  check in this repository — including the behavioural attack suite, since a row nobody can see looks\n"
+        . "  exactly like a row nobody may see. CLAUDE.md § Gotchas records four controls that silently did not\n"
+        . "  run.\n");
 
     exit(1);
 }
@@ -139,7 +164,7 @@ try {
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
 } catch (PDOException $failure) {
-    fwrite(STDERR, "schema-tenancy: FAIL — could not connect: " . $failure->getMessage() . "\n"
+    fwrite(STDERR, 'schema-tenancy: FAIL — could not connect: ' . $failure->getMessage() . "\n"
         . "  Wrong credentials produce the same silent green as missing ones, so this fails rather than\n"
         . "  skipping. Note this container runs PostgreSQL clusters 16 and 18 BOTH configured on 5432, so a\n"
         . "  `password authentication failed` here may mean the wrong cluster won the port rather than a wrong\n"
@@ -151,11 +176,10 @@ try {
 /*
  * THE RUNTIME ROLE MUST EXIST, checked before anything else uses it.
  *
- * Both assertions that reference this role degrade when the name is wrong, and in OPPOSITE directions -- which is
- * what makes a wrong name worse than an obviously broken one. `$row['owner'] === $runtimeRole` simply never
- * matches, so the ownership axis reports clean over a schema it never checked; `has_table_privilege('typo', …)`
- * raises SQLSTATE 42704 and the gate dies with an uncaught PDOException and exit 255. One axis lies, the other
- * crashes, and a crash is indistinguishable from a detection to anything reading exit codes.
+ * The ownership assertion is named after this role, and it degrades SILENTLY when the name is wrong: a role that
+ * does not exist can never be found owning anything, so `roleIsReachableBySql()` answers false for every relation
+ * and the axis reports clean over a schema it never checked. A silent pass on a security axis is the shape
+ * CLAUDE.md § Gotchas records repeatedly.
  *
  * It is easy to get wrong rather than a theoretical concern: the name falls back through
  * `TWES_SCHEMA_RUNTIME_ROLE`, then `TWES_TEST_DB_USER`, then the literal `twes`. Any deployment whose runtime role
@@ -163,165 +187,51 @@ try {
  */
 $roleExists = $connection->prepare('SELECT true FROM pg_roles WHERE rolname = ?');
 $roleExists->execute([$runtimeRole]);
-$role = false === $roleExists->fetchColumn() ? false : [];
 
-if (false === $role) {
+if (false === $roleExists->fetchColumn()) {
     fwrite(STDERR, sprintf(
         "schema-tenancy: FAIL — the runtime role \"%s\" does not exist in this database.\n"
-        . "  Both runtime-role assertions here are named after it: a role that does not exist can never be found\n"
-        . "  owning a table, so the ownership axis would report CLEAN over a schema it never checked, while the\n"
-        . "  TRUNCATE probe would raise and exit 255. Set TWES_SCHEMA_RUNTIME_ROLE to the role the application\n"
-        . "  actually connects as — it falls back to TWES_TEST_DB_USER and then to the literal \"twes\".\n",
+        . "  The ownership assertion here is named after it, and a role that does not exist can never be found\n"
+        . "  owning a relation — so that axis would report CLEAN over a schema it never checked. Set\n"
+        . "  TWES_SCHEMA_RUNTIME_ROLE to the role the application actually connects as; it falls back to\n"
+        . "  TWES_TEST_DB_USER and then to the literal \"twes\".\n",
         $runtimeRole,
     ));
 
     exit(1);
 }
 
-/*
- * AND THE ROLE MUST BE SUBJECT TO POLICIES AT ALL, which existing does not imply.
- *
- * The guard above was added to catch a wrong role NAME and stopped there, so it asked whether the role was SPELLED
- * correctly and not whether it was governed by the policies this gate then certifies. A reviewer set `BYPASSRLS`
- * and watched the gate report "enabled, FORCED, canonically policed, NOT NULL, and beyond … ownership and
- * TRUNCATE" over a role that reads every tenant with every policy in place.
- *
- * `roleCanBypassPolicies()` rather than three comparisons here: it already exists, it already covers REPLICATION
- * -- which goes AROUND the query layer policies live in rather than defeating them, via `pg_basebackup` -- and a
- * second copy of that judgement is the exact mistake this commit is undoing two axes over.
- */
-// A single-quoted SQL literal for the runtime role, built ONCE. Every reachability predicate below is anchored on
-// the NAMED role rather than on this connection, because this connection is a superuser and every "can you reach
-// it" question would otherwise answer yes.
+// A single-quoted SQL literal for the runtime role. The reachability predicate below is anchored on the NAMED role
+// rather than on this connection, because this connection is a superuser and every "can you reach it" question
+// would otherwise answer yes.
 $runtimeRoleLiteral = "'" . str_replace("'", "''", $runtimeRole) . "'";
-
-/*
- * REACHABLE roles, not the role's OWN catalogue row. This read `WHERE rolname = ?` and checked three attributes on
- * that single row, which round 22 turned into a reproduced cross-tenant read: `rolsuper` and `rolbypassrls` are NOT
- * INHERITED, so a role that is merely a MEMBER of a superuser or BYPASSRLS role reads f/f/f in its own row, passes,
- * and reaches the privilege with one `SET ROLE`.
- *
- * `PostgresRowLevelSecurityIsolation::assertConnectionCannotBypassPolicies()` documents this exact finding as closed
- * and answers it with a membership predicate. So the gate held a SECOND, WEAKER copy of a judgement the class had
- * already got right -- which is precisely the mistake the commit that added this check claimed to be undoing two
- * axes over. `roleIsReachableBySql()` was already in scope here, used for ownership and TRUNCATE and not for this.
- *
- * The fixture provisions `twes_member` (a member of `twes_bypass`) for exactly this shape, and the test for this
- * check passed `twes_bypass` itself -- the direct attribute. A fixture that can express a dangerous shape is worth
- * nothing if the case does not use it.
- *
- * Note `pg_read_all_data` does NOT bypass row security (verified on PG18), so the answer is membership reachability
- * rather than a longer attribute list.
- */
-$bypassers = $connection->query(sprintf(
-    'SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolreplication FROM pg_roles r WHERE %s',
-    PostgresRowLevelSecurityIsolation::roleIsReachableBySql($runtimeRoleLiteral, 'r.oid'),
-));
-
-if (false === $bypassers) {
-    fwrite(STDERR, "schema-tenancy: FAIL — could not read reachable roles from pg_roles.\n");
-
-    exit(1);
-}
-
-/** @var list<array{rolname: string, rolsuper: bool|string, rolbypassrls: bool|string, rolreplication: bool|string}> $reachable */
-$reachable = $bypassers->fetchAll(PDO::FETCH_ASSOC);
-$reachableBypassers = array_values(array_filter(
-    $reachable,
-    static fn(array $r): bool => PostgresRowLevelSecurityIsolation::roleCanBypassPolicies($r),
-));
-
-if ([] !== $reachableBypassers) {
-    $named = implode(', ', array_map(
-        static fn(array $r): string => sprintf(
-            '"%s" (rolsuper=%s rolbypassrls=%s rolreplication=%s)',
-            $r['rolname'],
-            var_export($r['rolsuper'], true),
-            var_export($r['rolbypassrls'], true),
-            var_export($r['rolreplication'], true),
-        ),
-        $reachableBypassers,
-    ));
-
-    fwrite(STDERR, sprintf(
-        "schema-tenancy: FAIL — the runtime role \"%s\" IS or can SET ROLE to a role that BYPASSES"
-        . " row-level security: %s.\n"
-        . "  Every other assertion in this gate is then meaningless: policies remain in place and are simply not\n"
-        . "  applied to this role, so a schema that is genuinely isolated certifies clean while the application\n"
-        . "  reads every tenant. REPLICATION counts because it reads the heap directly through pg_basebackup,\n"
-        . "  with row security never involved — certification round 5 recovered both tenants from a base backup\n"
-        . "  taken by a role that was neither superuser nor BYPASSRLS.\n",
-        $runtimeRole,
-        $named,
-    ));
-
-    exit(1);
-}
-
-$canonical = PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
 $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
 
 $tables = $connection->query(
-    "SELECT c.relname AS table_name, "
+    'SELECT c.relname AS table_name, '
     . 'c.relkind AS kind, '
-    . "  array_to_string(coalesce(c.reloptions, '{}'), ',') AS reloptions, "
-    // Can the relation's OWNER bypass policies? For a non-`security_invoker` view, PostgreSQL checks the BASE
-    // TABLE's row security as the VIEW'S OWNER -- so this is the question that decides whether a view leaks.
-    . '  (o.rolsuper OR o.rolbypassrls OR o.rolreplication) AS owner_can_bypass, '
     . 'n.nspname AS schema_name, '
-    . 'c.relrowsecurity AS rls_enabled, '
-    . 'c.relforcerowsecurity AS forced, '
     . 'o.rolname AS owner, '
     // REACHABILITY, not string equality -- and computed by the SAME predicate the runtime checker uses, taken
     // from the class rather than rewritten here. `$row['owner'] === $runtimeRole` was a reproduced cross-tenant
-    // read: a table owned by a role the runtime role can `SET ROLE` to passed, and DISABLE ROW LEVEL SECURITY was
-    // then one statement away. A role is a member of itself, so this covers "is the owner" too.
+    // read: a relation owned by a role the runtime role can `SET ROLE` to passed, and DISABLE ROW LEVEL SECURITY
+    // was then one statement away. A role is a member of itself, so this covers "is the owner" too.
     . '(' . PostgresRowLevelSecurityIsolation::roleIsReachableBySql($runtimeRoleLiteral, 'c.relowner')
     . ') AS owner_reachable, '
-    // Likewise TRUNCATE. `has_table_privilege` resolves privileges INHERITABLY, while `SET ROLE` is authorised by
-    // MEMBERSHIP -- so a grant made WITH INHERIT FALSE is invisible to it, and a reviewer erased every tenant's
-    // rows through that gap while this gate printed "beyond … TRUNCATE". FALSE for the NULL-acl arm: a NULL acl
-    // means owner-only defaults, so a non-owner reaches nothing.
-    . '(' . PostgresRowLevelSecurityIsolation::privilegeIsReachableBySql(
-        $runtimeRoleLiteral,
-        'c.relacl',
-        'TRUNCATE',
-        false,
-    ) . ') AS truncate_reachable, '
     . '(SELECT json_agg(json_build_object('
     . "    'name', a.attname, 'not_null', a.attnotnull"
     . ' )) FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped'
-    . ') AS columns, '
-    . '(SELECT coalesce(json_agg(json_build_object('
-    . "    'name', p.polname,"
-    . "    'permissive', p.polpermissive,"
-    // polcmd and polroles, both unread until round 21. A canonical policy covering only UPDATE, or granted only
-    // to another role, left this gate printing "canonically policed" about a table the runtime role cannot use.
-    . "    'command', p.polcmd,"
-    . "    'applies_to_runtime', EXISTS ("
-    . '      SELECT 1 FROM unnest(p.polroles) AS pr(rid)'
-    // rid = 0 is PUBLIC, which every role reaches. Otherwise: can the runtime role BE or BECOME that role?
-    . '      WHERE pr.rid = 0 OR '
-    . PostgresRowLevelSecurityIsolation::roleIsReachableBySql($runtimeRoleLiteral, 'pr.rid')
-    . "    ),"
-    . "    'qual', pg_get_expr(p.polqual, p.polrelid),"
-    . "    'check', pg_get_expr(p.polwithcheck, p.polrelid)"
-    . " )), '[]') FROM pg_policy p WHERE p.polrelid = c.oid) AS policies "
+    . ') AS columns '
     . 'FROM pg_class c '
     . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
     . 'JOIN pg_roles o ON o.oid = c.relowner '
     /*
-     * EVERY non-system schema, and four relkinds -- not `nspname = 'public'` and not `('r','p')`.
+     * EVERY non-system schema, and five relkinds -- not `nspname = 'public'` and not `('r','p')`.
      *
      * Both narrowings were reproduced leaks. The old scope made this gate NARROWER than the runtime checker it
-     * exists to backstop (`nspname NOT IN ('pg_catalog','information_schema')`), so a tenant table in
-     * `reporting` was invisible to BOTH -- the runtime checker derives its subject set from tables that already
-     * have row security, so an unpoliced one is invisible to it by construction. That is this gate's entire
-     * charter, defeated one schema over.
-     *
-     * 'm' and 'f' are included in order to REFUSE them: a materialized view and a foreign table can carry no
-     * policy at all, so one holding tenant data is an unpoliced copy by construction rather than a table someone
-     * forgot to police. A reporting matview over `document` leaked both tenants while this gate printed OK.
+     * exists to backstop, so a tenant table in `reporting` was invisible to BOTH. And the OWNERSHIP assertion
+     * applies to a view and a materialized view as much as to a table: one owned by the runtime role proves the
+     * same thing about the connection that created it.
      *
      * The toast and temp guards are belt-and-braces: those hold relkinds we do not select, but a filter that
      * depends on another filter for its correctness is how the next widening reintroduces something.
@@ -338,7 +248,7 @@ if (false === $tables) {
     exit(1);
 }
 
-/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, kind: string, schema_name: string, reloptions: string, owner_can_bypass: bool|string, columns: string, policies: string}> $rows */
+/** @var list<array{table_name: string, kind: string, schema_name: string, owner: string, owner_reachable: bool|string, columns: string}> $rows */
 $rows = $tables->fetchAll(PDO::FETCH_ASSOC);
 
 $inspected = 0;
@@ -347,28 +257,29 @@ $violations = [];
 
 foreach ($rows as $row) {
     ++$inspected;
-    // SCHEMA-QUALIFIED, now that more than one schema is in scope: `archive` and `reporting.archive` are
-    // different relations and a message naming only the second half sends a reader to the wrong one.
+    // SCHEMA-QUALIFIED, since more than one schema is in scope: `archive` and `reporting.archive` are different
+    // relations and a message naming only the second half sends a reader to the wrong one.
     $table = 'public' === $row['schema_name']
         ? $row['table_name']
         : $row['schema_name'] . '.' . $row['table_name'];
 
-    // FIRST, and for EVERY table rather than only the tenant-owned ones -- see assertion 6 in this file's
-    // docblock for why a non-tenant table's owner is load-bearing. Placed before the classification branch on
-    // purpose: the two `continue`s below skip a table this check must still see, which is precisely how it came
-    // to miss a runtime-owned `doctrine_migration_versions`.
-    // `!isFalse(...)`, the fail-CLOSED direction: an unrecognised spelling must report a violation rather than
-    // wave the table through. Danger is if TRUE, so the complement of isTrue() is the wrong member here -- see the
-    // round-20 note further down on why these two are deliberate non-complements.
+    /*
+     * ASSERTION 2, FIRST and for EVERY relation rather than only the tenant-owned ones -- see the file docblock.
+     * Placed before the classification branch on purpose: the `continue`s below skip relations this check must
+     * still see, which is precisely how it came to miss a runtime-owned `doctrine_migration_versions`.
+     *
+     * `!isFalse(...)`, the fail-CLOSED direction: an unrecognised spelling must report a violation rather than
+     * wave the relation through. The danger is if TRUE, so the complement of isTrue() is the wrong member here.
+     */
     if (!isFalse($row['owner_reachable'])) {
         $violations[] = sprintf(
             '%s is OWNED by "%s", which the runtime role "%s" IS or can SET ROLE to. FORCE stops an owner '
             . 'skipping policies, not removing them: '
-            . '`ALTER TABLE %s DISABLE ROW LEVEL SECURITY` is one statement away. Migrations must run as a '
-            . 'separate owning role that is never granted to the runtime role — configure a second Doctrine '
-            . 'connection for them rather than reusing DATABASE_URL. This is refused even when the table holds '
-            . 'no tenant data, because it proves the migration connection is the runtime role, so the NEXT '
-            . 'tenant-owned table it creates will be owned by it too.',
+            . '`ALTER TABLE %s DISABLE ROW LEVEL SECURITY` is one statement away, and no attack can observe that '
+            . 'until somebody runs it. Migrations must run as a separate owning role that is never granted to the '
+            . 'runtime role — configure a second Doctrine connection for them rather than reusing DATABASE_URL. '
+            . 'This is refused even when the relation holds no tenant data, because it proves the migration '
+            . 'connection is the runtime role, so the NEXT tenant-owned table it creates will be owned by it too.',
             $table,
             $row['owner'],
             $runtimeRole,
@@ -385,10 +296,11 @@ foreach ($rows as $row) {
 
     if (!$hasTenantColumn && [] !== $lookalikes) {
         $violations[] = sprintf(
-            '%s carries %s but no "%s", so this gate cannot tell whether it holds tenant data. Either rename the '
-            . 'column to "%s" so every tenancy check can find it, or — if it genuinely is not a tenant — say so '
-            . 'by adding the table to this gate\'s reasoning. Refused rather than skipped: an unpoliced tenant '
-            . 'table is invisible to every other check here.',
+            '%s carries %s but no "%s", so neither this gate nor the behavioural attack suite can tell whether it '
+            . 'holds tenant data — and the suite attacks exactly what this discovery reports, so an unclassified '
+            . 'relation goes UNATTACKED. Either rename the column to "%s" so every tenancy check can find it, or '
+            . '— if it genuinely is not a tenant — say so by adding the relation to this gate\'s reasoning. '
+            . 'Refused rather than skipped.',
             $table,
             implode(' and ', array_map(static fn(string $c): string => '"' . $c . '"', $lookalikes)),
             $tenantColumn,
@@ -399,171 +311,22 @@ foreach ($rows as $row) {
     }
 
     if (!$hasTenantColumn) {
-        // Genuinely not tenant data -- `doctrine_migration_versions` is the obvious one. Counted, not asserted.
+        // Genuinely not tenant data -- `doctrine_migration_versions` is the obvious one. Counted, not asserted,
+        // and note assertion 2 above has ALREADY run on it.
         continue;
     }
 
     ++$tenantOwned;
 
     /*
-     * A RELKIND THAT CAN NEVER BE POLICED, refused before the RLS checks rather than by them.
+     * ASSERTION 1: the tenant column is NOT NULL.
      *
-     * `relrowsecurity` is false on a materialized view and a foreign table, so the next check would already fire
-     * -- with a message prescribing `policySqlFor()`, which is impossible here and would send a reader to spend
-     * an afternoon discovering that PostgreSQL supports no policy on either. The distinction is not pedantic: a
-     * table missing its policy is a migration someone must finish, while a matview holding tenant data is a
-     * DESIGN that cannot be made safe and has to be replaced by a policed table or a view.
-     *
-     * A matview is the dangerous one because `REFRESH` materialises rows under whichever tenant was bound at
-     * refresh time, and every later reader sees that snapshot unfiltered. A plain view (relkind 'v') is handled by
-     * the branch ABOVE rather than here, because it CAN be made safe: `security_invoker=true` evaluates the base
-     * table's policies as the caller. This comment previously claimed a view "stays scoped -- verified by a
-     * reviewer who tried to break it and could not", which was true only for a view owned by the FORCEd table's own
-     * owner; round 22 read every tenant through one owned by a BYPASSRLS role.
+     * Scoped to relkinds that can carry the constraint at all -- see NOT_NULL_CAPABLE_RELKINDS. A matview holding
+     * tenant data is a real defect, but it is one the behavioural suite reports by reading another tenant's rows
+     * out of it, which is both stronger evidence and a message a reader can act on.
      */
-    /*
-     * A PLAIN VIEW over tenant data, and this was a round-22 P0 with a docblock defending it.
-     *
-     * That docblock said a view "stays scoped -- verified by a reviewer who tried to break it and could not", so
-     * relkind 'v' was not even selected. The claim was true for exactly one owner: the FORCEd table's own. For a
-     * NON-`security_invoker` view PostgreSQL checks the base table's row security **as the VIEW'S OWNER**, so a view
-     * owned by a superuser or any `BYPASSRLS` role returns every tenant to the runtime role. FORCE binds the TABLE
-     * owner; it says nothing about a third role owning a view over it. Reproduced with a non-superuser owner.
-     *
-     * Fifth instance of this repo's rule against recording a coverage gap as an impossibility -- and the most
-     * expensive kind, because the sentence is what stops the next author looking.
-     *
-     * `security_invoker=true` is the property that makes a view safe: the base table's policies are then evaluated
-     * as the CALLER, so the view inherits the caller's tenant scope. Accepted; anything else with a bypassing owner
-     * is refused. A view whose owner CANNOT bypass is left alone, which is the narrow case that was always fine.
-     */
-    if ('v' === $row['kind']) {
-        $securityInvoker = str_contains($row['reloptions'], 'security_invoker=true')
-            || str_contains($row['reloptions'], 'security_invoker=on');
-
-        if (!$securityInvoker && !isFalse($row['owner_can_bypass'])) {
-            $violations[] = sprintf(
-                '%s is a VIEW over tenant data, owned by "%s" — a role that can bypass row-level security — and it '
-                . 'is not `security_invoker`. PostgreSQL evaluates the base table\'s policies as the VIEW\'S OWNER, '
-                . 'so this view returns EVERY tenant to any role that can select from it. FORCE binds the table\'s '
-                . 'owner and says nothing about a third role owning a view over it. Fix: '
-                . '`ALTER VIEW %s SET (security_invoker = true)`, which evaluates policies as the caller, or give '
-                . 'the view an owner that is itself subject to them.',
-                $table,
-                $row['owner'],
-                $table,
-            );
-        }
-
+    if (!in_array($row['kind'], NOT_NULL_CAPABLE_RELKINDS, true)) {
         continue;
-    }
-
-    if (in_array($row['kind'], ['m', 'f'], true)) {
-        $violations[] = sprintf(
-            '%s holds tenant data and is a %s, which cannot carry row-level security at all — PostgreSQL '
-            . 'supports no policy on one, so this is an unpoliced copy of tenant data by construction rather '
-            . 'than a relation that someone forgot to police. A REFRESH materialises rows under whichever '
-            . 'tenant was bound at the time and every later reader sees that snapshot unfiltered. Replace it '
-            . 'with a policed table, or with a plain VIEW over one — a view stays scoped, because FORCE subjects '
-            . "the view's owner to the policy and the tenant is read per query.",
-            $table,
-            'm' === $row['kind'] ? 'MATERIALIZED VIEW' : 'FOREIGN TABLE',
-        );
-
-        continue;
-    }
-
-    /*
-     * COMPOSITE KEYS: every PRIMARY KEY, UNIQUE constraint, unique INDEX and FOREIGN KEY on a tenant-owned table
-     * must include the tenant column.
-     *
-     * **This belongs in a TENANCY gate, not a modelling one, and the reason is not obvious:** uniqueness and
-     * foreign-key checks run with row-level security BYPASSED. They have to — PostgreSQL must see rows the
-     * querying tenant cannot, or a constraint would only be enforceable against rows you can already read. So a
-     * key that omits the tenant column is checked across EVERY tenant, and no policy narrows it:
-     *
-     *   - a UNIQUE index omitting it makes tenant B's insert fail because tenant A already used the value. That is
-     *     a cross-tenant existence oracle AND a denial of service on somebody else's numbering.
-     *   - a single-column FOREIGN KEY lets one tenant reference another's row, and `ON DELETE CASCADE` then
-     *     deletes across the boundary. `document_line_belongs_to_document` is composite for exactly this reason,
-     *     and the migration's own comment says so.
-     *
-     * Three round records call this "the composite-key schema gate" and rate it P0 at the first Wave 1 migration.
-     * It read no `pg_constraint` and no `pg_index` at all until round 21, so the migration got this right and
-     * nothing checked that the next one would.
-     */
-    $keys = $connection->prepare(
-        "SELECT con.conname AS name, con.contype AS kind,"
-        . ' (SELECT array_agg(att.attname ORDER BY att.attname) FROM pg_attribute att'
-        . '  WHERE att.attrelid = con.conrelid AND att.attnum = ANY(con.conkey)) AS columns'
-        . ' FROM pg_constraint con WHERE con.conrelid = ?::regclass'
-        . "   AND con.contype IN ('p', 'u', 'f')"
-        . ' UNION ALL'
-        . " SELECT ic.relname AS name, 'i' AS kind,"
-        . ' (SELECT array_agg(att.attname ORDER BY att.attname) FROM pg_attribute att'
-        . '  WHERE att.attrelid = idx.indrelid AND att.attnum = ANY(idx.indkey)) AS columns'
-        . ' FROM pg_index idx JOIN pg_class ic ON ic.oid = idx.indexrelid'
-        . ' WHERE idx.indrelid = ?::regclass AND idx.indisunique'
-        // The index BACKING a primary key or unique constraint is reported by pg_constraint already; counting it
-        // twice would report the same defect under two names.
-        . '   AND NOT EXISTS (SELECT 1 FROM pg_constraint c2 WHERE c2.conindid = idx.indexrelid)',
-    );
-    $keys->execute([$table, $table]);
-
-    /** @var list<array{name: string, kind: string, columns: ?string}> $keyRows */
-    $keyRows = $keys->fetchAll(PDO::FETCH_ASSOC);
-
-    foreach ($keyRows as $key) {
-        // A NULL column list means the catalogue gave us a key we could not resolve. Refused, not skipped: this is
-        // the axis where a silent skip means "no cross-tenant FK found" over a key never examined.
-        $keyColumns = null === $key['columns']
-            ? []
-            : array_map('trim', explode(',', trim($key['columns'], '{}')));
-
-        if (in_array($tenantColumn, $keyColumns, true)) {
-            continue;
-        }
-
-        $violations[] = sprintf(
-            '%s holds tenant data and its %s "%s" (%s) does not include "%s". Uniqueness and foreign-key checks '
-            . 'run with row-level security BYPASSED — they must, or a constraint could only be enforced against '
-            . 'rows the querying tenant can already read — so this key is checked across EVERY tenant and no '
-            . 'policy narrows it. %s',
-            $table,
-            match ($key['kind']) {
-                'p' => 'PRIMARY KEY',
-                'u' => 'UNIQUE constraint',
-                'f' => 'FOREIGN KEY',
-                default => 'UNIQUE index',
-            },
-            $key['name'],
-            [] === $keyColumns ? 'columns unreadable' : implode(', ', $keyColumns),
-            $tenantColumn,
-            'f' === $key['kind']
-                ? 'A single-column foreign key lets one tenant reference another tenant\'s row, and ON DELETE '
-                  . 'CASCADE then deletes across the boundary. Make it composite on both sides.'
-                : 'A unique key omitting the tenant makes one tenant\'s insert fail because another already used '
-                  . 'the value: a cross-tenant existence oracle, and a denial of service on their numbering.',
-        );
-    }
-
-    if (!isTrue($row['rls_enabled'])) {
-        $violations[] = sprintf(
-            '%s holds tenant data and has NO row-level security. Nothing else in this repository can see this: '
-            . 'the runtime isolation check derives its subject set from tables that already have RLS, so an '
-            . 'unpoliced table is invisible to it by construction. Emit the statements with policySqlFor().',
-            $table,
-        );
-
-        continue;
-    }
-
-    if (!isTrue($row['forced'])) {
-        $violations[] = sprintf(
-            '%s has row-level security but not FORCE. Policies do not apply to a table\'s OWNER without it, and '
-            . 'migrations run as the owner — so every migration and any support tooling reads every tenant.',
-            $table,
-        );
     }
 
     foreach ($columns as $column) {
@@ -571,147 +334,13 @@ foreach ($rows as $row) {
             $violations[] = sprintf(
                 '%s.%s is NULLABLE. Under the canonical predicate a NULL tenant matches nobody, so such a row is '
                 . 'invisible to every tenant including the one that wrote it — data loss wearing the appearance '
-                . 'of isolation, and the one failure mode here that no cross-tenant read would ever reveal.',
+                . 'of isolation, and the one failure mode here that NO attack can reveal: an attacker hunting for '
+                . 'another tenant\'s rows and the legitimate owner looking for its own both see nothing, which is '
+                . 'indistinguishable from correct isolation.',
                 $table,
                 $tenantColumn,
             );
         }
-    }
-
-    /** @var list<array{name: string, permissive: bool|string, qual: ?string, check: ?string}> $policies */
-    $policies = json_decode($row['policies'], true, 512, \JSON_THROW_ON_ERROR);
-    $canonicalPolicies = 0;
-
-    foreach ($policies as $policy) {
-        if (isFalse($policy['permissive'])) {
-            // RESTRICTIVE policies are ANDed, so an unscoped one only ever narrows access. Never a bypass.
-            //
-            // `isFalse(...)` and NOT `!isTrue(...)`: this gates a SKIP, so the two members are not
-            // interchangeable. Under `!isTrue()` an unrecognised spelling would be treated as RESTRICTIVE and the
-            // policy skipped UNEXAMINED -- the one fail-OPEN boolean read in this file, and a permissive
-            // `USING (true)` is exactly what would slip through it. Not reachable today, since json_build_object
-            // yields a real JSON boolean, but the round-20 note below is about a cast that was not reachable
-            // either until it was.
-            continue;
-        }
-
-        /*
-         * A NULL HALF IS LEGITIMATE, and treating it as non-canonical made this gate refuse CORRECT schemas.
-         *
-         * `FOR ALL` may omit `WITH CHECK`, and PostgreSQL then reuses `USING` as the write check;
-         * `FOR INSERT` carries only `WITH CHECK`, so its `polqual` is NULL by construction.
-         * `policyExpressionIsCanonical(null)` returns true and documents exactly this, so the old
-         * `null !== ... &&` made the gate disagree with the class it claims to agree with "by construction".
-         * A false refusal is not the safe direction: round 17 records a canonicality judgement that refused
-         * every acquisition on an ordinary CREATE POLICY, and a gate that cries wolf gets switched off.
-         *
-         * BOTH halves NULL is still refused -- that is the one combination meaning "constrains nothing" --
-         * and the comparison stays anchored on `$canonical`, built from TENANT_COLUMN, rather than delegating
-         * to `policyExpressionIsCanonical()`. That function leaves the COLUMN free by design, which is round
-         * 14's defect: a policy scoping `label` was certified as the canonical tenant predicate.
-         */
-        /*
-         * THE TOLERANCE IS ASYMMETRIC, and applying it to both halves was a defect of its own.
-         *
-         * A NULL `WITH CHECK` is legitimate: `FOR ALL` may omit it and PostgreSQL then reuses `USING` as the write
-         * check. A NULL `USING` is NOT the mirror of that -- PostgreSQL does not reuse `WITH CHECK` for reads, so
-         * such a policy makes the table unreadable, and the runtime role cannot see its own rows. The only other
-         * shape producing a NULL `polqual` is `FOR INSERT`, which the polcmd check below already refuses. So the
-         * qual-half tolerance admitted exactly one thing: an unusable table certified "canonically policed".
-         *
-         * Fails closed, so it was never a breach -- but a control whose SUCCESS message is untrue is one the next
-         * reader stops believing, which is the same argument that put the polcmd and polroles checks here.
-         */
-        $qualIsCanonical = null !== $policy['qual'] && expressionMatches($policy['qual'], $canonical);
-        $checkIsCanonical = null === $policy['check'] || expressionMatches($policy['check'], $canonical);
-
-        if ($qualIsCanonical && $checkIsCanonical) {
-            // Canonical, but does it actually REACH anything? A policy for one command, or granted to a role the
-            // runtime role is not, guards nothing it is credited for. Both fail closed, so neither is a breach --
-            // but counting one as the table's tenant policy makes the OK sentence untrue, and a control whose
-            // success message is false is one the next reader stops believing.
-            if ('*' !== $policy['command']) {
-                $violations[] = sprintf(
-                    '%s has a canonical PERMISSIVE policy "%s" that does not cover ALL commands (polcmd=%s). '
-                    . 'With row security on, a command no policy covers reads as empty and refuses every write, '
-                    . 'so this fails closed rather than leaking — but the table is unusable and this gate would '
-                    . 'otherwise report it "canonically policed". Use policySqlFor(), which emits FOR ALL.',
-                    $table,
-                    $policy['name'],
-                    var_export($policy['command'], true),
-                );
-
-                continue;
-            }
-
-            if (isFalse($policy['applies_to_runtime'])) {
-                $violations[] = sprintf(
-                    '%s has a canonical PERMISSIVE policy "%s" that does not apply to the runtime role "%s" — '
-                    . 'polroles names other roles, and PostgreSQL only applies a policy to roles it was granted '
-                    . 'to. Fails closed (the runtime role sees nothing), but the table is unusable and this gate '
-                    . 'would otherwise credit it as policed. Omit TO, so the policy applies to PUBLIC.',
-                    $table,
-                    $policy['name'],
-                    $runtimeRole,
-                );
-
-                continue;
-            }
-
-            ++$canonicalPolicies;
-
-            continue;
-        }
-
-        $violations[] = sprintf(
-            '%s has a PERMISSIVE policy "%s" that is not the canonical tenant predicate (USING %s, WITH CHECK %s). '
-            . 'Permissive policies are ORed, so one unscoped policy reopens the whole table however correct the '
-            . 'others are. A NULL WITH CHECK is accepted, because FOR ALL reuses USING as the write check; a NULL '
-            . 'USING is not, because nothing reuses WITH CHECK for reads.',
-            $table,
-            $policy['name'],
-            null === $policy['qual']
-                ? 'NO USING half — the table is unreadable; PostgreSQL does not reuse WITH CHECK for reads'
-                : ($qualIsCanonical ? 'ok' : 'NOT canonical: ' . var_export($policy['qual'], true)),
-            $checkIsCanonical ? 'ok' : 'NOT canonical: ' . var_export($policy['check'], true),
-        );
-    }
-
-    if (0 === $canonicalPolicies) {
-        $violations[] = sprintf(
-            '%s has row-level security enabled and NO canonical tenant policy. With RLS on and no applicable '
-            . 'policy the table reads as empty, so this fails closed rather than leaking — but it is still a '
-            . 'broken table, and it is the shape a half-written migration leaves behind.',
-            $table,
-        );
-    }
-
-    /*
-     * TRUNCATE, read from the main query's reachability column rather than from a per-table `has_table_privilege`.
-     *
-     * That removes two defects at once. The predicate is now MEMBERSHIP-based, so a grant held `WITH INHERIT FALSE`
-     * is visible -- a reviewer erased every tenant's rows through that gap while this gate printed "beyond …
-     * TRUNCATE". And the table is no longer named as a TEXT literal: `has_table_privilege('Ledger', …)` case-folds
-     * to `ledger`, which was a silent false negative on a mixed-case table and an uncaught PDOException with exit
-     * 255 when only the mixed-case one existed. Joining on `c.oid` in the main query cannot mis-resolve a name,
-     * and it is the same lesson as round 13's `current_user::regrole` downcasing, one axis over.
-     *
-     * **THE RAW VALUE, never `(string) $granted`** — this gate reproduced round 20's P0 while being written.
-     * `(string) false` is the EMPTY STRING and `isFalse('')` is false, so `!isFalse((string) ...)` is TRUE for a
-     * false result: the gate reported all four tables TRUNCATE-able where the ACL was `twes=arwd/twes_owner` with
-     * no `D`. An hour after the § Gotchas entry about exactly this.
-     */
-    $granted = $row['truncate_reachable'];
-    $definitelyNotGranted = isFalse($granted);
-
-    if (!$definitelyNotGranted) {
-        $violations[] = sprintf(
-            '%s: the runtime role "%s" holds TRUNCATE. TRUNCATE ignores row-level security entirely, so it '
-            . 'erases every tenant\'s rows in one statement — round 5 did exactly that while the isolation check '
-            . 'reported the connection clean.',
-            $table,
-            $runtimeRole,
-        );
     }
 }
 
@@ -728,9 +357,6 @@ printf("counts — tables=%d tenant_owned=%d violations=%d\n", $inspected, $tena
  * diagnosis was not, which is the wrong-bound-message shape CLAUDE.md records for `document.quantity_too_large`.
  */
 if ([] !== $violations) {
-    // Not "a tenant-owned table is not isolated": the ownership axis applies to EVERY table, so that header
-    // named the wrong category for the one violation class that is not about a tenant table -- the
-    // wrong-bound message shape CLAUDE.md § "Translation keys" records. The per-violation lines say which.
     fwrite(STDERR, "schema-tenancy: FAIL — the schema does not satisfy tenant isolation.\n");
 
     foreach ($violations as $violation) {
@@ -741,35 +367,29 @@ if ([] !== $violations) {
 }
 
 if (0 === $tenantOwned) {
-    fwrite(STDERR, "schema-tenancy: FAIL — found NO tenant-owned table, so this gate asserted nothing.\n"
+    fwrite(STDERR, "schema-tenancy: FAIL — found NO tenant-owned relation, so this gate asserted nothing.\n"
         . "  Either the database was never migrated, or it is the wrong database. Both look identical to a\n"
         . "  passing run unless this is checked, which is why it is.\n");
 
     exit(1);
 }
 
+/*
+ * THE MESSAGE NAMES ONLY WHAT WAS CHECKED, narrowed as each judgement moved to the behavioural suite.
+ *
+ * The previous version claimed the tenant-owned tables were "enabled, FORCED, canonically policed, NOT NULL, and
+ * beyond ownership and TRUNCATE" — five of which this gate no longer looks at. A control whose success message
+ * overclaims is one the next reader stops believing, and `build-waves.plan.md` made narrowing this sentence part
+ * of the ruling rather than an afterthought.
+ */
 printf(
-    "schema-tenancy: OK — %d tenant-owned table(s) of %d are enabled, FORCED, canonically policed, NOT NULL, and "
-    . "beyond \"%s\"'s ownership and TRUNCATE.\n",
+    "schema-tenancy: OK — %d tenant-owned relation(s) of %d have a NOT NULL \"%s\", and no relation is owned by "
+    . "\"%s\". Isolation itself is proven by attack in BehaviouralIsolationTest.\n",
     $tenantOwned,
     $inspected,
+    $tenantColumn,
     $runtimeRole,
 );
-
-/**
- * Whether two policy expressions are the same predicate.
- *
- * PostgreSQL renders a stored expression back through its own deparser, so the text is canonical but not
- * necessarily character-identical to what was submitted — it adds casts and parentheses. Comparison is therefore
- * on the deparsed forms of BOTH sides: the expected side is round-tripped through the same deparser by the caller
- * that produced it. Whitespace is normalised because that is the one difference the deparser does not settle.
- */
-function expressionMatches(string $actual, string $expected): bool
-{
-    $normalise = static fn(string $expression): string => preg_replace('/\s+/', ' ', trim($expression)) ?? $expression;
-
-    return $normalise($actual) === $normalise($expected);
-}
 
 /** See PostgresRowLevelSecurityIsolation::isTrue() — pdo_pgsql renders booleans as bools or as `t`/`f`. */
 function isTrue(bool|string $value): bool
@@ -780,9 +400,9 @@ function isTrue(bool|string $value): bool
 /**
  * The deliberate non-complement of {@see isTrue()} — see `PostgresRowLevelSecurityIsolation::isFalse()`.
  *
- * Used for TRUNCATE, where TRUE is the danger: an unrecognised spelling must report a violation rather than
- * clear the role. Round 20 found five call sites in the runtime checker with the wrong member of this pair, one
- * of them inverted by a `(string)` cast, so the distinction is repeated here rather than assumed.
+ * Used for ownership reachability, where TRUE is the danger: an unrecognised spelling must report a violation
+ * rather than clear the role. Round 20 found five call sites in the runtime checker with the wrong member of this
+ * pair, one of them inverted by a `(string)` cast, so the distinction is repeated here rather than assumed.
  */
 function isFalse(bool|string $value): bool
 {

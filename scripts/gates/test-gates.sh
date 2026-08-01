@@ -2031,6 +2031,14 @@ fi
 assert_at_least "schema-tenancy: the tenant-column lookalike set has not shrunk" \
   "$(printf '%s\n' "$schema_rules" | awk '$1=="lookalike"' | grep -c .)" 10
 
+# The relkinds that can carry NOT NULL, which scope the gate's one remaining column assertion. `attnotnull` is
+# false on a view, materialized view and foreign table whatever the base table says, so an UNSCOPED check would
+# report a violation on every correct matview in the schema. Guarded here for the same reason as the set above:
+# a rule set with no minimum can be emptied, and an empty one here silently scopes the assertion to nothing.
+# `SchemaTenancyGateTest` proves it FIRES, with a matview the gate must not report on.
+assert_at_least "schema-tenancy: the NOT NULL-capable relkind set has not shrunk" \
+  "$(printf '%s\n' "$schema_rules" | awk '$1=="not_null_capable_relkind"' | grep -c .)" 2
+
 echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 # Round 12 found shell-syntax.sh absent from `composer gate` one commit after it was added and documented as
 # FIRST in the gate command block. The reason it went unnoticed is that the clean-fixture block above is a
