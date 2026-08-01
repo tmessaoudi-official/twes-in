@@ -2036,8 +2036,19 @@ echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 # FIRST in the gate command block. The reason it went unnoticed is that the clean-fixture block above is a
 # HAND-WRITTEN list of assert_gate lines, and this repo already learned -- for the licence-rule documents --
 # that "a hand-listed loop cannot notice a seventh surface appearing". So the set is compared against the
-# filesystem rather than against anybody's memory.
-gates_on_disk="$(cd "$REPO_ROOT/scripts/gates" && ls -1 *.php *.sh 2>/dev/null | grep -v '^test-gates.sh$' | sort | tr '\n' ' ')"
+# repository rather than against anybody's memory.
+#
+# `git ls-files`, NOT `ls`. § Gotchas 2026-07-31 rules that enumeration comes from the index: a parallel
+# certification round places agent worktrees INSIDE the working tree, and a licence cross-check once failed with an
+# "actual" list that was reading four repositories at once. This particular loop is non-recursive so that exact
+# hazard does not reach it -- but `ls` also sweeps in UNTRACKED files, so a scratch copy left in this directory
+# (`m-view.php`, a mutant, exactly what the mutation-testing discipline here produces) would be demanded to have a
+# case AND a `composer gate` entry, failing the suite over a file that is not part of the project. `shell-syntax.sh`
+# and `no-orphaned-docblocks.php` already read the index; this was the last enumerator that did not.
+gates_on_disk="$(cd "$REPO_ROOT" && git ls-files -- scripts/gates \
+  | sed 's|^scripts/gates/||' \
+  | grep -E '\.(php|sh)$' \
+  | grep -v '^test-gates.sh$' | sort | tr '\n' ' ')"
 
 # a) every gate on disk has a clean-fixture case in THIS suite
 #

@@ -1508,7 +1508,7 @@ P0 of this round was found by a behavioural probe and none by reading catalogues
 | R22-23 | "the violation cases" is 18, in two places, in the same file where one instance was deliberately changed to remove the number | **P2** | **CLOSED** below |
 | R22-24 | The number-pattern product decision lives only in a class docblock; this plan still states both contradictory principles as settled and `## Awaiting the developer` has no row | **P2** | **CLOSED** below — row added |
 | R22-25 | Two of four key kinds the gate names (`p`, `u`) have no case asserting their message, so deleting an arm leaves a wrong label on a real violation with the suite green | **P3** | **OPEN** — moot if the axis is deleted |
-| R22-26 | `test-gates.sh` enumerates gates with `ls`, not `git ls-files`, against § Gotchas 2026-07-31 | **P3** | **OPEN** |
+| R22-26 | `test-gates.sh` enumerates gates with `ls`, not `git ls-files`, against § Gotchas 2026-07-31 | **P3** | **CLOSED** — reads `git ls-files` now. Proven both ways: with an untracked mutant in `scripts/gates/`, the `ls` version reports `373 passed, 2 failed` ("a gate on disk is run by no composer script") and the index version stays at `375 passed, 0 failed` |
 
 **Verified clean by the panel, stated so the verdict is not read as broader than it is:** the schema itself under every
 attack listed above; the reachability refactor proven EQUIVALENT to its predecessor over 1 260 relation-rows × 18
