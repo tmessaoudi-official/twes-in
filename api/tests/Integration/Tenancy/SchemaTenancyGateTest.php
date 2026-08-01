@@ -468,6 +468,30 @@ final class SchemaTenancyGateTest extends TestCase
             'security_invoker',
         ];
 
+        // A `FOR ALL` policy with only WITH CHECK, no USING. Round 22's R22-18.
+        //
+        // The null-half tolerance was applied SYMMETRICALLY and only one half deserves it. `FOR ALL` omitting
+        // `WITH CHECK` is legitimate -- PostgreSQL reuses `USING` as the write check. `FOR ALL` omitting `USING`
+        // does NOT reuse `WITH CHECK`: nothing is readable, so the runtime role cannot see its OWN rows. And the
+        // other shape that produces a NULL `polqual` -- `FOR INSERT` -- is already refused by the polcmd check, so
+        // the qual-half tolerance admitted exactly one thing: a table certified "canonically policed" that is in
+        // fact unusable. Fails closed, so not a breach; the OK sentence was simply untrue.
+        yield 'a FOR ALL policy with no USING half, leaving the table unreadable' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf('CREATE POLICY tenant_isolation ON document FOR ALL WITH CHECK (%s)', $canonical),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'NO USING half',
+        ];
+
         yield 'a table this gate cannot classify' => [
             ['CREATE TABLE ambiguous (tenant_id uuid NOT NULL, note text)'],
             ['DROP TABLE ambiguous'],

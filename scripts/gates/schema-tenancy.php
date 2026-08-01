@@ -610,11 +610,22 @@ foreach ($rows as $row) {
          * to `policyExpressionIsCanonical()`. That function leaves the COLUMN free by design, which is round
          * 14's defect: a policy scoping `label` was certified as the canonical tenant predicate.
          */
-        $qualIsCanonical = null === $policy['qual'] || expressionMatches($policy['qual'], $canonical);
+        /*
+         * THE TOLERANCE IS ASYMMETRIC, and applying it to both halves was a defect of its own.
+         *
+         * A NULL `WITH CHECK` is legitimate: `FOR ALL` may omit it and PostgreSQL then reuses `USING` as the write
+         * check. A NULL `USING` is NOT the mirror of that -- PostgreSQL does not reuse `WITH CHECK` for reads, so
+         * such a policy makes the table unreadable, and the runtime role cannot see its own rows. The only other
+         * shape producing a NULL `polqual` is `FOR INSERT`, which the polcmd check below already refuses. So the
+         * qual-half tolerance admitted exactly one thing: an unusable table certified "canonically policed".
+         *
+         * Fails closed, so it was never a breach -- but a control whose SUCCESS message is untrue is one the next
+         * reader stops believing, which is the same argument that put the polcmd and polroles checks here.
+         */
+        $qualIsCanonical = null !== $policy['qual'] && expressionMatches($policy['qual'], $canonical);
         $checkIsCanonical = null === $policy['check'] || expressionMatches($policy['check'], $canonical);
-        $constrainsNothing = null === $policy['qual'] && null === $policy['check'];
 
-        if ($qualIsCanonical && $checkIsCanonical && !$constrainsNothing) {
+        if ($qualIsCanonical && $checkIsCanonical) {
             // Canonical, but does it actually REACH anything? A policy for one command, or granted to a role the
             // runtime role is not, guards nothing it is credited for. Both fail closed, so neither is a breach --
             // but counting one as the table's tenant policy makes the OK sentence untrue, and a control whose
@@ -655,10 +666,13 @@ foreach ($rows as $row) {
         $violations[] = sprintf(
             '%s has a PERMISSIVE policy "%s" that is not the canonical tenant predicate (USING %s, WITH CHECK %s). '
             . 'Permissive policies are ORed, so one unscoped policy reopens the whole table however correct the '
-            . 'others are. A NULL half is accepted — FOR ALL reuses USING as the write check — but not both.',
+            . 'others are. A NULL WITH CHECK is accepted, because FOR ALL reuses USING as the write check; a NULL '
+            . 'USING is not, because nothing reuses WITH CHECK for reads.',
             $table,
             $policy['name'],
-            $qualIsCanonical ? 'ok' : 'NOT canonical: ' . var_export($policy['qual'], true),
+            null === $policy['qual']
+                ? 'NO USING half — the table is unreadable; PostgreSQL does not reuse WITH CHECK for reads'
+                : ($qualIsCanonical ? 'ok' : 'NOT canonical: ' . var_export($policy['qual'], true)),
             $checkIsCanonical ? 'ok' : 'NOT canonical: ' . var_export($policy['check'], true),
         );
     }
