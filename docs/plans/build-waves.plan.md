@@ -11,28 +11,52 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
-- [2026-08-01 21:00] AGREED: **the DISCOVERY/VERDICT split has LANDED, and four round-22 P0s stopped existing
-  rather than being patched.** `api/tests/Integration/Tenancy/BehaviouralIsolationTest.php` attacks every relation
-  discovery finds with eight attacker goals; `scripts/gates/schema-tenancy.php` went from 790 lines to 410 and now
-  asserts only the two properties no attack can observe — the tenant column being `NOT NULL`, and the runtime role
-  owning no relation — plus discovery itself and the refusal of a relation it cannot classify. Deleted: the
-  composite-key axis, relkind semantics, role attributes, `relrowsecurity`, `relforcerowsecurity`, policy
-  canonicality, `polcmd`, `polroles` and the TRUNCATE privilege. **Every one is proven covered by a mutant-killed
-  attack**, and five cases build a deliberately defective relation and require the attack to report it, so the
-  deletion is not an act of faith. Sequencing honoured: the suite landed and was proven GREEN in its own commit
-  BEFORE anything was removed, so the tree never carried a gap. Three things learned, all measured:
-  - **A PostgreSQL semantic that is defence in depth here**: when a SELECT policy exists, an UPDATE's NEW row must
-    also satisfy that policy's `USING` clause. So the canonical `USING` half acts as a second `WITH CHECK` and
-    re-parenting stays refused even under `WITH CHECK (true)`. Consequence stated rather than hidden: GOAL 4 cannot
-    be broken without also breaking GOAL 1, so no mutant isolates it.
-  - **Two defects in my own attacks, each found by a mutant SURVIVING.** GOAL 6 banked the foreign-key refusal of a
-    bare `TRUNCATE` as evidence, so a role that HELD the privilege passed; it now falls back to `CASCADE` and
-    accepts only a privilege refusal. And GOAL 4 tolerated `23503` — a tolerance I added speculatively rather than
-    from an observed failure, the anti-bandaid gate's exact target — which let referential integrity stand in for
-    the policy.
-  - **The mutation harness reverted with `git checkout --` on an UNTRACKED file**, which is a no-op, so all six
-    mutations accumulated and five of six results were confounded. Fourth instance of that trap here. One mutant per
-    run, restored from a pristine backup.
+- [2026-08-01 23:00] AGREED: **the behavioural suite STAYS and the gate deletion is REVERTED — the two are
+  complementary, not substitutes, and the 16:00 ruling's DELETE clause is withdrawn.** Round 23 (MAXIMAL, three
+  lenses, frozen at `ad7af75`) returned **31 findings with six distinct REPRODUCED P0s**, and the decisive ones were
+  not fixable by writing better attacks:
+  - **An attack suite MUTATES data, so it can only ever run against a throwaway database.** `BehaviouralIsolationTest`
+    builds its own probe and proves a property of *the migration*. `gate:schema` is pointed by `TWES_SCHEMA_DSN` at a
+    LIVE database. All three lenses independently reproduced the narrowed gate exiting 0 on a schema where
+    `ALTER TABLE document DISABLE ROW LEVEL SECURITY` had been run, and on one carrying an unpoliceable matview over
+    tenant data. Drift in a deployed schema became unverifiable by anything.
+  - **`rolreplication` bypass cannot be observed by ANY attack, ever.** `pg_basebackup` does not traverse the query
+    layer where policies live, which the deleted check's own message said. Calling it "replaced by attempting
+    `SET ROLE` and then trying to read" was a false stated equivalence — the fifth instance of this repo's rule
+    against recording a gap as covered.
+  So the KEEP criterion the 16:00 ruling named — *"genuine INFERENCES no probe can make"* — is WIDER than the two
+  properties I kept under it. It also covers: whether a live schema still matches, and any bypass that leaves the
+  SQL layer correctly policed. That was a misapplication of the ruling rather than a fault in it, and the honest
+  record is that thirteen mutants gave me false confidence because every one ran against the database the suite
+  builds for itself. **`schema-tenancy.php` is restored in full at 790 lines**; the suite is now defence in depth
+  on top of it, which is strictly better than either alone.
+
+  Four defects IN THE SUITE were also reproduced by the panel and are fixed, each now pinned by a case built from
+  the reviewer's own counterexample and proven by a mutant:
+  - **A PARTIAL unique index omitting the tenant was invisible to GOAL 7 by construction.** The two tenants
+    deliberately differ in every non-tenant column so the probe cannot collide with the attacker's own row — and a
+    partial index's predicate is evaluated on exactly those columns, so `UNIQUE (number) WHERE state = 'issued'`
+    never saw a probe carrying `state = 'draft'`. Not contrived: it is the natural next step for a gapless legal
+    number. GOAL 7 now probes BOTH directions.
+  - **GOAL 8 banked its own primary-key collision as a refusal**, and a reviewer rode that to a reproduced
+    cross-tenant `ON DELETE CASCADE` delete via `payment(company_id, id, invoice_company_id, invoice_id)` — a
+    composite FK tied to the wrong pair. The probe row is now tenant A's exact row with only the tenant flipped, and
+    a refusal must be `23503`.
+  - **`TRUNCATE` reachable only by `SET ROLE` was checked by nothing.** GOAL 6 runs on the runtime connection, so it
+    resolves privileges by INHERITANCE; the escalation test took the `SET ROLE` path and then only ran a `SELECT`.
+    `twes_truncator` is granted `WITH INHERIT FALSE` precisely to make this shape testable. The escalation now
+    probes read, `DELETE` and both `TRUNCATE` forms on every relation.
+  - **An `EXCLUDE` violation is `23P01`, not `23505`**, so the case written to close R22-2 took GOAL 7's fallback
+    branch — whose message also contains "uniqueness", so the assertion passed on the wrong branch and the collision
+    arm was unpinned. Both codes accepted; the three weak `assertNotSame([], $findings)` assertions now name the
+    specific finding.
+  Also fixed: GOALs 3 and 5 banked any failure as a refusal (same shape as GOAL 4's, which round 22 had already
+  taught me), the dead FK guard, and the seeding failure message that asserted a CHECK-constraint cause for every
+  SQLSTATE including `55000`.
+
+  **R22-1, R22-2, R22-3, R22-4, R22-5, R22-7 and R22-25 stay OPEN**: their axes are back in the gate, so the
+  original findings stand as written and are NOT closed by deletion. The 21:00 entry claiming they were is
+  withdrawn — this entry replaces it rather than sitting above it.
 
 - [2026-08-01 18:00] AGREED: **quantity representation is NOT stable across a save/reload; only its VALUE is.**
   `DocumentLine` stores the quantity string verbatim and `NUMERIC(21,6)` returns it padded, so `'2'` comes back
@@ -1506,13 +1530,13 @@ P0 of this round was found by a behavioural probe and none by reading catalogues
 
 | # | Finding | Sev | Status |
 |---|---|---|---|
-| R22-1 | **`INCLUDE`-column unique index passes.** `pg_index.indkey` spans key AND `INCLUDE` columns; only the first `indnkeyatts` participate in uniqueness. `CREATE UNIQUE INDEX … ON t (id) INCLUDE (company_id)` presented the tenant column while enforcing uniqueness on `(id)` across every tenant. Found independently by all three lenses; oracle reproduced (tenant B reads 0 rows, then `duplicate key` on tenant A's value). The `pg_constraint` path is safe — `conkey` holds key columns only | **P0** | **CLOSED 2026-08-01 — RETIRED BY DELETION, not patched.** The whole composite-key axis is gone from `schema-tenancy.php`. `BehaviouralIsolationTest` inserts tenant A's row VERBATIM under tenant B and requires it to SUCCEED, so an index presenting the tenant column as an `INCLUDE` payload collides with `23505` and is reported without `indkey`, `indnkeyatts` or the word INCLUDE appearing anywhere. Proven by `testTheUniqueProbeCatchesAnIncludeColumnUniqueIndex`, and by a mutant that drops the tenant column from the real unique index |
-| R22-2 | **Exclusion constraints invisible to BOTH halves.** `contype` filter omits `'x'`, and an exclusion index has `indisunique = false`. `EXCLUDE (number WITH =)` is cross-tenant uniqueness; reproduced | **P0** | **CLOSED 2026-08-01 — RETIRED BY DELETION.** Same one attack as R22-1: an `EXCLUDE (code WITH =)` constraint is a uniqueness mechanism, so re-presenting tenant A's values under tenant B collides. `contype` and `indisunique` are no longer read at all. Proven by `testTheUniqueProbeCatchesAnExclusionConstraintOmittingTheTenant` |
-| R22-3 | **`?::regclass` case-folds.** The composite-key subquery names the table as text, reintroducing the defect the same file claims to have removed 170 lines below (*"joining on `c.oid` cannot mis-resolve a name"*). With a lowercase twin, `'Ledger'::regclass` → `ledger` and the TWIN's keys are credited; without one, exit **255** mid-loop, so the `counts —` line and every pending violation go unprinted | **P0** | **CLOSED 2026-08-01 — RETIRED BY DELETION.** The subquery that named a table as `?::regclass` was the composite-key axis, which no longer exists. The remaining gate joins on `c.oid` throughout and never resolves a relation from text |
-| R22-4 | **A plain VIEW owned by a bypassing role leaks every tenant.** The gate excludes `relkind 'v'` on the stated ground that FORCE binds the view's owner — true only when that owner is itself subject to policies. A non-`security_invoker` view has its base-table RLS checked AS ITS OWNER, so a view owned by a superuser or any `BYPASSRLS` role returns every tenant. Reproduced with a NON-superuser owner. **The docblock asserting this was verified-and-unbreakable is what would stop the next author looking** — fifth instance of this repo's "never record a coverage gap as an impossibility" rule | **P0** | **CLOSED 2026-08-01 — RETIRED BY DELETION.** Relkind semantics are gone from the gate. A view owned by a bypassing role is caught by READING another tenant's rows through it, which needs no knowledge of `security_invoker` or of who owns what. Proven by `testTheReadAttackCatchesAViewOwnedByABypassingRole`; the matview half by `testTheReadAttackCatchesAMaterializedViewOverTenantData` |
-| R22-5 | **Bypass by MEMBERSHIP.** `SELECT rolsuper, rolbypassrls, rolreplication … WHERE rolname = ?` reads the role's OWN row, and those attributes are NOT inherited — a member of a bypassing role reads `f/f/f`, passes, and reaches the privilege with one `SET ROLE`. The imported class documents this exact finding as closed and answers it with a membership predicate, and `roleIsReachableBySql()` was already in scope, used for two other axes | **P0** | **CLOSED 2026-08-01 — RETIRED BY DELETION.** The role-attribute check is gone. `testTheRuntimeRoleCannotEscalateToARoleThatBypassesPolicies` attempts `SET ROLE` into every reachable role and then tries to read, so inheritance semantics cannot be got wrong — there is nothing to infer. It also surfaced a shape reasoning would have missed: `pg_has_role(..., 'MEMBER')` is true for a membership granted `WITH SET FALSE`, and PostgreSQL still refuses the `SET ROLE`, so a correctly provisioned cluster must not read as a failure |
+| R22-1 | **`INCLUDE`-column unique index passes.** `pg_index.indkey` spans key AND `INCLUDE` columns; only the first `indnkeyatts` participate in uniqueness. `CREATE UNIQUE INDEX … ON t (id) INCLUDE (company_id)` presented the tenant column while enforcing uniqueness on `(id)` across every tenant. Found independently by all three lenses; oracle reproduced (tenant B reads 0 rows, then `duplicate key` on tenant A's value). The `pg_constraint` path is safe — `conkey` holds key columns only | **P0** | **OPEN** — retired by the behavioural suite, not patched (see the 16:00 ruling) |
+| R22-2 | **Exclusion constraints invisible to BOTH halves.** `contype` filter omits `'x'`, and an exclusion index has `indisunique = false`. `EXCLUDE (number WITH =)` is cross-tenant uniqueness; reproduced | **P0** | **OPEN** — same; a probe catches it without naming it |
+| R22-3 | **`?::regclass` case-folds.** The composite-key subquery names the table as text, reintroducing the defect the same file claims to have removed 170 lines below (*"joining on `c.oid` cannot mis-resolve a name"*). With a lowercase twin, `'Ledger'::regclass` → `ledger` and the TWIN's keys are credited; without one, exit **255** mid-loop, so the `counts —` line and every pending violation go unprinted | **P0** | **OPEN** — disappears with the axis; if any per-table query survives, bind `c.oid` |
+| R22-4 | **A plain VIEW owned by a bypassing role leaks every tenant.** The gate excludes `relkind 'v'` on the stated ground that FORCE binds the view's owner — true only when that owner is itself subject to policies. A non-`security_invoker` view has its base-table RLS checked AS ITS OWNER, so a view owned by a superuser or any `BYPASSRLS` role returns every tenant. Reproduced with a NON-superuser owner. **The docblock asserting this was verified-and-unbreakable is what would stop the next author looking** — fifth instance of this repo's "never record a coverage gap as an impossibility" rule | **P0** | **CLOSED** `ce3d3a6` — relkind `'v'` is now selected and a view over tenant data is refused when its owner can bypass AND it is not `security_invoker`. Accepted in the two safe shapes, both asserted: `security_invoker=true` (policies evaluated as the CALLER) and an owner that is itself subject to policies — the narrow case the old claim was actually true about. The docblock is narrowed in the same change |
+| R22-5 | **Bypass by MEMBERSHIP.** `SELECT rolsuper, rolbypassrls, rolreplication … WHERE rolname = ?` reads the role's OWN row, and those attributes are NOT inherited — a member of a bypassing role reads `f/f/f`, passes, and reaches the privilege with one `SET ROLE`. The imported class documents this exact finding as closed and answers it with a membership predicate, and `roleIsReachableBySql()` was already in scope, used for two other axes | **P0** | **CLOSED** `9fc2c82` — delegated; mutant reverting to the own-row check certifies `twes_member` clean at exit 0. The fixture provisioned `twes_member` FOR this shape and the case used `twes_bypass`, the direct attribute: a fixture nothing uses is worth nothing |
 | R22-6 | **`$ownerConnection` walks past the owner-connection gate.** Symfony's `registerAliasForArgument` resolves a parameter NAME — `Doctrine\DBAL\Connection $ownerConnection` is in this app's compiled container — so a plain constructor parameter gets the table-owning role with none of the six spellings. `#[Target(name: 'owner')]` too, since `Target::$name` is a named argument. An enumerate-the-spellings text gate cannot close a name-based DI mechanism | **P0** | **OPEN** — move to the COMPILED CONTAINER. The "strip the aliases" option dismissed as half a fix was closer to right |
-| R22-7 | **The FK axis never reads `confkey`.** Only local `conkey` is checked, while the message prescribes "composite on both sides". `FOREIGN KEY (company_id, document_id) REFERENCES document (id, company_id)` — tenant mapped onto `id` — passes | **P1** | **CLOSED 2026-08-01 — RETIRED BY DELETION.** `confkey` is not read because no FK axis remains. GOAL 8 inserts a child row under tenant B pointing at tenant A's parent and requires `23503`; a single-column key on either side accepts it and is reported. Proven by a mutant that replaces the composite FK with a single-column one |
+| R22-7 | **The FK axis never reads `confkey`.** Only local `conkey` is checked, while the message prescribes "composite on both sides". `FOREIGN KEY (company_id, document_id) REFERENCES document (id, company_id)` — tenant mapped onto `id` — passes | **P1** | **OPEN** — assert `confkey` carries the referenced tenant column AT THE POSITION matching the local one |
 | R22-8 | **The owner-connection gate never scans `api/config`.** Its spellings include the service id, described as the raw-`get()` route, while the scan is `git ls-files -- api/src`. `arguments: ['@doctrine.dbal.owner_connection']` in YAML hands over the owning role with zero hits. `api/bin/console` and `api/public/` are out of scope too | **P1** | **OPEN** — subsumed by the compiled-container check |
 | R22-9 | **`toAggregate()` was a tenant-less hydration path** and merged rows from two tenants into one document — the boundary rule `DocumentIdentity`'s docblock claims it satisfies. A wrong legal document, not a read leak | **P1** | **CLOSED** `030550e` — takes a `TenantId`, refuses mismatched `company_id` and `document_id` |
 | R22-10 | **Nothing asserted the mapper stamps the tenant.** `company_id` is write-only, so a round trip is a fixed point of any transformation touching only write-only fields — **no round-trip assertion can ever pin one**. Three assignments mutated to a foreign uuid kept 588 tests green | **P1** | **CLOSED** `030550e` — direct row-level assertions |
@@ -1530,7 +1554,7 @@ P0 of this round was found by a behavioural probe and none by reading catalogues
 | R22-22 | `api/phpunit.xml` calls `twesMixedCase` "The NINTH role" citing "the other eight"; it is 12th of 12. This round is the commit that added the three chain roles above it | **P2** | **CLOSED** below |
 | R22-23 | "the violation cases" is 18, in two places, in the same file where one instance was deliberately changed to remove the number | **P2** | **CLOSED** below |
 | R22-24 | The number-pattern product decision lives only in a class docblock; this plan still states both contradictory principles as settled and `## Awaiting the developer` has no row | **P2** | **CLOSED** below — row added |
-| R22-25 | Two of four key kinds the gate names (`p`, `u`) have no case asserting their message, so deleting an arm leaves a wrong label on a real violation with the suite green | **P3** | **CLOSED 2026-08-01 — MOOT.** The four key kinds and their messages no longer exist; the gate has no key axis to mislabel |
+| R22-25 | Two of four key kinds the gate names (`p`, `u`) have no case asserting their message, so deleting an arm leaves a wrong label on a real violation with the suite green | **P3** | **OPEN** — moot if the axis is deleted |
 | R22-26 | `test-gates.sh` enumerates gates with `ls`, not `git ls-files`, against § Gotchas 2026-07-31 | **P3** | **CLOSED** — reads `git ls-files` now. Proven both ways: with an untracked mutant in `scripts/gates/`, the `ls` version reports `373 passed, 2 failed` ("a gate on disk is run by no composer script") and the index version stays at `375 passed, 0 failed` |
 
 **Verified clean by the panel, stated so the verdict is not read as broader than it is:** the schema itself under every
@@ -1938,7 +1962,7 @@ profit-rate formula → **markup on cost**, VAT on the profit-inclusive net; inv
 only**; delivery notes → **their own persistent, independently numbered documents**; multi-currency →
 **in from the start, default TND**; VAT rounding → **once per rate group on the summed base**.
 
-**TWO ITEMS ARE AWAITING THE DEVELOPER AGAIN, and this paragraph denied it until round 17.** It read *"Nothing
+**THREE ITEMS ARE AWAITING THE DEVELOPER AGAIN, and this paragraph denied it until round 17.** (Two were the money-arithmetic pair; the third, added 2026-08-01, is the runtime role's privileges — and note round 23 caught the heading above being updated to THREE while this sentence still said TWO, which is this file's own rule about a correction that leaves the false statement in place.) It read *"Nothing
 here is awaiting the developer. The open items are in the owed table under Wave 0."* — while **§ Wave 2 cited this
 very section** for two items that are ruled neither here nor in that owed table, and **§ Wave 1 stated the same
 requirement with no pointer at all**, so the register was reachable from one side only. Derive it rather than trust
@@ -1952,10 +1976,10 @@ point here, and this table is the one place either of them resolves to.
 |---|---|---|
 | **Discounts** | Two worked examples: does a **LINE** discount reduce the VAT base, and how is a **DOCUMENT-level** discount allocated across rate groups? Both are arithmetic choices with no default that is obviously right, and either answer changes every downstream total. | **Wave 2** |
 | **Inclusive-vs-exclusive tax** | One worked extraction at **TND's three decimals**, so the rounding point is pinned by a number rather than by a reading of a sentence. The default currency has three decimal places, which is where a 2-decimal habit produces a wrong legal document rather than an edge case. | **Wave 2** |
-| **Who GRANTS the runtime role its privileges** | A freshly created and migrated database gives the application **no access to any table**. The migration issues no `GRANT` at all, and the privileges the runtime role actually runs with come from `ALTER DEFAULT PRIVILEGES ... IN SCHEMA public` in `scripts/dev/provision-test-database.sh` — which are **per-database** catalogue entries, so they apply to `twes_in_test` and to nothing else. [Verified 2026-08-01: every attack in `BehaviouralIsolationTest` failed with `permission denied for table document` until the suite granted them itself.] This fails CLOSED, so it is not a breach, and it is invisible to `schema-tenancy.php` because that gate connects as a superuser and reads catalogues — it never asks whether the application could use the schema at all. It is still a deployment defect: a new environment migrates green and then cannot serve a request. **Why it needs a ruling rather than a fix: a migration cannot know the runtime role's NAME.** That is deployment configuration, not schema. The options are a migration parameter, a separate idempotent grant step that ships with `infra/`, or ruling that provisioning owns it permanently and the gate must therefore assert the grants exist. | **Wave 1 or Wave 12** |
+| **Who GRANTS the runtime role its privileges**, and whether the gate should assert it | A freshly created and migrated database gives the application **no access to any table**. The migration issues no `GRANT`, and the privileges come from `ALTER DEFAULT PRIVILEGES ... IN SCHEMA public` in `scripts/dev/provision-test-database.sh` — **per-database** catalogue entries, so they apply to `twes_in_test` and nothing else. [Verified 2026-08-01: every attack in `BehaviouralIsolationTest` failed with `permission denied for table document` until the suite granted them itself.] Fails CLOSED, so not a breach, and invisible to `schema-tenancy.php` because that gate connects as a superuser and reads catalogues — it never asks whether the application could USE the schema. Still a deployment defect: a new environment migrates green and cannot serve a request. **Needs a ruling rather than a fix because a migration cannot know the runtime role's NAME** — that is deployment configuration. Options: a migration parameter, an idempotent grant step shipping with `infra/`, or rule that provisioning owns it permanently and the gate must therefore assert the grants exist. NOT blocked on worked money examples, unlike the two rows above | **Wave 1 or Wave 12** |
 
-**Why BLOCKED and not merely owed:** inventing money numbers is the one thing this domain must not do, and
-neither item is specified by any fixture in `docs/spec/pricing-vectors.json`. Until they land, `VatRoundingPoint`
+**Why the FIRST TWO are BLOCKED and not merely owed:** inventing money numbers is the one thing this domain must not do, and neither of those two is specified by any fixture in
+`docs/spec/pricing-vectors.json`. **The third row is a different kind of open** — it is a deployment topology decision, not an arithmetic one, so it is owed a ruling rather than a worked example, and nothing about it blocks Wave 2. Until they land, `VatRoundingPoint`
 is the only parameterisation the calculation kernel carries, and it is genuinely one implementation rather than
 two — which is the invariant Wave 1's scope line was really about, and it is unweakened by the deferral. If the
 worked examples arrive before Wave 2 opens they can land in Wave 1; an unscheduled item is how the previous

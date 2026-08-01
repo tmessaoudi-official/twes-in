@@ -85,6 +85,16 @@ final class BehaviouralIsolationTest extends TestCase
         'vat_rounding_point' => ['per_line', 'per_rate_group'],
     ];
 
+    /**
+     * The SQLSTATEs a uniqueness collision raises.
+     *
+     * `23505` is a unique violation; **`23P01` is an EXCLUDE constraint**, and checking only the first was a
+     * round-23 finding on the very axis it was written to close — the exclusion-constraint case took GOAL 7's
+     * "could not be attempted" branch, whose message also contains the word "uniqueness", so the assertion passed
+     * on the wrong branch and the `23505` arm was left unpinned.
+     */
+    private const array COLLISION_SQLSTATES = ['23505', '23P01'];
+
     private static ?\PDO $admin = null;
 
     public static function setUpBeforeClass(): void
@@ -355,9 +365,9 @@ final class BehaviouralIsolationTest extends TestCase
 
         /** @var list<string> $reachable */
         $reachable = $candidates->fetchAll(\PDO::FETCH_COLUMN);
+        // No `$relations[0]` any more: the escalation probes EVERY relation, because a role reached by SET ROLE may
+        // hold a privilege on one table and nothing on another -- which is exactly the shape that hid the TRUNCATE.
         $runtime = self::runtimeConnection();
-        $relation = $relations[0];
-
         $attempted = [];
         $refused = [];
 
@@ -381,36 +391,93 @@ final class BehaviouralIsolationTest extends TestCase
                     continue;
                 }
 
-                try {
-                    $leaked = (int) $runtime->query(\sprintf(
-                        'SELECT count(*) FROM %s WHERE %s = %s',
-                        self::qualifyQuoted($relation),
-                        self::quote(PostgresRowLevelSecurityIsolation::TENANT_COLUMN),
-                        self::literal(self::TENANT_A),
-                    ))->fetchColumn();
-                } catch (\PDOException $e) {
-                    // The escalation SUCCEEDED but gained nothing: the role reached holds no privilege on the
-                    // relation. Still a refusal of the attacker's goal, and the common case for the NOLOGIN probe
-                    // roles the provisioning script creates, none of which is granted anything on any table.
-                    $refused[] = $role . ' (reached, then ' . self::firstLineOf($e->getMessage()) . ')';
+                /*
+                 * WHAT THE ESCALATED ROLE CAN DO, ON EVERY RELATION AND WITH MORE THAN ONE COMMAND.
+                 *
+                 * Round 23 filed this as a P0 with a reproduced erasure. The previous version asked a single
+                 * question — can this role SELECT tenant A's rows from ONE relation — and banked a privilege error
+                 * on it as a refusal. So `SET ROLE twes_truncator; TRUNCATE document;` erased both tenants' rows
+                 * while this test reported "reached, then permission denied" and moved on. The provisioning script
+                 * grants TRUNCATE to `twes_truncator` and grants that role to `twes` WITH INHERIT FALSE precisely
+                 * because it is the one shape a privilege check resolved by inheritance cannot see — so GOAL 6,
+                 * which runs on the plain runtime connection, cannot see it either. `SET ROLE` is the only path to
+                 * it, and this was the only test that takes that path.
+                 *
+                 * A privilege error on one command no longer excuses the role: each is judged on its own, and the
+                 * role counts as refused only when NOTHING it was asked to do succeeded.
+                 */
+                $gained = [];
+
+                foreach ($relations as $target) {
+                    $probes = [
+                        'read' => \sprintf(
+                            'SELECT count(*) FROM %s WHERE %s = %s',
+                            self::qualifyQuoted($target),
+                            self::quote(PostgresRowLevelSecurityIsolation::TENANT_COLUMN),
+                            self::literal(self::TENANT_A),
+                        ),
+                    ];
+
+                    if (self::acceptsWrites($target)) {
+                        // Inside a transaction that is always rolled back, so an escalation that DOES succeed does
+                        // not destroy the fixture for the remaining candidates.
+                        // BOTH forms, for the reason GOAL 6 needs both: a plain TRUNCATE is refused on a table
+                        // with inbound foreign keys, while CASCADE additionally requires the privilege on every
+                        // referencing table. Probing only one form misses a grant on the other's blind spot -- and
+                        // probing only CASCADE is what made this case's first fixture look clean.
+                        $probes['TRUNCATE'] = \sprintf('TRUNCATE %s', self::qualifyQuoted($target));
+                        $probes['TRUNCATE CASCADE'] = \sprintf('TRUNCATE %s CASCADE', self::qualifyQuoted($target));
+                        $probes['DELETE'] = \sprintf(
+                            'DELETE FROM %s WHERE %s = %s',
+                            self::qualifyQuoted($target),
+                            self::quote(PostgresRowLevelSecurityIsolation::TENANT_COLUMN),
+                            self::literal(self::TENANT_A),
+                        );
+                    }
+
+                    foreach ($probes as $what => $sql) {
+                        $runtime->exec('SAVEPOINT escalation_probe');
+
+                        try {
+                            if ('read' === $what) {
+                                $rows = (int) $runtime->query($sql)->fetchColumn();
+
+                                if (0 !== $rows) {
+                                    $gained[] = \sprintf('read %d of tenant A\'s rows from %s', $rows, self::qualify($target));
+                                }
+                            } else {
+                                $affected = $runtime->exec($sql);
+                                $gained[] = \sprintf(
+                                    '%s on %s (%s rows)',
+                                    $what,
+                                    self::qualify($target),
+                                    false === $affected ? 'unknown' : (string) $affected,
+                                );
+                            }
+                        } catch (\PDOException) {
+                            // Refused for this one command. Not evidence about the others, which is the whole fix.
+                        } finally {
+                            $runtime->exec('ROLLBACK TO SAVEPOINT escalation_probe');
+                        }
+                    }
+                }
+
+                if ([] === $gained) {
+                    $refused[] = $role . ' (reached, gained nothing)';
                     array_pop($attempted);
 
                     continue;
                 }
 
-                self::assertSame(
-                    0,
-                    $leaked,
-                    \sprintf(
-                        'The runtime role reached "%s" with SET ROLE and then read %d of tenant A\'s rows from %s '
-                        . 'while bound to tenant B. A role that bypasses row-level security must never be '
-                        . 'reachable from the application\'s role — and note the attributes on its own catalogue '
-                        . 'row may look clean, because rolsuper and rolbypassrls are not inherited.',
-                        $role,
-                        $leaked,
-                        self::qualify($relation),
-                    ),
-                );
+                self::fail(\sprintf(
+                    "The runtime role reached \"%s\" with SET ROLE and then GAINED:\n  - %s\nA role reachable from "
+                    . 'the application\'s role must be able to do nothing the application cannot. Note its own '
+                    . 'catalogue row may look clean: rolsuper and rolbypassrls are not inherited, and a grant made '
+                    . 'WITH INHERIT FALSE is invisible to any privilege check resolved by inheritance — which is '
+                    . 'why this path exists and why GOAL 6 alone cannot see it.',
+                    $role,
+                    implode("\n  - ", $gained),
+                ));
             } finally {
                 $runtime->rollBack();
             }
@@ -458,7 +525,10 @@ final class BehaviouralIsolationTest extends TestCase
         );
 
         self::assertNotSame([], $findings, 'an INCLUDE-column unique index went undetected');
-        self::assertStringContainsString('unique', strtolower(implode(' ', $findings)));
+        // The SPECIFIC finding. `attackRelation()` also emits "could not be attempted" into the same array,
+        // and that message contains the word "uniqueness" too -- so asserting on a substring of it, or merely
+        // on the list being non-empty, is satisfied by the attack failing to ARRIVE. Round 23 filed that.
+        self::assertStringContainsString('cannot be stored by the other', implode(' ', $findings));
     }
 
     /**
@@ -480,6 +550,10 @@ final class BehaviouralIsolationTest extends TestCase
         );
 
         self::assertNotSame([], $findings, 'an EXCLUDE constraint omitting the tenant went undetected');
+        // An EXCLUDE violation is 23P01, not 23505. Before round 23 this case passed on the FALLBACK message
+        // while the collision branch was never reached, so the arm it exists to pin was unpinned.
+        self::assertStringContainsString('cannot be stored by the other', implode(' ', $findings));
+        self::assertStringNotContainsString('could not be attempted', implode(' ', $findings));
     }
 
     /**
@@ -522,6 +596,9 @@ final class BehaviouralIsolationTest extends TestCase
         );
 
         self::assertNotSame([], $findings, 'a materialized view over tenant data went undetected');
+        // The READ finding specifically -- a matview cannot be written to, so any other finding here would
+        // mean the read attack never ran.
+        self::assertStringContainsString('the runtime role READ', implode(' ', $findings));
     }
 
     /**
@@ -552,6 +629,187 @@ final class BehaviouralIsolationTest extends TestCase
         );
 
         self::assertNotSame([], $findings, 'a view owned by a bypassing role went undetected');
+        self::assertStringContainsString('the runtime role READ', implode(' ', $findings));
+    }
+
+    /**
+     * A PARTIAL unique index omitting the tenant — round 23's reproduced existence oracle, and the case that
+     * forced GOAL 7 to probe in BOTH directions.
+     *
+     * The blind spot was created by a decision that looked purely defensive: the two tenants are given DIFFERENT
+     * values in every non-tenant column, so the probe cannot collide with the attacking tenant's own row. A partial
+     * index's predicate is evaluated on exactly those differing columns — so an index predicated on
+     * `state = 'issued'` never saw a probe row carrying variant `'a'`'s `state = 'draft'`, and the suite certified a
+     * schema where tenant B could not issue a number tenant A had issued.
+     *
+     * Not a contrived index. `Version20260801120000.php` already reasons in this shape — *"NULL numbers do not
+     * collide … only issued documents are constrained"* — and `UNIQUE (number) WHERE state = 'issued'` is the
+     * natural next step for a gapless legal number. Probing A-under-B and B-under-A covers a predicate selecting
+     * either value, which closes the class rather than this one example.
+     */
+    public function testTheUniqueProbeCatchesAPartialIndexOmittingTheTenant(): void
+    {
+        $findings = $this->attackDefectiveRelation(
+            'partial_unique',
+            [
+                'CREATE TABLE partial_unique (company_id uuid NOT NULL, id uuid NOT NULL, state text NOT NULL,'
+                . ' number bigint NOT NULL, PRIMARY KEY (company_id, id))',
+                "ALTER TABLE partial_unique ADD CONSTRAINT partial_unique_state_known"
+                . " CHECK (state IN ('draft', 'issued'))",
+                "CREATE UNIQUE INDEX partial_unique_defect ON partial_unique (number) WHERE state = 'issued'",
+            ],
+        );
+
+        self::assertStringContainsString(
+            'cannot be stored by the other',
+            implode(' ', $findings),
+            'A partial unique index omitting the tenant went undetected. The probe must run in BOTH directions: '
+            . "the predicate selects on exactly the columns the two tenants' rows differ in.",
+        );
+    }
+
+    /**
+     * A composite foreign key that is composite in the WRONG columns — round 23's reproduced cross-tenant
+     * `ON DELETE CASCADE` delete, and the case that fixed GOAL 8.
+     *
+     * `payment(company_id, id, invoice_company_id, invoice_id)` with `FOREIGN KEY (invoice_company_id, invoice_id)`
+     * is composite, so a key-shape check looking for "two columns" is satisfied — and nothing constrains
+     * `invoice_company_id = company_id`. Tenant B inserts a payment against tenant A's invoice; tenant A deletes
+     * its own invoice; tenant B's row cascades away.
+     *
+     * GOAL 8 missed it for a reason worth keeping: it built tenant B's own row and overwrote only the FK columns,
+     * so the row collided with B's seeded row on the primary key and died on `23505` BEFORE the foreign key was
+     * consulted — and the old code banked any failure as a refusal.
+     */
+    public function testGoalEightCatchesAForeignKeyThatIsCompositeInTheWrongColumns(): void
+    {
+        $findings = $this->attackDefectiveRelation(
+            'wrong_pair_payment',
+            [
+                'CREATE TABLE wrong_pair_invoice (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, id))',
+                'CREATE TABLE wrong_pair_payment (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' invoice_company_id uuid NOT NULL, invoice_id uuid NOT NULL, PRIMARY KEY (company_id, id),'
+                . ' CONSTRAINT wrong_pair_defect FOREIGN KEY (invoice_company_id, invoice_id)'
+                . ' REFERENCES wrong_pair_invoice (company_id, id) ON DELETE CASCADE)',
+            ],
+            seedInto: 'wrong_pair_invoice, wrong_pair_payment',
+        );
+
+        self::assertStringContainsString(
+            'REFERENCING',
+            implode(' ', $findings),
+            'A foreign key composite in the wrong pair of columns went undetected, which is a cross-tenant '
+            . 'ON DELETE CASCADE delete.',
+        );
+    }
+
+    /**
+     * `TRUNCATE` held by a role the runtime role can `SET ROLE` to but does NOT inherit from — round 23's
+     * reproduced erasure of every tenant's rows.
+     *
+     * The one shape a privilege check resolved by inheritance cannot see. `provision-test-database.sh` grants
+     * `twes_truncator` to the runtime role `WITH INHERIT FALSE` precisely to make it testable, and GOAL 6 cannot
+     * see it because GOAL 6 runs on the plain runtime connection. `SET ROLE` is the only path, and before this the
+     * escalation test took that path and then asked only whether it could `SELECT`.
+     *
+     * Uses the migrated `document` table rather than a fixture of its own, because the whole point is that the
+     * privilege is held somewhere the runtime connection's own ACL does not show it.
+     */
+    public function testTheEscalationProbeCatchesTruncateReachableOnlyBySetRole(): void
+    {
+        $truncator = getenv('TWES_TEST_DB_TRUNCATOR_ROLE') ?: 'twes_truncator';
+        $admin = self::admin();
+        $relations = self::discoverTenantRelations($admin);
+        $this->seedBothTenants($relations);
+
+        // `document_line`, a LEAF. TRUNCATE on `document` alone erases nothing — the plain form is refused by the
+        // inbound foreign keys and CASCADE needs the privilege on the children — so granting it there would have
+        // produced a fixture that could not express the danger. Truncating the lines of every tenant is damage
+        // enough, and it is the realistic shape of an over-broad grant.
+        $admin->exec(\sprintf('GRANT TRUNCATE ON document_line TO %s', self::quote($truncator)));
+
+        try {
+            $failure = null;
+
+            try {
+                $this->testTheRuntimeRoleCannotEscalateToARoleThatBypassesPolicies();
+            } catch (\PHPUnit\Framework\AssertionFailedError $caught) {
+                $failure = $caught;
+            }
+
+            self::assertNotNull(
+                $failure,
+                \sprintf(
+                    'TRUNCATE on document_line granted to "%s" — reachable from the runtime role by SET ROLE but '
+                    . 'NOT inherited — '
+                    . 'went undetected. Two statements erase every tenant\'s rows, and no privilege check resolved '
+                    . 'by inheritance can see the grant.',
+                    $truncator,
+                ),
+            );
+            self::assertStringContainsString('TRUNCATE on document_line', $failure->getMessage());
+        } finally {
+            $admin->exec(\sprintf('REVOKE TRUNCATE ON document_line FROM %s', self::quote($truncator)));
+        }
+    }
+
+    /**
+     * GOAL 8's SQLSTATE guard, pinned — a cross-tenant reference refused for the WRONG reason must be reported as
+     * unprobed rather than banked as evidence.
+     *
+     * This is the guard whose absence let round 23's reproduced cross-tenant CASCADE delete through, and the
+     * row-construction fix alone does not pin it: with the row built correctly the breach case now SUCCEEDS, so the
+     * guard is never consulted there. It needs a relation whose GOAL 8 insert fails for something other than
+     * `23503`. A global `UNIQUE (code)` does it: the probe carries tenant A's `code`, so the unique index refuses it
+     * before the foreign-key trigger fires, and without the guard that reads as "the foreign key refused a
+     * cross-tenant reference" about a reference never tested.
+     */
+    public function testGoalEightReportsAReferenceRefusedForAnUnrelatedReasonAsUnprobed(): void
+    {
+        $findings = $this->attackDefectiveRelation(
+            'oracle_child',
+            [
+                'CREATE TABLE oracle_parent (company_id uuid NOT NULL, id uuid NOT NULL,'
+                . ' PRIMARY KEY (company_id, id))',
+                'CREATE TABLE oracle_child (company_id uuid NOT NULL, parent_id uuid NOT NULL, code text NOT NULL,'
+                . ' PRIMARY KEY (company_id, parent_id),'
+                . ' CONSTRAINT oracle_child_fk FOREIGN KEY (company_id, parent_id)'
+                . ' REFERENCES oracle_parent (company_id, id) ON DELETE CASCADE)',
+                'CREATE UNIQUE INDEX oracle_child_global_code ON oracle_child (code)',
+            ],
+            seedInto: 'oracle_parent, oracle_child',
+        );
+
+        self::assertStringContainsString(
+            'rather than by the foreign key, so the reference was never tested',
+            implode(' ', $findings),
+            'GOAL 8 must report a reference refused for an unrelated reason as UNPROBED. Banking it is what let a '
+            . 'cross-tenant ON DELETE CASCADE delete through round 22.',
+        );
+    }
+
+    /**
+     * GOALS 3 and 5 must report an UNATTEMPTABLE cross-tenant write as unprobed, not bank it as a refusal.
+     *
+     * On a correctly policed relation tenant A's row is INVISIBLE to tenant B, so a cross-tenant UPDATE or DELETE
+     * reports zero rows affected rather than raising. An error means something else refused it — most often a
+     * missing privilege, which raises the same `42501` a policy does. Withholding UPDATE and DELETE is the smallest
+     * way to produce that state, and before round 23 both goals counted it as evidence of isolation while the
+     * positive control, which only ever ran a `SELECT`, could not tell.
+     */
+    public function testCrossTenantWritesThatCannotBeAttemptedAreReportedRatherThanBanked(): void
+    {
+        $findings = $this->attackDefectiveRelation(
+            'read_only_relation',
+            ['CREATE TABLE read_only_relation (company_id uuid NOT NULL, code text NOT NULL)'],
+            grants: 'SELECT, INSERT',
+        );
+
+        $report = implode(' ', $findings);
+
+        self::assertStringContainsString('the cross-tenant UPDATE could not be attempted', $report);
+        self::assertStringContainsString('the cross-tenant DELETE could not be attempted', $report);
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -645,6 +903,19 @@ final class BehaviouralIsolationTest extends TestCase
                 $name,
                 $update['affected'],
             );
+        } elseif (!$update['ok']) {
+            // A REFUSAL here is not evidence, and banking it was a round-23 finding. On a correctly policed
+            // relation tenant A's row is simply INVISIBLE to tenant B, so this reports `ok` with zero rows
+            // affected. An error instead means something else refused it -- most likely a missing UPDATE
+            // privilege, which raises the same 42501 a policy does -- and a relation the runtime role cannot
+            // update at all satisfies this goal for a reason that says nothing about isolation.
+            $findings[] = \sprintf(
+                '%s: the cross-tenant UPDATE could not be attempted — it failed with %s ("%s") rather than '
+                . 'reporting zero rows affected, so this relation went unprobed for cross-tenant modification.',
+                $name,
+                $update['sqlstate'],
+                $update['message'],
+            );
         } else {
             ++$refusals;
         }
@@ -712,6 +983,16 @@ final class BehaviouralIsolationTest extends TestCase
                 $name,
                 $delete['affected'],
             );
+        } elseif (!$delete['ok']) {
+            // Same discrimination as GOAL 3, for the same round-23 reason: an error is not the refusal this goal
+            // is looking for. Zero rows affected is.
+            $findings[] = \sprintf(
+                '%s: the cross-tenant DELETE could not be attempted — it failed with %s ("%s") rather than '
+                . 'reporting zero rows affected, so this relation went unprobed for cross-tenant deletion.',
+                $name,
+                $delete['sqlstate'],
+                $delete['message'],
+            );
         } else {
             ++$refusals;
         }
@@ -762,51 +1043,74 @@ final class BehaviouralIsolationTest extends TestCase
         // however the key is composed. The probe bites hardest on a ROOT relation, which is where a tenant-scoped
         // counter or a human-facing number lives, and the defective-relation cases below prove the mechanism
         // fires.
-        $probe = self::rowFor($relation, self::TENANT_B, 'a', parentVariant: 'b');
-        $collision = self::attempt($runtime, self::TENANT_B, self::insertSql($relation, $probe));
+        //
+        // RUN IN BOTH DIRECTIONS, and round 23 proved that necessary rather than thorough. The probe re-presents
+        // one tenant's column values under the other, and the two tenants deliberately differ in EVERY non-tenant
+        // column so the probe cannot collide with the attacking tenant's own row. A PARTIAL unique index's
+        // predicate is evaluated on exactly those differing columns — so `UNIQUE (number) WHERE state = 'issued'`
+        // never sees a probe row carrying variant 'a''s `state = 'draft'`, and a reviewer reproduced the resulting
+        // cross-tenant existence oracle on a schema this suite certified clean. That index is not contrived: it is
+        // the natural next step for a gapless legal number, and `Version20260801120000.php` already reasons in
+        // that shape for NULL numbers.
+        //
+        // Probing A-under-B and B-under-A covers a predicate selecting EITHER value, which is the smallest fix
+        // that closes the class rather than the one example.
+        foreach ([['a', 'b', self::TENANT_B], ['b', 'a', self::TENANT_A]] as [$values, $parent, $under]) {
+            $probe = self::rowFor($relation, $under, $values, parentVariant: $parent);
+            $collision = self::attempt($runtime, $under, self::insertSql($relation, $probe));
+            $direction = \sprintf('variant %s under tenant %s', $values, self::TENANT_A === $under ? 'A' : 'B');
 
-        if (!$collision['ok'] && '23505' === $collision['sqlstate']) {
-            $findings[] = \sprintf(
-                '%s: tenant B cannot store a value tenant A already uses — "%s". Some uniqueness mechanism on '
-                . 'this relation does not include "%s", and uniqueness checks run with row-level security '
-                . 'BYPASSED, so it is enforced across EVERY tenant. That is a cross-tenant existence oracle and a '
-                . "denial of service on another tenant's numbering.",
-                $name,
-                $collision['message'],
-                PostgresRowLevelSecurityIsolation::TENANT_COLUMN,
-            );
-        } elseif (!$collision['ok']) {
-            $findings[] = \sprintf(
-                '%s: the uniqueness probe could not be attempted — the insert failed with %s ("%s") for an '
-                . 'unrelated reason, so this relation went unprobed. A silent skip here is how an %s-column index '
-                . 'stayed invisible for twenty rounds.',
-                $name,
-                $collision['sqlstate'],
-                $collision['message'],
-                'INCLUDE',
-            );
-        } else {
-            ++$refusals;
+            // BOTH collision codes. `23505` is a unique violation; an EXCLUDE constraint raises **`23P01`**, and
+            // checking only the first meant the case written to prove R22-2 closed took the fallback branch below
+            // and reported "could not be attempted" about a genuinely defective schema -- the wrong-bound message
+            // shape CLAUDE.md records for `document.quantity_too_large`, on the axis it was closing.
+            if (!$collision['ok'] && \in_array($collision['sqlstate'], self::COLLISION_SQLSTATES, true)) {
+                $findings[] = \sprintf(
+                    '%s: a value one tenant already uses cannot be stored by the other (%s) — "%s". Some '
+                    . 'uniqueness mechanism on this relation does not include "%s", and uniqueness checks run with '
+                    . 'row-level security BYPASSED, so it is enforced across EVERY tenant. That is a cross-tenant '
+                    . "existence oracle and a denial of service on another tenant's numbering.",
+                    $name,
+                    $direction,
+                    $collision['message'],
+                    PostgresRowLevelSecurityIsolation::TENANT_COLUMN,
+                );
+            } elseif (!$collision['ok']) {
+                $findings[] = \sprintf(
+                    '%s: the uniqueness probe could not be attempted (%s) — the insert failed with %s ("%s") for '
+                    . 'an unrelated reason, so this relation went unprobed in that direction. A silent skip here '
+                    . 'is how an INCLUDE-column index stayed invisible for twenty rounds.',
+                    $name,
+                    $direction,
+                    $collision['sqlstate'],
+                    $collision['message'],
+                );
+            } else {
+                ++$refusals;
+            }
         }
 
         // GOAL 8: REFERENCE another tenant's row. Tenant B's own row, but with its parent reference left pointing
         // at tenant A's parent. A composite foreign key refuses this with 23503; a single-column one accepts it,
         // and `ON DELETE CASCADE` then reaches across the boundary to delete.
+        //
+        // THE ROW IS TENANT A'S OWN, WITH ONLY THE TENANT COLUMN FLIPPED TO B -- and getting that wrong was a
+        // round-23 P0 with a reproduced cross-tenant `ON DELETE CASCADE` delete behind it. The previous version
+        // built tenant B's row (variant 'b') and overwrote only the non-tenant FK columns. `rowFor()` is
+        // deterministic, so that row was byte-identical to B's SEEDED row except for those columns -- meaning any
+        // key column that is not an FK column duplicated B's own row and the insert died on `23505` before the
+        // foreign key was ever consulted. A reviewer built `payment(company_id, id, inv_company_id, inv_id)` with a
+        // composite FK tied to the second pair, inserted a payment under tenant B referencing tenant A's invoice,
+        // had tenant A delete its own invoice, and watched B's row cascade away -- with every attack reporting
+        // clean.
+        //
+        // Taking A's exact row and changing only the tenant fixes both halves at once: it cannot collide with B's
+        // row (every other column is A's), and it leaves the FK pointing exactly where A's row pointed. If the FK
+        // includes the tenant column the reference is now dangling and PostgreSQL refuses with `23503`; if it does
+        // not, the reference still resolves to tenant A's parent and the insert SUCCEEDS -- which is the breach.
         foreach ($relation['fks'] as $fk) {
-            if (!\in_array(PostgresRowLevelSecurityIsolation::TENANT_COLUMN, $columns, true)) {
-                continue;
-            }
-
-            $reference = self::rowFor($relation, self::TENANT_B, 'b');
-            $parentOfA = self::rowFor(self::relationNamed($fk['parent']), self::TENANT_A, 'a');
-
-            foreach ($fk['columns'] as $index => $local) {
-                if (PostgresRowLevelSecurityIsolation::TENANT_COLUMN === $local) {
-                    continue;
-                }
-
-                $reference[$local] = $parentOfA[$fk['parentColumns'][$index]] ?? $reference[$local];
-            }
+            $reference = self::rowFor($relation, self::TENANT_A, 'a');
+            $reference[PostgresRowLevelSecurityIsolation::TENANT_COLUMN] = self::TENANT_B;
 
             $crossReference = self::attempt($runtime, self::TENANT_B, self::insertSql($relation, $reference));
 
@@ -818,6 +1122,20 @@ final class BehaviouralIsolationTest extends TestCase
                     $name,
                     $fk['parent'],
                     implode(', ', $fk['columns']),
+                );
+            } elseif ('23503' !== $crossReference['sqlstate']) {
+                // REQUIRE the foreign-key violation. This was the only goal accepting any failure as evidence,
+                // which is precisely how the collision above hid a real breach -- and the plan's R22-7 closure
+                // claimed this code "requires 23503" when it did not. Anything else means the reference was never
+                // actually tested.
+                $findings[] = \sprintf(
+                    '%s: the cross-tenant reference through "%s" was refused by %s ("%s") rather than by the '
+                    . 'foreign key, so the reference was never tested. A key collision here means the probe row '
+                    . "duplicated the attacking tenant's own row before the foreign key was consulted.",
+                    $name,
+                    implode(', ', $fk['columns']),
+                    $crossReference['sqlstate'],
+                    $crossReference['message'],
                 );
             } else {
                 ++$refusals;
@@ -854,9 +1172,10 @@ final class BehaviouralIsolationTest extends TestCase
         ?string $seedInto = null,
         array $afterSeed = [],
         array $extraGrants = [],
+        string $grants = 'SELECT, INSERT, UPDATE, DELETE',
     ): array {
         $admin = self::admin();
-        $target = $seedInto ?? $name;
+        $targets = array_map(trim(...), explode(',', $seedInto ?? $name));
         $created = [];
 
         foreach ($ddl as $statement) {
@@ -868,20 +1187,22 @@ final class BehaviouralIsolationTest extends TestCase
         }
 
         try {
-            if ($policed) {
-                foreach (PostgresRowLevelSecurityIsolation::policySqlFor($target) as $statement) {
-                    $admin->exec($statement);
+            foreach ($targets as $target) {
+                if ($policed) {
+                    foreach (PostgresRowLevelSecurityIsolation::policySqlFor($target) as $statement) {
+                        $admin->exec($statement);
+                    }
                 }
-            }
 
-            $admin->exec(\sprintf('ALTER TABLE %s OWNER TO %s', $target, self::ownerRole()));
+                $admin->exec(\sprintf('ALTER TABLE %s OWNER TO %s', $target, self::ownerRole()));
+            }
 
             foreach ($created as [$kind, $relation]) {
                 // A view or materialized view is read-attacked only, so SELECT is the whole requirement. Writing
                 // to one is not an attacker goal this suite claims to cover.
                 $admin->exec(\sprintf(
                     'GRANT %s ON %s TO %s',
-                    'TABLE' === $kind ? 'SELECT, INSERT, UPDATE, DELETE' : 'SELECT',
+                    'TABLE' === $kind ? $grants : 'SELECT',
                     $relation,
                     self::runtimeRole(),
                 ));
@@ -891,10 +1212,14 @@ final class BehaviouralIsolationTest extends TestCase
                 $admin->exec($statement);
             }
 
-            // Discover FIRST, then seed through the same synthesiser the attacks use -- see the docblock.
+            // Discover FIRST, then seed through the same synthesiser the attacks use -- see the docblock. Seeded in
+            // DISCOVERY order, which `parentsFirst()` has already made parent-before-child, so a fixture with a
+            // foreign key between two of its own tables works without the caller ordering it.
             self::$relations = null;
-            $seedTarget = self::relationNamed($target);
-            $this->seedBothTenants([$seedTarget]);
+            $this->seedBothTenants(array_values(array_filter(
+                self::discoverTenantRelations($admin),
+                static fn(array $relation): bool => \in_array($relation['name'], $targets, true),
+            )));
 
             foreach ($afterSeed as $statement) {
                 $admin->exec($statement);
@@ -1078,15 +1403,33 @@ final class BehaviouralIsolationTest extends TestCase
                 try {
                     $admin->exec(self::insertSql($relation, $row) . ' ON CONFLICT DO NOTHING');
                 } catch (\PDOException $e) {
+                    // THE MESSAGE NAMES THE LIKELY CAUSES BY SQLSTATE rather than asserting one. It used to state
+                    // flatly that a CHECK-constrained column needed a COLUMN_VALUES entry, which sent a reader
+                    // hunting for the wrong fix whenever the real cause was something else — a `DEFERRABLE` unique
+                    // constraint, for instance, makes the `ON CONFLICT` arbiter itself illegal with `55000`, and
+                    // that has nothing to do with column values. Round 23 filed the misdiagnosis; the
+                    // wrong-bound-message shape CLAUDE.md records for `document.quantity_too_large`.
                     self::fail(\sprintf(
-                        "Could not seed %s for tenant %s: %s\nThe synthesised row was: %s\nA column restricted by "
-                        . 'a CHECK constraint needs an entry in self::COLUMN_VALUES, keyed by column name. This '
-                        . 'FAILS rather than skipping on purpose — a relation that cannot be seeded is a relation '
-                        . 'that goes unattacked, and an unattacked relation passes every assertion in this suite.',
+                        "Could not seed %s for tenant %s: %s\nThe synthesised row was: %s\n%s\nThis FAILS rather "
+                        . 'than skipping on purpose — a relation that cannot be seeded is a relation that goes '
+                        . 'unattacked, and an unattacked relation passes every assertion in this suite.',
                         self::qualify($relation),
                         $variant,
                         $e->getMessage(),
                         json_encode($row, \JSON_THROW_ON_ERROR),
+                        match ((string) ($e->errorInfo[0] ?? '')) {
+                            '23514' => 'A CHECK constraint refused a synthesised value: add an entry to '
+                                . 'self::COLUMN_VALUES, keyed by column NAME, carrying two legal values.',
+                            '55000' => 'The ON CONFLICT arbiter is illegal here — a DEFERRABLE unique or EXCLUDE '
+                                . 'constraint cannot arbitrate. Seeding needs a different conflict strategy for '
+                                . 'this relation; it is not a COLUMN_VALUES problem.',
+                            '22P02', '22003' => 'A synthesised value does not fit the column type. Extend '
+                                . 'self::scalarFor() for that type rather than widening COLUMN_VALUES.',
+                            '23503' => 'A foreign key was not satisfied, so the parent was not seeded first. '
+                                . 'Check parentsFirst() ordered this relation after its parent.',
+                            default => 'Neither a CHECK constraint nor a type mismatch — read the SQLSTATE above '
+                                . 'before assuming this is a COLUMN_VALUES problem.',
+                        },
                     ));
                 }
             }

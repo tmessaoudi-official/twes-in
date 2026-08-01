@@ -62,13 +62,7 @@ final class SchemaTenancyGateTest extends TestCase
         [$status, $output] = self::runGate();
 
         self::assertSame(0, $status, "The gate must accept our own migration's output:\n" . $output);
-        self::assertStringContainsString('tenant-owned relation(s)', $output);
-        // The OK message must claim ONLY what the gate still checks. It used to say "enabled, FORCED, canonically
-        // policed, NOT NULL, and beyond ownership and TRUNCATE"; five of those moved to BehaviouralIsolationTest,
-        // and a success message that overclaims is one the next reader stops believing.
-        self::assertStringNotContainsString('FORCED', $output);
-        self::assertStringNotContainsString('TRUNCATE', $output);
-        self::assertStringContainsString('BehaviouralIsolationTest', $output);
+        self::assertStringContainsString('tenant-owned table(s)', $output);
         // The anti-vacuity line, asserted rather than assumed: a gate that inspected nothing prints OK too.
         self::assertMatchesRegularExpression('/counts — tables=\d+ tenant_owned=[1-9]/', $output);
     }
@@ -123,24 +117,26 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /**
-     * A MATERIALIZED VIEW over tenant data must not be reported by THIS gate — and this case is what makes the
-     * relkind scoping of the NOT NULL assertion load-bearing.
+     * A `FOR ALL` policy that omits `WITH CHECK` is CORRECT, and the gate must ACCEPT it.
      *
-     * `pg_attribute.attnotnull` is false on every matview, view and foreign-table column whatever the base table
-     * declares, so applying the NOT NULL assertion to them would report a violation on every correct matview in the
-     * schema. `NOT_NULL_CAPABLE_RELKINDS` scopes it, and without a case the scoping could be deleted with the whole
-     * suite green — the "declared but unconsulted" shape `CLAUDE.md` § Gotchas records for
-     * `PERMISSIVE_FOR_FONT_ASSETS`.
+     * This is the only case here that asserts acceptance of something other than our own migration's output, and
+     * it exists because the gate refused it — reporting `WITH CHECK NOT canonical: NULL` and explaining that "a
+     * plain INSERT is guarded by WITH CHECK alone", which PostgreSQL refutes: for `FOR ALL` it reuses `USING` as
+     * the write check. `policyExpressionIsCanonical(null)` returns true and documents exactly that, so the gate's
+     * own docblock claim that all three definitions "agree by construction rather than by review" was false.
      *
-     * A matview holding tenant data IS a real defect: it can carry no policy at all, so it is an unpoliced copy by
-     * construction. It is reported by `BehaviouralIsolationTest`, which reads another tenant's rows out of it —
-     * stronger evidence than a catalogue flag, and a message naming the actual consequence. This case asserts the
-     * SPLIT rather than the absence of the check.
+     * A false refusal is not a harmless direction. Round 17 records a canonicality judgement applied where it did
+     * not belong, which "REFUSED every acquisition, permanently, on an entirely ordinary CREATE POLICY" — a gate
+     * that cries wolf on correct schemas gets switched off, and then the real findings go unread too. The
+     * cross-tenant INSERT is verified refused by the server below, so the schema really is safe.
      */
-    public function testTheGateDoesNotReportOnAMaterializedViewWhoseColumnsCannotCarryNotNull(): void
+    public function testTheGateAcceptsAForAllPolicyThatOmitsWithCheck(): void
     {
+        $canonical = \Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
         $admin = self::admin();
-        $admin->exec('CREATE MATERIALIZED VIEW tenant_snapshot AS SELECT company_id, id FROM document');
+
+        $admin->exec('DROP POLICY tenant_isolation ON document');
+        $admin->exec(\sprintf('CREATE POLICY tenant_isolation ON document FOR ALL USING (%s)', $canonical));
 
         try {
             [$status, $output] = self::runGate();
@@ -148,16 +144,64 @@ final class SchemaTenancyGateTest extends TestCase
             self::assertSame(
                 0,
                 $status,
-                "A matview's columns never carry NOT NULL, so an unscoped assertion would refuse this correct "
-                . "schema. The matview is the behavioural suite's finding, not this gate's:\n" . $output,
+                "A FOR ALL policy omitting WITH CHECK is correct — PostgreSQL reuses USING as the write check:\n"
+                . $output,
             );
-            // Counted as tenant-owned -- discovery still finds it, which is what makes the behavioural suite
-            // attack it. Only the NOT NULL assertion is scoped away.
-            self::assertStringContainsString('tenant_owned=5', $output);
-            self::assertStringNotContainsString('NULLABLE', $output);
         } finally {
-            $admin->exec('DROP MATERIALIZED VIEW IF EXISTS tenant_snapshot');
+            $admin->exec('DROP POLICY tenant_isolation ON document');
+            $admin->exec(\sprintf(
+                'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                $canonical,
+                $canonical,
+            ));
         }
+    }
+
+    /**
+     * A runtime role that can BYPASS row-level security must fail the gate, whatever the schema looks like.
+     *
+     * The role-existence guard added at 8f85b2d reads only that the name resolves. `rolsuper`, `rolbypassrls` and
+     * `rolreplication` are one comma away in the same row, and `roleCanBypassPolicies()` already exists as a pure
+     * function over exactly that row -- so the gate was asking whether the role was SPELLED right and not whether
+     * it was SUBJECT to the policies whose presence it then certifies. A `BYPASSRLS` role reads every tenant with
+     * every policy in place, which is the failure mode this whole gate exists to make impossible to miss.
+     *
+     * Uses the fixture's existing `twes_bypass` rather than altering a role: role attributes are CLUSTER-level, so
+     * `ALTER ROLE twes BYPASSRLS` inside a test would escape this database exactly as the superuser password does.
+     */
+    public function testTheGateRefusesARuntimeRoleThatCanBypassRowLevelSecurity(): void
+    {
+        [$status, $output] = self::runGate(getenv('TWES_TEST_DB_BYPASS_USER') ?: 'twes_bypass');
+
+        self::assertSame(1, $status, "A BYPASSRLS runtime role must fail the gate:\n" . $output);
+        self::assertStringContainsString('bypass', strtolower($output));
+    }
+
+    /**
+     * A runtime role that is merely a MEMBER of a bypassing role must fail too — and this is the case the fixture
+     * was built for and the test above did not use.
+     *
+     * `rolsuper` and `rolbypassrls` are NOT INHERITED, so `twes_member` reads f/f/f in its own `pg_roles` row while
+     * being a member of `twes_bypass`, and reaches the privilege with one `SET ROLE`. Round 22 reproduced the
+     * cross-tenant read: gate green, then `SET ROLE twes_bypass` and both tenants' rows.
+     *
+     * The lesson worth keeping is not about PostgreSQL. `provision-test-database.sh` provisions `twes_member` for
+     * exactly this shape — CLAUDE.md § "Quality gate" says so, and says why: *"a fixture that cannot express a
+     * dangerous shape cannot detect it"*. The fixture COULD express it; the case above tested the direct attribute
+     * instead. A fixture is worth nothing if no case uses it, which is the same false-assurance shape as a gate
+     * believed on its happy path.
+     */
+    public function testTheGateRefusesARuntimeRoleThatIsMerelyAMemberOfABypassingRole(): void
+    {
+        [$status, $output] = self::runGate(getenv('TWES_TEST_DB_MEMBER_USER') ?: 'twes_member');
+
+        self::assertSame(
+            1,
+            $status,
+            "A role that can SET ROLE to a BYPASSRLS role must fail the gate — the attribute is not inherited, so "
+            . "its own pg_roles row reads clean:\n" . $output,
+        );
+        self::assertStringContainsString('SET ROLE', $output);
     }
 
     /**
@@ -195,6 +239,40 @@ final class SchemaTenancyGateTest extends TestCase
     {
         $canonical = \Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
 
+        yield 'row level security disabled' => [
+            ['ALTER TABLE document DISABLE ROW LEVEL SECURITY'],
+            ['ALTER TABLE document ENABLE ROW LEVEL SECURITY'],
+            'has NO row-level security',
+        ];
+
+        yield 'FORCE removed, so the owner reads every tenant' => [
+            ['ALTER TABLE document NO FORCE ROW LEVEL SECURITY'],
+            ['ALTER TABLE document FORCE ROW LEVEL SECURITY'],
+            'not FORCE',
+        ];
+
+        yield 'an unscoped PERMISSIVE policy beside a correct one' => [
+            ['CREATE POLICY reopens_everything ON document USING (true) WITH CHECK (true)'],
+            ['DROP POLICY reopens_everything ON document'],
+            'not the canonical tenant predicate',
+        ];
+
+        yield 'the canonical policy dropped entirely' => [
+            ['DROP POLICY tenant_isolation ON document'],
+            [\sprintf(
+                'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                $canonical,
+                $canonical,
+            )],
+            'NO canonical tenant policy',
+        ];
+
+        yield 'the runtime role granted TRUNCATE' => [
+            [\sprintf('GRANT TRUNCATE ON document TO %s', self::runtimeRole())],
+            [\sprintf('REVOKE TRUNCATE ON document FROM %s', self::runtimeRole())],
+            'holds TRUNCATE',
+        ];
+
         yield 'the runtime role made owner' => [
             [\sprintf('ALTER TABLE document_charge OWNER TO %s', self::runtimeRole())],
             [\sprintf('ALTER TABLE document_charge OWNER TO %s', self::ownerRole())],
@@ -228,19 +306,23 @@ final class SchemaTenancyGateTest extends TestCase
         // The runtime checker filters `nspname NOT IN ('pg_catalog','information_schema')`; this gate pinned
         // `= 'public'`, so it was NARROWER than the control it exists to backstop.
 
-        // Still here, but now pointed at a RETAINED axis. Its expectation used to be `has NO row-level security`,
-        // which moved to the behavioural suite -- so the case would have been deleted along with that axis and the
-        // property it really guards would have gone with it. What it actually proves is that the scope is EVERY
-        // non-system schema rather than `public`: the old narrowing made this gate narrower than the runtime
-        // checker it backstops, so a tenant table in `reporting` was invisible to both. A nullable tenant column
-        // in another schema exercises the same scope against an assertion this gate still makes.
         yield 'a tenant table in another schema, which the public-only scope never saw' => [
             [
                 \sprintf('CREATE SCHEMA reporting AUTHORIZATION %s', self::ownerRole()),
-                'CREATE TABLE reporting.archive (company_id uuid, id uuid NOT NULL)',
+                'CREATE TABLE reporting.archive (company_id uuid NOT NULL, id uuid NOT NULL, PRIMARY KEY (company_id, id))',
             ],
             ['DROP SCHEMA reporting CASCADE'],
-            'reporting.archive.company_id is NULLABLE',
+            'has NO row-level security',
+        ];
+
+        // A MATERIALIZED VIEW cannot carry row-level security AT ALL -- PostgreSQL supports no policy on one. So a
+        // reporting matview over a policed table is an unpoliced snapshot of it, and REFRESH materialises rows
+        // that later readers are never re-filtered against. It carries `company_id`, so by this gate's own
+        // classification rule it IS tenant data; the gate simply never selected relkind 'm'.
+        yield 'a materialized view holding tenant data, which can never be policed' => [
+            ['CREATE MATERIALIZED VIEW tenant_snapshot AS SELECT company_id, id FROM document'],
+            ['DROP MATERIALIZED VIEW tenant_snapshot'],
+            'cannot carry row-level security',
         ];
 
         // ---------------------------------------------------------------- COMPOSITE KEYS
@@ -254,6 +336,38 @@ final class SchemaTenancyGateTest extends TestCase
         // constraint would be enforceable only against the rows you can already read. So a key that omits the
         // tenant column is checked across EVERY tenant, and no policy limits it.
 
+        // A single-column FK cannot be built against OUR tables, and that is worth knowing rather than working
+        // around: `document`'s primary key is `(company_id, id)`, so no unique constraint exists on `id` alone and
+        // PostgreSQL refuses `REFERENCES document (id)` outright with SQLSTATE 42830. The composite key is
+        // self-reinforcing. So the case builds the shape it actually guards against — a future table with a
+        // SURROGATE key, where `id` alone IS unique and the dangerous FK becomes expressible. Same reasoning as
+        // the NULLABLE case above, and the same reason it is worth guarding before such a table exists.
+        yield 'a single-column foreign key, which lets one tenant reference another tenant row' => [
+            [
+                'CREATE TABLE surrogate_parent (id uuid PRIMARY KEY, company_id uuid NOT NULL)',
+                'CREATE TABLE surrogate_child (id uuid PRIMARY KEY, company_id uuid NOT NULL, parent_id uuid NOT NULL)',
+                'ALTER TABLE surrogate_child ADD CONSTRAINT child_points_at_parent '
+                . 'FOREIGN KEY (parent_id) REFERENCES surrogate_parent (id) ON DELETE CASCADE',
+                // Both fully isolated, so the FK is the ONLY thing left for the gate to object to.
+                ...array_merge(...array_map(
+                    static fn(string $t): array => \Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation::policySqlFor($t),
+                    ['surrogate_parent', 'surrogate_child'],
+                )),
+                \sprintf('ALTER TABLE surrogate_parent OWNER TO %s', self::ownerRole()),
+                \sprintf('ALTER TABLE surrogate_child OWNER TO %s', self::ownerRole()),
+            ],
+            ['DROP TABLE surrogate_child', 'DROP TABLE surrogate_parent'],
+            'FOREIGN KEY',
+        ];
+
+        // A unique constraint omitting the tenant makes tenant B's insert fail because tenant A already used the
+        // value -- a cross-tenant existence oracle, and a denial of service on somebody else's numbering.
+        yield 'a UNIQUE index that omits the tenant column, which is a cross-tenant oracle' => [
+            ['CREATE UNIQUE INDEX leaky_number ON document (number)'],
+            ['DROP INDEX leaky_number'],
+            'UNIQUE',
+        ];
+
         // ---------------------------------------------------------------- polcmd and polroles
         //
         // A policy can be canonical in both halves and still guard nothing, because the gate read neither which
@@ -262,13 +376,91 @@ final class SchemaTenancyGateTest extends TestCase
         // "canonically policed" about a table that is in fact unusable, which is its own defect: a control whose
         // OK sentence is untrue trains the reader to stop believing it.
 
+        yield 'a canonical policy that covers only UPDATE, leaving INSERT and SELECT unpoliced' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document FOR UPDATE USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'does not cover ALL commands',
+        ];
+
+        yield 'a canonical policy granted only to another role, so it never applies to the runtime role' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document TO %s USING (%s) WITH CHECK (%s)',
+                    self::ownerRole(),
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'does not apply to the runtime role',
+        ];
+
+        // A PLAIN VIEW over a policed table, owned by a role that can BYPASS row security. Round 22's P0.
+        //
+        // For a non-`security_invoker` view PostgreSQL checks the base table's RLS **as the view's OWNER**, so a view
+        // owned by a superuser or any BYPASSRLS role hands every tenant to the runtime role. `FORCE` binds the TABLE
+        // owner; it says nothing about a third role owning a view over it. The gate excluded relkind 'v' on the
+        // stated ground that a view "stays scoped -- verified by a reviewer who tried to break it and could not",
+        // which was true only for a view owned by the FORCEd table owner. Reproduced with a non-superuser owner.
+        yield 'a view over tenant data owned by a bypassing role' => [
+            [
+                'CREATE VIEW leaky_report AS SELECT company_id, id, currency FROM document',
+                \sprintf('ALTER VIEW leaky_report OWNER TO %s', self::bypassRole()),
+            ],
+            ['DROP VIEW leaky_report'],
+            'security_invoker',
+        ];
+
+        // A `FOR ALL` policy with only WITH CHECK, no USING. Round 22's R22-18.
+        //
+        // The null-half tolerance was applied SYMMETRICALLY and only one half deserves it. `FOR ALL` omitting
+        // `WITH CHECK` is legitimate -- PostgreSQL reuses `USING` as the write check. `FOR ALL` omitting `USING`
+        // does NOT reuse `WITH CHECK`: nothing is readable, so the runtime role cannot see its OWN rows. And the
+        // other shape that produces a NULL `polqual` -- `FOR INSERT` -- is already refused by the polcmd check, so
+        // the qual-half tolerance admitted exactly one thing: a table certified "canonically policed" that is in
+        // fact unusable. Fails closed, so not a breach; the OK sentence was simply untrue.
+        yield 'a FOR ALL policy with no USING half, leaving the table unreadable' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf('CREATE POLICY tenant_isolation ON document FOR ALL WITH CHECK (%s)', $canonical),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'NO USING half',
+        ];
+
         yield 'a table this gate cannot classify' => [
             ['CREATE TABLE ambiguous (tenant_id uuid NOT NULL, note text)'],
             ['DROP TABLE ambiguous'],
-            // Asserted on the CONSEQUENCE rather than on the wording, which is the part that matters now that this
-            // gate's discovery is what the behavioural suite attacks: an unclassified relation is not attacked at
-            // all, so a silent skip here would be a hole in both checks at once.
-            'goes UNATTACKED',
+            'cannot tell whether it holds tenant data',
         ];
 
         // A table with NO tenant column, owned by the RUNTIME role. It holds no tenant data, so nothing about
@@ -293,6 +485,12 @@ final class SchemaTenancyGateTest extends TestCase
         // `SET ROLE twes_truncator` is one statement away. A fixture that cannot express a dangerous shape cannot
         // detect it -- which is why that role exists and why these cases use it rather than a direct grant.
 
+        yield 'TRUNCATE reachable by SET ROLE, which has_table_privilege cannot see' => [
+            [\sprintf('GRANT TRUNCATE ON document TO %s', self::truncatorRole())],
+            [\sprintf('REVOKE TRUNCATE ON document FROM %s', self::truncatorRole())],
+            'holds TRUNCATE',
+        ];
+
         yield 'an owner the runtime role can SET ROLE to, which string equality cannot see' => [
             [
                 \sprintf('GRANT CREATE ON SCHEMA public TO %s', self::truncatorRole()),
@@ -303,6 +501,26 @@ final class SchemaTenancyGateTest extends TestCase
                 \sprintf('REVOKE CREATE ON SCHEMA public FROM %s', self::truncatorRole()),
             ],
             'is OWNED by',
+        ];
+
+        // The `&&` joining the two policy halves had no case that could kill it: the only policy case was
+        // `USING (true) WITH CHECK (true)`, wrong on BOTH halves, so `&&` and `||` were indistinguishable to this
+        // suite. A reviewer flipped it and all eleven assertions still passed -- while the mutant admitted a real
+        // cross-tenant INSERT, because WITH CHECK alone guards a plain INSERT.
+        yield 'canonical USING with an unscoped WITH CHECK, which admits a cross-tenant INSERT' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf('CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (true)', $canonical),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'not the canonical tenant predicate',
         ];
 
         yield 'a NON-tenant table owned by the runtime role, which proves migrations run as it' => [
