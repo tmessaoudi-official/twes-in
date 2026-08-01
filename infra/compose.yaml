@@ -1,0 +1,321 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# twes-in — the base stack. Shared by dev and prod; each overlays this with its own file.
+#
+# WRITTEN FROM SCRATCH. `invoiceninja/dockerfiles` is GPL-2.0 — stronger copyleft than the ELv2 the rest of that
+# project carries — so copying a compose file from it would make this artifact GPL-2.0 and oblige source disclosure
+# for the derivative, killing the commercial branch. Licensing invariant 7 permits reusing the deployment TOPOLOGY,
+# which is an idea, and forbids the FILES. The topology below is the industry's; every line here is ours.
+#
+# ONE APP SERVER, NOT TWO. FrankenPHP *is* Caddy with PHP embedded, so there is no nginx and no php-fpm: one
+# process serves the API, the Angular admin and the Flutter web client. That also keeps all three on the SAME
+# ORIGIN, which is what preserves the Flutter build's same-origin controls instead of forcing CORS.
+#
+# Run it with the Makefile at the repository root rather than by hand — `make up` supplies the `-f` chain and the
+# project directory, and getting either wrong is how a stack silently reads the wrong `.env`.
+# ==============================================================================================================
+
+name: twes-in
+
+# --------------------------------------------------------------------------------------------------------------
+# Reusable fragments. YAML anchors rather than repetition, so a change to the PHP image's environment cannot apply
+# to the web container and be forgotten on the worker — which is precisely how a queue worker ends up talking to a
+# different database than the API.
+# --------------------------------------------------------------------------------------------------------------
+x-api-image: &api-image
+  build:
+    context: ..
+    dockerfile: infra/api/Dockerfile
+  image: twes-in/api:${TWES_VERSION:-dev}
+
+x-api-environment: &api-environment
+  APP_ENV: '${APP_ENV:-prod}'
+  APP_DEBUG: '${APP_DEBUG:-0}'
+  APP_SECRET: '${APP_SECRET:?APP_SECRET must be set - generate one with: openssl rand -hex 32}'
+  # The RUNTIME credential, and only the runtime credential. `DATABASE_URL_OWNER` is deliberately absent from every
+  # serving container: the entrypoint REFUSES to start if it is present, because a runtime process that can reach
+  # the owning role can DISABLE ROW LEVEL SECURITY on every tenant table.
+  DATABASE_URL: postgresql://${TWES_DB_RUNTIME_ROLE:-twes}:${TWES_DB_RUNTIME_PASSWORD:?TWES_DB_RUNTIME_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-twes}?serverVersion=18&charset=utf8
+  MESSENGER_TRANSPORT_DSN: redis://valkey:6379/messages
+  LOCK_DSN: redis://valkey:6379
+
+x-api-depends: &api-depends
+  postgres:
+    condition: service_healthy
+  valkey:
+    condition: service_healthy
+
+services:
+  # ------------------------------------------------------------------------------------------------------------
+  # PostgreSQL. Tenancy is row-level security, so this is not a swappable component.
+  # ------------------------------------------------------------------------------------------------------------
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: '${POSTGRES_DB:-twes}'
+      POSTGRES_USER: '${POSTGRES_SUPERUSER:-postgres}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}'
+      # `scram-sha-256` explicitly. The image would default to it, but stating it means a future base-image change
+      # cannot quietly downgrade to md5, which is broken.
+      POSTGRES_INITDB_ARGS: '--auth-host=scram-sha-256 --auth-local=scram-sha-256'
+      # Consumed by the init script below, which creates the owner/runtime split. Neither is defaulted there: a
+      # default password for the role that reads tenant data is a published credential.
+      TWES_DB_RUNTIME_ROLE: '${TWES_DB_RUNTIME_ROLE:-twes}'
+      TWES_DB_RUNTIME_PASSWORD: '${TWES_DB_RUNTIME_PASSWORD:?TWES_DB_RUNTIME_PASSWORD must be set}'
+      TWES_DB_OWNER_ROLE: '${TWES_DB_OWNER_ROLE:-twes_owner}'
+      TWES_DB_OWNER_PASSWORD: '${TWES_DB_OWNER_PASSWORD:?TWES_DB_OWNER_PASSWORD must be set}'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      # First-boot provisioning: the owner/runtime role split and the default privileges the migration relies on.
+      # Read-only, because the container has no business modifying its own provisioning.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # `pg_isready` against the real database and user, not just the port. A listening socket during initdb would
+      # otherwise satisfy a port check and let the API start against a cluster that has no roles yet.
+      test: ['CMD-SHELL', 'pg_isready -U "${POSTGRES_SUPERUSER:-postgres}" -d "${POSTGRES_DB:-twes}"']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
+    restart: unless-stopped
+    # NOT PUBLISHED. The database is reachable only on the internal network; the dev overlay publishes it
+    # deliberately for a local client, which is a decision that belongs in dev and nowhere else.
+    networks: [internal]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # VALKEY, not Redis — and this is a LICENSING decision, not a preference.
+  #
+  # Redis relicensed in 2024 to RSALv2/SSPLv1. Neither is permissive, and SSPL specifically bites offering the
+  # software as a service, which is exactly the commercial branch twes-in is licensed for. Valkey is the Linux
+  # Foundation fork of Redis 7.2.4 under BSD-3-Clause — same protocol, same clients, and on the permitted list in
+  # licensing invariant 8(a). Using Redis here would have needed a developer ruling; Valkey needs none.
+  # ------------------------------------------------------------------------------------------------------------
+  valkey:
+    image: valkey/valkey:8-alpine
+    command:
+      - valkey-server
+      # No RDB snapshots and no AOF. Everything here is a QUEUE and a LOCK, both of which are reconstructible:
+      # Messenger's failure transport is the durable store, and persisting a lock would resurrect a stale one
+      # across a restart, which is worse than losing it.
+      - --save
+      - ''
+      - --appendonly
+      - 'no'
+      # Bounded memory with an explicit eviction policy. Unbounded, a queue backlog becomes an OOM kill of the
+      # whole container; `allkeys-lru` is wrong for a queue, so `noeviction` makes a full queue fail loudly at the
+      # producer instead of silently dropping messages.
+      - --maxmemory
+      - ${VALKEY_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - noeviction
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks: [internal]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # MIGRATIONS — a one-shot container with the OWNER credential, run before the API serves.
+  #
+  # This is the only place the owning role's password exists, and that is the entire point of the role split. A
+  # serving replica must never hold it: `FORCE ROW LEVEL SECURITY` stops an owner SKIPPING policies, not REMOVING
+  # them, so an owner credential in a web container is one statement from every tenant's data.
+  #
+  # It is also why the API entrypoint does not migrate. With more than one replica, N containers starting together
+  # would migrate concurrently, and Doctrine takes no cross-process lock — a race whose outcome is a half-applied
+  # schema.
+  # ------------------------------------------------------------------------------------------------------------
+  migrate:
+    <<: *api-image
+    environment:
+      <<: *api-environment
+      DATABASE_URL_OWNER: postgresql://${TWES_DB_OWNER_ROLE:-twes_owner}:${TWES_DB_OWNER_PASSWORD:?TWES_DB_OWNER_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-twes}?serverVersion=18&charset=utf8
+      # The entrypoint refuses an owner credential unless a container declares itself the migrator. This is that
+      # declaration, and it exists so the refusal is opt-OUT rather than advisory.
+      TWES_ALLOW_OWNER_CREDENTIAL: '1'
+      TWES_SKIP_MIGRATION_CHECK: '1'
+    # `--all-or-nothing` so a failing migration leaves the schema untouched rather than half-applied. The tenant
+    # tables carry RLS statements, and a half-applied migration is how an unpoliced tenant table gets created.
+    command: ['php', 'bin/console', 'doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    networks: [internal]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # THE API — FrankenPHP. Serves /api, /health, /admin and /app.
+  # ------------------------------------------------------------------------------------------------------------
+  api:
+    <<: *api-image
+    environment:
+      <<: *api-environment
+      SERVER_NAME: '${TWES_SERVER_NAME:-:80}'
+    depends_on:
+      <<: *api-depends
+      migrate:
+        # The API waits for migrations to COMPLETE SUCCESSFULLY. Without this the first request can hit a schema
+        # that does not exist yet, and the entrypoint's own up-to-date check would crash-loop the container instead
+        # of waiting — noisy, and it makes a normal cold start look like a failure.
+        condition: service_completed_successfully
+    volumes:
+      # The front-end bundles, built by their own stages and mounted read-only. Read-only matters: a compromised
+      # PHP process must not be able to rewrite the JavaScript every admin user then executes.
+      - admin-bundle:/srv/admin:ro
+      - flutter-bundle:/srv/flutter:ro
+    healthcheck:
+      # LIVENESS, never readiness — see the Dockerfile. Docker restarts an unhealthy container, and pointing this
+      # at readiness would turn a brief database blip into a restart storm across every replica.
+      test: ['CMD-SHELL', 'curl -fsS --max-time 2 http://127.0.0.1:80/health || exit 1']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+    networks: [internal, edge]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # THE QUEUE WORKER — Symfony Messenger.
+  #
+  # HONEST STATE: Messenger is installed and configured, and NOTHING DISPATCHES A MESSAGE YET. This service is
+  # here because the developer asked for the full topology, and because a worker added later tends to be added
+  # wrong. It is not idle-by-oversight: `infra/README.md` records which wave gives it work (Wave 10), and the
+  # `--limit`/`--memory-limit` flags below are what stop a long-lived PHP process leaking until it is OOM-killed.
+  # ------------------------------------------------------------------------------------------------------------
+  worker:
+    <<: *api-image
+    environment:
+      <<: *api-environment
+    command:
+      - php
+      - bin/console
+      - messenger:consume
+      - async
+      - '--time-limit=3600'
+      - '--memory-limit=192M'
+      # A failed message is retried and then parked, never dropped: the failure transport is the durable record.
+      - '--failure-limit=10'
+      - '-vv'
+    depends_on:
+      <<: *api-depends
+      migrate:
+        condition: service_completed_successfully
+    # `stop_grace_period` longer than the default 10s so a message in flight can finish. Messenger stops
+    # gracefully on SIGTERM; killing it mid-handler is what produces a half-processed document.
+    stop_grace_period: 30s
+    restart: unless-stopped
+    networks: [internal]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # THE SCHEDULER — Symfony Scheduler, for recurring work (recurring invoices, reminders, retention sweeps).
+  #
+  # Same honest state as the worker: wired, with nothing scheduled yet. ONE replica only, and that is not a
+  # convenience — two schedulers issue every recurring invoice twice, which in a billing product means charging a
+  # customer twice. `symfony/lock` is installed against a Valkey store so the constraint survives a future
+  # multi-host deploy rather than depending on this file.
+  # ------------------------------------------------------------------------------------------------------------
+  scheduler:
+    <<: *api-image
+    environment:
+      <<: *api-environment
+    command:
+      - php
+      - bin/console
+      - messenger:consume
+      - scheduler_default
+      - '--time-limit=3600'
+      - '--memory-limit=192M'
+      - '-vv'
+    depends_on:
+      <<: *api-depends
+      migrate:
+        condition: service_completed_successfully
+    # SINGLE INSTANCE. Two of these double-bill. Stated as configuration rather than as a comment alone.
+    deploy:
+      replicas: 1
+    stop_grace_period: 30s
+    restart: unless-stopped
+    networks: [internal]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # GOTENBERG — HTML/URL to PDF, for Wave 4's document rendering.
+  #
+  # Chosen over running headless Chrome inside the API image for two reasons. Security: a browser is a large
+  # attack surface and it would then share a container with the credential that reads tenant data. And blast
+  # radius: a renderer that crashes takes down only rendering, not the API.
+  #
+  # Apache-2.0, so it satisfies licensing invariant 8(a). No work reaches it until Wave 4 -- see infra/README.md.
+  # ------------------------------------------------------------------------------------------------------------
+  gotenberg:
+    image: gotenberg/gotenberg:8
+    command:
+      - gotenberg
+      # NO NETWORK ACCESS FROM THE RENDERER. A PDF template that can fetch a URL is a server-side request forgery
+      # primitive pointed at the internal network — and this container sits on the same network as the database.
+      # Templates render from posted HTML and vendored assets only.
+      - --chromium-deny-list=.*
+      - --chromium-allow-list=^file:///tmp/.*
+      # Bounded: an unbounded render is how one malformed document occupies the renderer indefinitely.
+      - --chromium-max-queue-size=20
+      - --api-timeout=30s
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', '--max-time', '2', 'http://127.0.0.1:3000/health']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    # `internal` only, and never `edge`: nothing outside the stack may post HTML to the renderer.
+    networks: [internal]
+
+  # ------------------------------------------------------------------------------------------------------------
+  # FRONT-END BUILDERS. One-shot containers that populate the bundle volumes the API serves.
+  # ------------------------------------------------------------------------------------------------------------
+  admin-build:
+    build:
+      context: ..
+      dockerfile: infra/admin/Dockerfile
+      target: build
+    image: twes-in/admin-build:${TWES_VERSION:-dev}
+    # Copies the built bundle into the shared volume. `sh -c` with an explicit clear first, so a stale bundle from
+    # a previous version cannot survive alongside the new one and be served by hash.
+    command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/dist/admin/browser/. /out/']
+    volumes:
+      - admin-bundle:/out
+    restart: 'no'
+    networks: [internal]
+
+  flutter-build:
+    build:
+      context: ..
+      dockerfile: infra/mobile/Dockerfile
+      target: build
+    image: twes-in/flutter-build:${TWES_VERSION:-dev}
+    command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/build/web/. /out/']
+    volumes:
+      - flutter-bundle:/out
+    restart: 'no'
+    networks: [internal]
+
+# --------------------------------------------------------------------------------------------------------------
+# NETWORKS. Two, so that "reachable from outside" is a property a service must be granted rather than inherit.
+# --------------------------------------------------------------------------------------------------------------
+networks:
+  # Everything talks here. `internal: true` means no route to the outside world at all — so a compromised worker
+  # cannot exfiltrate over the network, and the renderer cannot be used to reach the internet.
+  internal:
+    internal: true
+  # Only the API is on this one. It is the single ingress point for the whole stack.
+  edge:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  admin-bundle:
+  flutter-bundle:

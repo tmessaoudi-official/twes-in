@@ -118,3 +118,7 @@ node_modules/
 # Service-account JSON (Google Play publishing, Firebase, cloud storage).
 service-account*.json
 gha-creds-*.json
+
+# Site-specific CA certificates for the build (see infra/api/ca-certificates/README.md). A CA is a trust
+# decision that belongs to a site, not to this repository.
+infra/api/ca-certificates/*.crt

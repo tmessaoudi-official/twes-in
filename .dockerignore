@@ -1,0 +1,57 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# The build context is the REPOSITORY ROOT, because one image needs `api/` and another needs `admin/` or `mobile/`.
+# That makes this file load-bearing: without it every build ships every tier's dependencies and caches.
+
+# Version control and CI.
+.git
+.github
+.claude
+
+# Per-tier build output and dependencies. These are rebuilt inside the image; copying the host's copies is both slow
+# and WRONG — the host's `vendor/` resolved against the host's PHP, not the image's.
+api/vendor
+api/var
+api/tools
+admin/node_modules
+admin/dist
+admin/.angular
+mobile/build
+mobile/.dart_tool
+
+# Tests and quality tooling never belong in a runtime image: a test runner there is an attack surface that serves
+# no request. They ARE needed by CI, which builds a different target.
+api/tests
+api/phpunit.xml
+api/.php-cs-fixer.dist.php
+scripts
+
+# Reference clones must never reach a build context. Licensing invariant 5 keeps them in /tmp/xxx, and these
+# entries are belt-and-braces in case one is ever misplaced.
+reference
+upstream
+vendor-reference
+
+# Secrets. `.env` files carry the database credentials; the image takes its configuration from the environment at
+# run time, so baking one in would embed a credential in a layer that persists after the file is "removed".
+**/.env
+**/.env.local
+**/.env.*.local
+infra/.env
+
+# Editor and OS noise.
+**/.DS_Store
+**/*.swp
+**/.idea
+**/.vscode
+
+# Documentation and plans: read by humans, never by a container.
+docs
+*.md
+!api/README.md
+qa-shots
+var

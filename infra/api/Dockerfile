@@ -33,16 +33,66 @@
 ARG FRANKENPHP_VERSION=1.12.6-php8.5-alpine
 
 # ==============================================================================================================
-# STAGE 1 — vendor. Composer dependencies only, so a source-only change does not re-resolve the dependency graph.
+# STAGE 1 — base. The PHP platform, shared by the vendor and runtime stages.
+#
+# ONE stage installs the extensions and BOTH later stages derive from it, which is not merely a build-time saving.
+# `composer.json` declares `ext-bcmath`, `ext-intl` and `ext-pdo_pgsql` as platform requirements, so a vendor stage
+# without them cannot resolve at all — and the tempting fix, `--ignore-platform-reqs`, is the wrong one: it would
+# let Composer pick versions against a platform the runtime does not actually have, so the mismatch would surface
+# at run time instead of at build time.
+#
+# Each extension is here because something breaks without it:
+#   bcmath    — the domain's EXACT decimal arithmetic. Money is decimal strings over bcmath, never floats, which is
+#               why `Domain/` has zero Composer dependencies. Without this the entire money layer raises.
+#   pdo_pgsql — the only driver; tenancy is PostgreSQL row-level security.
+#   intl      — locale-aware formatting for the FR/AR/EN catalogues.
+#   opcache   — see conf.d/10-opcache.ini.
+#   zip       — document bundles (Factur-X containers), Wave 4.
+# `install-php-extensions` ships in the FrankenPHP image and resolves the build headers itself, which is why there
+# is no apk build-deps dance here to leak into a later layer.
 # ==============================================================================================================
-FROM dunglas/frankenphp:${FRANKENPHP_VERSION} AS vendor
+FROM dunglas/frankenphp:${FRANKENPHP_VERSION} AS base
 
-# `git` is required and the reason is specific to this project: `composer.lock` contains one package with no `dist`
-# URL, so installs run with `--prefer-source`, which CLONES. See CLAUDE.md § Gotchas, 2026-07-29 (corrected
-# 2026-08-01) — this was misdiagnosed as blocked network egress for twenty certification rounds.
+RUN install-php-extensions \
+        bcmath \
+        intl \
+        opcache \
+        pdo_pgsql \
+        zip
+
+# ==============================================================================================================
+# STAGE 2 — vendor. Composer dependencies only, so a source-only change does not re-resolve the dependency graph.
+# ==============================================================================================================
+FROM base AS vendor
+
+# OPTIONAL SITE CA CERTIFICATES, trusted for the BUILD ONLY.
+#
+# Many corporate networks — and this project's own development container — sit behind a TLS-INTERCEPTING proxy,
+# which presents its own certificate for every HTTPS connection. Without its CA in the build stage, `git` and
+# Composer fail verification against hosts that work perfectly from the host machine, and the symptom is
+# misleading: Composer exits 100 with what looks like the package server being unreachable.
+#
+# `infra/api/ca-certificates/` is empty in a normal checkout (its `*.crt` are gitignored, because a CA is a
+# site-specific trust decision this repository must not make for a reader), so this is a no-op unless someone put a
+# certificate there. **Nothing reaches the runtime image** — the runtime stage never copies this directory.
+COPY infra/api/ca-certificates/ /usr/local/share/ca-certificates/twes-build/
+RUN apk add --no-cache ca-certificates \
+    && rm -f /usr/local/share/ca-certificates/twes-build/README.md \
+    && update-ca-certificates
+
+# `git` and `unzip` for Composer. `git` is not optional in every environment: where the GitHub API is
+# authorization-scoped (this project's own container is one), Composer must CLONE rather than fetch zipballs, and
+# that is what `COMPOSER_INSTALL_FLAGS` below exists for.
 RUN apk add --no-cache git unzip
 
 COPY --from=composer/composer:2-bin /composer /usr/bin/composer
+
+# COMPOSER_HOME must be explicit. `composer config -g` writes to the global config and refuses without a home
+# directory, and the base image sets none for the build user -- the failure is a bare `exit 2` with no message
+# naming the cause. ALLOW_SUPERUSER because the build stage runs as root and Composer otherwise stops to warn.
+ENV COMPOSER_HOME=/tmp/composer \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_NO_INTERACTION=1
 
 WORKDIR /app
 
@@ -52,37 +102,39 @@ COPY api/composer.json api/composer.lock ./
 # `--no-scripts` because no script should run before the application code is present, and `--no-dev` because the
 # runtime image must not contain PHPUnit, php-cs-fixer, PHPStan or deptrac: a test runner in a production image is
 # an attack surface that serves no request.
-RUN composer install \
+# CONFIGURABLE, and not hardcoded to `--prefer-source`. A normal build should fetch dist zipballs, which is much
+# faster; `--prefer-source` is only needed where the GitHub API is unreachable or authorization-scoped, which is
+# true of this project's development container and not of a normal CI runner. Hardcoding it would make every build
+# everywhere pay for a clone.
+#
+#   docker build --build-arg COMPOSER_INSTALL_FLAGS=--prefer-source ...
+#
+# `use-github-api false` is set only in that mode, because it is the setting that makes Composer clone instead of
+# calling `api.github.com` — see CLAUDE.md § Gotchas, 2026-07-29 (corrected 2026-08-01), where this was misdiagnosed
+# as blocked network egress for twenty certification rounds.
+ARG COMPOSER_INSTALL_FLAGS=""
+
+RUN if [ "$COMPOSER_INSTALL_FLAGS" = "--prefer-source" ]; then \
+        composer config -g use-github-api false \
+        && composer config -g github-protocols https; \
+    fi \
+    && composer install \
         --no-dev \
         --no-scripts \
         --no-autoloader \
-        --prefer-source \
         --no-interaction \
         --no-progress \
+        $COMPOSER_INSTALL_FLAGS \
     && composer clear-cache
 
 # ==============================================================================================================
-# STAGE 2 — runtime.
+# STAGE 3 — runtime. Derives from `base`, so the extensions are the SAME layer the dependencies resolved against.
 # ==============================================================================================================
-FROM dunglas/frankenphp:${FRANKENPHP_VERSION} AS runtime
+FROM base AS runtime
 
-# The extensions the application genuinely needs, and each one is here because something breaks without it:
-#   bcmath   — the domain's EXACT decimal arithmetic. CLAUDE.md § Architecture: money is decimal strings over
-#              bcmath, never floats, and `Domain/` has zero Composer dependencies because of it. Without this
-#              extension the entire money layer raises.
-#   pdo_pgsql — the only driver; tenancy is PostgreSQL row-level security.
-#   intl     — locale-aware formatting for FR/AR/EN catalogues.
-#   opcache  — see conf.d/opcache.ini.
-#   zip      — document bundles (Factur-X containers), Wave 4.
-# `install-php-extensions` ships in the FrankenPHP image and resolves the build-time headers itself, which is why
-# there is no apk build-deps dance here to leak into the final layer.
-RUN install-php-extensions \
-        bcmath \
-        intl \
-        opcache \
-        pdo_pgsql \
-        zip \
-    && apk add --no-cache postgresql18-client tzdata \
+# `postgresql-client` for `pg_isready` and for operational access during an incident; `tzdata` so timestamps in
+# logs are comparable. The apk lists are dropped in the same layer so they never persist into the image.
+RUN apk add --no-cache postgresql18-client tzdata \
     && rm -rf /var/cache/apk/*
 
 # UTC everywhere in the container. Document dates are a DOMAIN concern resolved through `ClockInterface`, not a

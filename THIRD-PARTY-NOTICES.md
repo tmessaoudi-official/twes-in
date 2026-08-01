@@ -93,6 +93,10 @@ allowlist. Direct requirements:
 | `psr/link` | 2.0.1 | MIT | PSR-13 link interfaces, pulled by `symfony/web-link` | composer.lock |
 | `willdurand/negotiation` | 3.1.0 | MIT | content negotiation, pulled by API Platform | composer.lock |
 | `composer/semver` | 3.4.4 | MIT | version constraint parsing, pulled by API Platform | composer.lock |
+| `symfony/messenger` | v8.1.2 | MIT | the QUEUE. `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" names it as the replacement for Laravel Jobs/Horizon, and `infra/compose.yaml` runs a worker on it | composer.lock |
+| `symfony/scheduler` | v8.1.2 | MIT | recurring work — recurring invoices, reminders, retention sweeps. Pinned to ONE replica in `infra/compose.prod.yaml`, because two schedulers issue every recurring invoice twice | composer.lock |
+| `symfony/lock` | v8.1.1 | MIT | the distributed lock behind that single-scheduler constraint, so it survives a future multi-host deploy rather than depending on a compose file | composer.lock |
+| `predis/predis` | v3.5.1 | MIT | the Valkey client, for the Messenger transport and the lock store. **VALKEY, not Redis** — Redis relicensed in 2024 to RSALv2/SSPLv1, neither of which is permissive, and SSPL specifically bites offering the software as a service, which is the commercial branch. Valkey is the Linux Foundation fork under BSD-3-Clause. The CLIENT is protocol-compatible and unaffected | composer.lock |
 | `phpunit/phpunit` | 12.5.33 | BSD-3-Clause | all four test suites | composer.lock |
 | `friendsofphp/php-cs-fixer` | v3.95.17 | MIT | style gate | composer.lock |
 | `phpstan/phpstan` | 2.2.6 | MIT | static analysis — a pinned PHAR in `api/tools/bin/`, fetched by `scripts/dev/fetch-tools.sh`, NOT a Composer dependency. It is dist-only on Packagist, which is why; see CLAUDE.md § "Quality gate" | `scripts/dev/fetch-tools.sh` pin + phar reports `PHPStan 2.2.6` |

@@ -1,0 +1,87 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# DEVELOPMENT overlay. Applied on top of compose.yaml — `make up` supplies both.
+#
+# Everything here trades production hardening for a usable local loop, and each trade is named. Nothing in this
+# file should ever be applied to a deployment: it publishes the database, mounts the source tree over the image,
+# and relaxes OPcache so an edit is visible without a rebuild.
+# ==============================================================================================================
+
+services:
+  postgres:
+    # PUBLISHED, so a local `psql`, a GUI client and the test suites on the host can reach it. Bound to 127.0.0.1
+    # explicitly rather than `5432:5432` — the short form binds 0.0.0.0 and would expose the database to the local
+    # network, which on a laptop on a café wifi is a real exposure rather than a theoretical one.
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+
+  valkey:
+    ports:
+      - '127.0.0.1:${VALKEY_PORT:-6379}:6379'
+
+  api:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: '1'
+      # `SERVER_NAME` without a scheme keeps FrankenPHP on plain HTTP locally. With a hostname it would try to
+      # obtain a certificate, and ACME against `localhost` fails in a way that reads like the container being broken.
+      SERVER_NAME: ':80'
+    ports:
+      - '127.0.0.1:${TWES_HTTP_PORT:-8080}:80'
+    volumes:
+      # THE SOURCE TREE OVER THE IMAGE. This is the point of the dev overlay: an edit is live without a rebuild.
+      #
+      # `vendor/` is deliberately NOT mounted — it is left as the image built it. Mounting the host's vendor
+      # directory would mean the container runs whatever PHP version resolved on the host, which is the classic
+      # "works on my machine" divergence.
+      - ../api/src:/app/src:ro
+      - ../api/config:/app/config:ro
+      - ../api/public:/app/public:ro
+      - ../api/migrations:/app/migrations:ro
+      - ../api/templates:/app/templates:ro
+      # The dev OPcache overlay: timestamp validation back ON. Without this, `validate_timestamps=0` from the
+      # production config means an edited file is NEVER picked up, and the mount above would appear to do nothing —
+      # a confusing failure that looks like a broken volume rather than a cache setting.
+      - ./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev:ro
+      # WRITABLE cache and log, because in dev the container compiles the container on demand.
+      - api-dev-cache:/app/var
+    # The migration gate is kept ON in dev deliberately: it is the same check production runs, and a local
+    # environment that skips it is a local environment that cannot reproduce a deploy failure.
+
+  worker:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: '1'
+    volumes:
+      - ../api/src:/app/src:ro
+      - ../api/config:/app/config:ro
+      - ./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev:ro
+      - api-dev-cache:/app/var
+
+  scheduler:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: '1'
+    volumes:
+      - ../api/src:/app/src:ro
+      - ../api/config:/app/config:ro
+      - ./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev:ro
+      - api-dev-cache:/app/var
+
+  migrate:
+    environment:
+      APP_ENV: dev
+      APP_DEBUG: '1'
+    volumes:
+      - ../api/src:/app/src:ro
+      - ../api/config:/app/config:ro
+      - ../api/migrations:/app/migrations:ro
+      - api-dev-cache:/app/var
+
+volumes:
+  api-dev-cache:
