@@ -102,6 +102,62 @@ final readonly class Invoice
         return new self($currency, DocumentState::Draft, null, [], []);
     }
 
+    /**
+     * REHYDRATE a document that was already validated when it was written. The persistence seam, and nothing else.
+     *
+     * @internal for repositories only. Every other caller starts at {@see self::draft()} and moves through the
+     *           transition guard, which is what makes an illegal state unreachable at runtime.
+     *
+     * **Why a factory rather than replaying the transitions** (developer ruling, 2026-08-01, after both options were
+     * put side by side). Replaying — `draft()`, then `withLine()` per line, then `issue()`/`cancel()` — needs no new
+     * API and re-checks every invariant on load, which is genuinely attractive. It was rejected because it makes
+     * hydration depend on TODAY's guards permitting every historical document's path: tighten a rule in Wave 2 and
+     * already-issued invoices stop loading, which is a data migration wearing the costume of a validation
+     * improvement, and unfixable once real invoices exist. A document that was legal when issued must stay
+     * loadable forever — a tax authority can ask for it years later.
+     *
+     * So this bypasses the guard ON PURPOSE, and that is safe for exactly one reason: the state it takes was
+     * already guarded when it was written. It is NOT safe as a general constructor, which is why it is `@internal`
+     * and why `scripts/gates/` has no business seeing it called from `UI/` or `Application/`.
+     *
+     * The lines and charges are NOT bypassed. `DocumentLine` and `FixedCharge` have public constructors and
+     * re-validate on the way in, which is deliberate rather than an inconsistency: their bounds are pinned to the
+     * column types (`NUMERIC(21,6)` matches `MAX_INTEGER_DIGITS` 15 + `MAX_SCALE` 6), so the column cannot hold a
+     * value the constructor would refuse. The guard-tightening hazard above simply does not arise for them.
+     *
+     * @param list<DocumentLine> $lines in persisted position order
+     * @param list<FixedCharge> $fixedCharges in persisted position order
+     */
+    public static function fromPersistedState(
+        Currency $currency,
+        DocumentState $state,
+        ?DocumentNumber $number,
+        array $lines,
+        array $fixedCharges,
+    ): self {
+        // The one invariant still worth asserting here, because it is a PERSISTENCE bug rather than a domain one and
+        // it is silent: a document in a numbered state with no number, or a draft carrying one, means the mapper
+        // dropped or invented a column. Cheap to check, and it fails at the boundary instead of surfacing later as
+        // an invoice with no number on a PDF.
+        if (DocumentState::Draft === $state && null !== $number) {
+            throw new \LogicException(
+                'A draft cannot carry a document number: it is allocated at issue. A number on a draft row means '
+                . 'the write path assigned one early, which would burn a number from a gapless sequence.',
+            );
+        }
+
+        if (DocumentState::Draft !== $state && null === $number) {
+            throw new \LogicException(\sprintf(
+                'An %s document must carry its number — it is allocated at issue and kept forever afterwards, '
+                . 'including once cancelled. A null here means the column was lost, which destroys the audit '
+                . 'trail a tax authority reads.',
+                $state->value,
+            ));
+        }
+
+        return new self($currency, $state, $number, $lines, $fixedCharges);
+    }
+
     public function currency(): Currency
     {
         return $this->currency;
