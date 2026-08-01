@@ -15,6 +15,7 @@ namespace Twes\Tests\Unit\Infrastructure\Persistence;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 use Twes\Domain\Document\DocumentIdentity;
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\DocumentNumber;
@@ -136,7 +137,7 @@ final class InvoiceMapperTest extends TestCase
         $tenant = TenantId::fromString(self::COMPANY);
 
         $rows = $mapper->toRows($tenant, $identity, $invoice);
-        [$restoredIdentity, $restored] = $mapper->toAggregate($rows);
+        [$restoredIdentity, $restored] = $mapper->toAggregate($tenant, $rows);
 
         self::assertSame($invoice->currency()->code(), $restored->currency()->code(), 'currency');
         self::assertSame($invoice->state(), $restored->state(), 'state');
@@ -208,10 +209,18 @@ final class InvoiceMapperTest extends TestCase
     {
         $eur = Currency::of('EUR');
         $mapper = new InvoiceMapper();
+        // CHARGES TOO, and their absence was a real gap: this invoice held none, so `array_reverse($rows[2])`
+        // reversed an EMPTY array and the charge `usort` was deletable with all nine tests green. Round 22 proved it
+        // and showed the consequence -- `withoutFixedCharge(0)` removing `delivery` where the client saw
+        // `stamp_duty`. The line half was pinned and the sibling collection was not, which is the full-set-coverage
+        // rule in CLAUDE.md: a change applying to a CLASS of things must enumerate all of them.
         $invoice = Invoice::draft($eur)
             ->withLine(new DocumentLine('1', Money::of('1.00', $eur), Rate::fromPercentage('20')))
             ->withLine(new DocumentLine('2', Money::of('2.00', $eur), Rate::fromPercentage('20')))
-            ->withLine(new DocumentLine('3', Money::of('3.00', $eur), Rate::fromPercentage('20')));
+            ->withLine(new DocumentLine('3', Money::of('3.00', $eur), Rate::fromPercentage('20')))
+            ->withFixedCharge(new FixedCharge('first', Money::of('1.00', $eur)))
+            ->withFixedCharge(new FixedCharge('second', Money::of('2.00', $eur)))
+            ->withFixedCharge(new FixedCharge('third', Money::of('3.00', $eur)));
 
         $rows = $mapper->toRows(TenantId::fromString(self::COMPANY), self::identity(), $invoice);
 
@@ -219,13 +228,111 @@ final class InvoiceMapperTest extends TestCase
         // the order it is handed. Reversing them is the cheapest way to prove it sorts by `position` rather than
         // trusting arrival order.
         $shuffled = [$rows[0], array_reverse($rows[1]), array_reverse($rows[2])];
-        [, $restored] = $mapper->toAggregate($shuffled);
+        [, $restored] = $mapper->toAggregate(TenantId::fromString(self::COMPANY), $shuffled);
 
         self::assertSame(
             ['1', '2', '3'],
             array_map(static fn(DocumentLine $l): string => $l->quantity(), $restored->lines()),
             'lines must come back in their persisted position order, whatever order the rows arrived in',
         );
+
+        self::assertSame(
+            ['first', 'second', 'third'],
+            array_map(static fn(FixedCharge $c): string => $c->label(), $restored->fixedCharges()),
+            'charges must come back in position order too — withoutFixedCharge() addresses them by position',
+        );
+    }
+
+    /**
+     * `toRows()` must stamp the BOUND tenant on the document row AND on every child row.
+     *
+     * These are the three most security-critical lines in the mapper, and the round-trip contract test is
+     * STRUCTURALLY blind to them: `toAggregate()` does not read `companyId`, so a round trip is a fixed point of any
+     * transformation touching only write-only fields. Round 22 mutated all three to a foreign tenant and the whole
+     * unit suite stayed green — 588 tests. No round-trip assertion can ever pin a write-only column; it needs a
+     * direct assertion on the rows, which is what this is. `document_id` likewise: it is what a composite FK is
+     * built on.
+     */
+    public function testToRowsStampsTheBoundTenantAndParentOnEveryRow(): void
+    {
+        $tnd = Currency::of('TND');
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->withLine(new DocumentLine('2', Money::of('2.000', $tnd), Rate::fromPercentage('19')))
+            ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
+
+        [$document, $lines, $charges] = new InvoiceMapper()->toRows(
+            TenantId::fromString(self::COMPANY),
+            self::identity(),
+            $invoice,
+        );
+
+        self::assertSame(self::COMPANY, $document->companyId->toRfc4122(), 'document row tenant');
+        self::assertSame(self::DOCUMENT, $document->id->toRfc4122(), 'document row id');
+        self::assertCount(2, $lines);
+        self::assertCount(1, $charges);
+
+        foreach ([...$lines, ...$charges] as $child) {
+            self::assertSame(self::COMPANY, $child->companyId->toRfc4122(), 'child row tenant');
+            self::assertSame(self::DOCUMENT, $child->documentId->toRfc4122(), 'child row parent id');
+        }
+    }
+
+    /**
+     * Hydration must REFUSE a child row belonging to another tenant rather than merging it.
+     *
+     * Round 22 built exactly this and got one `Invoice` carrying tenant B's line on tenant A's document — a wrong
+     * legal document rather than a read leak, and no policy can catch it because the rows are already fetched.
+     */
+    public function testToAggregateRefusesAChildRowFromAnotherTenant(): void
+    {
+        $tnd = Currency::of('TND');
+        $mapper = new InvoiceMapper();
+        $tenant = TenantId::fromString(self::COMPANY);
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
+
+        [$document, $lines, $charges] = $mapper->toRows($tenant, self::identity(), $invoice);
+        $lines[0]->companyId = Uuid::fromString('22222222-2222-4222-8222-222222222222');
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/belongs to tenant/');
+
+        $mapper->toAggregate($tenant, [$document, $lines, $charges]);
+    }
+
+    /**
+     * A non-invoice type must be refused in BOTH directions.
+     *
+     * One table holds all four document types. Writing an `Invoice` under another type files its number in that
+     * type's sequence, leaving a permanent hole in the gapless INVOICE sequence — what an audit reads as a
+     * suppressed sale. Reading, it would pair an `Invoice` aggregate with a `Quote` identity from one call.
+     */
+    public function testTheMapperRefusesANonInvoiceTypeInBothDirections(): void
+    {
+        $tnd = Currency::of('TND');
+        $mapper = new InvoiceMapper();
+        $tenant = TenantId::fromString(self::COMPANY);
+        $invoice = Invoice::draft($tnd);
+
+        try {
+            $mapper->toRows(
+                $tenant,
+                new DocumentIdentity(self::DOCUMENT, DocumentType::Quote, VatRoundingPoint::PerRateGroup),
+                $invoice,
+            );
+            self::fail('toRows must refuse a non-invoice identity');
+        } catch (\LogicException $refused) {
+            self::assertStringContainsString('quote', $refused->getMessage());
+        }
+
+        $rows = $mapper->toRows($tenant, self::identity(), $invoice);
+        $rows[0]->type = DocumentType::Quote->value;
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/is a quote, not an invoice/');
+
+        $mapper->toAggregate($tenant, $rows);
     }
 
     private static function identity(

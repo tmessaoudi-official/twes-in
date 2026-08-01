@@ -59,8 +59,10 @@ final readonly class DocumentIdentity
     ) {
         // A REGEX, not a library. Keeping `Domain/` dependency-free is the point of this class's string id, so the
         // check has to be one PHP can make unaided. Anchored at both ends, because an unanchored pattern accepts an
-        // id with a payload appended -- and this value reaches a WHERE clause.
-        if (1 !== preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $id)) {
+        // id with a payload appended -- and this value reaches a WHERE clause. The `/D` modifier is load-bearing:
+        // without it PCRE's `$` also matches BEFORE a final newline, so "…e1f0\n" was accepted -- two unequal
+        // strings for one id, which is exactly what the uppercase refusal below exists to prevent.
+        if (1 !== preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $id)) {
             throw new \InvalidArgumentException(\sprintf(
                 'A document id must be a canonical lowercase-hyphenated UUID, got "%s". Uppercase and the '
                 . 'braced or urn forms are refused rather than normalised: two spellings of one id compare '

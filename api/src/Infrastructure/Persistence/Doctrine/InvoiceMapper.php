@@ -78,6 +78,21 @@ final readonly class InvoiceMapper
      */
     public function toRows(TenantId $tenant, DocumentIdentity $identity, Invoice $invoice): array
     {
+        // THIS MAPPER IS FOR INVOICES, and neither direction said so. `document` is ONE table for all four types
+        // (`CHECK (type IN ('invoice','quote','credit','delivery_note'))`), and `Invoice::issue()` hard-codes
+        // `DocumentType::Invoice` when it allocates a number. Writing an `Invoice` under `type='quote'` files invoice
+        // number 41 as a quote -- and since uniqueness is scoped `(company_id, type, number)`, the gapless INVOICE
+        // sequence acquires a permanent hole, which CLAUDE.md § Gotchas calls what a tax authority reads as a
+        // suppressed sale. A `\LogicException`: our own layer built the request wrong, so it is `error.internal`.
+        if (DocumentType::Invoice !== $identity->type) {
+            throw new \LogicException(\sprintf(
+                'InvoiceMapper was handed a %s identity. One table holds all four document types, and an Invoice '
+                . 'aggregate written under another type files its number in that type\'s sequence — leaving a '
+                . 'permanent hole in the invoice sequence, which is what an audit reads as a suppressed sale.',
+                $identity->type->value,
+            ));
+        }
+
         $document = new DocumentRow();
         $document->companyId = Uuid::fromString($tenant->toString());
         $document->id = Uuid::fromString($identity->id);
@@ -128,13 +143,76 @@ final readonly class InvoiceMapper
      *
      * @return array{DocumentIdentity, Invoice}
      */
-    public function toAggregate(array $rows): array
+    public function toAggregate(TenantId $tenant, array $rows): array
     {
         [$document, $lineRows, $chargeRows] = $rows;
+
+        /*
+         * THE TENANT IS AN ARGUMENT, AND EVERY ROW IS CHECKED AGAINST IT.
+         *
+         * This method took no tenant and validated nothing, which made it a TENANT-LESS HYDRATION PATH -- precisely
+         * what `DocumentIdentity`'s docblock claims the repository's explicit tenant prevents. Round 22 handed it
+         * rows from two tenants and got one `Invoice` carrying tenant B's line on tenant A's document. That is not a
+         * leak in the reading sense; it is a WRONG LEGAL DOCUMENT, which is worse, and no policy can catch it
+         * because the rows were already fetched.
+         *
+         * The parent id is checked for the same reason: `document_line` carries its own policy and its own
+         * `document_id`, so a query that forgets `AND document_id = ?` returns every line of the tenant.
+         *
+         * Checked HERE rather than left to the repository deliberately. The repository is the thing that will be
+         * written many times -- one per aggregate, by whoever needs one -- and this is the single place all of them
+         * funnel through. A check every caller must remember is the weakest of the three options this project
+         * records; this is the one that cannot be forgotten.
+         */
+        $expectedTenant = $tenant->toString();
+
+        if ($document->companyId->toRfc4122() !== $expectedTenant) {
+            throw new \LogicException(\sprintf(
+                'Document row belongs to tenant %s but hydration was bound to %s. A tenant-less or mis-bound '
+                . 'hydration path is what the boundary rule exists to prevent — refused here rather than returning '
+                . 'another tenant\'s document.',
+                $document->companyId->toRfc4122(),
+                $expectedTenant,
+            ));
+        }
+
+        foreach ([...$lineRows, ...$chargeRows] as $child) {
+            if ($child->companyId->toRfc4122() !== $expectedTenant) {
+                throw new \LogicException(\sprintf(
+                    'A child row at position %d belongs to tenant %s, not %s. Merging it would put another '
+                    . "tenant's figures on this document — a wrong legal document, not merely a leak.",
+                    $child->position,
+                    $child->companyId->toRfc4122(),
+                    $expectedTenant,
+                ));
+            }
+
+            if ($child->documentId->toRfc4122() !== $document->id->toRfc4122()) {
+                throw new \LogicException(\sprintf(
+                    'A child row at position %d belongs to document %s, not %s. A query missing its '
+                    . 'document_id predicate returns every line the tenant owns.',
+                    $child->position,
+                    $child->documentId->toRfc4122(),
+                    $document->id->toRfc4122(),
+                ));
+            }
+        }
 
         $currency = Currency::of($document->currency);
         $type = DocumentType::from($document->type);
         $state = DocumentState::from($document->state);
+
+        // The READ side of the type guard in `toRows()`. A repository whose query omits `AND type = 'invoice'` hands
+        // a quote row here; without this, it comes back as an `Invoice` aggregate paired with a `DocumentIdentity`
+        // saying `Quote` — an internally inconsistent pair from one call, and a quote rendered as an invoice.
+        if (DocumentType::Invoice !== $type) {
+            throw new \LogicException(\sprintf(
+                'Row %s is a %s, not an invoice. InvoiceMapper would return an Invoice aggregate paired with a '
+                . 'non-invoice identity — add `AND type = \'invoice\'` to the query that fetched it.',
+                $document->id->toRfc4122(),
+                $type->value,
+            ));
+        }
 
         /*
          * SORTED BY POSITION, never trusted in arrival order.
