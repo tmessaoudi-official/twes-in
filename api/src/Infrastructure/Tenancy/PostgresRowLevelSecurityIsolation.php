@@ -860,9 +860,66 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
     private static function roleIsReachableSql(string $roleOid): string
     {
         return \sprintf(
-            "(pg_has_role(session_user, %s, 'MEMBER') OR pg_has_role(current_user, %s, 'MEMBER'))",
-            $roleOid,
-            $roleOid,
+            '(%s OR %s)',
+            self::roleIsReachableBySql('session_user', $roleOid),
+            self::roleIsReachableBySql('current_user', $roleOid),
+        );
+    }
+
+    /**
+     * The same question as `roleIsReachableSql()`, asked about a NAMED role instead of this connection.
+     *
+     * **Public because `scripts/gates/schema-tenancy.php` needs it and MUST NOT reimplement it.** That gate did
+     * reimplement it, as `$row['owner'] === $runtimeRole`, and two independent certification reviewers turned the
+     * result into a reproduced cross-tenant read: a table owned by a role the runtime role can `SET ROLE` to
+     * passed, after which `ALTER TABLE … DISABLE ROW LEVEL SECURITY` is one statement away. The gate cannot use
+     * `roleIsReachableSql()` itself, because that one is deliberately connection-relative — it asks about
+     * `session_user`/`current_user`, and the gate connects as a SUPERUSER, for which the answer is always yes.
+     * So the predicate is factored here and both callers share it, which is the same "one definition" rule that
+     * makes the migration take its policy SQL from `policySqlFor()`.
+     *
+     * `MEMBER` rather than `USAGE` is the whole point: `SET ROLE` is authorised by MEMBERSHIP, so a grant made
+     * `WITH INHERIT FALSE` is held-but-not-inherited and invisible to anything inheritance-based. A role is also a
+     * member of itself, so this answers "is, or can become" in one expression.
+     *
+     * @param string $subjectRoleSql SQL yielding the role asking — a quoted literal, or `session_user`
+     * @param string $targetRoleOidSql SQL yielding the role or oid being reached
+     */
+    public static function roleIsReachableBySql(string $subjectRoleSql, string $targetRoleOidSql): string
+    {
+        return \sprintf("pg_has_role(%s, %s, 'MEMBER')", $subjectRoleSql, $targetRoleOidSql);
+    }
+
+    /**
+     * Whether a NAMED role can reach a privilege through the ACL, by inheritance **or** by `SET ROLE`.
+     *
+     * Public for the same reason as `roleIsReachableBySql()` above, and closing the same class of defect: the
+     * schema gate asked `has_table_privilege('twes', 'document', 'TRUNCATE')`, which resolves privileges the way
+     * PostgreSQL applies them *right now* — inheritably. A reviewer granted TRUNCATE to a role held
+     * `WITH INHERIT FALSE`, watched the gate report *"beyond \"twes\"'s ownership and TRUNCATE"*, then erased
+     * every tenant's rows with `SET ROLE` + `TRUNCATE`.
+     *
+     * `a.grantee = 0` is `PUBLIC`, which reaches everybody.
+     *
+     * @param string $subjectRoleSql SQL yielding the role asking — a quoted literal, or `session_user`
+     * @param string $aclSql SQL yielding the `aclitem[]` to explode
+     * @param bool $aclDefaultGrantsIt whether a NULL acl implies the privilege for this subject. FALSE for
+     *                                 TRUNCATE: a NULL acl means owner-only defaults, so a non-owner has nothing
+     */
+    public static function privilegeIsReachableBySql(
+        string $subjectRoleSql,
+        string $aclSql,
+        string $privilege,
+        bool $aclDefaultGrantsIt,
+    ): string {
+        return \sprintf(
+            '(%s%s IS NOT NULL AND EXISTS (SELECT 1 FROM aclexplode(%s) a '
+            . "WHERE a.privilege_type = '%s' AND (a.grantee = 0 OR %s)))",
+            $aclDefaultGrantsIt ? $aclSql . ' IS NULL OR ' : '',
+            $aclSql,
+            $aclSql,
+            $privilege,
+            self::roleIsReachableBySql($subjectRoleSql, 'a.grantee'),
         );
     }
 
@@ -1012,15 +1069,15 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         string $privilege,
         bool $aclDefaultGrantsIt,
     ): string {
+        // BOTH session_user and current_user, for the reason roleIsReachableSql() gives: a connection inside
+        // `SET ROLE` has an innocent current_user while session_user still decides what it can become next. Built
+        // from privilegeIsReachableBySql() rather than beside it, so the ACL-explosion predicate has ONE
+        // definition shared with the schema gate -- a second copy of it is what the gate had, and it was a
+        // reproduced breach.
         return \sprintf(
-            '(%s%s IS NOT NULL AND EXISTS (SELECT 1 FROM aclexplode(%s) a '
-            . "WHERE a.privilege_type = '%s' AND (a.grantee = 0 "
-            . "OR pg_has_role(session_user, a.grantee, 'MEMBER') "
-            . "OR pg_has_role(current_user, a.grantee, 'MEMBER'))))",
-            $aclDefaultGrantsIt ? $acl . ' IS NULL OR ' : '',
-            $acl,
-            $acl,
-            $privilege,
+            '(%s OR %s)',
+            self::privilegeIsReachableBySql('session_user', $acl, $privilege, $aclDefaultGrantsIt),
+            self::privilegeIsReachableBySql('current_user', $acl, $privilege, $aclDefaultGrantsIt),
         );
     }
 

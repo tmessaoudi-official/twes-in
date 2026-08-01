@@ -122,6 +122,26 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /**
+     * A runtime role that can BYPASS row-level security must fail the gate, whatever the schema looks like.
+     *
+     * The role-existence guard added at 8f85b2d reads only that the name resolves. `rolsuper`, `rolbypassrls` and
+     * `rolreplication` are one comma away in the same row, and `roleCanBypassPolicies()` already exists as a pure
+     * function over exactly that row -- so the gate was asking whether the role was SPELLED right and not whether
+     * it was SUBJECT to the policies whose presence it then certifies. A `BYPASSRLS` role reads every tenant with
+     * every policy in place, which is the failure mode this whole gate exists to make impossible to miss.
+     *
+     * Uses the fixture's existing `twes_bypass` rather than altering a role: role attributes are CLUSTER-level, so
+     * `ALTER ROLE twes BYPASSRLS` inside a test would escape this database exactly as the superuser password does.
+     */
+    public function testTheGateRefusesARuntimeRoleThatCanBypassRowLevelSecurity(): void
+    {
+        [$status, $output] = self::runGate(getenv('TWES_TEST_DB_BYPASS_USER') ?: 'twes_bypass');
+
+        self::assertSame(1, $status, "A BYPASSRLS runtime role must fail the gate:\n" . $output);
+        self::assertStringContainsString('bypass', strtolower($output));
+    }
+
+    /**
      * @param list<string> $mutation SQL that breaks the schema in exactly one way
      * @param list<string> $revert SQL restoring it
      */
@@ -193,7 +213,7 @@ final class SchemaTenancyGateTest extends TestCase
         yield 'the runtime role made owner' => [
             [\sprintf('ALTER TABLE document_charge OWNER TO %s', self::runtimeRole())],
             [\sprintf('ALTER TABLE document_charge OWNER TO %s', self::ownerRole())],
-            'is OWNED by the runtime role',
+            'is OWNED by',
         ];
 
         // A NULLABLE tenant column cannot be produced on our own tables -- `company_id` is in every primary key,
@@ -231,13 +251,64 @@ final class SchemaTenancyGateTest extends TestCase
         // runtime role while the comment beside it claimed migrations used a different one — prose asserting a
         // control that nothing implemented, the shape CLAUDE.md § Gotchas records repeatedly. The gate skipped
         // it, because its ownership check was scoped to tables it had already classified as tenant-owned.
+        // ---------------------------------------------------------------- REACHABILITY, not just holding
+        //
+        // Both cases below were CONFIRMED cross-tenant breaches at 8f85b2d, found by two independent reviewers,
+        // and both existed because this gate reimplemented a predicate the runtime checker had already got right
+        // and documented: "TRUNCATE and ownership are both tested by REACHABILITY, never by has_table_privilege.
+        // That function resolves privileges the way PostgreSQL applies them right now -- inheritably -- while
+        // SET ROLE is authorised by MEMBERSHIP, so a grant made WITH INHERIT FALSE is invisible to it."
+        //
+        // `twes_truncator` is granted to the runtime role WITH INHERIT FALSE by provision-test-database.sh, for
+        // exactly this purpose: it is held but not inherited, so has_table_privilege says false while
+        // `SET ROLE twes_truncator` is one statement away. A fixture that cannot express a dangerous shape cannot
+        // detect it -- which is why that role exists and why these cases use it rather than a direct grant.
+
+        yield 'TRUNCATE reachable by SET ROLE, which has_table_privilege cannot see' => [
+            [\sprintf('GRANT TRUNCATE ON document TO %s', self::truncatorRole())],
+            [\sprintf('REVOKE TRUNCATE ON document FROM %s', self::truncatorRole())],
+            'holds TRUNCATE',
+        ];
+
+        yield 'an owner the runtime role can SET ROLE to, which string equality cannot see' => [
+            [
+                \sprintf('GRANT CREATE ON SCHEMA public TO %s', self::truncatorRole()),
+                \sprintf('ALTER TABLE document_charge OWNER TO %s', self::truncatorRole()),
+            ],
+            [
+                \sprintf('ALTER TABLE document_charge OWNER TO %s', self::ownerRole()),
+                \sprintf('REVOKE CREATE ON SCHEMA public FROM %s', self::truncatorRole()),
+            ],
+            'is OWNED by',
+        ];
+
+        // The `&&` joining the two policy halves had no case that could kill it: the only policy case was
+        // `USING (true) WITH CHECK (true)`, wrong on BOTH halves, so `&&` and `||` were indistinguishable to this
+        // suite. A reviewer flipped it and all eleven assertions still passed -- while the mutant admitted a real
+        // cross-tenant INSERT, because WITH CHECK alone guards a plain INSERT.
+        yield 'canonical USING with an unscoped WITH CHECK, which admits a cross-tenant INSERT' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf('CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (true)', $canonical),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'not the canonical tenant predicate',
+        ];
+
         yield 'a NON-tenant table owned by the runtime role, which proves migrations run as it' => [
             [
                 'CREATE TABLE migrations_ran_as_runtime (note text)',
                 \sprintf('ALTER TABLE migrations_ran_as_runtime OWNER TO %s', self::runtimeRole()),
             ],
             ['DROP TABLE migrations_ran_as_runtime'],
-            'is OWNED by the runtime role',
+            'is OWNED by',
         ];
     }
 
@@ -307,6 +378,17 @@ final class SchemaTenancyGateTest extends TestCase
     private static function runtimeRole(): string
     {
         return getenv('TWES_TEST_DB_USER') ?: 'twes';
+    }
+
+    /**
+     * The NOLOGIN probe role that `provision-test-database.sh` grants to the runtime role `WITH INHERIT FALSE`.
+     *
+     * Held but not inherited is the ONLY shape under which `has_table_privilege` and `SET ROLE` disagree, so this
+     * role is what makes the two reachability cases above able to fail at all.
+     */
+    private static function truncatorRole(): string
+    {
+        return getenv('TWES_TEST_DB_TRUNCATOR_ROLE') ?: 'twes_truncator';
     }
 
     private static function superuserName(): string

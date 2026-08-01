@@ -161,10 +161,14 @@ try {
  * `TWES_SCHEMA_RUNTIME_ROLE`, then `TWES_TEST_DB_USER`, then the literal `twes`. Any deployment whose runtime role
  * is called something else and sets neither variable silently checks a role that does not exist.
  */
-$roleExists = $connection->prepare('SELECT true FROM pg_roles WHERE rolname = ?');
+$roleExists = $connection->prepare(
+    'SELECT rolsuper, rolbypassrls, rolreplication FROM pg_roles WHERE rolname = ?',
+);
 $roleExists->execute([$runtimeRole]);
+/** @var array{rolsuper: bool|string, rolbypassrls: bool|string, rolreplication: bool|string}|false $role */
+$role = $roleExists->fetch(PDO::FETCH_ASSOC);
 
-if (false === $roleExists->fetchColumn()) {
+if (false === $role) {
     fwrite(STDERR, sprintf(
         "schema-tenancy: FAIL — the runtime role \"%s\" does not exist in this database.\n"
         . "  Both runtime-role assertions here are named after it: a role that does not exist can never be found\n"
@@ -177,6 +181,41 @@ if (false === $roleExists->fetchColumn()) {
     exit(1);
 }
 
+/*
+ * AND THE ROLE MUST BE SUBJECT TO POLICIES AT ALL, which existing does not imply.
+ *
+ * The guard above was added to catch a wrong role NAME and stopped there, so it asked whether the role was SPELLED
+ * correctly and not whether it was governed by the policies this gate then certifies. A reviewer set `BYPASSRLS`
+ * and watched the gate report "enabled, FORCED, canonically policed, NOT NULL, and beyond … ownership and
+ * TRUNCATE" over a role that reads every tenant with every policy in place.
+ *
+ * `roleCanBypassPolicies()` rather than three comparisons here: it already exists, it already covers REPLICATION
+ * -- which goes AROUND the query layer policies live in rather than defeating them, via `pg_basebackup` -- and a
+ * second copy of that judgement is the exact mistake this commit is undoing two axes over.
+ */
+if (PostgresRowLevelSecurityIsolation::roleCanBypassPolicies($role)) {
+    fwrite(STDERR, sprintf(
+        "schema-tenancy: FAIL — the runtime role \"%s\" can BYPASS row-level security"
+        . " (rolsuper=%s rolbypassrls=%s rolreplication=%s).\n"
+        . "  Every other assertion in this gate is then meaningless: policies remain in place and are simply not\n"
+        . "  applied to this role, so a schema that is genuinely isolated certifies clean while the application\n"
+        . "  reads every tenant. REPLICATION counts because it reads the heap directly through pg_basebackup,\n"
+        . "  with row security never involved — certification round 5 recovered both tenants from a base backup\n"
+        . "  taken by a role that was neither superuser nor BYPASSRLS.\n",
+        $runtimeRole,
+        var_export($role['rolsuper'], true),
+        var_export($role['rolbypassrls'], true),
+        var_export($role['rolreplication'], true),
+    ));
+
+    exit(1);
+}
+
+// A single-quoted SQL literal for the runtime role, built ONCE. Every reachability predicate below is anchored on
+// the NAMED role rather than on this connection, because this connection is a superuser and every "can you reach
+// it" question would otherwise answer yes.
+$runtimeRoleLiteral = "'" . str_replace("'", "''", $runtimeRole) . "'";
+
 $canonical = PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
 $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
 
@@ -185,6 +224,22 @@ $tables = $connection->query(
     . 'c.relrowsecurity AS rls_enabled, '
     . 'c.relforcerowsecurity AS forced, '
     . 'o.rolname AS owner, '
+    // REACHABILITY, not string equality -- and computed by the SAME predicate the runtime checker uses, taken
+    // from the class rather than rewritten here. `$row['owner'] === $runtimeRole` was a reproduced cross-tenant
+    // read: a table owned by a role the runtime role can `SET ROLE` to passed, and DISABLE ROW LEVEL SECURITY was
+    // then one statement away. A role is a member of itself, so this covers "is the owner" too.
+    . '(' . PostgresRowLevelSecurityIsolation::roleIsReachableBySql($runtimeRoleLiteral, 'c.relowner')
+    . ') AS owner_reachable, '
+    // Likewise TRUNCATE. `has_table_privilege` resolves privileges INHERITABLY, while `SET ROLE` is authorised by
+    // MEMBERSHIP -- so a grant made WITH INHERIT FALSE is invisible to it, and a reviewer erased every tenant's
+    // rows through that gap while this gate printed "beyond … TRUNCATE". FALSE for the NULL-acl arm: a NULL acl
+    // means owner-only defaults, so a non-owner reaches nothing.
+    . '(' . PostgresRowLevelSecurityIsolation::privilegeIsReachableBySql(
+        $runtimeRoleLiteral,
+        'c.relacl',
+        'TRUNCATE',
+        false,
+    ) . ') AS truncate_reachable, '
     . '(SELECT json_agg(json_build_object('
     . "    'name', a.attname, 'not_null', a.attnotnull"
     . ' )) FROM pg_attribute a WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped'
@@ -208,7 +263,7 @@ if (false === $tables) {
     exit(1);
 }
 
-/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, columns: string, policies: string}> $rows */
+/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, columns: string, policies: string}> $rows */
 $rows = $tables->fetchAll(PDO::FETCH_ASSOC);
 
 $inspected = 0;
@@ -223,15 +278,20 @@ foreach ($rows as $row) {
     // docblock for why a non-tenant table's owner is load-bearing. Placed before the classification branch on
     // purpose: the two `continue`s below skip a table this check must still see, which is precisely how it came
     // to miss a runtime-owned `doctrine_migration_versions`.
-    if ($row['owner'] === $runtimeRole) {
+    // `!isFalse(...)`, the fail-CLOSED direction: an unrecognised spelling must report a violation rather than
+    // wave the table through. Danger is if TRUE, so the complement of isTrue() is the wrong member here -- see the
+    // round-20 note further down on why these two are deliberate non-complements.
+    if (!isFalse($row['owner_reachable'])) {
         $violations[] = sprintf(
-            '%s is OWNED by the runtime role "%s". FORCE stops an owner skipping policies, not removing them: '
+            '%s is OWNED by "%s", which the runtime role "%s" IS or can SET ROLE to. FORCE stops an owner '
+            . 'skipping policies, not removing them: '
             . '`ALTER TABLE %s DISABLE ROW LEVEL SECURITY` is one statement away. Migrations must run as a '
             . 'separate owning role that is never granted to the runtime role — configure a second Doctrine '
             . 'connection for them rather than reusing DATABASE_URL. This is refused even when the table holds '
             . 'no tenant data, because it proves the migration connection is the runtime role, so the NEXT '
             . 'tenant-owned table it creates will be owned by it too.',
             $table,
+            $row['owner'],
             $runtimeRole,
             $table,
         );
@@ -337,25 +397,23 @@ foreach ($rows as $row) {
         );
     }
 
-    $truncate = $connection->query(sprintf(
-        "SELECT has_table_privilege('%s', '%s', 'TRUNCATE') AS can_truncate",
-        str_replace("'", "''", $runtimeRole),
-        str_replace("'", "''", $table),
-    ));
-
-    if (false === $truncate) {
-        $violations[] = sprintf('%s: could not read TRUNCATE privilege for "%s".', $table, $runtimeRole);
-
-        continue;
-    }
-
-    // **THE RAW VALUE, never `(string) $granted`** — and this gate reproduced round 20's P0 while being written,
-    // which is why the warning is repeated here rather than assumed learned. `(string) false` is the EMPTY
-    // STRING, `isFalse('')` is false, so `!isFalse((string) ...)` is TRUE for a false result: the gate reported
-    // all four tables TRUNCATE-able on a schema where `has_table_privilege` said false and the ACL was
-    // `twes=arwd/twes_owner` with no `D`. An hour after the § Gotchas entry about exactly this.
-    $granted = $truncate->fetchColumn();
-    $definitelyNotGranted = is_bool($granted) || is_string($granted) ? isFalse($granted) : false;
+    /*
+     * TRUNCATE, read from the main query's reachability column rather than from a per-table `has_table_privilege`.
+     *
+     * That removes two defects at once. The predicate is now MEMBERSHIP-based, so a grant held `WITH INHERIT FALSE`
+     * is visible -- a reviewer erased every tenant's rows through that gap while this gate printed "beyond …
+     * TRUNCATE". And the table is no longer named as a TEXT literal: `has_table_privilege('Ledger', …)` case-folds
+     * to `ledger`, which was a silent false negative on a mixed-case table and an uncaught PDOException with exit
+     * 255 when only the mixed-case one existed. Joining on `c.oid` in the main query cannot mis-resolve a name,
+     * and it is the same lesson as round 13's `current_user::regrole` downcasing, one axis over.
+     *
+     * **THE RAW VALUE, never `(string) $granted`** — this gate reproduced round 20's P0 while being written.
+     * `(string) false` is the EMPTY STRING and `isFalse('')` is false, so `!isFalse((string) ...)` is TRUE for a
+     * false result: the gate reported all four tables TRUNCATE-able where the ACL was `twes=arwd/twes_owner` with
+     * no `D`. An hour after the § Gotchas entry about exactly this.
+     */
+    $granted = $row['truncate_reachable'];
+    $definitelyNotGranted = isFalse($granted);
 
     if (!$definitelyNotGranted) {
         $violations[] = sprintf(
