@@ -1,0 +1,17 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# TEST-environment overrides only. `MicroKernelTrait` loads `config/packages/{env}/*.yaml` after the shared files,
+# so this adds to `config/packages/framework.yaml` rather than replacing it.
+framework:
+    # `test: true` registers the test client and the profiler-free container that `WebTestCase` needs. Without it
+    # every functional test dies with "You cannot create the client used in functional tests", which reads like a
+    # missing package rather than a missing config key.
+    #
+    # ONLY in the test environment, and that scoping is a security property rather than tidiness: the test client
+    # can dispatch a request bypassing the HTTP layer entirely, so enabling it in prod would be a way to reach the
+    # kernel without passing anything that guards the front door.
+    test: true

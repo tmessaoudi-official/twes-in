@@ -1,0 +1,161 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# FrankenPHP / Caddy configuration.
+#
+# THIS IS NOT A SECOND SERVER. FrankenPHP is a Caddy build with PHP embedded, so this is its own configuration
+# file, not the config of a reverse proxy in front of it. One process serves the API, the Angular admin and the
+# Flutter web client — which is also what keeps every client on the SAME ORIGIN as the API. That matters: the
+# Flutter web build already carries same-origin controls (`mobile/web/`), and putting the API on another origin
+# would undo them and force CORS, which is a security surface added for no benefit.
+# ==============================================================================================================
+
+{
+	# Caddy's own admin API is OFF. It can rewrite the running configuration over HTTP, so in a container it is a
+	# remote-code-execution surface reachable by anything that gets a foothold on the network. Nothing here needs
+	# runtime reconfiguration; a config change is a deploy.
+	admin off
+
+	# STRUCTURED LOGS to stdout, which is where a container's logs belong — the orchestrator collects them and
+	# nothing writes to a file that would fill a layer. JSON because a human greps it once and a log pipeline
+	# parses it forever.
+	log {
+		output stdout
+		format json
+		level INFO
+	}
+
+	frankenphp {
+		# WORKER MODE IS DELIBERATELY NOT ENABLED YET, and this is the honest reason rather than an oversight.
+		#
+		# Worker mode keeps the Symfony kernel resident between requests, which needs `runtime/frankenphp-symfony`
+		# to run the request loop. That package's newest release (1.0.0) declares
+		# `symfony/http-kernel: ^5.4 || ^6.0 || ^7.0` and this project is on Symfony 8.1, so Composer refuses it.
+		#
+		# There is a second, better reason to wait. A resident kernel REUSES database connections across requests,
+		# and a tenant left bound on a connection is a cross-tenant read for whoever gets it next — the precise
+		# failure `PostgresRowLevelSecurityIsolation` was built against, with `assertNoTenantPinnedOnTheConnection()`
+		# and `discardSessionState()` for it. Those controls exist and are tested, but nothing has yet proven them
+		# under a real resident worker. Turning worker mode on before that proof exists would be trading a
+		# reportable data breach for a latency improvement.
+		#
+		# When both are resolved, this becomes:
+		#     worker {
+		#         file /app/public/index.php
+		#         num 4
+		#     }
+		# and `infra/README.md` records the two preconditions as owed.
+	}
+}
+
+# The site address comes from the environment so that one image serves a developer's `localhost`, a staging host and
+# production without a rebuild. `CLAUDE.md` licensing invariant 9 requires exactly this: hostname is CONFIGURATION,
+# never hardcoded, so a public deployment is a config change rather than a code change.
+{$SERVER_NAME:localhost} {
+	log {
+		output stdout
+		format json
+	}
+
+	# ----------------------------------------------------------------------------------------------------------
+	# SECURITY HEADERS, applied to every response including the static bundles.
+	# ----------------------------------------------------------------------------------------------------------
+	header {
+		# Strip the fingerprints. There is no reason to tell an attacker which server and which PHP build this is.
+		-Server
+		-X-Powered-By
+
+		# HSTS. Two years, subdomains included, preload-eligible. Only meaningful over HTTPS, and harmless
+		# otherwise, so it is unconditional rather than duplicated into a second block.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+
+		# MIME sniffing off: a JSON response must never be executed as script because a browser guessed.
+		X-Content-Type-Options "nosniff"
+
+		# Framing denied. There is no legitimate embedding of an invoicing admin in a third-party page, and the
+		# consequence of allowing it is clickjacking against actions that move money.
+		X-Frame-Options "DENY"
+
+		Referrer-Policy "strict-origin-when-cross-origin"
+
+		# Powerful features nothing here uses. Denying them is free and shrinks what a compromised bundle can do.
+		Permissions-Policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+
+		# Cross-origin isolation. `same-origin` on the opener policy is what stops a popup retaining a handle on
+		# this window, and `require-corp` means no cross-origin subresource loads without opting in — which is the
+		# posture the Flutter build already assumes.
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+	}
+
+	# ----------------------------------------------------------------------------------------------------------
+	# THE API — Symfony, under /api plus the health probes.
+	# ----------------------------------------------------------------------------------------------------------
+	@php {
+		path /api /api/* /health /health/*
+	}
+
+	handle @php {
+		root * /app/public
+		# A strict Content-Security-Policy for API responses: they are DATA and must never be interpreted as a
+		# document. `sandbox` neuters any HTML that somehow reaches a browser from this path.
+		header {
+			Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+			# Never cached by a shared cache: every API response is tenant-scoped, and a shared cache that keyed
+			# on URL alone would serve one tenant's invoice to another. This is the HTTP-layer echo of the
+			# row-level security below it.
+			Cache-Control "no-store, private"
+			Vary "Accept, Authorization"
+		}
+		php_server {
+			# The front controller is the ONLY entry point. Without this, a request for a `.php` file that happens
+			# to exist anywhere under the root would execute it.
+			try_files {path} /index.php
+			# `index.php` is not resolved as a directory index, so `/api/` cannot be served by path traversal.
+			resolve_root_symlink
+		}
+	}
+
+	# ----------------------------------------------------------------------------------------------------------
+	# THE ANGULAR ADMIN — a static bundle, served from the same origin at /admin.
+	# ----------------------------------------------------------------------------------------------------------
+	handle_path /admin/* {
+		root * /srv/admin
+		header {
+			# Hashed asset filenames are immutable; the entry document is not, or a deploy would never be picked
+			# up by a returning browser.
+			Cache-Control "public, max-age=31536000, immutable"
+		}
+		@adminIndex path /index.html /
+		header @adminIndex Cache-Control "no-cache"
+		# SPA routing: an unknown path is the application's route, not a 404 — but only after a real file lookup,
+		# so a missing asset is still honestly a 404 rather than the index document with a 200.
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	# ----------------------------------------------------------------------------------------------------------
+	# THE FLUTTER WEB CLIENT — the second admin interface, per CLAUDE.md. Same origin, same process.
+	# ----------------------------------------------------------------------------------------------------------
+	handle_path /app/* {
+		root * /srv/flutter
+		header Cache-Control "public, max-age=31536000, immutable"
+		@flutterIndex path /index.html /
+		header @flutterIndex Cache-Control "no-cache"
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	# Anything else. No directory listing, no fallthrough to PHP, no information about what exists.
+	handle {
+		respond "Not Found" 404
+	}
+
+	# gzip and zstd. Brotli is deliberately absent: Caddy's built-in `encode` does not ship it, and adding a plugin
+	# means a custom FrankenPHP build — a real cost for a marginal gain on already-compressed JSON.
+	encode zstd gzip
+}

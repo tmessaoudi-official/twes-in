@@ -29,6 +29,11 @@ readonly -a SEARCH_ROOTS=(
   "mobile/lib"
   "mobile/test"
   "scripts"
+  # The infra tier, added when it stopped being a README stub. The coverage check at the end of this gate is what
+  # forced it: `infra/api/docker-entrypoint.sh` carried a correct SPDX header and was under NO search root, so the
+  # gate would have reported OK while never looking at it. That direction -- do the roots COVER every tracked
+  # source file -- is the half CLAUDE.md records as the one that was missing when `api/phpunit.xml` sat unscanned.
+  "infra"
 )
 
 # Individual files that live at a tier's top level rather than inside one of the roots above. They exist

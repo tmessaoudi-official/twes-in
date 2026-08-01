@@ -60,6 +60,21 @@ readonly -a TOOLS=(
   # before bumping: the served phar reports `PHP CS Fixer 3.95.18 (d1fc711)`, and `check` over this repo reports
   # `Found 0 of 69 files that can be fixed` — same verdict as 3.95.17, so the bump changes no style rule.
   "php-cs-fixer.phar|https://cs.symfony.com/download/php-cs-fixer-v3.phar|4109a4ea6b9a40a411b9bf15536813de656f548d4c5be492af2adb4e94972212"
+  # PHPStan 2.2.6, fetched as a PHAR rather than installed by Composer -- which finally resolves the blocker
+  # CLAUDE.md carried for twenty certification rounds. Two corrections to the record, both verified:
+  #
+  #   1. The cause was never network egress. `phpstan/phpstan` is the only package in `composer.lock` with no
+  #      `source` URL, so `--prefer-source` cannot route around the 403 on `api.github.com` for it alone.
+  #   2. The remedy CLAUDE.md suggested -- a VCS `repositories` entry -- does NOT work either, and the reason is
+  #      not the network: `phpstan/phpstan` is a DISTRIBUTION repo that carries the built phar for every release
+  #      in its history, so `git clone --mirror` exceeded Composer's 300-second process timeout. [Verified
+  #      2026-08-02: the clone was killed at 300s.] Adding that entry is actively harmful, because every later
+  #      `composer install` inherits the timeout.
+  #
+  # The phar is served by `raw.githubusercontent.com`, which IS reachable [Verified: 200, 27798998 bytes, reports
+  # `PHPStan - PHP Static Analysis Tool 2.2.6`]. So PHPStan joins PHPUnit and php-cs-fixer as a pinned phar, which
+  # is the pattern this project already trusts and needs no vendor tree.
+  "phpstan.phar|https://raw.githubusercontent.com/phpstan/phpstan/2.2.6/phpstan.phar|abe4d3b38db5c4139e0135d98ea583e65185344050812651d1e9ede56d354e20"
 )
 
 mkdir -p "$TOOLS_DIR"

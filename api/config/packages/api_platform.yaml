@@ -1,0 +1,73 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# API Platform — the REST surface. `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" names this as the
+# MANDATED mechanism (API Resources instead of a `toArray()` per endpoint, its pagination extension instead of a
+# hand-rolled limit/offset), so this file is that rule made real.
+#
+# Every value below is a deliberate CONTRACT decision, and § "The API contract is ours to design" says the contract
+# is ours to design and load-bearing once the Flutter client ships to a store. It has not shipped, so these are
+# provisional and recorded as such in `docs/plans/reimplementation-strategy.plan.md`. Nothing here inherits an
+# Invoice Ninja shape: no unix-second integers, no `double` money, no `_method=put`, no `per_page=999999`.
+api_platform:
+    title: 'twes-in API'
+    description: 'Invoicing and billing. Multi-tenant, tenant-isolated by PostgreSQL row-level security.'
+
+    # The contract is VERSIONED DELIBERATELY, not incidentally. A shipped mobile client updates on app-store
+    # timelines, so a field rename is a breaking change with a migration plan.
+    version: '0.1.0'
+
+    # WHERE THE RESOURCES LIVE. API Platform scans `src/Entity` and `src/ApiResource` by default; ours are under
+    # `src/UI/Http/ApiResource` because § Architecture puts the transport boundary in `UI/` and forbids the
+    # framework reaching into `Domain/`. Without this the entrypoint renders with no resources at all -- and that
+    # failure is silent, which is the shape this repository refuses.
+    mapping:
+        paths:
+            - '%kernel.project_dir%/src/UI/Http/ApiResource'
+
+    # NOTE the /api prefix is set by the ROUTE IMPORT in `config/routes/api_platform.yaml`, not here: API Platform
+    # 4.3 has no `routes` option. Front-ends are served from the same origin by the same FrankenPHP process, which
+    # is what keeps `mobile/web/`'s same-origin controls intact -- a cross-origin API would undo them.
+
+    defaults:
+        # STATELESS. There is no session (see framework.yaml), and a stateless API is what lets FrankenPHP run in
+        # worker mode without a request leaking state into the next one.
+        stateless: true
+
+        # Pagination ON by default and CLIENT-CONTROLLABLE ONLY WITHIN A BOUND. Upstream's `per_page=999999` is
+        # rejected by name in CLAUDE.md; an unbounded page size is a denial-of-service vector and, on a
+        # tenant-scoped table, a way to make one request do an unbounded amount of work.
+        pagination_enabled: true
+        pagination_client_enabled: true
+        pagination_client_items_per_page: true
+        pagination_items_per_page: 25
+        pagination_maximum_items_per_page: 100
+
+    formats:
+        jsonld: ['application/ld+json']
+        json: ['application/json']
+
+    # PROBLEM DETAILS (RFC 9457) for errors rather than a bespoke envelope. A documented, standard error shape is
+    # one fewer thing three clients have to agree about by convention.
+    error_formats:
+        jsonproblem: ['application/problem+json']
+
+    # The docs and the OpenAPI document are the contract's machine-readable form, which is what
+    # `completeness-reviewer` treats as a tier an API change must reach.
+    enable_docs: true
+    enable_entrypoint: true
+
+    # OFF: no SwaggerUI-driven "try it out" in production, and no ReDoc. They pull remote assets, which is a
+    # same-origin and privacy question this project has already ruled on for the Flutter build.
+    swagger:
+        versions: [3]
+
+    openapi:
+        contact:
+            name: 'Takieddine MESSAOUDI'
+        license:
+            name: 'AGPL-3.0-or-later OR commercial'
+            url: 'https://github.com/tmessaoudi-official/twes-in/blob/master/LICENSING.md'

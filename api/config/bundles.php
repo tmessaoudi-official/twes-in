@@ -22,4 +22,12 @@ return [
     Symfony\Bundle\FrameworkBundle\FrameworkBundle::class => ['all' => true],
     Doctrine\Bundle\DoctrineBundle\DoctrineBundle::class => ['all' => true],
     Doctrine\Bundle\MigrationsBundle\DoctrineMigrationsBundle::class => ['all' => true],
+
+    /*
+     * API Platform is the mechanism `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" MANDATES for
+     * the REST surface -- API Resources rather than a `toArray()` per endpoint, and its pagination extension
+     * rather than a hand-rolled limit/offset. Registering it here is what makes that rule real instead of a
+     * table entry.
+     */
+    ApiPlatform\Symfony\Bundle\ApiPlatformBundle::class => ['all' => true],
 ];

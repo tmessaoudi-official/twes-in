@@ -70,6 +70,35 @@
             credential now FAILS rather than skipping, exactly as an unreachable database does.
         -->
         <env name="TWES_TEST_DSN" value="pgsql:host=127.0.0.1;port=5432;dbname=twes_in_test"/>
+        <!--
+            THE APPLICATION'S OWN ENVIRONMENT, needed by the `functional` and `e2e` suites, which boot the real
+            kernel. Declared HERE rather than in a `.env.test` file for the reason `Kernel` gives about Flex: the
+            wiring is visible rather than implied, and one file lists everything a test run needs.
+
+            KERNEL_CLASS is what `WebTestCase` resolves the kernel from. Without it the suite dies complaining the
+            kernel was booted too early, which sends a reader hunting for a lifecycle bug that is not there.
+        -->
+        <env name="APP_ENV" value="test"/>
+        <!--
+            DEBUG OFF in tests, which is the opposite of the usual Symfony advice and deliberate here. With debug
+            on, the framework logger writes every dispatched event to stdout; PHPUnit treats a test that produces
+            output as RISKY, so all nine functional tests passed while the suite reported "OK, but there were
+            issues!" — a green run with a warning nobody reads is the shape this project refuses.
+
+            Nothing is lost: the functional suite asserts WIRE behaviour (status codes, JSON keys), every
+            assertion message here already embeds the response body, and debug=0 is closer to what production
+            actually does — so an error rendering differently under debug cannot hide behind a passing test.
+        -->
+        <env name="APP_DEBUG" value="0"/>
+        <env name="APP_SECRET" value="test-secret-not-used-for-anything-signed"/>
+        <env name="KERNEL_CLASS" value="Twes\Kernel"/>
+        <!--
+            The functional suite hits `/health/ready`, which asks the database three questions, so it points at the
+            same throwaway credentials as the integration suite. A functional run that silently could not reach a
+            database would report the readiness endpoint healthy for the wrong reason.
+        -->
+        <env name="DATABASE_URL" value="postgresql://twes:twes@127.0.0.1:5432/twes_in?serverVersion=18&amp;charset=utf8"/>
+        <env name="DATABASE_URL_OWNER" value="postgresql://twes_owner:twes_owner@127.0.0.1:5432/twes_in?serverVersion=18&amp;charset=utf8"/>
         <env name="TWES_TEST_DB_USER" value="twes"/>
         <env name="TWES_TEST_DB_PASSWORD" value="twes"/>
         <env name="TWES_TEST_DB_OWNER_USER" value="twes_owner"/>

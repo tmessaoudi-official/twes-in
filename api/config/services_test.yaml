@@ -1,0 +1,30 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# TEST-environment service overrides. `MicroKernelTrait` loads `config/services_{env}.yaml` after
+# `config/services.yaml`, so this adds to the shared wiring rather than replacing it.
+services:
+    # THE LOG GOES TO A FILE IN TESTS, not to stderr.
+    #
+    # Why this is a fix and not a suppression: several tests assert an error path on purpose — a 404 for an unknown
+    # currency code, a 503 from readiness — and the framework logs those, correctly. But PHPUnit marks any test that
+    # produces output as RISKY, so the suite reported "OK, but there were issues!" while every assertion passed. A
+    # green run carrying a warning nobody reads is exactly the false-assurance shape `CLAUDE.md` § Gotchas records,
+    # so the log is redirected rather than silenced: `var/log/test.log` still has every line if a failure needs
+    # explaining.
+    #
+    # `error` as the minimum level, because that is what these tests provoke; anything chattier would put the
+    # framework's own event stream in the file for no benefit.
+    logger:
+        class: Symfony\Component\HttpKernel\Log\Logger
+        arguments:
+            - 'error'
+            # THE CACHE DIR, not `%kernel.logs_dir%`. `api/var/` is gitignored in full, so `var/log/` does not
+            # exist in a fresh clone and the logger raised `Unable to open ".../var/log/test.log"` — every test
+            # erroring for a reason that has nothing to do with the code under test. The cache directory is
+            # guaranteed to exist by the time services are instantiated, because the container was just compiled
+            # into it.
+            - '%kernel.cache_dir%/test.log'

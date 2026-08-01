@@ -14,11 +14,12 @@
         "ext-bcmath": "*",
         "ext-ctype": "*",
         "ext-iconv": "*",
-        "ext-mbstring": "*",
         "ext-intl": "*",
+        "ext-mbstring": "*",
         "ext-pdo": "*",
         "ext-pdo_pgsql": "*",
         "ext-simplexml": "*",
+        "api-platform/core": "^4.3",
         "doctrine/dbal": "^4.4",
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",
@@ -32,9 +33,7 @@
         "symfony/yaml": "8.1.*"
     },
     "require-dev": {
-        "deptrac/deptrac": "^4.7",
         "friendsofphp/php-cs-fixer": "^3.90",
-        "phpstan/phpstan": "^2.2",
         "phpunit/phpunit": "^12.5",
         "symfony/browser-kit": "8.1.*",
         "symfony/css-selector": "8.1.*",
@@ -92,7 +91,7 @@
     },
     "scripts-descriptions": {
         "gate": "Run the API tier's full quality gate. Green means every step, not most of them.",
-        "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies. Also runs shell-syntax.sh: bash -n over every tracked script INCLUDING the other gates, because a syntax error in a gate makes it stop detecting while its non-zero exit reads as a detection. And no-orphaned-docblocks.php, because a doc comment's POSITION is part of its truth and three successive certification rounds filed a stranded one -- the third created by the second's own fix. It is a token_get_all() pass rather than a line-pattern one because round 18 showed a positional rule enforced only ONE spelling of the rule and missed four of five genuine shapes, a blank line between the two blocks among them. And no-owner-connection-in-application.php: config/packages/doctrine.yaml calls the default/owner connection split a security boundary, and round 21 showed the container hands the owner connection to any caller that asks — #[Target('owner')] or getConnection('owner') is one line from a role that can DROP POLICY, which FORCE does not prevent.",
+        "gate:architecture": "Hexagonal fitness: no ORM attributes, no outward or vendor dependencies, and no ambient clock/randomness/environment/IO in Domain/; SPDX headers present; locale keys in parity. Runs on plain PHP so it needs no installed dependencies. Also runs shell-syntax.sh: bash -n over every tracked script INCLUDING the other gates, because a syntax error in a gate makes it stop detecting while its non-zero exit reads as a detection. And no-orphaned-docblocks.php, because a doc comment's POSITION is part of its truth and three successive certification rounds filed a stranded one -- the third created by the second's own fix. It is a token_get_all() pass rather than a line-pattern one because round 18 showed a positional rule enforced only ONE spelling of the rule and missed four of five genuine shapes, a blank line between the two blocks among them. And no-owner-connection-in-application.php: config/packages/doctrine.yaml calls the default/owner connection split a security boundary, and round 21 showed the container hands the owner connection to any caller that asks \u2014 #[Target('owner')] or getConnection('owner') is one line from a role that can DROP POLICY, which FORCE does not prevent.",
         "gate:schema": "Assert every tenant-owned table in a REAL MIGRATED SCHEMA is RLS-enabled, FORCED, canonically policed, NOT NULL on the tenant column, and beyond the runtime role's ownership and TRUNCATE. The ONLY gate here that needs a database -- a schema cannot be read from source, and an unpoliced tenant table is invisible to every check that can. Needs TWES_SCHEMA_DSN + TWES_SCHEMA_USER, or falls back to the integration suite's TWES_TEST_DSN pair. FAILS rather than skipping when it cannot connect.",
         "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md). NEEDS a populated pub cache: run `cd mobile && flutter pub get` first, or set PUB_CACHE.",
         "gate:mapping": "Validate the service container and the Doctrine mapping without touching a database.",

@@ -1,0 +1,16 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# The health probes, loaded from attributes on the controller.
+#
+# NOT an `#[ApiResource]`, and that is deliberate: a container's liveness probe must not depend on the
+# serialization stack, the negotiation layer or the OpenAPI metadata being healthy. It is the one endpoint whose
+# job is to answer when other things are broken, so it goes through the thinnest possible path.
+health:
+    resource:
+        path: '../../src/UI/Http/Controller/'
+        namespace: Twes\UI\Http\Controller
+    type: attribute

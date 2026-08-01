@@ -83,10 +83,20 @@ allowlist. Direct requirements:
 | `doctrine/dbal` | 4.4.4 | MIT | database abstraction | composer.lock |
 | `doctrine/doctrine-bundle` | 3.3.1 | MIT | Symfony integration — **3.x is the first line supporting Symfony 8** | composer.lock |
 | `doctrine/doctrine-migrations-bundle` | 4.0.0 | MIT | schema migrations, incl. the RLS policies | composer.lock |
+| `api-platform/core` | v4.3.17 | MIT | **the REST/GraphQL surface** — the mechanism `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" mandates for API resources and pagination, rather than a hand-rolled controller per endpoint. v4.3 is the first STABLE line supporting Symfony 8 (`symfony/http-kernel: ^6.4.13 \|\| ^7.0 \|\| ^8.0`); the 4.4 and 5.0 lines are still alpha, and an alpha dependency in a billing product is not acceptable | composer.lock + packagist p2 (expanded — the v2 feed is MINIFIED and a naive read shows `license: null`) |
+| `symfony/serializer` | v8.1.3 | MIT | API Platform's representation layer | composer.lock |
+| `symfony/validator` | v8.1.2 | MIT | DTO validation at the UI boundary — the domain still refuses invalid state itself | composer.lock |
+| `symfony/property-access` | v8.1.0 | MIT | pulled by API Platform | composer.lock |
+| `symfony/property-info` | v8.1.2 | MIT | pulled by API Platform | composer.lock |
+| `symfony/type-info` | v8.1.0 | MIT | pulled by API Platform | composer.lock |
+| `symfony/web-link` | v8.1.0 | MIT | `Link` headers — 103 Early Hints and Vulcain preloading, both of which FrankenPHP serves | composer.lock |
+| `psr/link` | 2.0.1 | MIT | PSR-13 link interfaces, pulled by `symfony/web-link` | composer.lock |
+| `willdurand/negotiation` | 3.1.0 | MIT | content negotiation, pulled by API Platform | composer.lock |
+| `composer/semver` | 3.4.4 | MIT | version constraint parsing, pulled by API Platform | composer.lock |
 | `phpunit/phpunit` | 12.5.33 | BSD-3-Clause | all four test suites | composer.lock |
 | `friendsofphp/php-cs-fixer` | v3.95.17 | MIT | style gate | composer.lock |
-| `phpstan/phpstan` | 2.2.6 | MIT | static analysis (owed — cannot install) | composer.lock |
-| `deptrac/deptrac` | 4.7.1 | MIT | layer fitness (owed — cannot install). **`qossmic/deptrac` is ABANDONED** in favour of this package | composer.lock + packagist `abandoned` field |
+| `phpstan/phpstan` | 2.2.6 | MIT | static analysis — a pinned PHAR in `api/tools/bin/`, fetched by `scripts/dev/fetch-tools.sh`, NOT a Composer dependency. It is dist-only on Packagist, which is why; see CLAUDE.md § "Quality gate" | `scripts/dev/fetch-tools.sh` pin + phar reports `PHPStan 2.2.6` |
+| ~~`deptrac/deptrac`~~ | — | MIT | **REMOVED from `require-dev` 2026-08-02**: it requires the dist-only `phpstan/phpstan` and so blocked every other dev dependency. Owed as a phar once the release asset is located. **`qossmic/deptrac` is ABANDONED** in favour of this package | composer.lock history + packagist `abandoned` field |
 | `symfony/browser-kit` | v8.1.1 | MIT | functional suite — HTTP through the kernel | composer.lock |
 | `symfony/css-selector` | v8.1.0 | MIT | functional suite — assertions against markup | composer.lock |
 | `symfony/process` | v8.1.0 | MIT | e2e suite — booting a real server | composer.lock |

@@ -1,0 +1,13 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# API Platform's own routes — the entrypoint, the OpenAPI document, the docs UI, and one route per operation on
+# every `#[ApiResource]`. Loaded explicitly rather than by a Flex recipe, for the reason `Kernel` gives: a
+# generated file nobody chose is a file nobody can explain.
+api_platform:
+    resource: .
+    type: api_platform
+    prefix: /api
