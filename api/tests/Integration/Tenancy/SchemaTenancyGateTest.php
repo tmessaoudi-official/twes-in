@@ -122,6 +122,77 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /**
+     * A database with no tenant-owned table at all must FAIL, not pass — and this branch had no test anywhere.
+     *
+     * It is the branch that stops the gate certifying an empty or wrong database, which is the failure mode most
+     * likely to happen in practice: a CI pointed at an unmigrated database, or at the wrong one of the three
+     * URLs this project now carries. `test-gates.sh` asserted "the NINE live assertions (… and an empty schema)
+     * are exercised by SchemaTenancyGateTest" while no such case existed — a false coverage claim in the
+     * meta-suite whose entire job is refusing false assurance.
+     *
+     * Uses a throwaway EMPTY database rather than mutating the probe, since the condition is the absence of
+     * everything.
+     */
+    public function testTheGateRefusesADatabaseWithNoTenantOwnedTable(): void
+    {
+        $empty = self::DATABASE . '_empty';
+        $superuser = self::superuser();
+        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', $empty));
+        $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', $empty, self::ownerRole()));
+
+        try {
+            [$status, $output] = self::runGate(null, $empty);
+
+            self::assertSame(1, $status, "An unmigrated database must fail the gate, not pass it:\n" . $output);
+            self::assertStringContainsString('asserted nothing', $output);
+            self::assertStringContainsString('tenant_owned=0', $output);
+        } finally {
+            $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', $empty));
+        }
+    }
+
+    /**
+     * A `FOR ALL` policy that omits `WITH CHECK` is CORRECT, and the gate must ACCEPT it.
+     *
+     * This is the only case here that asserts acceptance of something other than our own migration's output, and
+     * it exists because the gate refused it — reporting `WITH CHECK NOT canonical: NULL` and explaining that "a
+     * plain INSERT is guarded by WITH CHECK alone", which PostgreSQL refutes: for `FOR ALL` it reuses `USING` as
+     * the write check. `policyExpressionIsCanonical(null)` returns true and documents exactly that, so the gate's
+     * own docblock claim that all three definitions "agree by construction rather than by review" was false.
+     *
+     * A false refusal is not a harmless direction. Round 17 records a canonicality judgement applied where it did
+     * not belong, which "REFUSED every acquisition, permanently, on an entirely ordinary CREATE POLICY" — a gate
+     * that cries wolf on correct schemas gets switched off, and then the real findings go unread too. The
+     * cross-tenant INSERT is verified refused by the server below, so the schema really is safe.
+     */
+    public function testTheGateAcceptsAForAllPolicyThatOmitsWithCheck(): void
+    {
+        $canonical = \Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
+        $admin = self::admin();
+
+        $admin->exec('DROP POLICY tenant_isolation ON document');
+        $admin->exec(\sprintf('CREATE POLICY tenant_isolation ON document FOR ALL USING (%s)', $canonical));
+
+        try {
+            [$status, $output] = self::runGate();
+
+            self::assertSame(
+                0,
+                $status,
+                "A FOR ALL policy omitting WITH CHECK is correct — PostgreSQL reuses USING as the write check:\n"
+                . $output,
+            );
+        } finally {
+            $admin->exec('DROP POLICY tenant_isolation ON document');
+            $admin->exec(\sprintf(
+                'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                $canonical,
+                $canonical,
+            ));
+        }
+    }
+
+    /**
      * A runtime role that can BYPASS row-level security must fail the gate, whatever the schema looks like.
      *
      * The role-existence guard added at 8f85b2d reads only that the name resolves. `rolsuper`, `rolbypassrls` and
@@ -305,6 +376,55 @@ final class SchemaTenancyGateTest extends TestCase
             'UNIQUE',
         ];
 
+        // ---------------------------------------------------------------- polcmd and polroles
+        //
+        // A policy can be canonical in both halves and still guard nothing, because the gate read neither which
+        // COMMANDS it covers nor which ROLES it applies to. Both fail CLOSED -- the runtime role is denied every
+        // row rather than shown another tenant's -- so these are not breaches. They are the gate printing
+        // "canonically policed" about a table that is in fact unusable, which is its own defect: a control whose
+        // OK sentence is untrue trains the reader to stop believing it.
+
+        yield 'a canonical policy that covers only UPDATE, leaving INSERT and SELECT unpoliced' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document FOR UPDATE USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'does not cover ALL commands',
+        ];
+
+        yield 'a canonical policy granted only to another role, so it never applies to the runtime role' => [
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document TO %s USING (%s) WITH CHECK (%s)',
+                    self::ownerRole(),
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            [
+                'DROP POLICY tenant_isolation ON document',
+                \sprintf(
+                    'CREATE POLICY tenant_isolation ON document USING (%s) WITH CHECK (%s)',
+                    $canonical,
+                    $canonical,
+                ),
+            ],
+            'does not apply to the runtime role',
+        ];
+
         yield 'a table this gate cannot classify' => [
             ['CREATE TABLE ambiguous (tenant_id uuid NOT NULL, note text)'],
             ['DROP TABLE ambiguous'],
@@ -382,11 +502,11 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /** @return array{int, string} */
-    private static function runGate(?string $runtimeRole = null): array
+    private static function runGate(?string $runtimeRole = null, ?string $database = null): array
     {
         $command = \sprintf(
             'TWES_SCHEMA_DSN=%s TWES_SCHEMA_USER=%s TWES_SCHEMA_PASSWORD=%s TWES_SCHEMA_RUNTIME_ROLE=%s php %s 2>&1',
-            escapeshellarg(\sprintf('pgsql:host=%s;port=%s;dbname=%s', self::host(), self::port(), self::DATABASE)),
+            escapeshellarg(\sprintf('pgsql:host=%s;port=%s;dbname=%s', self::host(), self::port(), $database ?? self::DATABASE)),
             escapeshellarg(self::superuserName()),
             escapeshellarg(self::superuserPassword()),
             escapeshellarg($runtimeRole ?? self::runtimeRole()),

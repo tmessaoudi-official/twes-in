@@ -1915,11 +1915,16 @@ fresh_fixture
 echo "== schema tenancy: the one gate that needs a DATABASE =="
 # Only the DATABASE-FREE paths are asserted here, deliberately. `test-gates.sh` runs on plain PHP with no server,
 # and making the meta-suite require PostgreSQL would mean the whole suite stops running wherever the database is
-# down -- which in this container is often. The NINE live assertions (RLS enabled, FORCE, canonical policy on both
-# halves, a canonical policy existing at all, NOT NULL tenant column, ownership, TRUNCATE, an unclassifiable
-# table, and an empty schema) are exercised by `SchemaTenancyGateTest` in the integration suite, where a database
-# is already a precondition. Stated rather than left implicit: the split is about WHERE the database lives, not
-# about which half is optional.
+# down -- which in this container is often. Every LIVE assertion is exercised by `SchemaTenancyGateTest` in the
+# integration suite, where a database is already a precondition. Stated rather than left implicit: the split is
+# about WHERE the database lives, not about which half is optional.
+#
+# NO LIST AND NO COUNT HERE, and that is a fix rather than laziness. This comment used to enumerate "the NINE live
+# assertions (... and an empty schema)" -- and the empty-schema case did not exist, in the meta-suite whose entire
+# job is refusing false assurance. Two more axes landed after it was written and it named neither. A list of another
+# file's test cases, written in a comment, is a claim nobody re-checks; derive it with
+# `grep -c "yield '" api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` plus its `public function test`
+# methods. The `clean-case-elsewhere` redirect below is the part that is MECHANICALLY verified.
 
 no_dsn_output="$(cd "$REPO_ROOT" && env -u TWES_SCHEMA_DSN -u TWES_SCHEMA_USER -u TWES_TEST_DSN -u TWES_TEST_DB_SUPERUSER \
   php scripts/gates/schema-tenancy.php 2>&1)" && no_dsn_rc=0 || no_dsn_rc=$?

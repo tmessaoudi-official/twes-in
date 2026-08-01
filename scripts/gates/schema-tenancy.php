@@ -249,6 +249,15 @@ $tables = $connection->query(
     . '(SELECT coalesce(json_agg(json_build_object('
     . "    'name', p.polname,"
     . "    'permissive', p.polpermissive,"
+    // polcmd and polroles, both unread until round 21. A canonical policy covering only UPDATE, or granted only
+    // to another role, left this gate printing "canonically policed" about a table the runtime role cannot use.
+    . "    'command', p.polcmd,"
+    . "    'applies_to_runtime', EXISTS ("
+    . '      SELECT 1 FROM unnest(p.polroles) AS pr(rid)'
+    // rid = 0 is PUBLIC, which every role reaches. Otherwise: can the runtime role BE or BECOME that role?
+    . '      WHERE pr.rid = 0 OR '
+    . PostgresRowLevelSecurityIsolation::roleIsReachableBySql($runtimeRoleLiteral, 'pr.rid')
+    . "    ),"
     . "    'qual', pg_get_expr(p.polqual, p.polrelid),"
     . "    'check', pg_get_expr(p.polwithcheck, p.polrelid)"
     . " )), '[]') FROM pg_policy p WHERE p.polrelid = c.oid) AS policies "
@@ -490,25 +499,79 @@ foreach ($rows as $row) {
     $canonicalPolicies = 0;
 
     foreach ($policies as $policy) {
-        if (!isTrue($policy['permissive'])) {
+        if (isFalse($policy['permissive'])) {
             // RESTRICTIVE policies are ANDed, so an unscoped one only ever narrows access. Never a bypass.
+            //
+            // `isFalse(...)` and NOT `!isTrue(...)`: this gates a SKIP, so the two members are not
+            // interchangeable. Under `!isTrue()` an unrecognised spelling would be treated as RESTRICTIVE and the
+            // policy skipped UNEXAMINED -- the one fail-OPEN boolean read in this file, and a permissive
+            // `USING (true)` is exactly what would slip through it. Not reachable today, since json_build_object
+            // yields a real JSON boolean, but the round-20 note below is about a cast that was not reachable
+            // either until it was.
             continue;
         }
 
-        $qualIsCanonical = null !== $policy['qual'] && expressionMatches($policy['qual'], $canonical);
-        $checkIsCanonical = null !== $policy['check'] && expressionMatches($policy['check'], $canonical);
+        /*
+         * A NULL HALF IS LEGITIMATE, and treating it as non-canonical made this gate refuse CORRECT schemas.
+         *
+         * `FOR ALL` may omit `WITH CHECK`, and PostgreSQL then reuses `USING` as the write check;
+         * `FOR INSERT` carries only `WITH CHECK`, so its `polqual` is NULL by construction.
+         * `policyExpressionIsCanonical(null)` returns true and documents exactly this, so the old
+         * `null !== ... &&` made the gate disagree with the class it claims to agree with "by construction".
+         * A false refusal is not the safe direction: round 17 records a canonicality judgement that refused
+         * every acquisition on an ordinary CREATE POLICY, and a gate that cries wolf gets switched off.
+         *
+         * BOTH halves NULL is still refused -- that is the one combination meaning "constrains nothing" --
+         * and the comparison stays anchored on `$canonical`, built from TENANT_COLUMN, rather than delegating
+         * to `policyExpressionIsCanonical()`. That function leaves the COLUMN free by design, which is round
+         * 14's defect: a policy scoping `label` was certified as the canonical tenant predicate.
+         */
+        $qualIsCanonical = null === $policy['qual'] || expressionMatches($policy['qual'], $canonical);
+        $checkIsCanonical = null === $policy['check'] || expressionMatches($policy['check'], $canonical);
+        $constrainsNothing = null === $policy['qual'] && null === $policy['check'];
 
-        if ($qualIsCanonical && $checkIsCanonical) {
+        if ($qualIsCanonical && $checkIsCanonical && !$constrainsNothing) {
+            // Canonical, but does it actually REACH anything? A policy for one command, or granted to a role the
+            // runtime role is not, guards nothing it is credited for. Both fail closed, so neither is a breach --
+            // but counting one as the table's tenant policy makes the OK sentence untrue, and a control whose
+            // success message is false is one the next reader stops believing.
+            if ('*' !== $policy['command']) {
+                $violations[] = sprintf(
+                    '%s has a canonical PERMISSIVE policy "%s" that does not cover ALL commands (polcmd=%s). '
+                    . 'With row security on, a command no policy covers reads as empty and refuses every write, '
+                    . 'so this fails closed rather than leaking — but the table is unusable and this gate would '
+                    . 'otherwise report it "canonically policed". Use policySqlFor(), which emits FOR ALL.',
+                    $table,
+                    $policy['name'],
+                    var_export($policy['command'], true),
+                );
+
+                continue;
+            }
+
+            if (isFalse($policy['applies_to_runtime'])) {
+                $violations[] = sprintf(
+                    '%s has a canonical PERMISSIVE policy "%s" that does not apply to the runtime role "%s" — '
+                    . 'polroles names other roles, and PostgreSQL only applies a policy to roles it was granted '
+                    . 'to. Fails closed (the runtime role sees nothing), but the table is unusable and this gate '
+                    . 'would otherwise credit it as policed. Omit TO, so the policy applies to PUBLIC.',
+                    $table,
+                    $policy['name'],
+                    $runtimeRole,
+                );
+
+                continue;
+            }
+
             ++$canonicalPolicies;
 
             continue;
         }
 
         $violations[] = sprintf(
-            '%s has a PERMISSIVE policy "%s" that is not the canonical tenant predicate on both halves '
-            . '(USING %s, WITH CHECK %s). Permissive policies are ORed, so one unscoped policy reopens the whole '
-            . 'table however correct the others are — and BOTH halves matter: PostgreSQL reuses USING as a write '
-            . 'check for UPDATE, but a plain INSERT is guarded by WITH CHECK alone.',
+            '%s has a PERMISSIVE policy "%s" that is not the canonical tenant predicate (USING %s, WITH CHECK %s). '
+            . 'Permissive policies are ORed, so one unscoped policy reopens the whole table however correct the '
+            . 'others are. A NULL half is accepted — FOR ALL reuses USING as the write check — but not both.',
             $table,
             $policy['name'],
             $qualIsCanonical ? 'ok' : 'NOT canonical: ' . var_export($policy['qual'], true),
@@ -558,24 +621,31 @@ foreach ($rows as $row) {
 // gate that inspected an EMPTY schema reports OK indistinguishably from one that inspected a migrated database.
 printf("counts — tables=%d tenant_owned=%d violations=%d\n", $inspected, $tenantOwned, count($violations));
 
-if (0 === $tenantOwned) {
-    fwrite(STDERR, "schema-tenancy: FAIL — found NO tenant-owned table, so this gate asserted nothing.\n"
-        . "  Either the database was never migrated, or it is the wrong database. Both look identical to a\n"
-        . "  passing run unless this is checked, which is why it is.\n");
-
-    exit(1);
-}
-
+/*
+ * VIOLATIONS FIRST, then the anti-vacuity check.
+ *
+ * The order was the other way round, so a run that found a violation AND classified nothing as tenant-owned
+ * printed `violations=1` in the counts line, never printed the violation, and blamed the wrong cause -- telling
+ * the reader to check their DSN when the real answer was "rename `tenant_id`". Exit code was right and the
+ * diagnosis was not, which is the wrong-bound-message shape CLAUDE.md records for `document.quantity_too_large`.
+ */
 if ([] !== $violations) {
-    // "a tenant table is not isolated" was the header until the ownership check widened to every table, at which
-    // point it named the wrong thing for the one violation class that is NOT about a tenant table -- the
-    // wrong-bound message defect CLAUDE.md § "Translation keys" records for `document.quantity_too_large`. The
-    // per-violation lines below say which table and why; this line no longer asserts a category it cannot know.
+    // Not "a tenant-owned table is not isolated": the ownership axis applies to EVERY table, so that header
+    // named the wrong category for the one violation class that is not about a tenant table -- the
+    // wrong-bound message shape CLAUDE.md § "Translation keys" records. The per-violation lines say which.
     fwrite(STDERR, "schema-tenancy: FAIL — the schema does not satisfy tenant isolation.\n");
 
     foreach ($violations as $violation) {
         fwrite(STDERR, '  ' . $violation . "\n");
     }
+
+    exit(1);
+}
+
+if (0 === $tenantOwned) {
+    fwrite(STDERR, "schema-tenancy: FAIL — found NO tenant-owned table, so this gate asserted nothing.\n"
+        . "  Either the database was never migrated, or it is the wrong database. Both look identical to a\n"
+        . "  passing run unless this is checked, which is why it is.\n");
 
     exit(1);
 }
