@@ -1736,7 +1736,7 @@ fi
 # line, the attribute, the single-line second block and the same-line delimiters. A positional rule passed four
 # of these; the tokenizer must catch all four.
 orphan_shape_failures=0
-for shape in blank attribute oneline sameline; do
+for shape in blank attribute oneline sameline enumcase; do
   rm -rf "$WORK/shape"
   mkdir -p "$WORK/shape/scripts/gates" "$WORK/shape/src"
   cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" "$WORK/shape/scripts/gates/"
@@ -1745,8 +1745,13 @@ for shape in blank attribute oneline sameline; do
     attribute) between=$'    #[Deprecated]\n' ;;
     oneline)   between='' ;;
     sameline)  between='' ;;
+    enumcase)  between='' ;;
   esac
-  if [[ "$shape" == 'oneline' ]]; then
+  if [[ "$shape" == 'enumcase' ]]; then
+    # An ENUM CASE, not a method: the declaration a doc comment attaches to need not be a function, and a
+    # detector keyed on `public function` would pass every other shape here while missing this one.
+    printf '<?php\nenum S: string {\n    /**\n     * A.\n     */\n    /**\n     * B.\n     */\n    case One = "one";\n}\n' > "$WORK/shape/src/S.php"
+  elif [[ "$shape" == 'oneline' ]]; then
     printf '<?php\nclass A {\n    /**\n     * A.\n     */\n    /** B. */\n    public function m(): int { return 1; }\n}\n' > "$WORK/shape/src/S.php"
   elif [[ "$shape" == 'sameline' ]]; then
     printf '<?php\nclass A {\n    /**\n     * A.\n     */ /**\n     * B.\n     */\n    public function m(): int { return 1; }\n}\n' > "$WORK/shape/src/S.php"
@@ -1765,6 +1770,40 @@ for shape in blank attribute oneline sameline; do
     orphan_shape_failures=$((orphan_shape_failures + 1))
   fi
 done
+
+# A HEREDOC CONTAINING TEXT THAT LOOKS EXACTLY LIKE TWO DOC COMMENTS must NOT be flagged. This is the
+# false-positive direction, and for a detector whose subject matter IS comments it is the one that would make the
+# gate unusable — a string is not a comment, and the tokenizer is what knows the difference. A `grep`- or
+# `awk`-based detector fails this case, which is a second reason the rewrite was right beyond the shapes it added.
+fresh_fixture
+cat > "$WORK/repo/api/src/Domain/Probe/Heredoc.php" <<'PHP'
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Domain\Probe;
+
+final class Heredoc
+{
+    public function template(): string
+    {
+        return <<<TXT
+            /**
+             * Not a doc comment.
+             */
+            /**
+             * Also not one.
+             */
+            TXT;
+    }
+}
+PHP
+git -C "$WORK/repo" add -A >/dev/null 2>&1
+assert_gate 'does not flag doc-comment-shaped text inside a heredoc' no-orphaned-docblocks.php 0 'carry no stranded doc comment'
 
 echo "== twes-in's OWN licence identifier, in the manifests where a comment is impossible =="
 # Round 7 recorded that no gate checked the `license` field Composer and npm define -- the only
