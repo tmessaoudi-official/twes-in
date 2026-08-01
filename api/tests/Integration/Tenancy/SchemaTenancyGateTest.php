@@ -213,6 +213,33 @@ final class SchemaTenancyGateTest extends TestCase
     }
 
     /**
+     * A runtime role that is merely a MEMBER of a bypassing role must fail too — and this is the case the fixture
+     * was built for and the test above did not use.
+     *
+     * `rolsuper` and `rolbypassrls` are NOT INHERITED, so `twes_member` reads f/f/f in its own `pg_roles` row while
+     * being a member of `twes_bypass`, and reaches the privilege with one `SET ROLE`. Round 22 reproduced the
+     * cross-tenant read: gate green, then `SET ROLE twes_bypass` and both tenants' rows.
+     *
+     * The lesson worth keeping is not about PostgreSQL. `provision-test-database.sh` provisions `twes_member` for
+     * exactly this shape — CLAUDE.md § "Quality gate" says so, and says why: *"a fixture that cannot express a
+     * dangerous shape cannot detect it"*. The fixture COULD express it; the case above tested the direct attribute
+     * instead. A fixture is worth nothing if no case uses it, which is the same false-assurance shape as a gate
+     * believed on its happy path.
+     */
+    public function testTheGateRefusesARuntimeRoleThatIsMerelyAMemberOfABypassingRole(): void
+    {
+        [$status, $output] = self::runGate(getenv('TWES_TEST_DB_MEMBER_USER') ?: 'twes_member');
+
+        self::assertSame(
+            1,
+            $status,
+            "A role that can SET ROLE to a BYPASSRLS role must fail the gate — the attribute is not inherited, so "
+            . "its own pg_roles row reads clean:\n" . $output,
+        );
+        self::assertStringContainsString('SET ROLE', $output);
+    }
+
+    /**
      * @param list<string> $mutation SQL that breaks the schema in exactly one way
      * @param list<string> $revert SQL restoring it
      */

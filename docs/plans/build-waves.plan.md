@@ -11,6 +11,42 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
+- [2026-08-01 16:00] AGREED: **the schema gate is split by DISCOVERY versus VERDICT, and the shape-enumeration
+  judgements are DELETED rather than fixed** (developer ruling, after being asked to challenge the alternatives).
+  Round 22 produced SIX P0s in the gate while the schema it guards survived every attack both security lenses could
+  build — every confirmed breach was in the checker, none in the thing checked. The unifying diagnosis: each P0 came
+  from **inferring a property from a description** (catalogue metadata, or source text) instead of **observing the
+  thing itself**. `indkey` vs `indnkeyatts`; `contype` missing `'x'`; view-owner semantics; `pg_roles` own row vs
+  membership; `text::regclass` vs the oid I already had; grepping source for `Target('owner')` instead of asking the
+  compiled container. Enumerating implementation SHAPES is unbounded and PostgreSQL keeps adding to it; enumerating
+  attacker GOALS — read, write, re-parent, delete, probe existence — is bounded. Decisive evidence rather than
+  reasoning: **every P0 of round 22 was found by a behavioural probe, and none by reading catalogues.**
+  - **KEEP in `schema-tenancy.php`**: discovery (which relations hold tenant data), the refusal of a relation it
+    cannot classify, and the two checks that are genuine INFERENCES no probe can make — the tenant column being
+    `NOT NULL`, and the runtime role owning any table (which proves migrations run as the wrong role).
+  - **MOVE to a behavioural integration suite** attacking every relation discovery finds: read, write, re-parent,
+    delete, `TRUNCATE`, `SET ROLE` escalation, and unique/exclusion probing. It must attack every DISCOVERED
+    relation, so a new relkind or schema is covered without being named.
+  - **DELETE** the key-shape, relkind-semantics and role-attribute judgements. Four of the six P0s stop existing
+    instead of being patched, and a probe catches `EXCLUDE`, `INCLUDE` and whatever PostgreSQL 19 adds without
+    naming any of them.
+  - **The owner-connection gate gets the same treatment**: check the COMPILED CONTAINER, not source text. Round 22
+    bypassed it with `$ownerConnection` — Symfony's `registerAliasForArgument` resolves a parameter NAME — and with
+    `#[Target(name: 'owner')]`. An enumerate-the-spellings gate cannot close a name-based DI mechanism, so the
+    "strip the aliases" option I dismissed as half a fix was closer to right than the one I chose.
+  - **The anti-vacuity discipline transfers**: the suite must assert at least two tenants with rows AND that at
+    least one attack was REFUSED, or it is the fifth instance of a control that silently does not run.
+  - **Sequencing, so the tree never carries a gate that overclaims**: narrow the OK message as each judgement moves.
+  - This changes MECHANISM inside the Wave 1 ruling, which required detection to exist and named the properties —
+    it never mandated catalogue introspection.
+- [2026-08-01 16:00] AGREED: **API Platform is NOT installed and is scheduled NOWHERE** [Verified: zero occurrences
+  in `api/composer.json` and `api/composer.lock`, no `api/vendor/api-platform/`]. It is named as the MANDATED
+  mechanism by `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" (API Resources → API Platform resources;
+  Eloquent pagination → its pagination extension), and the only mention in this plan is that standing rule. So it is
+  required by convention and owed by no wave. It belongs with **Wave 1's HTTP surface**, which is still owed, and
+  the contract deliverables in `reimplementation-strategy.plan.md` depend on it. Recorded because a mandated
+  dependency that appears in no deliverable list is how a wave starts by hand-rolling the thing it was told not to.
+
 - [2026-07-29 13:40] AGREED: build in **waves**, each independently reviewable, each ending in a
   MAXIMAL certification round (three lenses, two consecutive clean rounds, cap 5 → ask). A wave is
   not "done" until its gate is green *and* the panel converges on it.

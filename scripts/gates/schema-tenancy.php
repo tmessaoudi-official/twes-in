@@ -161,12 +161,9 @@ try {
  * `TWES_SCHEMA_RUNTIME_ROLE`, then `TWES_TEST_DB_USER`, then the literal `twes`. Any deployment whose runtime role
  * is called something else and sets neither variable silently checks a role that does not exist.
  */
-$roleExists = $connection->prepare(
-    'SELECT rolsuper, rolbypassrls, rolreplication FROM pg_roles WHERE rolname = ?',
-);
+$roleExists = $connection->prepare('SELECT true FROM pg_roles WHERE rolname = ?');
 $roleExists->execute([$runtimeRole]);
-/** @var array{rolsuper: bool|string, rolbypassrls: bool|string, rolreplication: bool|string}|false $role */
-$role = $roleExists->fetch(PDO::FETCH_ASSOC);
+$role = false === $roleExists->fetchColumn() ? false : [];
 
 if (false === $role) {
     fwrite(STDERR, sprintf(
@@ -193,28 +190,73 @@ if (false === $role) {
  * -- which goes AROUND the query layer policies live in rather than defeating them, via `pg_basebackup` -- and a
  * second copy of that judgement is the exact mistake this commit is undoing two axes over.
  */
-if (PostgresRowLevelSecurityIsolation::roleCanBypassPolicies($role)) {
+// A single-quoted SQL literal for the runtime role, built ONCE. Every reachability predicate below is anchored on
+// the NAMED role rather than on this connection, because this connection is a superuser and every "can you reach
+// it" question would otherwise answer yes.
+$runtimeRoleLiteral = "'" . str_replace("'", "''", $runtimeRole) . "'";
+
+/*
+ * REACHABLE roles, not the role's OWN catalogue row. This read `WHERE rolname = ?` and checked three attributes on
+ * that single row, which round 22 turned into a reproduced cross-tenant read: `rolsuper` and `rolbypassrls` are NOT
+ * INHERITED, so a role that is merely a MEMBER of a superuser or BYPASSRLS role reads f/f/f in its own row, passes,
+ * and reaches the privilege with one `SET ROLE`.
+ *
+ * `PostgresRowLevelSecurityIsolation::assertConnectionCannotBypassPolicies()` documents this exact finding as closed
+ * and answers it with a membership predicate. So the gate held a SECOND, WEAKER copy of a judgement the class had
+ * already got right -- which is precisely the mistake the commit that added this check claimed to be undoing two
+ * axes over. `roleIsReachableBySql()` was already in scope here, used for ownership and TRUNCATE and not for this.
+ *
+ * The fixture provisions `twes_member` (a member of `twes_bypass`) for exactly this shape, and the test for this
+ * check passed `twes_bypass` itself -- the direct attribute. A fixture that can express a dangerous shape is worth
+ * nothing if the case does not use it.
+ *
+ * Note `pg_read_all_data` does NOT bypass row security (verified on PG18), so the answer is membership reachability
+ * rather than a longer attribute list.
+ */
+$bypassers = $connection->query(sprintf(
+    'SELECT r.rolname, r.rolsuper, r.rolbypassrls, r.rolreplication FROM pg_roles r WHERE %s',
+    PostgresRowLevelSecurityIsolation::roleIsReachableBySql($runtimeRoleLiteral, 'r.oid'),
+));
+
+if (false === $bypassers) {
+    fwrite(STDERR, "schema-tenancy: FAIL — could not read reachable roles from pg_roles.\n");
+
+    exit(1);
+}
+
+/** @var list<array{rolname: string, rolsuper: bool|string, rolbypassrls: bool|string, rolreplication: bool|string}> $reachable */
+$reachable = $bypassers->fetchAll(PDO::FETCH_ASSOC);
+$reachableBypassers = array_values(array_filter(
+    $reachable,
+    static fn(array $r): bool => PostgresRowLevelSecurityIsolation::roleCanBypassPolicies($r),
+));
+
+if ([] !== $reachableBypassers) {
+    $named = implode(', ', array_map(
+        static fn(array $r): string => sprintf(
+            '"%s" (rolsuper=%s rolbypassrls=%s rolreplication=%s)',
+            $r['rolname'],
+            var_export($r['rolsuper'], true),
+            var_export($r['rolbypassrls'], true),
+            var_export($r['rolreplication'], true),
+        ),
+        $reachableBypassers,
+    ));
+
     fwrite(STDERR, sprintf(
-        "schema-tenancy: FAIL — the runtime role \"%s\" can BYPASS row-level security"
-        . " (rolsuper=%s rolbypassrls=%s rolreplication=%s).\n"
+        "schema-tenancy: FAIL — the runtime role \"%s\" IS or can SET ROLE to a role that BYPASSES"
+        . " row-level security: %s.\n"
         . "  Every other assertion in this gate is then meaningless: policies remain in place and are simply not\n"
         . "  applied to this role, so a schema that is genuinely isolated certifies clean while the application\n"
         . "  reads every tenant. REPLICATION counts because it reads the heap directly through pg_basebackup,\n"
         . "  with row security never involved — certification round 5 recovered both tenants from a base backup\n"
         . "  taken by a role that was neither superuser nor BYPASSRLS.\n",
         $runtimeRole,
-        var_export($role['rolsuper'], true),
-        var_export($role['rolbypassrls'], true),
-        var_export($role['rolreplication'], true),
+        $named,
     ));
 
     exit(1);
 }
-
-// A single-quoted SQL literal for the runtime role, built ONCE. Every reachability predicate below is anchored on
-// the NAMED role rather than on this connection, because this connection is a superuser and every "can you reach
-// it" question would otherwise answer yes.
-$runtimeRoleLiteral = "'" . str_replace("'", "''", $runtimeRole) . "'";
 
 $canonical = PostgresRowLevelSecurityIsolation::canonicalPolicyExpression();
 $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
