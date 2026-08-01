@@ -370,10 +370,12 @@ dependency arrives as a `use` statement and an import check finds it, but `time(
 is blind to every one of them. Both use PHP's own tokenizer rather than `grep`, so a `use` inside a
 comment or a string is not a false positive.
 
-**Still owed, and deliberately not deleted from this table:** `deptrac` and `PHPStan`. Both are MIT and
-both are in `api/composer.json`; neither can be installed in this container, because every Composer
-`dist` URL is a GitHub host and GitHub egress is restricted by organisation policy to this repository
-alone (see § Gotchas). They are defence in depth on top of the gates above, not a substitute for them —
+**Still owed, and deliberately not deleted from this table:** `deptrac` and `PHPStan`. Both are MIT and both
+are in `api/composer.json`. **`deptrac` is now installable** and only waits on someone wiring it up;
+**PHPStan is not**, because `phpstan/phpstan` is the single package in `composer.lock` carrying no `source`
+URL, so `--prefer-source` cannot route around the 403 on `api.github.com`. This sentence claimed until
+2026-08-01 that NEITHER could be installed and that the cause was network egress; both halves were wrong —
+see § Gotchas. They are defence in depth on top of the gates above, not a substitute for them —
 the architecture gates run on plain PHP and need nothing installed. (`gate:licences` is the one exception: its pub-cache walk fails rather than skips when it cannot look, so it needs `flutter pub get` — see § "Quality gate".)
 
 ## Certification ladder — governs every 3C/6C gate
@@ -499,7 +501,8 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
 | **Architecture fitness** | the gates in `scripts/gates/` — `ls` that directory for the tally; see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus **every locked pub package's own licence read out of the pub cache** (`mobile/pubspec.lock` records no licence field, so the cache is the only place they exist — a copyleft grant is vetoed even when the same file also states a permissive one, more than one match is refused as ambiguous, a non-`hosted`/non-`sdk` source is refused, and a version that is not plain semver is refused because it becomes a filesystem path), plus every **vendored font** under `mobile/assets/fonts/`, recursively: a REUSE sidecar declaring exactly one identifier, an acceptable one, **every one of the font's own `name`-table licence records corroborating it**, the licence text beside the binary *and* declared under `flutter:`→`assets:` so it ships, and — the direction that was missing — **every font path the manifest declares must have been examined**, because a forward walk says nothing about the files it never reached. A font arrives as a committed binary rather than a manifest entry, so no lock file can see it; it is not the only such asset (13 of the 37 tracked `.png`/`.ico` files are template-derived and ship too), which is why that sentence no longer says "the one" | **Runs** |
-| Symfony API, owed | `vendor/bin/phpstan` (max level), `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Blocked** — needs `composer install`; see § Gotchas on GitHub egress |
+| Symfony API, owed | `vendor/bin/deptrac`, `bin/console lint:container`, `bin/console doctrine:schema:validate` | **Now installable** — the runtime stack installs (§ Gotchas). These wait on the Symfony application and a migrated schema, not on the network. `deptrac` has a source URL and installs with the dev deps |
+| Symfony API, still blocked | `vendor/bin/phpstan` (max level) | **`phpstan/phpstan` is the ONE package in `composer.lock` with no `source`**, so `--prefer-source` cannot avoid the 403 on `api.github.com`. Everything else installs. Options when it matters: a VCS `repositories` entry pointing at the official GitHub repo, or the `add_repo` tool if it is ever exposed |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
 | Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
 | Flutter client | `flutter analyze`, **`flutter build web --release --no-web-resources-cdn`, then `flutter test`** — in that ORDER | **Runs** (scaffolded 2026-07-29, all six platform directories present). The order is load-bearing, not stylistic: two tests read `build/web` to prove the bundle reaches no external origin, and with `test` before `build` they **skip** and the command still exits 0 with "All tests passed!". A GDPR control that silently does not run is worse than one that is owed. |
@@ -534,7 +537,7 @@ cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check
 | Node 26.5.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
 | Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` | yes (`registry.npmjs.org`) |
 | Flutter 3.44.8 | `flutter_linux_3.44.8-stable.tar.xz` from `storage.googleapis.com` | yes |
-| **Composer dependencies** | `composer install` | **NO — GitHub egress, see § Gotchas** |
+| **Composer dependencies** | `composer config -g use-github-api false && composer config -g github-protocols https`, then `cd api && composer install --prefer-source --no-dev && composer dump-autoload --dev` | **YES** — see § Gotchas. The plain `composer install` fails; `--prefer-source` clones instead of fetching zipballs, which is the half I got wrong until 2026-08-01 |
 
 Two notes that cost time to rediscover. The container's default Node is **22.22.2**, one patch below Angular
 22's `^22.22.3` floor, so Angular CLI refuses to install until Node is upgraded. And Flutter warns loudly about
@@ -735,31 +738,61 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   detection are indistinguishable otherwise — and **a test fixture that omits an input makes every
   assertion about that input vacuous while the suite stays green.** Both are the same shape as the
   handoff-hook failure already recorded above, which is why they belong here rather than in a plan.
-- **2026-07-29 — GitHub egress is restricted to THIS repository, so `composer install` cannot run — and
-  Composer MISREPORTS the reason as authentication.** Composer needs no GitHub credentials for public
-  packages; it receives a policy `403` on a URL it expects to be readable and concludes *"Could not
-  authenticate against github.com"*, which sends a reader looking for a token that was never required.
-  [Verified: `repo.packagist.org/p2/symfony/uid.json` → **200**, while `api.github.com`, `codeload.github.com`
-  and `github.com` → **403** with `"GitHub access to this repository is not enabled for this session"`.] The
-  remedy is the **environment's network policy**, not a credential: a wider-egress environment installs with
-  no authentication at all. The `403` body names an `add_repo` tool; it is not exposed in this session's tool
-  list. Note also that **Packagist metadata IS reachable**, so a package's declared licence can be verified
-  from `repo.packagist.org/p2/<vendor>/<pkg>.json` before adding it — remembering that the v2 format is
+- **2026-07-29, CORRECTED 2026-08-01 — `composer install` DOES run. The blocker was never network egress, and
+  I misdiagnosed it for twenty certification rounds.** The original entry here said *"GitHub egress is
+  restricted to THIS repository, so `composer install` cannot run"* and prescribed *"the environment's network
+  policy"* as the only remedy. That was wrong in kind, and the developer challenged it rather than accepting it.
+  What is actually true:
+  - **General network egress is OPEN.** [Verified: `$HTTPS_PROXY/__agentproxy/status` reports
+    `"selective": false`.] There is no restricted-network mode to lift.
+  - **`git clone https://github.com/<anything>.git` WORKS**, and so does `raw.githubusercontent.com`
+    [Verified: a `--depth 1` clone of `symfony/uid` succeeded; `raw.githubusercontent.com/...` → 200]. The proxy
+    injects git credentials (`gitConfigInjection: true`).
+  - What returns **403** is only the GitHub **API and archive** hosts — `api.github.com`,
+    `codeload.github.com` and `github.com` over plain HTTP — from the agent proxy's *per-repository
+    authorization*, not from a firewall. The body says so: *"GitHub access to this repository is not enabled
+    for this session. Use `add_repo` to request access."* `add_repo` is still not exposed in this session's
+    tool list [Verified: two `ToolSearch` queries, including `select:add_repo`].
+  - **So the fix is Composer configuration, not a new environment.** Composer reaches for the API to fetch
+    `dist` zipballs; told not to, it clones instead:
+
+    ```
+    composer config -g use-github-api false     # stop using api.github.com for dist
+    composer config -g github-protocols https   # NOT `git` -- the git:// protocol is dead and yields
+                                                # "Failed to clone ... via  protocols" with an empty list
+    cd api && composer install --prefer-source --no-dev
+    ```
+
+    [Verified: exit 0, 52 runtime packages installed — Symfony framework-bundle, http-kernel, console,
+    runtime, dotenv, uid, yaml, translation, doctrine-bridge, and Doctrine ORM, DBAL, migrations and both
+    bundles. Full gate green afterwards: `OK (693 tests, 2687 assertions)`, `test-gates.sh` 361/0,
+    `php-cs-fixer` 0 of 70, `dependency-licences` OK.]
+  - **`--no-dev` is required for exactly ONE package.** `phpstan/phpstan` is the only entry in
+    `composer.lock` with no `source` URL — it is dist-only, so `--prefer-source` cannot avoid the API for it
+    [Verified: a script over the lock reports `packages: 52, 0 without source; packages-dev: 54, 1 without
+    source — phpstan/phpstan`]. Everything else, **deptrac included**, has a source and would install.
+  - **`--no-dev` omits `autoload-dev`**, so `Twes\Tests\` is unmapped and the suite dies with
+    `Class "…DocumentNumberSequenceContract" not found`. Run `composer dump-autoload --dev` after installing;
+    it adds the PSR-4 rule without needing the dev packages.
+
+  **The lesson is not about Composer.** I read a 403, reached for the most structural explanation available
+  ("the environment forbids it"), wrote it down as `[Verified]` on the strength of four `curl` calls that were
+  all consistent with it, and then cited my own note for twenty rounds instead of trying the operation. Four
+  `curl`s against API hosts cannot distinguish "the network is closed" from "these three hosts are
+  authorization-scoped" — and the one command that would have told me apart, `git clone`, takes five seconds.
+  This file already records *"say 'not covered, here is what it would take', never 'cannot be covered'"* four
+  times over; this is the same failure applied to an environment rather than a test, and it was the most
+  expensive one of the project so far, because it shaped the build order of twelve waves.
+
+  Still true and worth keeping: **Packagist metadata IS reachable**, so a package's declared licence can be
+  verified from `repo.packagist.org/p2/<vendor>/<pkg>.json` before adding it — remembering the v2 format is
   *minified*, inheriting any absent field from the previous version entry, so a naive read shows
-  `license: null`.
-  Every Composer `dist` URL for a GitHub-hosted package is `api.github.com`, `codeload.github.com` or
-  `github.com`, and all three return **403** with *"GitHub access to this repository is not enabled for
-  this session"*. [Verified: `curl -o /dev/null -w '%{http_code}'` against a `symfony/uid` zipball on all
-  three hosts → 403, 403, 403; `$HTTPS_PROXY/__agentproxy/status` shows `recentRelayFailures: []`, so it
-  is policy and not a transient failure.] Consequences, all of them acted on rather than worked around:
-  **(a)** `api/composer.lock` is committed and fully pinned, so a session with reachable dist URLs needs
-  only `composer install`; **(b)** PHPUnit and php-cs-fixer publish official phars from `phar.phpunit.de`
-  and `cs.symfony.com`, which *are* reachable — `scripts/dev/fetch-tools.sh` fetches them against pinned
-  SHA-256 hashes; **(c)** the architecture and licensing gates are written in plain PHP and bash
-  precisely so they need nothing installed — with one deliberate exception since 2026-07-30, `gate:licences`,
-  whose pub-cache walk needs `flutter pub get` because it fails rather than passing quietly on nothing; **(d)** PHPStan and deptrac ship phars only from GitHub
-  releases, so they stay owed. Do **not** resolve this by pointing Composer at a third-party mirror —
-  that is a provenance decision this project cannot make casually, given § "Licensing invariants".
+  `license: null`. And **PHPUnit and php-cs-fixer publish official phars** from `phar.phpunit.de` and
+  `cs.symfony.com`, fetched against pinned SHA-256 by `scripts/dev/fetch-tools.sh` — still the right way to
+  get those two, since they need no vendor tree. Do **not** resolve anything here by pointing Composer at a
+  third-party mirror: that is a provenance decision this project cannot make casually, given
+  § "Licensing invariants".
+
 - **2026-07-29 — tenant isolation is PostgreSQL row-level security, not (only) a Doctrine filter.**
   The plan called for a default-on Doctrine filter, and the requirement behind it was that forgetting it
   must be *impossible*. A filter cannot deliver that: it scopes queries the ORM builds, and a native
