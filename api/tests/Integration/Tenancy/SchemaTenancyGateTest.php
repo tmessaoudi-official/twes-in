@@ -452,6 +452,22 @@ final class SchemaTenancyGateTest extends TestCase
             'does not apply to the runtime role',
         ];
 
+        // A PLAIN VIEW over a policed table, owned by a role that can BYPASS row security. Round 22's P0.
+        //
+        // For a non-`security_invoker` view PostgreSQL checks the base table's RLS **as the view's OWNER**, so a view
+        // owned by a superuser or any BYPASSRLS role hands every tenant to the runtime role. `FORCE` binds the TABLE
+        // owner; it says nothing about a third role owning a view over it. The gate excluded relkind 'v' on the
+        // stated ground that a view "stays scoped -- verified by a reviewer who tried to break it and could not",
+        // which was true only for a view owned by the FORCEd table owner. Reproduced with a non-superuser owner.
+        yield 'a view over tenant data owned by a bypassing role' => [
+            [
+                'CREATE VIEW leaky_report AS SELECT company_id, id, currency FROM document',
+                \sprintf('ALTER VIEW leaky_report OWNER TO %s', self::bypassRole()),
+            ],
+            ['DROP VIEW leaky_report'],
+            'security_invoker',
+        ];
+
         yield 'a table this gate cannot classify' => [
             ['CREATE TABLE ambiguous (tenant_id uuid NOT NULL, note text)'],
             ['DROP TABLE ambiguous'],
@@ -594,6 +610,12 @@ final class SchemaTenancyGateTest extends TestCase
     private static function runtimeRole(): string
     {
         return getenv('TWES_TEST_DB_USER') ?: 'twes';
+    }
+
+    /** The fixture's BYPASSRLS role. A view it owns reads the base table with row security not applied. */
+    private static function bypassRole(): string
+    {
+        return getenv('TWES_TEST_DB_BYPASS_USER') ?: 'twes_bypass';
     }
 
     /**

@@ -264,6 +264,10 @@ $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
 $tables = $connection->query(
     "SELECT c.relname AS table_name, "
     . 'c.relkind AS kind, '
+    . "  array_to_string(coalesce(c.reloptions, '{}'), ',') AS reloptions, "
+    // Can the relation's OWNER bypass policies? For a non-`security_invoker` view, PostgreSQL checks the BASE
+    // TABLE's row security as the VIEW'S OWNER -- so this is the question that decides whether a view leaks.
+    . '  (o.rolsuper OR o.rolbypassrls OR o.rolreplication) AS owner_can_bypass, '
     . 'n.nspname AS schema_name, '
     . 'c.relrowsecurity AS rls_enabled, '
     . 'c.relforcerowsecurity AS forced, '
@@ -322,7 +326,7 @@ $tables = $connection->query(
      * The toast and temp guards are belt-and-braces: those hold relkinds we do not select, but a filter that
      * depends on another filter for its correctness is how the next widening reintroduces something.
      */
-    . "WHERE c.relkind IN ('r', 'p', 'm', 'f') "
+    . "WHERE c.relkind IN ('r', 'p', 'm', 'f', 'v') "
     . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
     . "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%' "
     . 'ORDER BY 1',
@@ -334,7 +338,7 @@ if (false === $tables) {
     exit(1);
 }
 
-/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, kind: string, schema_name: string, columns: string, policies: string}> $rows */
+/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, kind: string, schema_name: string, reloptions: string, owner_can_bypass: bool|string, columns: string, policies: string}> $rows */
 $rows = $tables->fetchAll(PDO::FETCH_ASSOC);
 
 $inspected = 0;
@@ -411,11 +415,49 @@ foreach ($rows as $row) {
      * DESIGN that cannot be made safe and has to be replaced by a policed table or a view.
      *
      * A matview is the dangerous one because `REFRESH` materialises rows under whichever tenant was bound at
-     * refresh time, and every later reader sees that snapshot unfiltered. A plain view (relkind 'v') is NOT in
-     * this set and is deliberately not selected at all: `FORCE ROW LEVEL SECURITY` subjects the view's owner to
-     * the policy and `current_setting` is evaluated per query, so a view over a policed table stays scoped --
-     * verified by a reviewer who tried to break it and could not.
+     * refresh time, and every later reader sees that snapshot unfiltered. A plain view (relkind 'v') is handled by
+     * the branch ABOVE rather than here, because it CAN be made safe: `security_invoker=true` evaluates the base
+     * table's policies as the caller. This comment previously claimed a view "stays scoped -- verified by a
+     * reviewer who tried to break it and could not", which was true only for a view owned by the FORCEd table's own
+     * owner; round 22 read every tenant through one owned by a BYPASSRLS role.
      */
+    /*
+     * A PLAIN VIEW over tenant data, and this was a round-22 P0 with a docblock defending it.
+     *
+     * That docblock said a view "stays scoped -- verified by a reviewer who tried to break it and could not", so
+     * relkind 'v' was not even selected. The claim was true for exactly one owner: the FORCEd table's own. For a
+     * NON-`security_invoker` view PostgreSQL checks the base table's row security **as the VIEW'S OWNER**, so a view
+     * owned by a superuser or any `BYPASSRLS` role returns every tenant to the runtime role. FORCE binds the TABLE
+     * owner; it says nothing about a third role owning a view over it. Reproduced with a non-superuser owner.
+     *
+     * Fifth instance of this repo's rule against recording a coverage gap as an impossibility -- and the most
+     * expensive kind, because the sentence is what stops the next author looking.
+     *
+     * `security_invoker=true` is the property that makes a view safe: the base table's policies are then evaluated
+     * as the CALLER, so the view inherits the caller's tenant scope. Accepted; anything else with a bypassing owner
+     * is refused. A view whose owner CANNOT bypass is left alone, which is the narrow case that was always fine.
+     */
+    if ('v' === $row['kind']) {
+        $securityInvoker = str_contains($row['reloptions'], 'security_invoker=true')
+            || str_contains($row['reloptions'], 'security_invoker=on');
+
+        if (!$securityInvoker && !isFalse($row['owner_can_bypass'])) {
+            $violations[] = sprintf(
+                '%s is a VIEW over tenant data, owned by "%s" — a role that can bypass row-level security — and it '
+                . 'is not `security_invoker`. PostgreSQL evaluates the base table\'s policies as the VIEW\'S OWNER, '
+                . 'so this view returns EVERY tenant to any role that can select from it. FORCE binds the table\'s '
+                . 'owner and says nothing about a third role owning a view over it. Fix: '
+                . '`ALTER VIEW %s SET (security_invoker = true)`, which evaluates policies as the caller, or give '
+                . 'the view an owner that is itself subject to them.',
+                $table,
+                $row['owner'],
+                $table,
+            );
+        }
+
+        continue;
+    }
+
     if (in_array($row['kind'], ['m', 'f'], true)) {
         $violations[] = sprintf(
             '%s holds tenant data and is a %s, which cannot carry row-level security at all — PostgreSQL '
