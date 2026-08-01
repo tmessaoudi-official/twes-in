@@ -53,6 +53,49 @@ ARG FRANKENPHP_VERSION=1.12.6-php8.5-alpine
 # ==============================================================================================================
 FROM dunglas/frankenphp:${FRANKENPHP_VERSION} AS base
 
+# ==============================================================================================================
+# OPTIONAL SITE CA CERTIFICATES, trusted for the BUILD ONLY.
+#
+# Many corporate networks — and this project's own development container — sit behind a TLS-INTERCEPTING proxy,
+# which presents its own certificate for every HTTPS connection. Without its CA, every network step of this build
+# fails verification against hosts that work perfectly from the host machine.
+#
+# **THIS BLOCK IS IN `base`, NOT IN `vendor`, AND THAT WAS A BUG FOR ONE COMMIT.** It sat in the vendor stage on
+# the reasoning that Composer is the thing that needs the network — but `install-php-extensions` below runs `apk`
+# over HTTPS too, so on a proxied network the build died HERE, in the stage before the one carrying the remedy.
+# [Verified: with no trusted CA, `install-php-extensions` exits 2 on
+# `WARNING: ... APKINDEX.tar.gz: TLS: server certificate not trusted`.] A remedy that the failing step never
+# reaches is not a remedy.
+#
+# `infra/api/ca-certificates/` is empty in a normal checkout (its `*.crt` are gitignored, because a CA is a
+# site-specific trust decision this repository must not make for a reader), so this is a no-op unless someone put
+# a certificate there.
+#
+# ONE CERTIFICATE PER FILE. Alpine's `update-ca-certificates` concatenates a multi-cert bundle into the trust
+# store but refuses to hash-link it — `does not contain exactly one certificate or CRL: skipping` — so anything
+# resolving trust through the certificate DIRECTORY rather than the bundle will not see it. Split a bundle first.
+# ==============================================================================================================
+# FLAT, NOT INTO A SUBDIRECTORY. This copied into `.../ca-certificates/twes-build/` for one commit, which
+# namespaced our certificates nicely and meant NONE of them was ever trusted: Alpine's `update-ca-certificates`
+# does not recurse, so it treated the directory as a file and skipped it --
+# `Warning! Cannot copy to bundle: /usr/local/share/ca-certificates/twes-build`, followed by
+# `ca-cert-twes-build.pem does not contain exactly one certificate or CRL: skipping`. The whole corporate-proxy
+# story this block documents was inert. Note the shape: it FAILED LOUDLY on stdout for anyone reading a build log
+# closely, and still shipped, because the visible error two steps later named `install-php-extensions` instead.
+#
+# `/usr/local/share/ca-certificates/` is the LOCAL ADMIN directory; the distribution's own CAs live in
+# `/usr/share/ca-certificates/`. So this adds to the trust store without touching the base set, and the runtime
+# stage can clear this directory wholesale without stripping the distribution's certificates.
+COPY infra/api/ca-certificates/ /usr/local/share/ca-certificates/
+# NO `apk add ca-certificates` HERE, and its absence is the fix rather than an omission. `apk` fetches its index
+# over HTTPS, so installing the trust store is exactly the operation that cannot run before the trust store is
+# installed -- a bootstrap deadlock whose visible error names `install-php-extensions` rather than the real cause.
+# The package already ships in the pinned base image [Verified: `update-ca-certificates` on
+# dunglas/frankenphp:1.12.6-php8.5-alpine with no `apk` at all took the trust store from 119 certificates to 271],
+# which is one more reason the base image is pinned to an exact patch rather than a floating tag.
+RUN rm -f /usr/local/share/ca-certificates/README.md \
+    && update-ca-certificates
+
 RUN install-php-extensions \
         bcmath \
         intl \
@@ -64,21 +107,6 @@ RUN install-php-extensions \
 # STAGE 2 — vendor. Composer dependencies only, so a source-only change does not re-resolve the dependency graph.
 # ==============================================================================================================
 FROM base AS vendor
-
-# OPTIONAL SITE CA CERTIFICATES, trusted for the BUILD ONLY.
-#
-# Many corporate networks — and this project's own development container — sit behind a TLS-INTERCEPTING proxy,
-# which presents its own certificate for every HTTPS connection. Without its CA in the build stage, `git` and
-# Composer fail verification against hosts that work perfectly from the host machine, and the symptom is
-# misleading: Composer exits 100 with what looks like the package server being unreachable.
-#
-# `infra/api/ca-certificates/` is empty in a normal checkout (its `*.crt` are gitignored, because a CA is a
-# site-specific trust decision this repository must not make for a reader), so this is a no-op unless someone put a
-# certificate there. **Nothing reaches the runtime image** — the runtime stage never copies this directory.
-COPY infra/api/ca-certificates/ /usr/local/share/ca-certificates/twes-build/
-RUN apk add --no-cache ca-certificates \
-    && rm -f /usr/local/share/ca-certificates/twes-build/README.md \
-    && update-ca-certificates
 
 # `git` and `unzip` for Composer. `git` is not optional in every environment: where the GitHub API is
 # authorization-scoped (this project's own container is one), Composer must CLONE rather than fetch zipballs, and
@@ -127,6 +155,29 @@ RUN if [ "$COMPOSER_INSTALL_FLAGS" = "--prefer-source" ]; then \
         $COMPOSER_INSTALL_FLAGS \
     && composer clear-cache
 
+# THE APPLICATION, AND THE AUTOLOADER, both in this stage — because Composer only exists in this stage.
+#
+# This was in the RUNTIME stage until it was found broken on a real machine: `runtime` derives from `base`, and
+# `base` has no Composer [Verified: `docker run --rm dunglas/frankenphp:1.12.6-php8.5-alpine which composer` finds
+# nothing], so the build died with `/bin/sh: composer: not found` and exit 127. The old line even ended in
+# `rm -f /usr/bin/composer`, which is the tell: it was written as though this were the vendor stage.
+#
+# Doing it here is better than copying the Composer binary forward, not merely equivalent. The runtime image now
+# never contains Composer at ALL — not in a deleted-but-still-layered form, which is what `rm` in a later layer
+# actually produces — and that matches the argument this file already makes for `--no-dev`: build tooling in a
+# production image is attack surface that serves no request.
+COPY api/ ./
+
+# `--optimize` builds the classmap. **`--classmap-authoritative` is DELIBERATELY ABSENT**, and that is a
+# correctness decision rather than a performance oversight. Authoritative makes the autoloader return false for
+# anything not in the classmap, skipping the PSR-4 filesystem lookup entirely — and `compose.override.yaml` MOUNTS
+# `api/src` over this image, so every class added after the build would be invisible. [Verified on the host: with
+# `--classmap-authoritative`, `class_exists()` on a file created after the dump returns false; with `--optimize`
+# alone it returns true.] That failure reads as a broken autoloader rather than a stale classmap, which is the
+# worst kind. The cost is one filesystem stat per class MISS, and with a full classmap misses are rare.
+RUN composer dump-autoload --no-dev --optimize --no-interaction \
+    && composer clear-cache
+
 # ==============================================================================================================
 # STAGE 3 — runtime. Derives from `base`, so the extensions are the SAME layer the dependencies resolved against.
 # ==============================================================================================================
@@ -135,7 +186,15 @@ FROM base AS runtime
 # `postgresql-client` for `pg_isready` and for operational access during an incident; `tzdata` so timestamps in
 # logs are comparable. The apk lists are dropped in the same layer so they never persist into the image.
 RUN apk add --no-cache postgresql18-client tzdata \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/cache/apk/* \
+    # THE BUILD-TIME CA IS REVOKED HERE. `runtime` derives from `base`, so it inherits whatever CA the build
+    # needed -- and a container that trusts an interception CA at RUN time would accept a man-in-the-middle on
+    # every outbound call this product makes, which in Wave 9 means PAYMENT GATEWAYS. Removing the directory and
+    # regenerating the store leaves the running container with the distribution's trust set and nothing else.
+    # The file still exists in a lower layer; what matters is that no process here can read it as trusted, and
+    # `/etc/ssl/certs/ca-certificates.crt` is what PHP, curl and OpenSSL actually consult.
+    && rm -rf /usr/local/share/ca-certificates/* \
+    && update-ca-certificates
 
 # UTC everywhere in the container. Document dates are a DOMAIN concern resolved through `ClockInterface`, not a
 # container setting, so this is only about log timestamps being comparable across replicas.
@@ -147,16 +206,10 @@ WORKDIR /app
 COPY infra/api/conf.d/ /usr/local/etc/php/conf.d/
 COPY infra/api/Caddyfile /etc/frankenphp/Caddyfile
 
-COPY --from=vendor /app/vendor/ ./vendor/
-
-# The application. `.dockerignore` keeps tests, caches and the front-end sources out — the runtime image contains
-# what serves a request and nothing else.
-COPY api/ ./
-
-# The autoloader is generated HERE rather than in the vendor stage, because it must see the application's own
-# classes. `--classmap-authoritative` means no filesystem stat per class miss, which matters in a long-lived worker.
-RUN composer dump-autoload --no-dev --optimize --classmap-authoritative --no-interaction \
-    && rm -f /usr/bin/composer
+# The finished application tree — dependencies, source and generated autoloader — in ONE copy from the stage that
+# has Composer. `.dockerignore` keeps tests, caches and the front-end sources out of the context, so this is what
+# serves a request and nothing else.
+COPY --from=vendor /app/ ./
 
 # NON-ROOT. FrankenPHP binds :80 and :443, which normally needs privilege — `cap_net_bind_service` on the binary
 # grants exactly that one capability instead of running the whole process as root. The alternative (root in the
