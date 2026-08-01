@@ -738,7 +738,7 @@ the developer approved:
 
 **Still owed in this wave** and NOT closed by the above: `scripts/dev/provision-dev-database.sh` (see the
 2026-08-01 12:15 Decisions Log entry — the dev database's ownership was corrected by hand, so a fresh container
-reproduces the wrong shape); the repository and mapper translating the four rows ↔
+reproduces the wrong shape); **the Doctrine REPOSITORY** — the mapper and its round-trip contract test LANDED at `b8d82c3`, hardened at `030550e`; what is owed is the repository that uses it, translating the four rows ↔
 `Invoice`, with the **round-trip contract test** that is the accepted price of the immutability ruling; the
 savepoint re-check wiring below (now live rather than hypothetical — DBAL 4 always uses savepoints for nested
 transactions, so the shape is reachable today); the connection-lifecycle wiring; and the boundary rule that no
@@ -1428,6 +1428,63 @@ the Noto family and `fontFamilyFallback` removed**, which is the state R7-1 desc
 independently at 175 404s in 9 s against my 229 in 12 s — the same ~19–20 req/s mechanism. Recorded this way
 because `CLAUDE.md` already carries the cost of a `[Verified]` that no fresh clone could reproduce.
 
+### Certification round 22 — NOT CLEAN; SIX P0s, every one in the gate rather than in the schema it guards
+
+Frozen at `b8d82c3`, three lenses, MAXIMAL. Reviewing six commits that were themselves round-21 closures — which is
+why the round was pointed at them: this project's recorded rate is that roughly a third of each round's findings are
+defects in the previous round's fixes, and round 21 found three P0s in code written to close round 20.
+
+**THE HEADLINE IS NOT THE COUNT, IT IS THE ASYMMETRY.** Both security lenses attacked the migrated schema directly —
+cross-tenant read, write, re-parent, delete, unique and FK oracles, partition children, replication, `SET ROLE`
+chains — and **could not breach it**. Every confirmed breach was in `schema-tenancy.php`, the checker. A gate has now
+produced four P0s in itself across two rounds while the thing it certifies has never been shown to leak.
+
+**THE UNIFYING DIAGNOSIS, which is what made the restructuring ruling possible:** every P0 came from **inferring a
+property from a DESCRIPTION instead of observing the THING**. `indkey` instead of the uniqueness it implies;
+`contype IN ('p','u','f')` instead of "what refuses this insert"; view-owner reasoning instead of reading the view;
+`pg_roles`'s own row instead of `SET ROLE`; `text::regclass` instead of the oid already in hand; grepping source for
+`Target('owner')` instead of asking the compiled container. Enumerating implementation SHAPES is unbounded and
+PostgreSQL keeps adding to it; enumerating attacker GOALS is bounded. Decisive evidence rather than argument: **every
+P0 of this round was found by a behavioural probe and none by reading catalogues.**
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R22-1 | **`INCLUDE`-column unique index passes.** `pg_index.indkey` spans key AND `INCLUDE` columns; only the first `indnkeyatts` participate in uniqueness. `CREATE UNIQUE INDEX … ON t (id) INCLUDE (company_id)` presented the tenant column while enforcing uniqueness on `(id)` across every tenant. Found independently by all three lenses; oracle reproduced (tenant B reads 0 rows, then `duplicate key` on tenant A's value). The `pg_constraint` path is safe — `conkey` holds key columns only | **P0** | **OPEN** — retired by the behavioural suite, not patched (see the 16:00 ruling) |
+| R22-2 | **Exclusion constraints invisible to BOTH halves.** `contype` filter omits `'x'`, and an exclusion index has `indisunique = false`. `EXCLUDE (number WITH =)` is cross-tenant uniqueness; reproduced | **P0** | **OPEN** — same; a probe catches it without naming it |
+| R22-3 | **`?::regclass` case-folds.** The composite-key subquery names the table as text, reintroducing the defect the same file claims to have removed 170 lines below (*"joining on `c.oid` cannot mis-resolve a name"*). With a lowercase twin, `'Ledger'::regclass` → `ledger` and the TWIN's keys are credited; without one, exit **255** mid-loop, so the `counts —` line and every pending violation go unprinted | **P0** | **OPEN** — disappears with the axis; if any per-table query survives, bind `c.oid` |
+| R22-4 | **A plain VIEW owned by a bypassing role leaks every tenant.** The gate excludes `relkind 'v'` on the stated ground that FORCE binds the view's owner — true only when that owner is itself subject to policies. A non-`security_invoker` view has its base-table RLS checked AS ITS OWNER, so a view owned by a superuser or any `BYPASSRLS` role returns every tenant. Reproduced with a NON-superuser owner. **The docblock asserting this was verified-and-unbreakable is what would stop the next author looking** — fifth instance of this repo's "never record a coverage gap as an impossibility" rule | **P0** | **OPEN** — refuse a view whose owner `roleCanBypassPolicies()`, or require `security_invoker=true`; narrow the docblock in the same change |
+| R22-5 | **Bypass by MEMBERSHIP.** `SELECT rolsuper, rolbypassrls, rolreplication … WHERE rolname = ?` reads the role's OWN row, and those attributes are NOT inherited — a member of a bypassing role reads `f/f/f`, passes, and reaches the privilege with one `SET ROLE`. The imported class documents this exact finding as closed and answers it with a membership predicate, and `roleIsReachableBySql()` was already in scope, used for two other axes | **P0** | **CLOSED** `9fc2c82` — delegated; mutant reverting to the own-row check certifies `twes_member` clean at exit 0. The fixture provisioned `twes_member` FOR this shape and the case used `twes_bypass`, the direct attribute: a fixture nothing uses is worth nothing |
+| R22-6 | **`$ownerConnection` walks past the owner-connection gate.** Symfony's `registerAliasForArgument` resolves a parameter NAME — `Doctrine\DBAL\Connection $ownerConnection` is in this app's compiled container — so a plain constructor parameter gets the table-owning role with none of the six spellings. `#[Target(name: 'owner')]` too, since `Target::$name` is a named argument. An enumerate-the-spellings text gate cannot close a name-based DI mechanism | **P0** | **OPEN** — move to the COMPILED CONTAINER. The "strip the aliases" option dismissed as half a fix was closer to right |
+| R22-7 | **The FK axis never reads `confkey`.** Only local `conkey` is checked, while the message prescribes "composite on both sides". `FOREIGN KEY (company_id, document_id) REFERENCES document (id, company_id)` — tenant mapped onto `id` — passes | **P1** | **OPEN** — assert `confkey` carries the referenced tenant column AT THE POSITION matching the local one |
+| R22-8 | **The owner-connection gate never scans `api/config`.** Its spellings include the service id, described as the raw-`get()` route, while the scan is `git ls-files -- api/src`. `arguments: ['@doctrine.dbal.owner_connection']` in YAML hands over the owning role with zero hits. `api/bin/console` and `api/public/` are out of scope too | **P1** | **OPEN** — subsumed by the compiled-container check |
+| R22-9 | **`toAggregate()` was a tenant-less hydration path** and merged rows from two tenants into one document — the boundary rule `DocumentIdentity`'s docblock claims it satisfies. A wrong legal document, not a read leak | **P1** | **CLOSED** `030550e` — takes a `TenantId`, refuses mismatched `company_id` and `document_id` |
+| R22-10 | **Nothing asserted the mapper stamps the tenant.** `company_id` is write-only, so a round trip is a fixed point of any transformation touching only write-only fields — **no round-trip assertion can ever pin one**. Three assignments mutated to a foreign uuid kept 588 tests green | **P1** | **CLOSED** `030550e` — direct row-level assertions |
+| R22-11 | **The charge `usort` was unpinned, and the commit message claimed otherwise.** The order test reversed `$rows[2]` on an invoice holding NO charges, so `array_reverse([])` made it vacuous; "1 failure" was true of the line half only | **P1** | **CLOSED** `030550e` — three charges, order asserted |
+| R22-12 | **Neither direction asserted the document type.** One table holds all four; an `Invoice` written under `type='quote'` files its number in the quote sequence, leaving a permanent hole in the gapless INVOICE sequence. Reading, a query missing `AND type='invoice'` paired an `Invoice` with a `Quote` identity | **P1** | **CLOSED** `030550e` — refused both ways |
+| R22-13 | **The quantity-scale assertion is false in production.** `assertSame($line->quantity(), …)` with a comment saying it "pins scale" is a pure in-memory identity; `DocumentLine` stores the string verbatim and `NUMERIC(21,6)` coerces `'2'` → `'2.000000'`. `assertEquals` is loose (`'2' == '2.000000'`), so the backstop is blind to exactly the renormalisation the per-field assertion was written to catch. Money is unaffected — `Money::of()`'s rescale absorbs it | **P1** | **OPEN** — belongs to the repository's integration test; either normalise on write or state that quantity representation is not stable |
+| R22-14 | **`fromPersistedState()` bypasses AGGREGATE invariants, and the docblock says the hazard "does not arise".** Per-line bounds are pinned to column types; `withLine()` additionally enforces currency match, `MAX_LINES` and totallability, and none is re-checked. Accepted 1005 lines, an EMPTY ISSUED invoice (total 0.000 on a PDF), a foreign-currency line and an untotallable document | **P1** | **OPEN** — narrow the docblock to per-line bounds and state what is deliberately not re-checked; the empty-issued case deserves a guard beside the number one |
+| R22-15 | **The mapper landed and three surfaces still list it as owed** — `CLAUDE.md` twice, this plan once. The commit message itself said "still owed: the Doctrine repository", so the author knew | **P1** | **CLOSED** below |
+| R22-16 | **`composer gate` fails at `gate:schema`, third in the chain, not at `gate:static`** — and the documented `TWES_TEST_DSN` fallback names PHPUnit `<env>` entries invisible to a shell, pointing at an unmigrated database. Also needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all here | **P1** | **CLOSED** below |
+| R22-17 | **The count fix installed a WRONG count and a BROKEN derivation.** "the script created fourteen" plus `grep -c 'CREATE ROLE'`, which counts comment lines. Real: **12**. A prescribed derivation returning a wrong answer is worse than prose, because it looks authoritative | **P1** | **CLOSED** below |
+| R22-18 | The null-`polqual` tolerance certifies an UNREADABLE table as "canonically policed": `FOR ALL` omitting `USING` does not reuse `WITH CHECK`, and `FOR INSERT` is already refused by the `polcmd` check, so the arm admits only this. Fails closed | **P2** | **OPEN** — tolerate a NULL `polwithcheck`, refuse a NULL `polqual` |
+| R22-19 | `DocumentIdentity` accepted a trailing newline: PCRE's `$` matches before a final newline without `/D`, giving two unequal spellings of one id — what the uppercase refusal in the same docblock exists to prevent | **P2** | **CLOSED** `030550e` |
+| R22-20 | `Invoice::fromPersistedState()`'s guard-bypass is restricted only by `@internal`, enforced by nothing — PHPStan being the one tool that would and the one thing uninstallable here. Same shape as `doctrine.yaml`'s prose security boundary that `74cc2c6` wrote a gate for | **P2** | **OPEN** — a gate refusing references outside `Infrastructure/Persistence/`, or recorded as accepted |
+| R22-21 | The "NOT delivered" block was corrected at the top and left stale below: a **mangled bullet swallowed the Doctrine filter** — tenancy's second isolation layer, genuinely owed — into a clause about what the line used to say, under a heading reading LANDED; plus stale deptrac/PHPStan phar claims and a "still blocked" two lines under "have LANDED" | **P2** | **CLOSED** below |
+| R22-22 | `api/phpunit.xml` calls `twesMixedCase` "The NINTH role" citing "the other eight"; it is 12th of 12. This round is the commit that added the three chain roles above it | **P2** | **CLOSED** below |
+| R22-23 | "the violation cases" is 18, in two places, in the same file where one instance was deliberately changed to remove the number | **P2** | **CLOSED** below |
+| R22-24 | The number-pattern product decision lives only in a class docblock; this plan still states both contradictory principles as settled and `## Awaiting the developer` has no row | **P2** | **CLOSED** below — row added |
+| R22-25 | Two of four key kinds the gate names (`p`, `u`) have no case asserting their message, so deleting an arm leaves a wrong label on a real violation with the suite green | **P3** | **OPEN** — moot if the axis is deleted |
+| R22-26 | `test-gates.sh` enumerates gates with `ls`, not `git ls-files`, against § Gotchas 2026-07-31 | **P3** | **OPEN** |
+
+**Verified clean by the panel, stated so the verdict is not read as broader than it is:** the schema itself under every
+attack listed above; the reachability refactor proven EQUIVALENT to its predecessor over 1 260 relation-rows × 18
+configurations; the `relkind` widening catching a real partition-child leak; `pg_read_all_data` NOT bypassing RLS on
+PG18 (so the answer is membership, not a longer attribute list); `CREATEROLE` unable to mint `BYPASSRLS`; partial and
+expression indexes caught; gate-set bidirectionality clean at ten gates both directions; the redirect anchoring
+genuinely rejecting a docblock-only match; `phpunit.xml`'s role variables complete; the new unit directory really
+inside the `unit` suite; `DocumentIdentity`'s regex sound for every form it accepts; `DocumentRow::$number` as `?int`
+against `bigint` safe because PostgreSQL's max IS `PHP_INT_MAX`.
+
 ### Certification round 17 — NOT CLEAN; the FOURTEENTH bypass carrier, and a check that refused honest policies
 
 Frozen at `5492fcf`, diff under review `4254b0c..5492fcf`. On that frozen tree the unit suite reported
@@ -1799,6 +1856,20 @@ kernel, because it feeds line pricing. Non-negotiable regardless of the open dec
 selling price is snapshotted onto the invoice line** at issue time. A later change to a product's cost
 or profit rate must never retroactively alter an issued document.
 
+## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **THREE ITEMS ARE OPEN**
+
+**3. THE RENDERED DOCUMENT NUMBER IS NOT REPRODUCIBLE FROM ITS ROW** (round 22, R22-24 — and it had no row here
+until then, so a reader saw the trade as settled). `DocumentNumber` is *(type, pattern, sequence)*. The row stores
+type and sequence; `NumberPattern` is per-tenant configuration on a settings table no wave has built, so
+`InvoiceMapper` takes it as a constructor dependency and defaults to width 7. An administrator widening that to 8
+re-renders an already-issued invoice as `00000041` instead of `0000041` — **a different number on a legal document a
+client already holds**. This plan states BOTH principles as settled, in adjacent rows: *"the pattern is per-tenant
+configuration and may change: `NumberPattern` renders, it does not identify"* and, three rows above, *"a company
+changing it must not restate a document a client holds"*. They cannot both be right. The candidates: persist the
+RENDERED string beside the sequence (belt-and-braces, costs a column, makes re-download byte-identical); freeze the
+pattern per document in a settings snapshot; or rule that rendering is presentational and re-rendering is acceptable.
+Unfixable-later, like the gapless sequence and money-is-never-a-float. Belongs to whichever wave writes the settings
+table.
 ## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **TWO ITEMS ARE OPEN AGAIN**
 
 This section listed five open decisions; every one has since been settled and the rulings live in

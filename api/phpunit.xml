@@ -105,10 +105,10 @@
         <env name="TWES_TEST_DB_CHAIN_OUTER_ROLE" value="twes_chain_outer"/>
         <env name="TWES_TEST_DB_INHERIT_ONLY_ROLE" value="twes_inherit_only"/>
         <!--
-            The NINTH role, and the only one whose name is not all-lowercase. `current_user::regrole`
+            The LAST role created, and the only one whose name is not all-lowercase. (It said "the NINTH" until round 22: the three chain roles above were added AFTER it, so the ordinal was right when written and this file is the one that added them without fixing it. No ordinal is written now; derive the order from provision-test-database.sh.) `current_user::regrole`
             downcases, so the cast raised `role "twesmixedcase" does not exist` and the object check raised
             instead of answering. Round 13 replaced the cast; round 14 found the fix revertible with the suite
-            green, because the other eight roles cannot express the shape.
+            green, because no other role can express the shape.
         -->
         <env name="TWES_TEST_DB_MIXED_CASE_ROLE" value="twesMixedCase"/>
         <env name="TWES_TEST_DB_MIXED_CASE_PASSWORD" value="twesMixedCase"/>

@@ -26,7 +26,7 @@ Status: **Wave 0 landed, not yet certified; Wave 1's domain, Symfony application
 migration and schema gate all landed** (2026-08-01). Wave 1's document kernel, lifecycle, numbering and `Invoice`
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. Still owed in Wave 1:
-the **repository and mapper** (with the round-trip contract test the immutability ruling makes necessary), the
+the **Doctrine repository** — the mapper and its round-trip contract test landed, so what remains is the repository that uses them — the
 savepoint re-check wiring, the connection-lifecycle wiring, and the HTTP surface.
 `docs/plans/build-waves.plan.md` § Wave 1 is authoritative.
 
@@ -50,7 +50,7 @@ migration. `Kernel` and `bin/console` are **hand-written rather than Flex-genera
 Composer plugin this container's configuration disables — which is also why `bin/console` uses the classic
 bootstrap instead of `vendor/autoload_runtime.php`.
 
-**Not yet built:** the HTTP surface (`functional` and `e2e` are empty suites), the repository and mapper, the
+**Not yet built:** the HTTP surface (`functional` and `e2e` are empty suites), the Doctrine repository (the MAPPER and its round-trip contract test landed 2026-08-01), the
 `infra/` tier, and a wired `deptrac`. **PHPStan is the one thing still genuinely uninstallable**, and for a narrow
 reason rather than a network one: `phpstan/phpstan` is the single package in `composer.lock` with no `source`
 URL, so `--prefer-source` cannot route around the 403 on `api.github.com`. Everything else installs — see
@@ -556,7 +556,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
-`gate:test`. **`gate:static` is the only step that still fails, and that claim was false for one commit:**
+`gate:test`. **`composer gate` FAILS EARLIER THAN `gate:static`, and needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here.** `gate:schema` is THIRD in the chain and no documented environment makes it pass: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database. Only `TWES_SCHEMA_DSN` against a migrated database works. Round 22 filed this; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **Two of seven steps also failed for a different reason for one commit:**
 `gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit`, and since
 `phpstan/phpstan` forces `--no-dev` (below), **no dev binary is ever installed** — so three of seven steps exited
 127 while this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the
@@ -621,9 +621,11 @@ throwaway one. A run that refuses creates nothing — verified atomic.
 
 **MANY roles, not one, and the script explains why each one exists** — **no number is written here any more, and
 that is the third fix to this sentence.** It said "three", then "NINE as of round 14", and round 21 found it
-saying nine while the script created fourteen and `build-waves.plan.md` said twelve. A count beside the thing it
-counts is the first thing to drift, which this very section says twice; derive it with
-`grep -c 'CREATE ROLE' scripts/dev/provision-test-database.sh`. (the script's own
+saying nine, and the fix I wrote then said **fourteen** — also wrong — while prescribing
+`grep -c 'CREATE ROLE'`, which COUNTS COMMENT LINES. The real number is **12** and `build-waves.plan.md` had it
+right all along. Round 22: *"a prescribed derivation that returns a wrong answer is worse than a prose count — it
+looks authoritative and will be re-cited."* Derive it with `grep -c '^        CREATE ROLE'`, anchored, or read the
+script's own comment block. (the script's own
 comment block is the tally, because this list has now grown at four separate rounds) — this replaced three `createuser`
 lines after round 4 found a **P0** in what they produced. A single role that owns the tenant-owned tables
 can `ALTER TABLE … DISABLE ROW LEVEL SECURITY` or `TRUNCATE` them in one statement (`FORCE` stops an owner
