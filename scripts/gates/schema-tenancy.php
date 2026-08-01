@@ -221,6 +221,8 @@ $tenantColumn = PostgresRowLevelSecurityIsolation::TENANT_COLUMN;
 
 $tables = $connection->query(
     "SELECT c.relname AS table_name, "
+    . 'c.relkind AS kind, '
+    . 'n.nspname AS schema_name, '
     . 'c.relrowsecurity AS rls_enabled, '
     . 'c.relforcerowsecurity AS forced, '
     . 'o.rolname AS owner, '
@@ -253,7 +255,25 @@ $tables = $connection->query(
     . 'FROM pg_class c '
     . 'JOIN pg_namespace n ON n.oid = c.relnamespace '
     . 'JOIN pg_roles o ON o.oid = c.relowner '
-    . "WHERE c.relkind IN ('r', 'p') AND n.nspname = 'public' "
+    /*
+     * EVERY non-system schema, and four relkinds -- not `nspname = 'public'` and not `('r','p')`.
+     *
+     * Both narrowings were reproduced leaks. The old scope made this gate NARROWER than the runtime checker it
+     * exists to backstop (`nspname NOT IN ('pg_catalog','information_schema')`), so a tenant table in
+     * `reporting` was invisible to BOTH -- the runtime checker derives its subject set from tables that already
+     * have row security, so an unpoliced one is invisible to it by construction. That is this gate's entire
+     * charter, defeated one schema over.
+     *
+     * 'm' and 'f' are included in order to REFUSE them: a materialized view and a foreign table can carry no
+     * policy at all, so one holding tenant data is an unpoliced copy by construction rather than a table someone
+     * forgot to police. A reporting matview over `document` leaked both tenants while this gate printed OK.
+     *
+     * The toast and temp guards are belt-and-braces: those hold relkinds we do not select, but a filter that
+     * depends on another filter for its correctness is how the next widening reintroduces something.
+     */
+    . "WHERE c.relkind IN ('r', 'p', 'm', 'f') "
+    . "AND n.nspname NOT IN ('pg_catalog', 'information_schema') "
+    . "AND n.nspname NOT LIKE 'pg_toast%' AND n.nspname NOT LIKE 'pg_temp%' "
     . 'ORDER BY 1',
 );
 
@@ -263,7 +283,7 @@ if (false === $tables) {
     exit(1);
 }
 
-/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, columns: string, policies: string}> $rows */
+/** @var list<array{table_name: string, rls_enabled: bool|string, forced: bool|string, owner: string, owner_reachable: bool|string, truncate_reachable: bool|string, kind: string, schema_name: string, columns: string, policies: string}> $rows */
 $rows = $tables->fetchAll(PDO::FETCH_ASSOC);
 
 $inspected = 0;
@@ -272,7 +292,11 @@ $violations = [];
 
 foreach ($rows as $row) {
     ++$inspected;
-    $table = $row['table_name'];
+    // SCHEMA-QUALIFIED, now that more than one schema is in scope: `archive` and `reporting.archive` are
+    // different relations and a message naming only the second half sends a reader to the wrong one.
+    $table = 'public' === $row['schema_name']
+        ? $row['table_name']
+        : $row['schema_name'] . '.' . $row['table_name'];
 
     // FIRST, and for EVERY table rather than only the tenant-owned ones -- see assertion 6 in this file's
     // docblock for why a non-tenant table's owner is load-bearing. Placed before the classification branch on
@@ -325,6 +349,36 @@ foreach ($rows as $row) {
     }
 
     ++$tenantOwned;
+
+    /*
+     * A RELKIND THAT CAN NEVER BE POLICED, refused before the RLS checks rather than by them.
+     *
+     * `relrowsecurity` is false on a materialized view and a foreign table, so the next check would already fire
+     * -- with a message prescribing `policySqlFor()`, which is impossible here and would send a reader to spend
+     * an afternoon discovering that PostgreSQL supports no policy on either. The distinction is not pedantic: a
+     * table missing its policy is a migration someone must finish, while a matview holding tenant data is a
+     * DESIGN that cannot be made safe and has to be replaced by a policed table or a view.
+     *
+     * A matview is the dangerous one because `REFRESH` materialises rows under whichever tenant was bound at
+     * refresh time, and every later reader sees that snapshot unfiltered. A plain view (relkind 'v') is NOT in
+     * this set and is deliberately not selected at all: `FORCE ROW LEVEL SECURITY` subjects the view's owner to
+     * the policy and `current_setting` is evaluated per query, so a view over a policed table stays scoped --
+     * verified by a reviewer who tried to break it and could not.
+     */
+    if (in_array($row['kind'], ['m', 'f'], true)) {
+        $violations[] = sprintf(
+            '%s holds tenant data and is a %s, which cannot carry row-level security at all — PostgreSQL '
+            . 'supports no policy on one, so this is an unpoliced copy of tenant data by construction rather '
+            . 'than a relation that someone forgot to police. A REFRESH materialises rows under whichever '
+            . 'tenant was bound at the time and every later reader sees that snapshot unfiltered. Replace it '
+            . 'with a policed table, or with a plain VIEW over one — a view stays scoped, because FORCE subjects '
+            . "the view's owner to the policy and the tenant is read per query.",
+            $table,
+            'm' === $row['kind'] ? 'MATERIALIZED VIEW' : 'FOREIGN TABLE',
+        );
+
+        continue;
+    }
 
     if (!isTrue($row['rls_enabled'])) {
         $violations[] = sprintf(

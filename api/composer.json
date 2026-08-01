@@ -86,8 +86,8 @@
             "bin/console doctrine:schema:validate --skip-sync"
         ],
         "gate:static": "vendor/bin/phpstan analyse --no-progress",
-        "gate:style": "vendor/bin/php-cs-fixer check --diff",
-        "gate:test": "vendor/bin/phpunit"
+        "gate:style": "@php tools/bin/php-cs-fixer.phar check --diff",
+        "gate:test": "@php tools/bin/phpunit-12.phar"
     },
     "scripts-descriptions": {
         "gate": "Run the API tier's full quality gate. Green means every step, not most of them.",
@@ -95,9 +95,9 @@
         "gate:schema": "Assert every tenant-owned table in a REAL MIGRATED SCHEMA is RLS-enabled, FORCED, canonically policed, NOT NULL on the tenant column, and beyond the runtime role's ownership and TRUNCATE. The ONLY gate here that needs a database -- a schema cannot be read from source, and an unpoliced tenant table is invisible to every check that can. Needs TWES_SCHEMA_DSN + TWES_SCHEMA_USER, or falls back to the integration suite's TWES_TEST_DSN pair. FAILS rather than skipping when it cannot connect.",
         "gate:licences": "Fail if any dependency's licence is not on the permissive allowlist (LICENSING.md). NEEDS a populated pub cache: run `cd mobile && flutter pub get` first, or set PUB_CACHE.",
         "gate:mapping": "Validate the service container and the Doctrine mapping without touching a database.",
-        "gate:static": "PHPStan at max level, including the banned-ambient-function rule for Domain/.",
-        "gate:style": "Check coding style without modifying files.",
-        "gate:test": "Run every PHPUnit suite: unit, integration, functional, e2e."
+        "gate:static": "PHPStan at max level, including the banned-ambient-function rule for Domain/. THE ONE STEP THAT STILL FAILS: phpstan/phpstan is the only entry in composer.lock with no `source` URL, so --prefer-source cannot route around the 403 on api.github.com, and --no-dev is therefore required to install anything at all.",
+        "gate:style": "Check coding style without modifying files. Runs the PHAR in tools/bin/, NOT vendor/bin/: because --no-dev is required (see gate:static), no dev-dependency binary is ever installed, so `vendor/bin/php-cs-fixer` was error 127 and this step failed for every checkout while the tier was documented green.",
+        "gate:test": "Run every PHPUnit suite: unit, integration, functional, e2e. Runs the PHAR in tools/bin/ for the same reason as gate:style. Get both with `bash scripts/dev/fetch-tools.sh`, which verifies them against pinned SHA-256."
     },
     "minimum-stability": "stable",
     "prefer-stable": true

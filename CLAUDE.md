@@ -555,8 +555,11 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
-`gate:test`. `gate:static` is the one step that still fails for want of PHPStan; derive the chain from
-`api/composer.json` rather than this sentence. **`gate:architecture` needs nothing installed at all**; two of
+`gate:test`. **`gate:static` is the only step that still fails, and that claim was false for one commit:**
+`gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit`, and since
+`phpstan/phpstan` forces `--no-dev` (below), **no dev binary is ever installed** — so three of seven steps exited
+127 while this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the
+tier was always actually verified with. Derive the chain from `api/composer.json` rather than this sentence. **`gate:architecture` needs nothing installed at all**; two of
 its siblings do, and both FAIL rather than skip when they cannot look:
 
 - **`gate:licences`** needs a populated pub cache — `cd mobile && flutter pub get`, or `PUB_CACHE` pointing at
@@ -614,7 +617,11 @@ variable explicitly is the consent; a default would be indistinguishable from a 
 when the target database already holds relations, because the only cluster it is safe to do this to is a
 throwaway one. A run that refuses creates nothing — verified atomic.
 
-**NINE roles, not one, and the script explains why each one exists** (nine as of round 14; the script's own
+**MANY roles, not one, and the script explains why each one exists** — **no number is written here any more, and
+that is the third fix to this sentence.** It said "three", then "NINE as of round 14", and round 21 found it
+saying nine while the script created fourteen and `build-waves.plan.md` said twelve. A count beside the thing it
+counts is the first thing to drift, which this very section says twice; derive it with
+`grep -c 'CREATE ROLE' scripts/dev/provision-test-database.sh`. (the script's own
 comment block is the tally, because this list has now grown at four separate rounds) — this replaced three `createuser`
 lines after round 4 found a **P0** in what they produced. A single role that owns the tenant-owned tables
 can `ALTER TABLE … DISABLE ROW LEVEL SECURITY` or `TRUNCATE` them in one statement (`FORCE` stops an owner
@@ -649,6 +656,14 @@ them. **Derive this list rather than trusting it**: `grep -o 'TWES_TEST_DB_[A-Z_
 is the tally, and this paragraph is prose. Round 15 found it still describing "four login roles" and "two
 NOLOGIN probe roles" two rounds after the set grew — so a CI provisioned from it omitted all three new
 variables and silently skipped both of the mutants that make round 14's tenancy fixes load-bearing.
+
+**Round 21 found the same defect one level deeper, and it is the more interesting one: the TALLY ITSELF was
+incomplete.** `provision-test-database.sh` honoured `TWES_TEST_DB_CHAIN_INNER_ROLE`, `_CHAIN_OUTER_ROLE` and
+`_INHERIT_ONLY_ROLE`; `api/phpunit.xml` — the file this paragraph names as the thing to derive from — carried none
+of them. So a CI provisioned *exactly as documented* still omitted three roles. "Derive it, don't trust prose" only
+works if the source you derive from is the real one, and pointing at a second artefact just moves the drift. All
+three are now in `phpunit.xml`; the durable check is that the script and that file agree, which nothing yet
+enforces.
 
 **`TWES_TEST_DB_SUPERUSER` and its password are REQUIRED, and were wrongly documented here as optional
 "used only in one test" until round 15.** MANY tests need a superuser to build privileged fixtures — derive the count with

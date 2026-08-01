@@ -5,7 +5,7 @@ boundary** (developer ruling, 2026-07-29). Written before Wave 1 starts so the s
 scope arrives deliberately rather than by accident.
 
 **Wave 0 has landed in part. Wave 1's PURE DOMAIN has landed too** — the calculation kernel, the generic
-document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Domain/Document/`. **Everything else from Wave 1 on is unimplemented**, and Wave 1's persistence, migrations, schema gate and HTTP surface remain blocked on Composer. Amended at round 13, which found this sentence and the one in Wave 0's remainder section still saying Wave 1 had not started — in a file the landing commit itself edited. Read
+document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Domain/Document/`. **Wave 1's persistence, migrations and schema gate all LANDED on 2026-08-01** and the HTTP surface, the repository and the mapper are what remain. This sentence said they were "blocked on Composer" until round 21 found it — two commits after the passage below was corrected, which is the correction-appended-below-a-false-statement shape `CLAUDE.md` § Gotchas records four times, committed by me twice more while fixing other instances of it. Amended at round 13, which found this sentence and the one in Wave 0's remainder section still saying Wave 1 had not started — in a file the landing commit itself edited. Read
 `reimplementation-strategy.plan.md` first — it holds the licensing invariants and the pinned stack. Note
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
@@ -283,7 +283,7 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   named a thing that does not exist.
 - [2026-08-01 11:30] AGREED: **the Wave 1 schema gate is CLOSED** — `scripts/gates/schema-tenancy.php` landed with
   the first migration, as the 2026-07-30 ruling required, wired as `composer gate:schema`, with a clean case and
-  eight violation cases each proven to fire. Its cases live in the integration suite rather than `test-gates.sh`
+  the violation cases each proven to fire. Its cases live in the integration suite rather than `test-gates.sh`
   because the gate needs a database; `test-gates.sh` keeps the database-free paths and a **verified redirect** that
   fails if the named test file or method disappears. The migration template, deliverable 2 of that ruling, is
   **still owed** and deliberately not marked done.
@@ -361,9 +361,12 @@ removes the guard and watches every tenant leak, and one that exercises a *reuse
 | FR/AR/EN catalogues + parity gate | `api/translations/` |
 | Tier skeletons with their owed gates written down | `admin/`, `mobile/`, `infra/` READMEs |
 
-**NOT delivered, and why — this is the honest half of the entry.** GitHub egress in the development
-container is restricted by organisation policy to this repository alone, so every Composer `dist` URL
-returns 403 and `composer install` cannot run (`CLAUDE.md` § Gotchas has the verification). That blocks:
+**NOT delivered at the time, and the stated REASON WAS WRONG — corrected in place 2026-08-01 rather than
+annotated, because a reader needs one current statement and not two.** The original text here said GitHub egress
+was restricted by organisation policy so `composer install` could not run. General egress is open; only
+`api.github.com` and `codeload.github.com` are authorization-scoped, `git clone` always worked, and
+`composer config -g use-github-api false` + `composer install --prefer-source` installs the whole runtime stack.
+`CLAUDE.md` § Gotchas carries the recipe and the lesson. What that wrong diagnosis blocked for twenty rounds:
 
 - [2026-08-01 09:30] RULED **persistence is a SEPARATE MODEL in `Infrastructure/` mapped with Doctrine
   ATTRIBUTES, and a repository translates to and from the domain aggregate** (developer challenging the
@@ -376,13 +379,16 @@ returns 403 and `composer install` cannot run (`CLAUDE.md` § Gotchas has the ve
   driver is used. So the driver was the wrong argument; the model boundary was the right one. Accepted cost: a
   mapper per aggregate, pinned by a round-trip contract test.
 - the **Symfony application itself** — kernel, HTTP layer, the RFC 9457 error shape, `bin/console`;
-- **Doctrine** — ORM mapping in XML, the migration that creates the RLS policies, `schema:validate`,
+- **Doctrine** — LANDED. Note the mapping is ATTRIBUTES on a separate persistence model, not XML: see the
+  2026-08-01 10:00 Decisions Log entry, which reversed the XML plan on the developer's challenge. Migration,
+  `schema:validate` and the RLS policies are all in place. This line said "ORM mapping in XML",
   and the Doctrine filter that becomes isolation's second layer;
 - **PHPStan and deptrac**, whose phars ship only from GitHub releases.
 
 `api/composer.lock` is committed and fully pinned, so the next session with reachable dist URLs runs
 `composer install` and continues. These items are **Wave 0's remainder, not Wave 1's scope** — and
-**Wave 1's PERSISTENCE must not start until they land.** Amended at round 13: this read "Wave 1 must not start",
+**Wave 1's PERSISTENCE was gated on these and they have LANDED** (2026-08-01), so the gate is discharged.
+The original sentence read "must not start until they land". Amended at round 13: this read "Wave 1 must not start",
 and Wave 1's pure domain shipped at `b39bdb4` while these items are still blocked. The framework-free domain
 needs nothing installed, which is the architecture paying off rather than a workaround; what needs persistence to
 be meaningful is the migration, the schema gate and the repository wiring — not the arithmetic.
@@ -904,8 +910,10 @@ item is closed rather than carried.
 
 **THE SCHEMA GATE WAS A WAVE 1 BLOCKER AND IS NOW CLOSED — 2026-08-01, landed in the same change as the
 migration it was blocking**, which is what the ruling required. `scripts/gates/schema-tenancy.php` exists and is
-wired as `composer gate:schema`. Deliverable 1 below is met in full; **deliverable 2, the migration template, is
-NOT** — one hand-written migration exists and is the de facto template, which is a convention rather than the
+wired as `composer gate:schema`. Deliverable 1 below is met **except its composite-key assertion**, which stays owed: three round records
+call this "the composite-key schema gate" and rate it P0 at the first Wave 1 migration, and the gate contains no
+`pg_index`/`pg_constraint` inspection at all — the migration gets the composite keys right and nothing checks that
+the next one will. **Deliverable 2, the migration template, is NOT met either** — one hand-written migration exists and is the de facto template, which is a convention rather than the
 artifact the ruling named, so it stays owed and is deliberately not struck through. How the gate is verified,
 since the ruling was explicit that no gate here is believed on its happy path: its clean-fixture case and **eight**
 violation cases live in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` rather than in `test-gates.sh`,
@@ -1706,10 +1714,11 @@ cross-compiled, so the six ruled targets need three runners and a release is six
 **Also in:** the **database controls** `infra/README.md` enumerates, because RLS does not cover them and
 none is enforceable from application code — a non-superuser **and non-owner** application role,
 `REVOKE TRUNCATE`, and a connection string carrying no pre-set `twes.tenant_id`. A migration role that
-owns the tables, separate from the runtime role. And the **schema gate** owed since Wave 0: every table
-with a tenant column must have `ENABLE` + `FORCE ROW LEVEL SECURITY`, a policy with `USING` and
-`WITH CHECK`, and composite keys — that one becomes a P0 the moment Wave 1 writes its first migration, so
-it may well need to land earlier than this wave.
+owns the tables, separate from the runtime role — **all of which `scripts/gates/schema-tenancy.php` now
+asserts**, having landed in Wave 1 with the first migration exactly as this paragraph predicted it would have
+to. What is still owed of it here is the **composite-key axis only**: the gate reads no `pg_index` or
+`pg_constraint`, so a single-column foreign key — which lets one tenant delete another's rows — would pass.
+This paragraph described the whole gate as owed until round 21.
 
 **Note:** the *topology* (php-fpm + nginx + db + redis + queue + scheduler + headless Chrome) is an
 idea and free to reuse; upstream's **files** are GPL-2.0 and must never be copied.

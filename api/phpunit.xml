@@ -90,6 +90,21 @@
         -->
         <env name="TWES_TEST_DB_UNSETTABLE_ROLE" value="twes_unsettable"/>
         <!--
+            THE THREE CHAIN / INHERIT-ONLY PROBE ROLES, honoured by provision-test-database.sh and
+            ABSENT FROM THIS FILE until round 21 — which matters more than a missing default, because
+            CLAUDE.md names this file as THE TALLY to derive a CI's variables from
+            (`grep -o 'TWES_TEST_DB_[A-Z_]*' api/phpunit.xml`). So a CI provisioned exactly as
+            documented omitted all three, and silently skipped the cases that pin the reachability
+            fixes. That is the round-15 defect verbatim: the set grew and the named tally did not.
+
+            chain_inner / chain_outer form a TWO-LINK chain (INHERIT TRUE, SET FALSE then INHERIT
+            FALSE, SET TRUE), which is what proves the SET-closure of USAGE is transitive rather than
+            one level deep. inherit_only is granted INHERIT TRUE, SET FALSE.
+        -->
+        <env name="TWES_TEST_DB_CHAIN_INNER_ROLE" value="twes_chain_inner"/>
+        <env name="TWES_TEST_DB_CHAIN_OUTER_ROLE" value="twes_chain_outer"/>
+        <env name="TWES_TEST_DB_INHERIT_ONLY_ROLE" value="twes_inherit_only"/>
+        <!--
             The NINTH role, and the only one whose name is not all-lowercase. `current_user::regrole`
             downcases, so the cast raised `role "twesmixedcase" does not exist` and the object check raised
             instead of answering. Round 13 replaced the cast; round 14 found the fix revertible with the suite

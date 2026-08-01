@@ -236,6 +236,32 @@ final class SchemaTenancyGateTest extends TestCase
             'is NULLABLE',
         ];
 
+        // ---------------------------------------------------------------- SCOPE: what the gate can even SEE
+        //
+        // Both reproduced as leaks at 8f85b2d. The gate's charter is that "an unpoliced tenant table is invisible
+        // to every other check here" -- which stayed true one schema over, and for a relkind it never selected.
+        // The runtime checker filters `nspname NOT IN ('pg_catalog','information_schema')`; this gate pinned
+        // `= 'public'`, so it was NARROWER than the control it exists to backstop.
+
+        yield 'a tenant table in another schema, which the public-only scope never saw' => [
+            [
+                \sprintf('CREATE SCHEMA reporting AUTHORIZATION %s', self::ownerRole()),
+                'CREATE TABLE reporting.archive (company_id uuid NOT NULL, id uuid NOT NULL, PRIMARY KEY (company_id, id))',
+            ],
+            ['DROP SCHEMA reporting CASCADE'],
+            'has NO row-level security',
+        ];
+
+        // A MATERIALIZED VIEW cannot carry row-level security AT ALL -- PostgreSQL supports no policy on one. So a
+        // reporting matview over a policed table is an unpoliced snapshot of it, and REFRESH materialises rows
+        // that later readers are never re-filtered against. It carries `company_id`, so by this gate's own
+        // classification rule it IS tenant data; the gate simply never selected relkind 'm'.
+        yield 'a materialized view holding tenant data, which can never be policed' => [
+            ['CREATE MATERIALIZED VIEW tenant_snapshot AS SELECT company_id, id FROM document'],
+            ['DROP MATERIALIZED VIEW tenant_snapshot'],
+            'cannot carry row-level security',
+        ];
+
         yield 'a table this gate cannot classify' => [
             ['CREATE TABLE ambiguous (tenant_id uuid NOT NULL, note text)'],
             ['DROP TABLE ambiguous'],

@@ -1997,7 +1997,13 @@ for gate in $gates_on_disk; do
     redirect_file="$(printf '%s' "$redirect" | awk '{print $4}')"
     redirect_test="$(printf '%s' "$redirect" | awk '{print $5}')"
 
-    if [[ -f "$REPO_ROOT/$redirect_file" ]] && grep -qF "$redirect_test" "$REPO_ROOT/$redirect_file"; then
+    # ANCHOR ON THE DECLARATION, never a substring. A plain `grep -qF` on the method name is satisfied by the name
+    # appearing in a COMMENT, so the test method could be DELETED -- leaving only a docblock that mentions it --
+    # and this suite still reported 366 passed, 0 failed. A reviewer proved exactly that at 8f85b2d, which made
+    # this the same shape as `test-gates.sh` once reporting 33/33 for a gate that detected nothing, one level up.
+    # Four surfaces claimed the redirect could not be a hiding place; none of them was true.
+    if [[ -f "$REPO_ROOT/$redirect_file" ]] \
+      && grep -qE "function[[:space:]]+${redirect_test}[[:space:]]*\(" "$REPO_ROOT/$redirect_file"; then
       printf '  ok   — %s clean case is verified at %s::%s\n' "$gate" "$redirect_file" "$redirect_test"
       passed=$((passed + 1))
       continue
