@@ -1,7 +1,60 @@
 # infra — Dockerfiles, compose, deployment
 
-**Not built yet. Lands in Wave 12** (`docs/plans/build-waves.plan.md`), though the local development
-environment may arrive earlier if it starts costing more than it saves to hand-roll.
+**It exists and it runs.** This file said *"Not built yet. Lands in Wave 12"* until 2026-08-02, one commit
+after the tier landed. The Wave 12 items that remain are named in the owed table below; everything else here
+is real.
+
+## Running it
+
+Prerequisites: **Docker Engine 24+ with the Compose v2 plugin**, `make`, and `openssl`. Nothing else — no
+PHP, no Node, no Flutter on the host. The images bring their own.
+
+```sh
+make env          # writes infra/.env.local with four freshly generated secrets. Run once.
+make up           # builds the API image and starts the stack. First run pulls base images; allow 5-10 min.
+make build-front  # builds the Angular and Flutter bundles into the volumes the API serves. Slow — see below.
+```
+
+Then:
+
+| URL | What |
+|---|---|
+| `http://localhost:8080/api` | the API Platform entrypoint |
+| `http://localhost:8080/api/docs` | OpenAPI / SwaggerUI |
+| `http://localhost:8080/api/currencies` | the one implemented resource |
+| `http://localhost:8080/health` | liveness — touches nothing |
+| `http://localhost:8080/health/ready` | readiness — database, schema, tenant binding |
+| `http://localhost:8080/admin/` | the Angular admin (after `make build-front`) |
+| `http://localhost:8080/app/` | the Flutter web client (after `make build-front`) |
+
+`make help` lists every target. `make logs`, `make ps`, `make shell`, `make console CMD=debug:router`,
+`make psql`, `make backup`, `make down`, `make destroy`.
+
+**`make build-front` is slow the first time and that is inherent, not a defect.** There is no official Flutter
+image, so that stage downloads the SDK (~1 GB) and runs `flutter precache`. It is a build-only stage — `scratch`
+at the end means none of it reaches a running container — and Docker caches it, so only the first run pays.
+Skip it entirely if you only want the API; `/admin/` and `/app/` will 404 until it has run, which is honest
+rather than broken.
+
+**Ports.** `HTTP_PORT` defaults to `8080` and is bound to `127.0.0.1` only, never `0.0.0.0` — the short compose
+form would expose the stack to the local network, which on a laptop on café wifi is a real exposure. Change it
+in `infra/.env.local` if 8080 is taken.
+
+**Behind a TLS-intercepting corporate proxy**, drop the CA into `infra/api/ca-certificates/` before `make up`.
+It is trusted for the BUILD only and never copied into the runtime image; without it Composer fails with what
+looks like the package server being unreachable. See that directory's own README.
+
+## Configuration — the dotenv cascade
+
+`infra/.env` is **committed**, carries safe defaults, and every secret in it is deliberately **empty**;
+`infra/.env.local` is **gitignored** and holds the real ones. Compose is given both. That is the Symfony
+convention, and it is why there is no `.env.example` — a separate template is a Laravel/Node idiom and, here,
+a second copy nothing reads.
+
+`compose.override.yaml` is the **development** overlay and Docker Compose loads it automatically, which is why
+the dev `make` targets pass no `-f` at all: passing `-f` switches Compose into explicit mode and the override
+is then silently ignored. `compose.prod.yaml` is explicit for the opposite reason — it must never be picked up
+by accident.
 
 ## Written from scratch — `invoiceninja/dockerfiles` is GPL-2.0
 

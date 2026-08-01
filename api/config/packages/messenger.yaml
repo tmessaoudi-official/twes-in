@@ -1,0 +1,62 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# SYMFONY MESSENGER — the async transport.
+#
+# THIS FILE DID NOT EXIST AND THE STACK WAS BROKEN BECAUSE OF IT. `infra/compose.yaml` runs
+# `messenger:consume async` in the `worker` service, and with no transport defined that command exits with
+# `The receiver "async" does not exist.` — so the worker crash-looped on the first `docker compose up`.
+# [Verified: running it on the host produced exactly that message before this file existed.] `CLAUDE.md`
+# § "The Symfony ecosystem is the ONLY vocabulary" names Messenger as the mandated replacement for Laravel's
+# Jobs/Horizon; naming the mechanism is not the same as wiring it.
+#
+# WHY DOCTRINE AND NOT VALKEY, having Valkey right there in the topology. Three reasons, and the first is the
+# decisive one:
+#
+#   1. DURABILITY. `infra/compose.yaml` runs Valkey with `--save '' --appendonly no` and justifies it by saying
+#      "everything here is a QUEUE and a LOCK, both of which are reconstructible: Messenger's failure transport
+#      is the durable store". That sentence CANNOT be true if the failure transport is also Valkey — a restart
+#      would drop the failed-message record, which in a billing product is a lost invoice e-mail nobody knows
+#      about. Doctrine puts both transports in PostgreSQL, which is backed up, and makes that comment true.
+#   2. NO EXTENSION. `symfony/redis-messenger` requires `ext-redis` — it does not accept Predis [Verified:
+#      `composer require symfony/redis-messenger` failed on the missing platform requirement]. That would force
+#      the extension onto every developer machine as well as the image.
+#   3. TRANSACTIONALITY. A message dispatched inside the transaction that issues a document is committed or
+#      rolled back WITH it. A Valkey queue cannot participate, so a rolled-back issue can still e-mail a
+#      customer an invoice that does not exist.
+#
+# Valkey keeps the lock store (`lock.yaml`), which is genuinely reconstructible and is what it is good at.
+framework:
+    messenger:
+        # A failed message is PARKED, never dropped. Without this key Messenger discards a message once retries
+        # are exhausted, and in a billing product a silently dropped message is a customer who was never charged
+        # or never told.
+        failure_transport: failed
+
+        transports:
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                # `auto_setup=false` is set in the DSN, not here, and it is a SECURITY requirement rather than a
+                # preference: auto-setup issues `CREATE TABLE` on the RUNTIME connection, so the table would be
+                # owned by the restricted role — and `scripts/gates/schema-tenancy.php` refuses ANY table owned
+                # by that role, tenant-owned or not, because owning a table is one `ALTER TABLE ... DISABLE ROW
+                # LEVEL SECURITY` from every tenant's data. The table is created by a migration instead, which
+                # runs on the `owner` connection.
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 3600000
+
+            # The parking lot. Same database, a different queue name, and NO retry strategy — a message here has
+            # already exhausted its retries and is waiting for a human.
+            failed: 'doctrine://default?queue_name=failed&auto_setup=false'
+
+        # EMPTY, AND HONESTLY SO. Nothing dispatches a message yet — `CLAUDE.md` records the worker as wired with
+        # no work until Wave 10. Routing entries land with the messages they route; an entry for a class that does
+        # not exist would fail `lint:container`, which is the right kind of loud.
+        routing: {}

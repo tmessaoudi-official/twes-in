@@ -18,3 +18,52 @@ framework:
     # No session, no CSRF, no form component: there is no HTML surface. Three clients consume a REST API, and a
     # session would be server state a stateless API must not acquire.
     session: false
+
+    # ----------------------------------------------------------------------------------------------------------
+    # LOCALE. `en` is the source language of the catalogues; `fr` and `ar` are translations of it.
+    # ----------------------------------------------------------------------------------------------------------
+    default_locale: '%env(DEFAULT_LOCALE)%'
+    enabled_locales: ['en', 'fr', 'ar']
+
+    translator:
+        # THE FALLBACK WAS MISSING and the consequence was not cosmetic. With `fallbacks: {}`, a key present in
+        # `messages.en.xlf` but absent from `messages.ar.xlf` renders as the RAW KEY -- an Arabic-speaking user
+        # would be shown `document.quantity_too_precise` as their entire error message. `scripts/gates/
+        # locale-key-parity.php` makes that gap unlikely, but a fallback is what makes it non-fatal, and the two
+        # are complements rather than alternatives.
+        default_path: '%kernel.project_dir%/translations'
+        fallbacks: ['en']
+
+    # ----------------------------------------------------------------------------------------------------------
+    # PROXY AWARENESS. Required because the deployed topology puts the application behind something.
+    #
+    # Without this, every request appears to originate from the proxy: `Request::getClientIp()` returns the
+    # container network's address, so an audit log records the wrong actor and a future rate limiter throttles
+    # the proxy rather than the caller. `getScheme()` also returns `http` behind a TLS-terminating proxy, which
+    # makes Symfony generate `http://` URLs into an HTTPS document.
+    #
+    # `REMOTE_ADDR` is the special value meaning "whatever address the request actually arrived from", which is
+    # the correct setting when the only thing that can reach the container IS the proxy -- as `compose.yaml`'s
+    # two-network split enforces. Never a wildcard: trusting an untrusted proxy header lets any caller forge
+    # their own client IP.
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-host', 'x-forwarded-proto', 'x-forwarded-port', 'x-forwarded-prefix']
+
+# ==================================================================================================================
+# TEST-ENVIRONMENT OVERRIDES.
+#
+# `when@test:` IN THIS FILE, not a separate `config/packages/test/framework.yaml`. Both are loaded by
+# `MicroKernelTrait`, and the per-environment DIRECTORY is the pre-5.3 spelling: since Symfony 5.3 every Flex
+# recipe writes `when@<env>:` blocks instead, because an override sitting three lines below the value it overrides
+# is readable, and the same override in another file is a thing you have to know to go and look for.
+# ==================================================================================================================
+when@test:
+    framework:
+        # Registers the test client that `WebTestCase` needs. Without it every functional test dies with "You
+        # cannot create the client used in functional tests", which reads like a missing package rather than a
+        # missing config key.
+        #
+        # ONLY in the test environment, and that scoping is a security property rather than tidiness: the test
+        # client dispatches a request bypassing the HTTP layer entirely, so enabling it in prod would be a way to
+        # reach the kernel without passing anything that guards the front door.
+        test: true

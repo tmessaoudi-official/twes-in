@@ -174,21 +174,37 @@ RUN addgroup -g 10001 -S twes \
 # cache directory does not need to be writable for compilation in production. APP_SECRET is a build-time dummy: it
 # is never used to sign anything here and the real one arrives from the environment at run time.
 USER twes
-RUN APP_ENV=prod APP_SECRET=build-time-placeholder-not-a-secret \
+RUN APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-time-placeholder-not-a-secret \
+        DEFAULT_LOCALE=en TRUSTED_PROXIES='' \
+        MESSENGER_TRANSPORT_DSN='doctrine://default?auto_setup=false' \
+        LOCK_DSN=flock \
         DATABASE_URL='postgresql://build:build@127.0.0.1:5432/build?serverVersion=18&charset=utf8' \
         DATABASE_URL_OWNER='postgresql://build:build@127.0.0.1:5432/build?serverVersion=18&charset=utf8' \
         php bin/console cache:warmup --env=prod --no-debug \
     && chmod -R 555 /app/var/cache
 
 USER root
-COPY infra/api/docker-entrypoint.sh /usr/local/bin/twes-entrypoint
-RUN chmod 555 /usr/local/bin/twes-entrypoint
+# NAMED `docker-entrypoint`, which is the FrankenPHP image's and the API Platform distribution's own name
+# for this file. It was `twes-entrypoint` until 2026-08-02 — a project-specific name for a conventional
+# role, which is exactly the kind of small deviation that makes a familiar stack unfamiliar.
+COPY infra/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN chmod 555 /usr/local/bin/docker-entrypoint
 USER twes
 
+# Defaults matching FrankenPHP's and the API Platform distribution's own variable names, so an operator who knows
+# either image can configure this one without reading the Dockerfile. Every one is overridable from `infra/.env`.
 ENV APP_ENV=prod \
     APP_DEBUG=0 \
+    # `SymfonyRuntime` is the default; worker mode is selected by swapping this for
+    # `Runtime\FrankenPhpSymfony\Runtime`. That seam exists ONLY because `public/index.php` uses
+    # `vendor/autoload_runtime.php` -- the hand-rolled bootstrap it replaced made worker mode unreachable.
+    APP_RUNTIME="Symfony\\Component\\Runtime\\SymfonyRuntime" \
     # FrankenPHP serves the Symfony front controller from here.
     SERVER_NAME=:80 \
+    # The Caddyfile's extension seams, empty so they splice in nothing until an operator sets one.
+    CADDY_GLOBAL_OPTIONS="" \
+    CADDY_EXTRA_CONFIG="" \
+    CADDY_SERVER_EXTRA_DIRECTIVES="" \
     FRANKENPHP_CONFIG=""
 
 EXPOSE 80 443 443/udp
@@ -200,5 +216,5 @@ EXPOSE 80 443 443/udp
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
     CMD curl --fail --silent --show-error --max-time 2 http://127.0.0.1:80/health || exit 1
 
-ENTRYPOINT ["twes-entrypoint"]
+ENTRYPOINT ["docker-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

@@ -1,0 +1,28 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# SYMFONY LOCK — the distributed lock store.
+#
+# `symfony/lock` and `predis/predis` were both installed, `LOCK_DSN` was set in `infra/compose.yaml`, and NOTHING
+# CONFIGURED EITHER. `THIRD-PARTY-NOTICES.md` described Predis as "the Valkey client, for the Messenger transport
+# and the lock store" while neither existed — the shape `CLAUDE.md` § Gotchas records repeatedly, where prose
+# asserts a control that no code implements. [Verified: `grep -rn Predis api/src api/config api/tests` returned
+# nothing before this file existed.]
+#
+# WHAT IT IS FOR, concretely, so this is not speculative infrastructure. `infra/compose.yaml` pins the scheduler
+# to exactly ONE replica because two schedulers issue every recurring invoice twice — which in a billing product
+# means charging a customer twice. That constraint is currently enforced by a compose file, which stops being
+# true the moment the stack spans two hosts. A lock is what makes the constraint survive that, so the store is
+# configured now and the scheduler takes the lock in Wave 10 when it has work to schedule.
+#
+# VALKEY rather than PostgreSQL for this one, which is the opposite choice from `messenger.yaml` and for a
+# consistent reason: a lock SHOULD be lost on a restart. Persisting one resurrects a stale lock held by a process
+# that no longer exists, and the recurring-invoice run it guards would then never happen. Valkey's
+# `--save '' --appendonly no` is exactly right here — and exactly wrong for a queue, which is why the queue moved.
+framework:
+    lock:
+        default: '%env(LOCK_DSN)%'

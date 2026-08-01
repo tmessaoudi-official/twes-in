@@ -15,6 +15,13 @@
 # ==============================================================================================================
 
 {
+	# THE DISTRIBUTION'S EXTENSION SEAMS. `CADDY_GLOBAL_OPTIONS`, `CADDY_EXTRA_CONFIG`,
+	# `CADDY_SERVER_EXTRA_DIRECTIVES` and `FRANKENPHP_CONFIG` are the variable names FrankenPHP's own image and the
+	# API Platform distribution use, so an operator who knows either already knows how to extend this file without
+	# rebuilding the image. They were absent until 2026-08-02, which meant any addition — a Mercure hub, an extra
+	# listener, a metrics endpoint — required editing this file and rebuilding.
+	{$CADDY_GLOBAL_OPTIONS}
+
 	# Caddy's own admin API is OFF. It can rewrite the running configuration over HTTP, so in a container it is a
 	# remote-code-execution surface reachable by anything that gets a foothold on the network. Nothing here needs
 	# runtime reconfiguration; a config change is a deploy.
@@ -49,8 +56,15 @@
 		#         num 4
 		#     }
 		# and `infra/README.md` records the two preconditions as owed.
+		#
+		# `FRANKENPHP_CONFIG` is the seam by which that is switched on WITHOUT editing this file: setting it to
+		# `worker /app/public/index.php 4` is the documented spelling. It is empty by default, so the block above
+		# stays the honest record of why.
+		{$FRANKENPHP_CONFIG}
 	}
 }
+
+{$CADDY_EXTRA_CONFIG}
 
 # The site address comes from the environment so that one image serves a developer's `localhost`, a staging host and
 # production without a rebuild. `CLAUDE.md` licensing invariant 9 requires exactly this: hostname is CONFIGURATION,
@@ -154,6 +168,9 @@
 	handle {
 		respond "Not Found" 404
 	}
+
+	# The per-site seam, spliced in last so it can override anything above it.
+	{$CADDY_SERVER_EXTRA_DIRECTIVES}
 
 	# gzip and zstd. Brotli is deliberately absent: Caddy's built-in `encode` does not ship it, and adding a plugin
 	# means a custom FrankenPHP build — a real cost for a marginal gain on already-compressed JSON.

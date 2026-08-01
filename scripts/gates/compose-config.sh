@@ -52,15 +52,50 @@ cat > "$RENDER_ENV" <<'EOF'
 APP_ENV=prod
 APP_DEBUG=0
 APP_SECRET=GATE-RENDERING-ONLY-NOT-A-SECRET
-TWES_SERVER_NAME=:80
+SERVER_NAME=:80
 POSTGRES_DB=twes
-POSTGRES_SUPERUSER=postgres
+POSTGRES_USER=postgres
 POSTGRES_PASSWORD=GATE-RENDERING-ONLY
 TWES_DB_RUNTIME_ROLE=twes
 TWES_DB_RUNTIME_PASSWORD=GATE-RENDERING-ONLY
 TWES_DB_OWNER_ROLE=twes_owner
 TWES_DB_OWNER_PASSWORD=GATE-RENDERING-ONLY
 EOF
+
+# THE RECEIVERS THE APPLICATION ACTUALLY DEFINES, DERIVED rather than written down here. A second hand-maintained
+# list is the drift this repository has been bitten by repeatedly; these come from the only two places a receiver
+# can come from:
+#
+#   * `framework.messenger.transports.*` keys in `api/config/packages/messenger.yaml`;
+#   * `scheduler_<name>` for every `#[AsSchedule('<name>')]` provider under `api/src/`, which is how Symfony
+#     Scheduler names the transport it synthesises.
+#
+# If `messenger.yaml` is absent the set is EMPTY and every `messenger:consume` in compose is flagged — which is
+# exactly the state that shipped a crash-looping worker, so the gate must be loud rather than lenient about it.
+readonly RECEIVERS="$(
+    python3 - "$REPO_ROOT" <<'PYEOF'
+import pathlib, re, sys, yaml
+
+root = pathlib.Path(sys.argv[1])
+names = set()
+
+cfg = root / 'api' / 'config' / 'packages' / 'messenger.yaml'
+if cfg.is_file():
+    doc = yaml.safe_load(cfg.read_text()) or {}
+    names |= set((((doc.get('framework') or {}).get('messenger') or {}).get('transports') or {}).keys())
+
+# ANCHORED TO THE START OF A LINE, which is not cosmetic: the unanchored pattern also matched the literal
+# `#[AsSchedule('<name>')]` written inside DefaultSchedule.php's own docblock, and `scheduler_<name>` duly
+# appeared in the derived set. A prose mention is not a declaration -- the same reason
+# `no-orm-attributes-in-domain` reads tokens rather than grepping. A docblock line begins ` * `, so requiring
+# the attribute to open its own line excludes every comment continuation.
+for php in sorted((root / 'api' / 'src').rglob('*.php')):
+    for m in re.finditer(r"^[ \t]*#\[AsSchedule\(\s*'([^']+)'", php.read_text(), re.MULTILINE):
+        names.add('scheduler_' + m.group(1))
+
+print(','.join(sorted(names)))
+PYEOF
+)"
 
 failures=0
 checked=0
@@ -73,6 +108,7 @@ cat > "$INSPECTOR" <<'PYEOF'
 import sys, yaml
 
 overlay = sys.argv[1]
+KNOWN_RECEIVERS = set(sys.argv[2].split(',')) if len(sys.argv) > 2 and sys.argv[2] else set()
 cfg = yaml.safe_load(sys.stdin)
 services = cfg.get('services', {})
 problems = []
@@ -93,7 +129,7 @@ if replicas is not None and int(replicas) != 1:
         'which in a billing product means charging a customer twice.' % replicas)
 
 # 3. Nothing but the API is reachable from outside.
-for name in ('postgres', 'valkey', 'gotenberg', 'worker', 'scheduler'):
+for name in ('database', 'valkey', 'gotenberg', 'worker', 'scheduler'):
     nets = (services.get(name) or {}).get('networks') or {}
     if 'edge' in nets:
         problems.append('%s is on the `edge` network. Only the API may be externally reachable.' % name)
@@ -103,6 +139,25 @@ if not (cfg.get('networks', {}).get('internal', {}) or {}).get('internal'):
     problems.append(
         'the `internal` network is not marked `internal: true`, so a compromised worker or the document renderer '
         'would have a route to the outside world.')
+
+# 5. Every Messenger receiver a service consumes must be a transport the application actually defines.
+#    This is the assertion that was missing when `worker` and `scheduler` crash-looped on `docker compose up`:
+#    compose said `messenger:consume async` and no `config/packages/messenger.yaml` existed, so the command
+#    exited with `The receiver "async" does not exist.` Compose cannot know that -- but it CAN be told which
+#    receivers the application defines, and the two lists can be compared here.
+for name, svc in services.items():
+    cmd = svc.get('command') or []
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    if 'messenger:consume' not in cmd:
+        continue
+    consumed = [a for a in cmd[cmd.index('messenger:consume') + 1:] if not a.startswith('-')]
+    unknown = [r for r in consumed if r not in KNOWN_RECEIVERS]
+    if unknown:
+        problems.append(
+            'service `%s` consumes Messenger receiver(s) %s, which the application does not define. '
+            '`messenger:consume` exits with "The receiver ... does not exist." and the container crash-loops. '
+            'Known receivers: %s.' % (name, ', '.join(unknown), ', '.join(sorted(KNOWN_RECEIVERS))))
 
 for p in problems:
     print('  FAIL — %s: %s' % (overlay, p))
@@ -114,7 +169,7 @@ render() {
     docker compose --env-file "$RENDER_ENV" -f "$INFRA/compose.yaml" -f "$INFRA/$1" config 2>&1
 }
 
-for overlay in compose.dev.yaml compose.prod.yaml; do
+for overlay in compose.override.yaml compose.prod.yaml; do
     checked=$((checked + 1))
 
     if ! rendered="$(render "$overlay")"; then
@@ -132,11 +187,11 @@ for overlay in compose.dev.yaml compose.prod.yaml; do
     # The inspector is written to a FILE rather than heredoc'd, because `python3 - <<'PY' <<<"$rendered"` has TWO
     # stdin redirections and the last one wins -- so Python received the rendered YAML as its own source and died
     # with `SyntaxError: invalid decimal literal` on `timeout: 3s`. Script and data must arrive by different routes.
-    if ! printf '%s' "$rendered" | python3 "$INSPECTOR" "$overlay"
+    if ! printf '%s' "$rendered" | python3 "$INSPECTOR" "$overlay" "$RECEIVERS"
     then
         failures=$((failures + 1))
     else
-        printf '  ok   — %s: owner credential confined, scheduler pinned to 1, edge network minimal\n' "$overlay"
+        printf '  ok   — %s: owner credential confined, scheduler pinned to 1, edge network minimal, every consumed receiver defined\n' "$overlay"
     fi
 done
 

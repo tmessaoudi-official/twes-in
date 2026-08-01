@@ -2031,6 +2031,95 @@ fi
 assert_at_least "schema-tenancy: the tenant-column lookalike set has not shrunk" \
   "$(printf '%s\n' "$schema_rules" | awk '$1=="lookalike"' | grep -c .)" 10
 
+echo "== compose-config: the infra gate, and the receiver check that would have caught a crash-looping worker =="
+# WHY THIS SECTION EXISTS AT ALL: `compose-config.sh` shipped in 5b46f69 with no case here, so the meta-suite's own
+# "a gate on disk has no case in this suite" rule was RED at that commit. A gate nothing tests is the exact false
+# assurance this file exists to refuse -- and the irony of it being the infra gate, added to stop a broken stack, is
+# worth recording rather than quietly fixing.
+#
+# The cases below mutate a COPY of the compose tree, never the real one, because these are the files `make up` runs.
+if ! docker compose version >/dev/null 2>&1; then
+  printf '  ok   — compose-config: SKIPPED, no `docker compose` on this machine (the gate skips identically)\n'
+  passed=$((passed + 1))
+else
+  cc_root="$WORK/composecfg"
+  mkdir -p "$cc_root"
+  cp -a "$REPO_ROOT/infra" "$cc_root/infra"
+  cp -a "$REPO_ROOT/scripts" "$cc_root/scripts"
+  mkdir -p "$cc_root/api/config/packages" "$cc_root/api/src"
+  cp -a "$REPO_ROOT/api/config/packages/messenger.yaml" "$cc_root/api/config/packages/"
+  cp -a "$REPO_ROOT/api/src/Infrastructure" "$cc_root/api/src/"
+
+  # Baseline: the copied tree must be CLEAN, or every mutant below proves nothing.
+  cc_clean="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_clean_rc=0 || cc_clean_rc=$?
+  if (( cc_clean_rc == 0 )) && printf '%s' "$cc_clean" | grep -qF 'failures=0'; then
+    printf '  ok   — compose-config passes on an unmutated copy of the real tree\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config is not clean on an unmutated copy (rc=%s): %s\n' "$cc_clean_rc" "$cc_clean"
+    failed=$((failed + 1))
+  fi
+
+  # MUTANT A -- the owner credential escapes onto a SERVING container. This is the single most dangerous edit a
+  # careless overlay can make: `FORCE ROW LEVEL SECURITY` stops an owner SKIPPING policies, not REMOVING them.
+  cp "$cc_root/infra/compose.yaml" "$cc_root/base.pristine"
+  # Injected INTO the `api` service rather than appended to the file: appending lands under the last top-level
+  # key (`volumes:`), which makes the document invalid and the gate fail for the WRONG reason -- a rendering
+  # error, not a detection. A mutant that kills a gate by breaking its input proves nothing.
+  sed -i "s|      SERVER_NAME: .\${SERVER_NAME:-:80}.|&\n      DATABASE_URL_OWNER: postgresql://o:o@database:5432/twes|" \
+    "$cc_root/infra/compose.yaml"
+  cc_a="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_a_rc=0 || cc_a_rc=$?
+  if (( cc_a_rc != 0 )) && printf '%s' "$cc_a" | grep -qF 'DATABASE_URL_OWNER is held by'; then
+    printf '  ok   — compose-config catches the owner credential on a serving container\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed an owner credential on `api` (rc=%s)\n' "$cc_a_rc"
+    failed=$((failed + 1))
+  fi
+  cp "$cc_root/base.pristine" "$cc_root/infra/compose.yaml"
+
+  # MUTANT B -- a consumed Messenger receiver that the application does not define. THE SHIPPED DEFECT: compose ran
+  # `messenger:consume async` while no `config/packages/messenger.yaml` existed, so the worker crash-looped on the
+  # first `docker compose up` with `The receiver "async" does not exist.`
+  mv "$cc_root/api/config/packages/messenger.yaml" "$cc_root/messenger.held"
+  cc_b="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_b_rc=0 || cc_b_rc=$?
+  if (( cc_b_rc != 0 )) && printf '%s' "$cc_b" | grep -qF 'consumes Messenger receiver(s) async'; then
+    printf '  ok   — compose-config catches a consumed receiver the application never defines\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed a consumed receiver with no transport (rc=%s)\n' "$cc_b_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/messenger.held" "$cc_root/api/config/packages/messenger.yaml"
+
+  # MUTANT C -- the scheduler half of the same defect, which is derived from a PHP ATTRIBUTE rather than from YAML.
+  # Separate from B on purpose: the two receiver sources are read by different code, so one case cannot cover both.
+  mv "$cc_root/api/src/Infrastructure/Scheduler/DefaultSchedule.php" "$cc_root/schedule.held"
+  cc_c="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_c_rc=0 || cc_c_rc=$?
+  if (( cc_c_rc != 0 )) && printf '%s' "$cc_c" | grep -qF 'consumes Messenger receiver(s) scheduler_default'; then
+    printf '  ok   — compose-config catches a missing #[AsSchedule] provider behind a consumed receiver\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed a deleted #[AsSchedule] provider (rc=%s)\n' "$cc_c_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/schedule.held" "$cc_root/api/src/Infrastructure/Scheduler/DefaultSchedule.php"
+
+  # MUTANT D -- the receiver derivation must read DECLARATIONS, not prose. The first version of it matched the
+  # literal `#[AsSchedule('<name>')]` inside DefaultSchedule.php's own docblock and admitted `scheduler_<name>` to
+  # the allowed set. A comment is not a declaration, and this pins the anchored pattern that fixed it.
+  printf "\n// #[AsSchedule('smuggled')]\n" >> "$cc_root/api/src/Infrastructure/Scheduler/DefaultSchedule.php"
+  sed -i "s/- scheduler_default/- scheduler_smuggled/" "$cc_root/infra/compose.yaml"
+  cc_d="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_d_rc=0 || cc_d_rc=$?
+  if (( cc_d_rc != 0 )) && printf '%s' "$cc_d" | grep -qF 'scheduler_smuggled'; then
+    printf '  ok   — compose-config does not accept a receiver declared only inside a comment\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config accepted a receiver that exists only in a comment (rc=%s)\n' "$cc_d_rc"
+    failed=$((failed + 1))
+  fi
+fi
+
 echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 # Round 12 found shell-syntax.sh absent from `composer gate` one commit after it was added and documented as
 # FIRST in the gate command block. The reason it went unnoticed is that the clean-fixture block above is a
@@ -2065,10 +2154,41 @@ gates_on_disk="$(cd "$REPO_ROOT" && git ls-files -- scripts/gates \
 # Format, one per line, anywhere in this file:
 #   # clean-case-elsewhere: <gate file> <path relative to repo root> <test method substring>
 # clean-case-elsewhere: schema-tenancy.php api/tests/Integration/Tenancy/SchemaTenancyGateTest.php testTheGateAcceptsTheSchemaOurMigrationProduces
+#
+# A gate may also declare its clean case INLINE here without going through `assert_gate`, and one does.
+# `assert_gate` runs every case against the ONE shared fixture at $WORK/repo, which is a PHP-only tree with no
+# `infra/`; `compose-config.sh` needs a compose tree AND `docker compose`, so it builds its own fixture in its own
+# section above. That is a DIFFERENT fixture, not a weaker case -- it renders the real compose files and asserts
+# `failures=0` on them.
+#
+# Verified exactly as the redirect above is: the named marker must actually be PRINTED by this file, so deleting
+# the case fails this check just as deleting a redirected test method does. A third SPELLING, never an exemption --
+# naming a gate here with no matching case is caught on the next run.
+#
+#   # clean-case-inline: <gate file> <substring of the ok-line the case prints>
+# clean-case-inline: compose-config.sh compose-config passes on an unmutated copy of the real tree
 missing_case=""
 for gate in $gates_on_disk; do
   if grep -qF "assert_gate \"clean: ${gate%%.*}" "$REPO_ROOT/scripts/gates/test-gates.sh" \
     || grep -qF "$gate 0" "$REPO_ROOT/scripts/gates/test-gates.sh"; then
+    continue
+  fi
+
+  inline="$(grep -E "^# clean-case-inline: ${gate} " "$REPO_ROOT/scripts/gates/test-gates.sh" | head -1)"
+
+  if [[ -n "$inline" ]]; then
+    inline_marker="${inline#*clean-case-inline: ${gate} }"
+
+    # Anchored on `printf`, not on the bare string: otherwise the declaration line above would satisfy itself.
+    # That is the same trap the redirect documents, where a method name inside a docblock passed a `grep -qF`.
+    if grep -qE "printf .*${inline_marker}" "$REPO_ROOT/scripts/gates/test-gates.sh"; then
+      printf '  ok   — %s clean case is inline here (%s)\n' "$gate" "$inline_marker"
+      passed=$((passed + 1))
+      continue
+    fi
+
+    printf '  FAIL — %s declares an inline clean case "%s" that nothing prints\n' "$gate" "$inline_marker"
+    failed=$((failed + 1))
     continue
   fi
 

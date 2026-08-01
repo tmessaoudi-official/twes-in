@@ -40,12 +40,15 @@ x-api-environment: &api-environment
   # The RUNTIME credential, and only the runtime credential. `DATABASE_URL_OWNER` is deliberately absent from every
   # serving container: the entrypoint REFUSES to start if it is present, because a runtime process that can reach
   # the owning role can DISABLE ROW LEVEL SECURITY on every tenant table.
-  DATABASE_URL: postgresql://${TWES_DB_RUNTIME_ROLE:-twes}:${TWES_DB_RUNTIME_PASSWORD:?TWES_DB_RUNTIME_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-twes}?serverVersion=18&charset=utf8
-  MESSENGER_TRANSPORT_DSN: redis://valkey:6379/messages
-  LOCK_DSN: redis://valkey:6379
+  DATABASE_URL: postgresql://${TWES_DB_RUNTIME_ROLE:-twes}:${TWES_DB_RUNTIME_PASSWORD:?TWES_DB_RUNTIME_PASSWORD must be set}@database:5432/${POSTGRES_DB:-twes}?serverVersion=18&charset=utf8
+  MESSENGER_TRANSPORT_DSN: '${MESSENGER_TRANSPORT_DSN:-doctrine://default?auto_setup=false}'
+  LOCK_DSN: '${LOCK_DSN:-redis://valkey:6379}'
+  DEFAULT_LOCALE: '${DEFAULT_LOCALE:-en}'
+  TRUSTED_PROXIES: '${TRUSTED_PROXIES:-REMOTE_ADDR}'
+  APP_RUNTIME: '${APP_RUNTIME:-Symfony\Component\Runtime\SymfonyRuntime}'
 
 x-api-depends: &api-depends
-  postgres:
+  database:
     condition: service_healthy
   valkey:
     condition: service_healthy
@@ -54,11 +57,11 @@ services:
   # ------------------------------------------------------------------------------------------------------------
   # PostgreSQL. Tenancy is row-level security, so this is not a swappable component.
   # ------------------------------------------------------------------------------------------------------------
-  postgres:
+  database:
     image: postgres:18-alpine
     environment:
       POSTGRES_DB: '${POSTGRES_DB:-twes}'
-      POSTGRES_USER: '${POSTGRES_SUPERUSER:-postgres}'
+      POSTGRES_USER: '${POSTGRES_USER:-postgres}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}'
       # `scram-sha-256` explicitly. The image would default to it, but stating it means a future base-image change
       # cannot quietly downgrade to md5, which is broken.
@@ -70,14 +73,14 @@ services:
       TWES_DB_OWNER_ROLE: '${TWES_DB_OWNER_ROLE:-twes_owner}'
       TWES_DB_OWNER_PASSWORD: '${TWES_DB_OWNER_PASSWORD:?TWES_DB_OWNER_PASSWORD must be set}'
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - database-data:/var/lib/postgresql/data
       # First-boot provisioning: the owner/runtime role split and the default privileges the migration relies on.
       # Read-only, because the container has no business modifying its own provisioning.
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+      - ./database/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       # `pg_isready` against the real database and user, not just the port. A listening socket during initdb would
       # otherwise satisfy a port check and let the API start against a cluster that has no roles yet.
-      test: ['CMD-SHELL', 'pg_isready -U "${POSTGRES_SUPERUSER:-postgres}" -d "${POSTGRES_DB:-twes}"']
+      test: ['CMD-SHELL', 'pg_isready -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-twes}"']
       interval: 5s
       timeout: 5s
       retries: 20
@@ -136,7 +139,7 @@ services:
     <<: *api-image
     environment:
       <<: *api-environment
-      DATABASE_URL_OWNER: postgresql://${TWES_DB_OWNER_ROLE:-twes_owner}:${TWES_DB_OWNER_PASSWORD:?TWES_DB_OWNER_PASSWORD must be set}@postgres:5432/${POSTGRES_DB:-twes}?serverVersion=18&charset=utf8
+      DATABASE_URL_OWNER: postgresql://${TWES_DB_OWNER_ROLE:-twes_owner}:${TWES_DB_OWNER_PASSWORD:?TWES_DB_OWNER_PASSWORD must be set}@database:5432/${POSTGRES_DB:-twes}?serverVersion=18&charset=utf8
       # The entrypoint refuses an owner credential unless a container declares itself the migrator. This is that
       # declaration, and it exists so the refusal is opt-OUT rather than advisory.
       TWES_ALLOW_OWNER_CREDENTIAL: '1'
@@ -145,7 +148,7 @@ services:
     # tables carry RLS statements, and a half-applied migration is how an unpoliced tenant table gets created.
     command: ['php', 'bin/console', 'doctrine:migrations:migrate', '--no-interaction', '--all-or-nothing']
     depends_on:
-      postgres:
+      database:
         condition: service_healthy
     restart: 'no'
     networks: [internal]
@@ -157,7 +160,7 @@ services:
     <<: *api-image
     environment:
       <<: *api-environment
-      SERVER_NAME: '${TWES_SERVER_NAME:-:80}'
+      SERVER_NAME: '${SERVER_NAME:-:80}'
     depends_on:
       <<: *api-depends
       migrate:
@@ -316,6 +319,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres-data:
+  database-data:
   admin-bundle:
   flutter-bundle:

@@ -149,13 +149,13 @@ Respect flags:
 
 **Agent C: Partial Feature Implementations** — unhandled switch/match cases, parsed-but-unused flags or query parameters, stub API handlers, features with empty branches, and state machines with missing transitions (invoice / quote / credit status graphs and payment application are the ones that matter here — an unreachable or unhandled status is a real gap, not a style note).
 
-**Agent D: Undocumented Features (code exists, docs absent)** — commands not in CLAUDE.md, env vars not in .env.example, Makefile targets not in README, hook scripts not in docs.
+**Agent D: Undocumented Features (code exists, docs absent)** — commands not in CLAUDE.md, env vars not in the committed .env files (api/.env, api/.env.test, infra/.env), Makefile targets not in README, hook scripts not in docs.
 
 **Agent E: Promised Features (docs mention, code missing)** — commands in CLAUDE.md with no file, env vars documented but never read, workflows referencing scripts that don't exist, and any capability a `docs/plans/<topic>.plan.md` records as decided but that nothing implements.
 
 **Agent F: Missing Tests for Named Features** — named features with zero tests, error paths with no test, workflows with no integration test.
 
-**Agent G: Config & Environment Gaps** — env vars used but not in .env.example, required config with no startup validation, placeholder values with no format hint.
+**Agent G: Config & Environment Gaps** — env vars used but not in the committed .env files (api/.env, api/.env.test, infra/.env), required config with no startup validation, placeholder values with no format hint.
 
 **Agent H: Missing Error Handling Paths** — happy path without error path, silent switch/if fall-throughs, cleanup that runs on success but not failure.
 

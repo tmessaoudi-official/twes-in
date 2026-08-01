@@ -12,7 +12,7 @@
 # ==============================================================================================================
 
 services:
-  postgres:
+  database:
     # No published port at all. The database is reachable only from the internal network.
     security_opt:
       - no-new-privileges:true
@@ -20,7 +20,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: '${POSTGRES_MEMORY_LIMIT:-2g}'
+          memory: '${DATABASE_MEMORY_LIMIT:-2g}'
     logging: &logging
       driver: json-file
       options:
@@ -41,15 +41,15 @@ services:
 
   api:
     # HTTPS. FrankenPHP obtains and renews the certificate itself via ACME — there is no second server and no
-    # certbot sidecar. `TWES_SERVER_NAME` must be a real hostname that resolves to this host, or ACME fails.
+    # certbot sidecar. `SERVER_NAME` must be a real hostname that resolves to this host, or ACME fails.
     environment:
-      SERVER_NAME: '${TWES_SERVER_NAME:?TWES_SERVER_NAME must be a public hostname in production - ACME needs it to resolve}'
+      SERVER_NAME: '${SERVER_NAME:?SERVER_NAME must be a public hostname in production - ACME needs it to resolve}'
     ports:
-      - '${TWES_HTTP_PORT:-80}:80'
-      - '${TWES_HTTPS_PORT:-443}:443'
+      - '${HTTP_PORT:-80}:80'
+      - '${HTTPS_PORT:-443}:443'
       # HTTP/3. UDP, and easy to forget — without it clients silently fall back to HTTP/2 and the QUIC advertisement
       # in the response headers points nowhere.
-      - '${TWES_HTTPS_PORT:-443}:443/udp'
+      - '${HTTP3_PORT:-443}:443/udp'
     security_opt:
       - no-new-privileges:true
     # READ-ONLY ROOT FILESYSTEM. A PHP RCE cannot then write a webshell anywhere that will be executed. The three

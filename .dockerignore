@@ -27,6 +27,7 @@ mobile/.dart_tool
 # no request. They ARE needed by CI, which builds a different target.
 api/tests
 api/phpunit.xml
+api/.env.test
 api/.php-cs-fixer.dist.php
 scripts
 

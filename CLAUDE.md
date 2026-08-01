@@ -398,6 +398,7 @@ number is written here, because one written beside the thing it counts is the fi
 | `spdx-headers.sh` | licensing invariant 8(c), on every source file — **and that the search roots COVER every tracked source file**, which is the direction that was missing when `api/phpunit.xml` sat unscanned with no identifier |
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
+| `compose-config.sh` | every compose configuration RENDERS, and four security properties survive rendering: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines.** That one is not hypothetical hardening — `compose.yaml` ran `messenger:consume async` and `scheduler_default` while `config/packages/messenger.yaml` did not exist and no `#[AsSchedule]` provider did either, so BOTH the worker and the scheduler crash-looped on the first `docker compose up`. The receiver set is DERIVED (transport keys from `messenger.yaml`, `scheduler_<name>` from each `#[AsSchedule]`), never written down, and the attribute scan is anchored to the start of a line because the unanchored version matched the literal `#[AsSchedule('<name>')]` inside a DOCBLOCK and admitted `scheduler_<name>` to the allowed set. It needs `docker compose` but no daemon; it is the one gate here that SKIPS when the binary is absent, which is tolerated because every other gate still runs and CI has Docker |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
 | `no-orphaned-docblocks.php` | no doc comment that attaches to no declaration — two `T_DOC_COMMENT`s with nothing but whitespace, a comment or an attribute between them, because PHP attaches only the LATER one and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded doc comment and round 16's own fix created a fresh one. **Rewritten as a tokenizer pass at round 18**, which found the original line-pattern version missing four of five genuine shapes — a blank line between the blocks (the most natural way to author them), an attribute between them, and a single-line second block — and found its comment asserting that a closing and opening delimiter on ONE line "is not this defect", which was false. A positional rule enforces one SPELLING; the defect is a question about tokens. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying seven, and PHPStan would catch only the subset that also loses a `@param`/`@return` generic |
 | `no-owner-connection-in-application.php` | no code under `api/src/` names the **owner** DBAL connection. `doctrine.yaml` calls the default/owner split a security boundary; round 21 showed it was not one — `debug:autowiring` offers `#[Target('owner')]`, so one line of ordinary application code (the classic "fix the permission error" edit) yields the role that OWNS the tenant tables and can `DROP POLICY`, which `FORCE` does not prevent. A reviewer booted the kernel and disabled row security on `document` in one statement. Chosen over stripping the autowiring alias, which closes the attribute and leaves `$doctrine->getConnection('owner')` open — the connection must stay in the registry for the migrations bundle to resolve it. `PERMITTED_PATHS` is deliberately EMPTY: nothing in `src/` needs it |
@@ -574,6 +575,7 @@ Both couplings are the accepted cost of not letting a check pass quietly on noth
 
 ```
 bash  scripts/gates/shell-syntax.sh
+bash  scripts/gates/compose-config.sh   # needs `docker compose`; SKIPS without it
 bash  scripts/gates/no-orm-attributes-in-domain.sh
 php   scripts/gates/layer-dependencies.php
 php   scripts/gates/no-ambient-calls-in-domain.php
@@ -1110,6 +1112,63 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   consulted. **Also note what saved it**: the integration suite FAILS rather than skipping when the database is
   unreachable, so a dead cluster is loud. Read a wholesale integration failure as "the server is down" first —
   `pg_lsclusters`, then `pg_ctlcluster 18 main start` — and only then as a regression.
+
+- **2026-08-02 — `vendor/autoload_runtime.php` was there the whole time, and a comment asserting otherwise made
+  FrankenPHP worker mode unreachable.** `bin/console` and `public/index.php` both hand-rolled the bootstrap
+  (`Dotenv::bootEnv()`, `Request::createFromGlobals()`, `handle`/`send`/`terminate`) behind a confident paragraph
+  explaining that `symfony/runtime` is a Composer PLUGIN, that plugins are disabled in this container, and that the
+  generated file therefore does not exist. It does exist, `composer dump-autoload` regenerates it, and the plugin is
+  allow-listed in `composer.json`. [Verified: deleted the file, re-ran `composer dump-autoload`, it came back;
+  `Symfony\Component\Runtime\SymfonyRuntime` loads.] **The cost was not stylistic.** `autoload_runtime.php` is the
+  ONLY mechanism by which `APP_RUNTIME` selects a runtime, so worker mode — the single largest performance feature
+  of the server this project just standardised on — was not "not yet enabled", it was *impossible*, and the
+  Caddyfile's honest-sounding note about the two remaining preconditions was therefore incomplete in a way nobody
+  could see. This is the FIFTH instance in this file of a reasoned-not-tried claim (the four in the 2026-07-30 entry,
+  plus the twenty-round Composer misdiagnosis), and the pattern is now unmistakable: **a paragraph explaining why
+  something cannot work is the highest-value thing in this repository to spend ten minutes disproving.**
+- **2026-08-02 — compose ran two commands the application had no configuration for, and the whole stack was
+  documented green.** `infra/compose.yaml` declared a `worker` running `messenger:consume async` and a `scheduler`
+  running `messenger:consume scheduler_default`. There was no `config/packages/messenger.yaml`, no `lock.yaml`, and
+  no `#[AsSchedule]` provider anywhere — so both containers would have exited with `The receiver "..." does not
+  exist.` and crash-looped on the developer's first `docker compose up`. [Verified: running the command on the host
+  produced exactly that message.] `THIRD-PARTY-NOTICES.md` meanwhile described `predis/predis` as "the Valkey client,
+  for the Messenger transport and the lock store" while `grep -rn Predis api/src api/config api/tests` returned
+  nothing at all. **Three separate artefacts described a wiring that did not exist, and the tier's own gate rendered
+  the compose files without noticing**, because rendering only proves the YAML is well-formed — it cannot know that
+  a string in a `command:` names something real. The gate now derives the receiver set from `messenger.yaml` and the
+  `#[AsSchedule]` attributes and compares the two lists, with four mutants proving it fires. The general lesson is
+  the one this section keeps relearning from a new angle: **a check that validates a file's SHAPE is not a check
+  that its CONTENT refers to anything.**
+- **2026-08-02 — Valkey was configured as a queue and justified as if it were durable, and the justification
+  refuted itself.** `compose.yaml` runs Valkey with `--save '' --appendonly no` and explains: *"everything here is a
+  QUEUE and a LOCK, both of which are reconstructible: Messenger's failure transport is the durable store."* But
+  `MESSENGER_TRANSPORT_DSN` pointed at Valkey, so the failure transport WAS the thing with persistence disabled — a
+  restart would silently drop the record of every message that had already exhausted its retries, which in a billing
+  product is an invoice nobody knows was never sent. The queue moved to the Doctrine transport (PostgreSQL, backed
+  up, and transactional with the document that dispatches the message) and Valkey kept the lock store, where losing
+  state on restart is CORRECT rather than tolerable. Worth keeping as a shape: **a comment that names its own
+  justification is checkable, and this one was false the moment you followed it one step.** Also worth keeping:
+  `symfony/redis-messenger` requires `ext-redis` and does NOT accept Predis, which is not obvious from either
+  package's name.
+- **2026-08-02 — the meta-gate suite was RED at the commit that added a gate, and only a later run noticed.**
+  `compose-config.sh` shipped in `5b46f69` with no case in `test-gates.sh`, so that suite's own "a gate on disk has
+  no case in this suite" rule was failing at the moment the gate was committed — the infra gate, added to stop a
+  broken stack, was itself the untested thing. Two fixes rather than one: the four cases it now has, and a third
+  DECLARATION FORM (`# clean-case-inline:`) so a gate whose fixture the shared `$WORK/repo` cannot provide has a
+  legitimate spelling instead of falling through the crack. The inline form is verified exactly as the existing
+  `clean-case-elsewhere:` redirect is — the named marker must actually be printed by a `printf` in the file, proven
+  by a mutant that deletes the case and keeps the declaration. **Deliberately a third SPELLING and not an
+  exemption**, because § Gotchas already records that an exemption inside a cross-check is where drift hides.
+- **2026-08-02 — every questionable thing found in a Symfony-conventions sweep was a real defect, not a naming
+  preference.** The developer asked to replace `.env.example` with the Symfony cascade; the sweep that followed
+  turned up the four entries above plus a missing `translator.fallbacks` (a key absent from `messages.ar.xlf` would
+  have rendered as the raw key — an Arabic-speaking user shown `document.quantity_too_precise` as their entire error
+  message) and no `trusted_proxies` at all (behind the stack's own proxy, `getClientIp()` returns the container
+  network's address, so an audit log records the wrong actor). **The generalisation worth keeping is about where to
+  look, not about Symfony:** a project-specific spelling of a conventional thing (`TWES_SERVER_NAME` for
+  `SERVER_NAME`, `twes-entrypoint` for `docker-entrypoint`, `config/packages/test/framework.yaml` for `when@test:`)
+  is a reliable marker that the surrounding wiring was reasoned from first principles rather than taken from the
+  ecosystem — and first-principles wiring is exactly where a step gets skipped, because nothing external asks for it.
 
 ## Git & CI
 

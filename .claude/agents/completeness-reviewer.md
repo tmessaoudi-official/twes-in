@@ -64,7 +64,7 @@ other two is the default failure mode here, not an unusual one.
    delivered, that is a finding.
 5. **Stale references.** Grep for every symbol, route, env var, config key, file path, CLI command
    and doc heading the change renamed or removed. Account for each hit. Include: fixtures, seed data,
-   translation keys, `.env.example`, docker-compose, CI workflow steps, the OpenAPI spec, and
+   translation keys, `api/.env` and `infra/.env` (both COMMITTED — there is no `.env.example`, that is a Laravel/Node convention; secrets live in the gitignored `.env.local`), docker-compose, CI workflow steps, the OpenAPI spec, and
    `docs/plans/*.plan.md`. A dangling path in a doc is a P2; a dangling env var in
    docker-compose is a P1 because it breaks a fresh checkout.
 6. **Migrations and fixtures move together.** A new non-nullable column needs a migration, an updated

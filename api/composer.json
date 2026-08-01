@@ -26,6 +26,7 @@
         "doctrine/orm": "^3.6",
         "predis/predis": "^3.5",
         "symfony/console": "8.1.*",
+        "symfony/doctrine-messenger": "8.1.*",
         "symfony/dotenv": "8.1.*",
         "symfony/framework-bundle": "8.1.*",
         "symfony/lock": "^8.1",

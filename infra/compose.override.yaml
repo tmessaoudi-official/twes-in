@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 # ==============================================================================================================
-# DEVELOPMENT overlay. Applied on top of compose.yaml — `make up` supplies both.
+# DEVELOPMENT overlay. AUTO-LOADED by `docker compose` because of its name.
 #
 # Everything here trades production hardening for a usable local loop, and each trade is named. Nothing in this
 # file should ever be applied to a deployment: it publishes the database, mounts the source tree over the image,
@@ -13,12 +13,12 @@
 # ==============================================================================================================
 
 services:
-  postgres:
+  database:
     # PUBLISHED, so a local `psql`, a GUI client and the test suites on the host can reach it. Bound to 127.0.0.1
     # explicitly rather than `5432:5432` — the short form binds 0.0.0.0 and would expose the database to the local
     # network, which on a laptop on a café wifi is a real exposure rather than a theoretical one.
     ports:
-      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+      - '127.0.0.1:${DATABASE_PORT:-5432}:5432'
 
   valkey:
     ports:
@@ -30,9 +30,9 @@ services:
       APP_DEBUG: '1'
       # `SERVER_NAME` without a scheme keeps FrankenPHP on plain HTTP locally. With a hostname it would try to
       # obtain a certificate, and ACME against `localhost` fails in a way that reads like the container being broken.
-      SERVER_NAME: ':80'
+      SERVER_NAME: '${SERVER_NAME:-:80}'
     ports:
-      - '127.0.0.1:${TWES_HTTP_PORT:-8080}:80'
+      - '127.0.0.1:${HTTP_PORT:-8080}:80'
     volumes:
       # THE SOURCE TREE OVER THE IMAGE. This is the point of the dev overlay: an edit is live without a rebuild.
       #

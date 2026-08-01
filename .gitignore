@@ -50,6 +50,9 @@
 # (No /var/cache/ or /var/log/ entries: /var above already ignores that whole tree.)
 .env.local
 .env.*.local
+# Database dumps written by `make backup`. These contain REAL TENANT DATA -- committing one would
+# be a data breach in a public repository, which is why the rule is here and not left to care.
+/infra/backups/
 .php-cs-fixer.cache
 .phpunit.result.cache
 phpstan.cache
