@@ -54,7 +54,9 @@ class DocumentChargeRow
      * graph the repository would immediately have to unpick again. Second it does not need to be: a foreign key
      * is a SCHEMA fact, the database enforces it whether or not the ORM knows, and the repository translates by
      * hand anyway. `doctrine:schema:validate --skip-sync` therefore checks the mapping only — the constraint is
-     * checked by the database, and by `schema-tenancy.php`.
+     * enforced by the database, and that it is COMPOSITE is proven by attack in `BehaviouralIsolationTest` (GOAL 8
+     * offers tenant A's row with only the tenant flipped and requires `23503`). It was `schema-tenancy.php` until
+     * 2026-08-01; that axis never read `confkey`, so a key composite in the WRONG pair of columns passed it.
      */
 
     /** Trimmed on the way in by `FixedCharge`, which also refuses an empty one. `text`, because a label is prose. */

@@ -325,49 +325,6 @@ final class SchemaTenancyGateTest extends TestCase
             'cannot carry row-level security',
         ];
 
-        // ---------------------------------------------------------------- COMPOSITE KEYS
-        //
-        // Three round records call this "the composite-key schema gate" and rate it P0 at the first Wave 1
-        // migration, and until round 21 the gate read no pg_constraint or pg_index at all -- the migration gets
-        // the keys right and nothing checked that the next one would.
-        //
-        // The reason it belongs in a TENANCY gate rather than a modelling one: uniqueness and foreign-key checks
-        // run with row-level security BYPASSED. PostgreSQL has to see rows the querying tenant cannot, or a
-        // constraint would be enforceable only against the rows you can already read. So a key that omits the
-        // tenant column is checked across EVERY tenant, and no policy limits it.
-
-        // A single-column FK cannot be built against OUR tables, and that is worth knowing rather than working
-        // around: `document`'s primary key is `(company_id, id)`, so no unique constraint exists on `id` alone and
-        // PostgreSQL refuses `REFERENCES document (id)` outright with SQLSTATE 42830. The composite key is
-        // self-reinforcing. So the case builds the shape it actually guards against — a future table with a
-        // SURROGATE key, where `id` alone IS unique and the dangerous FK becomes expressible. Same reasoning as
-        // the NULLABLE case above, and the same reason it is worth guarding before such a table exists.
-        yield 'a single-column foreign key, which lets one tenant reference another tenant row' => [
-            [
-                'CREATE TABLE surrogate_parent (id uuid PRIMARY KEY, company_id uuid NOT NULL)',
-                'CREATE TABLE surrogate_child (id uuid PRIMARY KEY, company_id uuid NOT NULL, parent_id uuid NOT NULL)',
-                'ALTER TABLE surrogate_child ADD CONSTRAINT child_points_at_parent '
-                . 'FOREIGN KEY (parent_id) REFERENCES surrogate_parent (id) ON DELETE CASCADE',
-                // Both fully isolated, so the FK is the ONLY thing left for the gate to object to.
-                ...array_merge(...array_map(
-                    static fn(string $t): array => \Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation::policySqlFor($t),
-                    ['surrogate_parent', 'surrogate_child'],
-                )),
-                \sprintf('ALTER TABLE surrogate_parent OWNER TO %s', self::ownerRole()),
-                \sprintf('ALTER TABLE surrogate_child OWNER TO %s', self::ownerRole()),
-            ],
-            ['DROP TABLE surrogate_child', 'DROP TABLE surrogate_parent'],
-            'FOREIGN KEY',
-        ];
-
-        // A unique constraint omitting the tenant makes tenant B's insert fail because tenant A already used the
-        // value -- a cross-tenant existence oracle, and a denial of service on somebody else's numbering.
-        yield 'a UNIQUE index that omits the tenant column, which is a cross-tenant oracle' => [
-            ['CREATE UNIQUE INDEX leaky_number ON document (number)'],
-            ['DROP INDEX leaky_number'],
-            'UNIQUE',
-        ];
-
         // ---------------------------------------------------------------- polcmd and polroles
         //
         // A policy can be canonical in both halves and still guard nothing, because the gate read neither which

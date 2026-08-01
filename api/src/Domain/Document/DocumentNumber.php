@@ -63,8 +63,11 @@ namespace Twes\Domain\Document;
  * equality would have caught.
  *
  * Two layers stand behind it: row-level security, which makes a *scoped* query incapable of returning both; and
- * a composite unique constraint on `(company_id, type, number)`, a Wave 1 schema obligation asserted by
- * `scripts/gates/schema-tenancy.php`. Within a bound tenant — every ordinary path — {@see self::equals()} and
+ * a composite unique constraint on `(company_id, type, number)`, a Wave 1 schema obligation proven by ATTACK in
+ * `api/tests/Integration/Tenancy/BehaviouralIsolationTest.php` — GOAL 7 re-presents one tenant's number under the
+ * other and requires the insert to SUCCEED. It was `scripts/gates/schema-tenancy.php` until 2026-08-01, when the
+ * key-shape axis moved: that catalogue check produced four reproduced false verdicts in one certification round,
+ * `INCLUDE`-column indexes among them. Within a bound tenant — every ordinary path — {@see self::equals()} and
  * {@see self::toString()} are exact.
  */
 final readonly class DocumentNumber

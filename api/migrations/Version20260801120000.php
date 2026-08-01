@@ -24,7 +24,9 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  * completely unpoliced while looking finished. `assertPolicedTablesAreBeyondThisRolesReach()` derives its subject
  * set from tables that already HAVE row security, so a table missing it is invisible to that check by
  * construction (round 7 filed that precisely). This migration therefore issues the isolation statements itself,
- * and `scripts/gates/schema-tenancy.php` is what stops the next one forgetting.
+ * and `scripts/gates/schema-tenancy.php` is what stops the next one forgetting the RLS statements. It no longer
+ * checks KEY SHAPES — those moved to `BehaviouralIsolationTest` on 2026-08-01 — so the composite keys below
+ * are proven by attack rather than by catalogue introspection.
  *
  * **The policy SQL comes from `policySqlFor()` rather than being written out here**, so the migration and the
  * checker cannot disagree. That is the same "one definition" rule the rest of this codebase follows for tax and
