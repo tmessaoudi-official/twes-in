@@ -1912,6 +1912,71 @@ assert_gate 'reports an absent manifest instead of skipping it' dependency-licen
 
 fresh_fixture
 
+echo "== no owner connection in application code =="
+# The `owner` DBAL connection is the role that OWNS the tenant-owned tables. `doctrine.yaml` calls the split from
+# the runtime connection "a security boundary"; round 21 showed the container hands `owner` to any caller that asks,
+# so `#[Target('owner')]` or `getConnection('owner')` is one line from a role that can `DROP POLICY` -- which FORCE
+# does not prevent, since FORCE stops an owner SKIPPING policies rather than REMOVING them.
+#
+# ONE CASE PER SPELLING, GENERATED from --dump-rules rather than hand-picked. Each spelling is a distinct route --
+# the attribute is resolved by the DI container, the registry call by ManagerRegistry, the service id by a raw
+# container get -- so a hand-written case pins whichever the author happened to think of, and deleting a spelling
+# from the gate would silently delete nothing. Generating means deleting an entry deletes its own case, which is
+# the anti-vacuity rule the rest of this suite already follows.
+cp "$REPO_ROOT/scripts/gates/no-owner-connection-in-application.php" "$WORK/repo/scripts/gates/"
+mkdir -p "$WORK/repo/api/src/Infrastructure/Persistence/Doctrine"
+
+owner_spellings=0
+while IFS=$'\t' read -r kind spelling; do
+  [[ "$kind" == "spelling" ]] || continue
+  owner_spellings=$((owner_spellings + 1))
+  # The spelling goes into a STRING literal, so the fixture is valid PHP whatever the spelling looks like -- the
+  # gate is a text check and must catch it there too, which is the honest test of a text check.
+  {
+    printf '<?php\n\ndeclare(strict_types=1);\n\n'
+    printf 'namespace Twes\\Infrastructure\\Persistence\\Doctrine;\n\n'
+    printf 'final class OwnerProbe%d\n{\n' "$owner_spellings"
+    printf '    public function reach(): string\n    {\n'
+    # A NOWDOC, because it is the one PHP string form that holds ANY spelling VERBATIM.
+    #
+    # Two earlier attempts failed in opposite directions and both are worth recording, because both produced
+    # fixtures that PASSED while containing nothing to find. A single-quoted string needed `'` escaped, and
+    # escaping it through two layers of shell quoting mangled the spelling away entirely. A double-quoted string
+    # needed `"` escaped -- and then the FILE TEXT holds `Target(\"owner\")`, which a literal text check
+    # correctly does not match, so the fixture was right about PHP and wrong about the thing under test. Inside
+    # `<<<'SPELL'` nothing is escaped and nothing is interpolated, so the bytes on disk are the spelling.
+    printf '        return <<<%s\n%s\n%s;\n' "'SPELL'" "$spelling" 'SPELL'
+    printf '    }\n}\n'
+  } > "$WORK/repo/api/src/Infrastructure/Persistence/Doctrine/OwnerProbe${owner_spellings}.php"
+  git -C "$WORK/repo" add -A >/dev/null 2>&1
+  assert_gate "catches owner-connection spelling: $spelling" no-owner-connection-in-application.php 1 \
+    "OwnerProbe${owner_spellings}.php"
+  rm -f "$WORK/repo/api/src/Infrastructure/Persistence/Doctrine/OwnerProbe${owner_spellings}.php"
+  git -C "$WORK/repo" add -A >/dev/null 2>&1
+done < <(cd "$REPO_ROOT" && php scripts/gates/no-owner-connection-in-application.php --dump-rules)
+
+assert_at_least "owner-connection spellings" "$owner_spellings" 6
+
+assert_gate 'accepts a tree that names the owner connection nowhere' \
+  no-owner-connection-in-application.php 0 'name the owner connection nowhere'
+
+# ANTI-VACUITY: a tree with no tracked PHP under api/src/ must FAIL rather than report a clean bill over nothing.
+# This is the branch that would otherwise make every case above pass on an empty fixture.
+mkdir -p "$WORK/noowner/scripts/gates"
+cp "$REPO_ROOT/scripts/gates/no-owner-connection-in-application.php" "$WORK/noowner/scripts/gates/"
+git -C "$WORK/noowner" init -q >/dev/null 2>&1
+git -C "$WORK/noowner" add -A >/dev/null 2>&1
+owner_vacuity="$(cd "$WORK/noowner" && php scripts/gates/no-owner-connection-in-application.php 2>&1)" \
+  && owner_vacuity_rc=0 || owner_vacuity_rc=$?
+if [[ $owner_vacuity_rc -ne 0 && "$owner_vacuity" == *'asserted nothing'* ]]; then
+  printf '  ok   — no-owner-connection refuses a tree with nothing to scan\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — no-owner-connection reported rc=%s over a tree with no api/src/: %s\n' \
+    "$owner_vacuity_rc" "$owner_vacuity"
+  failed=$((failed + 1))
+fi
+
 echo "== schema tenancy: the one gate that needs a DATABASE =="
 # Only the DATABASE-FREE paths are asserted here, deliberately. `test-gates.sh` runs on plain PHP with no server,
 # and making the meta-suite require PostgreSQL would mean the whole suite stops running wherever the database is
