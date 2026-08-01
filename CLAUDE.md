@@ -966,6 +966,21 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   the current work tree only, which is the set every one of these checks actually means. `shell-syntax.sh` and
   `no-orphaned-docblocks.php` already do. This also disposes of the `node_modules` special case such walks needed.
 
+- **2026-08-01 — `test | tail && git commit` COMMITS ON RED. A pipeline's exit status is the LAST command's.**
+  I pushed a commit whose verification run had reported `Tests: 692, Failures: 113`, because the chain was
+  `phpunit … | sed … | tail -2 && git add -A && git commit && git push` and `tail` exits 0 whatever phpunit did.
+  The gate did not fail to run and did not lie — I simply never read its verdict, and `&&` did not read it either.
+  [Verified: the same 113 failures were `SQLSTATE[08006] … Connection refused`, i.e. the container's PostgreSQL
+  had stopped again; re-run after `pg_ctlcluster 18 main start` → `OK (692 tests, 2634 assertions)`, so the commit
+  content was innocent and the process was not.] Two rules follow, and the second is the one that generalises:
+  **never chain `git commit` onto a piped verification command** — capture the status (`set -o pipefail`, or run
+  the gate as its own step and read it) — and treat *any* construct that turns a verdict into text as having
+  discarded the verdict. This is the same shape as § "Quality gate"'s skip-to-fail fix and the `grep`-the-source
+  test, one level up: there, a control silently did not run; here, a control ran, failed, and was silently not
+  consulted. **Also note what saved it**: the integration suite FAILS rather than skipping when the database is
+  unreachable, so a dead cluster is loud. Read a wholesale integration failure as "the server is down" first —
+  `pg_lsclusters`, then `pg_ctlcluster 18 main start` — and only then as a regression.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See
