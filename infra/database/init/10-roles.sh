@@ -92,15 +92,20 @@ psql --username "$POSTGRES_USER" --dbname "$DB" \
 	-- `provision-test-database.sh` carries the same comment for the same reason, and the gate reproduces it as a
 	-- reachability check rather than a string comparison, because `SET ROLE` is authorised by MEMBERSHIP.
 
-	-- ----------------------------------------------------------------------------------------------------------
-	-- DATABASE AND SCHEMA OWNERSHIP.
-	-- ----------------------------------------------------------------------------------------------------------
-	ALTER DATABASE :"owner_role" OWNER TO :"owner_role";
 	SQL
 
-# `ALTER DATABASE` cannot take the database name from a psql variable in the same statement it renames, so the
-# ownership change runs separately with the real name interpolated by the shell -- safe here because $DB comes from
-# the image's own POSTGRES_DB, not from a request.
+# DATABASE OWNERSHIP. `ALTER DATABASE` cannot take the database name from a psql variable in the same statement it
+# renames, so the ownership change runs separately with the real name interpolated by the shell -- safe here because
+# $DB comes from the image's own POSTGRES_DB, not from a request.
+#
+# The block above used to end with `ALTER DATABASE :"owner_role" OWNER TO :"owner_role";`, which passed the ROLE name
+# where the DATABASE name belongs and so ran `ALTER DATABASE "twes_owner"` against a database of that name that has
+# never existed. [Verified: `ERROR: database "twes_owner" does not exist` in the container log, on the statement
+# quoted verbatim.] `ON_ERROR_STOP=1` then did its job and aborted -- meaning EVERY statement after it was skipped:
+# this ownership change, the schema ownership, the REVOKE, the runtime GRANT and both ALTER DEFAULT PRIVILEGES.
+# [Verified on the resulting cluster: `pg_namespace.nspowner` for `public` was still `pg_database_owner`,
+# `pg_database.datdba` for `twes` was still `postgres`, and `pg_default_acl` held 0 rows.] The visible symptom was
+# five minutes away from the cause -- the migration failing with `permission denied for schema public`.
 psql --username "$POSTGRES_USER" --dbname postgres --set ON_ERROR_STOP=1 --no-psqlrc \
     -c "ALTER DATABASE \"${DB}\" OWNER TO \"${OWNER_ROLE}\""
 
@@ -108,6 +113,7 @@ psql --username "$POSTGRES_USER" --dbname "$DB" \
     --set ON_ERROR_STOP=1 --no-psqlrc \
     -v runtime_role="$RUNTIME_ROLE" \
     -v owner_role="$OWNER_ROLE" \
+    -v db_name="$DB" \
     <<-'SQL'
 	-- The public schema belongs to the owner, and the runtime role may USE it but never CREATE in it. A runtime
 	-- role that can create a table can create one WITHOUT row-level security and copy tenant data into it.
@@ -117,7 +123,12 @@ psql --username "$POSTGRES_USER" --dbname "$DB" \
 
 	-- Connect, and nothing else at database level. TEMPORARY is NOT granted: a temporary table is session-private
 	-- but it is still a place to materialise tenant rows outside any policy, and nothing here needs one.
-	REVOKE ALL ON DATABASE :"owner_role" FROM PUBLIC;
+	-- `:"db_name"`, NOT `:"owner_role"`. This said `owner_role` until 2026-08-04 -- the same role-name-for-database-
+	-- name substitution as the deleted `ALTER DATABASE` above, and it would have aborted initialisation here instead,
+	-- skipping the two ALTER DEFAULT PRIVILEGES below and leaving the runtime role with access to nothing.
+	REVOKE ALL ON DATABASE :"db_name" FROM PUBLIC;
+	GRANT CONNECT ON DATABASE :"db_name" TO :"runtime_role";
+	GRANT CONNECT ON DATABASE :"db_name" TO :"owner_role";
 
 	-- ----------------------------------------------------------------------------------------------------------
 	-- DEFAULT PRIVILEGES — the part that is easy to get wrong, and that this project got wrong.
@@ -139,5 +150,49 @@ psql --username "$POSTGRES_USER" --dbname "$DB" \
 	    GRANT USAGE, SELECT ON SEQUENCES TO :"runtime_role";
 	SQL
 
+# --------------------------------------------------------------------------------------------------------------
+# VERIFY THE END STATE. Not belt-and-braces — this closes a failure mode that made the bug above cost an evening.
+#
+# `ON_ERROR_STOP=1` aborts this script, but the postgres entrypoint has ALREADY INITIALISED the data directory by the
+# time it runs us. So a failure here leaves a populated `PGDATA`, and on the next start the entrypoint prints
+# `PostgreSQL Database directory appears to contain a database; Skipping initialization` and the cluster comes up
+# HEALTHY AND HALF-PROVISIONED — permanently, because this hook never runs again. [Verified: both were in one
+# container's log, `sourcing /docker-entrypoint-initdb.d/10-roles.sh` and, 8 lines later after the restart,
+# `Skipping initialization`; the cluster then passed its healthcheck with `public` unowned and `pg_default_acl` empty.]
+# That is this project's recurring "a control that silently did not run" shape (CLAUDE.md § Gotchas) in its worst
+# form, because the silence is durable rather than per-run.
+#
+# So assert the four properties the rest of the stack depends on, by READING THE CATALOGUE rather than trusting that
+# the statements above returned. A mismatch prints what to do about it, because the fix is not obvious: the data
+# directory must be DESTROYED (`make destroy`) for this hook to run again.
+verify_failed=''
+check() {
+    actual="$(psql --username "$POSTGRES_USER" --dbname "$DB" --no-psqlrc -tAc "$2")"
+    [ "$actual" = "$3" ] || verify_failed="${verify_failed}
+  - $1: expected '$3', got '$actual'"
+}
+
+check "public schema owner" \
+    "SELECT pg_get_userbyid(nspowner) FROM pg_namespace WHERE nspname = 'public'" "$OWNER_ROLE"
+check "database owner" \
+    "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = current_database()" "$OWNER_ROLE"
+check "runtime role has USAGE but not CREATE on public" \
+    "SELECT has_schema_privilege('$RUNTIME_ROLE', 'public', 'USAGE') || ',' || has_schema_privilege('$RUNTIME_ROLE', 'public', 'CREATE')" \
+    "true,false"
+# Two rows: one for TABLES, one for SEQUENCES. Counted rather than compared as text, because the ACL's rendering is
+# a PostgreSQL implementation detail while its ABSENCE is the defect that broke the migration.
+check "default privileges recorded for the owner" \
+    "SELECT count(*) FROM pg_default_acl d JOIN pg_roles r ON r.oid = d.defaclrole WHERE r.rolname = '$OWNER_ROLE'" "2"
+
+if [ -n "$verify_failed" ]; then
+    log 'FATAL: provisioning did not reach the expected end state.'
+    log "  The following checks failed:${verify_failed}"
+    log '  The data directory is already initialised, so THIS HOOK WILL NOT RUN AGAIN and the next start will'
+    log '  report the cluster healthy while it is half-provisioned. Destroy the volume and start over:'
+    log '      make destroy && make up'
+    exit 1
+fi
+
 log "OK — ${DB} owned by ${OWNER_ROLE}; ${RUNTIME_ROLE} is a restricted non-owner with DML but no TRUNCATE."
 log "     the owning role is NOT granted to the runtime role, which is what stops SET ROLE reaching it."
+log '     end state verified against the catalogue: schema and database ownership, USAGE-not-CREATE, default privileges.'

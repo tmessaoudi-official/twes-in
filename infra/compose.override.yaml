@@ -44,10 +44,20 @@ services:
       - ../api/public:/app/public:ro
       - ../api/migrations:/app/migrations:ro
       - ../api/templates:/app/templates:ro
-      # The dev OPcache overlay: timestamp validation back ON. Without this, `validate_timestamps=0` from the
-      # production config means an edited file is NEVER picked up, and the mount above would appear to do nothing —
-      # a confusing failure that looks like a broken volume rather than a cache setting.
-      - ./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev:ro
+      # The dev OPcache overlay. Two things it does, both essential: timestamp validation back ON, without which
+      # `validate_timestamps=0` from the production config means an edited file is NEVER picked up and the source
+      # mount above appears to do nothing; and `opcache.preload` blanked, because the preload script in the image is
+      # built from the PROD container and pinning it while serving `dev` loads the wrong compiled container.
+      #
+      # MOUNTED AS A FILE, ENDING IN `.ini`. It was `./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev` — a
+      # DIRECTORY — until 2026-08-04, and PHP never read a byte of it: the scan directory is matched on the `.ini`
+      # suffix and is NOT walked recursively, so a subdirectory is skipped entirely. [Verified: with the overlay as a
+      # directory, `ini_get('memory_limit')` returned the base image's value and `php_ini_scanned_files()` did not
+      # list it; as a flat `.ini` file it applied.] Every setting in the dev overlay was therefore inert — the source
+      # mount could not hot-reload, and errors were not displayed.
+      #
+      # `zz-` so it sorts LAST and genuinely overrides `10-opcache.ini`; PHP reads this directory in filename order.
+      - ./api/conf.d-dev/50-dev.ini:/usr/local/etc/php/conf.d/zz-50-dev.ini:ro
       # WRITABLE cache and log, because in dev the container compiles the container on demand.
       - api-dev-cache:/app/var
     # The migration gate is kept ON in dev deliberately: it is the same check production runs, and a local
@@ -60,7 +70,7 @@ services:
     volumes:
       - ../api/src:/app/src:ro
       - ../api/config:/app/config:ro
-      - ./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev:ro
+      - ./api/conf.d-dev/50-dev.ini:/usr/local/etc/php/conf.d/zz-50-dev.ini:ro
       - api-dev-cache:/app/var
 
   scheduler:
@@ -70,7 +80,7 @@ services:
     volumes:
       - ../api/src:/app/src:ro
       - ../api/config:/app/config:ro
-      - ./api/conf.d/dev:/usr/local/etc/php/conf.d/zz-dev:ro
+      - ./api/conf.d-dev/50-dev.ini:/usr/local/etc/php/conf.d/zz-50-dev.ini:ro
       - api-dev-cache:/app/var
 
   migrate:
@@ -81,6 +91,10 @@ services:
       - ../api/src:/app/src:ro
       - ../api/config:/app/config:ro
       - ../api/migrations:/app/migrations:ro
+      # The overlay is here too, and its ABSENCE was a defect rather than a deliberate omission: without it this
+      # container preloads the PROD compiled container while running with `APP_ENV=dev`, which is exactly what the
+      # overlay exists to prevent for the other three services.
+      - ./api/conf.d-dev/50-dev.ini:/usr/local/etc/php/conf.d/zz-50-dev.ini:ro
       - api-dev-cache:/app/var
 
 volumes:

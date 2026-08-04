@@ -37,12 +37,29 @@ reference
 upstream
 vendor-reference
 
-# Secrets. `.env` files carry the database credentials; the image takes its configuration from the environment at
-# run time, so baking one in would embed a credential in a layer that persists after the file is "removed".
+# Secrets. A `.env.local` carries REAL credentials, and baking one in would embed them in a layer that persists
+# after the file is "removed" — so the posture here is default-deny, with exactly one negation below.
 **/.env
 **/.env.local
 **/.env.*.local
 infra/.env
+
+# `api/.env` IS SHIPPED, and excluding it broke the build outright. Symfony's `Dotenv::bootEnv()` — reached from
+# `vendor/autoload_runtime.php`, so on EVERY `bin/console` and every request — throws when the file is absent:
+#
+#   Unable to read the "/app/.env" environment file.
+#
+# [Verified: that is the verbatim build failure from `cache:warmup` with this negation removed.] The blanket `**/.env`
+# above treated it as a secret, but in Symfony's convention `.env` is the COMMITTED, non-secret default set and
+# `.env.local` is the secret one; `api/.env` is tracked in git, so anything in it is public already, and it holds
+# only placeholders (`dev-only-not-a-secret-replace-in-env-local`, `twes:twes@127.0.0.1`).
+#
+# Safe because REAL ENVIRONMENT VARIABLES WIN over the file: `bootEnv()` does not overwrite an already-set variable.
+# [Verified: with `.env` saying `APP_ENV=dev` and `DATABASE_URL=...@127.0.0.1`, running with `APP_ENV=prod` and a
+# `db:5432` DSN in the environment resolved to prod and `db:5432`; the same call with those variables UNSET resolved
+# to dev and `127.0.0.1`.] So the file cannot drag a production container into debug mode or at its own database —
+# and the Dockerfile's `ENV APP_ENV=prod` means the variable is always set anyway.
+!api/.env
 
 # Editor and OS noise.
 **/.DS_Store

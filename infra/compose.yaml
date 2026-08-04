@@ -73,7 +73,21 @@ services:
       TWES_DB_OWNER_ROLE: '${TWES_DB_OWNER_ROLE:-twes_owner}'
       TWES_DB_OWNER_PASSWORD: '${TWES_DB_OWNER_PASSWORD:?TWES_DB_OWNER_PASSWORD must be set}'
     volumes:
-      - database-data:/var/lib/postgresql/data
+      # `/var/lib/postgresql` — the PARENT, not `/var/lib/postgresql/data`. This is a PostgreSQL 18 change and it is
+      # not cosmetic: from 18 the official image stores data in a MAJOR-VERSION-SPECIFIC subdirectory
+      # (`/var/lib/postgresql/18/docker`) so that `pg_upgrade --link` can run without crossing a mount boundary, and
+      # it REFUSES TO START when it finds a volume at the old path:
+      #
+      #   Error: in 18+, these Docker images are configured to store database data in a format which is compatible
+      #   with "pg_ctlcluster" ... there appears to be PostgreSQL data in: /var/lib/postgresql/data (unused
+      #   mount/volume) ... The suggested container configuration for 18+ is to place a single mount at
+      #   /var/lib/postgresql
+      #
+      # [Verified: with the mount at `/var/lib/postgresql/data` the container exits with that message and every
+      # dependent service fails with `dependency failed to start: container twes-in-database-1 is unhealthy`, so the
+      # whole stack could never come up.] Mounting the parent is what the image itself prescribes, and it is also
+      # what keeps a future major-version upgrade a `pg_upgrade` rather than a dump-and-restore.
+      - database-data:/var/lib/postgresql
       # First-boot provisioning: the owner/runtime role split and the default privileges the migration relies on.
       # Read-only, because the container has no business modifying its own provisioning.
       - ./database/init:/docker-entrypoint-initdb.d:ro

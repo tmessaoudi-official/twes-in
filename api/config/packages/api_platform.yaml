@@ -65,6 +65,21 @@ api_platform:
     swagger:
         versions: [3]
 
+    # `html` IS DELIBERATELY ABSENT, and its presence in the DEFAULT was a live defect. API Platform's default
+    # `docs_formats` includes `html: ['text/html']` for the documentation UI — but this project ships no HTML UI (see
+    # `swagger` above), so `text/html` was advertised in content negotiation with nothing able to render it. A browser
+    # opening the API entrypoint therefore got:
+    #
+    #   400  {"detail":"Serialization for the format \"html\" is not supported."}
+    #
+    # [Verified: a real Chromium navigation to `/api` returned 400 before this block and 200 after; `curl` with no
+    # `Accept` header returned 200 in BOTH cases, because it never asks for html — which is why only a browser saw it.]
+    # Offering a format we cannot produce is worse than not offering it: negotiation picks html for every browser.
+    docs_formats:
+        jsonopenapi: ['application/vnd.openapi+json']
+        yamlopenapi: ['application/vnd.openapi+yaml']
+        jsonld: ['application/ld+json']
+
     openapi:
         contact:
             name: 'Takieddine MESSAOUDI'

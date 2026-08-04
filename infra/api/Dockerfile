@@ -203,6 +203,13 @@ ENV TZ=UTC
 WORKDIR /app
 
 # Configuration BEFORE code, so a php.ini change does not invalidate the application layer.
+#
+# WHOLESALE, so a new production ini file is picked up without editing this line — which is only safe because the
+# DEVELOPMENT overlay lives OUTSIDE this directory, in `infra/api/conf.d-dev/`. It sat in `conf.d/dev/` until
+# 2026-08-04, and that shipped `display_errors=On` and `zend.exception_ignore_args=Off` into the production image.
+# PHP happened not to read them — it scans this directory for `*.ini` and does not recurse — so the file was inert
+# rather than active, but "the production image contains a file that disables production hardening, and only a
+# scanning quirk stops it applying" is not a property worth relying on.
 COPY infra/api/conf.d/ /usr/local/etc/php/conf.d/
 COPY infra/api/Caddyfile /etc/frankenphp/Caddyfile
 
@@ -226,6 +233,26 @@ RUN addgroup -g 10001 -S twes \
 # The Symfony cache is warmed at BUILD time, as the runtime user, so the first request does not pay for it and the
 # cache directory does not need to be writable for compilation in production. APP_SECRET is a build-time dummy: it
 # is never used to sign anything here and the real one arrives from the environment at run time.
+#
+# **`-d opcache.preload=` IS LOAD-BEARING, AND WITHOUT IT THIS BUILD CANNOT COMPLETE.** `conf.d/10-opcache.ini` is
+# copied above and names `var/cache/prod/Twes_KernelProdContainer.preload.php` — a file THIS COMMAND GENERATES. With
+# `opcache.enable_cli=1`, preloading runs at engine startup for every `php` invocation, so the command that creates
+# the preload script could not start without the preload script:
+#
+#   PHP Fatal error:  Failed opening required '/app/var/cache/prod/Twes_KernelProdContainer.preload.php' in Unknown
+#
+# [Verified: that is the verbatim build failure without this flag, and `-d opcache.preload=` clears it.] It is the
+# same BOOTSTRAP DEADLOCK shape as the `apk add ca-certificates` note in the `base` stage above — a step that cannot
+# run before the thing it produces exists — which is why it is worth naming rather than just fixing.
+#
+# Only the ONE directive is dropped, deliberately, rather than deferring the whole `conf.d` copy until after this
+# step. `20-app.ini` must be in force WHILE the cache is written, because `bcmath.scale=0` and
+# `serialize_precision=17` change the CONTENT of what gets serialised into it — warming under different ini values
+# than the runtime then uses would bake a subtly different cache into the image.
+#
+# A future build-time `php` line that forgets this flag fails the BUILD, loudly and immediately, exactly as this did.
+# That is why the flag is acceptable here where this project normally prefers a structural guard: the failure mode
+# cannot reach production silently.
 USER twes
 RUN APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-time-placeholder-not-a-secret \
         DEFAULT_LOCALE=en TRUSTED_PROXIES='' \
@@ -233,7 +260,7 @@ RUN APP_ENV=prod APP_DEBUG=0 APP_SECRET=build-time-placeholder-not-a-secret \
         LOCK_DSN=flock \
         DATABASE_URL='postgresql://build:build@127.0.0.1:5432/build?serverVersion=18&charset=utf8' \
         DATABASE_URL_OWNER='postgresql://build:build@127.0.0.1:5432/build?serverVersion=18&charset=utf8' \
-        php bin/console cache:warmup --env=prod --no-debug \
+        php -d opcache.preload= bin/console cache:warmup --env=prod --no-debug \
     && chmod -R 555 /app/var/cache
 
 USER root

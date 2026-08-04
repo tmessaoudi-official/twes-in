@@ -77,11 +77,22 @@ up: check-env ## Start the development stack (source-mounted, database published
 	@$(MAKE) --no-print-directory urls
 
 .PHONY: urls
+# `OpenAPI`, and NOT `Docs http://.../api/docs`, which is what this printed until 2026-08-04. That path returns 404 to
+# a BROWSER — `{"detail":"Swagger UI, ReDoc and Scalar are disabled.","status":404}` — because
+# `config/packages/api_platform.yaml` deliberately ships no HTML documentation UI: they fetch remote assets, and that
+# is a same-origin and privacy question this project has already ruled on for the Flutter build. So the URL was not
+# broken, it was advertising a feature we chose not to have.
+#
+# Easy to miss, and worth recording HOW it was missed: `curl` with no `Accept` header gets 200 on that path, because
+# content negotiation hands it the machine-readable document. Only a real browser, sending `Accept: text/html`, gets
+# the 404. It surfaced from a screenshot, which is exactly the case CLAUDE.md's visual-evidence rule exists for.
+#
+# `.jsonopenapi` is the format name API Platform registers for OpenAPI here; `/api/docs.json` is NOT a route and 404s.
 urls: ## Print the local URLs.
 	@port=$$(grep -hE '^HTTP_PORT=' $(INFRA)/.env.local $(INFRA)/.env 2>/dev/null | head -1 | cut -d= -f2); \
 	port=$${port:-8080}; \
 	echo "  API      http://localhost:$$port/api"; \
-	echo "  Docs     http://localhost:$$port/api/docs"; \
+	echo "  OpenAPI  http://localhost:$$port/api/docs.jsonopenapi"; \
 	echo "  Health   http://localhost:$$port/health/ready"; \
 	echo "  Admin    http://localhost:$$port/admin/   (run 'make build-front' first)"; \
 	echo "  Flutter  http://localhost:$$port/app/     (run 'make build-front' first)"
