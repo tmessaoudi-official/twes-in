@@ -2245,6 +2245,28 @@ PYRO
   fi
   mv "$cc_root/prod.held" "$cc_root/infra/compose.prod.yaml"
 
+  # MUTANT I -- the deny-list that refused every conversion. THE SHIPPED DEFECT: `--chromium-deny-list=.*` alongside
+  # an allow-list. Gotenberg applies the two as a conjunction and a deny match is absolute, so the renderer was
+  # configured to render NOTHING while `/health` still reported `chromium: up` — its own healthcheck could not tell a
+  # working renderer from a broken one, which is why this needs a configuration check rather than a probe.
+  cp "$cc_root/infra/compose.yaml" "$cc_root/base.held"
+  python3 - "$cc_root/infra/compose.yaml" <<'PYGT'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+old = '      - --chromium-allow-list=^file:///tmp/.*'
+assert s.count(old) == 1
+p.write_text(s.replace(old, '      - --chromium-deny-list=.*\n' + old, 1))
+PYGT
+  cc_i="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_i_rc=0 || cc_i_rc=$?
+  if (( cc_i_rc != 0 )) && printf '%s' "$cc_i" | grep -qF 'alongside an allow-list'; then
+    printf '  ok   — compose-config catches a deny-list that makes the allow-list unreachable\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed `--chromium-deny-list=.*` (rc=%s)\n' "$cc_i_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/base.held" "$cc_root/infra/compose.yaml"
+
   # SCOPING CASE -- NOT a mutant, and renamed from "MUTANT F" because calling it one weakened this suite's own
   # convention that a mutant is reverted-and-red. Nothing is mutated: it asserts the CLEAN tree still passes, which is
   # what would break if the capability assertion were global instead of prod-only, since the dev overlay carries no

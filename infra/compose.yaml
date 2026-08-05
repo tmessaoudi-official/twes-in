@@ -294,7 +294,28 @@ services:
       # NO NETWORK ACCESS FROM THE RENDERER. A PDF template that can fetch a URL is a server-side request forgery
       # primitive pointed at the internal network — and this container sits on the same network as the database.
       # Templates render from posted HTML and vendored assets only.
-      - --chromium-deny-list=.*
+      #
+      # **`--chromium-deny-list=.*` WAS HERE UNTIL 2026-08-05 AND IT REFUSED EVERY CONVERSION, INCLUDING THE LOCAL
+      # ONES.** Gotenberg applies the two lists as a CONJUNCTION and a deny match is ABSOLUTE, so the allow-list below
+      # could never override `.*` — the renderer was configured to render nothing at all. Wave 4's PDF pipeline would
+      # have landed on a service that cannot produce a document. [Verified: with both flags, a local
+      # `/forms/chromium/convert/html` of a trivial `index.html` returned nothing usable; with only the allow-list it
+      # returns `200` and a body starting `%PDF-`.]
+      #
+      # THE ALLOW-LIST ALONE IS THE WHOLE CONTROL, and that is verified rather than assumed — the point of removing a
+      # security flag is worthless if the property goes with it:
+      #   - converting a URL is REFUSED: `POST /forms/chromium/convert/url` with `http://srv:8000/` returns
+      #     `403 Forbidden`, because an `http://` URL is not in the allow-list.
+      #   - a LOCAL template that EMBEDS a remote resource still renders (`200`, `%PDF-`) and **the remote server is
+      #     never contacted** — verified against a listener on the same docker network, whose log stayed empty.
+      # So local rendering works, egress does not happen, and the failure mode is a blocked subresource rather than a
+      # refused document.
+      #
+      # Gotenberg's own DEFAULT deny-list — which denies `file://` outside `/tmp` — is left in force by not naming the
+      # flag at all, so path traversal off the temp directory is still covered by the tool's own rule.
+      #
+      # `compose-config.sh` asserts this shape, because "the flag that was supposed to harden it disabled it" is not a
+      # mistake worth being able to make twice.
       - --chromium-allow-list=^file:///tmp/.*
       # Bounded: an unbounded render is how one malformed document occupies the renderer indefinitely.
       - --chromium-max-queue-size=20

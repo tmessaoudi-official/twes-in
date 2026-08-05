@@ -1264,6 +1264,22 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   That makes the CSP a privacy control rather than defence in depth, and the functional suite CANNOT see it — it goes
   through the kernel, not Caddy. Pinning it belongs in the empty `e2e` suite and is owed.
 
+- **2026-08-05 — the flag that was supposed to harden the PDF renderer disabled it, and its own healthcheck could not
+  tell.** `compose.yaml` ran Gotenberg with `--chromium-deny-list=.*` AND `--chromium-allow-list=^file:///tmp/.*`.
+  Gotenberg applies the two as a **conjunction** and a deny match is **absolute**, so the allow-list could never
+  override `.*` — the renderer was configured to render nothing, and Wave 4's PDF pipeline would have landed on it.
+  [Verified: with both flags a local `/forms/chromium/convert/html` produces nothing usable; with the allow-list alone
+  it returns `200` and a body beginning `%PDF-`, 7012 bytes from the real stack.]
+  **The allow-list alone keeps the whole security property, and that was verified rather than assumed** — removing a
+  security flag is worthless if the property goes with it: converting a URL returns `403 Forbidden`, and a local
+  template that EMBEDS a remote image still renders while **the remote server is never contacted** (checked against a
+  listener on the same docker network, whose log stayed empty). Gotenberg's own default deny-list — `file://` outside
+  `/tmp` — is left in force by not naming the flag.
+  The lesson is about the EVIDENCE, not the flag: `/health` reported `chromium: up` throughout, so the service's own
+  probe could not distinguish a working renderer from one that refuses every conversion. A liveness endpoint answers
+  "is the process alive", never "does the thing it exists for work". `compose-config.sh` now asserts the RELATIONSHIP
+  between the two lists rather than banning a string, with a mutant.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See

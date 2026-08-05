@@ -111,7 +111,7 @@ readonly INSPECTOR="$(mktemp --suffix=.py)"
 trap 'rm -f "$RENDER_ENV" "$INSPECTOR"' EXIT
 
 cat > "$INSPECTOR" <<'PYEOF'
-import sys, yaml
+import re, sys, yaml
 
 overlay = sys.argv[1]
 KNOWN_RECEIVERS = set(sys.argv[2].split(',')) if len(sys.argv) > 2 and sys.argv[2] else set()
@@ -215,6 +215,27 @@ if 'prod' in overlay:
                 '%s does not set `security_opt: [no-new-privileges:true]` in the production configuration. Without '
                 'it a setuid binary inside the image can still raise privilege, which defeats the point of dropping '
                 'capabilities in the first place.' % name)
+
+# 7. THE DOCUMENT RENDERER MUST BE ABLE TO RENDER. Gotenberg takes an allow-list and a deny-list and applies them as
+#    a CONJUNCTION -- a deny match is absolute -- so `--chromium-deny-list=.*` refuses EVERY conversion including the
+#    local ones the allow-list was meant to permit, and no allow-list can override it. That shipped: the renderer was
+#    configured to render nothing, and the `/health` endpoint reported `chromium: up` throughout, so the compose gate's
+#    own evidence for the service could not tell a working renderer from a broken one.
+#
+#    Checked as a RELATIONSHIP between the two flags rather than as a banned string: a deny-list is legitimate, and an
+#    allow-list is legitimate; what is never right is a deny-list that matches everything the allow-list permits.
+for name, svc in sorted(services.items()):
+    cmd = svc.get('command') or []
+    if isinstance(cmd, str):
+        cmd = cmd.split()
+    deny = next((a.split('=', 1)[1] for a in cmd if str(a).startswith('--chromium-deny-list=')), None)
+    allow = next((a.split('=', 1)[1] for a in cmd if str(a).startswith('--chromium-allow-list=')), None)
+    if deny is not None and allow is not None and re.fullmatch(r'\.\*|\^?\.\*\$?', deny.strip()):
+        problems.append(
+            '%s sets `--chromium-deny-list=%s` alongside an allow-list. Gotenberg applies the two as a conjunction '
+            'and a deny match is ABSOLUTE, so this refuses every conversion including the local ones the allow-list '
+            'permits -- the renderer would render nothing while still reporting healthy. Express the restriction as '
+            'the allow-list alone.' % (name, deny))
 
 # 5. Every Messenger receiver a service consumes must be a transport the application actually defines.
 #    This is the assertion that was missing when `worker` and `scheduler` crash-looped on `docker compose up`:
