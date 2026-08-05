@@ -87,7 +87,11 @@ readonly HEADER_WINDOW=40
 # "impossible" is what stops it being re-examined),
 # `md` (prose, covered by the repo's own licence), and `ttf`/`ico` (binaries — their licences are recorded in
 # THIRD-PARTY-NOTICES.md instead, which is where a vendored font's Apache-2.0 grant belongs).
-readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js)
+# `ini` ADDED 2026-08-05. Five tracked `.ini` files already carried the identifier by convention — the three PHP
+# configuration files under `infra/api/conf.d*/` among them — and NONE of them was ever checked, so the convention
+# was upheld by memory rather than by this gate. The trigger was adding a sixth (`conf.d-dev/60-xdebug.ini`) and
+# noticing the reported count did not move. [Verified: `139 file(s)` both before and after the new file was staged.]
+readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini)
 
 if [[ "${1:-}" == "--dump-rules" ]]; then
   printf 'roots %s\n' "${SEARCH_ROOTS[*]}"

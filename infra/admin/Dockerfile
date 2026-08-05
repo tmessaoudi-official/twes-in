@@ -41,7 +41,15 @@ COPY admin/ ./
 
 # The production build. `--configuration production` is what enables budgets, hashing and optimisation; without it
 # a "working" build can ship a development bundle that is an order of magnitude larger and leaks source maps.
-RUN npx ng build --configuration production
+# CONFIGURABLE, so one Dockerfile serves both `make build-front` and `make build-front-dev`. Unlike the API tier
+# there is no SECURITY delta between a dev and a prod bundle — only optimisation and source maps — so a build
+# argument is correct here where the API needed a whole separate target for Xdebug's sake.
+#
+#   production  — optimised, minified, hashed filenames, no source maps. The default, so a plain build is shippable.
+#   development — unminified with source maps, so a stack trace in the browser names OUR file and line instead of
+#                 `main-4f2a91.js:1:88231`, and the debugger can step through TypeScript rather than output.
+ARG NG_CONFIGURATION=production
+RUN npx ng build --configuration "${NG_CONFIGURATION}"
 
 # ==============================================================================================================
 # The exported artifact. `scratch` because nothing needs to RUN here -- this stage exists so the bundle has a

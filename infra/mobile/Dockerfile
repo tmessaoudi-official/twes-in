@@ -72,7 +72,21 @@ COPY mobile/ ./
 #
 # The ORDER matters too, per CLAUDE.md: those tests SKIP if the bundle is absent, and a skipped GDPR control
 # reports success. So the build happens here, and CI runs `flutter test` after it — never before.
-RUN flutter build web --release --no-web-resources-cdn
+# CONFIGURABLE mode, same reasoning as the admin tier: optimisation differs, security does not.
+#
+#   release — minified, tree-shaken, no observatory. The default.
+#   profile — source maps and readable stack traces, still compiled with dart2js so it behaves like the real thing.
+#
+# `--debug` is deliberately NOT offered: Flutter's web debug build uses a different compiler (DDC rather than
+# dart2js) and so can behave differently from what ships, which makes it the wrong thing to hand a developer
+# chasing a rendering bug. `profile` is the honest middle.
+ARG FLUTTER_BUILD_MODE=release
+
+# `--no-web-resources-cdn` IS IN BOTH MODES AND IS NOT AN OPTIMISATION. It stops the Flutter engine fetching its
+# CanvasKit and Noto fallback fonts from Google's CDN at runtime, which is a GDPR control: without it every visitor's
+# browser makes a request to `fonts.gstatic.com` / `unpkg.com` carrying their IP. Two tests assert the built bundle
+# reaches no external origin. A development bundle that phones home is still phoning home, so this never varies.
+RUN flutter build web --"${FLUTTER_BUILD_MODE}" --no-web-resources-cdn
 
 # ==============================================================================================================
 # The exported artifact.

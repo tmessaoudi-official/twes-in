@@ -298,3 +298,177 @@ HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
 
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]
+
+# ==============================================================================================================
+# STAGE 4 — dev. A SEPARATE IMAGE, not the production one with flags flipped.
+#
+# WHY A SEPARATE TARGET AT ALL. The two images are optimised for different things and the difference is not a
+# matter of degree: dev optimises the DEVELOPER'S LOOP (edit, breakpoint, inspect, re-run) and prod optimises THE
+# REQUEST (throughput, and the smallest surface an attacker who reaches PHP execution can act on). A single image
+# switched by environment variable cannot satisfy both, for one decisive reason: it would have to CONTAIN Xdebug.
+# A debugger present in a production image is a remote-code-execution amplifier — `xdebug.mode` is settable from
+# any `.ini` a compromised process can write, and Xdebug can be told to connect OUT to an attacker's host. The
+# only safe way to not have that is to not ship it, which means two images.
+#
+# Note what this stage does NOT do, because each absence is a positive dev property rather than a degradation:
+#   - no warm prod cache      — the source mount hides `/app` anyway, and dev recompiles per edit
+#   - no `chmod 555`          — the framework must WRITE its compiled container on every change
+#   - no opcache preload      — a preload script pins a compiled container; in dev that is the opposite of wanted
+#   - no `--no-dev` install   — the test suites and `browser-kit` are the point of a dev container
+# ==============================================================================================================
+FROM base AS dev
+
+# `git` and `unzip` for Composer, `postgresql18-client` for `psql` during a debugging session, `tzdata` for
+# comparable log timestamps. Composer itself is HERE and deliberately NOT in the production image.
+RUN apk add --no-cache git unzip postgresql18-client tzdata
+
+COPY --from=composer/composer:2-bin /composer /usr/bin/composer
+
+# ==============================================================================================================
+# XDEBUG. The reason this stage exists, and the reason it must never be the production one.
+#
+# `install-php-extensions` builds it against this exact PHP, which is why it is here rather than an `apk` package.
+#
+# PINNED, and FETCHED WITH `curl` RATHER THAN BY `pecl`. Two independent reasons, and the second is why this is not
+# just consistency with the rest of this file:
+#
+#   1. Everything else here is pinned to an exact version — the base image, Node, Flutter, the tool phars. An
+#      unpinned `install-php-extensions xdebug` resolves whatever PECL calls current at build time, so two builds of
+#      the same commit can carry different debuggers.
+#   2. `pecl`'s own HTTP client cannot get through some proxies. In this project's development container it receives
+#      `HTTP/1.1 426 Upgrade Required` and the build dies with `cannot download "pecl/xdebug"` — while `curl` to the
+#      SAME URL returns 200. [Verified: both, in one build.] Corporate TLS-intercepting proxies are exactly the
+#      environment this file already accommodates for `apk` and Composer, so accommodating it here too is consistent
+#      rather than special-cased.
+#
+# `install-php-extensions` accepts a local package file, so it still does the compiling and the `.ini` wiring — only
+# the download moves.
+# `linux-headers` EXPLICITLY, and this is the one cost of fetching the tarball ourselves. Given a package NAME,
+# `install-php-extensions` looks up that extension's build requirements and adds them; given a local FILE it has no
+# name to look up, so xdebug's need for `<linux/rtnetlink.h>` goes unmet and configure fails with
+# `rtnetlink.h is required, install the linux-headers package`. [Verified: that exact error, on the build before this
+# line existed.] `--virtual` so the whole set comes back out in the same layer and never reaches the final image.
+# `pecl install` DIRECTLY, not `install-php-extensions`. The latter compiles the local tarball perfectly and then
+# fails on its LAST step — `Unable to find the file of the PHP extension "/tmp/xdebug.tgz"` — because it derives the
+# extension's NAME from its argument in order to write an ini, and a file path is not a name. [Verified: the build
+# logged `Build process completed successfully`, `Installing '.../xdebug.so'` and `install ok:
+# channel://pecl.php.net/xdebug-3.5.3`, and then exited 1 on that message.] Nothing is lost by dropping it, because
+# the only thing it would have added is the `zend_extension` line — and `conf.d-dev/60-xdebug.ini` below carries
+# that, along with the whole configuration, where it is reviewable.
+# `$PHPIZE_DEPS` is the php-docker image family's OWN variable for "the toolchain needed to compile an extension"
+# (autoconf, gcc, g++, make, libc-dev, pkgconf, re2c, file, dpkg-dev), so using it is the ecosystem's spelling rather
+# than a hand-written package list that would drift from the base image. `install-php-extensions` was installing this
+# set for us; taking over the download means taking over the toolchain too, and `phpize` fails without it.
+#
+# `linux-headers` ADDITIONALLY, because xdebug specifically needs `<linux/rtnetlink.h>` and it is not in `PHPIZE_DEPS`.
+# Given a package NAME, `install-php-extensions` looks up that requirement; given a local FILE it has no name to look
+# up. [Verified: `configure: error: rtnetlink.h is required` without this, and `phpize' failed` without PHPIZE_DEPS.]
+#
+# `--virtual` + `apk del` so the entire compiler comes back out in the SAME layer. It must not persist: a C compiler
+# in a container is a large step up in what an attacker who reaches code execution can do, and this image already
+# accepts more risk than the production one by carrying a debugger at all.
+ARG XDEBUG_VERSION=3.5.3
+RUN apk add --no-cache --virtual .xdebug-build-deps $PHPIZE_DEPS linux-headers \
+    && curl -fsSL -o /tmp/xdebug.tgz "https://pecl.php.net/get/xdebug-${XDEBUG_VERSION}.tgz" \
+    && pecl install /tmp/xdebug.tgz \
+    && rm -rf /tmp/xdebug.tgz /tmp/pear \
+    && apk del --no-network .xdebug-build-deps
+
+ENV COMPOSER_HOME=/tmp/composer \
+    COMPOSER_ALLOW_SUPERUSER=1 \
+    COMPOSER_NO_INTERACTION=1
+
+WORKDIR /app
+
+# The DEV php configuration: the production `conf.d` plus the dev overlay plus Xdebug, all as FLAT `.ini` files.
+#
+# FLAT, and that is load-bearing rather than stylistic: PHP selects scan-directory entries by the `.ini` SUFFIX and
+# does NOT recurse, so a config mounted or copied as a subdirectory is silently never read. That was a real defect
+# here on 2026-08-04 — the entire dev overlay was inert because compose mounted it at `conf.d/zz-dev` as a
+# directory. `zz-` prefixes so these sort AFTER `10-`/`20-` and genuinely override them.
+COPY infra/api/conf.d/ /usr/local/etc/php/conf.d/
+COPY infra/api/conf.d-dev/50-dev.ini /usr/local/etc/php/conf.d/zz-50-dev.ini
+COPY infra/api/conf.d-dev/60-xdebug.ini /usr/local/etc/php/conf.d/zz-60-xdebug.ini
+COPY infra/api/Caddyfile /etc/frankenphp/Caddyfile
+
+# PROVE THE DEBUGGER IS ACTUALLY THERE, and prove it HERE rather than beside the compile — the `.so` being installed
+# and the extension being LOADED are two different facts, and only the ini copied just above turns the first into the
+# second. A dev image whose debugger is silently absent is worse than a failed build: the developer loses an
+# afternoon to IDE settings for a problem that was never in the IDE.
+#
+# `XDEBUG_MODE=off` is passed for the check because that is the image's default and the value a developer will meet;
+# it proves the extension loads in the cheap mode rather than only in `debug`.
+RUN XDEBUG_MODE=off php -m | grep -qi '^xdebug$' \
+    && echo "xdebug $(XDEBUG_MODE=off php -r 'echo phpversion("xdebug");') present and loading"
+
+# The application, so the image is usable on its own; in practice `compose.override.yaml` mounts the host tree over
+# it, which is what lets an IDE resolve every class it steps into.
+COPY api/ ./
+
+# ==============================================================================================================
+# THE CONTAINER RUNS AS THE HOST DEVELOPER'S OWN uid/gid, and this is the single most important line in the dev
+# image for day-to-day usability.
+#
+# The production image runs as a fixed `twes` (10001), which is right there: nothing is bind-mounted, so the uid is
+# private to the container. In dev the WHOLE `api/` TREE IS BIND-MOUNTED, and a bind mount does not translate
+# ownership — the container sees the host's numeric owner, and the host sees the container's. So a fixed uid
+# produces one of two failures, depending on which way the mismatch falls:
+#
+#   - container uid ≠ host owner  →  `/app/vendor does not exist and could not be created`, and `make install`
+#     cannot write at all. [Verified: exactly that, with the image fixed at 10001 against a host tree owned by
+#     another uid.]
+#   - container writes as root    →  `vendor/`, `var/` and anything `make:entity` generates come out root-owned in
+#     the developer's own working copy, and their editor cannot save over them.
+#
+# Passing the host's ids at build time avoids both. `TWES_UID`/`TWES_GID` default to 1000 — the first interactive
+# user on essentially every Linux distribution — and the Makefile passes the REAL `id -u`/`id -g` so it is correct
+# even when it is not 1000.
+#
+# `USER` IS NUMERIC ON PURPOSE. Docker accepts a bare uid:gid whether or not a matching passwd entry exists, which
+# is what makes this work for ANY value — including 0, when the developer's environment is itself root (this
+# project's own cloud container is). A named `USER twes` could not express that, and `adduser -u 0` fails outright
+# because the id is taken. The passwd entry is still created when the id is free, because a few tools print
+# warnings without one; it is not required for correctness.
+# ==============================================================================================================
+ARG TWES_UID=1000
+ARG TWES_GID=1000
+RUN if ! getent group "${TWES_GID}" >/dev/null 2>&1; then addgroup -g "${TWES_GID}" -S twes; fi \
+    && if ! getent passwd "${TWES_UID}" >/dev/null 2>&1; then \
+           adduser -u "${TWES_UID}" -S -G "$(getent group "${TWES_GID}" | cut -d: -f1)" -H -s /sbin/nologin twes; \
+       fi \
+    && setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/frankenphp \
+    && mkdir -p /app/var/cache /app/var/log \
+    && chown -R "${TWES_UID}:${TWES_GID}" /app/var \
+    # COMPOSER_HOME must be writable by that uid too, or `composer install` dies on its cache directory rather than
+    # on anything to do with the project.
+    && mkdir -p /tmp/composer \
+    && chown -R "${TWES_UID}:${TWES_GID}" /tmp/composer
+
+COPY infra/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+RUN chmod 555 /usr/local/bin/docker-entrypoint
+
+USER ${TWES_UID}:${TWES_GID}
+
+# `APP_ENV=dev` and `APP_DEBUG=1` as the image's own default, so a container started from this image without an
+# environment is a DEV container. The production image defaults the other way. Neither can be mistaken for the
+# other by forgetting a variable, which is the failure this whole split exists to prevent.
+ENV APP_ENV=dev \
+    APP_DEBUG=1 \
+    APP_RUNTIME="Symfony\\Component\\Runtime\\SymfonyRuntime" \
+    SERVER_NAME=:80 \
+    # OFF BY DEFAULT, and this is the setting that makes Xdebug usable rather than something to be disabled and
+    # forgotten. `xdebug.mode=debug` costs 2-5x on EVERY request even with no debugger attached; `off` costs
+    # nothing, and `make debug-on` flips it for the session. See conf.d-dev/60-xdebug.ini.
+    XDEBUG_MODE=off \
+    CADDY_GLOBAL_OPTIONS="" \
+    CADDY_EXTRA_CONFIG="" \
+    CADDY_SERVER_EXTRA_DIRECTIVES="" \
+    FRANKENPHP_CONFIG=""
+
+EXPOSE 80 443 443/udp
+
+# NO HEALTHCHECK, deliberately. In dev a container that is briefly broken because the developer is halfway through
+# an edit is NORMAL, and Docker restarting it underneath a debugger session — dropping the breakpoint and the
+# attached IDE — turns a syntax error into a confusing loss of state.
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

@@ -309,7 +309,17 @@ services:
       context: ..
       dockerfile: infra/admin/Dockerfile
       target: build
-    image: twes-in/admin-build:${TWES_VERSION:-dev}
+      # DEV OR PROD BUNDLE, from one Dockerfile. `make build-front` leaves this at `production`;
+      # `make build-front-dev` passes `development`, which keeps source maps so a browser stack trace names our file
+      # and line instead of `main-4f2a91.js:1:88231`. There is no security delta between the two bundles — only
+      # optimisation — which is why an argument is right here where the API tier needed a separate image for Xdebug.
+      args:
+        NG_CONFIGURATION: '${NG_CONFIGURATION:-production}'
+    # THE TAG CARRIES THE CONFIGURATION. Without this a dev bundle and a prod bundle share one tag, so `make
+    # build-front` after `make build-front-dev` is a cache hit that silently serves the unminified bundle with source
+    # maps — shipping our TypeScript. Distinct tags make the two artefacts distinguishable, which is the same
+    # reasoning as `twes-in/api:dev-local`.
+    image: twes-in/admin-build:${NG_CONFIGURATION:-production}-${TWES_VERSION:-dev}
     # Copies the built bundle into the shared volume. `sh -c` with an explicit clear first, so a stale bundle from
     # a previous version cannot survive alongside the new one and be served by hash.
     command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/dist/admin/browser/. /out/']
@@ -324,7 +334,11 @@ services:
       context: ..
       dockerfile: infra/mobile/Dockerfile
       target: build
-    image: twes-in/flutter-build:${TWES_VERSION:-dev}
+      # `release` for a shipped bundle, `profile` for a debuggable one. NOT `debug`: Flutter's web debug build uses
+      # DDC rather than dart2js and so can behave differently from what ships.
+      args:
+        FLUTTER_BUILD_MODE: '${FLUTTER_BUILD_MODE:-release}'
+    image: twes-in/flutter-build:${FLUTTER_BUILD_MODE:-release}-${TWES_VERSION:-dev}
     command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/build/web/. /out/']
     volumes:
       - flutter-bundle:/out

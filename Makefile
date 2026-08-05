@@ -29,6 +29,13 @@ INFRA := infra
 # off — so both are named explicitly, and `.env.local` only when it exists, or compose errors on a missing file.
 ENV_FLAGS := --env-file .env $(if $(wildcard $(INFRA)/.env.local),--env-file .env.local,)
 
+# THE HOST'S REAL uid/gid, exported so the dev image builds a user matching whoever is running make. Without this
+# the dev container writes into the bind-mounted `api/` tree as the wrong owner, which fails one of two ways: it
+# cannot create `vendor/` at all, or it creates root-owned files in the developer's working copy. `TWES_` prefixed
+# because plain `UID` is special in some shells and cannot be exported reliably.
+export TWES_UID := $(shell id -u)
+export TWES_GID := $(shell id -g)
+
 # Dev: no `-f`, so `compose.override.yaml` is auto-merged. Prod: explicit, so it never is.
 DC      := cd $(INFRA) && docker compose $(ENV_FLAGS)
 DC_PROD := cd $(INFRA) && docker compose $(ENV_FLAGS) -f compose.yaml -f compose.prod.yaml
@@ -71,7 +78,7 @@ check-env:
 # Development
 # --------------------------------------------------------------------------------------------------------------
 .PHONY: up
-up: check-env ## Start the development stack (source-mounted, database published on localhost).
+up: check-env deps ## Start the development stack (source-mounted, database published on localhost).
 	$(DC) up -d --build
 	@echo
 	@$(MAKE) --no-print-directory urls
@@ -131,9 +138,100 @@ build: check-env ## Build the API image.
 	$(DC) build api
 
 .PHONY: build-front
-build-front: check-env ## Build the Angular and Flutter bundles into the volumes the API serves.
+build-front: check-env ## Build PRODUCTION Angular and Flutter bundles into the volumes the API serves.
 	$(DC) run --rm --build admin-build
 	$(DC) run --rm --build flutter-build
+
+.PHONY: build-front-dev
+# DEVELOPMENT bundles: Angular unminified with source maps, Flutter in `profile`. The point is a browser stack trace
+# that names our file and line instead of `main-4f2a91.js:1:88231`, and a debugger that steps through TypeScript and
+# Dart rather than compiler output.
+#
+# NOT `flutter --debug`: Flutter's web debug build uses DDC rather than dart2js, so it can behave differently from
+# what ships — the wrong thing to hand somebody chasing a rendering bug. `profile` keeps the real compiler.
+#
+# The image TAGS carry the configuration (see compose.yaml), so this and `build-front` cannot collide in the build
+# cache. Without that, running this and then `build-front` would be a cache hit that silently served the unminified
+# bundle WITH OUR TYPESCRIPT SOURCE MAPS in production.
+build-front-dev: check-env ## Build DEVELOPMENT front-end bundles (source maps, unminified).
+	NG_CONFIGURATION=development $(DC) run --rm --build admin-build
+	FLUTTER_BUILD_MODE=profile $(DC) run --rm --build flutter-build
+
+# --------------------------------------------------------------------------------------------------------------
+# PHP dependencies — installed BY THE CONTAINER, ONTO THE HOST TREE.
+#
+# This is what makes an IDE work, and the reason it is not simply "run composer on your machine": the container's
+# PHP is the one that must resolve `ext-bcmath`, `ext-intl` and `ext-pdo_pgsql` and pick versions against PHP 8.5,
+# so a host Composer with a different PHP would produce a subtly different `vendor/` — the classic "works on my
+# machine". Running it in the container and letting the bind mount put the bytes on the host gives both: resolved by
+# the container, readable by the IDE.
+#
+# `--no-deps` so this does not start the database, and `--entrypoint composer` to bypass the API entrypoint, which
+# would otherwise demand APP_SECRET and wait for a database that is not running.
+# --------------------------------------------------------------------------------------------------------------
+.PHONY: install
+install: ## (Re)install PHP dependencies into api/vendor, using the container's PHP.
+	$(DC) run --rm --no-deps --build --entrypoint composer api \
+		install --no-interaction --no-progress $(COMPOSER_FLAGS)
+	@echo "api/vendor is on the host now — point your IDE's PHP interpreter at the container and it will resolve."
+
+.PHONY: deps
+# The cheap guard `up` depends on. A bind-mounted `api/` REPLACES the image's vendor tree, so if the host has no
+# `vendor/` the container has none either and every command dies with `Failed to open stream: autoload.php`. This
+# makes the first `make up` on a fresh clone work without the developer having to know that.
+deps:
+	@[ -f api/vendor/autoload.php ] || { \
+		echo "api/vendor is missing — installing it in the container first (one time)."; \
+		$(MAKE) --no-print-directory install; \
+	}
+
+.PHONY: composer
+composer: ## Run Composer in the container: make composer CMD="require symfony/uid"
+	@[ -n "$(CMD)" ] || { echo 'CMD="<composer args>" is required, e.g. make composer CMD="require symfony/uid"'; exit 1; }
+	$(DC) run --rm --no-deps --entrypoint composer api $(CMD)
+
+# --------------------------------------------------------------------------------------------------------------
+# Xdebug. OFF by default because `xdebug.mode=debug` costs roughly 2-5x on EVERY request even with no IDE attached,
+# which is how a debugger becomes something a developer disables on day two and never switches back on.
+#
+# `start_with_request=trigger` means even when armed, only requests carrying `XDEBUG_TRIGGER` (or the
+# `XDEBUG_SESSION` cookie every IDE browser extension sets) are debugged — so the stack stays fast while you debug.
+#
+# IDE path mapping, which is the other half and is configured in the IDE:  /app  <->  <this repo>/api
+# --------------------------------------------------------------------------------------------------------------
+# A TARGET-SCOPED `export`, and NOT `XDEBUG_MODE=... $(DC) up`, which is what these said first and which silently
+# did nothing. `$(DC)` expands to `cd infra && docker compose ...`, so a leading assignment applies to the `cd` —
+# the command right after it — and `docker compose` then runs without the variable at all. The target reported
+# "Xdebug ARMED" while the container still had `xdebug.mode=off`. [Verified: `container XDEBUG_MODE=[off]` after
+# `make debug-on`.] `export` puts it in the recipe's whole environment, where compose interpolation can see it.
+.PHONY: debug-on
+debug-on: export XDEBUG_MODE := debug,develop
+debug-on: ## Arm Xdebug (step debugger) and recreate the API containers.
+	$(DC) up -d --force-recreate api worker scheduler
+	@$(MAKE) --no-print-directory debug-status
+	@echo "  Listen on port 9003, ide key 'twes', and map  /app  ->  $(CURDIR)/api"
+	@echo "  Only requests carrying XDEBUG_TRIGGER are debugged, so the stack stays fast."
+
+.PHONY: debug-off
+debug-off: export XDEBUG_MODE := off
+debug-off: ## Disarm Xdebug and recreate the API containers.
+	$(DC) up -d --force-recreate api worker scheduler
+	@$(MAKE) --no-print-directory debug-status
+
+.PHONY: debug-status
+# READ THE VALUE BACK OUT OF THE RUNNING CONTAINER rather than echoing what we intended. The first version of
+# `debug-on` printed "ARMED" unconditionally and was wrong for exactly one commit; a target that asserts its own
+# success is how that goes unnoticed. This asks PHP.
+debug-status: ## Report whether Xdebug is armed, as the running container sees it.
+	@mode=$$($(DC) exec -T api php -d display_errors=0 -r 'echo ini_get("xdebug.mode") ?: "off";' 2>/dev/null | tail -1); \
+	case "$$mode" in \
+		off|'') echo "Xdebug is INSTALLED and DISARMED (xdebug.mode=off) — no cost per request." ;; \
+		*)      echo "Xdebug is ARMED (xdebug.mode=$$mode)." ;; \
+	esac
+
+.PHONY: test
+test: ## Run the API test suites inside the container.
+	$(DC) exec api php tools/bin/phpunit-12.phar $(ARGS)
 
 # --------------------------------------------------------------------------------------------------------------
 # Database
