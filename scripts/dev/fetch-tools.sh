@@ -6,20 +6,25 @@
 #
 # WHY THIS EXISTS, and it is not a preference.
 #
-# PHPUnit and php-cs-fixer would normally be Composer dev-dependencies. In the Claude Code cloud
-# container this project is developed in, GitHub egress is restricted by organisation policy to this
-# repository alone, so every Composer `dist` URL — which for a GitHub-hosted package means
-# api.github.com, codeload.github.com or github.com — returns HTTP 403:
+# THREE tools are fetched here as vendor-official phars: PHPUnit, php-cs-fixer and PHPStan.
 #
-#     $ curl -o /dev/null -w '%{http_code}' \
-#         https://api.github.com/repos/symfony/uid/zipball/7393f157...
-#     403
-#     {"message":"GitHub access to this repository is not enabled for this session."}
+# **`composer install` IS NOT BLOCKED, and this header said it was for three days after that was
+# disproved.** It read: *"GitHub egress is restricted by organisation policy to this repository alone, so
+# every Composer `dist` URL … returns HTTP 403 … while `composer install` stays blocked."* The 403 is real
+# and is per-repository AUTHORIZATION on three hosts (api.github.com, codeload.github.com, github.com over
+# plain HTTP), not a network block: general egress is open, `git clone` works, and
 #
-# Both tools also publish official phars from their own domains, which are reachable. So the API's
-# tests and style check run today, from vendor-official downloads, while `composer install` stays
-# blocked. `composer.lock` is committed and fully pinned, so a network that can reach Composer's dist
-# URLs needs only `composer install` and this script becomes redundant.
+#     composer config -g use-github-api false && composer config -g github-protocols https
+#     cd api && composer install --prefer-source
+#
+# installs the whole locked tree, dev dependencies included. [Verified 2026-08-05: `--dry-run` reports
+# "Installing dependencies from lock file (including require-dev) … Nothing to install"; the lock holds 74
+# runtime + 46 dev packages, ALL with a `source` URL.] `CLAUDE.md` § Gotchas carries the full correction.
+#
+# So this script is not a workaround for a blocked installer. It exists because a pinned, SHA-256-verified
+# phar runs in a checkout with NO vendor tree at all — which is what keeps `gate:style`, `gate:test` and
+# `gate:static` independent of a successful `composer install`, and is why `composer.json` points all three
+# at `tools/bin/` rather than `vendor/bin/`.
 #
 # The hashes are the point. A phar downloaded without verification is arbitrary code from the network,
 # and this repository's whole licensing position depends on knowing the provenance of what it runs.
@@ -63,8 +68,11 @@ readonly -a TOOLS=(
   # PHPStan 2.2.6, fetched as a PHAR rather than installed by Composer -- which finally resolves the blocker
   # CLAUDE.md carried for twenty certification rounds. Two corrections to the record, both verified:
   #
-  #   1. The cause was never network egress. `phpstan/phpstan` is the only package in `composer.lock` with no
-  #      `source` URL, so `--prefer-source` cannot route around the 403 on `api.github.com` for it alone.
+  #   1. The cause was never network egress. `phpstan/phpstan` WAS the only package in `composer.lock` with no
+  #      `source` URL, so `--prefer-source` could not route around the 403 on `api.github.com` for it alone.
+  #      **Past tense as of 2026-08-02: it left the lock with `deptrac`, which was the only thing that ever
+  #      pulled it in, so no locked package lacks a source today and `--no-dev` is no longer required.**
+  #      [Verified 2026-08-05: 74 + 46 packages, 0 without source, `phpstan/phpstan in lock? NO`.]
   #   2. The remedy CLAUDE.md suggested -- a VCS `repositories` entry -- does NOT work either, and the reason is
   #      not the network: `phpstan/phpstan` is a DISTRIBUTION repo that carries the built phar for every release
   #      in its history, so `git clone --mirror` exceeded Composer's 300-second process timeout. [Verified

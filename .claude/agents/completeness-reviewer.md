@@ -103,9 +103,18 @@ other two is the default failure mode here, not an unusual one.
    until a round found them. A gate that cannot fail is a false assurance worse than no gate, so a new
    gate arriving without a case in `test-gates.sh` is a finding in itself.
 
-   `deptrac` and PHPStan remain uninstallable (Composer dist URLs are blocked by egress policy) and are
-   defence in depth that has not arrived — noted so their absence is not mistaken for a gap in coverage
-   the gates already provide.
+   `deptrac` alone remains unwired — and it is INSTALLABLE rather than blocked: its phar is simply not at
+   the path PHPStan's is, the project having moved org from `qossmic/`. **PHPStan RUNS**: level 6 from
+   `api/tools/bin/phpstan.phar` with `api/phpstan.neon.dist`, and `composer gate:static` is wired to it, so
+   run it rather than assuming it is absent. The parenthetical this paragraph carried — *"Composer dist URLs
+   are blocked by egress policy"* — was refuted on 2026-08-01 and is recorded as a misdiagnosis in
+   `CLAUDE.md` § Gotchas: general egress is open, only `api.github.com` and `codeload.github.com` are
+   authorization-scoped, and `composer install --prefer-source` installs the whole stack.
+
+   **This paragraph told you PHPStan did not exist for three days after it did, and a round-1 reviewer found
+   it in its own charter while reviewing the commit that installed the tool.** Reviewers are chartered at
+   session load time, so a stale charter is not merely wrong — it removes a check from the panel silently.
+   Treat any claim here about what exists as the first thing to verify, not as context.
 
 10. **TENANCY WIRING THAT WAVE 1 OWES — check this whenever a repository or a Doctrine mapping appears.**
    `PostgresRowLevelSecurityIsolation` carries guards that Wave 1's connection lifecycle owes calls to, and **ZERO** of them are on the `TenantIsolationStrategy` port, which declares `bind()` and nothing else. **Do not trust any list of them written in prose, including this one.** Round 13 corrected the count from "only one"; round 14's correction carried three wrong numbers; round 15 found the replacement's ENUMERATION wrong as well — it listed six while the grep it itself prescribed returned ten, and no consistent criterion produced six. Three consecutive rounds. So: **derive the set, then classify it yourself.**
@@ -133,9 +142,13 @@ other two is the default failure mode here, not an unusual one.
 
 - Read CLAUDE.md's *current* text before asserting a doc row is unmet — the author may have updated
   it in this very diff.
-- Where the repo is still greenfield and a tier genuinely does not exist yet (on 2026-07-29 that is `infra/`
-  ONLY — `admin/` and `mobile/` are scaffolded and green on their own toolchains, so their dimensions apply), that is not a finding — but say explicitly which tiers you checked and which do not
-  yet exist, so the CLEAN verdict is not read as broader than it is.
+- Where the repo is still greenfield and a tier genuinely does not exist yet, that is not a finding — but say
+  explicitly which tiers you checked and which do not yet exist, so the CLEAN verdict is not read as broader
+  than it is. **As of 2026-08-05 ALL FOUR TIERS EXIST**: this line said `infra/` was the one that did not, for
+  the eight days after it landed (three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
+  init script and its own gate, with both stacks run end to end). `ls` the tier rather than trusting this
+  sentence — `CLAUDE.md`'s own status paragraph makes the same point about the same tier, and notes that a
+  reviewer's charter cited it.
 - Every claim you make carries its grade: `[Verified: ran …, output …]` or `[Inferred: …]`. A
   completeness finding is cheap to state and expensive to be wrong about, so hold yourself to the
   grep.

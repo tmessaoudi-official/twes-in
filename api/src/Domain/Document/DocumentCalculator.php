@@ -222,7 +222,18 @@ final readonly class DocumentCalculator
      *
      * @return array<int, Money> share per line position
      *
-     * @throws InvalidMoneyAmount if a share or the running remainder does not fit the money column
+     * **NO `@throws InvalidMoneyAmount`, and it was briefly declared here in error.** It cannot fire for any input
+     * the domain can construct: this runs only under `PerRateGroup`, where `$groupVat` and every line net already
+     * survived `Money`'s constructor or `calculate()` would have thrown first; `DocumentLine` refuses a negative
+     * quantity, price and rate, so every net is non-negative; and flooring is superadditive, so
+     * `floor(net_i × f) ≤ floor(base × f) ≤ groupVat` and no share can exceed the group's VAT. A reviewer fuzzed
+     * 40 000 documents across three currencies and all eight rounding modes: zero exceptions with `allocate()` in
+     * the trace. The boundary case that does overflow overflows at `$total`, in `calculate()`, which declares it.
+     *
+     * **PHPStan cannot check this direction either, which is why the over-declaration went unnoticed for a
+     * commit.** `throws.unusedType` fires only when NOTHING in the body declares the type — a callee's own
+     * `@throws` satisfies it regardless of reachability, and `Money::of()` and `plus()` both declare this one. So
+     * `[OK] No errors` was silent on the over-declared direction as well as the under-declared one.
      */
     private static function allocate(
         Money $groupVat,

@@ -2631,13 +2631,28 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * **NULL IS ACCEPTED AND IS NOT FALSE**, which is the polarity rule above applied to the one value PostgreSQL
      * emits for "no answer": an aggregate over an empty row set. `bool_or(rolsuper)` with no matching row is NULL,
-     * not `false`, and every caller of this function reads a danger-if-TRUE flag — so NULL must land on the
-     * violation side. The parameter was `bool|string` and a NULL therefore raised a `TypeError` from inside a
-     * security guard: fail-closed by accident, with a message about a type rather than about a privilege. Only
-     * `isFalse()` is widened; {@see self::isTrue()} keeps `bool|string` deliberately, because its callers read
-     * skip-on-TRUE flags where a NULL must NOT skip and `isTrue(null)` returning false is what a `?? false` at
-     * those sites already delivers. Widening both would make the asymmetry look accidental; it is the polarity
-     * rule, applied twice in opposite directions.
+     * not `false`. The parameter was `bool|string`, so a NULL raised a `TypeError` from inside a security guard —
+     * fail-closed by accident, with a message about a type rather than about a privilege.
+     *
+     * **THE REASON THIS PARAGRAPH FIRST GAVE WAS WRONG TWICE, and both halves are corrected in place rather than
+     * below** (round 2 filed it on two lenses). It claimed *"every caller of this function reads a danger-if-TRUE
+     * flag"* — false for `permissive` and `applies`, which the third bullet twelve lines above separates out as
+     * skip-on-FALSE reads; three of the six call sites are skip-direction. And it claimed {@see self::isTrue()}
+     * keeps `bool|string` *"because its callers read skip-on-TRUE flags where … a `?? false` at those sites already
+     * delivers"* false — of eleven `isTrue()` sites, three are skip-on-TRUE, two are `!isTrue()` danger-if-FALSE
+     * reads named in the FIRST bullet above (`rls_enabled`, `forced`), six are message wording, and **seven have no
+     * `?? false` at all** — including `security_invoker`, a genuine skip-on-TRUE site where a NULL would raise
+     * rather than not-skip. Writing a fresh justification that its own docblock refutes is the round-1 P1 shape
+     * recurring inside the fix for it.
+     *
+     * **The honest reason the asymmetry is safe: no `bool_or` column feeds `isTrue()`.** [Verified: `grep -n
+     * bool_or` yields three sites — two go to `isFalse()`, and the third is `is_bool||is_string`-guarded.] Every
+     * value reaching `isTrue()` is a `NOT NULL` catalogue column, an `EXISTS`, or a `json_build_object` boolean, so
+     * widening it would be widening for a value that cannot arrive. Widening it anyway is not wrong, merely
+     * unjustified — and an unjustified widening of a security predicate is how the next author concludes the NULL
+     * contract is handled everywhere. If a future query makes an `isTrue()` input nullable, widen it THEN, and note
+     * that `policedTableViolations()`'s `@param` at present still declares `rls_enabled: bool|string` — annotating
+     * NULL there without touching `isTrue()` is the exact move that created round 1's finding here.
      */
     private static function isFalse(bool|string|null $value): bool
     {

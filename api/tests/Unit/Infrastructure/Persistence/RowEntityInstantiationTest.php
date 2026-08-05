@@ -40,48 +40,85 @@ use Twes\Infrastructure\Persistence\Doctrine\Entity\DocumentRow;
  * [`vendor/doctrine/orm/src/Mapping/ClassMetadata.php` → `$this->instantiator->instantiate($this->name)`] — a
  * kernel boot would also need a database, and this belongs in the `unit` suite where it runs on every commit.
  *
- * Two assertions per entity, and the second is the one that would catch a subtler regression than an
- * `ArgumentCountError`: the properties must come back UNINITIALISED. If a future edit gave one of them a default
- * value "to be safe", hydration would silently overwrite a real column value with that default on any path where
- * Doctrine does not set the field — and `phpstan.neon.dist`'s `checkUninitializedProperties`, which is what these
- * constructors exist to satisfy, would report clean.
+ * **EVERY MAPPED PROPERTY, not one per entity.** The first version of this test drove ONE named property per
+ * class — 4 of 19 — while this paragraph claimed "the properties must come back uninitialised", and it picked
+ * `type` for `DocumentNumberSequenceRow`, whose `$nextValue = 1` is exactly the shape being guarded against: a
+ * NOT NULL `bigint` column WITH a default. So the case that exists to catch a default silently substituted for a
+ * real column value looked past the only one present. Round 2 filed it as reading stronger than it is, the
+ * `test-gates.sh` 33/33 shape.
+ *
+ * The property set is now DERIVED by reflection and the two legitimate defaults are named with their reasons, so
+ * adding `public string $state = 'draft';` to `DocumentRow` fails here rather than passing. If a future default is
+ * genuinely correct, this list is where the argument for it gets written down.
  */
 final class RowEntityInstantiationTest extends TestCase
 {
     /**
-     * Every mapped entity and one NOT NULL property of each, which is the property whose default would betray it.
+     * The two properties that legitimately carry a default, each with the reason the entity itself gives.
      *
-     * @return iterable<string, array{class-string, string}>
+     * Nothing else may. A third entry here is a decision about persistence semantics, not a way to make this
+     * test pass.
      */
+    private const array DEFAULTED = [
+        // The one NULLABLE column: a document is created unnumbered and `Invoice::issue()` allocates afterwards.
+        DocumentRow::class . '::number',
+        // NOT NULL, and the default IS the contract: 1 is the number sequence port's second guarantee, so a row
+        // that has handed nothing out is at 1. This is the shape the assertion below guards against everywhere
+        // else, permitted here because the value is the domain's, not a convenience.
+        DocumentNumberSequenceRow::class . '::nextValue',
+    ];
+
+    /** @return iterable<string, array{class-string}> */
     public static function mappedRowEntities(): iterable
     {
-        yield 'document' => [DocumentRow::class, 'currency'];
-        yield 'document_line' => [DocumentLineRow::class, 'unitNet'];
-        yield 'document_charge' => [DocumentChargeRow::class, 'amount'];
-        yield 'document_number_sequence' => [DocumentNumberSequenceRow::class, 'type'];
+        yield 'document' => [DocumentRow::class];
+        yield 'document_line' => [DocumentLineRow::class];
+        yield 'document_charge' => [DocumentChargeRow::class];
+        yield 'document_number_sequence' => [DocumentNumberSequenceRow::class];
     }
 
     /**
      * @param class-string $entity
      */
     #[DataProvider('mappedRowEntities')]
-    public function testDoctrineBuildsItWithoutCallingTheConstructor(string $entity, string $property): void
+    public function testDoctrineBuildsItWithoutCallingTheConstructor(string $entity): void
     {
         // No arguments. A constructor call here is an ArgumentCountError, which is the failure this pins.
         $row = new Instantiator()->instantiate($entity);
 
         self::assertInstanceOf($entity, $row);
-        self::assertFalse(
-            new \ReflectionProperty($entity, $property)->isInitialized($row),
-            \sprintf(
-                '%s::$%s came back INITIALISED from an instance Doctrine built without a constructor, which means '
-                . 'it has a default value. Hydration would then silently substitute that default for the real '
-                . 'column on any path that does not set the field, and `checkUninitializedProperties` — the check '
-                . 'these constructors exist to satisfy — would report clean throughout.',
-                $entity,
-                $property,
-            ),
-        );
+
+        $properties = new \ReflectionClass($entity)->getProperties();
+
+        // ANTI-VACUITY: reflection returning nothing would make every assertion below pass on an empty loop,
+        // which is the shape this repository has filed against its own gates more than once.
+        self::assertNotEmpty($properties, 'reflection found no properties, so the loop below proves nothing');
+
+        foreach ($properties as $property) {
+            if (\in_array($entity . '::' . $property->getName(), self::DEFAULTED, true)) {
+                // Asserted in the POSITIVE direction, so the exemption cannot outlive the default it exempts:
+                // remove the default and this fails, which is what stops the list becoming a stale allowlist.
+                self::assertTrue(
+                    $property->isInitialized($row),
+                    \sprintf('%s::$%s is listed in DEFAULTED but has no default', $entity, $property->getName()),
+                );
+
+                continue;
+            }
+
+            self::assertFalse(
+                $property->isInitialized($row),
+                \sprintf(
+                    '%s::$%s came back INITIALISED from an instance Doctrine built without a constructor, which '
+                    . 'means it has a default value. Hydration would then silently substitute that default for the '
+                    . 'real column on any path that does not set the field, and `checkUninitializedProperties` — '
+                    . 'the check these constructors exist to satisfy — would report clean throughout. If the '
+                    . 'default is deliberate, add it to DEFAULTED with the reason.',
+                    $entity,
+                    $property->getName(),
+                ),
+            );
+        }
     }
 
     /**
@@ -94,7 +131,7 @@ final class RowEntityInstantiationTest extends TestCase
      * @param class-string $entity
      */
     #[DataProvider('mappedRowEntities')]
-    public function testTheConstructorItselfRefusesToBeCalledWithNoArguments(string $entity, string $property): void
+    public function testTheConstructorItselfRefusesToBeCalledWithNoArguments(string $entity): void
     {
         $this->expectException(\ArgumentCountError::class);
 

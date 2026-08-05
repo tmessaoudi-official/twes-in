@@ -229,6 +229,14 @@ final readonly class Invoice
     /**
      * @throws DocumentIsNotMutable if this document is not a draft
      * @throws CurrencyMismatch if the line is not in this document's currency
+     * @throws \InvalidArgumentException if the document is already full (`MAX_LINES`), or if adding this line
+     *                                   would make the document impossible to total
+     *
+     * **THE THIRD TAG WAS ABSENT, on a PUBLIC MUTATOR AN HTTP LAYER CALLS.** `assertRoomFor()` and
+     * `totallable()` both raise it, and `CLAUDE.md` § "Translation keys" keys both as user-fixable —
+     * `document.line_count_too_large` and `document.total_too_large`. A refusal a user can act on is exactly
+     * the one whose signature has to say so, because that section's test is whether a competent user reading
+     * only the message would know what to change.
      */
     public function withLine(DocumentLine $line): self
     {
@@ -272,6 +280,9 @@ final readonly class Invoice
     /**
      * @throws DocumentIsNotMutable if this document is not a draft
      * @throws CurrencyMismatch if the charge is not in this document's currency
+     * @throws \InvalidArgumentException if the document is already full (`MAX_LINES`), or if adding this charge
+     *                                   would make the document impossible to total — see `withLine()`;
+     *                                   `document.charge_count_too_large` and `document.total_too_large`
      */
     public function withFixedCharge(FixedCharge $charge): self
     {
@@ -393,10 +404,22 @@ final readonly class Invoice
      * `CLAUDE.md` § "Translation keys" decides which refusals get a locale key by asking which ones a user can
      * fix, and that question cannot be answered from a signature that lists nothing.
      *
+     * **CATCH `InvalidMoneyAmount` FIRST: it IS an `\InvalidArgumentException`.** The chain is
+     * `InvalidMoneyAmount` → `\InvalidArgumentException` → `\LogicException` [Verified: `class_parents()`], so a
+     * transport layer catching in the order a `@throws` list happens to be written mis-keys the money overflow.
+     *
+     * That is not hypothetical — this docblock had a third tag reading *"`@throws \InvalidArgumentException` if the
+     * document is empty and no currency can be inferred"*, and it was wrong twice over. It **cannot fire on that
+     * reason**: `totals()` always passes `$this->currency`, a non-nullable property, and `resolveCurrency()` raises
+     * that exception only from `?? throw` on a null currency [Verified: `Invoice::draft(EUR)->totals(...)` returns a
+     * total of `0.00`]. And being the PARENT of the tag above it, it was reachable only as a mis-catch — so a
+     * reader building the HTTP layer from this list would have reported `money.amount_not_representable` as *"the
+     * document is empty"*, which is precisely the harm the § "Translation keys" reference below exists to prevent.
+     * Removed rather than reworded, and the hierarchy stated instead.
+     *
      * @throws CurrencyMismatch if a line or charge is in another currency — our own layer's fault, so
      *                          `error.internal` rather than a key
      * @throws InvalidMoneyAmount if any figure does not fit the money column (`money.amount_not_representable`)
-     * @throws \InvalidArgumentException if the document is empty and no currency can be inferred
      */
     public function totals(VatRoundingPoint $vatRoundingPoint, RoundingMode $mode): DocumentTotals
     {

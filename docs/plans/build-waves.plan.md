@@ -11,6 +11,24 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
+- [2026-08-05 22:00] AGREED: **PHPStan is CONFIGURED AND WIRED at level 6, and every one of its findings is fixed
+  rather than baselined.** `api/phpstan.neon.dist` over `src/` and `tests/`; `composer gate:static` repointed from
+  `vendor/bin/phpstan` — a path that can never exist, since PHPStan is not a Composer dependency here — to the
+  pinned phar in `api/tools/bin/`. Level 6 rather than max because levels 7-9 are dominated by mixed-type findings
+  in framework glue where the honest answer is an annotation rather than a code change; raise it when the ignore
+  list is empty. THREE non-default flags on, each on an axis this project had already ruled on:
+  `checkUninitializedProperties` (which is what forced the four Doctrine row entities to gain constructors, closing
+  the mapper's forget-a-column risk that `CLAUDE.md` § Architecture names as this model's accepted cost),
+  `treatPhpDocTypesAsCertain` (which found a LIVE row-level-security guard reported as dead code, because the
+  docblock declared `rolsuper: bool|string` while the code's own comment explains `bool_or` over an empty set is
+  NULL), and `reportUnmatchedIgnoredErrors`. Exactly TWO ignores, each with its reason in the file and one pinned by
+  count. **`deptrac` is now the only tool the API tier owes.**
+- [2026-08-05 22:00] AGREED: **the commit message for `d75003a` says "49 findings" and the reproducible figure is
+  52.** Recorded rather than quietly dropped, because a commit message is immutable and `git` history is the one
+  artefact this project cannot amend: 49 was measured mid-fix, after the row-level-security annotation was already
+  corrected, so the honest number for the pre-fix tree analysed with the committed config is 52 — reproduced by a
+  certification round against reverted sources. The lesson is the one § Gotchas keeps restating about counts: a
+  figure taken while the work is in flight is not a measurement of the work.
 - [2026-08-02 00:30] AGREED: **only the KEY-SHAPE axis leaves `schema-tenancy.php`; the other eight stay**
   (developer ruling, choosing option 1 of three after round 23 restored all nine). This is the settled shape and it
   supersedes both the 16:00 DELETE clause and the 23:00 full restoration.
@@ -507,24 +525,6 @@ was restricted by organisation policy so `composer install` could not run. Gener
 `composer config -g use-github-api false` + `composer install --prefer-source` installs the whole runtime stack.
 `CLAUDE.md` § Gotchas carries the recipe and the lesson. What that wrong diagnosis blocked for twenty rounds:
 
-- [2026-08-05 22:00] AGREED: **PHPStan is CONFIGURED AND WIRED at level 6, and every one of its findings is fixed
-  rather than baselined.** `api/phpstan.neon.dist` over `src/` and `tests/`; `composer gate:static` repointed from
-  `vendor/bin/phpstan` — a path that can never exist, since PHPStan is not a Composer dependency here — to the
-  pinned phar in `api/tools/bin/`. Level 6 rather than max because levels 7-9 are dominated by mixed-type findings
-  in framework glue where the honest answer is an annotation rather than a code change; raise it when the ignore
-  list is empty. THREE non-default flags on, each on an axis this project had already ruled on:
-  `checkUninitializedProperties` (which is what forced the four Doctrine row entities to gain constructors, closing
-  the mapper's forget-a-column risk that `CLAUDE.md` § Architecture names as this model's accepted cost),
-  `treatPhpDocTypesAsCertain` (which found a LIVE row-level-security guard reported as dead code, because the
-  docblock declared `rolsuper: bool|string` while the code's own comment explains `bool_or` over an empty set is
-  NULL), and `reportUnmatchedIgnoredErrors`. Exactly TWO ignores, each with its reason in the file and one pinned by
-  count. **`deptrac` is now the only tool the API tier owes.**
-- [2026-08-05 22:00] AGREED: **the commit message for `d75003a` says "49 findings" and the reproducible figure is
-  52.** Recorded rather than quietly dropped, because a commit message is immutable and `git` history is the one
-  artefact this project cannot amend: 49 was measured mid-fix, after the row-level-security annotation was already
-  corrected, so the honest number for the pre-fix tree analysed with the committed config is 52 — reproduced by a
-  certification round against reverted sources. The lesson is the one § Gotchas keeps restating about counts: a
-  figure taken while the work is in flight is not a measurement of the work.
 - [2026-08-01 09:30] RULED **persistence is a SEPARATE MODEL in `Infrastructure/` mapped with Doctrine
   ATTRIBUTES, and a repository translates to and from the domain aggregate** (developer challenging the
   XML-mapping plan and accepting the recommendation that came out of it). Three facts drove it, two of which
@@ -2093,3 +2093,54 @@ is the only parameterisation the calculation kernel carries, and it is genuinely
 two — which is the invariant Wave 1's scope line was really about, and it is unweakened by the deferral. If the
 worked examples arrive before Wave 2 opens they can land in Wave 1; an unscheduled item is how the previous
 record went stale, which is why a destination is named here rather than left to the wave that discovers it.
+
+### Certification round 25 — PHPStan wired, and the sweeps it exposed
+
+**Why this section exists at all.** Rounds 1 and 2 of this certification produced 38 findings and were recorded
+in nothing but two commit messages — no numbered table, no severity, no OPEN/CLOSED status, unlike every round
+above. A reviewer filed exactly that: *"'thirteen of fourteen' cannot be checked from the repository"*, and the
+one deliberately-deferred finding had no `OPEN` row, so unlike R22-20 nothing would bring it back. A round whose
+findings live only in `git log` is a round that cannot be audited, and the rate limit that ends this session is
+precisely when that matters. Frozen commits: **round 1 = `d75003a`, round 2 = `2508e54`.**
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R25-1 | `PostgresRowLevelSecurityIsolation` declared `rolsuper: bool|string` while its own comment explains `bool_or` over an empty set is NULL — so `treatPhpDocTypesAsCertain` reported a LIVE row-level-security guard as dead code | **P1** | **CLOSED** `d75003a` |
+| R25-2 | `Money::plus()`/`minus()` declared only `CurrencyMismatch` while both funnel through the constructor whose own comment says the range check "holds for RESULTS too" | **P1** | **CLOSED** `d75003a`, mutant-pinned |
+| R25-3 | `BehaviouralIsolationTest`'s `fks` shape omitted `name` in the ONE docblock that reads `$fk['name']` twice, inside GOAL 8's cross-tenant-reference finding | **P1** | **CLOSED** `d75003a` |
+| R25-4 | The `SET ROLE` escalation proof pushed `$attempted` and popped it in the only branch reaching the assertion, so `+ count($attempted)` was dead and `escalated:` was always `none` | **P2** | **CLOSED** `d75003a` |
+| R25-5 | `DecimalTest`'s `rescale(...) ?? 'x'` would have laundered a null into `isNegative('x') === false`, passing on a regression | **P2** | **CLOSED** `d75003a` |
+| R25-6 | The four Doctrine row entities were built by bare assignment, so a forgotten column threw `must not be accessed before initialization` from inside `flush()` | **P2** | **CLOSED** `d75003a` — constructors, 10 transposition mutants killed |
+| R25-7 | **`rolreplication=NULL` CERTIFIED A ROLE AS UNABLE TO BYPASS ROW-LEVEL SECURITY.** `?? false` laundered a present NULL into a recognised FALSE while its two siblings fail-closed via `TypeError`; the sibling guard is a conjunction so a single NULL passes it | **P1** | **CLOSED** `2508e54` — `isFalse()` accepts NULL and does not call it false; `array_key_exists` distinguishes absence from a present NULL; 5 mutants fire. Reachable from neither caller today (`pg_authid` columns are NOT NULL and the row set is never empty), so hardened as a public contract rather than a live breach |
+| R25-8 | The `@throws InvalidMoneyAmount` sweep reached 1 caller of 4; then 4 of 9 | **P1** | **CLOSED** this round — all nine: `PriceCalculator` ×4 reason lists, `ProductPricing::withCost`, `DocumentLine::net`, `InvoiceMapper::toAggregate`, `Invoice::withLine`/`withFixedCharge`, `DocumentCalculator::calculate` |
+| R25-9 | `gate:static`'s new description asserted `phpstan/phpstan` is the only lock entry with no `source` URL and that `--no-dev` is required — it left the lock with `deptrac` on 2026-08-02, so the CLAUDE.md recipe withheld the `symfony/browser-kit` the functional suite needs | **P1** | **CLOSED** this round — `composer.json` ×2, CLAUDE.md ×6 including the header, `scripts/dev/fetch-tools.sh` header + body, `api/bin/console` |
+| R25-10 | `Invoice::totals()`'s third `@throws \InvalidArgumentException` could not fire on its stated reason AND is the PARENT of the tag above it, so a transport catching in docblock order mis-keys a money overflow as "the document is empty" | **P1** | **CLOSED** this round — tag removed, hierarchy stated |
+| R25-11 | The two round-1 Decisions Log entries landed in `## Wave 0`, in a bullet list headed *"What that wrong diagnosis blocked"* — so two rulings about what LANDED sat in a list of what was BLOCKED, invisible to a Phase-0 restore | **P1** | **CLOSED** this round |
+| R25-12 | The `failOnRisky` comment pasted at 5 sites was true at 1; the other four methods carry other assertions so the call was a no-op | **P2** | **CLOSED** `2508e54` |
+| R25-13 | `spdx-headers.sh`'s ratchets in `test-gates.sh`: `files` 4 vs 6 and `extensions` 12 vs 14, then `roots` 11 vs 12 — three instances of the same off-by-one, the third filed against the commit that fixed the first two | **P2** | **CLOSED** — all three raised, every member pinned by name, mutants fire |
+| R25-14 | `allocate()`'s `@throws InvalidMoneyAmount` is unreachable for any input the domain can construct (40 000-document fuzz: 0 throws in trace); PHPStan cannot see the over-declared direction either, because a callee's own `@throws` satisfies `throws.unusedType` | **P2** | **CLOSED** this round — removed, with the reason recorded so it is not re-added |
+| R25-15 | `RowEntityInstantiationTest` asserted 4 of 19 properties while claiming all, and picked `type` for the one entity whose `$nextValue` default is the exact shape guarded against | **P2** | **CLOSED** this round — every property derived by reflection, 2 defaults named with reasons and asserted in the POSITIVE direction, 2 mutants |
+| R25-16 | The `isFalse()`/`isTrue()` asymmetry was justified with two claims the same docblock refutes 12 lines above (3 of 6 `isFalse` sites and 5 of 11 `isTrue` sites are not what the paragraph said; 7 of 11 have no `?? false`) | **P2** | **CLOSED** this round — corrected in place; the honest reason is that no `bool_or` column feeds `isTrue()` |
+| R25-17 | `.claude/agents/completeness-reviewer.md` told the completeness lens PHPStan was uninstallable AND that `infra/` is the one tier that does not exist. A reviewer found the first in its own charter while reviewing the commit that installed the tool | **P2** | **CLOSED** this round, with the developer's authorisation (agent definitions require it) |
+| R25-18 | 11 skill banners + `inspect`'s degradation note told a future agent to run `vendor/bin/phpstan`; `.claude/settings.json` allow-listed the same path | **P2** | **CLOSED** `2508e54` |
+| R25-19 | 5 stale claims in this file, including the 2026-07-30 *"leave both owed"* ruling whose premise was the twenty-round misdiagnosis | **P2** | **CLOSED** `2508e54`, amended in place |
+| R25-20 | `THIRD-PARTY-NOTICES.md` says **"Two tools"** are fetched as phars while listing three; says the tree is *"Not yet installed"* while `api/vendor/` holds 120 packages; and states the locked tree as *"52 runtime + 54 dev"* | **P2** | **OPEN** — the file licensing invariant 8(a) names as the record, so the counts matter |
+| R25-21 | `UuidV7Generator:32-35` justifies hand-rolling with *"it cannot be installed … every Composer dist URL is refused by egress policy"* — `symfony/uid` is installed and used by five files in the same layer | **P2** | **OPEN** — decide whether to adopt `symfony/uid` or restate the reason honestly |
+| R25-22 | The Material Icons Apache-2.0 grant is recorded in four places as *"cannot be verified from this container"*; `curl raw.githubusercontent.com/google/material-design-icons/master/LICENSE` returns 200 and the Apache text. The RULING is unaffected; its stated ground is false | **P2** | **OPEN** — licensing invariant 10 territory, so verify and restate rather than quietly amend |
+| R25-23 | `CLAUDE.md:289` assigns the ambient-`time()`/`getenv()` P0 to *"a banned-function rule (PHPStan)"*; `no-ambient-calls-in-domain.php` delivers it and `phpstan.neon.dist` configures nothing of the kind. Now that CLAUDE.md says PHPStan is green, a reader concludes it is covered | **P2** | **OPEN** |
+| R25-24 | Two `api/tests/` comments still name the refuted blocker (`DocumentTotalsTest:953` *"PHPStan … is blocked on Composer egress"*, `DocumentNumberSequenceContract:41` *"currently blocked on Composer egress"*), plus `build-waves.plan.md`'s *"the next session with reachable dist URLs"* | **P3** | **OPEN** |
+| R25-25 | `CLAUDE.md:49-51` says `bin/console` uses the classic bootstrap instead of `vendor/autoload_runtime.php`; `api/bin/console` requires `autoload_runtime.php` and its own comment names the false claim it replaced | **P3** | **OPEN** |
+| R25-26 | `DocumentLine::net()`'s out-of-range arm is pre-empted by the constructor's `RoundingMode::Up` product check, so its tag is deliberately narrower than its callers' — recorded so it is not "corrected" to match them | **P3** | **CLOSED** this round, as a stated limit |
+| R25-27 | Commit-message arithmetic: `d75003a` says "49 findings" (reproducible figure 52, measured mid-fix); `2508e54` says "eight cases drive `Instantiator`" (four do) and double-counts `schema-tenancy` outside the twelve gates | **P3** | **CLOSED** as recorded — a pushed commit message cannot be amended, so the corrections live in `## Decisions Log` and here |
+
+**Not reached: two consecutive fully-clean rounds.** Round 1 = 14 findings, round 2 = 24, and this round's fixes
+are uncertified. The MAXIMAL tier is unsatisfied and the seven OPEN rows above are why — **round 3 is owed**, and
+it must run against a frozen commit after those are closed. Stopped here by the session's rate limit, not by
+convergence; recorded plainly because `CLAUDE.md` § "Certification ladder" says a wave-boundary panel that stops
+early must say so rather than let a green gate stand in for a clean panel.
+
+**The pattern across both rounds, worth more than any single finding.** Eleven of the 38 were *a correction that
+reached one site of several*, and four were *a fresh justification that was checkable and wrong* — including two
+written INSIDE the fix for the first instance of that same shape. § Gotchas already records both; what this round
+adds is that they recur most reliably in the commit that claims to have fixed them, because the author is reading
+the new text rather than grepping for the old.

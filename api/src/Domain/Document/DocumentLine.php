@@ -253,6 +253,15 @@ final readonly class DocumentLine
      * and summed into the subtotal**. Keeping it exact and rounding only at the end would make the printed
      * lines fail to add up to the printed subtotal, which is the single most common complaint about
      * generated invoices and, for an EN 16931 payload, a validation failure rather than a cosmetic one.
+     *
+     * @throws \Twes\Domain\Money\Exception\InvalidMoneyAmount if `$mode` is `RoundingMode::Unnecessary` and the
+     *                                                         product needs rounding
+     *
+     * **THE FIRST HOP OF THE CHAIN, and it carried no `@throws` at all.** Every VAT figure in the document is
+     * derived from this method, and `DocumentCalculator::calculate()` documents the refusal it propagates —
+     * while the method it propagates it FROM documented nothing. The out-of-range arm is genuinely pre-empted
+     * by the constructor's `RoundingMode::Up` product check, so only the rounding arm is reachable; that is a
+     * narrower tag than its callers', deliberately, and not an absent one.
      */
     public function net(RoundingMode $mode): Money
     {

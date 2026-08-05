@@ -30,7 +30,7 @@ if (!is_file(dirname(__DIR__) . '/vendor/autoload_runtime.php')) {
         . "fails on a 403 from api.github.com, which is authorization scoping rather than a network block:\n\n"
         . "  composer config -g use-github-api false\n"
         . "  composer config -g github-protocols https\n"
-        . "  cd api && composer install --prefer-source --no-dev && composer dump-autoload --dev\n\n"
+        . "  cd api && composer install --prefer-source\n\n"
         . "If vendor/ is present but this file is not, the plugin did not run; `composer dump-autoload` restores it.\n"
         . "See CLAUDE.md § Gotchas -- the entry that had this wrong for twenty certification rounds.\n");
 

@@ -49,7 +49,14 @@ final readonly class PriceCalculator
      * One multiplication, not `cost + (cost x rate)` — the two-step form rounds twice and can land a
      * millime away from this.
      *
-     * @throws InvalidMoneyAmount if \$mode is RoundingMode::Unnecessary and the product needs rounding
+     * @throws InvalidMoneyAmount if \$mode is RoundingMode::Unnecessary and the product needs rounding, or the
+     *                            product does not fit the money column
+     *
+     * **AND THE OUT-OF-RANGE REFUSAL, which every reason list in this class omitted until 2026-08-05.**
+     * `Money`'s private constructor refuses a result above `MAX_INTEGER_DIGITS`, so the product/quotient
+     * itself can be out of bounds even when both operands are in bounds — reproduced from ordinary domain
+     * code with a single in-bounds `DocumentLine`. The tag's TYPE was already right here, so PHPStan was
+     * satisfied: it reports a `@throws` that is never thrown, never one whose stated REASON is too narrow.
      */
     public function netFromCost(Money $cost, Rate $profitRate, RoundingMode $mode): Money
     {
@@ -73,7 +80,9 @@ final readonly class PriceCalculator
      *
      * @throws CurrencyMismatch if the net is not in the cost's currency — this method does NOT guard the
      *                          currencies itself, and `$net->minus($cost)` raises
-     * @throws InvalidMoneyAmount if $mode is RoundingMode::Unnecessary and the ratio is not exact
+     * @throws InvalidMoneyAmount if $mode is RoundingMode::Unnecessary and the ratio is not exact, or a figure
+     *                            does not fit the money column — see `vat()` on why every reason list here was
+     *                            too narrow until 2026-08-05
      *
      * Documented at round 13, which found this method carrying ZERO @throws while the round-12 sweep was
      * advertised as covering "all three PriceCalculator methods" — the class has FOUR, and the omitted one
@@ -99,7 +108,18 @@ final readonly class PriceCalculator
     /**
      * VAT on a net amount. The base is the net — never the cost, and never the gross.
      *
-     * @throws InvalidMoneyAmount if \$mode is RoundingMode::Unnecessary and the VAT needs rounding
+     * @throws InvalidMoneyAmount if \$mode is RoundingMode::Unnecessary and the VAT needs rounding, or the VAT
+     *                            does not fit the money column
+     *
+     * **AND THE OUT-OF-RANGE REFUSAL, which every reason list in this class omitted until 2026-08-05.**
+     * `Money`'s private constructor refuses a result above `MAX_INTEGER_DIGITS`, so the product/quotient
+     * itself can be out of bounds even when both operands are in bounds — reproduced from ordinary domain
+     * code with a single in-bounds `DocumentLine`. The tag's TYPE was already right here, so PHPStan was
+     * satisfied: it reports a `@throws` that is never thrown, never one whose stated REASON is too narrow.
+     *
+     * THIS is the method the `Money::plus()` correction argued from — *"multiplication is the operation on
+     * the actual VAT path"* — and its own reason list was left narrow in that same commit. One hop out, which is
+     * where an incomplete sweep always lands.
      */
     public function vat(Money $net, Rate $vatRate, RoundingMode $mode): Money
     {

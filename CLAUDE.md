@@ -55,10 +55,13 @@ bootstrap instead of `vendor/autoload_runtime.php`.
 init script and its own gate — and both the development and the production stack have now been run end to end
 (2026-08-05). This sentence listed `infra/` as absent for three commits after it existed, and a reviewer's charter
 cites it. **PHPStan RUNS, from a pinned phar, and `composer gate:static` is wired to it** (2026-08-05) — this
-paragraph called it *"the one thing still genuinely uninstallable"* until then, which was true of the Composer
-package and false of the tool: `phpstan/phpstan` is the single entry in `composer.lock` with no `source` URL, so
-`--prefer-source` cannot route around the 403 on `api.github.com`, but the phar is served by
-`raw.githubusercontent.com` and `scripts/dev/fetch-tools.sh` fetches it against a pinned SHA-256. Everything else
+paragraph called it *"the one thing still genuinely uninstallable"* until then. **`phpstan/phpstan` is not in
+`composer.lock` at all** — it entered only as a dependency of `deptrac` and left with it on 2026-08-02 — so no
+locked package lacks a `source` URL, `--no-dev` is no longer required, and the phar is used because it is pinned
+by SHA-256 and runs with no vendor tree, not because Composer cannot fetch it. **This paragraph said the opposite
+in the present tense for a commit AFTER § "Quality gate" corrected it 520 lines below**, in a correction whose own
+text claims it was made *"here rather than below it"* — the § Gotchas 2026-07-29 shape, committed by the sweep that
+cites it. [Verified: 74 + 46 locked packages, 0 without source; `phpstan/phpstan in lock? NO`.] Everything
 installs — see § Gotchas, which corrects the *"GitHub egress is restricted"* claim this paragraph carried until
 2026-08-01. **`deptrac` is the only tool still owed.**
 Anything below describing what does not yet exist is the *target*. Read `docs/plans/build-waves.plan.md` for

@@ -157,6 +157,16 @@ final readonly class InvoiceMapper
      * @param array{DocumentRow, list<DocumentLineRow>, list<DocumentChargeRow>} $rows
      *
      * @return array{DocumentIdentity, Invoice}
+     *
+     * @throws \Twes\Domain\Money\Exception\InvalidMoneyAmount if a stored amount cannot be represented in the
+     *                                                         document's currency
+     * @throws \LogicException if a child row belongs to another document, or the row is not an invoice
+     *
+     * **THE HYDRATION PATH, and it documented nothing.** The money columns are `NUMERIC(19,4)` while TND has
+     * THREE decimals, so a value written with four significant decimals — by a migration, a direct `UPDATE`, or
+     * another writer — comes back through `Money::of()` and is refused. Reproduced: `1.0001` read into TND.
+     * That is the right behaviour (corrupt data must fail loudly) and it is a refusal a repository has to be
+     * able to see in the signature.
      */
     public function toAggregate(TenantId $tenant, array $rows): array
     {

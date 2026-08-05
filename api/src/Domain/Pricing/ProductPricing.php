@@ -266,6 +266,9 @@ final readonly class ProductPricing
      *
      * @throws CurrencyMismatch if the new cost is in a different currency
      * @throws InvalidCost if the cost is negative, or the derived price would be unrepresentable or NEGATIVE
+     * @throws InvalidMoneyAmount if `$mode` is `RoundingMode::Unnecessary` and `profitRate()`'s ratio is not
+     *                            exact, or a figure does not fit the money column. Reproduced: a cost of 3.000
+     *                            against a net of 7.000 under `Unnecessary` raises from `profitRate($mode)`
      */
     public function withCost(Money $newCost, RoundingMode $mode): self
     {

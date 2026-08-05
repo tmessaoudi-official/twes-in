@@ -487,8 +487,14 @@ assert_at_least "layers: forbidden pairs have not shrunk" \
   "$(count_rules "$LAYER_RULES" "sum(len(v) for v in r['layers'].values())")" 5
 assert_at_least "orm: forbidden patterns have not shrunk" \
   "$(count_rules "$ORM_RULES" "len(r['patterns'])")" 8
+# 12, NOT 11. This floor was left one short when `infra` joined SEARCH_ROOTS, so deleting that root passed the
+# assertion literally named "search roots have not shrunk" — and took its generated case with it, dropping the
+# suite 395 -> 394 against a total floor of 330, invisible twice. Round 2 filed it as the third instance of the
+# same off-by-one, after `files` (4 -> 6) and `extensions` (12 -> 14) in the commit before this one. The gate's
+# own coverage half does refuse on the real tree, which is why this was P3 rather than P1 — but a ratchet whose
+# stated purpose is "widening it is a deliberate edit to this file" is defeated by one that does not fire.
 assert_at_least "spdx: search roots have not shrunk" \
-  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 11
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 12
 assert_at_least "spdx: individually-listed files have not shrunk" \
   "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 6
 
@@ -594,7 +600,8 @@ assert_contains "ambient: clock instantiations survive" "$AMBIENT_RULES" DateTim
 assert_contains "layers: every forbidden pair survives" "$LAYER_RULES" \
   'Twes\\Application' 'Twes\\Infrastructure' 'Twes\\UI'
 assert_contains "spdx: every search root survives" "$SPDX_RULES" \
-  api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test scripts
+  api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test \
+  scripts infra
 assert_contains "spdx: every extension survives" "$SPDX_RULES" \
   php ts dart sh xml sql yaml yml html scss css js ini neon
 # `api/phpstan.neon.dist` and `admin/eslint.config.js` were NOT pinned here, and the first is the one file
