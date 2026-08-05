@@ -332,6 +332,9 @@ services:
       # optimisation — which is why an argument is right here where the API tier needed a separate image for Xdebug.
       args:
         NG_CONFIGURATION: '${NG_CONFIGURATION:-production}'
+        # MUST match the path the Caddyfile serves this bundle at (`handle_path /admin/*`). A mismatch is a blank
+        # page with a 200 status — see the Dockerfile.
+        NG_BASE_HREF: '${NG_BASE_HREF:-/admin/}'
     # THE TAG CARRIES THE CONFIGURATION. Without this a dev bundle and a prod bundle share one tag, so `make
     # build-front` after `make build-front-dev` is a cache hit that silently serves the unminified bundle with source
     # maps — shipping our TypeScript. Distinct tags make the two artefacts distinguishable, which is the same
@@ -355,6 +358,8 @@ services:
       # DDC rather than dart2js and so can behave differently from what ships.
       args:
         FLUTTER_BUILD_MODE: '${FLUTTER_BUILD_MODE:-release}'
+        # Must match `handle_path /app/*` in the Caddyfile.
+        FLUTTER_BASE_HREF: '${FLUTTER_BASE_HREF:-/app/}'
     image: twes-in/flutter-build:${FLUTTER_BUILD_MODE:-release}-${TWES_VERSION:-dev}
     command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/build/web/. /out/']
     volumes:

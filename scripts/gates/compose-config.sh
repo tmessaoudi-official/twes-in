@@ -169,6 +169,53 @@ if 'prod' in overlay:
             'packet sniffing and spoofing against the database. Drop ALL and add back only what the service '
             'provably needs, established by test rather than by guess.' % ', '.join(undropped))
 
+    # 6b. AND `cap_add` MUST STAY INSIDE A MAXIMUM, because `cap_drop: [ALL]` ALONE IS TRIVIALLY HOLLOW.
+    #     A certification reviewer defeated the check above by adding `cap_add: [SYS_ADMIN, NET_RAW, SYS_PTRACE,
+    #     DAC_READ_SEARCH]` to `migrate` -- the container holding the OWNER credential -- and the gate reported
+    #     `OK ... capabilities dropped where required`. `SYS_ADMIN` there is a container-escape primitive, and
+    #     `NET_RAW` is the exact capability the comment above names as the reason any of this exists.
+    #
+    #     A MAXIMUM over the union rather than a per-service map, deliberately: a per-service map drifts from the
+    #     services, and this list is short enough to justify entry by entry. Every member is here because a service
+    #     provably fails without it (see `compose.prod.yaml`, where each carries its own evidence):
+    #       NET_BIND_SERVICE -- `frankenphp` carries it as a FILE capability with the effective bit, so `execve`
+    #                           itself fails with EPERM without it. Not about binding at all.
+    #       CHOWN/SETUID/SETGID/DAC_OVERRIDE -- postgres chowns its data directory then drops privilege; valkey's
+    #                           `setpriv` needs the two id-setting ones. DAC_OVERRIDE is only detectable on RESTART.
+    #     Adding an identifier here is a security decision: state the service, the failure without it, and how that
+    #     failure was observed.
+    PERMITTED_CAP_ADDS = {'NET_BIND_SERVICE', 'CHOWN', 'SETUID', 'SETGID', 'DAC_OVERRIDE'}
+    for name, svc in sorted(services.items()):
+        excess = sorted(c for c in (svc.get('cap_add') or []) if c.upper() not in PERMITTED_CAP_ADDS)
+        if excess:
+            problems.append(
+                '%s re-grants %s via `cap_add`, which is outside the permitted maximum (%s). `cap_drop: [ALL]` '
+                'followed by an unrestricted `cap_add` is not hardening -- SYS_ADMIN is a container-escape '
+                'primitive and NET_RAW is packet sniffing and spoofing on the network the database sits on.'
+                % (name, ', '.join(excess), ', '.join(sorted(PERMITTED_CAP_ADDS))))
+
+    # 6c. AND THE OTHER TWO PROD PROPERTIES MUST BE ASSERTED RATHER THAN "checked by eye", which is what the header of
+    #     this file used to claim. The same reviewer removed `read_only`, all three `tmpfs` entries AND
+    #     `security_opt: no-new-privileges:true` from `migrate` and the gate stayed green -- so the one container that
+    #     can `DROP POLICY` on every tenant table could lose its read-only root filesystem silently.
+    #
+    #     `read_only` is required of the PHP services and of valkey. `database` and `gotenberg` are EXEMPT and each
+    #     exemption is a real requirement rather than a concession: PostgreSQL writes its data directory, and
+    #     Chromium needs a writable profile and shared memory. Naming them here means adding a third exemption is a
+    #     visible edit rather than a silent omission.
+    READ_ONLY_EXEMPT = {'database', 'gotenberg'}
+    for name, svc in sorted(services.items()):
+        if name not in READ_ONLY_EXEMPT and not svc.get('read_only'):
+            problems.append(
+                '%s does not set `read_only: true` in the production configuration. A writable root filesystem lets '
+                'a PHP remote-code-execution write a webshell somewhere that will be executed; only `database` and '
+                '`gotenberg` are exempt, and each because it genuinely must write.' % name)
+        if 'no-new-privileges:true' not in (svc.get('security_opt') or []):
+            problems.append(
+                '%s does not set `security_opt: [no-new-privileges:true]` in the production configuration. Without '
+                'it a setuid binary inside the image can still raise privilege, which defeats the point of dropping '
+                'capabilities in the first place.' % name)
+
 # 5. Every Messenger receiver a service consumes must be a transport the application actually defines.
 #    This is the assertion that was missing when `worker` and `scheduler` crash-looped on `docker compose up`:
 #    compose said `messenger:consume async` and no `config/packages/messenger.yaml` existed, so the command

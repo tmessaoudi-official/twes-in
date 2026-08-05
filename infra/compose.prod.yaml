@@ -38,7 +38,14 @@ services:
     # what these five are for. [Verified: with `cap_drop: ALL` alone the container never becomes ready; with these
     # five it reaches `pg_isready` normally.] NET_RAW, MKNOD and the rest are gone.
     cap_drop: [ALL]
-    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
+    # FOUR, NOT FIVE. `FOWNER` was in this list until 2026-08-05 and was never needed — an unnecessary capability,
+    # against this section's own rule that nothing is added "just in case". `DAC_OVERRIDE` genuinely is needed, and
+    # the interesting part is that it is only detectable on a RESTART: with three caps the container reaches
+    # `pg_isready` on first boot and then fails the SECOND start with
+    # `chmod: /var/lib/postgresql/18/docker: Operation not permitted`. [Verified: first boot and restart both READY on
+    # these four; restart NOT READY on three.] A single-run capability test would have shipped a stack that comes up
+    # once and never again — worth remembering for any future `cap_add` here.
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE]
     # PostgreSQL forks one backend per connection, so this must comfortably exceed max_connections.
     # Bounded, so one runaway query cannot starve the host. Tune to the host; these are conservative defaults.
     deploy:
@@ -243,8 +250,10 @@ services:
     # NOTHING ADDED, worth stating because Chromium is the service people usually grant SYS_ADMIN to for its sandbox.
     # Gotenberg does not need it. [Verified: `/health` returns 200 under `cap_drop: ALL`.]
     cap_drop: [ALL]
-    # HIGHEST OF ALL SIX, deliberately: Chromium is heavily multi-process — a renderer, a GPU process and a zygote per
-    # document — so a limit sized like the PHP services would fail under concurrent rendering rather than protect it.
+    # JOINT-HIGHEST, with `api` and `database`. This said "HIGHEST OF ALL SIX" and was wrong twice over: there are
+    # SEVEN services, and 512 TIES rather than exceeds. Chromium is heavily multi-process — a renderer, a GPU process
+    # and a zygote per document — so it genuinely needs headroom; if concurrent rendering ever exhausts 512 the number
+    # should go UP rather than the comment being re-worded.
     security_opt:
       - no-new-privileges:true
     # NOT read-only: Chromium needs a writable profile and shared memory. Bounded instead, and it is on the

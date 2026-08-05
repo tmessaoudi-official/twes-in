@@ -54,6 +54,12 @@ x-api-dev-environment: &api-dev-environment
   # request even with no IDE attached, so an always-on debugger is one a developer disables on the second day and
   # never re-enables. See infra/api/conf.d-dev/60-xdebug.ini.
   XDEBUG_MODE: '${XDEBUG_MODE:-off}'
+  # The trigger secret. An EMPTY `xdebug.trigger_value` means any value of `XDEBUG_TRIGGER` arms a session, so any
+  # page the developer visits can open a debugger into this container while `make debug-on` is in force. Set
+  # `TWES_XDEBUG_TRIGGER` in `infra/.env.local` to something private to this machine.
+  TWES_XDEBUG_TRIGGER: '${TWES_XDEBUG_TRIGGER:-twes-local-trigger}'
+  # 120 normally, 0 while `make debug-on` is in force so a held breakpoint is not killed mid-inspection.
+  TWES_MAX_EXECUTION_TIME: '${TWES_MAX_EXECUTION_TIME:-120}'
 
 # --------------------------------------------------------------------------------------------------------------
 # The dev source mounts, shared by all four PHP services.
@@ -80,10 +86,21 @@ x-api-dev-environment: &api-dev-environment
 # --------------------------------------------------------------------------------------------------------------
 x-api-dev-volumes: &api-dev-volumes
   - ../api:/app
+  # `docs/spec/` READ-ONLY, because the test suite reaches OUTSIDE `api/` for it. `DocumentTotalsTest` and
+  # `PricingVectorsTest` load `__DIR__ . '/../../../../docs/spec/pricing-vectors.json'` — the CROSS-TIER VAT vectors
+  # that CLAUDE.md names as what stops Angular and Flutter each inventing a third rounding rule. With only `api/`
+  # mounted the file does not exist in the container and both classes error out, so `make test` could not pass.
+  # [Verified: `file_get_contents(... /docs/spec/pricing-vectors.json): Failed to open stream`.] Read-only: tests
+  # consume these vectors, they never write them.
+  - ../docs/spec:/docs/spec:ro
   # `var/` LAYERED BACK OVER the bind mount, so cache and log stay CONTAINER-SIDE. This is the one thing that
   # genuinely wants a named volume rather than a host directory: it is regenerated on demand, it is large, and on a
-  # bind mount it litters the developer's working tree with files owned by the container's uid. A later mount wins
-  # over an earlier one, which is why the order here matters.
+  # bind mount it litters the developer's working tree with files owned by the container's uid.
+  #
+  # THE NESTING DECIDES, NOT THE LIST ORDER. This previously said "a later mount wins over an earlier one, which is why
+  # the order here matters", and that mechanism is wrong: Docker sorts mounts by DESTINATION PATH DEPTH, so `/app/var`
+  # is applied after `/app` however the two are ordered. [Verified: with the volume listed FIRST and the bind mount
+  # second — the reverse of the order below — the volume still wins.] Reordering these lines changes nothing.
   - api-dev-var:/app/var
   # The dev OPcache overlay, ALSO baked into the dev image — mounted as well so it can be tuned without a rebuild.
   #

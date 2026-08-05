@@ -49,6 +49,14 @@
 /api/var/
 # (No /var/cache/ or /var/log/ entries: /var above already ignores that whole tree.)
 .env.local
+# `.env.local.php` TOO, and its absence was a real trap rather than tidiness. `composer dump-env prod` compiles the
+# whole dotenv cascade into this ONE file, and `Dotenv::bootEnv()` then SHORT-CIRCUITS to it — `loadEnv()` never runs
+# and `.env.test` is never read. So a committed `.env.local.php` would silently replace the test transport
+# (`in-memory://`) with whatever was dumped, while `APP_ENV` still reads `test` and nothing looks wrong. Neither
+# `.env.local` nor `.env.*.local` matches this filename.
+*.env.local.php
+.env.local.php
+/api/.env.local.php
 .env.*.local
 # Database dumps written by `make backup`. These contain REAL TENANT DATA -- committing one would
 # be a data breach in a public repository, which is why the rule is here and not left to care.

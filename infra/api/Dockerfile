@@ -341,8 +341,9 @@ COPY --from=composer/composer:2-bin /composer /usr/bin/composer
 #      environment this file already accommodates for `apk` and Composer, so accommodating it here too is consistent
 #      rather than special-cased.
 #
-# `install-php-extensions` accepts a local package file, so it still does the compiling and the `.ini` wiring — only
-# the download moves.
+# (An earlier revision used `install-php-extensions` on the downloaded file. That paragraph described an approach
+# abandoned three lines later, and is deleted rather than left standing above the text contradicting it — see the
+# `pecl install` note below for what actually happens.)
 # `linux-headers` EXPLICITLY, and this is the one cost of fetching the tarball ourselves. Given a package NAME,
 # `install-php-extensions` looks up that extension's build requirements and adds them; given a local FILE it has no
 # name to look up, so xdebug's need for `<linux/rtnetlink.h>` goes unmet and configure fails with
@@ -460,6 +461,11 @@ ENV APP_ENV=dev \
     # forgotten. `xdebug.mode=debug` costs 2-5x on EVERY request even with no debugger attached; `off` costs
     # nothing, and `make debug-on` flips it for the session. See conf.d-dev/60-xdebug.ini.
     XDEBUG_MODE=off \
+    # The trigger secret. Without a value ANY `XDEBUG_TRIGGER` arms a debug session, which is a drive-by RCE path
+    # once a developer has run `make debug-on` -- see conf.d-dev/60-xdebug.ini. Overridable per machine.
+    TWES_XDEBUG_TRIGGER=twes-local-trigger \
+    # Bounded by default; `make debug-on` sets 0 so a held breakpoint is not killed. See conf.d-dev/50-dev.ini.
+    TWES_MAX_EXECUTION_TIME=120 \
     CADDY_GLOBAL_OPTIONS="" \
     CADDY_EXTRA_CONFIG="" \
     CADDY_SERVER_EXTRA_DIRECTIVES="" \
@@ -467,8 +473,20 @@ ENV APP_ENV=dev \
 
 EXPOSE 80 443 443/udp
 
-# NO HEALTHCHECK, deliberately. In dev a container that is briefly broken because the developer is halfway through
-# an edit is NORMAL, and Docker restarting it underneath a debugger session — dropping the breakpoint and the
-# attached IDE — turns a syntax error into a confusing loss of state.
+# `HEALTHCHECK NONE`, EXPLICITLY — AND THE COMMENT HERE PREVIOUSLY CLAIMED "NO HEALTHCHECK, deliberately" WHILE ONE
+# WAS ACTIVE AND FAILING. Two false statements in one comment, both found by a certification reviewer:
+#
+#   - There WAS a healthcheck. `dunglas/frankenphp` defines its own — `curl -f http://localhost:2019/metrics` — and
+#     `FROM base AS dev` inherits it. `worker` and `scheduler` run `messenger:consume`, not `frankenphp`, so nothing
+#     listens on Caddy's admin port and both sat permanently `unhealthy`. [Verified: `docker inspect` reported
+#     `Health=unhealthy FailingStreak=50` on both, in a stack I had just described as healthy.]
+#   - The reason given was also wrong. "Docker restarting it underneath a debugger session" does not happen: plain
+#     Docker does NOT restart on an unhealthy check — only Swarm acts on it. [Verified: `RestartCount=0` after a
+#     failing streak of 50, with `restart: unless-stopped`.]
+#
+# `NONE` is still the right answer for dev, but for the honest reason: a dev container is *expected* to be broken
+# mid-edit, and a red health status that means nothing trains the developer to ignore the column. Production sets a
+# real one on the `runtime` stage, where it gates traffic.
+HEALTHCHECK NONE
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile"]

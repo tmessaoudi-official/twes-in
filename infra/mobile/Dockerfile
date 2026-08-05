@@ -110,7 +110,18 @@ ARG FLUTTER_BUILD_MODE=release
 # CanvasKit and Noto fallback fonts from Google's CDN at runtime, which is a GDPR control: without it every visitor's
 # browser makes a request to `fonts.gstatic.com` / `unpkg.com` carrying their IP. Two tests assert the built bundle
 # reaches no external origin. A development bundle that phones home is still phoning home, so this never varies.
-RUN flutter build web --"${FLUTTER_BUILD_MODE}" --no-web-resources-cdn
+# `--base-href` FOR THE SAME REASON AS THE ADMIN TIER, and here the placeholder makes it explicit: `mobile/web/
+# index.html` ships `<base href="$FLUTTER_BASE_HREF">`, which `flutter build web` substitutes — defaulting to `/`
+# when the flag is absent. The API serves this bundle at `/app/`, so without the flag every asset request goes to the
+# origin root, misses, and the Flutter engine never starts: a 200, a correct title, and a blank page.
+#
+# The sibling defect was reproduced end-to-end on the Angular tier (`/admin/main-*.js` 200 versus `/main-*.js` 404).
+# This tier is the same construction and the same Caddy `handle_path` prefix strip; NOT independently reproduced here,
+# because a Flutter web build exhausts this development container's disk.
+ARG FLUTTER_BASE_HREF=/app/
+RUN flutter build web --"${FLUTTER_BUILD_MODE}" --no-web-resources-cdn --base-href "${FLUTTER_BASE_HREF}" \
+    && grep -qF "<base href=\"${FLUTTER_BASE_HREF}\">" build/web/index.html \
+    && echo "base href is ${FLUTTER_BASE_HREF}"
 
 # ==============================================================================================================
 # The exported artifact.

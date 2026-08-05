@@ -97,7 +97,7 @@ six additions into three real gaps:
 
 ### E. Verify
 
-Both stacks must come up. `make up` → six services, `/health/ready` 200. `make config-prod` must render. The
+Both stacks must come up. `make up` → SEVEN services (`database`, `valkey`, `api`, `worker`, `scheduler`, `migrate`, `gotenberg` — this said six), `/health/ready` 200. `make config-prod` must render. The
 API gate must stay green throughout.
 
 ## Owed / not done in this pass

@@ -2129,9 +2129,54 @@ PYCAP
   fi
   mv "$cc_root/prod.held" "$cc_root/infra/compose.prod.yaml"
 
-  # MUTANT F -- the same assertion must be PROD-SCOPED rather than global. If it were applied to the dev overlay too,
-  # the gate would fail on a correct tree; this pins the scoping by asserting the DEV overlay still passes with no
-  # capability hardening anywhere in it.
+  # MUTANT G -- `cap_drop: [ALL]` re-granted hollowly. THE ATTACK A CERTIFICATION REVIEWER USED: adding
+  # `cap_add: [SYS_ADMIN, NET_RAW, SYS_PTRACE]` to `migrate` -- the container holding the OWNER credential -- left the
+  # gate reporting `capabilities dropped where required`. SYS_ADMIN there is a container-escape primitive and NET_RAW
+  # is the exact capability the gate's own comment cites as its reason for existing.
+  cp "$cc_root/infra/compose.prod.yaml" "$cc_root/prod.held"
+  python3 - "$cc_root/infra/compose.prod.yaml" <<'PYCAPADD'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+i = s.index('  migrate:'); j = s.index('  gotenberg:', i)
+p.write_text(s[:i] + s[i:j].replace('    cap_drop: [ALL]', '    cap_drop: [ALL]\n    cap_add: [SYS_ADMIN, NET_RAW]', 1) + s[j:])
+PYCAPADD
+  cc_g="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_g_rc=0 || cc_g_rc=$?
+  if (( cc_g_rc != 0 )) && printf '%s' "$cc_g" | grep -qF 'migrate re-grants'; then
+    printf '  ok   — compose-config catches a dangerous capability re-granted through cap_add\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config accepted cap_add: [SYS_ADMIN, NET_RAW] (rc=%s)\n' "$cc_g_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/prod.held" "$cc_root/infra/compose.prod.yaml"
+
+  # MUTANT H -- the same reviewer removed `read_only` and `no-new-privileges` from `migrate` and the gate stayed
+  # green, because the file's header reasoned those were "checked by eye". They are asserted now.
+  cp "$cc_root/infra/compose.prod.yaml" "$cc_root/prod.held"
+  python3 - "$cc_root/infra/compose.prod.yaml" <<'PYRO'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+i = s.index('  migrate:'); j = s.index('  gotenberg:', i)
+b = s[i:j].replace('    read_only: true\n', '', 1) \
+          .replace('    security_opt:\n      - no-new-privileges:true\n', '', 1)
+p.write_text(s[:i] + b + s[j:])
+PYRO
+  cc_h="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_h_rc=0 || cc_h_rc=$?
+  if (( cc_h_rc != 0 )) \
+     && printf '%s' "$cc_h" | grep -qF 'does not set `read_only: true`' \
+     && printf '%s' "$cc_h" | grep -qF 'does not set `security_opt: [no-new-privileges:true]`'; then
+    printf '  ok   — compose-config catches a prod service losing read_only and no-new-privileges\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed a stripped read_only/no-new-privileges (rc=%s)\n' "$cc_h_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/prod.held" "$cc_root/infra/compose.prod.yaml"
+
+  # SCOPING CASE -- NOT a mutant, and renamed from "MUTANT F" because calling it one weakened this suite's own
+  # convention that a mutant is reverted-and-red. Nothing is mutated: it asserts the CLEAN tree still passes, which is
+  # what would break if the capability assertion were global instead of prod-only, since the dev overlay carries no
+  # hardening by design. A genuine mutation of the scoping is not expressible without editing the gate itself.
   cc_f="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_f_rc=0 || cc_f_rc=$?
   if (( cc_f_rc == 0 )) && ! printf '%s' "$cc_f" | grep -q 'compose.override.yaml.*cap_drop'; then
     printf '  ok   — the capability assertion is prod-scoped and does not fire on the dev overlay\n'

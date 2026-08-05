@@ -56,8 +56,21 @@ FROM node:${NODE_VERSION}-alpine AS build
 # roots appearing twice (once compiled in, once here) is harmless.
 # ==============================================================================================================
 COPY infra/api/ca-certificates/ /tmp/twes-ca/
-RUN cat /etc/ssl/certs/ca-certificates.crt /tmp/twes-ca/*.crt > /usr/local/share/twes-ca.crt 2>/dev/null \
-    || cp /etc/ssl/certs/ca-certificates.crt /usr/local/share/twes-ca.crt
+# AN EXPLICIT TEST, NOT `cat ... 2>/dev/null || cp ...`, WHICH IS WHAT THIS SAID FIRST AND WHICH COULD SILENTLY DROP
+# A CERTIFICATE IT HAD ALREADY READ. With several `.crt` present and ONE of them unreadable, `cat` writes the good
+# ones, exits non-zero, and the `||` branch then OVERWRITES the file with the system bundle alone — discarding the
+# site CA that was readable, after which `npm ci` fails with SELF_SIGNED_CERT_IN_CHAIN and the one line that would
+# have explained it went to `/dev/null`. The multi-file case is the normal one: this project's own container has 152.
+#
+# So: start from the system bundle unconditionally (which is what guarantees a non-empty file, because
+# `NODE_EXTRA_CA_CERTS` pointing at a missing one makes Node warn on every invocation), then append each site
+# certificate individually and FAIL on one that cannot be read.
+RUN cp /etc/ssl/certs/ca-certificates.crt /usr/local/share/twes-ca.crt \
+    && for cert in /tmp/twes-ca/*.crt; do \
+           [ -e "$cert" ] || break; \
+           cat "$cert" >> /usr/local/share/twes-ca.crt || exit 1; \
+       done \
+    && rm -rf /tmp/twes-ca
 ENV NODE_EXTRA_CA_CERTS=/usr/local/share/twes-ca.crt
 
 WORKDIR /build
@@ -84,7 +97,27 @@ COPY admin/ ./
 #   development — unminified with source maps, so a stack trace in the browser names OUR file and line instead of
 #                 `main-4f2a91.js:1:88231`, and the debugger can step through TypeScript rather than output.
 ARG NG_CONFIGURATION=production
-RUN npx ng build --configuration "${NG_CONFIGURATION}"
+
+# `--base-href` IS NOT OPTIONAL, AND WITHOUT IT THIS BUNDLE RENDERS A BLANK PAGE.
+#
+# The API serves this at `/admin/` (Caddy `handle_path /admin/*`, which strips the prefix), but Angular defaults the
+# document's `<base href>` to `/`. The browser therefore resolves `main-<hash>.js` against the ORIGIN root and asks
+# for `/main-<hash>.js`, which is the API — 404 — so Angular never bootstraps.
+#
+# The failure is silent in every way that matters: the request for `/admin/` returns **200**, the `<title>` is
+# correct, no JavaScript error is raised, and the page is simply empty. [Verified: `/admin/main-GEV2QODB.js` → 200
+# and `/main-GEV2QODB.js` → 404 against the running stack; a real Chromium screenshot showed a blank viewport with
+# status 200 and title "Admin".] Only a screenshot found it, which is precisely the case CLAUDE.md's
+# visual-evidence rule exists for.
+#
+# CONFIGURABLE rather than hardcoded, because the mount path is a deployment decision — but it must DEFAULT to the
+# path the Caddyfile actually serves, or the default is the broken case.
+ARG NG_BASE_HREF=/admin/
+RUN npx ng build --configuration "${NG_CONFIGURATION}" --base-href "${NG_BASE_HREF}" \
+    # ASSERT IT LANDED. A silent blank page is exactly what this flag prevents, so a build that quietly ignored it
+    # would reintroduce the defect invisibly.
+    && grep -qF "<base href=\"${NG_BASE_HREF}\">" dist/admin/browser/index.html \
+    && echo "base href is ${NG_BASE_HREF}"
 
 # ==============================================================================================================
 # The exported artifact. `scratch` because nothing needs to RUN here -- this stage exists so the bundle has a

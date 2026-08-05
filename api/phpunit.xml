@@ -78,7 +78,20 @@
             KERNEL_CLASS is what `WebTestCase` resolves the kernel from. Without it the suite dies complaining the
             kernel was booted too early, which sends a reader hunting for a lifecycle bug that is not there.
         -->
-        <env name="APP_ENV" value="test"/>
+        <!-- `force="true"` ON THE ENVIRONMENT IDENTITY ONLY, and the asymmetry is the design rather than an oversight.
+             PHPUnit's `<env>` is NON-FORCING by default: it applies a value only when the variable is not already set
+             (`if ($force || getenv($name) === false)`). So before 2026-08-05 an ambient `APP_ENV=dev` silently beat
+             this file — and once `tests/bootstrap.php` began calling `Dotenv::bootEnv()`, that ambient value also
+             decided WHICH `.env.*` layered, replacing `.env.test`'s `in-memory://` transport. The container the
+             `make test` target runs in has exactly `APP_ENV=dev`, so this was not hypothetical.
+
+             A test run must be a test run whatever launched it, hence `force` here.
+
+             The DSNs below are deliberately left NON-FORCING, because they are the one thing that legitimately
+             differs per environment: CI overrides them, and so does a run inside the compose stack, where
+             `127.0.0.1` is the container itself rather than the database. That override path is documented in
+             CLAUDE.md § "Quality gate" and must keep working. -->
+        <env name="APP_ENV" value="test" force="true"/>
         <!--
             DEBUG OFF in tests, which is the opposite of the usual Symfony advice and deliberate here. With debug
             on, the framework logger writes every dispatched event to stdout; PHPUnit treats a test that produces
@@ -89,7 +102,7 @@
             assertion message here already embeds the response body, and debug=0 is closer to what production
             actually does — so an error rendering differently under debug cannot hide behind a passing test.
         -->
-        <env name="APP_DEBUG" value="0"/>
+        <env name="APP_DEBUG" value="0" force="true"/>
         <env name="APP_SECRET" value="test-secret-not-used-for-anything-signed"/>
         <env name="KERNEL_CLASS" value="Twes\Kernel"/>
         <!--

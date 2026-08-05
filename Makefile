@@ -181,8 +181,16 @@ build-front-dev: check-env ## Build DEVELOPMENT front-end bundles (source maps, 
 # `--no-deps` so this does not start the database, and `--entrypoint composer` to bypass the API entrypoint, which
 # would otherwise demand APP_SECRET and wait for a database that is not running.
 # --------------------------------------------------------------------------------------------------------------
+# `COMPOSER_FLAGS` is the one escape hatch for a network where Composer cannot fetch dist zipballs — pass
+# `--prefer-source` and it clones instead. This project's own development container needs exactly that (CLAUDE.md
+# § Gotchas, 2026-07-29), and it was reachable only by reading this file until 2026-08-05:
+#
+#     make install COMPOSER_FLAGS=--prefer-source
+#
+COMPOSER_FLAGS ?=
+
 .PHONY: install
-install: ## (Re)install PHP dependencies into api/vendor, using the container's PHP.
+install: ## (Re)install PHP deps into api/vendor using the container's PHP. COMPOSER_FLAGS=--prefer-source if needed.
 	$(DC) run --rm --no-deps --build --entrypoint composer api \
 		install --no-interaction --no-progress $(COMPOSER_FLAGS)
 	@echo "api/vendor is on the host now — point your IDE's PHP interpreter at the container and it will resolve."
@@ -218,10 +226,17 @@ composer: ## Run Composer in the container: make composer CMD="require symfony/u
 # `make debug-on`.] `export` puts it in the recipe's whole environment, where compose interpolation can see it.
 .PHONY: debug-on
 debug-on: export XDEBUG_MODE := debug,develop
+# 0 ONLY while the debugger is armed. A held breakpoint must not be killed by the request time limit — but the
+# unconditional `max_execution_time=0` this replaced applied with the debugger OFF too, so an accidental infinite
+# loop in ordinary dev hung forever instead of dying at 120s.
+debug-on: export TWES_MAX_EXECUTION_TIME := 0
 debug-on: ## Arm Xdebug (step debugger) and recreate the API containers.
 	$(DC) up -d --force-recreate api worker scheduler
 	@$(MAKE) --no-print-directory debug-status
 	@echo "  Listen on port 9003, ide key 'twes', and map  /app  ->  $(CURDIR)/api"
+	@trig=$$($(DC) exec -T api php -d display_errors=0 -r 'echo ini_get("xdebug.trigger_value");' 2>/dev/null | tail -1); \
+	echo "  Trigger value: $${trig:-<unreadable>}  — requests need XDEBUG_TRIGGER=$${trig:-?} (cookie or query param)."; \
+	echo "  That secret is what stops any page you visit opening a debugger into this container while it is armed."
 	@echo "  Only requests carrying XDEBUG_TRIGGER are debugged, so the stack stays fast."
 
 .PHONY: debug-off
@@ -235,15 +250,43 @@ debug-off: ## Disarm Xdebug and recreate the API containers.
 # `debug-on` printed "ARMED" unconditionally and was wrong for exactly one commit; a target that asserts its own
 # success is how that goes unnoticed. This asks PHP.
 debug-status: ## Report whether Xdebug is armed, as the running container sees it.
-	@mode=$$($(DC) exec -T api php -d display_errors=0 -r 'echo ini_get("xdebug.mode") ?: "off";' 2>/dev/null | tail -1); \
-	case "$$mode" in \
-		off|'') echo "Xdebug is INSTALLED and DISARMED (xdebug.mode=off) — no cost per request." ;; \
-		*)      echo "Xdebug is ARMED (xdebug.mode=$$mode)." ;; \
-	esac
+	@err=$$($(DC) exec -T api php -d display_errors=0 -r 'echo ini_get("xdebug.mode") ?: "off";' 2>&1 >/dev/null); \
+	mode=$$($(DC) exec -T api php -d display_errors=0 -r 'echo ini_get("xdebug.mode") ?: "off";' 2>/dev/null | tail -1); \
+	if [ -z "$$mode" ]; then \
+		echo "Xdebug state UNKNOWN — could not read it from the container. $${err:-(no error output)}"; \
+		echo "  Reported as unknown rather than 'off' on purpose: 'off' would be a guess, and guessing the SAFE"; \
+		echo "  direction here is the dangerous one — an armed debugger reported as disarmed."; \
+		exit 1; \
+	elif [ "$$mode" = off ]; then \
+		echo "Xdebug is INSTALLED and DISARMED (xdebug.mode=off) — no cost per request."; \
+	else \
+		echo "Xdebug is ARMED (xdebug.mode=$$mode)."; \
+	fi
 
 .PHONY: test
-test: ## Run the API test suites inside the container.
-	$(DC) exec api php tools/bin/phpunit-12.phar $(ARGS)
+# `unit,functional` BY DEFAULT, AND THE OMISSION OF `integration` IS DELIBERATE AND DOCUMENTED RATHER THAN A GAP.
+#
+# The tenancy proof needs the TWELVE-role fixture `scripts/dev/provision-test-database.sh` builds — a `BYPASSRLS`
+# role, a `REPLICATION` role, roles granted `WITH INHERIT FALSE`. `infra/database/init/10-roles.sh` deliberately
+# creates only TWO, and says so: *"Production must be able to express NONE of them ... a shared script would either
+# weaken the tests or ship attack roles to production."* Provisioning attack roles into the stack's database to make
+# one `make` target tidier would undo that, so the split is respected here instead.
+#
+# Run the tenancy suite on the host (or in CI) against a provisioned cluster — CLAUDE.md § "Quality gate" has the
+# command. `make test ARGS="--testsuite integration"` will attempt it and fail honestly rather than skip.
+#
+# `-e DATABASE_URL` because `phpunit.xml`'s value is `127.0.0.1`, which inside a container is the container. It is
+# passed here rather than forced in `phpunit.xml` precisely so each environment can point it somewhere real.
+#
+# `TEST_SUITES` IS A VARIABLE BECAUSE OF A MAKE FOOTGUN: `$(or $(ARGS),--testsuite unit,functional)` splits on the
+# comma INSIDE `unit,functional`, so make passed `--testsuite unit` and silently discarded `functional`. It ran 592
+# tests instead of 601 and reported OK. Function arguments are split on LITERAL commas before variable contents are
+# expanded, so holding the list in a variable makes the comma invisible to the split.
+TEST_SUITES ?= unit,functional
+test: ## Run the API unit+functional suites inside the container.
+	$(DC) exec \
+		-e DATABASE_URL='postgresql://$(or $(TWES_DB_RUNTIME_ROLE),twes):$(shell grep -hE "^TWES_DB_RUNTIME_PASSWORD=" $(INFRA)/.env.local | cut -d= -f2)@database:5432/$(or $(POSTGRES_DB),twes)?serverVersion=18&charset=utf8' \
+		api php tools/bin/phpunit-12.phar $(if $(ARGS),$(ARGS),--testsuite $(TEST_SUITES))
 
 # --------------------------------------------------------------------------------------------------------------
 # Database
