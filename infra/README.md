@@ -11,8 +11,17 @@ PHP, no Node, no Flutter on the host. The images bring their own.
 
 ```sh
 make env          # writes infra/.env.local with four freshly generated secrets. Run once.
-make up           # builds the API image and starts the stack. First run pulls base images; allow 5-10 min.
-make build-front  # builds the Angular and Flutter bundles into the volumes the API serves. Slow — see below.
+make up           # installs api/vendor if missing, builds the dev image, starts the stack. First run 5-10 min.
+make build-front  # PRODUCTION Angular and Flutter bundles into the volumes the API serves. Slow — see below.
+```
+
+For a development loop, add:
+
+```sh
+make build-front-dev  # the same bundles with source maps, unminified
+make debug-on         # arm Xdebug (see "Debugging with an IDE" below); make debug-off to disarm
+make test             # the API test suites, inside the container
+make composer CMD="require symfony/uid"   # Composer in the container, so the host needs no PHP
 ```
 
 Then:
@@ -20,7 +29,7 @@ Then:
 | URL | What |
 |---|---|
 | `http://localhost:8080/api` | the API Platform entrypoint |
-| `http://localhost:8080/api/docs` | OpenAPI / SwaggerUI |
+| `http://localhost:8080/api/docs.jsonopenapi` | the OpenAPI document. **NOT `/api/docs`**, which returns 404 to a browser: `api_platform.yaml` deliberately ships no HTML documentation UI, because SwaggerUI and ReDoc fetch remote assets and that is a privacy question this project has already ruled on for the Flutter build |
 | `http://localhost:8080/api/currencies` | the one implemented resource |
 | `http://localhost:8080/health` | liveness — touches nothing |
 | `http://localhost:8080/health/ready` | readiness — database, schema, tenant binding |
@@ -43,8 +52,69 @@ form would expose the stack to the local network, which on a laptop on café wif
 in `infra/.env.local` if 8080 is taken.
 
 **Behind a TLS-intercepting corporate proxy**, drop the CA into `infra/api/ca-certificates/` before `make up`.
-It is trusted for the BUILD only and never copied into the runtime image; without it Composer fails with what
-looks like the package server being unreachable. See that directory's own README.
+One certificate per file — `update-ca-certificates` refuses to hash-link a bundle. It is trusted for the BUILD
+only, and the API runtime stage explicitly REVOKES it, because a container that trusts an interception CA at run
+time would accept a man-in-the-middle on every outbound call, which from Wave 9 means payment gateways.
+
+**All three tiers read that one directory**, which is right because a CA is a property of the network rather than
+of a language toolchain — but only the API tier honoured it until 2026-08-05, so `make build-front` failed on any
+proxied network. Each tier fails differently and none of the messages names TLS first:
+
+| tier | symptom without the CA |
+|---|---|
+| API | Composer reports the package server unreachable |
+| admin | `npm error errno SELF_SIGNED_CERT_IN_CHAIN` at `npm ci` |
+| mobile | the Flutter SDK download from `storage.googleapis.com` returns nothing at all [Verified: `000` without the CA, `200` with it, against the exact pinned URL] |
+
+The admin tier needs one extra thing, and it is the half that is easy to miss: **Node does not use the system
+trust store.** It ships its own compiled-in root list, so `update-ca-certificates` alone changes nothing for
+`npm` — `NODE_EXTRA_CA_CERTS` is what adds to Node's list without replacing it. See that directory's own README
+and the comments in each Dockerfile.
+
+## dev and prod are different ARTEFACTS, not one artefact with a flag
+
+Developer ruling, 2026-08-04: *"dev should be an easy env to debug and test and prod should be very optimized and
+closed and secure"*. Those pull in opposite directions, so where they disagree they get separate builds. Design and
+rulings: `docs/plans/dev-prod-separation.plan.md`.
+
+| | dev (`make up`) | prod (`make up-prod`) |
+|---|---|---|
+| API image | `dev` Dockerfile target, tagged `twes-in/api:dev-local` | `runtime` target, tagged `twes-in/api:${TWES_VERSION}` |
+| Xdebug | **present**, `xdebug.mode=off` until `make debug-on` | **absent from the image entirely** |
+| Composer, `gcc` | present, so `make install` and `make composer` work | absent |
+| source | the whole `api/` tree bind-mounted read-write | baked in, root filesystem `read_only` |
+| `vendor/` | on the HOST, installed by the container | in the image |
+| OPcache | `validate_timestamps=1`, no preload, JIT off | `validate_timestamps=0`, preload, JIT tracing |
+| errors | `display_errors=On`, argument values in traces | logged only; `zend.exception_ignore_args=On` |
+| capabilities | Docker defaults | `cap_drop: ALL` on every service, adds established by test |
+| front-end bundles | `make build-front-dev` — source maps, unminified (1.31 MB) | `make build-front` — minified, no maps (189 kB) |
+
+**Why Xdebug forces two images rather than a switch.** A debugger in a production image is a remote-code-execution
+amplifier: `xdebug.mode` is settable from any `.ini` a compromised process can write, and Xdebug can be told to
+connect *out* to an attacker's host. The only safe way not to have that is not to build it.
+
+### Debugging with an IDE
+
+```sh
+make install     # PHP dependencies into api/vendor, installed BY the container (run automatically by `make up`)
+make debug-on    # arm Xdebug; `make debug-status` reports what the container actually sees
+```
+
+Then in the IDE: listen on port **9003**, ide key **`twes`**, and map **`/app` → `<this repo>/api`**.
+
+Two things about this are worth knowing because both fail *silently* when wrong:
+
+- **`api/vendor` must exist on the host**, which is what `make install` is for. It is a bind mount rather than a
+  named volume on purpose: an IDE indexes the project directory, and a named volume lives in root-owned
+  `/var/lib/docker/volumes/` where nothing will index it. Without a host `vendor/`, nothing resolves `Symfony\...`
+  and a breakpoint in a vendor frame has no file to open — execution appears to step into nothing.
+- **`host.docker.internal` does not exist on Linux** unless it is mapped to the host gateway, which
+  `compose.override.yaml` does. Without that line Xdebug's callback target does not resolve, no connection is
+  attempted, no error is raised, and breakpoints simply never hit.
+
+Xdebug is armed **by trigger**, so even when on, only requests carrying `XDEBUG_TRIGGER` (or the `XDEBUG_SESSION`
+cookie every IDE browser extension sets) are debugged. `xdebug.mode=debug` costs roughly 2-5x on *every* request
+even with no IDE attached, which is why the default is `off` rather than something to remember to turn back off.
 
 ## Configuration — the dotenv cascade
 

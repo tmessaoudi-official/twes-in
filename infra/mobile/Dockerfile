@@ -37,6 +37,30 @@ RUN apt-get update \
         xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# ==============================================================================================================
+# OPTIONAL SITE CA CERTIFICATES, trusted for the BUILD ONLY — absent from this file until 2026-08-05, which meant
+# this tier could not be built behind a TLS-intercepting proxy. The sibling admin tier failed the same way at
+# `npm ci` with `SELF_SIGNED_CERT_IN_CHAIN` [Verified]; here the first casualty would be the `curl` of the Flutter
+# SDK from `storage.googleapis.com`, and then every `pub` fetch.
+#
+# The certificate directory is SHARED with the API tier rather than duplicated, because a CA is a property of the
+# NETWORK and not of a language toolchain. Empty in a normal checkout (its `*.crt` are gitignored), so this is a
+# no-op unless somebody put a certificate there.
+#
+# PLACED HERE, AFTER `apt-get install ca-certificates` AND BEFORE THE FIRST HTTPS FETCH. Both halves matter. It
+# cannot go earlier because `update-ca-certificates` arrives with that package — and it does not deadlock the way it
+# would on Alpine, because Debian's `deb.debian.org` sources are plain HTTP, so apt itself needs no trust store.
+# It must not go later because the SDK download below is the first thing that needs it.
+#
+# Unlike the admin tier, `update-ca-certificates` IS the right tool here: Dart and Flutter resolve TLS trust through
+# the system store on Linux, so there is no equivalent of Node's separate compiled-in root list to work around.
+# `SSL_CERT_FILE` is set as well because Dart honours it explicitly, and being explicit costs nothing.
+# ==============================================================================================================
+COPY infra/api/ca-certificates/ /usr/local/share/ca-certificates/
+RUN rm -f /usr/local/share/ca-certificates/README.md \
+    && update-ca-certificates
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
 ENV FLUTTER_HOME=/opt/flutter
 ENV PATH="${FLUTTER_HOME}/bin:${PATH}"
 

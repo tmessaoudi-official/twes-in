@@ -25,6 +25,41 @@ ARG NODE_VERSION=26.5.0
 
 FROM node:${NODE_VERSION}-alpine AS build
 
+# ==============================================================================================================
+# OPTIONAL SITE CA CERTIFICATES, trusted for the BUILD ONLY — and ABSENT FROM THIS FILE UNTIL 2026-08-05, which
+# meant this tier could not be built behind a TLS-intercepting proxy at all. The API tier has had the mechanism for
+# some time; the two front-end tiers did not, so `make build-front` failed on any corporate network with:
+#
+#   npm error errno SELF_SIGNED_CERT_IN_CHAIN
+#   npm error request to https://registry.npmjs.org/... failed, reason: self-signed certificate in certificate chain
+#
+# [Verified: that exact failure at `npm ci`, in this project's own development container.]
+#
+# The certificate directory is SHARED with the API tier rather than duplicated per tier, because a CA is a property
+# of the NETWORK and not of a language toolchain. It is empty in a normal checkout (its `*.crt` are gitignored —
+# trusting a CA is a site-specific decision this repository must not make for a reader), so this is a no-op unless
+# somebody put a certificate there.
+#
+# NO `update-ca-certificates`, AND NO `apk`, WHICH IS THE INTERESTING PART. Two reasons, each verified:
+#
+#   1. NODE DOES NOT USE THE SYSTEM TRUST STORE. It ships its own compiled-in root list, so populating
+#      `/etc/ssl/certs` would change nothing for `npm` — the build would still fail with SELF_SIGNED_CERT_IN_CHAIN
+#      having apparently installed the certificate correctly. `NODE_EXTRA_CA_CERTS` is the supported way to ADD to
+#      Node's list without replacing it, so the public roots keep working.
+#   2. THE TOOL IS NOT THERE AND CANNOT EASILY BE INSTALLED. `node:alpine` ships the certificate BUNDLE but not the
+#      `ca-certificates` package that provides `update-ca-certificates` [Verified: exit 127], and `apk add` of it
+#      fails with `unable to select packages` [Verified] — while needing the network we are trying to fix. So the
+#      file is assembled with `cat`, which needs nothing.
+#
+# Concatenating the system bundle FIRST guarantees the file is non-empty even when no site certificate exists, which
+# matters because `NODE_EXTRA_CA_CERTS` pointing at a missing file makes Node warn on every invocation. The public
+# roots appearing twice (once compiled in, once here) is harmless.
+# ==============================================================================================================
+COPY infra/api/ca-certificates/ /tmp/twes-ca/
+RUN cat /etc/ssl/certs/ca-certificates.crt /tmp/twes-ca/*.crt > /usr/local/share/twes-ca.crt 2>/dev/null \
+    || cp /etc/ssl/certs/ca-certificates.crt /usr/local/share/twes-ca.crt
+ENV NODE_EXTRA_CA_CERTS=/usr/local/share/twes-ca.crt
+
 WORKDIR /build
 
 # Manifests first: this layer is cached until a DEPENDENCY changes rather than until any source file does. Angular
