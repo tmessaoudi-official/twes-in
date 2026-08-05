@@ -3338,7 +3338,6 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
-    /**
      * **A `SECURITY DEFINER` function owned by a role this connection HOLDS BUT CANNOT BECOME is refused.**
      *
      * This case exists to kill one mutant, and nothing else: reverting {@see

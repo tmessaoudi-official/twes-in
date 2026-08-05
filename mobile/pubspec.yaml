@@ -134,7 +134,9 @@ flutter:
   # the file is not in this repository and no lock file records a manifest flag.
   #
   # Its position was unclear (the SDK ships a CC-BY-4.0 text beside it; Google's icon repository states
-  # Apache-2.0, unverifiable from this container), so per licensing invariant 10 it was put to the developer
+  # Apache-2.0 — this comment said "unverifiable from this container" and that was false; it is verifiable and
+  # the claim is retracted, without disturbing the ruling, whose grounds are the SDK's own sidecar and the
+  # tree-shaking), so per licensing invariant 10 it was put to the developer
   # and the ruling was to comply with the STRICTER reading — which satisfies both. That notice carries the
   # attribution, the licence URI and the statement of modification the tree-shaking requires. It records a
   # DISCHARGED OBLIGATION, not a new permission: CC-BY-4.0 is still refused on any package.

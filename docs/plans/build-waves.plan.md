@@ -21,7 +21,7 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   port survives and the tests stay deterministic — had it read `microtime()` unconditionally, keeping the hand-written
   version would have been correct, because a generator whose output cannot be frozen is one whose ordering property
   cannot be tested. And **the hand-written version had a real defect**: it drew `random_bytes(10)` afresh per call, so
-  identifiers minted inside one millisecond sorted arbitrarily — **108 of 199 consecutive pairs did not ascend** —
+  identifiers minted inside one millisecond sorted arbitrarily — **about HALF of every consecutive pair failed to ascend** — 2000 runs of the deleted body at one frozen millisecond give median 100 of 199, min 81, max 115, mean 99.6, which is Binomial(199, ½) as expected for independent draws. The direction, not a total: an earlier version of this entry cited *"108 of 199"*, a single observation from a random experiment, which is the citation shape § "Quality gate" rules against —
   directly against the sortability its own first paragraph gives as the entire reason for choosing v7 over v4. Two
   documents created in one request share a millisecond routinely. Symfony re-randomises only when the millisecond
   changes and otherwise increments the random field. Pinned by `testIdentifiersFromOneFrozenMillisecondAreMonotonic()`,
@@ -398,7 +398,12 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-30 02:10] RULED: **`MaterialIcons-Regular.otf` is complied with under the STRICTER of its two
   candidate readings — CC-BY-4.0 — and that is a DISCHARGED OBLIGATION, not a new permission** (developer
   ruling, accepting the recommendation). The Flutter SDK ships a CC-BY-4.0 text beside the binary; Google's
-  icon repository states Apache-2.0, which is unverifiable from this container. Complying with CC-BY-4.0
+  icon repository states Apache-2.0. **AMENDED 2026-08-05: that clause read "which is unverifiable from this
+  container" and it was false** — `curl raw.githubusercontent.com/google/material-design-icons/master/LICENSE`
+  returns HTTP 200 and the Apache text. The RULING is unaffected and deliberately not re-opened: it rests on the
+  SDK's own CC-BY-4.0 sidecar being the licence that travelled with the binary, and on the shipped copy being
+  tree-shaken. Amended here rather than contradicted from the newer entry above, per § Gotchas 2026-07-29.
+  Complying with CC-BY-4.0
   satisfies Apache-2.0 § 4(a) too, so the stricter reading is correct under either. Attribution, licence URI
   and a statement of modification (the shipped copy is tree-shaken) travel in the artifact via
   `assets/fonts/MaterialIcons-LICENSE.txt`. **No permitted list is widened**: CC-BY-4.0 stays refused on any
@@ -511,8 +516,11 @@ Every wave follows the same loop, and none of it is optional:
 1. **State the slice** — what is in, what is explicitly out, and the acceptance criteria.
 2. **Write the failing tests first.** Money, tax and state transitions get their test before their
    implementation, every time. This is where this product's expensive bugs live.
-3. **Build** to the architecture rules in `CLAUDE.md` § "Architecture" — framework-free `Domain/`,
-   Doctrine mapping in XML, dependencies inward only.
+3. **Build** to the architecture rules in `CLAUDE.md` § "Architecture" — framework-free `Domain/`, a SEPARATE
+   persistence model in `Infrastructure/` mapped with **ATTRIBUTES** and a repository that translates,
+   dependencies inward only. (This step said *"Doctrine mapping in XML"* until 2026-08-05, four days after the
+   2026-08-01 ruling reversed it — and unlike the annotated history further down, an instruction to every future
+   wave carried the reversed rule unmarked.)
 4. **Run the tier gate** — `CLAUDE.md` § "Quality gate". Green means all of it, not most of it.
 5. **Certification round** — the three lenses (`domain-correctness-reviewer`,
    `tenancy-security-reviewer`, `completeness-reviewer`) against the **frozen** wave commit. Findings
@@ -2129,7 +2137,10 @@ in nothing but two commit messages — no numbered table, no severity, no OPEN/C
 above. A reviewer filed exactly that: *"'thirteen of fourteen' cannot be checked from the repository"*, and the
 one deliberately-deferred finding had no `OPEN` row, so unlike R22-20 nothing would bring it back. A round whose
 findings live only in `git log` is a round that cannot be audited, and the rate limit that ends this session is
-precisely when that matters. Frozen commits: **round 1 = `d75003a`, round 2 = `2508e54`.**
+precisely when that matters. Frozen commits: **round 1 = `d75003a`, round 2 = `2508e54`, round 3 = `e0f67f7`.**
+Each closed row names the commit that closed it — `CLOSED d75003a`, `CLOSED 2508e54`, `CLOSED 85816c3`,
+`CLOSED e0f67f7`. The bare phrase *"CLOSED this round"* was used by two different commits before 2026-08-05 and
+carried no distinguishing token, which is the same audit failure this paragraph is about, one level down.
 
 | # | Finding | Sev | Status |
 |---|---|---|---|
@@ -2153,7 +2164,7 @@ precisely when that matters. Frozen commits: **round 1 = `d75003a`, round 2 = `2
 | R25-18 | 11 skill banners + `inspect`'s degradation note told a future agent to run `vendor/bin/phpstan`; `.claude/settings.json` allow-listed the same path | **P2** | **CLOSED** `2508e54` |
 | R25-19 | 5 stale claims in this file, including the 2026-07-30 *"leave both owed"* ruling whose premise was the twenty-round misdiagnosis | **P2** | **CLOSED** `2508e54`, amended in place |
 | R25-20 | `THIRD-PARTY-NOTICES.md` says **"Two tools"** are fetched as phars while listing three; says the tree is *"Not yet installed"* while `api/vendor/` holds 120 packages; and states the locked tree as *"52 runtime + 54 dev"* | **P2** | **CLOSED** this round — 74 + 46 = 120, MIT ×96 / BSD-3-Clause ×24, derived from the lock; "Not yet installed" and "Two tools" both corrected, with the superseded figures quoted rather than swapped out |
-| R25-21 | `UuidV7Generator:32-35` justifies hand-rolling with *"it cannot be installed … every Composer dist URL is refused by egress policy"* — `symfony/uid` is installed and used by five files in the same layer | **P2** | **CLOSED** this round, and it was a LATENT DEFECT rather than a stale comment — see the ruling in `## Decisions Log`. `symfony/uid` adopted; the hand-written version produced **108 of 199 non-ascending** identifiers within one millisecond, against the sortability this class exists for |
+| R25-21 | `UuidV7Generator:32-35` justifies hand-rolling with *"it cannot be installed … every Composer dist URL is refused by egress policy"* — `symfony/uid` is installed and used by five files in the same layer | **P2** | **CLOSED** this round, and it was a LATENT DEFECT rather than a stale comment — see the ruling in `## Decisions Log`. `symfony/uid` adopted; the hand-written version produced **about half of every consecutive pair non-ascending** within one millisecond (median 100 of 199 over 2000 runs), against the sortability this class exists for |
 | R25-22 | The Material Icons Apache-2.0 grant is recorded in four places as *"cannot be verified from this container"*; `curl raw.githubusercontent.com/google/material-design-icons/master/LICENSE` returns 200 and the Apache text. The RULING is unaffected; its stated ground is false | **P2** | **CLOSED** this round at all four sites — the Apache grant is verified (HTTP 200 from the host `fetch-tools.sh` already uses) and the claim retracted. **The RULING is untouched**: its grounds are the SDK's own CC-BY-4.0 sidecar and the tree-shaking, neither of which was the egress claim. Re-opening it in Apache's favour remains an invariant-10 decision for the developer |
 | R25-23 | `CLAUDE.md:289` assigns the ambient-`time()`/`getenv()` P0 to *"a banned-function rule (PHPStan)"*; `no-ambient-calls-in-domain.php` delivers it and `phpstan.neon.dist` configures nothing of the kind. Now that CLAUDE.md says PHPStan is green, a reader concludes it is covered | **P2** | **CLOSED** this round — the rule is `no-ambient-calls-in-domain.php`, and `phpstan.neon.dist` has no `banned`/`forbid`/`disallow` key at all |
 | R25-24 | Two `api/tests/` comments still name the refuted blocker (`DocumentTotalsTest:953` *"PHPStan … is blocked on Composer egress"*, `DocumentNumberSequenceContract:41` *"currently blocked on Composer egress"*), plus `build-waves.plan.md`'s *"the next session with reachable dist URLs"* | **P3** | **CLOSED** this round — all three |
@@ -2172,3 +2183,46 @@ reached one site of several*, and four were *a fresh justification that was chec
 written INSIDE the fix for the first instance of that same shape. § Gotchas already records both; what this round
 adds is that they recur most reliably in the commit that claims to have fixed them, because the author is reading
 the new text rather than grepping for the old.
+
+### Certification round 26 — the `symfony/uid` adoption, attacked
+
+**18 findings across three lenses, five of them P1, and every P1 is about the identifier generator adopted in
+`e0f67f7`.** Frozen commit: **`e0f67f7`**. The short version: the swap fixed a real ordering defect and
+introduced a real entropy one, and the docblock's own tenancy justification did not survive contact with the new
+implementation. Nothing was reverted — the resolution is a security trade-off that is the developer's to make, so
+it is stated below rather than chosen quietly.
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R26-1 | **The docblock's entropy figure is false.** It says *"74 bits of randomness follow the timestamp"* — exact for `random_bytes(10)`, wrong for `symfony/uid`, which spends 10 of the 12 `rand_a` bits on sub-millisecond precision. It is **64**, and those 10 bits are a deterministic function of the clock (verified: they equal the sub-millisecond for 1000 of 1000 values). Four sites, one ADDED by that commit | **P1** | **OPEN** — depends on the ruling below |
+| R26-2 | **Same-millisecond siblings are correlated.** `symfony/uid` increments the random field rather than redrawing it; over 1999 measured pairs the delta is bounded by 2^24. An attacker holding one identifier faces 2^24 for the next, not 2^64. Cross-millisecond values ARE independent (measured). So *"an identifier is not guessable"* is false for a sibling in the same millisecond — and the same docblock argues that two documents in one request is the ordinary case | **P1** | **OPEN** |
+| R26-3 | **The unguessability property has ZERO test coverage.** Mutating `& 0xFFFFFF` to `& 0x0` in the dependency makes identifiers perfectly sequential — literally the `/invoices/1234` enumeration the docblock says a UUID prevents — and all 8 tests pass, exit 0 | **P1** | **OPEN** |
+| R26-4 | **`UuidV7`'s state is process-global `static`, and the seed is recoverable from output alone.** 21 observed same-millisecond deltas leak 504 of 512 bits; a reviewer brute-forced the last byte and then COMPUTED a later identifier exactly, including across two generator instances with different clocks. Today `APP_RUNTIME=SymfonyRuntime`, so one process is one request and this is confined within a tenant — but the same commit's `CLAUDE.md` hunk is the one announcing that **worker mode is now reachable**, which is precisely the condition under which that chain spans requests and therefore tenants | **P1** | **OPEN** — carries a hard constraint either way; see the ruling below |
+| R26-5 | **`MaterialIcons-LICENSE.txt`'s CONTENT was read by nothing.** The gate checked that the file exists and is declared under `flutter:` to `assets:`; gutting it to 15 bytes — no copyright notice, no licence notice, no URI, no disclaimer, no statement of modification — left the gate green. On the one artefact whose obligation attaches to the DISTRIBUTED bundle | **P1** | **CLOSED** — four required substrings, one per CC-BY-4.0 section 3(a) element, each with its clause cited; four mutants, each killed. The fourth needed EVERY occurrence removed, because the licence text inlines the phrase twice and a single-occurrence mutant survived — recorded rather than hidden |
+| R26-6 | **The monotonicity claim is CONDITIONAL and was asserted unconditionally.** Because the adapter always passes an explicit time, `generate()` re-randomises on `$time !== self::$time` — ANY difference, not just forward. Two generators with clocks 1 s apart, alternating: **98 of 199 pairs did not ascend**, the same rate as the defect the swap claims to fix. With `SystemClock` it holds perfectly (5000 ids, 0 inversions), so production is fine; a replay or migration with multiple clocks is not — and `FrozenClock`'s own docblock ships that case deliberately | **P2** | **OPEN** |
+| R26-7 | `nextIdentifier()` gained two throw paths (pre-epoch, and 48-bit overflow) that no `@throws` declares, and the exception is `Symfony\Component\Uid\Exception\InvalidArgumentException` — a third-party class now escaping through a `Domain/` port. Failing closed is an improvement, since the old body returned a well-formed id with a WRONG timestamp, but an adapter should translate to a domain exception | **P2** | **OPEN** |
+| R26-8 | R25-22 was closed as "all four sites"; there were **SIX**. The survivors were this file's own 2026-07-30 `RULED` entry — the durable record of that very ruling — and `mobile/pubspec.yaml`, the manifest a future author reads when touching the font declaration | **P2** | **CLOSED** — both amended in place |
+| R26-9 | `THIRD-PARTY-NOTICES.md` described `symfony/uid`'s purpose as *"adapter written by hand meanwhile — see below"*, in the commit that deleted the hand-written adapter, in the file that commit rewrote for accuracy — and "see below" pointed at nothing | **P2** | **CLOSED** |
+| R26-10 | **The reversed *XML-not-attributes* ruling survived at SIX sites**, and the panel found five: `CLAUDE.md`'s section-Architecture layout block (the rules file contradicting itself 100 lines apart), **step 3 of the wave loop** in this file — a live instruction to every future wave — `THIRD-PARTY-NOTICES.md`, `reimplementation-strategy.plan.md`'s unannotated `AGREED`, and a sixth the sweep missed: **`README.md`**, the entry-point document | **P2** | **CLOSED** — all six, amended in place |
+| R26-11 | The findings table's `Frozen commits:` line was two rounds stale, and `CLOSED this round` had been written by two different commits with no distinguishing token — the same audit failure the table's own opening paragraph is about, one level down | **P2** | **CLOSED** — every row names its commit |
+| R26-12 | **A malformed doc comment introduced by the commit under review, and a second live since 2026-07-31** — `//` lines spliced inside a `/** */` block, and a duplicated `/**` opener rendering a literal `/**` in its own docblock. Invisible to every tool in the tier: `php -l` sees one token, `php-cs-fixer` reported `0 of 89`, PHPStan `[OK] No errors`, and `no-orphaned-docblocks.php` checks a doc comment's POSITION, not its interior | **P2** | **CLOSED** — the gate gained a second axis (a `T_DOC_COMMENT` interior pass), it caught all three on its first run, and the meta-suite gained three cases including the false-positive direction (a blank continuation line must NOT flag). Two mutants |
+| R26-13 | `108 of 199` was recorded as a durable figure in two places; it is one draw from Binomial(199, one-half) — 2000 runs give median 100, min 81, max 115 — which is the citation shape section "Quality gate" rules against | **P3** | **CLOSED** — both state the direction now |
+| R26-14 | The **shipped** `MaterialIcons-LICENSE.txt` carried commentary about this container's egress policy and the file's own editorial history. A recipient of the web bundle should get the legal position, not its revision log | **P3** | **CLOSED** — the retraction lives in the plan and the gate docblock, where it belongs |
+| R26-15 | `testTheGroupsPartitionTheHexRatherThanRepeatingTheTimestamp`'s docblock pins *"the final group sliced from offset 0 instead of 20"* — a `substr` chain this commit deleted. It still asserts real output properties, but it now guards a dependency's layout while claiming to guard ours | **P3** | **OPEN** |
+
+**THE RULING OWED, and why it is not being made here.** R26-1 to R26-4 and R26-6 to R26-7 all reduce to one
+question: *is a v7 identifier an ORDERING artefact, or is it also a SECRET?* The hand-written version had 74 fresh
+bits per call and broken ordering; `symfony/uid` has 64 bits, guaranteed ordering under `SystemClock`, correlated
+siblings within a millisecond, and process-global state whose seed is recoverable from about 24 observations.
+Neither is strictly better. The recommendation on the table is: **keep `symfony/uid`, and stop treating the
+primary key as a secret** — a document id is for index locality, and any surface where an identifier IS the
+credential (the unauthenticated client portal, Wave 9) gets its own `random_bytes(32)` token. That resolves R26-2
+and R26-4 architecturally rather than by patching a docblock, and it carries one hard constraint: **worker mode
+must not be enabled before that token exists**, because worker mode is what makes the recoverable seed span
+tenants. The alternative — reverting and writing our own RFC 9562 method-1 counter — is defensible on the same
+reasoning that makes `Money` ours, and removes the process-global state outright. Put to the developer under the
+plain-text protocol; recorded here so the trade-off survives this session either way.
+
+**MAXIMAL remains unsatisfied.** Rounds so far: 14, 24, 18 findings. Not one fully-clean round, let alone two
+consecutive. Every round found real defects, and rounds 2 and 3 each found defects *introduced by the previous
+round's fixes* — which is the honest argument for the tier existing, not against it.

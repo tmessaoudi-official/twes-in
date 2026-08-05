@@ -88,8 +88,8 @@ allowlist. Direct requirements:
 | `symfony/asset` | v8.1.0 | MIT | resolves `asset()` to the LOCALLY SERVED Swagger UI css/js/fonts under `public/bundles/apiplatform/`. Without it the documentation page has no stylesheet | composer.lock |
 | `symfony/yaml` | v8.1.2 | MIT | configuration | composer.lock |
 | `symfony/translation` | v8.1.1 | MIT | i18n — FR/AR/EN catalogues | composer.lock |
-| `symfony/uid` | v8.1.0 | MIT | UUIDv7 (adapter written by hand meanwhile — see below) | composer.lock |
-| `doctrine/orm` | 3.6.7 | MIT | persistence, mapped in XML not attributes | composer.lock |
+| `symfony/uid` | v8.1.0 | MIT | UUIDv7 generation, and the `Uuid` type on every Doctrine row entity's identifier columns. **Adopted 2026-08-05** — this row said *"adapter written by hand meanwhile — see below"*, with a "see below" pointing at nothing, in the commit that deleted the hand-written layout | composer.lock |
+| `doctrine/orm` | 3.6.7 | MIT | persistence, via a SEPARATE model in `Infrastructure/` mapped with **ATTRIBUTES**. This row said *"mapped in XML not attributes"* until 2026-08-05, four days after the 2026-08-01 ruling reversed it | composer.lock |
 | `doctrine/dbal` | 4.4.4 | MIT | database abstraction | composer.lock |
 | `doctrine/doctrine-bundle` | 3.3.1 | MIT | Symfony integration — **3.x is the first line supporting Symfony 8** | composer.lock |
 | `doctrine/doctrine-migrations-bundle` | 4.0.0 | MIT | schema migrations, incl. the RLS policies | composer.lock |

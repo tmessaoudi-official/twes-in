@@ -951,8 +951,8 @@ final class DocumentTotalsTest extends TestCase
      * revertible with the suite green.
      *
      * `list<DocumentLine>` was a docblock claim that nothing enforced. PHPStan now DOES (level 6 over `tests/` too),
-        // and it is what found the annotation and this test contradicting each other — the annotation was the one
-        // that was wrong, and both parameters now read `array<int, …>`.
+     * and it is what found the annotation and this test contradicting each other — the annotation was the one
+     * that was wrong, and both parameters now read `array<int, …>`.
      * So a non-sequential caller made the message name "document line 8" while `DocumentTotals::lineNets()` exposes
      * 0 and 1. An index a client is told to fix has to be the index the client can see.
      */

@@ -69,8 +69,12 @@ calculation. See `docs/plans/reimplementation-strategy.plan.md` § "Pinned stack
 ## Architecture
 
 **TDD, DDD, hexagonal and clean architecture**, with a **framework-free domain layer**: no Symfony, no
-Doctrine, no I/O and no ambient clock or randomness inside `Domain/`, and Doctrine mapping in XML rather
-than attributes on entities. Money is a first-class value object carrying its currency's own
+Doctrine, no I/O and no ambient clock or randomness inside `Domain/`, and persistence as a **separate model**
+in `Infrastructure/` — ordinary mutable Doctrine entities mapped with attributes, plus a repository that
+translates to and from the domain aggregate. (This read *"Doctrine mapping in XML rather than attributes on
+entities"* until 2026-08-05; the 2026-08-01 ruling reversed it, because a `final readonly` aggregate is
+something Doctrine's identity map cannot track whichever driver is used — the driver was the wrong argument,
+the model boundary was the right one.) Money is a first-class value object carrying its currency's own
 decimal scale, with an explicit rounding mode on every lossy operation — never a float, and never a
 2-decimal assumption, because the default currency (TND) has **three**. The arithmetic is `bcmath`, so
 `Domain/` has **zero Composer dependencies** — enforced by a gate, not by convention.

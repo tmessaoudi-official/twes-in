@@ -168,6 +168,31 @@ const FRAMEWORK_PROVIDED_FONTS = [
         'obligation' => 'CC-BY-4.0',
         'text' => 'MaterialIcons-LICENSE.txt',
         'source' => 'uses-material-design: true',
+        // WHAT THE TEXT MUST ACTUALLY CONTAIN, one substring per CC-BY-4.0 § 3(a) requirement.
+        //
+        // This list exists because the docblock above claimed *"Attribution, licence notice, licence URI and a
+        // statement of modification … all live in `MaterialIcons-LICENSE.txt`"* while the code checked only that
+        // the file EXISTED and was DECLARED. A certification round gutted it to 15 bytes — `Material Icons` and
+        // a newline, with no copyright notice, no licence notice, no URI, no disclaimer and no statement of
+        // modification — and the gate reported OK. That is the "control asserted in prose and enforced nowhere"
+        // shape § Gotchas records four times, on the ONE artefact whose obligation attaches to the DISTRIBUTED
+        // bundle rather than to the working tree.
+        //
+        // Substrings rather than a checksum, deliberately: the prose must stay editable (this very round
+        // rewrote a paragraph of it), and pinning a hash would make every legitimate clarification a gate
+        // failure, which is how a check gets deleted. Each entry is the machine-checkable core of one legal
+        // requirement, and the reason is stated so a future author knows what removing an entry gives up.
+        'required' => [
+            // § 3(a)(1)(A)(i) — the creator, and the copyright notice §(ii) asks for.
+            'Copyright 2019 Google LLC',
+            // § 3(a)(1)(A)(iii)-(iv) — the licence notice and the disclaimer of warranties.
+            'Creative Commons Attribution 4.0 International',
+            // § 3(a)(1)(B) — the URI. Apache-2.0 § 4(a) is satisfied by the same line.
+            'creativecommons.org/licenses/by/4.0/legalcode',
+            // § 3(a)(1)(B) again, and Apache-2.0 § 4(b): the shipped copy is TREE-SHAKEN, i.e. modified, so an
+            // indication of modification is mandatory rather than courteous.
+            'STATEMENT OF MODIFICATION',
+        ],
     ],
 ];
 
@@ -768,6 +793,24 @@ function fontViolations(string $directory, string $manifest, string $notices, in
                 $record['text'],
                 basename($manifest),
             );
+        }
+
+        // AND ITS CONTENT. Existing and shipping is not complying: see `required` on the record for why this
+        // half was missing and what a 15-byte file got past.
+        $text = (string) file_get_contents($directory . '/' . $record['text']);
+
+        foreach ($record['required'] as $needle) {
+            if (!str_contains($text, $needle)) {
+                $violations[] = sprintf(
+                    '%s: %s is missing "%s". It ships in the release bundle, so that string is a legal '
+                    . 'requirement discharged by this file and nothing else — %s cannot be satisfied without '
+                    . 'it. Edit the prose freely; do not drop a required element.',
+                    $font,
+                    $record['text'],
+                    $needle,
+                    $record['obligation'],
+                );
+            }
         }
     }
 

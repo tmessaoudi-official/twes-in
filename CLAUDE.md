@@ -398,7 +398,9 @@ Inside the API:
 api/src/
   Domain/          # entities, value objects, domain events, port interfaces. ZERO dependencies.
   Application/     # use cases / command+query handlers. Depends only on Domain.
-  Infrastructure/  # Doctrine, HTTP clients, PDF, gateways, e-invoicing, Doctrine mapping XML.
+  Infrastructure/  # Doctrine, HTTP clients, PDF, gateways, e-invoicing, the ATTRIBUTE-mapped persistence
+                   # model + its mapper (this said "Doctrine mapping XML" until 2026-08-05, contradicting
+                   # the ruling 100 lines above it in this same section).
   UI/              # REST controllers, CLI commands, serializers.
 ```
 

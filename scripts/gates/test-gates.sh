@@ -1826,6 +1826,48 @@ for shape in blank attribute oneline sameline enumcase; do
   fi
 done
 
+# THE SECOND AXIS: a doc comment's INTERIOR. Round 3 of the PHPStan certification found the gate blind to a
+# continuation line that is not one, in two spellings -- and BOTH were live in this repository at the frozen
+# commit, one introduced by the commit under review and one there since 2026-07-31. Nothing else could see
+# either: `php -l` treats the block as a single token, `php-cs-fixer` does not reflow doc bodies, PHPStan parses
+# only the tags. Hand-picked for the same reason the shapes above are: these are syntactic spellings, not
+# members of a rule set.
+#
+# The third case is the FALSE-POSITIVE direction and it is the one that would make this axis unusable: a
+# perfectly ordinary doc comment containing a blank continuation line (` *` with nothing after it, or a wholly
+# empty line) must NOT be flagged, or every docblock in the tree becomes a violation.
+for interior in slashline dupopener blankok; do
+  rm -rf "$WORK/interior"
+  mkdir -p "$WORK/interior/scripts/gates" "$WORK/interior/src"
+  cp "$REPO_ROOT/scripts/gates/no-orphaned-docblocks.php" "$WORK/interior/scripts/gates/"
+  case "$interior" in
+    slashline)
+      printf '<?php\nclass A {\n    /**\n     * A.\n        // spliced line comment.\n     * B.\n     */\n    public function m(): int { return 1; }\n}\n' > "$WORK/interior/src/S.php" ;;
+    dupopener)
+      printf '<?php\nclass A {\n    /**\n    /**\n     * A.\n     */\n    public function m(): int { return 1; }\n}\n' > "$WORK/interior/src/S.php" ;;
+    blankok)
+      printf '<?php\nclass A {\n    /**\n     * A.\n     *\n\n     * B.\n     */\n    public function m(): int { return 1; }\n}\n' > "$WORK/interior/src/S.php" ;;
+  esac
+  git -C "$WORK/interior" init -q
+  git -C "$WORK/interior" add -A >/dev/null 2>&1
+  interior_output="$(cd "$WORK/interior" && php scripts/gates/no-orphaned-docblocks.php 2>&1)" && interior_rc=0 || interior_rc=$?
+  if [[ "$interior" == 'blankok' ]]; then
+    if (( interior_rc == 0 )) && printf '%s' "$interior_output" | grep -qF 'malformed=0'; then
+      printf '  ok   — a blank continuation line is NOT a malformed one\n'
+      passed=$((passed + 1))
+    else
+      printf '  FAIL — a blank continuation line is NOT a malformed one (rc=%s)\n' "$interior_rc"
+      failed=$((failed + 1))
+    fi
+  elif (( interior_rc != 0 )) && printf '%s' "$interior_output" | grep -qF 'MALFORMED continuation line'; then
+    printf '  ok   — catches the %s malformed-interior shape\n' "$interior"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — catches the %s malformed-interior shape (rc=%s)\n' "$interior" "$interior_rc"
+    failed=$((failed + 1))
+  fi
+done
+
 # A HEREDOC CONTAINING TEXT THAT LOOKS EXACTLY LIKE TWO DOC COMMENTS must NOT be flagged. This is the
 # false-positive direction, and for a detector whose subject matter IS comments it is the one that would make the
 # gate unusable — a string is not a comment, and the tokenizer is what knows the difference. A `grep`- or

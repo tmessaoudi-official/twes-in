@@ -11,13 +11,10 @@ MaterialIcons-Regular.otf is not vendored by this repository. It reaches the bui
 artifact from `uses-material-design: true` in mobile/pubspec.yaml, and it is supplied
 by the Flutter SDK, which keeps a licence file beside it whose first line reads
 "Attribution 4.0 International". Google's material-design-icons repository states
-Apache-2.0 for the icon set, which would be a weaker obligation. That statement IS
-verifiable; this file previously said it "could not be verified from the development
-container (GitHub egress is restricted)", and that claim is retracted. twes-in complies
-with the STRICTER of the two readings on grounds that never depended on it: the licence
-supplied alongside this binary by the Flutter SDK is the CC-BY-4.0 one, and the copy
-shipped in the bundle is tree-shaken, i.e. a modified work under either licence.
-Complying with the stricter reading satisfies both: CC-BY-4.0's
+Apache-2.0 for the icon set, which would be a weaker obligation. twes-in complies with
+the STRICTER of the two readings: the licence supplied alongside this binary by the
+Flutter SDK is the CC-BY-4.0 one, and the copy shipped here is tree-shaken, i.e. a
+modified work under either licence. Complying with the stricter reading satisfies both: CC-BY-4.0's
 attribution, licence-notice and licence-URI requirements are discharged by this file
 travelling in the distributed bundle, and Apache-2.0 section 4(a) asks for less.
 

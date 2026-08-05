@@ -116,6 +116,7 @@ foreach (ORPHAN_SEPARATORS as $name) {
 
 $inspected = 0;
 $violations = [];
+$malformed = [];
 
 foreach ($files as $file) {
     $source = @file_get_contents($file);
@@ -172,6 +173,33 @@ foreach ($files as $file) {
                 $violations[] = $file . ':' . $pendingDocLine;
             }
 
+            // THE SECOND AXIS: a doc comment's INTERIOR, not its position.
+            //
+            // Round 3 of the PHPStan certification found two shapes this gate was blind to, one of them
+            // introduced by the commit under review and one there since 2026-07-31 — and NOTHING else could see
+            // either: `php -l` treats a doc comment as one token, `php-cs-fixer` reported `0 of 89`, and PHPStan
+            // reported `[OK] No errors`. The rendered text is what a reader and every doc tool consume, so a
+            // continuation line that is not a continuation line is a defect in the artefact this gate exists to
+            // protect. Two spellings, both real:
+            //
+            //   - a line beginning `//` instead of ` * `, which renders the `//` as prose;
+            //   - a second `/**` on its own line, which renders a literal `/**` inside its own block.
+            //
+            // Checked on the TOKEN's own text rather than by re-reading the file, so it cannot drift out of step
+            // with what the tokenizer actually saw. The first and last lines are excluded: they carry the `/**`
+            // and `*/` delimiters by construction.
+            $docLines = preg_split('/\R/', $token[1]) ?: [];
+
+            foreach (array_slice($docLines, 1, max(0, count($docLines) - 2)) as $offset => $docLine) {
+                $trimmed = ltrim($docLine);
+
+                if ('' === $trimmed || str_starts_with($trimmed, '*')) {
+                    continue;
+                }
+
+                $malformed[] = [$file . ':' . ($line + $offset + 1), rtrim($docLine)];
+            }
+
             $pendingDocLine = $line;
 
             continue;
@@ -186,7 +214,13 @@ foreach ($files as $file) {
 // Printed UNCONDITIONALLY and before the verdict, so the meta-suite can prove the gate looked at something. A
 // gate that inspected zero files reports OK indistinguishably from one that swept the tree, and CLAUDE.md
 // § Gotchas records a fixture omitting its input making every assertion about it vacuous while staying green.
-printf("counts — inspected=%d violations=%d separators=%d\n", $inspected, count($violations), count($separators));
+printf(
+    "counts — inspected=%d violations=%d malformed=%d separators=%d\n",
+    $inspected,
+    count($violations),
+    count($malformed),
+    count($separators),
+);
 
 if (0 === $inspected) {
     fwrite(STDERR, "no-orphaned-docblocks: FAIL — inspected NO files, so this gate proved nothing.\n");
@@ -218,4 +252,26 @@ if ([] !== $violations) {
     exit(1);
 }
 
-printf("no-orphaned-docblocks: OK — %d file(s) carry no stranded doc comment.\n", $inspected);
+if ([] !== $malformed) {
+    fwrite(STDERR, "no-orphaned-docblocks: FAIL — a doc comment has a MALFORMED continuation line.\n");
+
+    foreach ($malformed as [$where, $text]) {
+        fwrite(STDERR, sprintf(
+            "  %s — this line is inside a /** */ block but does not begin with `*`, so its text renders\n"
+            . "     verbatim: %s\n"
+            . "     Two spellings produce this and both have shipped here: a `//` line comment pasted into a doc\n"
+            . "     block, and a duplicated `/**` opener. No other tool in this tier sees it — `php -l` treats the\n"
+            . "     whole block as one token, `php-cs-fixer` does not reflow doc bodies, and PHPStan only parses\n"
+            . "     the tags.\n",
+            $where,
+            $text,
+        ));
+    }
+
+    exit(1);
+}
+
+printf(
+    "no-orphaned-docblocks: OK — %d file(s) carry no stranded doc comment and no malformed continuation.\n",
+    $inspected,
+);
