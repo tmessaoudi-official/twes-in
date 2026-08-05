@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-05 21:30] AGREED: the worker-mode control INVERTS its three polarities rather than extending its lists — scope by exclusion, seam set derived from the Caddyfile's own placeholders, and a whole-line allow-list plus an EMPTY-seam rule instead of per-dialect value parsing. **The four Caddyfile seams are KEPT**: the developer challenged the proposal to delete them, and they are FrankenPHP's own image's variable names, declared in `infra/.env` and both Dockerfile targets, so deleting them would invent a project-specific spelling of a conventional thing and still not close `api/.env.prod`.
 
 - [2026-08-06 03:00] AGREED: **a gate must enumerate the SURFACE, not the spellings — and not the locations
   either.** Round 27 inverted a block-list of runtime class names into an allow-list of one value and called that
@@ -48,10 +49,16 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   identifier, not the implementation: row-level security and (from Wave 7) the permission checks are the tenancy
   controls, never the shape of a key. Two constraints, both MECHANISED rather than written down — the client
   portal (Wave 10) gets its own `random_bytes(32)` token, and worker mode is blocked by
-  `scripts/gates/compose-config.sh` until it exists, on both `APP_RUNTIME` and the `FRANKENPHP_CONFIG` seam, with
-  a mutant per spelling. The residue worth remembering: the entropy property had NO test, and reducing the
+  **`scripts/gates/worker-mode-blocked.sh`** across every tracked file, plus `scripts/gates/compose-config.sh` on
+  the rendered compose configuration, until it exists. Not "a mutant per spelling" — that phrasing described a
+  block-list of runtime class names and survived here for three commits after the mechanism it named was
+  dismantled. The gate enumerates NOTHING forbidden: scope is exclusion-based, the seam set is derived from the
+  Caddyfile's own placeholders, an `APP_RUNTIME` line must equal one of three committed literals, and a seam must
+  be EMPTY. The residue worth remembering: the entropy property had NO test, and reducing the
   increment to a constant `+1` left every case then in the file green while emitting visibly sequential
-  identifiers. (This said "all ten cases"; the file has never had ten — 8 then, 12 now. Round 5 found it still
+  identifiers. (NO COUNT is written here. It said "all ten cases", then "8 then, 12 now"; the file has had **12**
+  since `1fc8f71` [Verified: `phpunit --filter UuidV7GeneratorTest` → `OK (12 tests, …)` at three commits], so the
+  correction was as stale as what it corrected. Round 5 found the original still
   standing here after the previous commit inserted two new entries DIRECTLY ABOVE it, which is § Gotchas
   2026-07-29's shape: a correction that does not reach the sentence it corrects.)
   Rejected alternatives, each on merit: writing our own RFC 9562 method-1 counter (defensible on the same
@@ -1418,10 +1425,15 @@ adds is that a UUIDv7 does not satisfy it and must not be reached for. `symfony/
 within a millisecond rather than redrawing it, so siblings are correlated within 2^24, and its process-global
 seed is recoverable from about 24 observed identifiers — a reviewer computed a later identifier exactly. Those
 are properties of an ORDERING key, which is all a v7 is here.
-Two consequences for this wave: the token is generated and stored separately from the document id, and **the
-`FrankenPHP worker mode` block in `scripts/gates/compose-config.sh` is deleted by THIS wave and no earlier** —
-that check exists solely because one process per request is what keeps the recoverable seed inside a single
-tenant. Landing the token is what earns the switch.
+Two consequences for this wave: the token is generated and stored separately from the document id, and **BOTH
+worker-mode checks are deleted by THIS wave and no earlier** — the whole of
+`scripts/gates/worker-mode-blocked.sh` (delete the file, its `composer gate:architecture` entry, and its case block
+in `test-gates.sh`) **and** the `APP_RUNTIME`/seam block inside `scripts/gates/compose-config.sh`. This instruction
+named only the second for three commits, so an author following it would have left the first standing and been
+unable to enable worker mode at all — while `worker-mode-blocked.sh:46` said "DELETE THIS GATE IN WAVE 10" and
+nothing here agreed. Deleting them also means restoring the four Caddyfile seams to being freely settable, which is
+the capability the emptiness rule borrows rather than removes. Both checks exist solely because one process per
+request is what keeps the recoverable seed inside a single tenant. Landing the token is what earns the switch.
 
 ## Wave 11 — Flutter client — all six targets
 
@@ -2325,9 +2337,13 @@ the dangerous values correctly.
 
 ### Certification round 28 — enumerating the surface instead of the spellings
 
-**Twenty findings from two of three lenses.** Frozen commit: **`1fc8f71`**. The correctness lens never reported and
+**Seventeen findings from two of three lenses** — written as "twenty" for a commit while the table below has
+seventeen rows [Verified: `grep -cE '^\| R28-'` over this section → 17]. The twenty was the raw count relayed in
+conversation before deduplication, and a header that disagrees with the table beneath it is the same
+count-in-prose defect this file records against half a dozen other sentences. Frozen commit: **`1fc8f71`**. The
+correctness lens never reported and
 its liveness could not be established from the container — recorded so the round is not read as a full panel. The
-developer chose to proceed on the twenty and re-run a complete panel afterwards.
+developer chose to proceed on the seventeen and re-run a complete panel afterwards.
 
 The round's verdict on round 27's fix: **the allow-list inversion was necessary and nowhere near sufficient.**
 Worker mode was reachable four more ways, none of them a spelling, all of them the same shape one level out —
@@ -2365,3 +2381,114 @@ first reported SURVIVED — because the mutation script's shell escaping was wro
 trap round 27 fixed in `test-gates.sh` and I walked into it again by hand, in the same session, while writing the
 fix for it. The habit that catches it is cheap and now written down: **before believing a mutant survived, assert
 the mutation applied.**
+
+### Certification round 29 — inverting the polarity instead of extending the list
+
+**Thirty-one findings from a full three-lens panel.** Frozen commit: **`07e5a94`**. The correctness lens reported
+last, ~50 minutes after the other two; its liveness was verified from its own live transcript rather than assumed,
+after a previous round taught that an agent's output-file size is not evidence of anything.
+
+**The round's verdict, and it is the useful one: hardening the gate a third time had failed for the third time, and
+always in the same shape.** Version 1 enumerated forbidden VALUES and was beaten by `export APP_RUNTIME=` and by
+two class names that exist in no package. Version 2 enumerated LOCATIONS and was beaten by a Dockerfile `ENV` a
+comment named but no code read, plus two unchecked Caddyfile seams. Version 3 — this round's subject — enumerated
+PATH PATTERNS and was beaten six ways at once:
+
+| # | Route | Why the pattern could not see it |
+|---|---|---|
+| R29-C3 | `api/.env.prod` | `'\.env$'` is anchored to a path ENDING `.env`. Symfony's cascade documents `.env.$APP_ENV` as **committed**, `infra/.env` sets `APP_ENV=prod`, so this is the live file — and `api/.env.test` was already tracked and already unscanned. [Verified: gate exit 0; `Dotenv::bootEnv` then returns the worker runtime.] |
+| — | `infra/api/Dockerfile.dev` | `'Dockerfile$'` misses every variant name. |
+| — | `api/composer.json` | `extra.runtime.class` is baked into `vendor/autoload_runtime.php` by `symfony/runtime`'s plugin, so it needs no environment variable anywhere; no path pattern covered it. |
+| R29-C4 | a YAML **block scalar** on a seam | The directive sits on lines the key never appears on, so a per-physical-line search for `worker` beside the key cannot see it — and the rendered half inspected two of four seams, so the union of both gates still left the route open. |
+| R29-C7 | a **fifth** Caddyfile seam | `SEAM_VARIABLES` was hand-written while the gate's own header claimed it was derived from the Caddyfile's enumeration. |
+| R29-C10 | `ENV APP_RUNTIME <value>` | The legacy space-separated form contains no `=` at all, so a rule requiring `[=:]` after the name is blind to it. |
+
+**The developer challenged the proposed remedy, and the challenge was right.** The recommendation had been to DELETE
+the four Caddyfile seams as "dead wiring". They are not dead — `infra/.env:66-69` declares all four and
+`infra/api/Dockerfile` sets them in both targets — and they are **FrankenPHP's own image's variable names**, which
+`infra/api/Caddyfile:18-19` says in its own comment. Deleting them would have invented a project-specific spelling
+of a conventional thing, the exact marker § Gotchas 2026-08-02 records for first-principles wiring. It would also
+not have closed R29-C3, which involves no seam at all. **And it aimed at round 5's failure mode: none of round 6's
+four security P0s is a seam defeat.**
+
+**What landed instead: all three axes INVERTED, and the seams kept.**
+
+| Axis | Was | Is |
+|---|---|---|
+| scope | in-scope if a path matches one of 7 patterns → fail-**open** for anything new | in-scope unless it matches one of 5 exclusions (`*.md`, `docs/`, `tests/`, `.claude/`, the gates) → fail-**closed**. 23 files inspected became **276** |
+| knobs | a hand-written array of 4 | **derived** from every Caddyfile's `{$…}` placeholders, minus the one that is a hostname |
+| values | parsed per dialect | the normalised LINE must equal one of **three** committed literals; a seam must be **EMPTY** |
+
+The third inversion is the load-bearing one: requiring a seam to be empty rather than free of the word `worker`
+closes the block scalar by construction, and comparing the whole line rather than an extracted value retires the
+legacy `ENV` form, the quoted `"APP_RUNTIME":` key and the `\`-split assignment simultaneously — none of which the
+gate has to know exists. **A permission list is ratcheted as a MAXIMUM** (exclusions ≤ 5, permitted lines ≤ 3,
+not-a-seam ≤ 1) and the derived seam set as a minimum, and a dedicated case asserts `scanned_pattern` stays
+DELETED so the inclusion-list polarity cannot return quietly.
+
+**Evidence, in the order it was produced.** The new cases were written FIRST and run against the unmodified gate:
+**9 genuine bypasses reproduced** (`rc=0`) and **3 false positives** reproduced exactly as R29-C5 described. After
+the rewrite: **every worker-mode case green** (the count is derived from `test-gates.sh`'s own `for wm_route in`
+list and is deliberately not written here — "24" and "sixteen refusal routes" were both written while the list held
+more, in a document whose own subject is stale counts), meta-suite **447 passed, 0 failed** (from
+`423 passed, 1 failed`), and the whole `composer gate` chain green end to end.
+
+**Two defects the rewrite introduced, both found by measurement rather than by review, and both worth recording
+because they are the cost of inverting a scope.**
+
+- **Widening the scope changed the gate's COMPLEXITY CLASS, and nobody would have noticed from a passing suite.**
+  Reading 276 files instead of 23, with two helpers that echoed through command substitution — a fork per line over
+  ~28,000 lines — took **44.8s** per invocation, so the meta-suite's 25 cases became ~19 minutes and read as a
+  *hung* suite. The helpers now assign a global and are called bare. Then a second, larger cause: the suite still
+  took **597s**, and `composer gate` died with `The process "bash ../scripts/gates/test-gates.sh" exceeded the
+  timeout of 300 seconds` — Composer's default — **while the suite itself was green**, so the documented
+  one-command entry point failed on a passing tree.
+- **The cause of that 597s was a FIXTURE-FIDELITY defect, not slowness.** The worker-mode fixture ran
+  `cp -a api/public`, and only `api/public/index.php` is tracked — the rest is 3.7MB of Swagger UI and ReDoc bundles
+  written by `assets:install` and gitignored. `git add -A` then TRACKED them, so **the fixture did not mirror the
+  tracked tree it stands in for**, and one gate run took 20.8s. Copying the one tracked file, plus a per-file fast
+  reject built from the DERIVED keyword set, brought the gate to **1.2s** and the suite to **48s**.
+  **A `config.process-timeout: 1800` was added and then REMOVED in the same change**: it was a real fix for the
+  wrong problem, and keeping it would have left the fixture defect in place and hidden it. The gate now passes
+  inside Composer's default. [All figures measured with `date +%s`; `composer gate` → EXIT=0.]
+
+**And the fast path reintroduced this project's most-repeated bug within minutes of writing it.** The reject was a
+`continue`, which skipped the whole file iteration and took the `composer.json` check *below the line loop* with it
+— so `extra.runtime.class` silently stopped being detected. That is the IDENTICAL defect `compose-config.sh` had one
+round earlier (`if 'APP_RUNTIME' not in env: continue` killing the seam loop beneath it). It was caught **only
+because a mutant existed for the check the `continue` orphaned**, which is the entire argument for writing the
+mutant in the same change as the rule. The replacement selects the loop's INPUT (`/dev/null`) instead of skipping
+the iteration — and the first attempt at *that* folded the guard into the `while` condition, where it parsed such
+that the body never ran at all, caught instantly by `runtime_lines=0` on a tree with five. **Two anti-vacuity
+counters earned their keep in one afternoon.**
+
+**Two P1s were process failures rather than code, and both are recorded because they recur.**
+
+- **`test-gates.sh` was RED at the frozen commit and the commit message claimed `424/0`** (R29-C1). The gate had
+  eleven cases and no *declared* clean case, so the meta-suite's own "a gate on disk has no case in this suite" rule
+  failed — § Gotchas 2026-08-02 verbatim, recurring in the same file, defeating the `# clean-case-inline:` form
+  added at that finding to prevent it. `423 + 1 = 424` is where the number came from: **the total, read as the pass
+  count.** Consequence nobody had noticed: `gate:architecture` ran `test-gates.sh` at position 9 and the new gate at
+  position 11, and a Composer script chain stops at the first failure — so `worker-mode-blocked.sh` had **never once
+  run** under `composer gate`. The suite now runs **last**.
+- **Every one of the eleven cases for the gate whose headline property is "cannot skip" sat inside the
+  `docker compose` skip branch** (R29-C2), and the skip line printed *"the gate skips identically"* — false for the
+  eleven it silently covered, with the shrinkage floor absorbing the loss. Moved out.
+
+**And a performance defect found by the fix itself.** The rewritten gate reads 276 files, and its two helpers used
+command substitution — a fork per line, ~28,000 lines. [Measured: **44.8s** per invocation, ×25 meta-cases ≈ 19
+minutes, which reads as a hung suite rather than a slow one.] Both now assign a global and are called bare:
+**5.6s**, identical output. Worth keeping as a shape: *widening a gate's scope changes its complexity class, so
+re-measure it in the same change.*
+
+**I broke the freeze in round 28→29 and it must be recorded.** Commit `07e5a94` landed while the round-5 correctness
+lens was still reading, rewriting exactly the files it had been assigned. § Gotchas 2026-07-29 records this
+precisely — *"commit, then freeze, then spawn the panel, then do not touch the tree until it reports"* — and the
+lens filed it as a P0 process finding, quoting the rule. The round survived only because the reviewer noticed. For
+round 29 the tree was genuinely held: no write happened between spawning the panel and the last lens reporting.
+[Verified: `git status --porcelain` empty at `07e5a94` while all three were reading.]
+
+**Still not two consecutive clean rounds.** 14, 24, 18, 26, 31. What changed this round is the KIND of fix: the
+previous four extended a list, and this one inverted the question being asked, which is the second fix in the
+sequence to close a CLASS rather than an instance (the block-list→allow-list inversion was the first). Whether that
+converges is the thing round 30 tests.

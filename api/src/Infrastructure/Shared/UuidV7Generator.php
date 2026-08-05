@@ -52,8 +52,9 @@ use Twes\Domain\Shared\IdGenerator;
  * `CLAUDE.md` § Gotchas rather than left here:** any surface where an identifier IS the credential (the
  * unauthenticated client portal, Wave 10) gets its own `random_bytes(32)` token, and **FrankenPHP worker mode
  * must not be enabled before that exists** — a worker process is what lets the recoverable seed span requests,
- * and therefore tenants. `scripts/gates/compose-config.sh` enforces the second one, because a constraint stated
- * only in prose is the shape § Gotchas records four times over.
+ * and therefore tenants. `scripts/gates/worker-mode-blocked.sh` enforces the second one across every tracked
+ * configuration file, with `scripts/gates/compose-config.sh` covering the rendered compose environment, because a
+ * constraint stated only in prose is the shape § Gotchas records four times over.
  *
  * **`symfony/uid`, ADOPTED 2026-08-05 — and the paragraph that argued against it was false.** It read:
  * *"Why hand-written rather than symfony/uid. It would be one MIT line in composer.json and is the intended

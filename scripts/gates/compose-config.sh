@@ -34,7 +34,9 @@
 #
 # It needs `docker compose` but NOT a running daemon — `config` is a pure rendering operation. Where the binary is
 # absent it SKIPS with a message rather than failing, which is the one place this repository tolerates a skip: a
-# machine without Docker can still run every other gate, and CI has Docker.
+# machine without Docker can still run every other gate. The skip message does NOT claim CI covers it -- it said so
+# for two commits and there is no `.github/` in this repository, so the honest statement is that the rendered half
+# is unchecked until someone runs it with Docker. Naming a CI that does not exist is how a gap stops being owed.
 # ==============================================================================================================
 
 set -euo pipefail
@@ -43,6 +45,37 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly REPO_ROOT
 readonly INFRA="$REPO_ROOT/infra"
 
+# THE CADDYFILE SEAM KEYS, DERIVED from the Caddyfile's own `{$...}` placeholders rather than written down here.
+# A hand-written list held TWO of the four for a commit, and the two it omitted are the worst two to omit:
+# `{$CADDY_GLOBAL_OPTIONS}` splices into the global block that CONTAINS `frankenphp { }`, and
+# `{$CADDY_EXTRA_CONFIG}` is where an `import` would live. `SERVER_NAME` is excluded because it is a hostname and
+# must be non-empty -- the one placeholder the emptiness rule cannot apply to. Same derivation, same exclusion and
+# same reasoning as `scripts/gates/worker-mode-blocked.sh`, which is deliberate: two halves of one control asking
+# different questions of the same knob set is how the seam gap survived.
+# `|| true` HERE IS NOT A BANDAID, and it has the evidence the anti-bandaid gate requires. The failure mode is
+# exactly one thing: `grep` exits 1 when it matches nothing, and under `set -euo pipefail` that aborts the
+# ASSIGNMENT — so the explicit guard below, written for precisely that case, never ran. [Verified: with every
+# placeholder renamed, the gate exited 1 printing NOTHING AT ALL, because `set -e` killed it before the
+# diagnostic.] The root cause is not suppressed: an empty derivation is REFUSED three lines down, with a message.
+# What `|| true` does is let "no match" become an empty string that a real check can then reject, rather than an
+# abort with no explanation.
+SEAM_KEYS="$(
+    grep -ohE '\{\$[A-Za-z_][A-Za-z0-9_]*' "$INFRA/api/Caddyfile" \
+        | sed 's/^{\$//' | grep -v '^SERVER_NAME$' | sort -u | paste -sd, - || true
+)"
+readonly SEAM_KEYS
+
+# A DERIVED set that came back empty means the derivation broke, not that there are no seams -- and the seam loop
+# would then check nothing while every other property still reported clean. That is fail-OPEN, which is the exact
+# polarity error the sibling gate was rewritten to remove, so it is refused here rather than tolerated. (The first
+# draft of this derivation carried `2>/dev/null` on the grep, which would have turned a renamed Caddyfile into a
+# silent pass.)
+if [[ -z "$SEAM_KEYS" ]]; then
+    echo "compose-config: FAIL — derived NO Caddyfile seam keys from $INFRA/api/Caddyfile, so the seam check would" >&2
+    echo "  assert nothing. Either the file moved or its \`{\$...}\` placeholders changed spelling." >&2
+    exit 1
+fi
+
 # INTROSPECTION, so the meta-suite can generate a case per rule and pin the SET SIZE. Round 4 filed the absence:
 # this was one of three gates with no `--dump-rules`, and the worker-mode block's four rule entries therefore had
 # no floor — dropping half of them left `test-gates.sh` at 400/0. Printed BEFORE the `docker compose` probe, so a
@@ -50,7 +83,7 @@ readonly INFRA="$REPO_ROOT/infra"
 # them without a daemon.
 if [[ "${1:-}" == '--dump-rules' ]]; then
     printf 'permitted_runtime %s\n' 'Symfony\Component\Runtime\SymfonyRuntime'
-    printf 'worker_env_key %s\n' 'FRANKENPHP_CONFIG' 'CADDY_SERVER_EXTRA_DIRECTIVES'
+    printf 'worker_env_key %s\n' ${SEAM_KEYS//,/ }
     printf 'read_only_exempt %s\n' 'database' 'gotenberg'
     printf 'permitted_cap_add %s\n' 'NET_BIND_SERVICE' 'CHOWN' 'SETUID' 'SETGID' 'DAC_OVERRIDE'
     exit 0
@@ -58,7 +91,11 @@ fi
 
 if ! docker compose version >/dev/null 2>&1; then
     echo "compose-config: SKIPPED — \`docker compose\` is not available on this machine."
-    echo "  Every other gate still runs. CI has Docker, so this is checked there."
+    echo "  Every other gate still runs, INCLUDING scripts/gates/worker-mode-blocked.sh, which covers the"
+    echo "  worker-mode routes that need no daemon. What is NOT covered here is the RENDERED configuration:"
+    echo "  an overlay, a YAML anchor, an \`env_file:\`, a value assembled from two files. Nothing else sees those."
+    echo "  There is no .github/ in this repository, so no CI run covers it either -- it is genuinely unchecked"
+    echo "  until this is run on a machine with Docker."
     exit 0
 fi
 
@@ -128,6 +165,8 @@ import re, sys, yaml
 
 overlay = sys.argv[1]
 KNOWN_RECEIVERS = set(sys.argv[2].split(',')) if len(sys.argv) > 2 and sys.argv[2] else set()
+# Derived by the caller from the Caddyfile, never hard-coded: see the SEAM_KEYS comment in compose-config.sh.
+SEAM_KEYS = [k for k in (sys.argv[3].split(',') if len(sys.argv) > 3 and sys.argv[3] else []) if k]
 cfg = yaml.safe_load(sys.stdin)
 services = cfg.get('services', {})
 problems = []
@@ -280,12 +319,26 @@ for name, svc in sorted(services.items()):
             'observed identifiers spans TENANTS. See CLAUDE.md Gotchas 2026-08-05.'
             % (name, runtime, PERMITTED_RUNTIME))
 
-    for key in ('FRANKENPHP_CONFIG', 'CADDY_SERVER_EXTRA_DIRECTIVES'):
-        if 'worker' in str(env.get(key) or '').lower():
+    # ALL FOUR SEAMS, AND `NON-EMPTY` RATHER THAN `SAYS worker`. Both corrections come from one round.
+    #
+    # Two of four: this loop read `FRANKENPHP_CONFIG` and `CADDY_SERVER_EXTRA_DIRECTIVES` only, while
+    # `{$CADDY_GLOBAL_OPTIONS}` sits at `infra/api/Caddyfile:23` INSIDE the global block that contains
+    # `frankenphp { }` -- the one place a `worker` directive most naturally goes -- and `{$CADDY_EXTRA_CONFIG}` is
+    # where an `import` would live. The set is DERIVED from the Caddyfile rather than written here, so a fifth seam
+    # is in scope the moment it is added; a hand-written list is exactly what was defeated.
+    #
+    # And `worker` as a substring was the wrong test: a YAML BLOCK SCALAR (`CADDY_GLOBAL_OPTIONS: |`) renders to a
+    # multi-line value, and while THIS check would see the word in the rendered string, the sibling text sweep could
+    # not -- so both halves now ask the same, stronger question. A seam must be EMPTY while worker mode is blocked.
+    # That is closed by construction: there is no content to inspect, so no spelling has to be anticipated.
+    for key in SEAM_KEYS:
+        if str(env.get(key) or '').strip():
             problems.append(
-                '%s declares a FrankenPHP worker through %s. Blocked for the same reason as APP_RUNTIME above -- '
-                'and this is the half a runtime-only check would miss, since a worker can be declared here '
-                'without APP_RUNTIME changing at all.' % (name, key))
+                '%s sets %s to a non-empty value. Every Caddyfile seam must be EMPTY while worker mode is blocked '
+                '-- not merely free of the word "worker" -- because a seam splices verbatim into the Caddyfile and '
+                'a block scalar can carry the directive on lines the key never appears on. Blocked for the same '
+                'reason as APP_RUNTIME above, and this is the half a runtime-only check would miss: a worker can '
+                'be declared here without APP_RUNTIME changing at all.' % (name, key))
 
 # 7. THE DOCUMENT RENDERER MUST BE ABLE TO RENDER. Gotenberg takes an allow-list and a deny-list and applies them as
 #    a CONJUNCTION -- a deny match is absolute -- so `--chromium-deny-list=.*` refuses EVERY conversion including the
@@ -355,7 +408,7 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     # The inspector is written to a FILE rather than heredoc'd, because `python3 - <<'PY' <<<"$rendered"` has TWO
     # stdin redirections and the last one wins -- so Python received the rendered YAML as its own source and died
     # with `SyntaxError: invalid decimal literal` on `timeout: 3s`. Script and data must arrive by different routes.
-    if ! printf '%s' "$rendered" | python3 "$INSPECTOR" "$overlay" "$RECEIVERS"
+    if ! printf '%s' "$rendered" | python3 "$INSPECTOR" "$overlay" "$RECEIVERS" "$SEAM_KEYS"
     then
         failures=$((failures + 1))
     else
@@ -376,8 +429,9 @@ done
 # sufficient — which was the finding.
 
 # Anti-vacuity, for the reason every other gate here has one: a loop that iterated over nothing prints no failures
-# and exits 0, which is indistinguishable from a clean run. `worker_sources` counts the text-checked files, which
-# would otherwise be silently zero if a path were renamed.
+# and exits 0, which is indistinguishable from a clean run. This sentence used to go on to describe a
+# `worker_sources` counter that the text-route removal deleted -- a comment describing a variable no longer printed
+# by the `printf` directly beneath it, which is the same stale-prose defect this gate exists to catch in others.
 printf 'compose-config: counts — configurations=%d failures=%d\n' "$checked" "$failures"
 
 if [[ "$checked" -eq 0 ]]; then

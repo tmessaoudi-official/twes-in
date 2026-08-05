@@ -61,16 +61,25 @@
 		# being confined to one tenant -- a certification round computed a later identifier exactly, across two
 		# generator instances. See CLAUDE.md Gotchas 2026-08-05.
 		#
-		# THIS IS NO LONGER A MATTER OF DISCIPLINE. `scripts/gates/compose-config.sh` reads THIS FILE and fails on
-		# an uncommented `worker` directive, and separately refuses any `APP_RUNTIME` other than `SymfonyRuntime`
-		# in `api/.env`, `infra/.env` and the rendered compose environment. Uncommenting the block below turns the
-		# gate red. Delete that check in Wave 10 when the token lands, and not before.
+		# THIS IS NO LONGER A MATTER OF DISCIPLINE. `scripts/gates/worker-mode-blocked.sh` reads THIS FILE and
+		# fails on an uncommented `worker` directive, on an `import`, and on any `APP_RUNTIME` line that is not
+		# one of three approved literals -- in EVERY tracked file, not a named list of them, because a list of
+		# locations was defeated by `api/.env.prod` and `infra/api/Dockerfile.dev`. Uncommenting the block below
+		# turns the gate red. `scripts/gates/compose-config.sh` covers the RENDERED compose environment, which is
+		# the half no text sweep can see. Delete BOTH in Wave 10 when the token lands, and not before.
+		#
+		# (This comment credited `compose-config.sh` with reading this file for two commits, and it never did:
+		# `grep -n Caddyfile scripts/gates/compose-config.sh` matched prose only. Corrected in place rather than
+		# annotated below, per CLAUDE.md Gotchas 2026-07-29.)
 		#
 		# `infra/README.md` records the preconditions as owed.
 		#
 		# `FRANKENPHP_CONFIG` is the seam by which that is switched on WITHOUT editing this file: setting it to
-		# `worker /app/public/index.php 4` is the documented spelling. It is empty by default, so the block above
-		# stays the honest record of why.
+		# `worker /app/public/index.php 4` is the documented spelling. The gate requires it EMPTY -- not merely
+		# free of the word `worker` -- because a YAML block scalar can carry the directive on lines the key never
+		# appears on. The seam NAME stays: these four are FrankenPHP's own image's variables, and inventing our
+		# own spelling of a conventional thing is its own defect. So the block above stays the honest record of
+		# why, and the seam stays available the moment the gate is deleted.
 		{$FRANKENPHP_CONFIG}
 	}
 }

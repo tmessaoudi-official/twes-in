@@ -52,9 +52,12 @@ Composer plugin this container's configuration disables. **The clause that used 
 § Gotchas 2026-08-02 records the correction: `autoload_runtime.php` was there the whole time, `composer
 dump-autoload` regenerates it, and `symfony/runtime` is allow-listed. Both `bin/console` and
 `public/index.php` require it today, which is what makes `APP_RUNTIME` — and therefore FrankenPHP worker mode
-— **technically reachable, and then DELIBERATELY REFUSED**: `scripts/gates/compose-config.sh` blocks worker mode
-on every route until the Wave 10 portal token exists (§ Gotchas, 2026-08-05). Reachable and permitted are
-different things, and this sentence said only the first for a commit. That correction sat 800 lines below this sentence for three days.
+— **technically reachable, and then DELIBERATELY REFUSED**: `scripts/gates/worker-mode-blocked.sh` blocks worker
+mode across every tracked file, and `scripts/gates/compose-config.sh` across the rendered compose configuration,
+until the Wave 10 portal token exists (§ Gotchas, 2026-08-05). Reachable and permitted are
+different things, and this sentence said only the first for a commit. That correction sat 800 lines below this
+sentence for three days — and then this sentence named `compose-config.sh` as the enforcer for two more commits
+after the text routes had moved out of it, which is the same defect one level down.
 
 **Not yet built:** the Doctrine repository (the MAPPER and its round-trip contract test landed 2026-08-01) and a wired
 `deptrac`. **The `infra/` tier LANDED** — three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
@@ -419,18 +422,10 @@ number is written here, because one written beside the thing it counts is the fi
 | `spdx-headers.sh` | licensing invariant 8(c), on every source file — **and that the search roots COVER every tracked source file**, which is the direction that was missing when `api/phpunit.xml` sat unscanned with no identifier |
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
-| `compose-config.sh` | every compose configuration RENDERS, and a set of security properties survives rendering — **no count is written here, because this row said "four" while listing six**, and the gate itself deleted its own count for exactly that reason: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines**, and a sixth added 2026-08-05: **in the PRODUCTION configuration only, every service declares `cap_drop: [ALL]`.** **Plus a SEVENTH added 2026-08-05: FrankenPHP WORKER MODE is refused on every route** — the rendered
-compose environment, `api/.env`, `infra/.env`, `FRANKENPHP_CONFIG`/`CADDY_SERVER_EXTRA_DIRECTIVES`, and an
-uncommented `worker` directive in the Caddyfile. It is an ALLOW-LIST on `APP_RUNTIME` rather than a pattern match,
-because the first version block-listed two class names that **exist in no package** while the spelling this repo
-itself prescribes walked straight through — and its meta-suite mutant passed only because the fixture had been
-written to the gate's own invented literal. A block-list of runtime classes cannot be completed; an allow-list of
-the one permitted runtime is closed by construction. Two of the routes are TEXT checks rather than rendered ones,
-because `render()` supplies its own `--env-file` and so cannot see a tracked `.env`, and because worker mode is a
-Caddyfile directive that no renderer reads. Seven cases plus the commented-block false-positive direction. Deleted
+| `compose-config.sh` | every compose configuration RENDERS, and a set of security properties survives rendering — **no count is written here, because this row said "four" while listing six**, and the gate itself deleted its own count for exactly that reason: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines**, and a sixth added 2026-08-05: **in the PRODUCTION configuration only, every service declares `cap_drop: [ALL]`.** **Plus a SEVENTH added 2026-08-05: FrankenPHP WORKER MODE is refused in the RENDERED configuration** — `APP_RUNTIME` must be the one permitted runtime and every one of the four Caddyfile seams must be EMPTY, with the seam set DERIVED from the Caddyfile's own `{$…}` placeholders rather than written here (a hand-written list held two of the four for two commits, and the two it omitted were the worst two: `{$CADDY_GLOBAL_OPTIONS}` splices into the global block that CONTAINS `frankenphp { }`, and `{$CADDY_EXTRA_CONFIG}` is where an `import` would live). EMPTY rather than *not-saying-`worker`* because a YAML block scalar carries the directive on lines the key never appears on. **The TEXT routes are NOT here** — they are `worker-mode-blocked.sh`, its own row below, and this row credited itself with them for two commits while `grep -n Caddyfile scripts/gates/compose-config.sh` matched prose only. What stays here is the half no text sweep can do: an overlay, a YAML anchor, an `env_file:`, a value assembled from two files. Both directions are needed and neither is sufficient. Eight rendered mutants, three of them added when the seam set grew from two to four.
 in Wave 10 when the portal token lands, not before (§ Gotchas 2026-08-05). That one is prod-scoped on purpose rather than as an exemption — the dev overlay deliberately does not harden — and it is a FULL-SET check over whatever services the rendered config contains, because the gap that prompted it was `migrate` being missed while the six long-running services were hardened. A one-shot is short-lived, not low-privilege: `migrate` is the ONLY container holding the owner credential, the role that can `DROP POLICY` on every tenant table. Capabilities are orthogonal to `read_only` and `no-new-privileges`, both already present: Docker's default set includes `NET_RAW`, which is raw sockets on the network the database sits on. **The receiver check is not hypothetical hardening either** — `compose.yaml` ran `messenger:consume async` and `scheduler_default` while `config/packages/messenger.yaml` did not exist and no `#[AsSchedule]` provider did either, so BOTH the worker and the scheduler crash-looped on the first `docker compose up`. The receiver set is DERIVED (transport keys from `messenger.yaml`, `scheduler_<name>` from each `#[AsSchedule]`), never written down, and the attribute scan is anchored to the start of a line because the unanchored version matched the literal `#[AsSchedule('<name>')]` inside a DOCBLOCK and admitted `scheduler_<name>` to the allowed set. It needs `docker compose` but no daemon; it is the one gate here that SKIPS when the binary is absent, which is tolerated because every other gate still runs and CI has Docker |
 | `makefile-conventions.sh` | **the Makefile's own naming convention: a bare target acts on DEVELOPMENT, `-prod` on PRODUCTION, and no other suffix means an environment** (developer ruling, 2026-08-05). That direction rather than the reverse because of blast radius — muscle memory types the short name, so the short name must be the harmless one. It is a NAME-VERSUS-BEHAVIOUR check and derives what each target actually does (which of `$(DC)` / `$(DC_PROD)` / the target-scoped `$(DCX)` its recipe drives) rather than comparing against a list of expected names, which would drift with the Makefile. It also enforces the SCOPE axis — a bare aggregate must invoke its narrow siblings, which is what `gate` meaning "the API tier only" violated. **It failed its own subject twice while being written**: `build-front-prod` drove the DEV stack, and the `-dev` check sat behind a skip that swallowed the ORIGINAL defect it exists to catch, because that defect's target shared a recipe with a sibling and so had no detected stack. Both are pinned by mutants |
-| `worker-mode-blocked.sh` | **FrankenPHP worker mode is refused across the whole tracked configuration surface** — every `.env`, every `infra/` compose file, both Dockerfiles, the Caddyfile, the Makefile and `api/config/**`, enumerated from `git ls-files` so a new configuration file is in scope automatically. It exists as its own gate rather than as more checks inside `compose-config.sh` because that gate SKIPS without `docker compose` and these checks need none — and because a compose gate reading named locations for named spellings was defeated four ways in one round: `export APP_RUNTIME=` (which Symfony's Dotenv and compose-go both accept) walked past an anchored grep; `FRANKENPHP_CONFIG` was inspected in the rendered environment where **no compose file declares it** while the Dockerfile `ENV` that does went unread; two of the Caddyfile's four seam variables were unchecked, one of which splices into the very block a `worker` directive lives in; and a Caddyfile `import` hid the directive in a file nothing read. `APP_RUNTIME` is an **allow-list** of one value, not a block-list of worker classes — the next runtime class has a name nobody has written yet. Eight refusal cases and **three false-positive directions**, which are the ones that keep it usable: the documented worker block is a COMMENT on purpose, a dotenv inline comment is legal, and a CRLF file must not produce a message that renders identically to the permitted value. Deleted in Wave 10 when the portal token lands, not before |
+| `worker-mode-blocked.sh` | **FrankenPHP worker mode is refused across EVERY TRACKED FILE**, and all three of its axes are INVERTED because all three were defeated in their enumerating form. **Scope** is exclusion-based — everything tracked is in scope unless it matches a short list (`*.md`, `docs/`, `tests/`, `.claude/`, the gates themselves) — because an inclusion list of path patterns is fail-OPEN for every file nobody thought of, and version 3 was beaten by `api/.env.prod` (the **committed** half of Symfony's own dotenv cascade, which `infra/.env`'s `APP_ENV=prod` makes the live file, invisible to a pattern anchored `\.env$`), `infra/api/Dockerfile.dev`, and `api/composer.json`'s `extra.runtime.class` — which `symfony/runtime` BAKES into `vendor/autoload_runtime.php`, so it selects a runtime with no environment variable anywhere. **The knob set** is DERIVED from the Caddyfile's own `{$…}` placeholders, minus the one that is a hostname, because a hand-written list let a FIFTH seam through. **The value rule** compares the whole normalised LINE against three committed literals and requires every seam to be **EMPTY** — that is what makes a YAML block scalar, the legacy `ENV KEY value` form (no `=` in it at all), a quoted `"APP_RUNTIME":` key and a `\`-split assignment fail *at once*, because the gate stopped asking what a value MEANS. **The four seams are KEPT rather than deleted**: they are FrankenPHP's own image's variable names, so removing them would invent a project-specific spelling of a conventional thing — the marker § Gotchas 2026-08-02 gives for first-principles wiring — and requiring them empty closes the route while leaving the convention and the Wave 10 capability intact. It needs no Docker, no rendering and no daemon, which is why it can never skip; `compose-config.sh` covers the rendered half, which sees composition this cannot. The refusal and false-positive route counts are NOT written here — derive them from the `for wm_route in` list in `scripts/gates/test-gates.sh`, splitting on the `OK-` prefix. "Sixteen" was written at three sites while the list held eighteen, because a route was added after the prose. The false-positive half is what keeps the gate usable: the documented worker block is a COMMENT on purpose, a dotenv inline comment is legal, a CRLF file must not produce a message that renders identically to the permitted value, `api/public/index.php` carries the forbidden value verbatim in a PHP docblock, and three more exist because comment text was read as configuration — one message asserted ``APP_RUNTIME is "prod"`` about a line that set a different variable entirely. Comment handling is therefore decided ONCE into a variable every check reads, per § Gotchas 2026-07-29. Deleted in Wave 10 when the portal token lands, not before |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
 | `no-orphaned-docblocks.php` | no doc comment that attaches to no declaration — two `T_DOC_COMMENT`s with nothing but whitespace, a comment or an attribute between them, because PHP attaches only the LATER one and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded doc comment and round 16's own fix created a fresh one. **Rewritten as a tokenizer pass at round 18**, which found the original line-pattern version missing four of five genuine shapes — a blank line between the blocks (the most natural way to author them), an attribute between them, and a single-line second block — and found its comment asserting that a closing and opening delimiter on ONE line "is not this defect", which was false. A positional rule enforces one SPELLING; the defect is a question about tokens. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying seven, and PHPStan would catch only the subset that also loses a `@param`/`@return` generic |
 | `no-owner-connection-in-application.php` | no code under `api/src/` names the **owner** DBAL connection. `doctrine.yaml` calls the default/owner split a security boundary; round 21 showed it was not one — `debug:autowiring` offers `#[Target('owner')]`, so one line of ordinary application code (the classic "fix the permission error" edit) yields the role that OWNS the tenant tables and can `DROP POLICY`, which `FORCE` does not prevent. A reviewer booted the kernel and disabled row security on `document` in one statement. Chosen over stripping the autowiring alias, which closes the attribute and leaves `$doctrine->getConnection('owner')` open — the connection must stay in the registry for the migrations bundle to resolve it. `PERMITTED_PATHS` is deliberately EMPTY: nothing in `src/` needs it |
@@ -593,6 +588,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Flutter client, owed | semantics/a11y tests, golden or real screenshots at a **desktop** window size as well as a phone one, the shared pricing vectors, **a build of all six targets** (Android, iOS, Linux, Windows, macOS, Web — not cross-compilable, so three CI runners; matrix in `build-waves.plan.md` § Wave 12), and a real bundle identifier | Wave 11 — `mobile/README.md` |
 | **Makefile conventions** | `scripts/gates/makefile-conventions.sh` — a bare target acts on dev, `-prod` on production, no other suffix means an environment; and a bare aggregate must invoke its narrow siblings | **Runs** (added 2026-08-05 after the developer found the Makefile using the suffix for TWO different questions: `up`/`up-prod` marked the STACK while `build-front`/`build-front-dev` marked the ARTEFACT FLAVOUR, so a bare name meant "dev" in one family and "prod" in the other — and `build-front` was both at once) |
 | **Shell syntax** | `scripts/gates/shell-syntax.sh` — `bash -n` over every tracked shell script, discovered from `git ls-files` plus a shebang sweep rather than a written list | **Runs** (added at round 11, which pointed out that ten scripts already existed and already passed, while this row deferred the check to the wave that would add *more* — so the ones that existed went unchecked, and a syntax error in a gate is the worst place for one: the gate stops detecting and its non-zero exit reads as a detection) |
+| **Worker mode blocked** | `scripts/gates/worker-mode-blocked.sh` — no tracked file may select a runtime other than `SymfonyRuntime`, declare a non-empty Caddyfile seam, carry an active `worker` or `import` directive in a Caddyfile, or bake `extra.runtime.class` into a `composer.json`. Scope is EXCLUSION-based and the seam set is DERIVED, for the reasons in § Architecture | **Runs** (added 2026-08-05). It needs nothing installed — no Docker, no vendor tree — so unlike its sibling it can never skip, which is the whole reason it is a separate gate. **This table had no row for it for two commits while § Architecture had one**, which is the direction that keeps going wrong here: a gate is easier to add than to finish adding. Deleted in Wave 10 |
 | Infra | `scripts/gates/compose-config.sh` — every configuration renders AND holds its security properties | **Runs**; it is in `composer gate` and has its own row in § Architecture, which enumerates the properties — no count is written here, because this row said "Wave 12 — owed" while the gate was already enforcing six, and a seventh landed 2026-08-05 |
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
@@ -624,6 +620,8 @@ Both couplings are the accepted cost of not letting a check pass quietly on noth
 ```
 bash  scripts/gates/shell-syntax.sh
 bash  scripts/gates/compose-config.sh   # needs `docker compose`; SKIPS without it
+bash  scripts/gates/worker-mode-blocked.sh # needs NOTHING, and so never skips -- that is the point of it
+bash  scripts/gates/makefile-conventions.sh
 bash  scripts/gates/no-orm-attributes-in-domain.sh
 php   scripts/gates/layer-dependencies.php
 php   scripts/gates/no-ambient-calls-in-domain.php
@@ -632,12 +630,20 @@ php   scripts/gates/no-orphaned-docblocks.php
 php   scripts/gates/no-owner-connection-in-application.php
 php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
-bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Gotchas on why this one matters
 php   scripts/gates/schema-tenancy.php     # needs a migrated database; see the table above for the env vars
+bash  scripts/gates/test-gates.sh          # LAST, and the gates' OWN tests -- see § Gotchas on why this one matters
 cd api && php tools/bin/phpunit-12.phar && php tools/bin/phpstan.phar analyse --no-progress \
        && php tools/bin/php-cs-fixer.phar check && composer validate \
        && php bin/console lint:container && php bin/console doctrine:schema:validate --skip-sync
 ```
+
+**Derive this block from `api/composer.json` rather than trusting it.** It listed twelve of the fourteen for a
+commit — `worker-mode-blocked.sh` and `makefile-conventions.sh` were absent while both had rows in the tables above
+— which is the hand-written-list defect this file records against every other enumeration in it. `ls
+scripts/gates/` is the inventory and `test-gates.sh` asserts that every member is wired into `composer gate`; it
+runs LAST there for a reason worth knowing, because a Composer script chain stops at the first failure, so with the
+meta-suite in the middle the three gates after it never executed on any run where it was red — and it was red at
+the commit that added `worker-mode-blocked.sh`, so that gate had never once run under `composer gate`.
 
 **Never chain a verification step onto `git commit` through a pipe.** `phpunit … | tail && git commit` commits
 on red, because a pipeline's exit status is the last command's — see § Gotchas, 2026-08-01. Run each step and
@@ -1326,22 +1332,46 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   - the unauthenticated **client portal (Wave 10) gets its own `random_bytes(32)` token**, never the document
     primary key — the portal is the one surface where an identifier IS the credential;
   - **FrankenPHP worker mode must not be enabled until that token exists**, enforced by
-    **`scripts/gates/worker-mode-blocked.sh`** across the whole tracked configuration surface — every `.env`,
-    every compose file, both Dockerfiles, the Caddyfile, the Makefile and `api/config/**` — plus
+    **`scripts/gates/worker-mode-blocked.sh`** across **every tracked file**, scope defined by EXCLUSION (docs,
+    `tests/`, `.claude/`, the gates themselves) rather than by an inclusion list of paths — the inclusion list was
+    version 3's defeat, being fail-open for `api/.env.prod`, `infra/api/Dockerfile.dev` and
+    `api/composer.json`. This clause used to enumerate *"every `.env`, every compose file, both Dockerfiles, the
+    Caddyfile, the Makefile and `api/config/**`"*, which was wrong twice: there are THREE tracked Dockerfiles, and
+    an enumeration is exactly the thing the rewrite removed. Plus
     `compose-config.sh` on the RENDERED configuration, which sees composition no text sweep can. One process per
     request is what confines the recoverable seed to a single tenant; a worker process is what makes it span them.
     Delete both checks in **Wave 10** when the portal token lands, not before.
-    **This bullet said "`compose-config.sh` … with a mutant per spelling" for two commits, and every word of that
-    was the mechanism round 5 dismantled.** A spelling-based block-list matched two class names that exist in no
-    package; `export APP_RUNTIME=` walked past the env grep; `FRANKENPHP_CONFIG` was inspected in the rendered
-    environment where no compose file declares it while the Dockerfile `ENV` that does went unread; two of the
-    Caddyfile's four seams were unchecked; and the whole thing SKIPPED without `docker compose`. The replacement
-    enumerates the SURFACE rather than the spellings, which is why it can be complete, and needs no daemon, which
-    is why it cannot skip.
+    **THREE versions of this control were defeated, and every defeat was the same POLARITY error one level up.**
+    Version 1 enumerated VALUES: a block-list matching two class names that exist in no package, while
+    `export APP_RUNTIME=` walked past the env grep. Version 2 enumerated LOCATIONS: `FRANKENPHP_CONFIG` was
+    inspected in the rendered environment where no compose file declares it while the Dockerfile `ENV` that does
+    went unread, two of the Caddyfile's four seams were unchecked, and the whole thing SKIPPED without
+    `docker compose`. Version 3 enumerated PATHS, and was beaten six ways at once: `api/.env.prod` (the
+    **committed** half of Symfony's own dotenv cascade, invisible to a pattern anchored `\.env$`, and
+    `infra/.env` sets `APP_ENV=prod` so it is the live file), `infra/api/Dockerfile.dev`, `composer.json`'s
+    `extra.runtime.class`, a YAML **block scalar** carrying the directive on lines the key never appears on, a
+    FIFTH Caddyfile seam against a hand-written knob list, and the legacy `ENV KEY value` form which contains no
+    `=` at all.
+    **Version 4 enumerates nothing forbidden.** All three axes are inverted: scope is exclusion-based; the seam set
+    is DERIVED from the Caddyfile's own `{$…}` placeholders; and a line mentioning `APP_RUNTIME` must equal one of
+    three committed literals while a seam must be **EMPTY** rather than merely free of the word `worker`. That last
+    inversion is what makes the block scalar, the legacy form, the quoted YAML key and a `\`-split assignment all
+    fail at once — the gate stopped asking what a value MEANS. **The four seams are KEPT, deliberately**: they are
+    FrankenPHP's own image's variable names, so deleting them would invent a project-specific spelling of a
+    conventional thing, the marker § Gotchas 2026-08-02 records for first-principles wiring. Requiring them empty
+    keeps the convention and still closes the route, and using one later means amending the gate — a visible diff.
+    Its route count is derived from `test-gates.sh`'s own `for wm_route in` list rather than written down here (see the
+    § Architecture row). Several false-positive routes exist because comment text was being read as configuration:
+    a message once asserted `APP_RUNTIME is "prod"` about a line that set a different variable entirely.
   The lesson under the lesson: **the entropy claim had NO test**, and a reviewer proved it by reducing the
-  increment to a constant `+1` — emitting `…ceb7, ceb8, ceb9` — with **all EIGHT cases then in the file** green.
-  (Written as "ten" at four sites for a commit; the file has never had ten — 8 at the parent commit, 12 now. A
-  citation whose number moves with the suite states the direction, not the total.) Round 4 then showed that test
+  increment to a constant `+1` — emitting `…ceb7, ceb8, ceb9` — with **every case then in the file** green.
+  (NO COUNT IS WRITTEN HERE, and that is the third fix to this parenthesis. It said "ten" at four sites, then
+  "8 at the parent commit, 12 now", and the parent had **12** as well [Verified: `phpunit --filter
+  UuidV7GeneratorTest` at `1fc8f71`, `07e5a94` and HEAD all report `OK (12 tests, …)`] — so the correction was as
+  stale as the thing it corrected, and a reviewer's "11" was wrong too. Derive it: run the filter, or
+  `grep -cE '^    public function test' api/tests/Unit/Shared/UuidV7GeneratorTest.php`. A citation whose number
+  moves with the suite states the DIRECTION, not the total, and a sentence whose whole subject is stale numbers is
+  the last place to write one.) Round 4 then showed that test
   pins the INCREMENT and not the BASE DRAW: three further mutants passed it, one making two processes emit
   byte-identical identifiers. `testTwoProcessesAtOneFrozenInstantDisagree()` closes that, and the entropy
   assertion is now a birthday test over a thousand draws rather than a spread check over two hundred. Distinctness, ordering

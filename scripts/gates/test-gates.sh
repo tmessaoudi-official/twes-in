@@ -512,7 +512,7 @@ for compose_rule in permitted_runtime worker_env_key read_only_exempt permitted_
     # EXACT: one permitted runtime, no more and no fewer. Growth here is the whole bypass.
     permitted_runtime)  compose_exact=1 ;;
     # A MINIMUM: these are things the gate REFUSES, so shrinking is the danger.
-    worker_env_key)     compose_exact=  ; compose_min=2 ;;
+    worker_env_key)     compose_exact=  ; compose_min=4 ;;
     # MAXIMA: every entry is a permission granted, so growth is a deliberate decision, not a build fix.
     read_only_exempt)   compose_exact=  ; compose_max=2 ;;
     permitted_cap_add)  compose_exact=  ; compose_max=5 ;;
@@ -530,17 +530,39 @@ for compose_rule in permitted_runtime worker_env_key read_only_exempt permitted_
   unset compose_exact compose_min compose_max
 done
 
-# AND THE NEW GATE'S OWN RULE SETS. `worker-mode-blocked.sh` carries the checks that used to live in
-# `compose-config.sh` and were defeated four ways; its seam list is a REFUSAL list (a minimum) and its permitted
-# runtime is exact, for the reasons above.
+# AND THE NEW GATE'S OWN RULE SETS. `worker-mode-blocked.sh` was defeated three times, once per level of
+# abstraction, and every version's rule sets are now INVERTED — so the ratchet DIRECTIONS invert with them, and
+# getting the direction wrong is how a reviewer once grew a permission list and added two capabilities to the
+# internet-facing service with this suite green.
+#
+# The seam list is DERIVED from the Caddyfile's `{$...}` placeholders, so it is a REFUSAL set: a shrink means a
+# seam stopped being checked. Minimum.
+#
+# The other three are PERMISSION sets — every entry admits something — so each carries a MAXIMUM, expressed with
+# this helper's arithmetic-complement idiom (see `spdx: the exclusion list`). `scanned_pattern` is GONE rather than
+# renamed: an inclusion list of paths was version 3's defeat, because in-scope-if-listed is fail-OPEN for every
+# file nobody thought of. `excluded_pattern` is its inverse and must stay small.
 WORKER_RULES="$(bash "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" --dump-rules)"
 worker_seams="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="seam_variable"' | wc -l)"
-worker_paths="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="scanned_pattern"' | wc -l)"
-assert_at_least "worker-mode: all four Caddyfile seam variables are checked" "$worker_seams" 4
-assert_at_least "worker-mode: the scanned path set has not shrunk" "$worker_paths" 7
+worker_excluded="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="excluded_pattern"' | wc -l)"
+worker_lines="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="permitted_runtime_line"' | wc -l)"
+worker_not_seam="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="not_a_seam"' | wc -l)"
+assert_at_least "worker-mode: all four Caddyfile seam variables are derived" "$worker_seams" 4
+assert_at_least "worker-mode: the exclusion list has not GROWN beyond 5" "$((10 - worker_excluded))" 5 "$worker_excluded"
+assert_at_least "worker-mode: the permitted-line list has not GROWN beyond 3" "$((6 - worker_lines))" 3 "$worker_lines"
+assert_at_least "worker-mode: the not-a-seam list has not GROWN beyond 1" "$((2 - worker_not_seam))" 1 "$worker_not_seam"
 assert_contains "worker-mode: every seam and the permitted runtime survive" "$WORKER_RULES" \
   'Symfony\Component\Runtime\SymfonyRuntime' FRANKENPHP_CONFIG CADDY_SERVER_EXTRA_DIRECTIVES \
   CADDY_GLOBAL_OPTIONS CADDY_EXTRA_CONFIG
+# `scanned_pattern` must stay DELETED. Reintroducing it would be a silent return to the inclusion-list polarity
+# that `api/.env.prod`, `Dockerfile.dev` and `composer.json` all walked through, and nothing else would notice.
+if printf '%s\n' "$WORKER_RULES" | grep -q '^scanned_pattern'; then
+  printf '  FAIL — worker-mode: `scanned_pattern` is back; scope must be exclusion-based, not inclusion-based\n'
+  failed=$((failed + 1))
+else
+  printf '  ok   — worker-mode: scope is exclusion-based (no `scanned_pattern` inclusion list)\n'
+  passed=$((passed + 1))
+fi
 assert_contains "compose: every read_only exemption and permitted capability survives by NAME" "$COMPOSE_RULES" \
   database gotenberg NET_BIND_SERVICE CHOWN SETUID SETGID DAC_OVERRIDE
 # BY NAME too, because a size floor alone permits swapping one entry for another -- and the entry most worth
@@ -2388,7 +2410,8 @@ PYGT
   # weakened to `grep -qiE 'APP_RUNTIME|worker'`, which the gate's unconditional `worker_sources=` counts line
   # satisfied on every path — so the message half had collapsed into the exit code, the exact failure
   # CLAUDE.md § Gotchas records ("assert on the MESSAGE, not just a non-zero exit code").
-  for cc_route in real-runtime unknown-runtime frankenphp-config caddy-extra seam-without-runtime; do
+  for cc_route in real-runtime unknown-runtime frankenphp-config caddy-extra seam-without-runtime \
+                  caddy-global-options caddy-extra-config seam-nonempty-innocuous; do
     cp "$cc_root/infra/compose.yaml" "$cc_root/base.held"
     cp "$cc_root/infra/compose.override.yaml" "$cc_root/ovr.held"
     python3 - "$cc_root" "$cc_route" <<'PYWK'
@@ -2417,6 +2440,18 @@ elif route == 'frankenphp-config':
     set_compose(extra="FRANKENPHP_CONFIG: 'worker /app/public/index.php'")
 elif route == 'caddy-extra':
     set_compose(extra="CADDY_SERVER_EXTRA_DIRECTIVES: 'worker /app/public/index.php 4'")
+elif route == 'caddy-global-options':
+    # UNCHECKED for two commits, and the worst of the four to omit: `{$CADDY_GLOBAL_OPTIONS}` splices into the
+    # Caddyfile's GLOBAL block, which is the block that contains `frankenphp { }`.
+    set_compose(extra="CADDY_GLOBAL_OPTIONS: 'frankenphp { worker /app/public/index.php }'")
+elif route == 'caddy-extra-config':
+    # The fourth seam. An `import` here reaches a file no sweep in this repository reads.
+    set_compose(extra="CADDY_EXTRA_CONFIG: 'import /etc/caddy/worker.conf'")
+elif route == 'seam-nonempty-innocuous':
+    # THE EMPTINESS RULE, and this is the case that proves it is stronger than a `worker` substring test: the value
+    # says nothing about workers. It must still fail, because a seam that may carry ANYTHING is a seam whose next
+    # value nobody has read -- a YAML block scalar being the shape that made the substring test unsound.
+    set_compose(extra="CADDY_GLOBAL_OPTIONS: 'admin off'")
 elif route == 'seam-without-runtime':
     # THE `continue` BUG: a service carrying a seam and NO APP_RUNTIME. The guard skipped the seam loop for
     # exactly the case that loop's message describes, and adding a PERMITTED APP_RUNTIME was what made it
@@ -2437,7 +2472,7 @@ PYWK
       cc_w="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_w_rc=0 || cc_w_rc=$?
       # THE GATE'S OWN WORDS, one of two exact phrases depending on which half fires.
       if (( cc_w_rc != 0 )) \
-        && printf '%s' "$cc_w" | grep -qE 'the only permitted value is|declares a FrankenPHP worker through'; then
+        && printf '%s' "$cc_w" | grep -qE 'the only permitted value is|to a non-empty value'; then
         printf '  ok   — compose-config catches worker mode via %s\n' "$cc_route"
         passed=$((passed + 1))
       else
@@ -2447,113 +2482,6 @@ PYWK
     fi
     mv "$cc_root/base.held" "$cc_root/infra/compose.yaml"
     mv "$cc_root/ovr.held" "$cc_root/infra/compose.override.yaml"
-  done
-
-  # ================================================================================================================
-  # `worker-mode-blocked.sh` — the gate that owns the TEXT routes, each of which defeated the previous mechanism.
-  #
-  # Eight refusal routes and THREE false-positive directions. The false-positive half is not padding: this gate
-  # refuses an active `worker` token anywhere in a Caddyfile, and the Caddyfile documents the worker block AS A
-  # COMMENT on purpose. If a commented block flagged, the honest fix would be to delete the documentation — so
-  # that case is what keeps the gate usable, and two of the three exist because the first version of the gate
-  # produced exactly that false positive on the real tree.
-  # ================================================================================================================
-  for wm_route in export-infra-env export-api-env dockerfile-runtime dockerfile-seam caddy-global-options \
-                  caddyfile-uncommented caddyfile-import caddyfile-same-line \
-                  OK-commented-block OK-inline-comment OK-crlf; do
-    rm -rf "$WORK/workermode"
-    wm_root="$WORK/workermode"
-    mkdir -p "$wm_root"
-    # FROM THE WORKING TREE, not `git archive HEAD`: the gate under test may be uncommitted, and an archive of the
-    # last commit then omits it and every case reports rc=127 — a missing subject reading as a missed detection,
-    # which is the trap this suite fixed one round ago in its own harness.
-    mkdir -p "$wm_root/scripts/gates" "$wm_root/infra/api" "$wm_root/api"
-    cp -a "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" "$wm_root/scripts/gates/"
-    cp -a "$REPO_ROOT/infra/.env" "$REPO_ROOT/infra/compose.yaml" "$REPO_ROOT/infra/compose.override.yaml" \
-          "$REPO_ROOT/infra/compose.prod.yaml" "$wm_root/infra/"
-    cp -a "$REPO_ROOT/infra/api/Dockerfile" "$REPO_ROOT/infra/api/Caddyfile" "$wm_root/infra/api/"
-    cp -a "$REPO_ROOT/api/.env" "$wm_root/api/"
-    cp -a "$REPO_ROOT/Makefile" "$wm_root/"
-    git -C "$wm_root" init -q >/dev/null 2>&1
-    git -C "$wm_root" add -A >/dev/null 2>&1
-    python3 - "$wm_root" "$wm_route" <<'PYWM'
-import pathlib, re, sys
-root, route = pathlib.Path(sys.argv[1]), sys.argv[2]
-REAL = 'Runtime\\FrankenPhpSymfony\\Runtime'
-
-def sub(rel, pattern, repl, count=1):
-    p = root / rel
-    before = p.read_text()
-    after, n = re.subn(pattern, lambda _m: repl, before, count=count)
-    if n != count:
-        raise SystemExit('%s: expected %d match(es) for %r, got %d' % (rel, count, pattern, n))
-    p.write_text(after)
-
-if route == 'export-infra-env':
-    sub('infra/.env', r'(?m)^APP_RUNTIME=.*$', 'export APP_RUNTIME=' + REAL)
-elif route == 'export-api-env':
-    sub('api/.env', r'(?m)^APP_RUNTIME=.*$', 'export APP_RUNTIME=' + REAL)
-elif route == 'dockerfile-runtime':
-    sub('infra/api/Dockerfile', r'APP_RUNTIME="Symfony\\\\Component\\\\Runtime\\\\SymfonyRuntime"',
-        'APP_RUNTIME="Runtime\\\\FrankenPhpSymfony\\\\Runtime"')
-elif route == 'dockerfile-seam':
-    sub('infra/api/Dockerfile', r'FRANKENPHP_CONFIG=""', 'FRANKENPHP_CONFIG="worker /app/public/index.php 4"')
-elif route == 'caddy-global-options':
-    p = root / 'infra/compose.yaml'; lines = p.read_text().split('\n')
-    for i, l in enumerate(lines):
-        if l.startswith('  APP_RUNTIME:'):
-            lines.insert(i + 1, "  CADDY_GLOBAL_OPTIONS: 'frankenphp { worker /app/public/index.php 4 }'")
-            break
-    else:
-        raise SystemExit('APP_RUNTIME anchor not found')
-    p.write_text('\n'.join(lines))
-elif route == 'caddyfile-uncommented':
-    p = root / 'infra/api/Caddyfile'; out, done = [], False
-    for l in p.read_text().split('\n'):
-        if not done and re.match(r'^\s*#\s*worker\s*\{', l):
-            out += ['\t\tworker {', '\t\t\tfile /app/public/index.php', '\t\t}']
-            done = True
-            continue
-        out.append(l)
-    if not done:
-        raise SystemExit('no commented worker block to uncomment')
-    p.write_text('\n'.join(out))
-elif route == 'caddyfile-import':
-    sub('infra/api/Caddyfile', re.escape('{$CADDY_EXTRA_CONFIG}'), 'import /etc/caddy/worker.conf')
-elif route == 'caddyfile-same-line':
-    sub('infra/api/Caddyfile', re.escape('{$FRANKENPHP_CONFIG}'),
-        'frankenphp { worker /app/public/index.php 4 }')
-elif route == 'OK-commented-block':
-    pass                                            # the tree as committed: the block IS a comment
-elif route == 'OK-inline-comment':
-    sub('api/.env', r'(?m)^APP_RUNTIME=(.*)$',
-        'APP_RUNTIME=Symfony\\Component\\Runtime\\SymfonyRuntime # the default, stated explicitly')
-elif route == 'OK-crlf':
-    p = root / 'infra/.env'
-    p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
-PYWM
-    if (( $? != 0 )); then
-      printf '  FAIL — the %s mutation itself errored, so nothing was tested\n' "$wm_route"
-      failed=$((failed + 1))
-      continue
-    fi
-    git -C "$wm_root" add -A >/dev/null 2>&1
-    wm_out="$(cd "$wm_root" && bash scripts/gates/worker-mode-blocked.sh 2>&1)" && wm_rc=0 || wm_rc=$?
-    if [[ "$wm_route" == OK-* ]]; then
-      if (( wm_rc == 0 )); then
-        printf '  ok   — worker-mode-blocked does NOT flag: %s\n' "${wm_route#OK-}"
-        passed=$((passed + 1))
-      else
-        printf '  FAIL — worker-mode-blocked FALSE POSITIVE on %s:\n%s\n' "${wm_route#OK-}" "$wm_out"
-        failed=$((failed + 1))
-      fi
-    elif (( wm_rc != 0 )) && printf '%s' "$wm_out" | grep -qE 'the only permitted value is|declares a worker|ACTIVE `worker` directive|an imported Caddy config'; then
-      printf '  ok   — worker-mode-blocked catches %s\n' "$wm_route"
-      passed=$((passed + 1))
-    else
-      printf '  FAIL — worker-mode-blocked missed %s (rc=%s)\n' "$wm_route" "$wm_rc"
-      failed=$((failed + 1))
-    fi
   done
 
   # SCOPING CASE -- NOT a mutant, and renamed from "MUTANT F" because calling it one weakened this suite's own
@@ -2569,6 +2497,38 @@ PYWM
     failed=$((failed + 1))
   fi
 
+  # MUTANT E -- the seam-key derivation must FAIL when it yields nothing. `compose-config.sh` derives the same set
+  # from the same Caddyfile, so it has the same new failure mode: an empty derivation would leave its seam loop
+  # iterating over nothing while every other property reported clean.
+  #
+  # This case also pins a SECOND fix the first version of that guard needed. `grep` exits 1 on no match, so under
+  # `set -euo pipefail` the ASSIGNMENT aborted and the guard below it never ran -- the gate exited 1 printing NOTHING
+  # AT ALL. A crash and a detection are indistinguishable by exit code, which is this suite's oldest lesson, so this
+  # asserts the MESSAGE.
+  cp "$cc_root/infra/api/Caddyfile" "$cc_root/caddy.held"
+  python3 - "$cc_root" <<'PYSEAM'
+import pathlib, re, sys
+p = pathlib.Path(sys.argv[1]) / 'infra/api/Caddyfile'
+text = re.sub(r'\{\$[A-Za-z_][A-Za-z0-9_]*', 'RENAMED', p.read_text())
+if '{$' in text:
+    raise SystemExit('placeholders survived the rename; this case would be vacuous')
+p.write_text(text)
+PYSEAM
+  if (( $? != 0 )); then
+    printf '  FAIL — the seam-derivation mutation itself errored, so nothing was tested\n'
+    failed=$((failed + 1))
+  else
+    cc_e="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_e_rc=0 || cc_e_rc=$?
+    if (( cc_e_rc != 0 )) && printf '%s' "$cc_e" | grep -qF 'derived NO Caddyfile seam keys'; then
+      printf '  ok   — compose-config FAILS, with a message, when the seam derivation yields nothing\n'
+      passed=$((passed + 1))
+    else
+      printf '  FAIL — compose-config did not diagnose an empty seam derivation (rc=%s): %s\n' "$cc_e_rc" "$cc_e"
+      failed=$((failed + 1))
+    fi
+  fi
+  mv "$cc_root/caddy.held" "$cc_root/infra/api/Caddyfile"
+
   # MUTANT D -- the receiver derivation must read DECLARATIONS, not prose. The first version of it matched the
   # literal `#[AsSchedule('<name>')]` inside DefaultSchedule.php's own docblock and admitted `scheduler_<name>` to
   # the allowed set. A comment is not a declaration, and this pins the anchored pattern that fixed it.
@@ -2583,6 +2543,265 @@ PYWM
     failed=$((failed + 1))
   fi
 fi
+
+echo "== worker-mode-blocked: the text sweep, which needs no daemon and therefore must never skip =="
+# OUTSIDE the `docker compose` branch, and that placement is the finding rather than tidiness. Every one of these
+# cases lived inside it for one commit, so on a machine without `docker compose` all eleven silently vanished while
+# the skip line printed "the gate skips identically" -- false, because this gate CANNOT skip: that is its headline
+# property. A control that silently does not run is worse than one openly owed (§ Gotchas 2026-07-30), and the
+# shrinkage floor absorbed the loss without a word.
+#
+# ================================================================================================================
+# The route list below IS the count -- no number is written in this comment, because "sixteen" was written at three
+# sites while the list held eighteen. The false-positive half is not padding: this gate
+# refuses an active `worker` token anywhere in a Caddyfile and the Caddyfile documents the worker block AS A
+# COMMENT on purpose, so if a commented block flagged, the honest fix would be to delete the documentation. Four
+# of the seven exist because a certification round produced exactly that false positive on the real tree -- three
+# from comment text being read as configuration, and one from `api/public/index.php`, whose PHP docblock contains
+# the forbidden value verbatim and which only came into scope when the path filter was inverted.
+#
+# Every route asserts its OWN message, never a shared regex. A crash and a detection are indistinguishable by
+# exit code alone, which this suite once reported 33/33 for.
+# ================================================================================================================
+declare -A WM_EXPECT=(
+  [export-infra-env]='is not one of the permitted'
+  [export-api-env]='is not one of the permitted'
+  [dockerfile-runtime]='is not one of the permitted'
+  [legacy-env-form]='is not one of the permitted'
+  [quoted-yaml-key]='is not one of the permitted'
+  [continuation-emptied]='is not one of the permitted'
+  [env-cascade-prod]='is not one of the permitted'
+  [env-cascade-test]='is not one of the permitted'
+  [dockerfile-variant]='is not one of the permitted'
+  [dockerfile-seam]='must be EMPTY'
+  [caddy-global-options]='must be EMPTY'
+  [seam-multiline-yaml]='must be EMPTY'
+  [fifth-seam]='must be EMPTY'
+  [composer-extra-runtime]='extra.runtime.class'
+  [caddyfile-uncommented]='ACTIVE `worker` directive'
+  [caddyfile-same-line]='ACTIVE `worker` directive'
+  [caddyfile-import]='an imported Caddy config'
+  [caddyfile-no-placeholders]='derived NO seam variables'
+)
+
+# THE FIXTURE. Rebuilt per case from the WORKING TREE, not `git archive HEAD`: the gate under test may be
+# uncommitted, and an archive of the last commit then omits it and every case reports rc=127 -- a missing subject
+# reading as a missed detection, the trap this suite fixed in its own harness one round ago.
+#
+# `api/composer.json`, `api/.env.test` and `api/public/` are part of it because the gate now reads all three.
+# CLAUDE.md § Gotchas: "a test fixture that omits an input makes every assertion about that input vacuous".
+wm_fixture() {
+  rm -rf "$WORK/workermode"
+  wm_root="$WORK/workermode"
+  mkdir -p "$wm_root/scripts/gates" "$wm_root/infra/api" "$wm_root/api"
+  cp -a "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" "$wm_root/scripts/gates/"
+  cp -a "$REPO_ROOT/infra/.env" "$REPO_ROOT/infra/compose.yaml" "$REPO_ROOT/infra/compose.override.yaml" \
+        "$REPO_ROOT/infra/compose.prod.yaml" "$wm_root/infra/"
+  cp -a "$REPO_ROOT/infra/api/Dockerfile" "$REPO_ROOT/infra/api/Caddyfile" "$wm_root/infra/api/"
+  cp -a "$REPO_ROOT/api/.env" "$REPO_ROOT/api/.env.test" "$REPO_ROOT/api/composer.json" "$wm_root/api/"
+  # ONLY THE TRACKED FILE. `cp -a api/public` pulled in 3.7MB of generated Swagger UI and ReDoc bundles that
+  # `assets:install` writes and git ignores, and `git add -A` then TRACKED them -- so the fixture did not mirror
+  # the tracked tree it is supposed to stand in for, and one gate run went from 5.6s to 20.8s. [Measured.] Only
+  # `api/public/index.php` is tracked, and it is the file the `OK-php-docblock` case needs.
+  mkdir -p "$wm_root/api/public"
+  cp "$REPO_ROOT/api/public/index.php" "$wm_root/api/public/"
+  cp -a "$REPO_ROOT/Makefile" "$wm_root/"
+  git -C "$wm_root" init -q >/dev/null 2>&1
+  git -C "$wm_root" add -A >/dev/null 2>&1
+}
+
+# THE CLEAN BASELINE, and it is DECLARED below so the coverage enumerator can see it. It had eleven cases and no
+# declaration for one commit, which made `test-gates.sh` itself RED at the commit that added the gate -- the exact
+# recurrence § Gotchas 2026-08-02 records for `compose-config.sh`, defeating the `clean-case-inline` form added at
+# that finding to prevent it. A baseline is also what makes every mutant below mean anything.
+#
+# clean-case-inline: worker-mode-blocked.sh worker-mode-blocked passes on an unmutated copy of the real tree
+wm_fixture
+wm_clean="$(cd "$wm_root" && bash scripts/gates/worker-mode-blocked.sh 2>&1)" && wm_clean_rc=0 || wm_clean_rc=$?
+if (( wm_clean_rc == 0 )) && printf '%s' "$wm_clean" | grep -qF 'violations=0'; then
+  printf '  ok   — worker-mode-blocked passes on an unmutated copy of the real tree\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — worker-mode-blocked is not clean on an unmutated copy (rc=%s): %s\n' "$wm_clean_rc" "$wm_clean"
+  failed=$((failed + 1))
+fi
+
+for wm_route in export-infra-env export-api-env dockerfile-runtime legacy-env-form quoted-yaml-key \
+                continuation-emptied env-cascade-prod env-cascade-test dockerfile-variant \
+                dockerfile-seam caddy-global-options seam-multiline-yaml fifth-seam \
+                composer-extra-runtime caddyfile-uncommented caddyfile-same-line caddyfile-import \
+                caddyfile-no-placeholders \
+                OK-commented-block OK-inline-comment OK-crlf OK-php-docblock \
+                OK-caddy-word-in-comment OK-seam-comment-says-worker OK-comment-names-app-runtime; do
+  wm_fixture
+  python3 - "$wm_root" "$wm_route" <<'PYWM'
+import json
+import pathlib
+import re
+import sys
+
+root, route = pathlib.Path(sys.argv[1]), sys.argv[2]
+REAL = 'Runtime\\FrankenPhpSymfony\\Runtime'
+
+
+def sub(rel, pattern, repl, count=1):
+    p = root / rel
+    before = p.read_text()
+    after, n = re.subn(pattern, lambda _m: repl, before, count=count)
+    if n != count:
+        raise SystemExit('%s: expected %d match(es) for %r, got %d' % (rel, count, pattern, n))
+    p.write_text(after)
+
+
+def insert_after(rel, anchor_prefix, *new_lines):
+    p = root / rel
+    lines = p.read_text().split('\n')
+    for i, line in enumerate(lines):
+        if line.startswith(anchor_prefix):
+            lines[i + 1:i + 1] = list(new_lines)
+            break
+    else:
+        raise SystemExit('%s: anchor %r not found' % (rel, anchor_prefix))
+    p.write_text('\n'.join(lines))
+
+
+# ---- APP_RUNTIME, in every dialect a tracked file can carry it ------------------------------------------------
+if route == 'export-infra-env':
+    sub('infra/.env', r'(?m)^APP_RUNTIME=.*$', 'export APP_RUNTIME=' + REAL)
+elif route == 'export-api-env':
+    sub('api/.env', r'(?m)^APP_RUNTIME=.*$', 'export APP_RUNTIME=' + REAL)
+elif route == 'dockerfile-runtime':
+    sub('infra/api/Dockerfile', r'APP_RUNTIME="Symfony\\\\Component\\\\Runtime\\\\SymfonyRuntime"',
+        'APP_RUNTIME="Runtime\\\\FrankenPhpSymfony\\\\Runtime"')
+elif route == 'legacy-env-form':
+    # `ENV KEY value`, the space-separated form. Legacy-but-supported, and it carries no `=` at all -- so a rule
+    # that requires `[=:]` after the name cannot see it.
+    insert_after('infra/api/Dockerfile', 'FROM ', 'ENV APP_RUNTIME ' + REAL)
+elif route == 'quoted-yaml-key':
+    # A quoted YAML key. The name is no longer preceded by whitespace-or-start, it is preceded by `"`.
+    insert_after('infra/compose.yaml', '  APP_RUNTIME:', '  "APP_RUNTIME": "%s"' % REAL.replace('\\', '\\\\'))
+elif route == 'continuation-emptied':
+    # A Dockerfile LINE CONTINUATION splitting the assignment. Read line-by-line the value looks EMPTY, and an
+    # emptiness test then permits it -- while Docker joins the lines and sets the worker runtime.
+    sub('infra/api/Dockerfile', r'APP_RUNTIME="Symfony\\\\Component\\\\Runtime\\\\SymfonyRuntime" \\\n',
+        'APP_RUNTIME=\\\n        "Runtime\\\\FrankenPhpSymfony\\\\Runtime" \\\n')
+elif route == 'env-cascade-prod':
+    # `.env.$APP_ENV` is COMMITTED and wins over `.env`; `infra/.env` sets APP_ENV=prod, so this is the live file.
+    (root / 'api/.env.prod').write_text('APP_RUNTIME=%s\n' % REAL)
+elif route == 'env-cascade-test':
+    p = root / 'api/.env.test'
+    p.write_text(p.read_text() + '\nAPP_RUNTIME=%s\n' % REAL)
+elif route == 'dockerfile-variant':
+    (root / 'infra/api/Dockerfile.dev').write_text('FROM scratch\nENV APP_RUNTIME="%s"\n'
+                                                   % REAL.replace('\\', '\\\\'))
+# ---- THE SEAMS: any non-empty value at all, whatever it says ---------------------------------------------------
+elif route == 'dockerfile-seam':
+    sub('infra/api/Dockerfile', r'FRANKENPHP_CONFIG=""', 'FRANKENPHP_CONFIG="worker /app/public/index.php 4"')
+elif route == 'caddy-global-options':
+    insert_after('infra/compose.yaml', '  APP_RUNTIME:',
+                 "  CADDY_GLOBAL_OPTIONS: 'frankenphp { worker /app/public/index.php 4 }'")
+elif route == 'seam-multiline-yaml':
+    # A YAML BLOCK SCALAR. The directive is on none of the key's own lines, so a per-physical-line search for the
+    # word `worker` beside the key name cannot see it -- and no renderer inspected this seam either.
+    insert_after('infra/compose.yaml', '  APP_RUNTIME:',
+                 '  CADDY_GLOBAL_OPTIONS: |',
+                 '    frankenphp {',
+                 '      worker /app/public/index.php',
+                 '    }')
+elif route == 'fifth-seam':
+    # A FIFTH seam added to the Caddyfile. A hand-written knob list cannot see it; one derived from the Caddyfile's
+    # own `{$...}` placeholders scopes it in the moment it appears.
+    p = root / 'infra/api/Caddyfile'
+    p.write_text(p.read_text().replace('{$CADDY_EXTRA_CONFIG}', '{$CADDY_EXTRA_CONFIG}\n{$CADDY_NEW_SEAM}', 1))
+    e = root / 'infra/.env'
+    e.write_text(e.read_text() + 'CADDY_NEW_SEAM=frankenphp { worker /app/public/index.php }\n')
+# ---- THE RUNTIME BAKED INTO composer.json ---------------------------------------------------------------------
+elif route == 'composer-extra-runtime':
+    # `symfony/runtime`'s ComposerPlugin BAKES extra.runtime.class into vendor/autoload_runtime.php, so this
+    # selects the runtime with no environment variable anywhere. A path filter listing config directories missed
+    # it entirely.
+    p = root / 'api/composer.json'
+    data = json.loads(p.read_text())
+    data.setdefault('extra', {})['runtime'] = {'class': REAL}
+    p.write_text(json.dumps(data, indent=4) + '\n')
+# ---- THE CADDYFILE ITSELF -------------------------------------------------------------------------------------
+elif route == 'caddyfile-uncommented':
+    p = root / 'infra/api/Caddyfile'
+    out, done = [], False
+    for line in p.read_text().split('\n'):
+        if not done and re.match(r'^\s*#\s*worker\s*\{', line):
+            out += ['\t\tworker {', '\t\t\tfile /app/public/index.php', '\t\t}']
+            done = True
+            continue
+        out.append(line)
+    if not done:
+        raise SystemExit('no commented worker block to uncomment')
+    p.write_text('\n'.join(out))
+elif route == 'caddyfile-same-line':
+    sub('infra/api/Caddyfile', re.escape('{$FRANKENPHP_CONFIG}'),
+        'frankenphp { worker /app/public/index.php 4 }')
+elif route == 'caddyfile-import':
+    sub('infra/api/Caddyfile', re.escape('{$CADDY_EXTRA_CONFIG}'), 'import /etc/caddy/worker.conf')
+elif route == 'caddyfile-no-placeholders':
+    # THE PRICE OF DERIVING THE KNOB SET: a hand-written list could not come back empty, and a derived one can.
+    # An empty derivation must FAIL rather than check nothing -- otherwise renaming a placeholder, or moving the
+    # Caddyfile, silently retires the whole seam rule while every other property still reports clean. Both gates
+    # get this case, because both derive the same set from the same file.
+    p = root / 'infra/api/Caddyfile'
+    text = re.sub(r'\{\$[A-Za-z_][A-Za-z0-9_]*', 'RENAMED', p.read_text())
+    if '{$' in text:
+        raise SystemExit('placeholders survived the rename; this case would be vacuous')
+    p.write_text(text)
+# ---- THE FALSE-POSITIVE DIRECTIONS, which are what keep this gate usable ---------------------------------------
+elif route == 'OK-commented-block':
+    pass                                             # the tree as committed: the block IS a comment
+elif route == 'OK-php-docblock':
+    # `api/public/index.php` carries `APP_RUNTIME=Runtime\FrankenPhpSymfony\Runtime` verbatim in a PHP docblock,
+    # explaining the very thing this gate refuses. A `#`-only comment rule does not see a ` * ` leader.
+    body = (root / 'api/public/index.php').read_text()
+    if REAL not in body:
+        raise SystemExit('index.php no longer documents the forbidden value; this case is now vacuous')
+elif route == 'OK-inline-comment':
+    sub('api/.env', r'(?m)^APP_RUNTIME=(.*)$',
+        'APP_RUNTIME=Symfony\\Component\\Runtime\\SymfonyRuntime # the default, stated explicitly')
+elif route == 'OK-caddy-word-in-comment':
+    sub('infra/api/Caddyfile', re.escape('{$FRANKENPHP_CONFIG}'),
+        '{$FRANKENPHP_CONFIG} # nothing here starts a worker')
+elif route == 'OK-seam-comment-says-worker':
+    insert_after('infra/compose.yaml', '  APP_RUNTIME:',
+                 '  CADDY_GLOBAL_OPTIONS: ""   # never a worker directive, see worker-mode-blocked.sh')
+elif route == 'OK-comment-names-app-runtime':
+    insert_after('infra/api/Dockerfile', 'FROM ', 'ENV APP_ENV=prod   # APP_RUNTIME: see the gate')
+elif route == 'OK-crlf':
+    p = root / 'infra/.env'
+    p.write_bytes(p.read_bytes().replace(b'\r\n', b'\n').replace(b'\n', b'\r\n'))
+else:
+    raise SystemExit('unknown route %r -- a route with no mutation would report a false pass' % route)
+PYWM
+  if (( $? != 0 )); then
+    printf '  FAIL — the %s mutation itself errored, so nothing was tested\n' "$wm_route"
+    failed=$((failed + 1))
+    continue
+  fi
+  git -C "$wm_root" add -A >/dev/null 2>&1
+  wm_out="$(cd "$wm_root" && bash scripts/gates/worker-mode-blocked.sh 2>&1)" && wm_rc=0 || wm_rc=$?
+  if [[ "$wm_route" == OK-* ]]; then
+    if (( wm_rc == 0 )); then
+      printf '  ok   — worker-mode-blocked does NOT flag: %s\n' "${wm_route#OK-}"
+      passed=$((passed + 1))
+    else
+      printf '  FAIL — worker-mode-blocked FALSE POSITIVE on %s:\n%s\n' "${wm_route#OK-}" "$wm_out"
+      failed=$((failed + 1))
+    fi
+  elif (( wm_rc != 0 )) && printf '%s' "$wm_out" | grep -qF "${WM_EXPECT[$wm_route]}"; then
+    printf '  ok   — worker-mode-blocked catches %s\n' "$wm_route"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — worker-mode-blocked missed %s (rc=%s, wanted %s)\n' \
+      "$wm_route" "$wm_rc" "${WM_EXPECT[$wm_route]:-<no expectation declared>}"
+    failed=$((failed + 1))
+  fi
+done
 
 echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 # Round 12 found shell-syntax.sh absent from `composer gate` one commit after it was added and documented as
@@ -2728,7 +2947,7 @@ else
   failed=$((failed + 1))
 fi
 
-assert_at_least "the suite itself has not shrunk" "$passed" 330
+assert_at_least "the suite itself has not shrunk" "$passed" 440
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"
