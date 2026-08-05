@@ -75,8 +75,8 @@ final readonly class HealthController
      *      silently skipped instead of failing is recorded in § Gotchas as the worst outcome available;
      *   2. the migrated schema is PRESENT in the database we are actually connected to — a migration that exits 0
      *      does not tell you which database it migrated;
-     *   3. the connection carries NO tenant binding at acquisition. That one is not decoration: FrankenPHP runs
-     *      the app in a persistent worker, so a connection is reused across requests, and a tenant left bound on
+     *   3. the connection carries NO tenant binding at acquisition. That one is not decoration: FrankenPHP CAN run
+     *      the app in a persistent worker, in which a connection is reused across requests, and a tenant left bound on
      *      it is a cross-tenant read for whoever gets it next. `PostgresRowLevelSecurityIsolation` was built for
      *      exactly this window and `assertNoTenantPinnedOnTheConnection()` is the check; readiness is the earliest
      *      place a deployment can notice it.

@@ -103,6 +103,11 @@ API gate must stay green throughout.
 ## Owed / not done in this pass
 
 - An `ng serve` HMR dev server for the admin tier (a bundle rebuild is not a dev loop). Noted, not built.
-- FrankenPHP worker mode in prod — the single largest throughput win available, and reachable now that
+- ~~FrankenPHP worker mode in prod — the single largest throughput win available, and reachable now that
   `autoload_runtime.php` is in use. Deliberately NOT enabled here: it changes request isolation semantics and
-  wants its own certification round.
+  wants its own certification round.~~ **BLOCKED BY RULING, 2026-08-05, not merely deferred** — and this entry
+  told a reader the only obstacle was a review for a commit after that stopped being true. The client portal
+  (Wave 10) must have its own `random_bytes(32)` token first: `UuidV7` seeds its generator state once per
+  PROCESS, so a worker serving many requests lets a seed recoverable from about two dozen observed identifiers
+  span TENANTS. `scripts/gates/worker-mode-blocked.sh` refuses every route to it and
+  `scripts/gates/compose-config.sh` refuses it in the rendered configuration. See `CLAUDE.md` § Gotchas.

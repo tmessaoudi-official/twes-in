@@ -65,8 +65,8 @@ final class HttpSurfaceTest extends WebTestCase
         self::assertArrayHasKey('checks', $body);
         self::assertArrayHasKey('database', $body['checks']);
         self::assertArrayHasKey('schema', $body['checks']);
-        // The tenant-binding check is the one that is easy to dismiss as paranoia and is not: FrankenPHP runs the
-        // app in a persistent worker, so a connection is REUSED across requests, and a tenant left bound on it is a
+        // The tenant-binding check is the one that is easy to dismiss as paranoia and is not: FrankenPHP CAN run the
+        // app in a persistent worker, in which a connection is REUSED across requests, and a tenant left bound on it is a
         // cross-tenant read for whoever gets it next.
         self::assertArrayHasKey('tenant_binding_clean', $body['checks']);
 

@@ -25,8 +25,10 @@ use Twes\Kernel;
  * The correction matters beyond tidiness, and this is the load-bearing part: `autoload_runtime.php` is the ONLY
  * mechanism by which `APP_RUNTIME` selects a different runtime. FrankenPHP's worker mode needs
  * `APP_RUNTIME=Runtime\FrankenPhpSymfony\Runtime`, and so do RoadRunner and Swoole. A hand-rolled bootstrap does
- * not merely deviate from convention -- it makes worker mode UNREACHABLE. `infra/api/Caddyfile` records the two
- * preconditions still owed before that is switched on.
+ * not merely deviate from convention -- it makes worker mode UNREACHABLE. `infra/api/Caddyfile` records the THREE
+ * preconditions still owed before that is switched on -- the binding one being the client portal's own
+ * `random_bytes(32)` token (Wave 10), because `UuidV7` seeds per PROCESS and a worker's recoverable seed would
+ * span TENANTS. `scripts/gates/worker-mode-blocked.sh` refuses every route to it. CLAUDE.md Gotchas 2026-08-05.
  *
  * The runtime loads the `.env` cascade itself (`.env` -> `.env.local` -> `.env.$APP_ENV` -> `.env.$APP_ENV.local`)
  * and passes the resolved values in as `$context`, which is why there is no `Dotenv` call here.

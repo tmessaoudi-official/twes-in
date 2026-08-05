@@ -299,8 +299,25 @@ final class UuidV7GeneratorTest extends TestCase
      * two workers.
      *
      * The property that catches all three is CROSS-PROCESS DISAGREEMENT: two independent processes handed the SAME
-     * frozen instant must produce different identifiers, because the only thing that can differ between them is the
-     * per-process seed. A deterministic generator cannot satisfy it and no amount of in-process cleverness fakes it.
+     * frozen instant must produce different identifiers.
+     *
+     * **AND THE TWO PROCESSES SHARE A PID, which is not a detail — it is what makes this an entropy test at all.**
+     * The first version claimed *"a deterministic generator cannot satisfy it and no amount of in-process
+     * cleverness fakes it"*, and round 5 falsified that in one line: a seed derived from `getmypid()` makes two
+     * processes disagree while being fully computable by anyone who can guess a pid, and a reviewer predicted a
+     * victim's identifiers from its pid alone with all twelve cases green. Cross-process disagreement is satisfied
+     * by a perfect counter, exactly as distinctness and ordering were — the same mistake one level out.
+     *
+     * So both subprocesses run in a FRESH PID NAMESPACE via `unshare --fork --pid --mount-proc`, where each is
+     * **pid 1**. A CSPRNG seed still disagrees; a seed derived from the pid, the hostname or anything else the
+     * namespace equalises now collides and fails. `SKIPS` rather than passing when `unshare` is unavailable or
+     * unprivileged, because a silent pass here is worse than an openly owed check.
+     *
+     * **WHAT THIS STILL DOES NOT COVER, stated rather than implied:** a seed derived from `microtime()` at
+     * sub-millisecond resolution would differ between two processes even in one namespace. That is not covered, and
+     * closing it would need a deterministic clock inside the dependency — which we do not control. Naming the gap
+     * is the rule this repository learned four times over: say "not covered, here is what it would take", never
+     * "cannot be faked".
      *
      * Run as real subprocesses, since the state is `static` and one process cannot un-seed itself. `PHP_BINARY`
      * rather than a literal `php`, so this works wherever the suite does.
@@ -326,13 +343,24 @@ final class UuidV7GeneratorTest extends TestCase
         $autoload = \dirname(__DIR__, 3) . '/vendor/autoload.php';
         $emitted = [];
 
+        // A FRESH PID NAMESPACE PER PROCESS, so both are pid 1 and a pid-derived seed collides instead of passing.
+        $namespaced = \sprintf(
+            'unshare --fork --pid --mount-proc %s -r %s %s 2>/dev/null',
+            escapeshellarg(\PHP_BINARY),
+            escapeshellarg($script),
+            escapeshellarg($autoload),
+        );
+
+        if (null === shell_exec('unshare --fork --pid --mount-proc /bin/true 2>/dev/null && echo ok')) {
+            self::markTestSkipped(
+                'unshare(CLONE_NEWPID) is unavailable or unprivileged here, so two subprocesses cannot be made to '
+                . 'share a pid — and without that this case would pass on a getmypid()-derived seed, which is the '
+                . 'defect it exists to catch. Skipped openly rather than run in a form that proves nothing.',
+            );
+        }
+
         for ($process = 0; $process < 2; ++$process) {
-            $output = shell_exec(\sprintf(
-                '%s -r %s %s',
-                escapeshellarg(\PHP_BINARY),
-                escapeshellarg($script),
-                escapeshellarg($autoload),
-            ));
+            $output = shell_exec($namespaced);
 
             self::assertIsString($output, 'the subprocess produced no output');
             $emitted[] = array_values(array_filter(explode("\n", trim($output))));

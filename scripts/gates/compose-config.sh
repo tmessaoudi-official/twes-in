@@ -51,7 +51,6 @@ readonly INFRA="$REPO_ROOT/infra"
 if [[ "${1:-}" == '--dump-rules' ]]; then
     printf 'permitted_runtime %s\n' 'Symfony\Component\Runtime\SymfonyRuntime'
     printf 'worker_env_key %s\n' 'FRANKENPHP_CONFIG' 'CADDY_SERVER_EXTRA_DIRECTIVES'
-    printf 'worker_text_source %s\n' 'api/.env' 'infra/.env' 'infra/api/Caddyfile'
     printf 'read_only_exempt %s\n' 'database' 'gotenberg'
     printf 'permitted_cap_add %s\n' 'NET_BIND_SERVICE' 'CHOWN' 'SETUID' 'SETGID' 'DAC_OVERRIDE'
     exit 0
@@ -266,11 +265,12 @@ for name, svc in sorted(services.items()):
     if isinstance(env, list):
         env = dict((e.split('=', 1) + [''])[:2] for e in env)
 
-    if 'APP_RUNTIME' not in env:
-        continue
-
+    # NO `continue` HERE. There was one — `if 'APP_RUNTIME' not in env: continue` — and it killed the seam loop
+    # below for exactly the case that loop's own message describes: "a worker can be declared here without
+    # APP_RUNTIME changing at all". A service carrying both seams and no APP_RUNTIME passed, and ADDING a
+    # permitted APP_RUNTIME was what made it detectable. The guard was inverted in effect.
     runtime = str(env.get('APP_RUNTIME') or '').strip().lstrip('\\')
-    if runtime != PERMITTED_RUNTIME:
+    if 'APP_RUNTIME' in env and runtime != PERMITTED_RUNTIME:
         problems.append(
             '%s sets APP_RUNTIME to "%s"; the only permitted value is "%s". Any other runtime is REFUSED rather '
             'than pattern-matched, because a FrankenPHP worker class cannot be enumerated in advance -- the '
@@ -363,73 +363,22 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     fi
 done
 
-# ==============================================================================================================
-# THE TWO ROUTES TO WORKER MODE THAT `docker compose config` CANNOT SEE.
+# THE TEXT-BASED ROUTES MOVED OUT, to `scripts/gates/worker-mode-blocked.sh`, and that is not tidying.
 #
-# Round 4 of the certification found the rendered configuration to be the WRONG place to look for two of the three
-# documented switches, and the reason is this gate's own machinery: `render()` passes `--env-file "$RENDER_ENV"`,
-# a synthetic file, which REPLACES the project `.env`. That is correct for resolving `${VAR:?}` placeholders and it
-# means `infra/.env` -- tracked, and the seam every document points an operator at -- is invisible here. A commit
-# flipping `APP_RUNTIME` there produced a rendered config carrying a worker runtime on all four PHP services while
-# this gate reported OK.
+# They lived here for one commit and were wrong in three ways at once, all traceable to living in a COMPOSE gate:
+# this gate SKIPS when `docker compose` is absent, so the two checks that need no Docker skipped with it; the
+# `.env` grep was anchored `^[[:space:]]*APP_RUNTIME=` and missed `export APP_RUNTIME=`, which both Symfony's
+# Dotenv and compose-go accept; and it read two of the Caddyfile's four seam variables while the Dockerfile `ENV`
+# that actually sets them went unread. A gate that enumerates locations cannot be completed by adding locations.
 #
-# And worker mode is FUNDAMENTALLY a Caddyfile directive. `infra/api/Caddyfile` ships the block ready to
-# uncomment; no gate read that file at all, so following its own instruction passed every check.
-#
-# Both are checked as TEXT rather than through a renderer, deliberately: there is no tool that resolves a tracked
-# `.env` and a Caddyfile together, and a grep that is honest about being a grep beats a renderer that silently
-# looks at a configuration nobody deploys.
-# ==============================================================================================================
-readonly PERMITTED_RUNTIME_VALUE='Symfony\Component\Runtime\SymfonyRuntime'
-
-for env_file in api/.env infra/.env; do
-    [[ -f "$REPO_ROOT/$env_file" ]] || continue
-    checked_env=$((${checked_env:-0} + 1))
-
-    while IFS= read -r declared; do
-        if [[ "$declared" != "$PERMITTED_RUNTIME_VALUE" ]]; then
-            printf '  FAIL — %s sets APP_RUNTIME=%s; the only permitted value is %s. Worker mode is blocked until
-' \
-                "$env_file" "$declared" "$PERMITTED_RUNTIME_VALUE" >&2
-            printf '         the client portal (Wave 10) has its own random_bytes(32) token — see CLAUDE.md Gotchas
-' >&2
-            printf '         2026-08-05. This file is invisible to `docker compose config` as this gate runs it,
-' >&2
-            printf '         because render() supplies its own --env-file.
-' >&2
-            failures=$((failures + 1))
-        fi
-    done < <(grep -E '^[[:space:]]*APP_RUNTIME=' "$REPO_ROOT/$env_file" 2>/dev/null | sed -E 's/^[^=]*=//; s/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/')
-done
-
-if [[ -f "$REPO_ROOT/infra/api/Caddyfile" ]]; then
-    checked_env=$((${checked_env:-0} + 1))
-    # UNCOMMENTED ONLY. The file documents the directive inside a comment block on purpose, and flagging that would
-    # make the gate unusable — so the pattern requires a line whose first non-space character is not `#`.
-    if grep -nE '^[[:space:]]*worker([[:space:]]|\{|$)' "$REPO_ROOT/infra/api/Caddyfile" >/dev/null 2>&1; then
-        printf '  FAIL — infra/api/Caddyfile declares an active `worker` directive:
-' >&2
-        grep -nE '^[[:space:]]*worker([[:space:]]|\{|$)' "$REPO_ROOT/infra/api/Caddyfile" | sed 's/^/           /' >&2
-        printf '         Worker mode is a Caddyfile directive first and an APP_RUNTIME value second, and this is the
-' >&2
-        printf '         route no renderer can see. Blocked until the client portal (Wave 10) has its own
-' >&2
-        printf '         random_bytes(32) token — CLAUDE.md Gotchas 2026-08-05. Keep the block commented.
-' >&2
-        failures=$((failures + 1))
-    fi
-fi
+# What stays here is the half no text sweep can do: the RENDERED configuration, where an overlay, an anchor, an
+# `env_file:` or a value assembled from two files becomes visible. Both directions are needed and neither is
+# sufficient — which was the finding.
 
 # Anti-vacuity, for the reason every other gate here has one: a loop that iterated over nothing prints no failures
 # and exits 0, which is indistinguishable from a clean run. `worker_sources` counts the text-checked files, which
 # would otherwise be silently zero if a path were renamed.
-printf 'compose-config: counts — configurations=%d worker_sources=%d failures=%d\n' \
-    "$checked" "${checked_env:-0}" "$failures"
-
-if [[ "${checked_env:-0}" -eq 0 ]]; then
-    echo "compose-config: FAIL — no env file or Caddyfile was examined for worker mode, so that half asserted nothing." >&2
-    exit 1
-fi
+printf 'compose-config: counts — configurations=%d failures=%d\n' "$checked" "$failures"
 
 if [[ "$checked" -eq 0 ]]; then
     echo "compose-config: FAIL — no configuration was checked, so this gate asserted nothing." >&2

@@ -86,6 +86,7 @@
             "@php ../scripts/gates/locale-key-parity.php",
             "bash ../scripts/gates/test-gates.sh",
             "bash ../scripts/gates/compose-config.sh",
+            "bash ../scripts/gates/worker-mode-blocked.sh",
             "bash ../scripts/gates/makefile-conventions.sh"
         ],
         "gate:licences": "@php ../scripts/gates/dependency-licences.php",
