@@ -2488,6 +2488,19 @@ lens filed it as a P0 process finding, quoting the rule. The round survived only
 round 29 the tree was genuinely held: no write happened between spawning the panel and the last lens reporting.
 [Verified: `git status --porcelain` empty at `07e5a94` while all three were reading.]
 
+**A third defect, found in my own sweep rather than by a reviewer, and its fix was wrong twice.**
+`compose-config.sh` derived its seam set from the single hard-coded `$INFRA/api/Caddyfile` while the sibling derived
+from all of them — latent today (there is one Caddyfile) and fail-open the moment a second appears, since its seams
+would be checked by the text sweep and not the rendered one. The first fix used `git ls-files` and **broke the
+meta-suite's fixture for this gate**, which is a plain directory copy with no index. The second considered
+`git init && git add -A` on that fixture and rejected it: `cp -a infra` pulls in gitignored `.env.local` and eight
+proxy CA certificates, so adding an index would have made the fixture track files the real repo ignores — the SAME
+fidelity defect, in the sibling fixture, hours after fixing it. The landed fix is a `find` **scoped to `infra/`**,
+which needs no index and still cannot reach the reviewer worktrees at `.claude/worktrees/` that § Gotchas
+2026-07-31 forbids walking into. Worth keeping as a shape: **two gates asking the same question of the same knob set
+must derive it the same way, and "there is only one today" is the assumption every hand-written list here has been
+broken on.**
+
 **Still not two consecutive clean rounds.** 14, 24, 18, 26, 31. What changed this round is the KIND of fix: the
 previous four extended a list, and this one inverted the question being asked, which is the second fix in the
 sequence to close a CLASS rather than an instance (the block-list→allow-list inversion was the first). Whether that

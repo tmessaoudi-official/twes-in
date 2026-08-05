@@ -59,8 +59,21 @@ readonly INFRA="$REPO_ROOT/infra"
 # diagnostic.] The root cause is not suppressed: an empty derivation is REFUSED three lines down, with a message.
 # What `|| true` does is let "no match" become an empty string that a real check can then reject, rather than an
 # abort with no explanation.
+# EVERY CADDYFILE UNDER `infra/`, not the one path that exists today. `worker-mode-blocked.sh` derives from all of
+# them and this read `$INFRA/api/Caddyfile` alone, so a second Caddyfile -- `infra/admin/Caddyfile`, say -- would
+# have had its seams checked by the text sweep and NOT by the rendered one. Latent rather than live (there is one
+# today), and closed by construction rather than left as a note, because "there is only one today" is the assumption
+# every hand-written list in this repository has been broken on.
+#
+# A `find` SCOPED TO `infra/` rather than `git ls-files`, and the scoping is what makes it safe. The rule this
+# repository learned in § Gotchas 2026-07-31 is that a recursive walk from the REPO ROOT reads reviewer worktrees
+# placed at `.claude/worktrees/`; a walk under `infra/` cannot reach them. It also has to work without a git index,
+# because the meta-suite's fixture for this gate is a plain directory copy -- an index-based version FAILED that
+# fixture, which is how this was caught. The sibling gate uses `git ls-files` because it sweeps the whole tree and
+# genuinely needs the index to stay out of the worktrees.
 SEAM_KEYS="$(
-    grep -ohE '\{\$[A-Za-z_][A-Za-z0-9_]*' "$INFRA/api/Caddyfile" \
+    find "$INFRA" -type f -name '*Caddyfile*' -print0 \
+        | xargs -0 -r grep -ohE '\{\$[A-Za-z_][A-Za-z0-9_]*' \
         | sed 's/^{\$//' | grep -v '^SERVER_NAME$' | sort -u | paste -sd, - || true
 )"
 readonly SEAM_KEYS
@@ -71,8 +84,9 @@ readonly SEAM_KEYS
 # draft of this derivation carried `2>/dev/null` on the grep, which would have turned a renamed Caddyfile into a
 # silent pass.)
 if [[ -z "$SEAM_KEYS" ]]; then
-    echo "compose-config: FAIL — derived NO Caddyfile seam keys from $INFRA/api/Caddyfile, so the seam check would" >&2
-    echo "  assert nothing. Either the file moved or its \`{\$...}\` placeholders changed spelling." >&2
+    echo "compose-config: FAIL — derived NO Caddyfile seam keys from any tracked Caddyfile, so the seam check" >&2
+    echo "  would assert nothing. Either every Caddyfile moved out of the index or their \`{\$...}\` placeholders" >&2
+    echo "  changed spelling." >&2
     exit 1
 fi
 
