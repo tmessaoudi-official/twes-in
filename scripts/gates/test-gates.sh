@@ -2577,7 +2577,9 @@ declare -A WM_EXPECT=(
   [caddy-global-options]='must be EMPTY'
   [seam-multiline-yaml]='must be EMPTY'
   [fifth-seam]='must be EMPTY'
-  [composer-extra-runtime]='extra.runtime.class'
+  [composer-extra-runtime]='extra.runtime carries class='
+  [composer-autoload-template]='REPLACES vendor/autoload_runtime.php wholesale'
+  [composer-dotenv-overload]='baked into vendor/autoload_runtime.php'
   [caddyfile-uncommented]='ACTIVE `worker` directive'
   [caddyfile-same-line]='ACTIVE `worker` directive'
   [caddyfile-import]='an imported Caddy config'
@@ -2629,10 +2631,12 @@ fi
 for wm_route in export-infra-env export-api-env dockerfile-runtime legacy-env-form quoted-yaml-key \
                 continuation-emptied env-cascade-prod env-cascade-test dockerfile-variant \
                 dockerfile-seam caddy-global-options seam-multiline-yaml fifth-seam \
-                composer-extra-runtime caddyfile-uncommented caddyfile-same-line caddyfile-import \
+                composer-extra-runtime composer-autoload-template composer-dotenv-overload \
+                caddyfile-uncommented caddyfile-same-line caddyfile-import \
                 caddyfile-no-placeholders \
                 OK-commented-block OK-inline-comment OK-crlf OK-php-docblock \
-                OK-caddy-word-in-comment OK-seam-comment-says-worker OK-comment-names-app-runtime; do
+                OK-caddy-word-in-comment OK-seam-comment-says-worker OK-comment-names-app-runtime \
+                OK-composer-permitted-class; do
   wm_fixture
   python3 - "$wm_root" "$wm_route" <<'PYWM'
 import json
@@ -2716,6 +2720,26 @@ elif route == 'fifth-seam':
     e = root / 'infra/.env'
     e.write_text(e.read_text() + 'CADDY_NEW_SEAM=frankenphp { worker /app/public/index.php }\n')
 # ---- THE RUNTIME BAKED INTO composer.json ---------------------------------------------------------------------
+elif route in ('composer-autoload-template', 'composer-dotenv-overload', 'OK-composer-permitted-class'):
+    # THE WHOLE `extra.runtime` SUBTREE, one case per escape the `class`-only check missed. `symfony/runtime`'s
+    # ComposerPlugin consumes `class`/`autoload_template`/`project_dir` and BAKES every remaining key into the
+    # generated bootstrap as runtime constructor options, so:
+    #   - `autoload_template` replaces `vendor/autoload_runtime.php` wholesale -- the runtime class is hardcoded in
+    #     a template of the author's choosing and `APP_RUNTIME` need not appear in the tree at all;
+    #   - `dotenv_overload` (with `dotenv_path`) redirects the dotenv cascade AND overrides variables the container
+    #     already set, which reaches `DATABASE_URL` and hands a serving process the OWNER role. That is a tenancy
+    #     escalation rather than a worker switch, and it is why the rule is an allow-list of KEYS.
+    # The OK route is the other half: a `class` equal to the permitted runtime must still pass, or the rule would
+    # forbid stating the default explicitly -- the same false-positive direction the seams needed.
+    p = root / 'api/composer.json'
+    data = json.loads(p.read_text())
+    if route == 'composer-autoload-template':
+        data.setdefault('extra', {})['runtime'] = {'autoload_template': 'config/runtime_template.php'}
+    elif route == 'composer-dotenv-overload':
+        data.setdefault('extra', {})['runtime'] = {'dotenv_path': '../docs/tuning/perf', 'dotenv_overload': True}
+    else:
+        data.setdefault('extra', {})['runtime'] = {'class': 'Symfony\\Component\\Runtime\\SymfonyRuntime'}
+    p.write_text(json.dumps(data, indent=4) + '\n')
 elif route == 'composer-extra-runtime':
     # `symfony/runtime`'s ComposerPlugin BAKES extra.runtime.class into vendor/autoload_runtime.php, so this
     # selects the runtime with no environment variable anywhere. A path filter listing config directories missed

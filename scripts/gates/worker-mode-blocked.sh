@@ -278,22 +278,58 @@ for relative in "${in_scope[@]}"; do
     # runtime with no environment variable anywhere in the tree. Parsed as JSON because that is the dialect: a
     # regex over JSON is the same mistake as a regex over the four dotenv forms.
     if [[ "$(basename "$relative")" == 'composer.json' ]]; then
-        # NO `2>/dev/null || true` HERE, and the first draft of this block had both. A suppressed error would make
-        # an unparseable `composer.json` — or a missing `php` — report NO baked runtime, which is
-        # indistinguishable from a clean one. That is fail-OPEN, in the gate whose entire redesign was about
-        # inverting fail-open polarity. If the file cannot be read, that IS the violation.
-        if ! baked="$(php -r '
+        # THE WHOLE `extra.runtime` SUBTREE, not the `class` key. Reading `class` alone was a P0 on all three lenses:
+        # `symfony/runtime`'s ComposerPlugin consumes `class`, `autoload_template` and `project_dir`, and then BAKES
+        # EVERY REMAINING KEY into the generated bootstrap as the runtime's constructor options
+        # (`ComposerPlugin.php:92-99` -- `unset($extra['class'], $extra['autoload_template'], $extra['project_dir'])`
+        # followed by `var_export($extra)` into `%runtime_options%`). Two consequences a `class`-only check missed:
+        #
+        #   - `autoload_template` REPLACES `vendor/autoload_runtime.php` wholesale, so the runtime class is hardcoded
+        #     in a template of the author's choosing and the string `APP_RUNTIME` need not appear anywhere in the
+        #     tree. The allow-list is not evaded, it is deleted.
+        #   - `dotenv_path` + `dotenv_overload` redirect the whole dotenv cascade to any path -- including one this
+        #     gate excludes -- and OVERRIDE variables the container already set. That reaches `DATABASE_URL`, so a
+        #     serving process gets the OWNER role, which can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` on every
+        #     tenant table. `docker-entrypoint.sh` refuses `DATABASE_URL_OWNER` in the environment and never inspects
+        #     the role inside `DATABASE_URL`; `no-owner-connection-in-application.php` looks for the named `owner`
+        #     CONNECTION, not a DSN. So this one is a tenancy escalation, not a worker-mode switch.
+        #
+        # Hence an ALLOW-LIST OF KEYS, the same polarity as everything else here: `extra.runtime` must be absent, or
+        # hold nothing but `class` equal to the permitted runtime. Enumerating forbidden keys is what failed.
+        if ! runtime_extra="$(php -r '
             $raw = file_get_contents($argv[1]);
             if (false === $raw) { fwrite(STDERR, "unreadable\n"); exit(1); }
             $data = json_decode($raw, true);
             if (!is_array($data)) { fwrite(STDERR, "not a JSON object: " . json_last_error_msg() . "\n"); exit(1); }
-            echo (string) ($data["extra"]["runtime"]["class"] ?? "");
-        ' "$file")"; then
-            violations+=("$relative: could not be parsed as JSON, so extra.runtime.class could not be ruled out — an unverifiable file is a violation, not a pass")
-            baked=''
+            $extra = $data["extra"]["runtime"] ?? null;
+            if (null === $extra) { echo ""; exit(0); }
+            if (!is_array($extra)) { echo "extra.runtime is not an object"; exit(0); }
+            $offending = [];
+            foreach ($extra as $key => $value) {
+                if ("class" === $key) {
+                    if ($value !== $argv[2]) {
+                        $offending[] = sprintf("class=%s", is_scalar($value) ? (string) $value : gettype($value));
+                    }
+                    continue;
+                }
+                // CONSUMED vs BAKED, because a message that misdiagnoses the cause sends the reader after the
+                // wrong thing -- the defect this repository files against its own gates repeatedly.
+                // `autoload_template` and `project_dir` are consumed by the plugin (`unset` at ComposerPlugin.php:94);
+                // every OTHER key survives into `%runtime_options%` and reaches the runtime constructor.
+                $consumed = ["autoload_template" => "REPLACES vendor/autoload_runtime.php wholesale, so the runtime "
+                        . "class is hardcoded in your template and APP_RUNTIME need not appear anywhere",
+                    "project_dir" => "consumed by the ComposerPlugin; refused only because nothing here needs it, "
+                        . "and an allow-list stays minimal until something does"];
+                $offending[] = sprintf("%s (%s)", $key, $consumed[$key]
+                    ?? "baked into vendor/autoload_runtime.php as a runtime constructor option");
+            }
+            echo implode("; ", $offending);
+        ' "$file" "$PERMITTED_RUNTIME")"; then
+            violations+=("$relative: could not be parsed as JSON, so extra.runtime could not be ruled out — an unverifiable file is a violation, not a pass")
+            runtime_extra=''
         fi
-        if [[ -n "$baked" && "$baked" != "$PERMITTED_RUNTIME" ]]; then
-            violations+=("$relative: extra.runtime.class is \"$baked\"; symfony/runtime BAKES it into vendor/autoload_runtime.php, so it needs no environment variable at all")
+        if [[ -n "$runtime_extra" ]]; then
+            violations+=("$relative: extra.runtime carries $runtime_extra; the ONLY permitted content is class=\"$PERMITTED_RUNTIME\", because symfony/runtime bakes every other key into the generated bootstrap")
         fi
     fi
 done

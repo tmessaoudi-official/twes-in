@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-05 23:10] AGREED: `extra.runtime` in any `composer.json` must be ABSENT or hold nothing but `class` equal to the permitted runtime — an allow-list of KEYS, because `symfony/runtime`'s ComposerPlugin consumes three keys and BAKES every other one into the generated bootstrap. Reading `class` alone left `autoload_template` (which replaces the bootstrap wholesale) and `dotenv_path`+`dotenv_overload` (which override the container's own `DATABASE_URL` and hand a serving process the OWNER role) both open.
 - [2026-08-05 21:30] AGREED: the worker-mode control INVERTS its three polarities rather than extending its lists — scope by exclusion, seam set derived from the Caddyfile's own placeholders, and a whole-line allow-list plus an EMPTY-seam rule instead of per-dialect value parsing. **The four Caddyfile seams are KEPT**: the developer challenged the proposal to delete them, and they are FrankenPHP's own image's variable names, declared in `infra/.env` and both Dockerfile targets, so deleting them would invent a project-specific spelling of a conventional thing and still not close `api/.env.prod`.
 
 - [2026-08-06 03:00] AGREED: **a gate must enumerate the SURFACE, not the spellings — and not the locations
@@ -2505,3 +2506,63 @@ broken on.**
 previous four extended a list, and this one inverted the question being asked, which is the second fix in the
 sequence to close a CLASS rather than an instance (the block-list→allow-list inversion was the first). Whether that
 converges is the thing round 30 tests.
+
+### Certification round 30 — the transformations became the attack surface
+
+**Twenty-eight findings from a full three-lens panel** (security 7, completeness 12, correctness 9, with overlap).
+Frozen commit: **`31eaeba`**. The freeze held this time: no write happened between spawning the panel and the last
+lens reporting [Verified: `git status --porcelain` empty throughout].
+
+**The verdict on round 29's inversion: necessary, and it introduced three new P0s of its own.** Scope, knobs and
+values were genuinely inverted — the panel confirmed all 84 excluded paths are prose, tests, gates and `.claude/`
+with no configuration file among them, that the four ratchets point the right way, and that every previously
+existing refusal is load-bearing. But the rewrite moved the enumeration problem from *which values, locations and
+paths* to **which text transformations**, and a transformation set is exactly as unenumerable. Three of the eight
+P0s live in normalisation code that round 29 added.
+
+| # | Sev | Status | Finding |
+|---|---|---|---|
+| R30-1 | **P0** | **OPEN** | **The seam rule was never inverted.** It kept `[=:]` immediately after the name while `APP_RUNTIME` became a bare substring test — so legacy `ENV FRANKENPHP_CONFIG worker …`, a quoted `"FRANKENPHP_CONFIG":` key, Make `?=`/`+=`, and `FRANKENPHP_CONFIG+='…'` in `docker-entrypoint.sh` all pass. Found independently by ALL THREE lenses. `compose-config.sh` sees neither a Dockerfile `ENV` nor the entrypoint, so the union of both gates is fail-open |
+| R30-2 | **P0** | **OPEN** | A continuation right after `="` drives a seam value to EMPTY: `="\` → strip `\` → `="` → strip `[=:]` → `"` → strip quote → `` |
+| R30-3 | **P0** | **OPEN** | A continuation INSIDE the variable name (`ENV APP_RUN\` / `TIME=…`) defeats the `APP_RUNTIME` rule, the seam rule AND the fast reject at once. `runtime_lines` stays at 5, so the counter proves the declaration was never seen |
+| R30-4 | **P0** | **OPEN** | **REGRESSION.** A seam value beginning `#` collapses to empty via the inline-comment strip. v3 tested the raw line for `*worker*` and CAUGHT the compose form; v4 does not. The entrypoint form is caught by neither gate |
+| R30-5 | **P0** | **OPEN** | **The `NOT_A_SEAM` exemption is the hole.** `{$SERVER_NAME}` splices at SITE-BLOCK position (`Caddyfile:92`), and `php_server` takes `worker` as a subdirective — so a multi-line value in the tracked `infra/.env` closes a complete `:80` site containing `php_server { worker … }` and opens `:81 {` to swallow the rest. Proven with FrankenPHP's own `adapt`: `"workers": [{"file_name": "/app/public/index.php"}]`. **The completeness lens REFUTED this and was wrong** (it reasoned `worker` lives only in the global block); adjudicated against it on the structure plus the adapter output. § Gotchas 2026-07-30: an exemption inside a cross-check is where the drift hides |
+| R30-6 | **P0** | **OPEN** | The Caddyfile checks key on a FILENAME PATTERN and a path exclusion, neither tied to what the Dockerfile `COPY`s to `/etc/frankenphp/Caddyfile`. (a) `infra/api/tests/Caddyfile` is excluded by `(^\|/)tests?/`, is not covered by `.dockerignore`, and reaches the image with a live `worker` — proven by a real build. (b) Renaming the served config to `infra/api/frankenphp.conf` retires the `worker` and `import` checks entirely while a decoy `Caddyfile` keeps the derivation non-empty so anti-vacuity stays satisfied |
+| R30-7 | **P0** | **FIXED** | `extra.runtime.autoload_template` REPLACES `vendor/autoload_runtime.php` wholesale, so the runtime class is hardcoded and `APP_RUNTIME` need not appear in the tree. The check read one of the four keys the ComposerPlugin honours |
+| R30-8 | **P0** | **FIXED** | **A TENANCY ESCALATION, not a worker switch.** `extra.runtime.dotenv_path` + `dotenv_overload` redirect the dotenv cascade to a gate-excluded path AND override variables the container already set — reaching `DATABASE_URL`, so a serving process gets the OWNER role that can `ALTER TABLE … DISABLE ROW LEVEL SECURITY` on every tenant table. `docker-entrypoint.sh` refuses `DATABASE_URL_OWNER` in the environment and never inspects the role inside `DATABASE_URL`; `no-owner-connection-in-application.php` looks for the named `owner` CONNECTION, not a DSN |
+| R30-9 | P1 | **OPEN** | The `440` shrinkage floor makes the meta-suite — and `composer gate` — RED on any machine without `docker compose` (`428 passed, 1 failed`). It was Docker-independent at `330`. Since it is the LAST step of `gate:architecture`, five later steps never run, contradicting `compose-config.sh:36` and `CLAUDE.md:426`. Two lenses. `assert_at_least`'s message also misattributes it to a deleted rule |
+| R30-10 | P1 | **OPEN** | Following the Wave 10 deletion instruction exactly leaves the tier RED — `417 passed, 3 failed`. Unnamed collateral: the `WORKER_RULES` ratchets, the `scanned_pattern`-stays-deleted case, the 440 floor, `worker_env_key compose_min=4`, MUTANT E, eight `cc_route` cases and three CLAUDE.md rows. The same incompleteness round 29 claimed to be fixing, one level out |
+| R30-11 | P2 | **OPEN** | **Three of round 29's own rules are not load-bearing** — the `inspected == 0` guard, the `runtime_declarations == 0` guard (which the commit message CREDITS with catching a defect) and the unparseable-`composer.json` refusal each survive deletion with the suite green |
+| R30-12 | P2 | **OPEN** | **The whole of `31eaeba` is unpinned**: reverting its `find`-based derivation to the single hard-coded path leaves the suite green. § Gotchas 2026-07-29 — a fix is not delivered until a mutant proves it load-bearing |
+| R30-13 | P2 | **OPEN** | The two derivations are still NOT the same set (`find "$INFRA"` vs every in-scope tracked `*Caddyfile*`), while `31eaeba`'s message and a `test-gates.sh` comment both assert they are. A tracked `admin/Caddyfile` yields 5 seams in one and 4 in the other |
+| R30-14 | P2 | **OPEN** | `CLAUDE.md:425`→`426`: the rewrite DROPPED THE VERB. The old row ended `… Deleted`; line 426 still begins *"in Wave 10 when the portal token lands"*, so the deletion instruction is a subject-less fragment and the next sentence points at the `cap_drop` check |
+| R30-15 | P2 | **OPEN** | `CLAUDE.md:426` still says *"CI has Docker"* while `compose-config.sh:36-39` was changed IN THE SAME DIFF to say the opposite. `R28-3` files this as CLOSED. The signature defect, again |
+| R30-16 | P2 | **OPEN** | `compose-config.sh:299-302`'s numbered-property header still describes the two-of-four hand-written list and the `worker`-substring test this commit replaced — 40 lines above the corrected code, and it is what a Wave 10 author reads to scope the deletion |
+| R30-17 | P2 | **OPEN** | Round 29's own record has no numbered findings table, no severity and no OPEN/CLOSED status, so `R28-14` and `R28-15` (both OPEN) are unaccounted for and the convergence counter is unauditable at this wave boundary. **This section is the correction** |
+| R30-18 | P3 | **OPEN** | `worker-mode-blocked.sh:193-194` claims the fast reject "reads the same bytes the line loop would". False for UTF-16LE: `grep` misses it, `read` matches. No live route — the defect is the overclaim |
+| R30-19 | P3 | **FIXED** | *"eight proxy CA certificates"* is **153** [Verified: `git status --porcelain --ignored infra \| wc -l` → 153]. I wrote it from a `head -10`. The argument is strengthened; the number was a container-generated count written as a constant |
+| R30-20 | P3 | **FIXED** | *"`infra/.env:66-69` declares all four"* — they are lines **68-71**. The same commit that wrote the sentence moved them. Two lenses |
+| R30-21 | P3 | **FIXED** | Three "for N commits" claims, two wrong: the two-of-four list stood at THREE commits, not one or two; the Quality-gate row was missing for ONE commit, not two |
+| R30-22 | P3 | **FIXED** | The tally `14, 24, 18, 26, 31` omits round 28 entirely, though the same diff rewrote that round's header |
+
+**What the panel could not break, recorded so a later round does not re-spend it:** the `APP_RUNTIME` value rule
+against every dialect attack tried (`symfony/dotenv`, compose-go, BuildKit); `{env.FOO}`, Caddy's other placeholder
+syntax, as a seam route; YAML anchors, aliases and block/folded scalars on a seam; every `EXCLUDED_PATTERNS` member
+(all 84 excluded paths enumerated — no `.env`, Dockerfile, Caddyfile, compose file or `api/config/**` among them);
+the `import` refusal including nested and globbed forms; the `clean-case-inline` declaration being self-satisfying;
+fixture fidelity across every fixture in the suite; and the fast reject as a scope hole (Caddyfiles bypass it, the
+`composer.json` check is inside the loop). Every numeric claim round 29 made reproduces except the 20.8s fixture
+figure, whose subject no longer exists.
+
+**The lesson, and it is the same one at a new level.** Round 29 replaced "enumerate the forbidden values" with
+"enumerate the forbidden locations", then "the forbidden paths", and each was outflanked. Round 29's answer was to
+enumerate nothing — but it kept a NORMALISATION step, and R30-2, R30-3 and R30-4 are all attacks on the
+normalisation rather than on the rules. **The transformation is an enumeration too.** The structural fix is to stop
+transforming per line: join line continuations into LOGICAL lines before the loop, give the seams the same
+whole-line allow-list `APP_RUNTIME` has (so there is no value to extract and nothing to collapse), identify
+Caddyfiles by what the Dockerfile `COPY`s rather than by filename, and put `SERVER_NAME` under the allow-list
+instead of exempting it.
+
+**Not two consecutive clean rounds.** 14, 24, 18, 26, 17, 31, 28 (rounds 24-30). Round 30 is the first round whose
+findings are predominantly *in the previous round's fix* rather than in the original subject — which is a signal
+about the design, not about the reviewers.

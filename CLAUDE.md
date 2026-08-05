@@ -1396,6 +1396,22 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   That makes the CSP a privacy control rather than defence in depth, and the functional suite CANNOT see it — it goes
   through the kernel, not Caddy. Pinning it belongs in the empty `e2e` suite and is owed.
 
+- **2026-08-05 — a READ-ONLY reviewer broke `composer gate` without touching a tracked file, by regenerating an
+  autoloader through a SHARED `vendor/`.** Three certification agents were told to mutate only a
+  `git clone --no-hardlinks --shared` copy, and none of them modified a tracked path — `git status --porcelain`
+  was empty throughout, exactly as instructed. Then `composer gate` died `Class "Twes\Kernel" not found` at
+  `bin/console:43`, and `api/vendor/composer/autoload_psr4.php` read
+  `$baseDir = dirname(dirname($vendorDir)).'/claude-0/…/scratchpad/work/api'` — a path that no longer existed. One
+  reviewer had run `composer dump-autoload` in a working copy sharing our `api/vendor/`, and the regenerated file
+  landed in OUR tree pointing at its scratchpad. [Verified: `$baseDir` back to `dirname($vendorDir)` after
+  `composer dump-autoload`; `class_exists("Twes\Kernel")` → true; gate EXIT=0.] **The lesson generalises past
+  Composer: "do not modify the working tree" is not the same instruction as "do not modify build state", and
+  `git status` cannot see the difference because the damage is entirely in gitignored paths.** A freeze protects
+  what git tracks; it protects nothing about `vendor/`, `node_modules/`, `.dart_tool/`, `build/` or a pub cache. So
+  a panel prompt must say *copy or point `COMPOSER_VENDOR_DIR`/`PUB_CACHE` elsewhere*, and a green
+  `git status --porcelain` at the end of a round is NOT evidence that the tree still builds — re-run the gate
+  before believing it. The fix is local (`composer dump-autoload`) and nothing was committed wrong, which is the
+  only reason this cost minutes instead of a wrong diagnosis of my own diff.
 - **2026-08-05 — the flag that was supposed to harden the PDF renderer disabled it, and its own healthcheck could not
   tell.** `compose.yaml` ran Gotenberg with `--chromium-deny-list=.*` AND `--chromium-allow-list=^file:///tmp/.*`.
   Gotenberg applies the two as a **conjunction** and a deny match is **absolute**, so the allow-list could never
