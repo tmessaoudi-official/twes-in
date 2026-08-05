@@ -75,18 +75,36 @@ readonly PERMITTED_RUNTIME='Symfony\Component\Runtime\SymfonyRuntime'
 readonly -a PERMITTED_RUNTIME_LINES=(
     # api/.env and infra/.env — the dotenv form.
     'APP_RUNTIME=Symfony\Component\Runtime\SymfonyRuntime'
-    # infra/api/Dockerfile, both targets — inside a multi-line `ENV`, so the line is bare and double-escaped.
+    # infra/api/Dockerfile, both targets — inside a multi-line `ENV`, so double-escaped.
     'APP_RUNTIME="Symfony\\Component\\Runtime\\SymfonyRuntime"'
-    # infra/compose.yaml — interpolated with a default. The DEFAULT is what ships, so it is what is pinned.
+    # infra/compose.yaml — the outer occurrence, interpolated with a default.
     "APP_RUNTIME: '\${APP_RUNTIME:-Symfony\\Component\\Runtime\\SymfonyRuntime}'"
 )
 
-# THE ONE CADDYFILE PLACEHOLDER THAT IS NOT A CONFIG SEAM. `{$SERVER_NAME}` is a hostname and MUST be non-empty,
-# so the emptiness rule cannot apply to it. Kept to one entry and asserted as a MAXIMUM by the meta-suite, because
-# this is a permission list: every name added here is a knob that stops being checked.
-readonly -a NOT_A_SEAM=(
-    SERVER_NAME
+# THE PERMITTED SEAM DECLARATIONS, as templates instantiated per derived seam. Two forms, because two exist:
+# `infra/.env` writes the bare empty assignment and `infra/api/Dockerfile` writes the quoted one. A seam declaration
+# that is not one of these is refused, WITHOUT the gate extracting or interpreting a value — which is what retires
+# `ENV KEY value`, `KEY+=`, `"KEY":` and a `\`-split assignment in a single rule instead of four.
+readonly -a PERMITTED_SEAM_TEMPLATES=(
+    '%s='
+    '%s=""'
+    # The YAML forms. No compose file in this tree declares a seam today, but an EMPTY declaration is a legitimate
+    # thing to write and refusing it would be a false positive -- a meta-suite probe that adds one caught this.
+    # None of these can carry a value, which is the only property that matters.
+    '%s: ""'
+    "%s: ''"
 )
+
+# THE ONE PLACEHOLDER THAT CANNOT BE PINNED TO A LITERAL, and it is NOT an exemption any more. `{$SERVER_NAME}` is
+# the public hostname, so an operator must be able to set it — but it splices at SITE-BLOCK position, immediately
+# before the `{` that opens the block. Version 4 exempted it from the emptiness rule and a certification round then
+# closed the site block from the tracked `infra/.env`, opened its own containing `php_server { worker ... }`, and
+# reopened the original; FrankenPHP's own `adapt` reported the workers. § Gotchas 2026-07-30: an exemption inside a
+# cross-check is where the drift hides.
+#
+# So it gets a STRUCTURAL rule instead of an exemption: no brace outside a `${...}` interpolation. Every hostname
+# stays legal and everything that could change the Caddyfile's grammar is refused.
+readonly STRUCTURAL_PLACEHOLDER='SERVER_NAME'
 
 # WHAT IS OUT OF SCOPE — and this list is the ONLY thing that is. Documentation is excluded because prose about
 # `APP_RUNTIME` is how the constraint gets explained, and a gate that forbade explaining it would be deleted; this
@@ -126,18 +144,60 @@ done
 # THE SEAM SET, DERIVED. Every `{$NAME}` the Caddyfiles themselves splice, minus the one that is a hostname. A
 # hand-written list was version 3's defeat: a fifth seam added to the Caddyfile was silently out of scope while the
 # gate's own header claimed the knob set was derived from the Caddyfile's enumeration. It is now true.
-caddyfiles=()
+# WHICH FILES ARE CADDY CONFIGS — derived from what is actually SERVED, not from the filename. A certification round
+# defeated the filename test two ways: `infra/api/tests/Caddyfile` was excluded from scope by a path pattern yet
+# reached the image (`.dockerignore` covers `api/tests`, not `infra/api/tests`), and renaming the served file to
+# `infra/api/frankenphp.conf` retired the `worker` and `import` rules entirely while a decoy `Caddyfile` kept the
+# seam derivation non-empty so anti-vacuity stayed satisfied.
+#
+# So the set is the UNION of (a) every tracked path whose name contains `Caddyfile` and (b) the SOURCE of every
+# `COPY` in any Dockerfile whose DESTINATION is passed to `--config`. (b) is what ties the rule to the artefact
+# instead of to a naming convention, and it is derived per run rather than written down.
+caddy_relatives=()
 for relative in "${in_scope[@]}"; do
-    [[ "$relative" == *Caddyfile* ]] && caddyfiles+=("$REPO_ROOT/$relative")
+    [[ "$relative" == *Caddyfile* ]] && caddy_relatives+=("$relative")
+done
+
+# The `--config` destinations any Dockerfile serves, then the COPY sources that land on them.
+served_destinations="$(
+    for relative in "${in_scope[@]}"; do
+        [[ "$(basename "$relative")" == Dockerfile* ]] || continue
+        grep -ohE -- '--config[",[:space:]]+[^",[:space:]]+' "$REPO_ROOT/$relative" 2>/dev/null || true
+    done | grep -ohE '/[^",[:space:]]+' | sort -u || true
+)"
+# `|| true` for the SAME reason and with the same evidence as the sibling gate's derivation: `grep` exits 1 on no
+# match, and under `set -euo pipefail` that aborts the ASSIGNMENT -- the gate exited 1 printing NOTHING AT ALL when a
+# fixture had no `--config` line. [Verified with `bash -x`: the trace ends at `served_destinations=`.] The empty case
+# is not suppressed; it is handled by the seam-derivation guard below, which fails with a message.
+
+for relative in "${in_scope[@]}"; do
+    [[ "$(basename "$relative")" == Dockerfile* ]] || continue
+    while IFS= read -r destination; do
+        [[ -z "$destination" ]] && continue
+        while IFS= read -r source; do
+            [[ -z "$source" ]] && continue
+            # Already present by name? Then nothing to add.
+            for known in "${caddy_relatives[@]:-}"; do
+                [[ "$known" == "$source" ]] && continue 2
+            done
+            caddy_relatives+=("$source")
+        done < <(
+            grep -E "^COPY[[:space:]]+[^[:space:]]+[[:space:]]+${destination}([[:space:]]|$)" \
+                "$REPO_ROOT/$relative" 2>/dev/null | awk '{print $2}' | sort -u
+        )
+    done <<< "$served_destinations"
+done
+
+caddyfiles=()
+for relative in "${caddy_relatives[@]:-}"; do
+    [[ -n "$relative" && -f "$REPO_ROOT/$relative" ]] && caddyfiles+=("$REPO_ROOT/$relative")
 done
 
 SEAM_VARIABLES=()
 if (( ${#caddyfiles[@]} > 0 )); then
     while IFS= read -r name; do
         [[ -z "$name" ]] && continue
-        for not_seam in "${NOT_A_SEAM[@]}"; do
-            [[ "$name" == "$not_seam" ]] && continue 2
-        done
+        [[ "$name" == "$STRUCTURAL_PLACEHOLDER" ]] && continue
         SEAM_VARIABLES+=("$name")
     done < <(grep -ohE '\{\$[A-Za-z_][A-Za-z0-9_]*' "${caddyfiles[@]}" | sed 's/^{\$//' | sort -u)
 fi
@@ -145,8 +205,9 @@ fi
 if [[ "${1:-}" == '--dump-rules' ]]; then
     printf 'permitted_runtime %s\n' "$PERMITTED_RUNTIME"
     printf 'permitted_runtime_line %s\n' "${PERMITTED_RUNTIME_LINES[@]}"
+    printf 'permitted_seam_template %s\n' "${PERMITTED_SEAM_TEMPLATES[@]}"
     (( ${#SEAM_VARIABLES[@]} > 0 )) && printf 'seam_variable %s\n' "${SEAM_VARIABLES[@]}"
-    printf 'not_a_seam %s\n' "${NOT_A_SEAM[@]}"
+    printf 'structural_placeholder %s\n' "$STRUCTURAL_PLACEHOLDER"
     printf 'excluded_pattern %s\n' "${EXCLUDED_PATTERNS[@]}"
     exit 0
 fi
@@ -161,184 +222,80 @@ violations=()
 # that set a different variable entirely. § Gotchas 2026-07-29: decide a condition ONCE into a variable that every
 # path reads. `#` is the comment leader in every dialect in scope (dotenv, Dockerfile, YAML, Caddy, Make) and `*`,
 # `//` and `<!--` cover the PHP and HTML files the inverted scope brought in.
-# Both helpers ASSIGN A GLOBAL rather than echoing, and are called bare rather than in `$( )`. That is a measured
-# requirement, not a style choice: command substitution forks a subshell, this loop runs over roughly 28,000 lines,
-# and the echoing version took 44.8s per invocation — 19 minutes across the meta-suite's 25 cases, which read as a
-# hung suite rather than a slow one. [Measured with `time` before and after.]
-code_of() {
-    local line="${1%$'\r'}" trimmed                       # CRLF stripped first, so a message cannot render
-                                                          # identically to the permitted value while asserting
-                                                          # it differs.
-    trimmed="${line#"${line%%[![:space:]]*}"}"
-    case "$trimmed" in
-        '#'* | '*'* | '//'* | '/*'* | '<!--'* | '')
-            CODE='' ;;                                    # a whole-line comment is not configuration
-        *)
-            trimmed="${trimmed%%#*}"                      # an inline comment is not configuration either
-            trimmed="${trimmed%%//*}"
-            CODE="${trimmed%"${trimmed##*[![:space:]]}"}" ;;
-    esac
+# THE ANALYSIS ITSELF LIVES IN PHP, in `lib/worker-mode-analyse.php`, and the reason is a finding rather than a
+# preference. Every rule here used to be a chain of bash parameter expansions, and a certification round defeated
+# three of them at once by attacking the CHAIN instead of the rules: a continuation after `="` normalised a non-empty
+# value to empty, a continuation inside the variable NAME meant no keyword appeared on any physical line, and a value
+# beginning `#` collapsed through the inline-comment strip -- the last a REGRESSION, since the version before tested
+# the raw line. A transformation set is an enumeration too, and this one had grown to five strips.
+#
+# The replacement does two TOTAL operations -- join continuations into logical lines, then one quote-aware scan per
+# line -- and then compares text against committed literals without extracting any value. Bash cannot do the scan
+# without a character loop, and a character loop in bash over every tracked file is not viable; PHP is what the other
+# gates here are written in and needs nothing installed.
+#
+# The request goes over STDIN as JSON so nothing is escaped through an argument list. A mutation harness in this
+# repository was already fooled once by shell escaping that silently did not apply.
+caddy_relative_list=""
+for absolute in "${caddyfiles[@]:-}"; do
+    [[ -z "$absolute" ]] && continue
+    caddy_relative_list+="${absolute#"$REPO_ROOT/"}"$'\n'
+done
+
+# THE ENVIRONMENT IS SET ON THIS INVOCATION, not on the driver's. The first version set it on the driver and the
+# request-building step read an empty environment -- so `files` was `[]`, `inspected` was 0, and the gate's own
+# anti-vacuity guard caught it on the first run. Exactly what that guard is for.
+request="$(
+    WM_SEAMS="$(printf '%s\n' "${SEAM_VARIABLES[@]:-}")" \
+    WM_TEMPLATES="$(printf '%s\n' "${PERMITTED_SEAM_TEMPLATES[@]}")" \
+    WM_RUNTIME_LINES="$(printf '%s\n' "${PERMITTED_RUNTIME_LINES[@]}")" \
+    WM_FILES="$(printf '%s\n' "${in_scope[@]:-}")" \
+    WM_CADDYFILES="$caddy_relative_list" \
+    python3 - "$REPO_ROOT" "$PERMITTED_RUNTIME" "$STRUCTURAL_PLACEHOLDER" <<'PYREQ'
+import json
+import os
+import sys
+
+root, permitted_runtime, structural = sys.argv[1], sys.argv[2], sys.argv[3]
+
+
+def lines(name):
+    return [value for value in os.environ.get(name, '').split('\n') if value]
+
+
+seams = lines('WM_SEAMS')
+templates = lines('WM_TEMPLATES')
+print(json.dumps({
+    'root': root,
+    'permitted_runtime': permitted_runtime,
+    'structural_placeholder': structural,
+    'permitted_runtime_lines': lines('WM_RUNTIME_LINES'),
+    # Instantiated per seam HERE rather than in PHP, so `--dump-rules` and the rules cannot disagree about the set.
+    'permitted_seam_lines': [t.replace('%s', seam) for seam in seams for t in templates],
+    'seams': seams,
+    'files': lines('WM_FILES'),
+    'caddyfiles': lines('WM_CADDYFILES'),
+}))
+PYREQ
+)"
+
+response="$(printf '%s' "$request" | php "$REPO_ROOT/scripts/gates/lib/worker-mode-run.php")" || {
+    echo "worker-mode-blocked: FAIL — the analysis driver did not run, so nothing was asserted." >&2
+    exit 1
 }
 
-# NORMALISE A LINE FOR COMPARISON against PERMITTED_RUNTIME_LINES. Deliberately minimal — only a Dockerfile line
-# continuation and surrounding whitespace are removed. Nothing about the VALUE is interpreted, because interpreting
-# the value is what failed three times.
-normalise() {
-    local text="${1%\\}"                                  # a trailing `\` is a line continuation, not content
-    text="${text#"${text%%[![:space:]]*}"}"
-    NORM="${text%"${text##*[![:space:]]}"}"
-}
-
-# A PER-FILE FAST REJECT, built from the DERIVED keyword set so nothing about it is hard-coded. This is not a scope
-# hole: `grep` reads the same bytes the line loop would, and a file mentioning none of the keywords cannot violate
-# any of the line-level rules. It exists because inverting the scope changed the gate's COMPLEXITY CLASS -- the cost
-# is now linear in tracked BYTES, and bash string expansion on a long minified line is expensive enough that a
-# single large tracked asset would dominate. Caddyfiles always enter the loop, because their `worker`/`import` rules
-# match no keyword; `composer.json` is handled after the loop and is unaffected.
-keyword_re='APP_RUNTIME'
-for seam in "${SEAM_VARIABLES[@]}"; do
-    keyword_re+="|$seam"
-done
-readonly keyword_re
-
-for relative in "${in_scope[@]}"; do
-    file="$REPO_ROOT/$relative"
-    inspected=$((inspected + 1))
-
-    # `scan_lines`, NOT `continue`. A `continue` here skipped the WHOLE iteration and took the `composer.json`
-    # check below the loop with it -- so `extra.runtime.class` stopped being detected while every other rule still
-    # fired. That is the IDENTICAL defect `compose-config.sh` had one round earlier, where `if 'APP_RUNTIME' not in
-    # env: continue` killed the seam loop beneath it. Caught here only because a mutant existed for the check the
-    # `continue` orphaned. Not a suppression on the `grep`: it exits 1 for "no match" and 2 for an unreadable file,
-    # and both mean the line loop has nothing to find -- an unreadable file is already excluded by the `[[ -f ]]`
-    # test that built `in_scope`.
-    # The fast path chooses the loop's INPUT rather than skipping the iteration, and rather than folding a guard
-    # into the `while` condition -- `while (( x )) && IFS= read -r line || ...` parses in a way that never ran the
-    # body at all, which the counters caught immediately (`runtime_lines=0` on a tree with five).
-    scan_source="$file"
-    if [[ "$relative" != *Caddyfile* ]] && ! grep -qE "$keyword_re" "$file" 2>/dev/null; then
-        scan_source=/dev/null
-    fi
-
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        code_of "$line"
-        code="$CODE"
-        [[ -z "$code" ]] && continue
-
-        # ---- APP_RUNTIME: the LINE must be one this repository has approved ---------------------------------
-        # A bare substring test, with no assumption about what follows the name. That is what catches the legacy
-        # `ENV KEY value` form (no `=` at all) and the quoted `"APP_RUNTIME":` key (not preceded by whitespace),
-        # both of which defeated a rule requiring `[=:]` after the name.
-        if [[ "$code" == *APP_RUNTIME* ]]; then
-            runtime_declarations=$((runtime_declarations + 1))
-            normalise "$code"
-            normalised="$NORM"
-            permitted=0
-            for candidate in "${PERMITTED_RUNTIME_LINES[@]}"; do
-                [[ "$normalised" == "$candidate" ]] && permitted=1 && break
-            done
-            if (( ! permitted )); then
-                violations+=("$relative: \`$normalised\` is not one of the permitted APP_RUNTIME lines; the only runtime is \"$PERMITTED_RUNTIME\"")
-            fi
-        fi
-
-        # ---- THE SEAMS: EMPTY, whatever the content would have said -----------------------------------------
-        # Not "must not contain `worker`". A YAML block scalar puts the directive on lines the key never appears
-        # on, so a search for the word beside the key cannot see it — but `|` is not empty, and that is enough.
-        for seam in "${SEAM_VARIABLES[@]}"; do
-            if [[ "$code" =~ (^|[^A-Za-z0-9_])"$seam"[[:space:]]*[=:] ]]; then
-                normalise "${code#*"$seam"}"
-                value="${NORM#[=:]}"
-                normalise "$value"
-                value="$NORM"
-                value="${value#\"}" ; value="${value%\"}"
-                value="${value#\'}" ; value="${value%\'}"
-                if [[ -n "$value" ]]; then
-                    violations+=("$relative: $seam must be EMPTY while worker mode is blocked, and is \`$value\`; it splices verbatim into the Caddyfile")
-                fi
-            fi
-        done
-
-        # ---- AN ACTIVE `worker` DIRECTIVE, anywhere in a Caddyfile ------------------------------------------
-        # Not line-anchored: `frankenphp { worker /app/public/index.php }` on one line escaped the anchored
-        # version. Scoped to Caddyfiles by NAME, which is not a scope hole — `infra/compose.yaml` has a service
-        # legitimately called `worker`, and refusing the word everywhere would refuse the queue consumer.
-        if [[ "$relative" == *Caddyfile* && "${code,,}" =~ (^|[[:space:]{])worker([[:space:]{]|$) ]]; then
-            violations+=("$relative: an ACTIVE \`worker\` directive — keep the documented block commented")
-        fi
-
-        # ---- AND AN `import`, because the imported file is where the directive would hide -------------------
-        if [[ "$relative" == *Caddyfile* && "$code" =~ ^import[[:space:]] ]]; then
-            violations+=("$relative: \`$code\` — an imported Caddy config is outside this sweep, so an \`import\` is refused while worker mode is blocked")
-        fi
-    done < "$scan_source"
-
-    # ---- extra.runtime.class, PARSED rather than grepped ------------------------------------------------------
-    # `symfony/runtime`'s ComposerPlugin bakes this key into `vendor/autoload_runtime.php`, so it selects the
-    # runtime with no environment variable anywhere in the tree. Parsed as JSON because that is the dialect: a
-    # regex over JSON is the same mistake as a regex over the four dotenv forms.
-    if [[ "$(basename "$relative")" == 'composer.json' ]]; then
-        # THE WHOLE `extra.runtime` SUBTREE, not the `class` key. Reading `class` alone was a P0 on all three lenses:
-        # `symfony/runtime`'s ComposerPlugin consumes `class`, `autoload_template` and `project_dir`, and then BAKES
-        # EVERY REMAINING KEY into the generated bootstrap as the runtime's constructor options
-        # (`ComposerPlugin.php:92-99` -- `unset($extra['class'], $extra['autoload_template'], $extra['project_dir'])`
-        # followed by `var_export($extra)` into `%runtime_options%`). Two consequences a `class`-only check missed:
-        #
-        #   - `autoload_template` REPLACES `vendor/autoload_runtime.php` wholesale, so the runtime class is hardcoded
-        #     in a template of the author's choosing and the string `APP_RUNTIME` need not appear anywhere in the
-        #     tree. The allow-list is not evaded, it is deleted.
-        #   - `dotenv_path` + `dotenv_overload` redirect the whole dotenv cascade to any path -- including one this
-        #     gate excludes -- and OVERRIDE variables the container already set. That reaches `DATABASE_URL`, so a
-        #     serving process gets the OWNER role, which can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` on every
-        #     tenant table. `docker-entrypoint.sh` refuses `DATABASE_URL_OWNER` in the environment and never inspects
-        #     the role inside `DATABASE_URL`; `no-owner-connection-in-application.php` looks for the named `owner`
-        #     CONNECTION, not a DSN. So this one is a tenancy escalation, not a worker-mode switch.
-        #
-        # Hence an ALLOW-LIST OF KEYS, the same polarity as everything else here: `extra.runtime` must be absent, or
-        # hold nothing but `class` equal to the permitted runtime. Enumerating forbidden keys is what failed.
-        if ! runtime_extra="$(php -r '
-            $raw = file_get_contents($argv[1]);
-            if (false === $raw) { fwrite(STDERR, "unreadable\n"); exit(1); }
-            $data = json_decode($raw, true);
-            if (!is_array($data)) { fwrite(STDERR, "not a JSON object: " . json_last_error_msg() . "\n"); exit(1); }
-            $extra = $data["extra"]["runtime"] ?? null;
-            if (null === $extra) { echo ""; exit(0); }
-            if (!is_array($extra)) { echo "extra.runtime is not an object"; exit(0); }
-            $offending = [];
-            foreach ($extra as $key => $value) {
-                if ("class" === $key) {
-                    if ($value !== $argv[2]) {
-                        $offending[] = sprintf("class=%s", is_scalar($value) ? (string) $value : gettype($value));
-                    }
-                    continue;
-                }
-                // CONSUMED vs BAKED, because a message that misdiagnoses the cause sends the reader after the
-                // wrong thing -- the defect this repository files against its own gates repeatedly.
-                // `autoload_template` and `project_dir` are consumed by the plugin (`unset` at ComposerPlugin.php:94);
-                // every OTHER key survives into `%runtime_options%` and reaches the runtime constructor.
-                $consumed = ["autoload_template" => "REPLACES vendor/autoload_runtime.php wholesale, so the runtime "
-                        . "class is hardcoded in your template and APP_RUNTIME need not appear anywhere",
-                    "project_dir" => "consumed by the ComposerPlugin; refused only because nothing here needs it, "
-                        . "and an allow-list stays minimal until something does"];
-                $offending[] = sprintf("%s (%s)", $key, $consumed[$key]
-                    ?? "baked into vendor/autoload_runtime.php as a runtime constructor option");
-            }
-            echo implode("; ", $offending);
-        ' "$file" "$PERMITTED_RUNTIME")"; then
-            violations+=("$relative: could not be parsed as JSON, so extra.runtime could not be ruled out — an unverifiable file is a violation, not a pass")
-            runtime_extra=''
-        fi
-        if [[ -n "$runtime_extra" ]]; then
-            violations+=("$relative: extra.runtime carries $runtime_extra; the ONLY permitted content is class=\"$PERMITTED_RUNTIME\", because symfony/runtime bakes every other key into the generated bootstrap")
-        fi
-    fi
-done
+mapfile -t violations < <(printf '%s' "$response" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("\n".join(d["violations"]))')
+inspected="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["inspected"])')"
+scanned="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["scanned"])')"
+declarations="$(printf '%s' "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["declarations"])')"
+# `mapfile` on an empty string yields one empty element; drop it so the count is honest.
+(( ${#violations[@]} == 1 )) && [[ -z "${violations[0]}" ]] && violations=()
 
 # Anti-vacuity, printed unconditionally and BEFORE the verdict, for the reason every gate here has one: a loop over
 # nothing prints no violations and exits 0, indistinguishable from a clean sweep.
-printf 'worker-mode-blocked: counts — inspected=%d excluded=%d violations=%d seams=%d runtime_lines=%d permitted_lines=%d\n' \
-    "$inspected" "$excluded" "${#violations[@]}" "${#SEAM_VARIABLES[@]}" \
-    "$runtime_declarations" "${#PERMITTED_RUNTIME_LINES[@]}"
+printf 'worker-mode-blocked: counts — inspected=%d excluded=%d scanned=%d declarations=%d violations=%d seams=%d caddyfiles=%d permitted_lines=%d\n' \
+    "$inspected" "$excluded" "$scanned" "$declarations" "${#violations[@]}" "${#SEAM_VARIABLES[@]}" \
+    "${#caddyfiles[@]}" "${#PERMITTED_RUNTIME_LINES[@]}"
 
 if (( inspected == 0 )); then
     echo "worker-mode-blocked: FAIL — inspected NO files, so this gate asserted nothing." >&2
@@ -352,10 +309,20 @@ if (( ${#SEAM_VARIABLES[@]} == 0 )); then
     exit 1
 fi
 
-if (( runtime_declarations == 0 )); then
-    echo "worker-mode-blocked: FAIL — found NO APP_RUNTIME declaration anywhere, so the runtime rule asserted nothing." >&2
+# ANTI-VACUITY ON THE RULE'S OWN SUBJECT. `scanned == 0` was tried first and is NOT REACHABLE while a Caddyfile
+# exists: the seam names are DERIVED from that file's own `{$...}` placeholders, so the file always contains the
+# keywords and always reaches the analysis. A guard that cannot fire is what this repository files as a defect, so it
+# was replaced rather than kept as reassurance.
+#
+# `declarations` counts APPROVED runtime and seam declarations the analysis actually saw. Zero means the central rule
+# matched nothing anywhere -- which is what a renamed variable, a moved file or a broken derivation looks like, and
+# is indistinguishable from a clean sweep without this check.
+if (( declarations == 0 )); then
+    echo "worker-mode-blocked: FAIL — saw NO approved runtime or seam declaration anywhere, so the value rules" >&2
+    echo "  asserted nothing. A renamed variable or a moved file looks exactly like a clean sweep otherwise." >&2
     exit 1
 fi
+
 
 if (( ${#violations[@]} > 0 )); then
     echo "worker-mode-blocked: FAIL — FrankenPHP worker mode is enabled or enable-able." >&2

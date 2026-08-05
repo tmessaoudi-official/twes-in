@@ -2564,19 +2564,19 @@ echo "== worker-mode-blocked: the text sweep, which needs no daemon and therefor
 # exit code alone, which this suite once reported 33/33 for.
 # ================================================================================================================
 declare -A WM_EXPECT=(
-  [export-infra-env]='is not one of the permitted'
-  [export-api-env]='is not one of the permitted'
-  [dockerfile-runtime]='is not one of the permitted'
-  [legacy-env-form]='is not one of the permitted'
-  [quoted-yaml-key]='is not one of the permitted'
-  [continuation-emptied]='is not one of the permitted'
-  [env-cascade-prod]='is not one of the permitted'
-  [env-cascade-test]='is not one of the permitted'
-  [dockerfile-variant]='is not one of the permitted'
-  [dockerfile-seam]='must be EMPTY'
-  [caddy-global-options]='must be EMPTY'
-  [seam-multiline-yaml]='must be EMPTY'
-  [fifth-seam]='must be EMPTY'
+  [export-infra-env]='is not one of the permitted APP_RUNTIME declarations'
+  [export-api-env]='is not one of the permitted APP_RUNTIME declarations'
+  [dockerfile-runtime]='is not one of the permitted APP_RUNTIME declarations'
+  [legacy-env-form]='is not one of the permitted APP_RUNTIME declarations'
+  [quoted-yaml-key]='is not one of the permitted APP_RUNTIME declarations'
+  [continuation-emptied]='is not one of the permitted APP_RUNTIME declarations'
+  [env-cascade-prod]='is not one of the permitted APP_RUNTIME declarations'
+  [env-cascade-test]='is not one of the permitted APP_RUNTIME declarations'
+  [dockerfile-variant]='is not one of the permitted APP_RUNTIME declarations'
+  [dockerfile-seam]='is not one of the permitted seam declarations'
+  [caddy-global-options]='is not one of the permitted seam declarations'
+  [seam-multiline-yaml]='is not one of the permitted seam declarations'
+  [fifth-seam]='is not one of the permitted seam declarations'
   [composer-extra-runtime]='extra.runtime carries class='
   [composer-autoload-template]='REPLACES vendor/autoload_runtime.php wholesale'
   [composer-dotenv-overload]='baked into vendor/autoload_runtime.php'
@@ -2584,6 +2584,18 @@ declare -A WM_EXPECT=(
   [caddyfile-same-line]='ACTIVE `worker` directive'
   [caddyfile-import]='an imported Caddy config'
   [caddyfile-no-placeholders]='derived NO seam variables'
+  [no-approved-declaration]='saw NO approved runtime or seam declaration'
+  [no-caddy-config]='derived NO seam variables'
+  [composer-unparseable]='could not be parsed as JSON'
+  [seam-legacy-env-form]='is not one of the permitted seam declarations'
+  [seam-quoted-key]='is not one of the permitted seam declarations'
+  [seam-append-operator]='is not one of the permitted seam declarations'
+  [seam-continuation-after-quote]='is not one of the permitted seam declarations'
+  [seam-hash-leading-value]='UNBALANCED QUOTES'
+  [runtime-split-name]='is not one of the permitted APP_RUNTIME declarations'
+  [server-name-block-injection]='UNBALANCED QUOTES'
+  [server-name-brace]='carries a BRACE outside'
+  [caddyfile-renamed-served-config]='an ACTIVE `worker` directive'
 )
 
 # THE FIXTURE. Rebuilt per case from the WORKING TREE, not `git archive HEAD`: the gate under test may be
@@ -2599,7 +2611,11 @@ wm_fixture() {
   cp -a "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" "$wm_root/scripts/gates/"
   cp -a "$REPO_ROOT/infra/.env" "$REPO_ROOT/infra/compose.yaml" "$REPO_ROOT/infra/compose.override.yaml" \
         "$REPO_ROOT/infra/compose.prod.yaml" "$wm_root/infra/"
-  cp -a "$REPO_ROOT/infra/api/Dockerfile" "$REPO_ROOT/infra/api/Caddyfile" "$wm_root/infra/api/"
+  cp -a "$REPO_ROOT/infra/api/Dockerfile" "$REPO_ROOT/infra/api/Caddyfile" \
+        "$REPO_ROOT/infra/api/docker-entrypoint.sh" "$wm_root/infra/api/"
+  mkdir -p "$wm_root/scripts/gates/lib"
+  cp -a "$REPO_ROOT/scripts/gates/lib/worker-mode-analyse.php" \
+        "$REPO_ROOT/scripts/gates/lib/worker-mode-run.php" "$wm_root/scripts/gates/lib/"
   cp -a "$REPO_ROOT/api/.env" "$REPO_ROOT/api/.env.test" "$REPO_ROOT/api/composer.json" "$wm_root/api/"
   # ONLY THE TRACKED FILE. `cp -a api/public` pulled in 3.7MB of generated Swagger UI and ReDoc bundles that
   # `assets:install` writes and git ignores, and `git add -A` then TRACKED them -- so the fixture did not mirror
@@ -2633,7 +2649,10 @@ for wm_route in export-infra-env export-api-env dockerfile-runtime legacy-env-fo
                 dockerfile-seam caddy-global-options seam-multiline-yaml fifth-seam \
                 composer-extra-runtime composer-autoload-template composer-dotenv-overload \
                 caddyfile-uncommented caddyfile-same-line caddyfile-import \
-                caddyfile-no-placeholders \
+                caddyfile-no-placeholders no-approved-declaration no-caddy-config composer-unparseable \
+                seam-legacy-env-form seam-quoted-key seam-append-operator \
+                seam-continuation-after-quote seam-hash-leading-value runtime-split-name \
+                server-name-block-injection server-name-brace caddyfile-renamed-served-config \
                 OK-commented-block OK-inline-comment OK-crlf OK-php-docblock \
                 OK-caddy-word-in-comment OK-seam-comment-says-worker OK-comment-names-app-runtime \
                 OK-composer-permitted-class; do
@@ -2766,6 +2785,95 @@ elif route == 'caddyfile-same-line':
         'frankenphp { worker /app/public/index.php 4 }')
 elif route == 'caddyfile-import':
     sub('infra/api/Caddyfile', re.escape('{$CADDY_EXTRA_CONFIG}'), 'import /etc/caddy/worker.conf')
+# ---- ROUND 30's SIX P0s. Every one of these passed the previous version with both gates green ---------------
+elif route == 'seam-legacy-env-form':
+    # `ENV KEY value` -- no `=` at all. The previous seam rule required `[=:]` immediately after the name, which is
+    # the exact structural assumption the gate's header claimed had been removed. Found by all three lenses.
+    insert_after('infra/api/Dockerfile', 'FROM ', 'ENV FRANKENPHP_CONFIG worker /app/public/index.php 4')
+elif route == 'seam-quoted-key':
+    insert_after('infra/compose.yaml', '  APP_RUNTIME:', '  "FRANKENPHP_CONFIG": "worker /app/public/index.php 4"')
+elif route == 'seam-append-operator':
+    # `+=` in the entrypoint, which no renderer reads and which the `[=:]` test also missed.
+    p = root / 'infra/api/docker-entrypoint.sh'
+    p.write_text(p.read_text().replace('exec "$@"',
+        'FRANKENPHP_CONFIG+=\'worker /app/public/index.php\'\nexport FRANKENPHP_CONFIG\nexec "$@"', 1))
+elif route == 'seam-continuation-after-quote':
+    # A continuation right after `="` drove the value to EMPTY through the old normalisation chain:
+    # `="\` -> strip `\` -> `="` -> strip `[=:]` -> `"` -> strip quote -> ``.
+    sub('infra/api/Dockerfile', r'FRANKENPHP_CONFIG=""',
+        'FRANKENPHP_CONFIG="\\\n    worker /app/public/index.php"')
+elif route == 'seam-hash-leading-value':
+    # A value beginning `#` collapsed to empty through the inline-comment strip -- a REGRESSION, since the version
+    # before this one tested the raw line. The Caddyfile then gets a comment line followed by a real directive.
+    p = root / 'infra/api/docker-entrypoint.sh'
+    p.write_text(p.read_text().replace('exec "$@"',
+        'export FRANKENPHP_CONFIG="#\nworker /app/public/index.php"\nexec "$@"', 1))
+elif route == 'runtime-split-name':
+    # A continuation INSIDE the variable name. Neither keyword appears on any physical line, so this defeated both
+    # value rules AND the fast reject at once; the old `runtime_lines` counter stayed at 5, proving it never looked.
+    insert_after('infra/api/Dockerfile', 'FROM ',
+                 'ENV APP_RUN\\', 'TIME=Runtime\\FrankenPhpSymfony\\Runtime')
+elif route == 'server-name-block-injection':
+    # THE EXEMPTION WAS THE HOLE. `{$SERVER_NAME}` splices at SITE-BLOCK position, and `php_server` takes `worker`
+    # as a subdirective -- so a multi-line value closes a complete `:80` site containing a worker and opens `:81 {`
+    # to swallow the rest of the file. Proven with FrankenPHP's own `adapt`.
+    p = root / 'infra/.env'
+    p.write_text(p.read_text().replace('SERVER_NAME=:80',
+        'SERVER_NAME=":80 {\n\tphp_server {\n\t\tworker /app/public/index.php\n\t}\n}\n:81"', 1))
+elif route == 'server-name-brace':
+    # The same injection on ONE line, so the quote-balance rule does not fire and the structural rule must.
+    p = root / 'infra/.env'
+    p.write_text(p.read_text().replace('SERVER_NAME=:80',
+        'SERVER_NAME=":80 { php_server { worker /app/public/index.php } } :81"', 1))
+elif route == 'caddyfile-renamed-served-config':
+    # Renaming the SERVED config retired the `worker` and `import` rules entirely, while a decoy `Caddyfile` kept
+    # the seam derivation non-empty so anti-vacuity stayed satisfied. The rule now follows the Dockerfile's `COPY`
+    # destination into `--config`, so the served file is identified by what is SERVED, not by its name.
+    served = root / 'infra/api/frankenphp.conf'
+    caddy = root / 'infra/api/Caddyfile'
+    text = caddy.read_text()
+    served.write_text(re.sub(r'(?m)^(\s*)#\s*worker\s*\{', r'\1worker {', text, count=1))
+    # ASSERT AN *UNCOMMENTED* WORKER. The first version of this guard tested `'worker {' not in ...`, which the
+    # COMMENTED block `# worker {` satisfies -- so the guard passed while the mutation had done nothing and the
+    # case reported a miss against a tree containing no violation. A vacuous guard in the test for a vacuity rule.
+    if not re.search(r'(?m)^\s*worker\s*\{', served.read_text()):
+        raise SystemExit('the renamed config carries no UNCOMMENTED worker; this case would be vacuous')
+    d = root / 'infra/api/Dockerfile'
+    d.write_text(d.read_text().replace('COPY infra/api/Caddyfile /etc/frankenphp/Caddyfile',
+                                       'COPY infra/api/frankenphp.conf /etc/frankenphp/Caddyfile'))
+# ---- ANTI-VACUITY. Three guards had NO case, so deleting each left the suite green -- the "a fix is not delivered
+# ---- until a mutant proves it load-bearing" rule, applied to the guards that exist to stop a vacuous pass.
+elif route == 'no-approved-declaration':
+    # If the analysis sees NO approved declaration, its central rule matched nothing -- which is what a renamed
+    # variable, a moved file or a broken derivation looks like, and is otherwise indistinguishable from a clean
+    # sweep. Deleting every declaration must therefore FAIL.
+    #
+    # `scanned == 0` was tried first and is NOT constructible: the seam names are DERIVED from the Caddyfile's own
+    # placeholders, so that file always contains the keywords and always reaches the analysis. Writing the case is
+    # what proved the guard unreachable, and it was replaced rather than kept.
+    for relative in ('api/.env', 'infra/.env', 'infra/compose.yaml', 'infra/api/Dockerfile'):
+        path = root / relative
+        if not path.exists():
+            continue
+        kept = []
+        for line in path.read_text().split('\n'):
+            stripped = line.strip().lstrip('#').strip()
+            if stripped.startswith(('APP_RUNTIME', 'CADDY_', 'FRANKENPHP_CONFIG')):
+                continue
+            kept.append(line)
+        path.write_text('\n'.join(kept))
+elif route == 'no-caddy-config':
+    # Removing the Caddyfile AND the `COPY` that serves it must FAIL rather than pass quietly. It fails through the
+    # SEAM derivation guard, not through a separate caddyfile guard -- writing this case is what showed that the
+    # `caddyfiles == 0` guard could never fire, because the seam set is derived FROM the caddyfile set, so
+    # `caddyfiles == 0` implies `seams == 0` and the earlier guard always wins. That dead guard was deleted rather
+    # than kept as reassurance; a check that cannot fire is the thing this suite exists to refuse.
+    (root / 'infra/api/Caddyfile').unlink()
+    d = root / 'infra/api/Dockerfile'
+    d.write_text('\n'.join(l for l in d.read_text().split('\n') if 'Caddyfile' not in l))
+elif route == 'composer-unparseable':
+    # An unverifiable file is a violation, not a pass -- the fail-closed polarity the whole gate is about.
+    (root / 'api/composer.json').write_text('{ this is not json\n')
 elif route == 'caddyfile-no-placeholders':
     # THE PRICE OF DERIVING THE KNOB SET: a hand-written list could not come back empty, and a derived one can.
     # An empty derivation must FAIL rather than check nothing -- otherwise renaming a placeholder, or moving the
@@ -2971,7 +3079,17 @@ else
   failed=$((failed + 1))
 fi
 
-assert_at_least "the suite itself has not shrunk" "$passed" 440
+# THE FLOOR IS DOCKER-AWARE, and a single number was a REGRESSION. It was raised 330 -> 440 from a run WITH
+# Docker, so on a machine without `docker compose` the suite reported `428 passed, 1 failed` and took
+# `composer gate:architecture` down with it -- and since the meta-suite runs LAST in that chain, `gate:schema`,
+# `gate:static`, `gate:style`, `gate:mapping` and `gate:test` never ran at all. That contradicted
+# `compose-config.sh`'s own promise that "a machine without Docker can still run every other gate", and there is no
+# CI to absorb it. [Measured at this commit: 459 with Docker, 441 without.]
+if docker compose version >/dev/null 2>&1; then
+  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 455
+else
+  assert_at_least "the suite itself has not shrunk (no docker)" "$passed" 437
+fi
 
 echo
 printf '%d passed, %d failed\n' "$passed" "$failed"
