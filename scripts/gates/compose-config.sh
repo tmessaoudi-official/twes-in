@@ -13,13 +13,19 @@
 #
 # **It asserts more than "the YAML parses", and the difference is the point.** `docker compose config` performs
 # variable interpolation, merges the overlay onto the base and resolves anchors — so a property that is correct in
-# the source can still be wrong in the RENDERED result, which is what actually runs. The four assertions below are
-# each a security property that a careless overlay edit would silently undo:
+# the source can still be wrong in the RENDERED result, which is what actually runs. Each assertion below is a
+# security property that a careless overlay edit would silently undo:
 #
-#   1. the OWNER database credential appears on the migration service and NOWHERE else;
-#   2. the scheduler is pinned to exactly ONE replica;
-#   3. the database and the document renderer are not on the externally-reachable network;
-#   4. the internal network has no route out.
+#   - the OWNER database credential appears on the migration service and NOWHERE else;
+#   - the scheduler is pinned to exactly ONE replica;
+#   - the database and the document renderer are not on the externally-reachable network;
+#   - the internal network has no route out;
+#   - every Messenger receiver a service consumes is a transport the application actually defines;
+#   - in PRODUCTION ONLY, every service drops ALL Linux capabilities.
+#
+# NO COUNT IS WRITTEN HERE, deliberately: this list said "the four assertions below" while there were five, and then
+# six. A number written beside the thing it counts is the first thing to drift, and CLAUDE.md records that shape
+# repeatedly. Count the entries if you need a number.
 #
 # Why each matters is in `infra/compose.yaml` beside the thing itself. The short version: `FORCE ROW LEVEL
 # SECURITY` stops an owner SKIPPING policies, not REMOVING them, so an owner credential in a serving container is
@@ -140,6 +146,29 @@ if not (cfg.get('networks', {}).get('internal', {}) or {}).get('internal'):
         'the `internal` network is not marked `internal: true`, so a compromised worker or the document renderer '
         'would have a route to the outside world.')
 
+# 6. IN PRODUCTION, EVERY SERVICE DROPS ALL LINUX CAPABILITIES.
+#    PROD ONLY, and the scoping is the point rather than an exemption: the dev overlay deliberately does NOT harden,
+#    because dev optimises the developer's loop. Asserting it there would either fail permanently or push hardening
+#    into dev, and both are wrong.
+#
+#    WHY IT NEEDS ASSERTING AT ALL, given `read_only` and `no-new-privileges` were already checked by eye:
+#    capabilities are ORTHOGONAL to both and work fine on a read-only filesystem. Docker's default set includes
+#    NET_RAW -- raw sockets, so a compromised process can sniff and spoof on the very network the database sits on.
+#
+#    IT IS ALSO A FULL-SET CHECK, which is how the gap that prompted it was found: hardening was applied to the six
+#    LONG-RUNNING services and `migrate` was missed, because a one-shot does not look like a service. That was the
+#    worst possible omission -- `migrate` is the only container holding the OWNER credential, the role that can
+#    `DROP POLICY` on every tenant table. A per-service list would have had the same blind spot, so this iterates
+#    whatever services the rendered configuration actually contains.
+if 'prod' in overlay:
+    undropped = sorted(n for n, svc in services.items() if 'ALL' not in (svc.get('cap_drop') or []))
+    if undropped:
+        problems.append(
+            '%s do(es) not declare `cap_drop: [ALL]` in the production configuration. Docker grants roughly '
+            'fourteen capabilities by default, including NET_RAW -- raw sockets on the internal network, which is '
+            'packet sniffing and spoofing against the database. Drop ALL and add back only what the service '
+            'provably needs, established by test rather than by guess.' % ', '.join(undropped))
+
 # 5. Every Messenger receiver a service consumes must be a transport the application actually defines.
 #    This is the assertion that was missing when `worker` and `scheduler` crash-looped on `docker compose up`:
 #    compose said `messenger:consume async` and no `config/packages/messenger.yaml` existed, so the command
@@ -191,7 +220,7 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     then
         failures=$((failures + 1))
     else
-        printf '  ok   — %s: owner credential confined, scheduler pinned to 1, edge network minimal, every consumed receiver defined\n' "$overlay"
+        printf '  ok   — %s: owner credential confined, scheduler pinned to 1, edge network minimal, every consumed receiver defined, capabilities dropped where required\n' "$overlay"
     fi
 done
 

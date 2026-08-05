@@ -398,7 +398,7 @@ number is written here, because one written beside the thing it counts is the fi
 | `spdx-headers.sh` | licensing invariant 8(c), on every source file — **and that the search roots COVER every tracked source file**, which is the direction that was missing when `api/phpunit.xml` sat unscanned with no identifier |
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
-| `compose-config.sh` | every compose configuration RENDERS, and four security properties survive rendering: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines.** That one is not hypothetical hardening — `compose.yaml` ran `messenger:consume async` and `scheduler_default` while `config/packages/messenger.yaml` did not exist and no `#[AsSchedule]` provider did either, so BOTH the worker and the scheduler crash-looped on the first `docker compose up`. The receiver set is DERIVED (transport keys from `messenger.yaml`, `scheduler_<name>` from each `#[AsSchedule]`), never written down, and the attribute scan is anchored to the start of a line because the unanchored version matched the literal `#[AsSchedule('<name>')]` inside a DOCBLOCK and admitted `scheduler_<name>` to the allowed set. It needs `docker compose` but no daemon; it is the one gate here that SKIPS when the binary is absent, which is tolerated because every other gate still runs and CI has Docker |
+| `compose-config.sh` | every compose configuration RENDERS, and four security properties survive rendering: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines**, and a sixth added 2026-08-05: **in the PRODUCTION configuration only, every service declares `cap_drop: [ALL]`.** That one is prod-scoped on purpose rather than as an exemption — the dev overlay deliberately does not harden — and it is a FULL-SET check over whatever services the rendered config contains, because the gap that prompted it was `migrate` being missed while the six long-running services were hardened. A one-shot is short-lived, not low-privilege: `migrate` is the ONLY container holding the owner credential, the role that can `DROP POLICY` on every tenant table. Capabilities are orthogonal to `read_only` and `no-new-privileges`, both already present: Docker's default set includes `NET_RAW`, which is raw sockets on the network the database sits on That one is not hypothetical hardening — `compose.yaml` ran `messenger:consume async` and `scheduler_default` while `config/packages/messenger.yaml` did not exist and no `#[AsSchedule]` provider did either, so BOTH the worker and the scheduler crash-looped on the first `docker compose up`. The receiver set is DERIVED (transport keys from `messenger.yaml`, `scheduler_<name>` from each `#[AsSchedule]`), never written down, and the attribute scan is anchored to the start of a line because the unanchored version matched the literal `#[AsSchedule('<name>')]` inside a DOCBLOCK and admitted `scheduler_<name>` to the allowed set. It needs `docker compose` but no daemon; it is the one gate here that SKIPS when the binary is absent, which is tolerated because every other gate still runs and CI has Docker |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
 | `no-orphaned-docblocks.php` | no doc comment that attaches to no declaration — two `T_DOC_COMMENT`s with nothing but whitespace, a comment or an attribute between them, because PHP attaches only the LATER one and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded doc comment and round 16's own fix created a fresh one. **Rewritten as a tokenizer pass at round 18**, which found the original line-pattern version missing four of five genuine shapes — a blank line between the blocks (the most natural way to author them), an attribute between them, and a single-line second block — and found its comment asserting that a closing and opening delimiter on ONE line "is not this defect", which was false. A positional rule enforces one SPELLING; the defect is a question about tokens. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying seven, and PHPStan would catch only the subset that also loses a `@param`/`@return` generic |
 | `no-owner-connection-in-application.php` | no code under `api/src/` names the **owner** DBAL connection. `doctrine.yaml` calls the default/owner split a security boundary; round 21 showed it was not one — `debug:autowiring` offers `#[Target('owner')]`, so one line of ordinary application code (the classic "fix the permission error" edit) yields the role that OWNS the tenant tables and can `DROP POLICY`, which `FORCE` does not prevent. A reviewer booted the kernel and disabled row security on `document` in one statement. Chosen over stripping the autowiring alias, which closes the attribute and leaves `$doctrine->getConnection('owner')` open — the connection must stay in the registry for the migrations bundle to resolve it. `PERMITTED_PATHS` is deliberately EMPTY: nothing in `src/` needs it |
@@ -1169,6 +1169,52 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   `SERVER_NAME`, `twes-entrypoint` for `docker-entrypoint`, `config/packages/test/framework.yaml` for `when@test:`)
   is a reliable marker that the surrounding wiring was reasoned from first principles rather than taken from the
   ecosystem — and first-principles wiring is exactly where a step gets skipped, because nothing external asks for it.
+
+- **2026-08-05 — dev and prod are now different ARTEFACTS, and the thing that forced it was Xdebug.** A debugger in a
+  production image is an RCE amplifier (`xdebug.mode` is settable from any `.ini` a compromised process can write, and
+  Xdebug can be told to connect OUT), so the only safe way not to have it there is not to build it there — which is why
+  the API tier has a `dev` Dockerfile target rather than a flag. Three things are worth keeping from getting it
+  installed: `install-php-extensions xdebug` AND `xdebug-3.5.3` both delegate to **pecl's own HTTP client**, which this
+  container's proxy answers `HTTP/1.1 426 Upgrade Required` while `curl` to the same URL returns 200; given a local
+  tarball `install-php-extensions` compiles it correctly and then fails on its LAST step (`Unable to find the file of
+  the PHP extension`) because it derives an extension NAME from its argument; and taking over the download means taking
+  over `$PHPIZE_DEPS` plus `linux-headers`, without which you get `phpize' failed` and then
+  `configure: error: rtnetlink.h is required`. **`pecl install` on a curl-fetched pinned tarball is the recipe.**
+- **2026-08-05 — a bind mount does not translate ownership, so a dev container must run as the HOST's uid.** The dev
+  overlay now bind-mounts the whole `api/` tree (which is what makes an IDE resolve vendor classes — a NAMED VOLUME
+  cannot, because an IDE indexes the project directory and a volume lives in root-owned `/var/lib/docker/volumes/`).
+  With the image's fixed uid 10001 that fails as `/app/vendor does not exist and could not be created`; running as root
+  instead creates root-owned files in the developer's own working copy. `TWES_UID`/`TWES_GID` are passed from
+  `id -u`/`id -g`, and **`USER` is NUMERIC** so any value works including 0 — a named `USER` could not, and
+  `adduser -u 0` fails because the id is taken. The standing objection to a host `vendor/` ("the container would run
+  whatever PHP resolved on the host") is about the INSTALL, not the mount: `make install` runs Composer *in* the
+  container, so the container's PHP resolves it and the host merely holds the bytes.
+- **2026-08-05 — `NET_BIND_SERVICE` is load-bearing for a reason its name does not suggest, and dropping it stops the
+  API EXECUTING rather than binding.** The Dockerfile applies `setcap CAP_NET_BIND_SERVICE=+eip` to `frankenphp`, and
+  the `e` (effective) bit makes **`execve` itself fail with EPERM** when the capability is outside the container's
+  bounding set: `exec /usr/local/bin/frankenphp: operation not permitted`. It is still required even where the daemon
+  sets `ip_unprivileged_port_start=0`, which would make a low port bindable with no capability at all — the exec-time
+  check is independent of that sysctl. Every other `cap_add` in `compose.prod.yaml` was established the same way, by
+  dropping ALL and reading the failure: postgres needs CHOWN/SETUID/SETGID/DAC_OVERRIDE/FOWNER (its entrypoint chowns
+  the data directory then drops privilege), valkey needs SETUID/SETGID (`setpriv: setresuid failed`), and **gotenberg
+  needs NOTHING** — worth knowing, because Chromium is the service people reflexively grant `SYS_ADMIN`.
+- **2026-08-05 — the FUNCTIONAL SUITE was not hermetic and passed only by accident of the shell.**
+  `api/tests/bootstrap.php` required the autoloader and returned, never calling `Dotenv::bootEnv()`, and `phpunit.xml`
+  declares no `TRUSTED_PROXIES` or `DEFAULT_LOCALE` although `framework.yaml` reads both. From a clean environment all
+  nine `HttpSurfaceTest` cases error with `EnvNotFoundException`; setting `TRUSTED_PROXIES` alone moves the failure on
+  to `DEFAULT_LOCALE`, **which is the tell that the defect was the missing loader rather than a missing variable**.
+  Fixed with `bootEnv`, which is what Symfony's own bootstrap does, and it is safe because PHPUnit applies `<php><env>`
+  BEFORE the bootstrap runs and Dotenv never overrides an already-set variable — so `phpunit.xml` still wins and
+  `.env` only fills gaps. [Verified: `env -i HOME=$HOME PATH=$PATH` now gives `OK (9 tests, 35 assertions)`.] The
+  general lesson is the one this section keeps relearning: **a suite whose result depends on the shell that launched
+  it is not a suite that has been run.** Check with `env -i`, which CLAUDE.md already prescribes for infra tools.
+- **2026-08-05 — widening a gate's coverage found a stray file nothing else could see.** `spdx-headers.sh` had no `ini`
+  in its EXTENSIONS list, so five tracked `.ini` files carried the identifier by convention and none was enforced; the
+  tell was the reported count NOT MOVING when a sixth was staged. Adding `ini` immediately surfaced a tracked
+  `admin/infra/api/conf.d/dev/50-dev.ini` — a duplicate of the dev PHP config committed by accident into the ANGULAR
+  tier in `9c31864`, and already the STALE copy, still naming a `compose.dev.yaml` that has never existed. Two copies
+  that already disagreed, in a tier where the file has no meaning. **An unenforced convention is not a convention, and
+  the cheapest way to find out what a gate is not looking at is to make it look at one more thing.**
 
 ## Git & CI
 

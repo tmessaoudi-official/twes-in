@@ -42,6 +42,14 @@ rather than one artefact with a flag — because a shared artefact is how a dev 
   control (it stops the engine fetching fonts from `fonts.gstatic.com`), not an optimisation, and two tests
   assert the built bundle reaches no external origin. A dev bundle that phones home is still phoning home.
 
+- [2026-08-05 01:30] AGREED: production drops ALL Linux capabilities on EVERY service, adding back only what each
+  provably needs — established by dropping ALL and reading the failure, never by reputation. Asserted by
+  `scripts/gates/compose-config.sh` as a full-set check over the rendered configuration, prod-scoped, with two
+  mutants proving it fires.
+- [2026-08-05 01:30] AGREED: pid limits are expressed as `deploy.resources.limits.pids`, not the top-level
+  `pids_limit`. Compose normalises the latter into the former and then refuses both as a duplicate; the chosen
+  spelling also sits beside `memory`, which is how every other limit in the file is written.
+
 ## Formal Plan
 
 ### A. The API image gains a `dev` target
@@ -77,9 +85,15 @@ Consequence to accept: `api/vendor` must exist before the stack can serve. `make
 
 ### D. Prod hardening pass
 
-`compose.prod.yaml` already has `read_only`, replicas and resource limits. Add what is missing and cheap:
-`no-new-privileges`, `cap_drop: ALL` with only `NET_BIND_SERVICE` added back, `tmpfs` for the writable paths a
-read-only rootfs still needs, and `pids_limit`.
+`compose.prod.yaml` ALREADY had more than this section first assumed — `no-new-privileges`, `read_only`, `tmpfs`,
+memory limits, log rotation and replica counts were all present. Checking before writing turned a planned list of
+six additions into three real gaps:
+
+- **capabilities** — nothing dropped any. This is the significant one, because capabilities are orthogonal to
+  `read_only`: Docker's default set includes `NET_RAW`, which is raw sockets on the network the database sits on.
+- **pid limits** — memory was bounded, process count was not, so a fork bomb was a host-level denial of service.
+- **`migrate` was absent from the file entirely** — the one container holding the OWNER credential had no
+  hardening at all. Found by a full-set check rather than by reading the list of long-running services.
 
 ### E. Verify
 

@@ -2105,6 +2105,42 @@ else
   fi
   mv "$cc_root/schedule.held" "$cc_root/api/src/Infrastructure/Scheduler/DefaultSchedule.php"
 
+  # MUTANT E -- a production service that does not drop Linux capabilities. `migrate` specifically, because that is
+  # the one the real omission was on: hardening was applied to the six LONG-RUNNING services and the one-shot was
+  # missed, which is the worst possible miss -- `migrate` is the only container holding the OWNER credential, the role
+  # that can `DROP POLICY` on every tenant table. A one-shot is short-lived, not low-privilege.
+  #
+  # The mutation targets the PROD file only, because the assertion is prod-scoped: the dev overlay deliberately does
+  # not harden, and asserting there would either fail forever or drag hardening into dev.
+  cp "$cc_root/infra/compose.prod.yaml" "$cc_root/prod.held"
+  python3 - "$cc_root/infra/compose.prod.yaml" <<'PYCAP'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+i = s.index('  migrate:'); j = s.index('  gotenberg:', i)
+p.write_text(s[:i] + s[i:j].replace('    cap_drop: [ALL]\n', '', 1) + s[j:])
+PYCAP
+  cc_e="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_e_rc=0 || cc_e_rc=$?
+  if (( cc_e_rc != 0 )) && printf '%s' "$cc_e" | grep -qF 'migrate do(es) not declare `cap_drop: [ALL]`'; then
+    printf '  ok   — compose-config catches a production service that keeps Docker default capabilities\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed an undropped capability set on `migrate` (rc=%s)\n' "$cc_e_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/prod.held" "$cc_root/infra/compose.prod.yaml"
+
+  # MUTANT F -- the same assertion must be PROD-SCOPED rather than global. If it were applied to the dev overlay too,
+  # the gate would fail on a correct tree; this pins the scoping by asserting the DEV overlay still passes with no
+  # capability hardening anywhere in it.
+  cc_f="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_f_rc=0 || cc_f_rc=$?
+  if (( cc_f_rc == 0 )) && ! printf '%s' "$cc_f" | grep -q 'compose.override.yaml.*cap_drop'; then
+    printf '  ok   — the capability assertion is prod-scoped and does not fire on the dev overlay\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — the capability assertion leaked into the dev overlay (rc=%s)\n' "$cc_f_rc"
+    failed=$((failed + 1))
+  fi
+
   # MUTANT D -- the receiver derivation must read DECLARATIONS, not prose. The first version of it matched the
   # literal `#[AsSchedule('<name>')]` inside DefaultSchedule.php's own docblock and admitted `scheduler_<name>` to
   # the allowed set. A comment is not a declaration, and this pins the anchored pattern that fixed it.

@@ -12,15 +12,46 @@
 # ==============================================================================================================
 
 services:
+
+# --------------------------------------------------------------------------------------------------------------
+# LINUX CAPABILITIES. Every service drops ALL and adds back only what it provably needs.
+#
+# WHY THIS MATTERS ON TOP OF `read_only` AND `no-new-privileges`, which were already here: capabilities are
+# ORTHOGONAL to both. Docker grants roughly fourteen by default and they work perfectly well on a read-only
+# filesystem. The one that matters most in this topology is **NET_RAW**: it permits raw sockets, so a compromised
+# process can sniff and spoof on the container network — the network the database and the cache sit on. Also in the
+# default set are CHOWN, FOWNER, DAC_OVERRIDE, SETUID, SETGID and MKNOD, none of which any process here needs at
+# steady state.
+#
+# EVERY `cap_add` BELOW WAS ESTABLISHED BY TEST, NOT BY REPUTATION — dropping ALL and seeing what breaks, which is
+# the only way to get this right and the reason each one carries its own evidence. Nothing is added "just in case":
+# an unnecessary capability is the whole thing this section exists to remove.
+#
+# `pids_limit` accompanies each one. A fork bomb from a compromised process is a HOST-level denial of service, and
+# the memory limits already here do not bound process count.
+# --------------------------------------------------------------------------------------------------------------
   database:
     # No published port at all. The database is reachable only from the internal network.
     security_opt:
       - no-new-privileges:true
+    # The official postgres entrypoint chowns the data directory and then drops privilege to `postgres`, which is
+    # what these five are for. [Verified: with `cap_drop: ALL` alone the container never becomes ready; with these
+    # five it reaches `pg_isready` normally.] NET_RAW, MKNOD and the rest are gone.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, SETUID, SETGID, DAC_OVERRIDE, FOWNER]
+    # PostgreSQL forks one backend per connection, so this must comfortably exceed max_connections.
     # Bounded, so one runaway query cannot starve the host. Tune to the host; these are conservative defaults.
     deploy:
       resources:
         limits:
           memory: '${DATABASE_MEMORY_LIMIT:-2g}'
+          # FORK-BOMB BOUND. The memory limit above does not constrain PROCESS COUNT, so a compromised
+          # process can still exhaust the host's pid space -- a HOST-level denial of service, not a
+          # container-level one. Spelled here rather than as the top-level `pids_limit`, which Compose
+          # normalises to this very key and then refuses as a duplicate: `can't set distinct values on
+          # 'pids_limit' and 'deploy.resources.limits.pids'`. This spelling also sits beside `memory`,
+          # which is how every other limit in this file is already written.
+          pids: 512
     logging: &logging
       driver: json-file
       options:
@@ -30,6 +61,11 @@ services:
   valkey:
     security_opt:
       - no-new-privileges:true
+    # `setpriv` in the entrypoint drops to the `valkey` user, and that is the entire requirement. [Verified: under
+    # `cap_drop: ALL` alone the container exits with `setpriv: setresuid failed: Operation not permitted`; with these
+    # two it answers PONG.]
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID]
     read_only: true
     tmpfs:
       - /tmp
@@ -37,9 +73,27 @@ services:
       resources:
         limits:
           memory: '${VALKEY_MEMORY_LIMIT:-512m}'
+          # FORK-BOMB BOUND. The memory limit above does not constrain PROCESS COUNT, so a compromised
+          # process can still exhaust the host's pid space -- a HOST-level denial of service, not a
+          # container-level one. Spelled here rather than as the top-level `pids_limit`, which Compose
+          # normalises to this very key and then refuses as a duplicate: `can't set distinct values on
+          # 'pids_limit' and 'deploy.resources.limits.pids'`. This spelling also sits beside `memory`,
+          # which is how every other limit in this file is already written.
+          pids: 128
     logging: *logging
 
   api:
+    # NET_BIND_SERVICE IS LOAD-BEARING, AND NOT FOR THE REASON THE NAME SUGGESTS. Dropping it does not merely stop
+    # FrankenPHP binding :80 — THE BINARY CANNOT BE EXECUTED AT ALL. The Dockerfile applies
+    # `setcap CAP_NET_BIND_SERVICE=+eip`, and the `e` (effective) bit makes `execve` itself fail with EPERM when the
+    # capability is outside the container's bounding set. [Verified: `exec /usr/local/bin/frankenphp: operation not
+    # permitted` under `cap_drop: ALL` alone; `FrankenPHP v1.12.6` and a serving `/health` once it is added back.]
+    #
+    # Still required even though this daemon sets `ip_unprivileged_port_start=0`, which would make a low port
+    # bindable with no capability at all: the exec-time check is independent of that sysctl.
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    # Generous, because this is the service handling concurrent requests — but bounded.
     # HTTPS. FrankenPHP obtains and renews the certificate itself via ACME — there is no second server and no
     # certbot sidecar. `SERVER_NAME` must be a real hostname that resolves to this host, or ACME fails.
     environment:
@@ -73,9 +127,20 @@ services:
       resources:
         limits:
           memory: '${TWES_API_MEMORY_LIMIT:-512m}'
+          # FORK-BOMB BOUND. The memory limit above does not constrain PROCESS COUNT, so a compromised
+          # process can still exhaust the host's pid space -- a HOST-level denial of service, not a
+          # container-level one. Spelled here rather than as the top-level `pids_limit`, which Compose
+          # normalises to this very key and then refuses as a duplicate: `can't set distinct values on
+          # 'pids_limit' and 'deploy.resources.limits.pids'`. This spelling also sits beside `memory`,
+          # which is how every other limit in this file is already written.
+          pids: 512
     logging: *logging
 
   worker:
+    # NOTHING ADDED, and unlike the API that is safe here because a worker execs `php`, not `frankenphp` — and `php`
+    # carries no file capabilities, so there is no effective-bit exec check to satisfy. [Verified: `getcap
+    # /usr/local/bin/php` is empty, and `php -v` runs under `cap_drop: ALL`.]
+    cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -89,9 +154,18 @@ services:
       resources:
         limits:
           memory: '${TWES_WORKER_MEMORY_LIMIT:-320m}'
+          # FORK-BOMB BOUND. The memory limit above does not constrain PROCESS COUNT, so a compromised
+          # process can still exhaust the host's pid space -- a HOST-level denial of service, not a
+          # container-level one. Spelled here rather than as the top-level `pids_limit`, which Compose
+          # normalises to this very key and then refuses as a duplicate: `can't set distinct values on
+          # 'pids_limit' and 'deploy.resources.limits.pids'`. This spelling also sits beside `memory`,
+          # which is how every other limit in this file is already written.
+          pids: 256
     logging: *logging
 
   scheduler:
+    # Same as the worker: it execs `php`, which carries no file capabilities.
+    cap_drop: [ALL]
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -107,9 +181,52 @@ services:
       resources:
         limits:
           memory: '${TWES_SCHEDULER_MEMORY_LIMIT:-320m}'
+          # FORK-BOMB BOUND. The memory limit above does not constrain PROCESS COUNT, so a compromised
+          # process can still exhaust the host's pid space -- a HOST-level denial of service, not a
+          # container-level one. Spelled here rather than as the top-level `pids_limit`, which Compose
+          # normalises to this very key and then refuses as a duplicate: `can't set distinct values on
+          # 'pids_limit' and 'deploy.resources.limits.pids'`. This spelling also sits beside `memory`,
+          # which is how every other limit in this file is already written.
+          pids: 128
+    logging: *logging
+
+  # ------------------------------------------------------------------------------------------------------------
+  # MIGRATE. Hardened LAST but arguably most important, and it was missing from this file entirely until 2026-08-05.
+  #
+  # This is the ONE container that holds `DATABASE_URL_OWNER` — the role that OWNS the tenant tables and can
+  # therefore `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` or `DROP POLICY` on every one of them. `FORCE ROW LEVEL
+  # SECURITY` stops an owner SKIPPING policies; it does not stop an owner REMOVING them. So of all seven services
+  # this is the one where a compromise is worst, and it was the only one running with Docker's full default
+  # capability set, no pid bound and no read-only root filesystem.
+  #
+  # It was overlooked because it is a one-shot rather than a long-running service, which is precisely the wrong
+  # instinct: it is short-lived, not low-privilege.
+  #
+  # NOTHING in `cap_add`, for the same reason as the worker — it execs `php`, which carries no file capabilities.
+  # ------------------------------------------------------------------------------------------------------------
+  migrate:
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - /tmp:noexec,nosuid,size=64m
+      - /app/var/cache:noexec,nosuid,size=256m
+      - /app/var/log:noexec,nosuid,size=64m
+    deploy:
+      resources:
+        limits:
+          memory: '${TWES_MIGRATE_MEMORY_LIMIT:-320m}'
+          # A migration is a single process issuing DDL; it has no reason to fork.
+          pids: 64
     logging: *logging
 
   gotenberg:
+    # NOTHING ADDED, worth stating because Chromium is the service people usually grant SYS_ADMIN to for its sandbox.
+    # Gotenberg does not need it. [Verified: `/health` returns 200 under `cap_drop: ALL`.]
+    cap_drop: [ALL]
+    # HIGHEST OF ALL SIX, deliberately: Chromium is heavily multi-process — a renderer, a GPU process and a zygote per
+    # document — so a limit sized like the PHP services would fail under concurrent rendering rather than protect it.
     security_opt:
       - no-new-privileges:true
     # NOT read-only: Chromium needs a writable profile and shared memory. Bounded instead, and it is on the
@@ -121,6 +238,13 @@ services:
       resources:
         limits:
           memory: '${GOTENBERG_MEMORY_LIMIT:-1g}'
+          # FORK-BOMB BOUND. The memory limit above does not constrain PROCESS COUNT, so a compromised
+          # process can still exhaust the host's pid space -- a HOST-level denial of service, not a
+          # container-level one. Spelled here rather than as the top-level `pids_limit`, which Compose
+          # normalises to this very key and then refuses as a duplicate: `can't set distinct values on
+          # 'pids_limit' and 'deploy.resources.limits.pids'`. This spelling also sits beside `memory`,
+          # which is how every other limit in this file is already written.
+          pids: 512
     logging: *logging
 
 volumes:
