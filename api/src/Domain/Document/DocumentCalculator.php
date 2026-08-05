@@ -14,6 +14,7 @@ namespace Twes\Domain\Document;
 
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
+use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\PriceCalculator;
 use Twes\Domain\Pricing\Rate;
@@ -58,6 +59,14 @@ final readonly class DocumentCalculator
      * narrowing the tag to `list<>` would have made the test a contract violation and the `array_values()`
      * calls dead code. Widening is safe for every existing caller: a list is an `array<int, …>`.
      *
+     * **`@throws InvalidMoneyAmount` WAS MISSING WHILE `Invoice::totallable()` CAUGHT IT**, which is the tell: it
+     * wraps an `InvalidMoneyAmount` coming out of `Invoice::totals()` — i.e. out of this method — in an
+     * `\InvalidArgumentException`, so the codebase already knew the exception escapes here while this signature
+     * denied it. Every line, charge and total funnels through `Money`'s private constructor, and a sum of
+     * individually representable amounts can be unrepresentable. PHPStan cannot find this direction: it reports a
+     * `@throws` that is never thrown (`throws.unusedType`) and says nothing about one that is thrown and not
+     * declared, so the near end of the fix that corrected `Money::plus()` was invisible to the gate.
+     *
      * @param array<int, DocumentLine> $lines
      * @param array<int, FixedCharge> $fixedCharges
      * @param Currency|null $currency required only when there is nothing to infer it from — an empty
@@ -66,6 +75,7 @@ final readonly class DocumentCalculator
      *
      * @throws CurrencyMismatch if any line or charge is in a different currency
      * @throws \InvalidArgumentException if the document is empty and no currency was given
+     * @throws InvalidMoneyAmount if any intermediate sum, VAT figure or total does not fit the money column
      */
     public function calculate(
         array $lines,
@@ -211,6 +221,8 @@ final readonly class DocumentCalculator
      * @param list<Money> $lineNets every line's net, indexed by position
      *
      * @return array<int, Money> share per line position
+     *
+     * @throws InvalidMoneyAmount if a share or the running remainder does not fit the money column
      */
     private static function allocate(
         Money $groupVat,

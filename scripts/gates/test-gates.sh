@@ -490,14 +490,14 @@ assert_at_least "orm: forbidden patterns have not shrunk" \
 assert_at_least "spdx: search roots have not shrunk" \
   "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 11
 assert_at_least "spdx: individually-listed files have not shrunk" \
-  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 4
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 6
 
 # A MAXIMUM, uniquely: every entry here removes a directory from the header requirement, so this list
 # growing is the failure mode, not shrinking. assert_at_least with a negated count is the same assertion.
 excluded_count="$(printf '%s' "$SPDX_RULES" | sed -n 's/^excluded //p' | wc -w)"
 assert_at_least "spdx: the exclusion list has not GROWN beyond 6" "$((12 - excluded_count))" 6 "$excluded_count"
 assert_at_least "spdx: extensions have not shrunk" \
-  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 12
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^extensions //p' | wc -w)" 14
 
 # THE LICENSING LISTS, and this gate was the only one with no introspection at all: round 5 added GPL-3.0,
 # AGPL-3.0 and MPL-2.0 to PERMISSIVE and every case stayed green. Both directions are asserted, because both
@@ -595,9 +595,15 @@ assert_contains "layers: every forbidden pair survives" "$LAYER_RULES" \
   'Twes\\Application' 'Twes\\Infrastructure' 'Twes\\UI'
 assert_contains "spdx: every search root survives" "$SPDX_RULES" \
   api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test scripts
-assert_contains "spdx: every extension survives" "$SPDX_RULES" php ts dart sh xml sql yaml yml
+assert_contains "spdx: every extension survives" "$SPDX_RULES" \
+  php ts dart sh xml sql yaml yml html scss css js ini neon
+# `api/phpstan.neon.dist` and `admin/eslint.config.js` were NOT pinned here, and the first is the one file
+# that CANNOT survive without its entry: a `.dist` suffix hides it from the extension scan in both
+# directions, so `SEARCH_FILES` is the only thing that looks at it. There is a generated case per EXTENSION
+# (below) and none per FILE, so this name list plus the size floor above are the whole protection.
 assert_contains "spdx: the individually-listed files survive" "$SPDX_RULES" \
-  api/phpunit.xml api/.php-cs-fixer.dist.php mobile/pubspec.yaml mobile/analysis_options.yaml
+  api/phpunit.xml api/.php-cs-fixer.dist.php api/phpstan.neon.dist mobile/pubspec.yaml \
+  mobile/analysis_options.yaml admin/eslint.config.js
 # The EXCLUSION list is the one place where growth is dangerous rather than harmless: every entry added is a
 # directory the header requirement stops applying to. Pinned by name AND by maximum size, so widening it is
 # a deliberate edit to this file rather than a quiet one to the gate.

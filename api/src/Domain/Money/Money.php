@@ -188,8 +188,13 @@ final readonly class Money
      * @param string|int $factor decimal string or integer
      * @param RoundingMode $mode required — the product usually has more decimals than the currency
      *
-     * @throws InvalidMoneyAmount if the factor is malformed, or rounding is needed under
-     *                            RoundingMode::Unnecessary
+     * @throws InvalidMoneyAmount if the factor is malformed, rounding is needed under
+     *                            RoundingMode::Unnecessary, or **the PRODUCT does not fit the money column**
+     *
+     * That third clause was missing, and it matters more here than on `plus()`: multiplication is the operation
+     * on the actual VAT path (`PriceCalculator::vat()`) and grows a magnitude far faster than addition does.
+     * The tag's TYPE was already present, so PHPStan was satisfied and no caller under-reported the class — only
+     * the reason list was wrong, which is the half a static analyser cannot see.
      */
     public function multipliedBy(string|int|float $factor, RoundingMode $mode): self
     {
@@ -221,8 +226,9 @@ final readonly class Money
     /**
      * @param string|int $divisor decimal string or integer
      *
-     * @throws InvalidMoneyAmount if the divisor is malformed, or rounding is needed under
-     *                            RoundingMode::Unnecessary
+     * @throws InvalidMoneyAmount if the divisor is malformed, rounding is needed under
+     *                            RoundingMode::Unnecessary, or the QUOTIENT does not fit the money column —
+     *                            see `multipliedBy()`; a divisor below 1 is a multiplication in disguise
      * @throws \DivisionByZeroError
      * @throws \LogicException if the divisor's own scale is large enough that `Decimal::divide()`'s DERIVED
      *                         working scale exceeds `Decimal::MAX_SCALE`. Documented rather than converted

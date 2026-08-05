@@ -420,7 +420,23 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * {@see self::assertConnectionCannotBypassPolicies()} otherwise has no coverage, because creating a
      * `BYPASSRLS` role requires the very privilege the application role must not have.
      *
-     * @param array{rolsuper: bool|string, rolbypassrls: bool|string, rolreplication?: bool|string} $role
+     * **THE SHAPE ADMITS NULL, and `?? false` used to launder it into "safe" on exactly one of the three keys.**
+     * `assertConnectionCannotBypassPolicies()` fetches all three as `bool_or(...)`, which is NULL over an empty
+     * row set — the reason that method's own all-three-NULL guard exists — so this `@param` denying null was the
+     * inverse of the annotation defect PHPStan found at the fetch site. The three keys then behaved three
+     * different ways: `rolsuper` and `rolbypassrls` reached `isFalse()` and raised a `TypeError` (fail-closed,
+     * confusingly), while `rolreplication`'s `?? false` turned NULL into a recognised FALSE and **certified the
+     * connection as unable to bypass** — the opposite of the polarity rule stated on {@see self::isFalse()},
+     * which requires an unrecognised value to report a violation. The sibling guard cannot intercept it: it is a
+     * conjunction, so it fires only when all three are NULL.
+     *
+     * ABSENCE and a present NULL are now distinguished, and they mean different things. Absence is legitimate —
+     * `testTheBypassPredicateDetectsAPrivilegedRole()` calls this with two-key shapes on purpose, because the
+     * caller genuinely has no third attribute to offer, and that must stay harmless. A present NULL means the
+     * catalogue query answered "unknown", which is exactly what must NOT clear the role. `??` cannot tell them
+     * apart; `array_key_exists()` can.
+     *
+     * @param array{rolsuper: bool|string|null, rolbypassrls: bool|string|null, rolreplication?: bool|string|null} $role
      */
     public static function roleCanBypassPolicies(array $role): bool
     {
@@ -429,7 +445,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             // REPLICATION is a bypass of a different kind and an equal one: it does not defeat the policy,
             // it goes around the query layer the policy lives in. See the query in
             // assertConnectionCannotBypassPolicies() for the proof.
-            || !self::isFalse($role['rolreplication'] ?? false);
+            || (\array_key_exists('rolreplication', $role) && !self::isFalse($role['rolreplication']));
     }
 
     /**
@@ -2612,8 +2628,18 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * records, the more expensive artefact than the gap it hides.
      *
      * Only the spellings PostgreSQL and PDO actually emit for a false boolean are honoured here.
+     *
+     * **NULL IS ACCEPTED AND IS NOT FALSE**, which is the polarity rule above applied to the one value PostgreSQL
+     * emits for "no answer": an aggregate over an empty row set. `bool_or(rolsuper)` with no matching row is NULL,
+     * not `false`, and every caller of this function reads a danger-if-TRUE flag — so NULL must land on the
+     * violation side. The parameter was `bool|string` and a NULL therefore raised a `TypeError` from inside a
+     * security guard: fail-closed by accident, with a message about a type rather than about a privilege. Only
+     * `isFalse()` is widened; {@see self::isTrue()} keeps `bool|string` deliberately, because its callers read
+     * skip-on-TRUE flags where a NULL must NOT skip and `isTrue(null)` returning false is what a `?? false` at
+     * those sites already delivers. Widening both would make the asymmetry look accidental; it is the polarity
+     * rule, applied twice in opposite directions.
      */
-    private static function isFalse(bool|string $value): bool
+    private static function isFalse(bool|string|null $value): bool
     {
         return false === $value || 'f' === $value || '0' === $value;
     }

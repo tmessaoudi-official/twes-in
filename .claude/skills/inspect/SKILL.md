@@ -50,9 +50,12 @@ disallowed-tools: AskUserQuestion
      the shape matters: `api/src/Domain/` (money, pricing, documents — framework-free, zero Composer
      dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,
      UUIDv7), four PHPUnit suites under `api/tests/`, and the gates in `scripts/gates/` with their own
-     `test-gates.sh`. **Still absent:** the Symfony application, Doctrine, PHPStan and deptrac (every
-     Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `infra/` tier, which
-     is a README stub. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
+     `test-gates.sh`. **Still absent: `deptrac` alone.** The Symfony application, Doctrine and the `infra/`
+     tier all landed (Wave 1 / 2026-08-01 / 2026-08-05), and **PHPStan runs** at level 6 from
+     `api/tools/bin/phpstan.phar` with `api/phpstan.neon.dist`. The parenthetical this banner used to carry —
+     *"every Composer dist URL is blocked by egress policy"* — was refuted on 2026-08-01: `composer install
+     --prefer-source` works, only `api.github.com` is authorization-scoped, and `deptrac` is installable and
+     merely unwired. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
      `flutter create` on Flutter 3.44.8 with all six platform directories) and each is green on its own
      toolchain — lint/analyze, unit tests, production build — but neither holds DOMAIN or TRANSPORT code yet — each does carry its branding seam, and Flutter its font/same-origin controls, with tests.
      The repo also holds `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`,
@@ -62,7 +65,9 @@ disallowed-tools: AskUserQuestion
      `cd api && php tools/bin/phpunit-12.phar`; the gates are plain PHP and bash and need nothing
      installed. So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
-     (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
+     (the API tier runs PINNED PHARS, `php tools/bin/{phpunit-12,phpstan,php-cs-fixer}.phar`, NOT
+     `vendor/bin/*` — `vendor/bin/phpstan` in particular can never exist, since phpstan is not a Composer
+     dependency here at all;
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
      for the app — verify, do not assume). When the stack a step needs is absent, say so and skip
      the step. A finding invented about code that does not exist is worse than an empty report.
@@ -144,7 +149,7 @@ for M in composer.json package.json pubspec.yaml; do find "$TARGET" -maxdepth 3 
 
 Summarize the tech stack in one sentence and **name which stacks are present**: the Symfony (PHP) REST API, the Angular admin front end, the Flutter app — plus Postgres and Docker Compose for local dev. Pass this to each agent as `PROJECT_TYPE`. Where a stack exists, read its manifest for the real script names instead of assuming them (`composer.json` scripts and `vendor/bin/*`; `package.json` scripts; `pubspec.yaml` plus `flutter analyze` / `flutter test`).
 
-**Greenfield degradation — required.** If a stack is absent, say so in one line and let its agents report on what exists rather than on what it would contain. On 2026-07-29 Wave 0 landed a PARTIAL stack: the API tier's `Domain/` and `Infrastructure/` exist with four PHPUnit suites, and `scripts/gates/` holds the architecture, licensing and shell-syntax gates plus `test-gates.sh` (`ls scripts/gates/` is the authoritative list — a count in prose drifts). The Symfony application, Doctrine, PHPStan and deptrac do not. Both client tiers are scaffolded and green on their own toolchains, carrying their branding seam and (for Flutter) the font/same-origin controls, but no domain or transport code. So a legitimate `/inspect` run reports on what exists and states plainly what does not — it must NOT report an empty tree, and it must NOT skip the API tier.
+**Greenfield degradation — required.** If a stack is absent, say so in one line and let its agents report on what exists rather than on what it would contain. On 2026-07-29 Wave 0 landed a PARTIAL stack: the API tier's `Domain/` and `Infrastructure/` exist with four PHPUnit suites, and `scripts/gates/` holds the architecture, licensing and shell-syntax gates plus `test-gates.sh` (`ls scripts/gates/` is the authoritative list — a count in prose drifts). The Symfony application, Doctrine, the `infra/` tier and PHPStan have all landed since; **`deptrac` is the only tool that does not exist.** Both client tiers are scaffolded and green on their own toolchains, carrying their branding seam and (for Flutter) the font/same-origin controls, but no domain or transport code. So a legitimate `/inspect` run reports on what exists and states plainly what does not — it must NOT report an empty tree, and it must NOT skip the API tier.
 
 ## Step 2: Spawn Analysis Agents
 

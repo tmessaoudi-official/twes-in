@@ -6,7 +6,6 @@
       "Bash(php:*)",
       "Bash(bin/console:*)",
       "Bash(vendor/bin/phpunit:*)",
-      "Bash(vendor/bin/phpstan:*)",
       "Bash(vendor/bin/php-cs-fixer:*)",
       "Bash(npm:*)",
       "Bash(npx:*)",

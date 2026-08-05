@@ -49,9 +49,12 @@ disallowed-tools: AskUserQuestion
      the shape matters: `api/src/Domain/` (money, pricing, documents — framework-free, zero Composer
      dependencies), `api/src/Infrastructure/` (tenancy via PostgreSQL row-level security, clock,
      UUIDv7), four PHPUnit suites under `api/tests/`, and the gates in `scripts/gates/` with their own
-     `test-gates.sh`. **Still absent:** the Symfony application, Doctrine, PHPStan and deptrac (every
-     Composer dist URL is blocked by egress policy — `CLAUDE.md` § Gotchas), and the `infra/` tier, which
-     is a README stub. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
+     `test-gates.sh`. **Still absent: `deptrac` alone.** The Symfony application, Doctrine and the `infra/`
+     tier all landed (Wave 1 / 2026-08-01 / 2026-08-05), and **PHPStan runs** at level 6 from
+     `api/tools/bin/phpstan.phar` with `api/phpstan.neon.dist`. The parenthetical this banner used to carry —
+     *"every Composer dist URL is blocked by egress policy"* — was refuted on 2026-08-01: `composer install
+     --prefer-source` works, only `api.github.com` is authorization-scoped, and `deptrac` is installable and
+     merely unwired. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
      `flutter create` on Flutter 3.44.8 with all six platform directories) and each is green on its own
      toolchain — lint/analyze, unit tests, production build — but neither holds DOMAIN or TRANSPORT code yet — each does carry its branding seam, and Flutter its font/same-origin controls, with tests.
      The repo also holds `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`,
@@ -61,7 +64,9 @@ disallowed-tools: AskUserQuestion
      `cd api && php tools/bin/phpunit-12.phar`; the gates are plain PHP and bash and need nothing
      installed. So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
-     (typically `vendor/bin/phpunit` / `vendor/bin/phpstan` / `vendor/bin/php-cs-fixer` for the API,
+     (the API tier runs PINNED PHARS, `php tools/bin/{phpunit-12,phpstan,php-cs-fixer}.phar`, NOT
+     `vendor/bin/*` — `vendor/bin/phpstan` in particular can never exist, since phpstan is not a Composer
+     dependency here at all;
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
      for the app — verify, do not assume). When the stack a step needs is absent, say so and skip
      the step. A finding invented about code that does not exist is worse than an empty report.

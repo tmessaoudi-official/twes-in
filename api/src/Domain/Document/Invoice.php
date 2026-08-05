@@ -17,6 +17,7 @@ use Twes\Domain\Document\Exception\DocumentIsNotMutable;
 use Twes\Domain\Document\Exception\NumberTypeMismatch;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
+use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Shared\RoundingMode;
 
@@ -385,6 +386,17 @@ final readonly class Invoice
      * Both parameters are the CALLER's, not defaults hidden here: the rounding point is per-company
      * configuration and the mode belongs to the operation. A default on either would be this class quietly
      * deciding a tax question.
+     *
+     * **THIS METHOD HAD NO `@throws` AT ALL, and it is the one an HTTP layer will call.** It carried none while
+     * `totallable()` fifty lines below catches `InvalidMoneyAmount` out of it by name — so the class documented
+     * the refusal in its own catch block and denied it in the signature a caller reads.
+     * `CLAUDE.md` § "Translation keys" decides which refusals get a locale key by asking which ones a user can
+     * fix, and that question cannot be answered from a signature that lists nothing.
+     *
+     * @throws CurrencyMismatch if a line or charge is in another currency — our own layer's fault, so
+     *                          `error.internal` rather than a key
+     * @throws InvalidMoneyAmount if any figure does not fit the money column (`money.amount_not_representable`)
+     * @throws \InvalidArgumentException if the document is empty and no currency can be inferred
      */
     public function totals(VatRoundingPoint $vatRoundingPoint, RoundingMode $mode): DocumentTotals
     {
@@ -447,7 +459,7 @@ final readonly class Invoice
     {
         try {
             $document->totals(VatRoundingPoint::PerRateGroup, RoundingMode::Up);
-        } catch (\Twes\Domain\Money\Exception\InvalidMoneyAmount $overflow) {
+        } catch (InvalidMoneyAmount $overflow) {
             throw new \InvalidArgumentException(\sprintf(
                 'Adding that %s would make this document impossible to total: %s. Every figure is individually '
                 . 'in bounds — a sum of representable amounts can be unrepresentable — and refusing it here is '

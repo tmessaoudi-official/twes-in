@@ -46,8 +46,15 @@ readonly -a SEARCH_FILES=(
   # LISTED EXPLICITLY BECAUSE A `.dist` SUFFIX HIDES A FILE FROM THE EXTENSION SCAN. The coverage half below
   # matches on the FINAL extension, so `phpstan.neon.dist` reads as a `dist` file and neither half of this gate
   # can see it — the same shape as the tracked `.ini` files that carried the identifier by convention and were
-  # enforced by nothing until 2026-08-05. `neon` is in EXTENSIONS so a plain `phpstan.neon` would be seen; a
-  # root-level `<name>.<type>.dist` still has to be named here.
+  # enforced by nothing until 2026-08-05. This entry is therefore the ONLY thing that looks at that file, which
+  # is why `test-gates.sh` pins it by name as well as by set size.
+  #
+  # An earlier version of this comment added *"`neon` is in EXTENSIONS so a plain `phpstan.neon` would be seen"*,
+  # and that was false in this repository the moment it was written: the same change added `phpstan.neon` to
+  # `.gitignore` (it is the local override of the committed `.dist`), and the enumeration below uses
+  # `git ls-files --cached --others --exclude-standard`, which honours ignore rules. So the one `.neon` spelling
+  # that could exist here is permanently invisible to this gate by design. `neon` stays in EXTENSIONS as a
+  # FORWARD guard for a tracked `.neon` elsewhere — it has no live subject today, and saying so is the point.
   "api/phpstan.neon.dist"
   "mobile/pubspec.yaml"
   "mobile/analysis_options.yaml"

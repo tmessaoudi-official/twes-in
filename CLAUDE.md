@@ -573,10 +573,19 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
 `gate:test`. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — is the one step no documented environment makes pass**: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). Round 22 filed this; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **`gate:static` now passes** — see its row above. **Two of seven steps also failed for a different reason for one commit:**
-`gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit`, and since
-`phpstan/phpstan` forces `--no-dev` (below), **no dev binary is ever installed** — so three of seven steps exited
-127 while this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the
-tier was always actually verified with. Derive the chain from `api/composer.json` rather than this sentence. **`gate:architecture` needs nothing installed at all**; two of
+`gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit` and exited 127 while
+this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the tier was
+always actually verified with. **The REASON this row gave for that was false when it was written and is corrected
+here rather than below it** (round 2 of the PHPStan certification): it said *"`phpstan/phpstan` forces `--no-dev`,
+so no dev binary is ever installed"*. `phpstan/phpstan` LEFT `composer.lock` on 2026-08-02 with `deptrac`, which
+is the only thing that ever dragged it in — so `--no-dev` has not been required since, every one of the 120 locked
+packages carries a `source` URL, and `vendor/bin/phpunit` and `vendor/bin/php-cs-fixer` both exist in a normal
+checkout. [Verified: a script over the lock reports `packages: 74, 0 without source; packages-dev: 46, 0 without
+source`, `phpstan/phpstan in lock? NO`; `composer install --prefer-source --dry-run` reports *"Installing
+dependencies from lock file (including require-dev) … Nothing to install"*; `ls api/vendor/bin` lists both.] The
+phars stay anyway, and for a better reason than the false one: a pinned SHA-256 phar is reproducible and runs in a
+checkout with NO vendor tree at all, which is what makes `gate:architecture` and `gate:style` independent of a
+successful `composer install`. Derive the chain from `api/composer.json` rather than from this sentence. **`gate:architecture` needs nothing installed at all**; two of
 its siblings do, and both FAIL rather than skip when they cannot look:
 
 - **`gate:licences`** needs a populated pub cache — `cd mobile && flutter pub get`, or `PUB_CACHE` pointing at
@@ -619,7 +628,7 @@ read its own status.
 | Node 26.5.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
 | Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` | yes (`registry.npmjs.org`) |
 | Flutter 3.44.8 | `flutter_linux_3.44.8-stable.tar.xz` from `storage.googleapis.com` | yes |
-| **Composer dependencies** | `composer config -g use-github-api false && composer config -g github-protocols https`, then `cd api && composer install --prefer-source --no-dev && composer dump-autoload --dev` | **YES** — see § Gotchas. The plain `composer install` fails; `--prefer-source` clones instead of fetching zipballs, which is the half I got wrong until 2026-08-01 |
+| **Composer dependencies** | `composer config -g use-github-api false && composer config -g github-protocols https`, then `cd api && composer install --prefer-source` | **YES** — see § Gotchas. The plain `composer install` fails; `--prefer-source` clones instead of fetching zipballs, which is the half I got wrong until 2026-08-01. **`--no-dev` and the `composer dump-autoload --dev` that compensated for it were BOTH dropped on 2026-08-05**: they existed only for `phpstan/phpstan`, which left the lock with `deptrac` on 2026-08-02, and as written the recipe WITHHELD the `symfony/browser-kit` the functional suite needs [Verified: `--dry-run` reports "including require-dev … Nothing to install"] |
 
 Two notes that cost time to rediscover. The container's default Node is **22.22.2**, one patch below Angular
 22's `^22.22.3` floor, so Angular CLI refuses to install until Node is upgraded. And Flutter warns loudly about
@@ -856,20 +865,26 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     composer config -g use-github-api false     # stop using api.github.com for dist
     composer config -g github-protocols https   # NOT `git` -- the git:// protocol is dead and yields
                                                 # "Failed to clone ... via  protocols" with an empty list
-    cd api && composer install --prefer-source --no-dev
+    cd api && composer install --prefer-source
     ```
 
     [Verified: exit 0, 52 runtime packages installed — Symfony framework-bundle, http-kernel, console,
     runtime, dotenv, uid, yaml, translation, doctrine-bridge, and Doctrine ORM, DBAL, migrations and both
     bundles. Full gate green afterwards: `OK (693 tests, 2687 assertions)`, `test-gates.sh` 361/0,
     `php-cs-fixer` 0 of 70, `dependency-licences` OK.]
-  - **`--no-dev` is required for exactly ONE package.** `phpstan/phpstan` is the only entry in
-    `composer.lock` with no `source` URL — it is dist-only, so `--prefer-source` cannot avoid the API for it
-    [Verified: a script over the lock reports `packages: 52, 0 without source; packages-dev: 54, 1 without
-    source — phpstan/phpstan`]. Everything else, **deptrac included**, has a source and would install.
-  - **`--no-dev` omits `autoload-dev`**, so `Twes\Tests\` is unmapped and the suite dies with
-    `Class "…DocumentNumberSequenceContract" not found`. Run `composer dump-autoload --dev` after installing;
-    it adds the PSR-4 rule without needing the dev packages.
+  - **`--no-dev` WAS required for exactly one package, and IS NO LONGER — the flag is gone from the command
+    above.** `phpstan/phpstan` was the only entry in `composer.lock` with no `source` URL, so `--prefer-source`
+    could not avoid the API for it. It reached the lock only as a dependency of `deptrac/deptrac`, and both left
+    `require-dev` on 2026-08-02, which retired the flag with them — unnoticed for three days, so the recipe here
+    kept prescribing it. [Verified 2026-08-05: `packages: 74, 0 without source; packages-dev: 46, 0 without
+    source`; `phpstan/phpstan in lock? NO`; `composer install --prefer-source --dry-run` → *"Installing
+    dependencies from lock file (including require-dev) … Nothing to install"*.] **The earlier citation here read
+    `packages: 52, 0 without source; packages-dev: 54, 1 without source — phpstan/phpstan`, and it no longer
+    reproduces** — kept visible rather than swapped out, because a `[Verified]` figure that has silently stopped
+    being true is the artefact this file most wants a reader to distrust.
+  - **`--no-dev` omitted `autoload-dev`**, which is why `composer dump-autoload --dev` used to follow it: without
+    it `Twes\Tests\` is unmapped and the suite dies with `Class "…DocumentNumberSequenceContract" not found`.
+    Retired with the flag. Still worth knowing if a future constraint reintroduces `--no-dev`.
 
   **The lesson is not about Composer.** I read a 403, reached for the most structural explanation available
   ("the environment forbids it"), wrote it down as `[Verified]` on the strength of four `curl` calls that were

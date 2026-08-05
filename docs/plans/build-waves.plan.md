@@ -334,13 +334,16 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   session hit three separate times. The template is prevention and the gate is detection; a template alone is a
   convention that a hand-written migration bypasses, so both. Wave 1 acceptance criteria updated below.
 - [2026-07-30 06:10] RULED (PHPStan/deptrac, developer accepting the recommendation): **leave both owed; do NOT
-  reach for a non-GitHub mirror.** They are MIT, in `composer.json`, and uninstallable because every dist URL is
-  a GitHub host returning 403. The six plain-PHP gates already enforce every architecture P0 and need nothing
-  installed, so these two are defence in depth that has not arrived rather than a hole. A mirror was rejected
-  outright: provenance of every dependency is precisely what § "Licensing invariants" forbids being casual
-  about. The real unblock is an environment with wider egress, which would also unblock the Symfony skeleton and
-  Doctrine — that is the developer's decision to make, and it is recorded here as the highest-leverage one
-  available rather than left implicit.
+  reach for a non-GitHub mirror.** **SUPERSEDED 2026-08-05 — see the 2026-08-05 entry below; amended here rather
+  than contradicted from a distance, per `CLAUDE.md` § Gotchas.** The mirror half STANDS and is the durable part:
+  provenance of every dependency is precisely what § "Licensing invariants" forbids being casual about, and the
+  plain-PHP gates do enforce every architecture P0 with nothing installed. **The premise was wrong.** They were
+  not "uninstallable because every dist URL is a GitHub host returning 403": general egress is open, only
+  `api.github.com` and `codeload.github.com` are authorization-scoped, `composer install --prefer-source` clones
+  and works, and PHPStan's phar is served by `raw.githubusercontent.com`. So "the real unblock is an environment
+  with wider egress" named a decision the developer never actually had to make — the whole Symfony application,
+  Doctrine and PHPStan all landed in this same container. That misdiagnosis is § Gotchas' 2026-07-29 entry, and
+  this is the ruling it cost.
 - [2026-07-30 06:10] RULED (the `+ 1` working-scale guard band, developer accepting the recommendation):
   **leave it in place with the observation recorded; do not remove it on my analysis alone.** Removing it passes
   all 33 `DecimalScaleSweepTest` cases and I could not construct a distinguishing input; the argument for why it
@@ -504,6 +507,24 @@ was restricted by organisation policy so `composer install` could not run. Gener
 `composer config -g use-github-api false` + `composer install --prefer-source` installs the whole runtime stack.
 `CLAUDE.md` § Gotchas carries the recipe and the lesson. What that wrong diagnosis blocked for twenty rounds:
 
+- [2026-08-05 22:00] AGREED: **PHPStan is CONFIGURED AND WIRED at level 6, and every one of its findings is fixed
+  rather than baselined.** `api/phpstan.neon.dist` over `src/` and `tests/`; `composer gate:static` repointed from
+  `vendor/bin/phpstan` — a path that can never exist, since PHPStan is not a Composer dependency here — to the
+  pinned phar in `api/tools/bin/`. Level 6 rather than max because levels 7-9 are dominated by mixed-type findings
+  in framework glue where the honest answer is an annotation rather than a code change; raise it when the ignore
+  list is empty. THREE non-default flags on, each on an axis this project had already ruled on:
+  `checkUninitializedProperties` (which is what forced the four Doctrine row entities to gain constructors, closing
+  the mapper's forget-a-column risk that `CLAUDE.md` § Architecture names as this model's accepted cost),
+  `treatPhpDocTypesAsCertain` (which found a LIVE row-level-security guard reported as dead code, because the
+  docblock declared `rolsuper: bool|string` while the code's own comment explains `bool_or` over an empty set is
+  NULL), and `reportUnmatchedIgnoredErrors`. Exactly TWO ignores, each with its reason in the file and one pinned by
+  count. **`deptrac` is now the only tool the API tier owes.**
+- [2026-08-05 22:00] AGREED: **the commit message for `d75003a` says "49 findings" and the reproducible figure is
+  52.** Recorded rather than quietly dropped, because a commit message is immutable and `git` history is the one
+  artefact this project cannot amend: 49 was measured mid-fix, after the row-level-security annotation was already
+  corrected, so the honest number for the pre-fix tree analysed with the committed config is 52 — reproduced by a
+  certification round against reverted sources. The lesson is the one § Gotchas keeps restating about counts: a
+  figure taken while the work is in flight is not a measurement of the work.
 - [2026-08-01 09:30] RULED **persistence is a SEPARATE MODEL in `Infrastructure/` mapped with Doctrine
   ATTRIBUTES, and a repository translates to and from the domain aggregate** (developer challenging the
   XML-mapping plan and accepting the recommendation that came out of it). Three facts drove it, two of which
@@ -519,7 +540,10 @@ was restricted by organisation policy so `composer install` could not run. Gener
   2026-08-01 10:00 Decisions Log entry, which reversed the XML plan on the developer's challenge. Migration,
   `schema:validate` and the RLS policies are all in place. This line said "ORM mapping in XML",
   and the Doctrine filter that becomes isolation's second layer;
-- **PHPStan and deptrac**, whose phars ship only from GitHub releases.
+- ~~**PHPStan and deptrac**, whose phars ship only from GitHub releases.~~ **PHPStan LANDED 2026-08-05** —
+  `api/tools/bin/phpstan.phar`, pinned by SHA-256 from `raw.githubusercontent.com`, configured by
+  `api/phpstan.neon.dist` at level 6 and green. **`deptrac` alone remains**, and it is installable rather than
+  blocked: its phar is simply not at the path PHPStan's is, the project having moved org from `qossmic/`.
 
 `api/composer.lock` is committed and fully pinned, so the next session with reachable dist URLs runs
 `composer install` and continues. These items are **Wave 0's remainder, not Wave 1's scope** — and
@@ -579,7 +603,7 @@ seams, and all are recorded so they cannot be mistaken for done:
 | **A non-owner runtime database role, without `TRUNCATE`.** `FORCE` stops an owner skipping policies, not removing them; `TRUNCATE` is never subject to RLS at any privilege level. | Infrastructure, not code — belongs with `infra/` (Wave 12). **Round 2 found this row claimed it was "recorded in its README" when it was not** — `infra/README.md` mentioned only non-superuser/`BYPASSRLS`. Now genuinely recorded there. |
 | ~~The rate-quantisation question.~~ **CLOSED 2026-07-29** by the 17:40 ruling in the Decisions Log: `authored_by` plus 12 fraction decimals. Both motivating cases now come out exact and are pinned in `pricing-vectors.json` § `authored_field`. | Kept as a struck row rather than deleted, so the trail from finding to ruling stays readable. |
 | **`netFromCost` differs from the spec's written formula under `HalfEven`.** One multiplication vs `cost + (cost × rate)` diverge when the tie parity flips. | Identical under the ruled `half_up` (160,000 pairs, 0 divergences). The one-step form is the better arithmetic; ~~the plan's formula line should be amended to match rather than the code changed — folded into the pricing spec next round.~~ **CLOSED at round 5 (R5-8)**: `pricing-and-documents.plan.md`'s headline `### The formula` block now reads `cost × (1 + profit_rate)`, with the half-even divergence witness beside it. Kept as a struck row so the trail stays readable. |
-| **PHPStan and deptrac configuration.** No `phpstan.neon`, no `deptrac.yaml`, and `composer gate` names `gate:static` with neither a config nor paths. | Both are uninstallable here, so a config would be untested. Lands with `composer install`. |
+| ~~**PHPStan and deptrac configuration.**~~ **PHPStan CLOSED 2026-08-05.** `api/phpstan.neon.dist` exists (level 6 over `src/` and `tests/`, three non-default strictness flags) and `gate:static` runs the pinned phar. `deptrac.yaml` still absent. | Every clause of the old reason was false by the time it was read: *"Both are uninstallable here, so a config would be untested. Lands with `composer install`."* PHPStan is installed as a phar and needed no `composer install`; `deptrac` is installable and merely unwired. The 49 findings the config produced are resolved, four of them real defects. |
 | **The i18n catalogues have no consumer.** Nine keys in three locales; every message the code emits is still a hardcoded English literal. | There is no HTTP layer to translate for. Lands with the RFC 9457 error shape, together with a reverse gate (a key used in code but absent from a catalogue). |
 | **Locale-aware formatting and its own test vectors.** Wave 0's scope named it; no formatter exists. | Needs a rendering surface to be meaningful. Moves to Wave 4 (PDF) and Wave 8 (admin), where `TND`'s three decimals can actually be seen to be right. |
 | **A JSON Schema for `pricing-vectors.json`.** | The `$schema` key pointed at a file that did not exist and has been removed rather than left dangling. Worth writing when the second consumer (Angular) lands and the shape stops moving. |
@@ -788,7 +812,9 @@ is backed by a re-run mutant, recorded above.
 
 *Kept verbatim as the record of what this wave set out to do. Where it differs from the tables above,
 the tables above are correct: notably it specifies a "default-on Doctrine filter", which was superseded
-by row-level security, and `deptrac`/PHPStan, which could not be installed.*
+by row-level security, and `deptrac`/PHPStan — of which **PHPStan landed on 2026-08-05** and only `deptrac` is
+still absent. "Could not be installed" was a misdiagnosis in both cases; see the amended 2026-07-30 06:10
+ruling in the Decisions Log.*
 
 **In:** repo skeleton (`api/`, `admin/`, `mobile/`, `infra/`) · Symfony 8.1.1 on PHP 8.5.8 · the
 hexagonal layer layout · **`Money` value object** over `NUMERIC(19,4)` with explicit rounding on every
@@ -1568,7 +1594,7 @@ P0 of this round was found by a behavioural probe and none by reading catalogues
 | R22-17 | **The count fix installed a WRONG count and a BROKEN derivation.** "the script created fourteen" plus `grep -c 'CREATE ROLE'`, which counts comment lines. Real: **12**. A prescribed derivation returning a wrong answer is worse than prose, because it looks authoritative | **P1** | **CLOSED** below |
 | R22-18 | The null-`polqual` tolerance certifies an UNREADABLE table as "canonically policed": `FOR ALL` omitting `USING` does not reuse `WITH CHECK`, and `FOR INSERT` is already refused by the `polcmd` check, so the arm admits only this. Fails closed | **P2** | **CLOSED** `0ca3705` — the tolerance is now asymmetric: a NULL `WITH CHECK` is accepted (`FOR ALL` reuses `USING`), a NULL `USING` is refused (nothing reuses `WITH CHECK` for reads). Both directions asserted and mutation-tested |
 | R22-19 | `DocumentIdentity` accepted a trailing newline: PCRE's `$` matches before a final newline without `/D`, giving two unequal spellings of one id — what the uppercase refusal in the same docblock exists to prevent | **P2** | **CLOSED** `030550e` |
-| R22-20 | `Invoice::fromPersistedState()`'s guard-bypass is restricted only by `@internal`, enforced by nothing — PHPStan being the one tool that would and the one thing uninstallable here. Same shape as `doctrine.yaml`'s prose security boundary that `74cc2c6` wrote a gate for | **P2** | **OPEN** — a gate refusing references outside `Infrastructure/Persistence/`, or recorded as accepted |
+| R22-20 | `Invoice::fromPersistedState()`'s guard-bypass is restricted only by `@internal`, enforced by nothing — ~~PHPStan being the one tool that would and the one thing uninstallable here~~. Same shape as `doctrine.yaml`'s prose security boundary that `74cc2c6` wrote a gate for | **P2** | **STILL OPEN, but the premise changed 2026-08-05: PHPStan now RUNS**, so the remedy this row calls for may be satisfiable by the tool it said was unavailable. Note level 6 does not check `@internal` by itself — that needs `phpstan/phpstan-deprecation-rules`-style extension support, or the plain-PHP gate this row already proposes, which is still the surer option since it needs nothing installed |
 | R22-21 | The "NOT delivered" block was corrected at the top and left stale below: a **mangled bullet swallowed the Doctrine filter** — tenancy's second isolation layer, genuinely owed — into a clause about what the line used to say, under a heading reading LANDED; plus stale deptrac/PHPStan phar claims and a "still blocked" two lines under "have LANDED" | **P2** | **CLOSED** below |
 | R22-22 | `api/phpunit.xml` calls `twesMixedCase` "The NINTH role" citing "the other eight"; it is 12th of 12. This round is the commit that added the three chain roles above it | **P2** | **CLOSED** below |
 | R22-23 | "the violation cases" is 18, in two places, in the same file where one instance was deliberately changed to remove the number | **P2** | **CLOSED** below |

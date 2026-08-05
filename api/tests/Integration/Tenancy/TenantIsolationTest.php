@@ -870,6 +870,37 @@ final class TenantIsolationTest extends TestCase
         // switch at the large-object guard shipped INVERTED. This test is the natural home for the case: it is
         // already parameterised on spelling, and its own comment says pdo_pgsql's boolean rendering is
         // build-dependent, which is exactly the caller shape the fix claims to protect.
+        // **NULL IS THE ONE UNRECOGNISED VALUE POSTGRESQL ACTUALLY EMITS, and it used to clear the role on
+        // `rolreplication` alone.** All three attributes are fetched as `bool_or(...)`, which is NULL over an empty
+        // row set — that is why `assertConnectionCannotBypassPolicies()` carries an all-three-NULL guard. But that
+        // guard is a CONJUNCTION, so a single NULL passes it, and `rolreplication` was then read
+        // `!isFalse($role['rolreplication'] ?? false)`: the coalesce turned NULL into a recognised FALSE and the
+        // predicate certified the role as unable to bypass. Its two siblings raised a `TypeError` instead —
+        // fail-closed, but for the wrong reason and with a message about a type. Three keys, three behaviours, one
+        // of them failing open, and no case here could see it because the shape's own annotation denied NULL.
+        foreach (['rolsuper', 'rolbypassrls', 'rolreplication'] as $attribute) {
+            $role = ['rolsuper' => 'f', 'rolbypassrls' => 'f', 'rolreplication' => 'f'];
+            $role[$attribute] = null;
+
+            self::assertTrue(
+                PostgresRowLevelSecurityIsolation::roleCanBypassPolicies($role),
+                \sprintf(
+                    '%s=NULL means the catalogue answered "unknown", which is not a recognised FALSE, so it must '
+                    . 'not clear the role. bool_or() over an empty row set is NULL.',
+                    $attribute,
+                ),
+            );
+        }
+
+        // ABSENCE, by contrast, MUST stay harmless — and this is the case that stops the fix above being written
+        // as `?? null`, which would have been the obvious one-character version of it. A caller with only two
+        // attributes to offer is legitimate (every assertion earlier in this method is one), so absence and a
+        // present NULL mean different things and `??` cannot tell them apart.
+        self::assertFalse(
+            PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(['rolsuper' => 'f', 'rolbypassrls' => 'f']),
+            'an absent rolreplication is a shape without that attribute, not an unknown value',
+        );
+
         foreach (['true', 'on', 'y', 'TRUE', 'yes', '2'] as $spelling) {
             self::assertTrue(
                 PostgresRowLevelSecurityIsolation::roleCanBypassPolicies(
@@ -1484,11 +1515,11 @@ final class TenantIsolationTest extends TestCase
             PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
 
             // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: A security_invoker view is accepted.
-            // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
-            // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
-            // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
-            // into the comment above because a passing assertion never prints one.
-            $this->addToAssertionCount(1);
+            // NO `addToAssertionCount(1)` HERE, and the version of this comment that carried one was wrong about why.
+            // It claimed `failOnRisky` protected the line -- "deleting it turns this accepting arm RED" -- which is
+            // true only of a method whose ONLY assertion it is. This method has others, so PHPUnit never sees zero
+            // and the call was pure noise: a reviewer proved it by deleting all four at once and getting
+            // `OK (4 tests, 23 assertions)`. The guard call above IS the assertion; a throw fails the test.
         } finally {
             $this->owner->exec('DROP VIEW IF EXISTS ' . $unsafe);
             $this->owner->exec('DROP VIEW IF EXISTS ' . $safe);
@@ -2612,11 +2643,11 @@ final class TenantIsolationTest extends TestCase
         PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateTemporaryObjects($withoutTemp);
 
         // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: A role without TEMPORARY is accepted, so the guard is satisfiable.
-        // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
-        // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
-        // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
-        // into the comment above because a passing assertion never prints one.
-        $this->addToAssertionCount(1);
+        // NO `addToAssertionCount(1)` HERE, and the version of this comment that carried one was wrong about why.
+        // It claimed `failOnRisky` protected the line -- "deleting it turns this accepting arm RED" -- which is
+        // true only of a method whose ONLY assertion it is. This method has others, so PHPUnit never sees zero
+        // and the call was pure noise: a reviewer proved it by deleting all four at once and getting
+        // `OK (4 tests, 23 assertions)`. The guard call above IS the assertion; a throw fails the test.
     }
 
     /**
@@ -3057,11 +3088,11 @@ final class TenantIsolationTest extends TestCase
             PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
 
             // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: A foreign temp matview must not refuse this connection.
-            // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
-            // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
-            // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
-            // into the comment above because a passing assertion never prints one.
-            $this->addToAssertionCount(1);
+            // NO `addToAssertionCount(1)` HERE, and the version of this comment that carried one was wrong about why.
+            // It claimed `failOnRisky` protected the line -- "deleting it turns this accepting arm RED" -- which is
+            // true only of a method whose ONLY assertion it is. This method has others, so PHPUnit never sees zero
+            // and the call was pure noise: a reviewer proved it by deleting all four at once and getting
+            // `OK (4 tests, 23 assertions)`. The guard call above IS the assertion; a throw fails the test.
         } finally {
             $other->exec('DROP MATERIALIZED VIEW IF EXISTS pg_temp.pool_outage_probe');
         }
@@ -3189,11 +3220,11 @@ final class TenantIsolationTest extends TestCase
             PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateLargeObjects($hardened);
 
             // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: a hardened database must not be refused
-            // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
-            // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
-            // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
-            // into the comment above because a passing assertion never prints one.
-            $this->addToAssertionCount(1);
+            // NO `addToAssertionCount(1)` HERE, and the version of this comment that carried one was wrong about why.
+            // It claimed `failOnRisky` protected the line -- "deleting it turns this accepting arm RED" -- which is
+            // true only of a method whose ONLY assertion it is. This method has others, so PHPUnit never sees zero
+            // and the call was pure noise: a reviewer proved it by deleting all four at once and getting
+            // `OK (4 tests, 23 assertions)`. The guard call above IS the assertion; a throw fails the test.
         } finally {
             $admin = null;
             $hardened = null;
