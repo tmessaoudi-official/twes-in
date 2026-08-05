@@ -48,8 +48,18 @@ use Twes\Domain\Shared\RoundingMode;
 final readonly class DocumentCalculator
 {
     /**
-     * @param list<DocumentLine> $lines
-     * @param list<FixedCharge> $fixedCharges
+     * `array<int, …>` AND NOT `list<…>`, because this method NORMALISES rather than requires.
+     *
+     * Both parameters said `list<>` until PHPStan could read them, and the annotation was contradicted by a
+     * test in the same repository: `DocumentTotalsTest::testTheReportedPositionIsThePositionAndNotTheArrayKey()`
+     * passes `[7 => $line, 8 => $line]` deliberately, because round 15 found a caller-supplied key
+     * leaking into a message that told a client to fix "line 7" of a two-line invoice. `resolveCurrency()`
+     * re-indexes for exactly that reason, so accepting a keyed array is the CONTRACT, not a leniency —
+     * narrowing the tag to `list<>` would have made the test a contract violation and the `array_values()`
+     * calls dead code. Widening is safe for every existing caller: a list is an `array<int, …>`.
+     *
+     * @param array<int, DocumentLine> $lines
+     * @param array<int, FixedCharge> $fixedCharges
      * @param Currency|null $currency required only when there is nothing to infer it from — an empty
      *                                document. Inferred from the first line otherwise, and every other
      *                                line and charge must agree
@@ -314,13 +324,18 @@ final readonly class DocumentCalculator
      * would refuse it partway through a sum with a message about two amounts — this fails before any figure
      * is computed, so the error names the document rather than an intermediate value.
      *
-     * **The two `list<>` generics are load-bearing and were lost once** (round 17's P1-2): this docblock was
-     * orphaned onto `allocate()` — which throws no `CurrencyMismatch` — leaving this method with no annotation
-     * at all, in the commit whose message claimed it had fixed two orphaned docblocks. PHPStan at max level
-     * enforces these and would have caught it; PHPStan is blocked on Composer egress, so nothing did.
+     * **The two generics are load-bearing and were lost once** (round 17's P1-2): this docblock was orphaned
+     * onto `allocate()` — which throws no `CurrencyMismatch` — leaving this method with no annotation at all,
+     * in the commit whose message claimed it had fixed two orphaned docblocks. PHPStan enforces these and
+     * would have caught it; PHPStan could not be installed, so nothing did. **It now runs**
+     * (`api/phpstan.neon.dist`, level 6), and `no-orphaned-docblocks.php` covers the orphaning half.
      *
-     * @param list<DocumentLine> $lines
-     * @param list<FixedCharge> $fixedCharges
+     * `array<int, …>` rather than `list<…>` for the reason given on `calculate()`: this method is where the
+     * re-indexing HAPPENS, so requiring an already-indexed array would make its own first two statements
+     * unreachable.
+     *
+     * @param array<int, DocumentLine> $lines
+     * @param array<int, FixedCharge> $fixedCharges
      *
      * @throws CurrencyMismatch
      * @throws \InvalidArgumentException
@@ -331,10 +346,11 @@ final readonly class DocumentCalculator
         // round 14 found both of these guards deletable with the suite green — the test asserted only the class,
         // so a crash and a detection were indistinguishable. The context string is what a test can pin, and it
         // is also what tells a reader WHICH line of a fifty-line invoice is wrong.
-        // `array_values` FIRST, so the reported position is the position, not the array key. `list<DocumentLine>`
-        // is a docblock claim and PHPStan — which would enforce it — is blocked on Composer egress, so a caller
-        // passing `[7 => $line]` made the message name line 7 while `DocumentTotals::lineNets()` exposes 0 and 1.
-        // An index a client is told to fix must be the index the client can see (round 15).
+        // `array_values` FIRST, so the reported position is the position, not the array key. A caller passing
+        // `[7 => $line]` made the message name line 7 while `DocumentTotals::lineNets()` exposes 0 and 1, and an
+        // index a client is told to fix must be the index the client can see (round 15). These two calls are the
+        // whole reason both parameters are annotated `array<int, …>` and not `list<…>` — under `list<…>` PHPStan
+        // reports them as having no effect, which would invite deleting the fix.
         $lines = array_values($lines);
         $fixedCharges = array_values($fixedCharges);
 

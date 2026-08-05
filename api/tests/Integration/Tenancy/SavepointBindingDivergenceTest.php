@@ -149,7 +149,12 @@ final class SavepointBindingDivergenceTest extends TestCase
         $isolation->assertStillBoundTo($connection, InMemoryTenantContext::empty());
         $connection->rollBack();
 
-        self::assertTrue(true, 'an unbound connection with a tenant-less context is a legitimate state');
+        // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: an unbound connection with a tenant-less context is a legitimate state
+        // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
+        // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
+        // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
+        // into the comment above because a passing assertion never prints one.
+        $this->addToAssertionCount(1);
     }
 
     private static function boundTenant(\PDO $connection): string

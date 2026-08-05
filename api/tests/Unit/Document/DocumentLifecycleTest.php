@@ -101,7 +101,7 @@ final class DocumentLifecycleTest extends TestCase
 
         try {
             $from->transitionTo($to);
-            self::assertTrue(false, \sprintf('%s -> %s must throw', $from->name, $to->name));
+            self::fail(\sprintf('%s -> %s must throw', $from->name, $to->name));
         } catch (IllegalTransition $exception) {
             // The message must name BOTH states, by their BACKED VALUES. This asserted `->name` until round 14,
             // which pinned the PHP case name INTO a user-facing message — so renaming a PHP identifier would

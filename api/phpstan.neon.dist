@@ -1,0 +1,84 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# PHPStan. Static analysis, and DEFENCE IN DEPTH on top of `scripts/gates/*` rather than a replacement for them.
+#
+# The architecture gates run on plain PHP with nothing installed, which is why they are the primary mechanism:
+# `layer-dependencies.php`, `no-ambient-calls-in-domain.php` and `no-orm-attributes-in-domain.sh` keep working in a
+# checkout with no vendor tree. PHPStan needs a resolved autoloader, so it can say MORE but only when installed.
+#
+# THIS FILE DID NOT EXIST until 2026-08-05, which meant `composer gate:static` could not run at all — it exited
+# with `At least one path must be specified to analyse.` The phar had been fetched and pinned, and CLAUDE.md
+# recorded the tool as "UNBLOCKED ... it RUNS and finds 31 errors at level 5", but nothing in the repository told
+# it what to analyse. A tool that cannot be invoked is not a gate.
+# ==============================================================================================================
+parameters:
+    # LEVEL 6, not the maximum, and the choice is deliberate rather than timid. Levels 7-9 are dominated by mixed-type
+    # and null-safety findings in framework glue, where the honest answer is usually an annotation rather than a code
+    # change. Level 6 already requires every parameter, property and return to be typed — which `CLAUDE.md`
+    # § Architecture demands of the domain anyway — so it is the highest level whose findings are all real.
+    #
+    # Raise it when the list below is empty. The direction of travel matters more than the number.
+    level: 6
+
+    paths:
+        - src
+        - tests
+
+    # `bin/` and `config/` are deliberately absent: both are framework bootstrap whose shape PHPStan reads as untyped
+    # glue, and neither carries domain logic. `migrations/` likewise — a migration is generated SQL in a method body.
+
+    # NO `symfonyContainerXmlPath`: that option comes from `phpstan/phpstan-symfony`, which is not installed. Without
+    # it PHPStan cannot resolve autowired service types — a real loss, and the reason it is recorded here rather than
+    # silently omitted. The extension is a candidate once the phar-based setup can carry extensions.
+    #
+    # NO `checkMissingIterableValueType` either: PHPStan 2.x folded it into the level and now REJECTS the key outright,
+    # so leaving it in makes the whole config invalid. [Verified: `Unexpected item 'parameters › ...'` for both.]
+
+    # STRICTER THAN THE LEVEL, on axes this project has already ruled on:
+    #
+    # `checkUninitializedProperties` earns its place on the Doctrine row entities: they were built by seven bare
+    # assignments in `InvoiceMapper::toRows()`, so a forgotten column was silent at the call site and threw
+    # `must not be accessed before initialization` later, from inside `flush()`. Every row now has a constructor.
+    #
+    # `treatPhpDocTypesAsCertain` is the one that found the security finding this config was worth writing for:
+    # `PostgresRowLevelSecurityIsolation` declared `rolsuper: bool|string` while its own comment explains that
+    # `bool_or` over an empty set is NULL — so a LIVE row-level-security guard was reported as dead code.
+    checkUninitializedProperties: true
+    reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: true
+
+    # ==========================================================================================================
+    # IGNORES. Two entries, each with its reason, and `reportUnmatchedIgnoredErrors: true` above means a stale
+    # one FAILS the gate rather than sitting here forever. Nothing is ignored to make a number go down: every
+    # other finding this config produced was fixed, and four of them were real defects.
+    # ==========================================================================================================
+    ignoreErrors:
+        # A PHPUnit test class has no constructor to assign in. `TestCase::__construct()` belongs to the
+        # framework — PHPUnit constructs the instance itself and calls `setUp()` per test method, which is where
+        # a fixture connection is opened and where it MUST be opened: a connection built in a constructor would
+        # be shared across every test method in the class and would outlive each one's transaction.
+        #
+        # Scoped to `tests/` by path rather than pinned by count, because this is structural to every PHPUnit
+        # class rather than a property of these three — a new integration fixture would otherwise fail the gate
+        # for following the framework's own shape. `src/` keeps the check, which is where it found something.
+        -
+            identifier: property.uninitialized
+            path: tests/*
+        # `assertNotInstanceOf(\DomainException::class, NumberTypeMismatch::between(...))` — PHPStan can prove it
+        # today, and that is the point: `NumberTypeMismatch` is a `\LogicException` because being handed another
+        # document type's number is OUR allocation fault, never a client's, so it must map to `error.internal`
+        # rather than to a 422. The assertion is what stops that split silently collapsing back into one HTTP
+        # status, and it FAILS the moment somebody reparents the class — a static proof of the current state is
+        # not the same thing as an assertion that cannot regress.
+        #
+        # PINNED BY COUNT, unlike the entry above: exactly one such assertion exists, so a second one appearing
+        # is a decision to be made rather than something to inherit this exemption silently.
+        -
+            identifier: staticMethod.alreadyNarrowedType
+            path: tests/Unit/Document/InvoiceTest.php
+            count: 1

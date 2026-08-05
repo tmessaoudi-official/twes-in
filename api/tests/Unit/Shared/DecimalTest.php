@@ -385,10 +385,18 @@ final class DecimalTest extends TestCase
     {
         // Every entry point must normalise, or two spellings of zero break every equality downstream.
         self::assertSame('0.000', Decimal::subtract('0.000', '0.000', 3));
-        self::assertSame('0.000', Decimal::rescale('-0.0001', 3, RoundingMode::Down));
+        // BOUND ONCE and asserted, rather than called twice with `?? 'x'` on the second call. That fallback was a
+        // HOLLOW GUARD: `rescale()` returns null when the value is not representable under `Unnecessary`, and had
+        // it ever returned null here the coalesce would have fed `isNegative('x')` — which is false — so the
+        // assertion would have PASSED on a regression. PHPStan flagged it as a `??` whose left side cannot be
+        // null, because `assertSame()` carries `@phpstan-assert` and had already narrowed the identical call
+        // expression two lines up. Asserting the value first and reusing it makes the narrowing explicit.
+        $rescaled = Decimal::rescale('-0.0001', 3, RoundingMode::Down);
+
+        self::assertSame('0.000', $rescaled);
         self::assertSame('0.000', Decimal::divide('-0.0001', '2', 3, RoundingMode::Down));
         self::assertSame('0.000', Decimal::multiplyExact('-0.000', '3'));
-        self::assertFalse(Decimal::isNegative(Decimal::rescale('-0.0001', 3, RoundingMode::Down) ?? 'x'));
+        self::assertFalse(Decimal::isNegative($rescaled));
     }
 
     /**

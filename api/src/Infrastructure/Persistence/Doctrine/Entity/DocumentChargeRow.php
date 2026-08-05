@@ -66,4 +66,19 @@ class DocumentChargeRow
     /** `NUMERIC(19,4)`, in the DOCUMENT's currency. Never a float. */
     #[ORM\Column(type: 'decimal', precision: 19, scale: 4)]
     public string $amount;
+
+    /** {@see DocumentRow::__construct()} for why a Doctrine entity has one. */
+    public function __construct(
+        Uuid $companyId,
+        Uuid $documentId,
+        int $position,
+        string $label,
+        string $amount,
+    ) {
+        $this->companyId = $companyId;
+        $this->documentId = $documentId;
+        $this->position = $position;
+        $this->label = $label;
+        $this->amount = $amount;
+    }
 }

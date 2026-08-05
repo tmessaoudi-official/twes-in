@@ -43,6 +43,12 @@ readonly -a SEARCH_ROOTS=(
 readonly -a SEARCH_FILES=(
   "api/phpunit.xml"
   "api/.php-cs-fixer.dist.php"
+  # LISTED EXPLICITLY BECAUSE A `.dist` SUFFIX HIDES A FILE FROM THE EXTENSION SCAN. The coverage half below
+  # matches on the FINAL extension, so `phpstan.neon.dist` reads as a `dist` file and neither half of this gate
+  # can see it — the same shape as the tracked `.ini` files that carried the identifier by convention and were
+  # enforced by nothing until 2026-08-05. `neon` is in EXTENSIONS so a plain `phpstan.neon` would be seen; a
+  # root-level `<name>.<type>.dist` still has to be named here.
+  "api/phpstan.neon.dist"
   "mobile/pubspec.yaml"
   "mobile/analysis_options.yaml"
   "admin/eslint.config.js"
@@ -91,7 +97,7 @@ readonly HEADER_WINDOW=40
 # configuration files under `infra/api/conf.d*/` among them — and NONE of them was ever checked, so the convention
 # was upheld by memory rather than by this gate. The trigger was adding a sixth (`conf.d-dev/60-xdebug.ini`) and
 # noticing the reported count did not move. [Verified: `139 file(s)` both before and after the new file was staged.]
-readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini)
+readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini neon)
 
 if [[ "${1:-}" == "--dump-rules" ]]; then
   printf 'roots %s\n' "${SEARCH_ROOTS[*]}"

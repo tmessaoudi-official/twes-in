@@ -64,6 +64,10 @@
 .php-cs-fixer.cache
 .phpunit.result.cache
 phpstan.cache
+# The LOCAL override. `phpstan.neon.dist` is committed and is the project's configuration; PHPStan prefers
+# `phpstan.neon` when it exists, so a developer can relax a rule for one session without staging it. Ignoring it
+# is what keeps that convenience from becoming a silently weaker gate in CI.
+phpstan.neon
 
 # Standalone tool phars, fetched and SHA-256-verified by scripts/dev/fetch-tools.sh.
 # Not committed: they are ~10 MB of third-party binary, and the script plus its pinned hashes is

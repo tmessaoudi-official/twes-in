@@ -121,7 +121,17 @@ final readonly class Money
 
     // ---------------------------------------------------------------- exact operations
 
-    /** @throws CurrencyMismatch */
+    /**
+     * @throws CurrencyMismatch
+     * @throws InvalidMoneyAmount if the SUM does not fit the money column
+     *
+     * The second tag was MISSING and the constructor's own comment eight lines up says why it should not have
+     * been: *"Checked HERE and not only in of(), so it holds for RESULTS too: two representable amounts can sum
+     * to an unrepresentable one."* `testAdditionThatOverflowsTheMoneyColumnIsRefused()` has proven that
+     * behaviour since Wave 0 — only the contract denied it, so every caller documenting its own `@throws` by
+     * reading this one under-reported. PHPStan found it from the other end, reporting
+     * `PriceCalculator::grossFromNet()`'s correct `@throws InvalidMoneyAmount` as never thrown.
+     */
     public function plus(self $addend): self
     {
         $this->assertSameCurrency($addend);
@@ -132,7 +142,13 @@ final readonly class Money
         );
     }
 
-    /** @throws CurrencyMismatch */
+    /**
+     * @throws CurrencyMismatch
+     * @throws InvalidMoneyAmount if the DIFFERENCE does not fit the money column
+     *
+     * See `plus()`. Subtraction grows the magnitude just as addition does whenever the operands' signs
+     * differ — `9e14 - (-9e14)` is the same overflow written the other way round.
+     */
     public function minus(self $subtrahend): self
     {
         $this->assertSameCurrency($subtrahend);
@@ -143,6 +159,11 @@ final readonly class Money
         );
     }
 
+    /**
+     * NO `@throws InvalidMoneyAmount`, and the omission is deliberate rather than the oversight `plus()` and
+     * `minus()` carried: negation cannot change a magnitude, so an amount that fitted the column before still
+     * fits it after. Do not add the tag by symmetry — PHPStan would then report it as never thrown.
+     */
     public function negated(): self
     {
         return new self(

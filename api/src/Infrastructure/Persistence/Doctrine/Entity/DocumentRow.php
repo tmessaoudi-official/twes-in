@@ -109,4 +109,40 @@ class DocumentRow
      * on every save. A lazy collection would buy nothing an immutable aggregate can use, and would introduce the
      * one thing this model exists to avoid: Doctrine holding a mutable object the domain also holds.
      */
+
+    /**
+     * **A CONSTRUCTOR ON A DOCTRINE ENTITY, and it is the mapper's forget-a-column guard.**
+     *
+     * `CLAUDE.md` § Architecture accepts one cost for the separate persistence model: *"a mapper per aggregate
+     * and a real duplication risk if one is careless — paid down by a round-trip contract test, not by care."*
+     * Before this constructor existed, `InvoiceMapper::toRows()` built each row with seven bare assignments, and
+     * omitting one was **silent at the call site**: the typed property simply stayed uninitialised and PHP threw
+     * `must not be accessed before initialization` later, during `flush()`, from inside the ORM. Naming the
+     * columns as required parameters moves that from a runtime error in Doctrine's stack to a `TypeError` — or,
+     * with PHPStan running, to a static one — at the line that forgot.
+     *
+     * It costs nothing, because **Doctrine never calls it.** Hydration goes through
+     * `Doctrine\Instantiator\Instantiator`, which materialises an instance without invoking the constructor and
+     * then writes every mapped field by reflection. So the mapping is untouched and this parameter list binds
+     * only OUR code — which is the only code that gets a column wrong.
+     *
+     * `$number` is absent on purpose: it is the one nullable column, its default is `null`, and a document is
+     * created unnumbered. `Invoice::issue()` allocates the number afterwards, so requiring it here would force
+     * every caller to pass `null` and would make the one genuinely optional column look mandatory.
+     */
+    public function __construct(
+        Uuid $companyId,
+        Uuid $id,
+        string $type,
+        string $state,
+        string $currency,
+        string $vatRoundingPoint,
+    ) {
+        $this->companyId = $companyId;
+        $this->id = $id;
+        $this->type = $type;
+        $this->state = $state;
+        $this->currency = $currency;
+        $this->vatRoundingPoint = $vatRoundingPoint;
+    }
 }

@@ -102,46 +102,52 @@ final readonly class InvoiceMapper
             ));
         }
 
-        $document = new DocumentRow();
-        $document->companyId = Uuid::fromString($tenant->toString());
-        $document->id = Uuid::fromString($identity->id);
-        $document->type = $identity->type->value;
-        $document->state = $invoice->state()->value;
-        $document->currency = $invoice->currency()->code();
-        // The RAW SEQUENCE, never the rendered string. `NumberPattern` renders; it does not identify — so persisting
-        // `0000041` would bake today's pattern into the row and make the column unusable for ordering or uniqueness.
+        // EVERY NOT-NULL COLUMN THROUGH THE CONSTRUCTOR, never by assignment. See
+        // {@see DocumentRow::__construct()}: a forgotten assignment used to surface as
+        // `must not be accessed before initialization` from inside `flush()`, far from the line that forgot it.
+        $document = new DocumentRow(
+            Uuid::fromString($tenant->toString()),
+            Uuid::fromString($identity->id),
+            $identity->type->value,
+            $invoice->state()->value,
+            $invoice->currency()->code(),
+            $identity->vatRoundingPoint->value,
+        );
+        // `number` STAYS an assignment, because it is the one nullable column and a draft has none. The RAW
+        // SEQUENCE, never the rendered string: `NumberPattern` renders, it does not identify — so persisting
+        // `0000041` would bake today's pattern into the row and make the column unusable for ordering or
+        // uniqueness.
         $document->number = $invoice->number()?->sequence();
-        $document->vatRoundingPoint = $identity->vatRoundingPoint->value;
 
         $lines = [];
 
         foreach ($invoice->lines() as $position => $line) {
-            $row = new DocumentLineRow();
-            $row->companyId = Uuid::fromString($tenant->toString());
-            $row->documentId = Uuid::fromString($identity->id);
-            // The ARRAY INDEX is the position, and `Invoice` guarantees it is contiguous: `withoutLine()` re-indexes
-            // through `removeAt()` precisely so positions stay dense. Persisting the index rather than a counter is
-            // what makes "remove line 2" mean the same thing before and after a round trip.
-            $row->position = $position;
-            $row->quantity = $line->quantity();
-            $row->unitNet = $line->unitNet()->amount();
-            // The FRACTION, not the percentage: `Rate::fraction()` is the exact stored form, and `NUMERIC(27,12)` is
-            // sized from `FRACTION_SCALE` (12) + `MAX_INTEGER_DIGITS` (15). Persisting the percentage would divide by
-            // 100 on the way back in and lose the twelfth decimal on a rate like 5.5%.
-            $row->vatRate = $line->vatRate()->fraction();
-            $lines[] = $row;
+            $lines[] = new DocumentLineRow(
+                Uuid::fromString($tenant->toString()),
+                Uuid::fromString($identity->id),
+                // The ARRAY INDEX is the position, and `Invoice` guarantees it is contiguous: `withoutLine()`
+                // re-indexes through `removeAt()` precisely so positions stay dense. Persisting the index rather
+                // than a counter is what makes "remove line 2" mean the same thing before and after a round trip.
+                $position,
+                $line->quantity(),
+                $line->unitNet()->amount(),
+                // The FRACTION, not the percentage: `Rate::fraction()` is the exact stored form, and
+                // `NUMERIC(27,12)` is sized from `FRACTION_SCALE` (12) + `MAX_INTEGER_DIGITS` (15). Persisting the
+                // percentage would divide by 100 on the way back in and lose the twelfth decimal on 5.5%.
+                $line->vatRate()->fraction(),
+            );
         }
 
         $charges = [];
 
         foreach ($invoice->fixedCharges() as $position => $charge) {
-            $row = new DocumentChargeRow();
-            $row->companyId = Uuid::fromString($tenant->toString());
-            $row->documentId = Uuid::fromString($identity->id);
-            $row->position = $position;
-            $row->label = $charge->label();
-            $row->amount = $charge->amount()->amount();
-            $charges[] = $row;
+            $charges[] = new DocumentChargeRow(
+                Uuid::fromString($tenant->toString()),
+                Uuid::fromString($identity->id),
+                $position,
+                $charge->label(),
+                $charge->amount()->amount(),
+            );
         }
 
         return [$document, $lines, $charges];
@@ -261,8 +267,12 @@ final readonly class InvoiceMapper
                 null === $document->number
                     ? null
                     : new DocumentNumber($type, $this->numberPattern, $document->number),
-                array_values($lines),
-                array_values($charges),
+                // NO `array_values()`, unlike `DocumentCalculator`: `usort()` above re-indexes in place, so both
+                // are already lists and `array_map()` preserves that. PHPStan reports the wrapper as having no
+                // effect, and a call with no effect beside one that is load-bearing thirty lines away in another
+                // file is how the load-bearing one gets deleted by analogy.
+                $lines,
+                $charges,
             ),
         ];
     }

@@ -376,7 +376,16 @@ final class BehaviouralIsolationTest extends TestCase
         // No `$relations[0]` any more: the escalation probes EVERY relation, because a role reached by SET ROLE may
         // hold a privilege on one table and nothing on another -- which is exactly the shape that hid the TRUNCATE.
         $runtime = self::runtimeConnection();
-        $attempted = [];
+        // TWO TERMINAL CATEGORIES, and they used to be one plus a scratch variable. `$attempted` was pushed the
+        // moment `SET ROLE` succeeded and then `array_pop`ped in the "gained nothing" branch, and since the only
+        // other way out of the loop body is `self::fail()`, it was **always empty** by the time the assertion
+        // below counted it — so `+ \count($attempted)` contributed nothing and the failure message's `escalated:`
+        // line said `none` on every possible run. PHPStan found it as `Ternary operator condition is always
+        // false` on the `?: 'none'` guarding that line, which is the giveaway: a fallback that always fires means
+        // the value it replaces is always absent. Now the push happens where the outcome is KNOWN, nothing is
+        // popped, and the two lists are genuinely disjoint — `$confined` is "reached it and it was worth
+        // nothing", `$refused` is "could not reach it at all".
+        $confined = [];
         $refused = [];
 
         foreach ($reachable as $role) {
@@ -387,7 +396,6 @@ final class BehaviouralIsolationTest extends TestCase
 
                 try {
                     $runtime->exec(\sprintf('SET ROLE %s', self::quote($role)));
-                    $attempted[] = $role;
                 } catch (\PDOException $e) {
                     // REFUSED, which is the desired outcome and not an error in the test. `pg_has_role(...,
                     // 'MEMBER')` is true for a membership granted `WITH SET FALSE`, and PostgreSQL then still
@@ -479,8 +487,7 @@ final class BehaviouralIsolationTest extends TestCase
                 }
 
                 if ([] === $gained) {
-                    $refused[] = $role . ' (reached, gained nothing)';
-                    array_pop($attempted);
+                    $confined[] = $role;
 
                     continue;
                 }
@@ -504,12 +511,12 @@ final class BehaviouralIsolationTest extends TestCase
         // apart from the failure message: every candidate was either escalated-into-and-still-confined, or refused.
         self::assertSame(
             \count($reachable),
-            \count($attempted) + \count($refused),
+            \count($confined) + \count($refused),
             \sprintf(
-                "Some reachable role was neither escalated into nor refused.\n  candidates: %s\n  escalated: %s\n"
-                . '  refused: %s',
+                "Some reachable role was neither escalated into nor refused.\n  candidates: %s\n"
+                . "  reached and confined: %s\n  refused: %s",
                 implode(', ', $reachable) ?: 'none',
-                implode(', ', $attempted) ?: 'none',
+                implode(', ', $confined) ?: 'none',
                 implode(', ', $refused) ?: 'none',
             ),
         );
@@ -946,8 +953,16 @@ final class BehaviouralIsolationTest extends TestCase
     /**
      * Every attacker goal, against one relation.
      *
+     * `fks[].name` WAS MISSING FROM THIS ONE DOCBLOCK and from no other. Round 24 added the constraint name to
+     * the shape so that GOAL 8's finding could say WHICH foreign key accepted a cross-tenant reference — a
+     * sibling key raising the same `23503` is not evidence about the defective one — and updated eight of the
+     * nine declarations. This method is the one that READS `$fk['name']`, twice, so the stale copy was the worst
+     * possible place for it: an `Undefined array key` there turns a reproduced cross-tenant breach into a
+     * confusing PHP error. Nothing could see it until PHPStan ran; it reported both reads plus six calls handing
+     * `rowFor()` and `insertSql()` a value that did not satisfy their contract.
+     *
      * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string,
-     *              nullable: bool}>, fks: list<array{columns: list<string>, parent: string,
+     *              nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string,
      *              parentColumns: list<string>}>} $relation
      *
      * @return array{findings: list<string>, refusals: int}
@@ -1814,12 +1829,21 @@ final class BehaviouralIsolationTest extends TestCase
             && str_contains(strtolower($outcome['message']), 'row-level security policy');
     }
 
-    /** A relation that can be written to. A view, materialized view or foreign table is read-attacked only. */
+    /**
+     * A relation that can be written to. A view, materialized view or foreign table is read-attacked only.
+     *
+     * The three helpers here take a NARROW shape rather than the full relation array — `array{kind: string}`
+     * accepts any array carrying that key, so every caller still type-checks, and the signature then says which
+     * of the five keys the helper actually reads. All three had a bare `array` until PHPStan asked.
+     *
+     * @param array{kind: string} $relation
+     */
     private static function acceptsWrites(array $relation): bool
     {
         return \in_array($relation['kind'], ['r', 'p'], true);
     }
 
+    /** @param array{schema: string, name: string} $relation */
     private static function qualify(array $relation): string
     {
         return 'public' === $relation['schema']
@@ -1827,6 +1851,7 @@ final class BehaviouralIsolationTest extends TestCase
             : $relation['schema'] . '.' . $relation['name'];
     }
 
+    /** @param array{schema: string, name: string} $relation */
     private static function qualifyQuoted(array $relation): string
     {
         return self::quote($relation['schema']) . '.' . self::quote($relation['name']);

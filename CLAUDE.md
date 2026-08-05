@@ -54,10 +54,13 @@ bootstrap instead of `vendor/autoload_runtime.php`.
 `deptrac`. **The `infra/` tier LANDED** — three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
 init script and its own gate — and both the development and the production stack have now been run end to end
 (2026-08-05). This sentence listed `infra/` as absent for three commits after it existed, and a reviewer's charter
-cites it. **PHPStan is the one thing still genuinely uninstallable**, and for a narrow
-reason rather than a network one: `phpstan/phpstan` is the single package in `composer.lock` with no `source`
-URL, so `--prefer-source` cannot route around the 403 on `api.github.com`. Everything else installs — see
-§ Gotchas, which corrects the *"GitHub egress is restricted"* claim this paragraph carried until 2026-08-01.
+cites it. **PHPStan RUNS, from a pinned phar, and `composer gate:static` is wired to it** (2026-08-05) — this
+paragraph called it *"the one thing still genuinely uninstallable"* until then, which was true of the Composer
+package and false of the tool: `phpstan/phpstan` is the single entry in `composer.lock` with no `source` URL, so
+`--prefer-source` cannot route around the 403 on `api.github.com`, but the phar is served by
+`raw.githubusercontent.com` and `scripts/dev/fetch-tools.sh` fetches it against a pinned SHA-256. Everything else
+installs — see § Gotchas, which corrects the *"GitHub egress is restricted"* claim this paragraph carried until
+2026-08-01. **`deptrac` is the only tool still owed.**
 Anything below describing what does not yet exist is the *target*. Read `docs/plans/build-waves.plan.md` for
 where the build actually is.
 
@@ -415,12 +418,18 @@ dependency arrives as a `use` statement and an import check finds it, but `time(
 is blind to every one of them. Both use PHP's own tokenizer rather than `grep`, so a `use` inside a
 comment or a string is not a false positive.
 
-**Still owed, and deliberately not deleted from this table:** `deptrac` and `PHPStan`. Both are MIT and both
-are in `api/composer.json`. **`deptrac` is now installable** and only waits on someone wiring it up;
-**PHPStan is not**, because `phpstan/phpstan` is the single package in `composer.lock` carrying no `source`
-URL, so `--prefer-source` cannot route around the 403 on `api.github.com`. This sentence claimed until
-2026-08-01 that NEITHER could be installed and that the cause was network egress; both halves were wrong —
-see § Gotchas. They are defence in depth on top of the gates above, not a substitute for them —
+**Still owed, and deliberately not deleted from this table: `deptrac` ALONE.** **PHPStan landed 2026-08-05** —
+`api/phpstan.neon.dist` (level 6 over `src/` and `tests/`), `gate:static` pointed at the pinned phar, and the 49
+findings it produced fixed rather than baselined. Four were real defects rather than annotation noise, and one of
+them is why this row is worth reading: `treatPhpDocTypesAsCertain` reported a LIVE row-level-security guard in
+`PostgresRowLevelSecurityIsolation` as dead code, because the docblock declared `rolsuper: bool|string` while the
+code's own comment explains that `bool_or` over an empty set is NULL. The other three were a `@throws` missing
+from `Money::plus()`/`minus()` that its own constructor's comment contradicts, a stale `fks[].name` in the one
+`BehaviouralIsolationTest` docblock that READS `$fk['name']`, and a half-hollow assertion in the `SET ROLE`
+escalation proof whose `escalated:` list was provably always empty. `deptrac` is installable and only waits on
+someone wiring it up. This sentence claimed until 2026-08-01 that NEITHER could be installed and that the cause
+was network egress; both halves were wrong — see § Gotchas. Both are defence in depth on top of the gates above,
+not a substitute for them —
 the architecture gates run on plain PHP and need nothing installed. **Two of the gates are exceptions to that**, and
 both fail rather than skip when they cannot look, which is the whole reason they are exceptions:
 `gate:licences` needs a populated pub cache (`flutter pub get`) for its Flutter walk, and `gate:schema` needs a
@@ -552,7 +561,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | **Schema tenancy** | `scripts/gates/schema-tenancy.php` — every tenant-owned table in a real migrated schema RLS-enabled, `FORCE`d, canonically policed on both halves, `NOT NULL` on its tenant column, and beyond the runtime role's ownership and `TRUNCATE`; a table it cannot classify is a **failure**, not a skip. See § "Architecture" for why nothing else can see an unpoliced tenant table | **Runs** (landed 2026-08-01 with the first migration, which is what it was blocking). Needs `TWES_SCHEMA_DSN` + `TWES_SCHEMA_USER`, or falls back to the integration suite's `TWES_TEST_DSN` / `TWES_TEST_DB_SUPERUSER` pair. Its clean and violation cases are in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` because the meta-suite has no database |
 | `bin/console lint:container`, `bin/console doctrine:schema:validate --skip-sync` | the service container wires, and the Doctrine mapping agrees with itself, without touching a database | **Run** (both landed with the Symfony application, 2026-08-01 — this row said "owed" until then). `--skip-sync` because the mapped persistence model is deliberately not the whole schema: the migration adds RLS, CHECK constraints and composite FKs that no mapping expresses |
 | Symfony API, owed | deptrac | **REMOVED from `require-dev` 2026-08-02, and this row's old claim that it "installs with the dev deps" was false.** `deptrac/deptrac` requires `phpstan/phpstan`, which is dist-only — so deptrac dragged the one uninstallable package in with it and BLOCKED EVERY OTHER DEV DEPENDENCY, including the `symfony/browser-kit` the functional suite needs. Its phar is not at the paths PHPStan's is (the project moved org from `qossmic/`), so re-adding it needs the release asset located first. Until then `layer-dependencies.php` is the enforcement and deptrac would be defence in depth |
-| Symfony API | `php tools/bin/phpstan.phar` | **UNBLOCKED 2026-08-02, as a pinned PHAR** — the twenty-round "cannot install" claim is closed, and BOTH earlier diagnoses were wrong. It was never network egress; and the remedy this row used to prescribe — a VCS `repositories` entry — does not work either, for a reason that is not the network: `phpstan/phpstan` is a DISTRIBUTION repo carrying the built phar for every release in its history, so `git clone --mirror` blew Composer's 300-second process timeout. [Verified: killed at 300s.] The phar is served by `raw.githubusercontent.com`, which IS reachable, so PHPStan joins PHPUnit and php-cs-fixer in `scripts/dev/fetch-tools.sh` with a pinned SHA-256. **It RUNS and finds 31 errors at level 5**, so what is owed is now fixing those and wiring `gate:static` — a knowable amount of work rather than a blocker |
+| Symfony API | `php tools/bin/phpstan.phar analyse` (`composer gate:static`) | **Runs, and green** (2026-08-05). Unblocked 2026-08-02 as a pinned PHAR, closing a twenty-round "cannot install" claim whose BOTH diagnoses were wrong — it was never network egress, and the VCS `repositories` remedy this row used to prescribe fails for a different non-network reason: `phpstan/phpstan` is a DISTRIBUTION repo carrying the built phar for every release in its history, so `git clone --mirror` blew Composer's 300-second process timeout [Verified: killed at 300s]. The phar is served by `raw.githubusercontent.com`, which IS reachable. **Two things were then still missing and this row's "31 errors at level 5" hid both:** there was no `phpstan.neon.dist` at all, so the tool exited `At least one path must be specified to analyse` however it was invoked; and `gate:static` pointed at `vendor/bin/phpstan`, which `--no-dev` guarantees is never installed. Configuration is **level 6** over `src/` and `tests/` with `checkUninitializedProperties`, `treatPhpDocTypesAsCertain` and `reportUnmatchedIgnoredErrors` on — stricter than the level on the three axes this project has already ruled on. Exactly **two** `ignoreErrors` entries, each with its reason in the file: `property.uninitialized` across `tests/` (a PHPUnit class has no constructor to assign in — `setUp()` is the framework's mechanism and a connection built in a constructor would outlive each test's transaction), and one count-pinned `staticMethod.alreadyNarrowedType` for the `assertNotInstanceOf(\DomainException::class, …)` that keeps `NumberTypeMismatch` a `\LogicException`. Nothing else is suppressed |
 | Angular admin | `npm run lint`, `npm test -- --no-watch`, `npm run build` | **Runs** (scaffolded 2026-07-29; Vitest + jsdom, so no browser needed) |
 | Angular admin, owed | `axe-core` a11y, locale key-parity over `admin/src/locale`, the shared pricing vectors | Wave 8 — `admin/README.md` lists it as gate conditions |
 | Flutter client | `flutter analyze`, **`flutter build web --release --no-web-resources-cdn`, then `flutter test`** — in that ORDER | **Runs** (scaffolded 2026-07-29, all six platform directories present). The order is load-bearing, not stylistic: two tests read `build/web` to prove the bundle reaches no external origin, and with `test` before `build` they **skip** and the command still exits 0 with "All tests passed!". A GDPR control that silently does not run is worse than one that is owed. |
@@ -563,7 +572,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
-`gate:test`. **`composer gate` FAILS EARLIER THAN `gate:static`, and needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here.** `gate:schema` is THIRD in the chain and no documented environment makes it pass: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database. Only `TWES_SCHEMA_DSN` against a migrated database works. Round 22 filed this; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **Two of seven steps also failed for a different reason for one commit:**
+`gate:test`. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — is the one step no documented environment makes pass**: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). Round 22 filed this; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **`gate:static` now passes** — see its row above. **Two of seven steps also failed for a different reason for one commit:**
 `gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit`, and since
 `phpstan/phpstan` forces `--no-dev` (below), **no dev binary is ever installed** — so three of seven steps exited
 127 while this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the
@@ -591,7 +600,8 @@ php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
 bash  scripts/gates/test-gates.sh          # the gates' OWN tests — see § Gotchas on why this one matters
 php   scripts/gates/schema-tenancy.php     # needs a migrated database; see the table above for the env vars
-cd api && php tools/bin/phpunit-12.phar && php tools/bin/php-cs-fixer.phar check && composer validate \
+cd api && php tools/bin/phpunit-12.phar && php tools/bin/phpstan.phar analyse --no-progress \
+       && php tools/bin/php-cs-fixer.phar check && composer validate \
        && php bin/console lint:container && php bin/console doctrine:schema:validate --skip-sync
 ```
 

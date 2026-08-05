@@ -94,4 +94,21 @@ class DocumentLineRow
      */
     #[ORM\Column(name: 'vat_rate', type: 'decimal', precision: 27, scale: 12)]
     public string $vatRate;
+
+    /** {@see DocumentRow::__construct()} for why a Doctrine entity has one. */
+    public function __construct(
+        Uuid $companyId,
+        Uuid $documentId,
+        int $position,
+        string $quantity,
+        string $unitNet,
+        string $vatRate,
+    ) {
+        $this->companyId = $companyId;
+        $this->documentId = $documentId;
+        $this->position = $position;
+        $this->quantity = $quantity;
+        $this->unitNet = $unitNet;
+        $this->vatRate = $vatRate;
+    }
 }

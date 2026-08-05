@@ -540,7 +540,15 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
             throw new \RuntimeException('Could not inspect the current database role.');
         }
 
-        /** @var array{rolsuper: bool|string, rolbypassrls: bool|string, rolreplication: bool|string, predefined_roles: string|null}|false $role */
+        /**
+         * NULLABLE ON THE THREE `bool_or` COLUMNS, and the annotation said `bool|string` until 2026-08-05 — which was
+         * a lie about a SECURITY-relevant nullability. `bool_or` over an EMPTY set returns NULL, which is exactly what
+         * the guard below refuses to treat as "safe". With `null` missing from this type and
+         * `treatPhpDocTypesAsCertain`, PHPStan reported that guard as `Result of && is always false` — so the next
+         * person to read this file had a static analyser telling them a live security check was dead code.
+         *
+         * @var array{rolsuper: bool|string|null, rolbypassrls: bool|string|null, rolreplication: bool|string|null, predefined_roles: string|null}|false $role
+         */
         $role = $statement->fetch(\PDO::FETCH_ASSOC);
 
         if (false === $role) {
@@ -1307,7 +1315,14 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
                 );
             }
 
-            /** @var list<array{qual: string|null, check: string|null, permissive: bool, applies: bool}> $policies */
+            /**
+             * `applies?:` — OPTIONAL, because the `?? true` below is a deliberate fail-closed default against a
+             * hand-built row, and an annotation promising the key is always present makes that default dead code to a
+             * static analyser (`Offset 'applies' ... on a non-nullable type`). The defence is the point; the
+             * annotation now says so.
+             *
+             * @var list<array{qual: string|null, check: string|null, permissive: bool, applies?: bool}> $policies
+             */
             $policies = json_decode($table['policies'], true, 512, \JSON_THROW_ON_ERROR);
 
             // Every column any permissive policy on this table scopes. One table has one tenant column; more
@@ -1791,7 +1806,12 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
         if (false !== $functions) {
             // `proconfig` and `security_definer` were MISSING from this annotation while the classifier reads
             // both — round 15. An incomplete shape on the one call that had no documented shape at all.
-            /** @var list<array{function: string, owner: string, owner_exempt: bool|string, security_definer: bool|string, proconfig: string}> $rows */
+            /**
+             * `security_definer?:` and `proconfig?:` — OPTIONAL for the same reason as the policy shape above: both are
+             * read with a fail-closed `??`, and promising their presence turns that guard into reported dead code.
+             *
+             * @var list<array{function: string, owner: string, owner_exempt: bool|string, security_definer?: bool|string, proconfig?: string}> $rows
+             */
             $rows = $functions->fetchAll(\PDO::FETCH_ASSOC);
 
             $violations = [...$violations, ...self::securityDefinerFunctionViolations($rows)];
@@ -1849,7 +1869,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * an undocumented shape on a method whose caller reads `proconfig` and `security_definer` is how a `@var`
      * comes to omit the very fields the code uses, which is what that caller's own annotation did.
      *
-     * @param list<array{function: string, owner: string, owner_exempt: bool|string, security_definer: bool|string, proconfig: string}> $functions
+     * @param list<array{function: string, owner: string, owner_exempt: bool|string, security_definer?: bool|string, proconfig?: string}> $functions
      *
      * @return list<string> one human-readable violation per problem found, empty when the role is safe
      */

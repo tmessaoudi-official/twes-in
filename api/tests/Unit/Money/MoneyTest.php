@@ -310,7 +310,7 @@ final class MoneyTest extends TestCase
 
         try {
             Money::of('2.000', $tnd)->ratioTo(Money::of('3.000', $tnd), 12, RoundingMode::Unnecessary);
-            self::assertTrue(false, 'unreachable');
+            self::fail('unreachable');
         } catch (InvalidMoneyAmount $exception) {
             self::assertStringContainsString('12', $exception->getMessage());
             self::assertStringNotContainsString(
@@ -383,6 +383,25 @@ final class MoneyTest extends TestCase
         $this->expectException(InvalidMoneyAmount::class);
 
         $largest->plus($largest);
+    }
+
+    /**
+     * SUBTRACTION TOO, and it had no case until `minus()`'s `@throws` was corrected.
+     *
+     * `plus()` and `minus()` both declared only `@throws CurrencyMismatch` while both funnel through the private
+     * constructor, whose range check exists precisely because a result can overflow. PHPStan found the gap from
+     * the far end — `PriceCalculator::grossFromNet()`'s correct `@throws InvalidMoneyAmount` reported as never
+     * thrown — and the addition half was already covered by the case above. This is the other half: subtraction
+     * grows the magnitude whenever the operands' signs differ, so the same overflow is reachable through the
+     * operation whose contract said it could not be. A tag with no case behind it is an assertion, not a proof.
+     */
+    public function testSubtractionThatOverflowsTheMoneyColumnIsRefused(): void
+    {
+        $largest = Money::of('999999999999999.9999', Currency::of('CLF'));
+
+        $this->expectException(InvalidMoneyAmount::class);
+
+        $largest->minus($largest->negated());
     }
 
     // ---------------------------------------------------------------- rounding

@@ -61,4 +61,16 @@ class DocumentNumberSequenceRow
      */
     #[ORM\Column(name: 'next_value', type: 'bigint')]
     public int $nextValue = 1;
+
+    /**
+     * {@see DocumentRow::__construct()} for why a Doctrine entity has one.
+     *
+     * `$nextValue` keeps its default and is NOT a parameter: 1 is the port's second guarantee, so a caller
+     * creating a sequence row is creating one that has handed out nothing.
+     */
+    public function __construct(Uuid $companyId, string $type)
+    {
+        $this->companyId = $companyId;
+        $this->type = $type;
+    }
 }

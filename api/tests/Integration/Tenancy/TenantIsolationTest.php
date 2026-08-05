@@ -1483,7 +1483,12 @@ final class TenantIsolationTest extends TestCase
 
             PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
 
-            self::assertTrue(true, 'A security_invoker view is accepted.');
+            // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: A security_invoker view is accepted.
+            // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
+            // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
+            // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
+            // into the comment above because a passing assertion never prints one.
+            $this->addToAssertionCount(1);
         } finally {
             $this->owner->exec('DROP VIEW IF EXISTS ' . $unsafe);
             $this->owner->exec('DROP VIEW IF EXISTS ' . $safe);
@@ -2606,7 +2611,12 @@ final class TenantIsolationTest extends TestCase
         $withoutTemp = self::connectAs('TWES_TEST_DB_BYPASS_USER', 'TWES_TEST_DB_BYPASS_PASSWORD');
         PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateTemporaryObjects($withoutTemp);
 
-        self::assertTrue(true, 'A role without TEMPORARY is accepted, so the guard is satisfiable.');
+        // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: A role without TEMPORARY is accepted, so the guard is satisfiable.
+        // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
+        // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
+        // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
+        // into the comment above because a passing assertion never prints one.
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -3046,7 +3056,12 @@ final class TenantIsolationTest extends TestCase
             // And this connection must still certify. Before the persistence filter this threw.
             PostgresRowLevelSecurityIsolation::assertNoRlsExemptObjectIsReadable($this->connection);
 
-            self::assertTrue(true, 'A foreign temp matview must not refuse this connection.');
+            // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: A foreign temp matview must not refuse this connection.
+            // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
+            // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
+            // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
+            // into the comment above because a passing assertion never prints one.
+            $this->addToAssertionCount(1);
         } finally {
             $other->exec('DROP MATERIALIZED VIEW IF EXISTS pg_temp.pool_outage_probe');
         }
@@ -3173,7 +3188,12 @@ final class TenantIsolationTest extends TestCase
 
             PostgresRowLevelSecurityIsolation::assertConnectionCannotCreateLargeObjects($hardened);
 
-            self::assertTrue(true, 'a hardened database must not be refused');
+            // THE ASSERTION IS THAT THE CALL ABOVE DID NOT THROW: a hardened database must not be refused
+            // `addToAssertionCount(1)` rather than `assertTrue(true, ...)`, which PHPStan reports as an
+            // assertion that can never fail. It is not decoration -- `failOnRisky` is on and PHPUnit fails a
+            // test that records no assertion, so deleting it turns this accepting arm RED. The message moved
+            // into the comment above because a passing assertion never prints one.
+            $this->addToAssertionCount(1);
         } finally {
             $admin = null;
             $hardened = null;
