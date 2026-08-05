@@ -42,8 +42,10 @@ final readonly class TenantId
 
         if (1 !== preg_match(self::UUID_PATTERN, $normalised)) {
             throw new \InvalidArgumentException(\sprintf(
-                'Tenant id "%s" is not a UUID. Tenant ids are never sequential integers: a guessable '
-                . 'tenant id turns any missing authorisation check into enumerable cross-tenant access.',
+                'Tenant id "%s" is not a UUID. Tenant ids are never sequential integers, which are '
+                . 'ENUMERABLE — a counter turns any missing authorisation check into a walk across every '
+                . 'tenant. Note the claim stops there deliberately (2026-08-05 ruling): a UUID is not a '
+                . 'SECRET either, so isolation rests on row-level security rather than on this format.',
                 $value,
             ));
         }

@@ -43,6 +43,20 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 readonly REPO_ROOT
 readonly INFRA="$REPO_ROOT/infra"
 
+# INTROSPECTION, so the meta-suite can generate a case per rule and pin the SET SIZE. Round 4 filed the absence:
+# this was one of three gates with no `--dump-rules`, and the worker-mode block's four rule entries therefore had
+# no floor — dropping half of them left `test-gates.sh` at 400/0. Printed BEFORE the `docker compose` probe, so a
+# machine without Docker can still be asked what the rules are; that is the whole reason the meta-suite can pin
+# them without a daemon.
+if [[ "${1:-}" == '--dump-rules' ]]; then
+    printf 'permitted_runtime %s\n' 'Symfony\Component\Runtime\SymfonyRuntime'
+    printf 'worker_env_key %s\n' 'FRANKENPHP_CONFIG' 'CADDY_SERVER_EXTRA_DIRECTIVES'
+    printf 'worker_text_source %s\n' 'api/.env' 'infra/.env' 'infra/api/Caddyfile'
+    printf 'read_only_exempt %s\n' 'database' 'gotenberg'
+    printf 'permitted_cap_add %s\n' 'NET_BIND_SERVICE' 'CHOWN' 'SETUID' 'SETGID' 'DAC_OVERRIDE'
+    exit 0
+fi
+
 if ! docker compose version >/dev/null 2>&1; then
     echo "compose-config: SKIPPED — \`docker compose\` is not available on this machine."
     echo "  Every other gate still runs. CI has Docker, so this is checked there."
@@ -228,23 +242,44 @@ if 'prod' in overlay:
 #     Under `SymfonyRuntime` one process serves one request, so that chain cannot leave a tenant. A WORKER process
 #     serves many, which is precisely what makes it span tenants. The ruling is that a v7 identifier is an ORDERING
 #     artefact and never a credential, so the fix is a separate `random_bytes(32)` token on the unauthenticated
-#     client portal (Wave 9) -- and until that exists, worker mode is the one switch that must not be thrown.
+#     client portal (Wave 10) -- and until that exists, worker mode is the one switch that must not be thrown.
 #
 #     Matched on the RUNTIME CLASS and on FrankenPHP's own `worker` config seam, because either alone would be
 #     half a check: `APP_RUNTIME` selects the runtime, and `FRANKENPHP_CONFIG`/`CADDY_SERVER_EXTRA_DIRECTIVES` can
 #     declare a worker without touching it. Delete this block when the portal token lands, not before, and say so
 #     in the commit.
+#     AN ALLOW-LIST, NOT A BLOCK-LIST -- and the first version of this check was a block-list, which is why round 4
+#     of the certification filed it P0 on all three lenses at once. It matched `FrankenPhpWorkerRuntime` and
+#     `FrankenPHPWorkerRuntime`; NEITHER CLASS EXISTS. The package's runtime is `Runtime\FrankenPhpSymfony\Runtime`,
+#     which THIS REPOSITORY prescribes at `api/.env`, `infra/.env`, `api/public/index.php` and `infra/api/Dockerfile`
+#     -- so an operator following our own recipe set the exact value the gate was blind to, and the meta-suite mutant
+#     passed only because it had been written to the gate's own invented literal. Fixture leakage, in the one check
+#     standing behind a tenancy ruling.
+#
+#     The lesson generalises and is the reason for the inversion: a block-list of worker spellings CANNOT BE
+#     COMPLETED, because the next runtime class has a name nobody has written yet. An allow-list of the ONE runtime
+#     this project runs is closed by construction, so an unrecognised value reports a violation -- the same polarity
+#     rule `PostgresRowLevelSecurityIsolation::isFalse()` states for catalogue flags, applied to a config value.
+PERMITTED_RUNTIME = 'Symfony\\Component\\Runtime\\SymfonyRuntime'
 for name, svc in sorted(services.items()):
     env = svc.get('environment') or {}
     if isinstance(env, list):
         env = dict((e.split('=', 1) + [''])[:2] for e in env)
-    runtime = str(env.get('APP_RUNTIME') or '')
-    if 'FrankenPhpWorkerRuntime' in runtime or 'FrankenPHPWorkerRuntime' in runtime:
+
+    if 'APP_RUNTIME' not in env:
+        continue
+
+    runtime = str(env.get('APP_RUNTIME') or '').strip().lstrip('\\')
+    if runtime != PERMITTED_RUNTIME:
         problems.append(
-            '%s selects a FrankenPHP WORKER runtime via APP_RUNTIME. That is blocked until the client portal has '
-            'its own random_bytes(32) token: UuidV7 seeds its generator state once per PROCESS, and a worker '
-            'process serves many requests, so a seed recoverable from ~24 observed identifiers spans TENANTS. '
-            'See CLAUDE.md Gotchas 2026-08-05.' % name)
+            '%s sets APP_RUNTIME to "%s"; the only permitted value is "%s". Any other runtime is REFUSED rather '
+            'than pattern-matched, because a FrankenPHP worker class cannot be enumerated in advance -- the '
+            'previous version of this check looked for two class names that exist nowhere. Worker mode is blocked '
+            'until the client portal (Wave 10) has its own random_bytes(32) token: UuidV7 seeds its generator '
+            'state once per PROCESS, and a worker process serves many requests, so a seed recoverable from ~24 '
+            'observed identifiers spans TENANTS. See CLAUDE.md Gotchas 2026-08-05.'
+            % (name, runtime, PERMITTED_RUNTIME))
+
     for key in ('FRANKENPHP_CONFIG', 'CADDY_SERVER_EXTRA_DIRECTIVES'):
         if 'worker' in str(env.get(key) or '').lower():
             problems.append(
@@ -328,9 +363,73 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     fi
 done
 
+# ==============================================================================================================
+# THE TWO ROUTES TO WORKER MODE THAT `docker compose config` CANNOT SEE.
+#
+# Round 4 of the certification found the rendered configuration to be the WRONG place to look for two of the three
+# documented switches, and the reason is this gate's own machinery: `render()` passes `--env-file "$RENDER_ENV"`,
+# a synthetic file, which REPLACES the project `.env`. That is correct for resolving `${VAR:?}` placeholders and it
+# means `infra/.env` -- tracked, and the seam every document points an operator at -- is invisible here. A commit
+# flipping `APP_RUNTIME` there produced a rendered config carrying a worker runtime on all four PHP services while
+# this gate reported OK.
+#
+# And worker mode is FUNDAMENTALLY a Caddyfile directive. `infra/api/Caddyfile` ships the block ready to
+# uncomment; no gate read that file at all, so following its own instruction passed every check.
+#
+# Both are checked as TEXT rather than through a renderer, deliberately: there is no tool that resolves a tracked
+# `.env` and a Caddyfile together, and a grep that is honest about being a grep beats a renderer that silently
+# looks at a configuration nobody deploys.
+# ==============================================================================================================
+readonly PERMITTED_RUNTIME_VALUE='Symfony\Component\Runtime\SymfonyRuntime'
+
+for env_file in api/.env infra/.env; do
+    [[ -f "$REPO_ROOT/$env_file" ]] || continue
+    checked_env=$((${checked_env:-0} + 1))
+
+    while IFS= read -r declared; do
+        if [[ "$declared" != "$PERMITTED_RUNTIME_VALUE" ]]; then
+            printf '  FAIL — %s sets APP_RUNTIME=%s; the only permitted value is %s. Worker mode is blocked until
+' \
+                "$env_file" "$declared" "$PERMITTED_RUNTIME_VALUE" >&2
+            printf '         the client portal (Wave 10) has its own random_bytes(32) token — see CLAUDE.md Gotchas
+' >&2
+            printf '         2026-08-05. This file is invisible to `docker compose config` as this gate runs it,
+' >&2
+            printf '         because render() supplies its own --env-file.
+' >&2
+            failures=$((failures + 1))
+        fi
+    done < <(grep -E '^[[:space:]]*APP_RUNTIME=' "$REPO_ROOT/$env_file" 2>/dev/null | sed -E 's/^[^=]*=//; s/^"(.*)"$/\1/; s/^'"'"'(.*)'"'"'$/\1/')
+done
+
+if [[ -f "$REPO_ROOT/infra/api/Caddyfile" ]]; then
+    checked_env=$((${checked_env:-0} + 1))
+    # UNCOMMENTED ONLY. The file documents the directive inside a comment block on purpose, and flagging that would
+    # make the gate unusable — so the pattern requires a line whose first non-space character is not `#`.
+    if grep -nE '^[[:space:]]*worker([[:space:]]|\{|$)' "$REPO_ROOT/infra/api/Caddyfile" >/dev/null 2>&1; then
+        printf '  FAIL — infra/api/Caddyfile declares an active `worker` directive:
+' >&2
+        grep -nE '^[[:space:]]*worker([[:space:]]|\{|$)' "$REPO_ROOT/infra/api/Caddyfile" | sed 's/^/           /' >&2
+        printf '         Worker mode is a Caddyfile directive first and an APP_RUNTIME value second, and this is the
+' >&2
+        printf '         route no renderer can see. Blocked until the client portal (Wave 10) has its own
+' >&2
+        printf '         random_bytes(32) token — CLAUDE.md Gotchas 2026-08-05. Keep the block commented.
+' >&2
+        failures=$((failures + 1))
+    fi
+fi
+
 # Anti-vacuity, for the reason every other gate here has one: a loop that iterated over nothing prints no failures
-# and exits 0, which is indistinguishable from a clean run.
-printf 'compose-config: counts — configurations=%d failures=%d\n' "$checked" "$failures"
+# and exits 0, which is indistinguishable from a clean run. `worker_sources` counts the text-checked files, which
+# would otherwise be silently zero if a path were renamed.
+printf 'compose-config: counts — configurations=%d worker_sources=%d failures=%d\n' \
+    "$checked" "${checked_env:-0}" "$failures"
+
+if [[ "${checked_env:-0}" -eq 0 ]]; then
+    echo "compose-config: FAIL — no env file or Caddyfile was examined for worker mode, so that half asserted nothing." >&2
+    exit 1
+fi
 
 if [[ "$checked" -eq 0 ]]; then
     echo "compose-config: FAIL — no configuration was checked, so this gate asserted nothing." >&2

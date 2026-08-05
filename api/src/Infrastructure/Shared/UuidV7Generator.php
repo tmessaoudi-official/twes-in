@@ -50,7 +50,7 @@ use Twes\Domain\Shared\IdGenerator;
  * So the tenancy properties this project actually relies on are PostgreSQL row-level security and, from Wave 7,
  * the permission checks — never the shape of a key. **Two constraints follow and both are recorded in
  * `CLAUDE.md` § Gotchas rather than left here:** any surface where an identifier IS the credential (the
- * unauthenticated client portal, Wave 9) gets its own `random_bytes(32)` token, and **FrankenPHP worker mode
+ * unauthenticated client portal, Wave 10) gets its own `random_bytes(32)` token, and **FrankenPHP worker mode
  * must not be enabled before that exists** — a worker process is what lets the recoverable seed span requests,
  * and therefore tenants. `scripts/gates/compose-config.sh` enforces the second one, because a constraint stated
  * only in prose is the shape § Gotchas records four times over.
@@ -99,17 +99,25 @@ final readonly class UuidV7Generator implements IdGenerator
      */
     public function nextIdentifier(): string
     {
+        // READ ONCE, so the refusal below can name the instant that actually failed.
+        $reading = $this->clock->now();
+
         try {
             // The canonical lowercase RFC 9562 form, which is what `IdGenerator` promises and what
             // `DocumentIdentity` refuses an uppercase spelling of. `generate()` returns that form and the
             // constructor re-validates it, so a malformed value cannot escape this method.
-            return new UuidV7(UuidV7::generate($this->clock->now()))->toRfc4122();
+            return new UuidV7(UuidV7::generate($reading))->toRfc4122();
         } catch (SymfonyInvalidArgumentException $exception) {
+            // SUB-SECOND PRECISION, and the READING THAT FAILED rather than a fresh one. `DATE_ATOM` renders at
+            // second precision while the boundary is at millisecond precision, so the accepted and the refused
+            // instant printed IDENTICALLY — the message named a value its own next sentence calls in range. And
+            // re-reading `$this->clock->now()` here would report a different instant than the one that threw for
+            // any clock that moves, which is every clock but `FrozenClock`. Round 4 filed both.
             throw new \LogicException(\sprintf(
                 'The clock read %s, which a UUIDv7 cannot encode: the timestamp field is 48 UNSIGNED bits, so '
-                . 'the representable range is 1970-01-01 to about the year 10889. A clock outside it is a '
-                . 'configuration fault in this application, never user input.',
-                $this->clock->now()->format(\DATE_ATOM),
+                . 'the representable range is 1970-01-01 to about 10889-08-02T05:31:50.655Z. A clock outside it '
+                . 'is a configuration fault in this application, never user input.',
+                $reading->format(\DateTimeInterface::RFC3339_EXTENDED),
             ), 0, $exception);
         }
     }

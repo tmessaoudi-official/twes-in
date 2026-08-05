@@ -11,6 +11,20 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
+- [2026-08-06 01:15] AGREED: **a gate that names the DANGEROUS values is a gate that can be incomplete; name the
+  SAFE one instead.** Round 27's P0 was filed by all three lenses at once: the worker-mode block matched two class
+  names that exist in no package, while the spelling this repository itself prescribes in four files walked
+  straight through — and its meta-suite mutant passed only because the fixture had been written to the gate's own
+  invented literal. Inverted to an allow-list of the single permitted runtime, so an unrecognised value fails
+  closed. This is the same polarity rule `PostgresRowLevelSecurityIsolation::isFalse()` states for catalogue flags,
+  and it generalises: **prefer an allow-list wherever the dangerous set is open-ended**, which is most of them.
+  Recorded as a decision rather than a fix because it changes how the next gate gets written.
+- [2026-08-06 01:15] AGREED: **a mutation harness must fail when its own mutation fails.** Two of round 27's new
+  cases reported "missed" for mutants that never applied — one because `re.subn` parsed a backslash in the
+  replacement as an escape, one because the fixture omitted the file being mutated. A setup error that reads as a
+  gate gap is worse than either: it sends the next session hunting a defect that is not there, and it hides the one
+  that is. `test-gates.sh` now aborts a case whose mutation errors, and every env mutation asserts it matched
+  exactly one line.
 - [2026-08-05 23:55] RULED **a UUIDv7 identifier is an ORDERING artefact and never a secret; `symfony/uid` is
   KEPT** (developer choosing the recommendation from round 26's four options). The docblock's tenancy claim was
   measured and two of its three clauses were false: it is 64 random bits not 74, same-millisecond siblings are
@@ -2245,7 +2259,7 @@ bits per call and broken ordering; `symfony/uid` has 64 bits, guaranteed orderin
 siblings within a millisecond, and process-global state whose seed is recoverable from about 24 observations.
 Neither is strictly better. The recommendation on the table is: **keep `symfony/uid`, and stop treating the
 primary key as a secret** — a document id is for index locality, and any surface where an identifier IS the
-credential (the unauthenticated client portal, Wave 9) gets its own `random_bytes(32)` token. That resolves R26-2
+credential (the unauthenticated client portal, Wave 10) gets its own `random_bytes(32)` token. That resolves R26-2
 and R26-4 architecturally rather than by patching a docblock, and it carries one hard constraint: **worker mode
 must not be enabled before that token exists**, because worker mode is what makes the recoverable seed span
 tenants. The alternative — reverting and writing our own RFC 9562 method-1 counter — is defensible on the same
@@ -2255,3 +2269,40 @@ plain-text protocol; recorded here so the trade-off survives this session either
 **MAXIMAL remains unsatisfied.** Rounds so far: 14, 24, 18 findings. Not one fully-clean round, let alone two
 consecutive. Every round found real defects, and rounds 2 and 3 each found defects *introduced by the previous
 round's fixes* — which is the honest argument for the tier existing, not against it.
+
+### Certification round 27 — the mechanism that was not one
+
+**26 findings across three lenses; the worst of them says the previous round's "mechanised" claim was mostly
+false.** Frozen commit: **`6387447`**. All three lenses independently filed the same top finding, which is the
+strongest signal any round has produced.
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R27-1 | **THE WORKER-MODE GATE MATCHED A CLASS NAME THAT EXISTS IN NO PACKAGE.** It looked for `FrankenPhpWorkerRuntime`/`FrankenPHPWorkerRuntime`; the package's runtime is `Runtime\FrankenPhpSymfony\Runtime`, which THIS REPOSITORY prescribes at `api/.env`, `infra/.env`, `api/public/index.php` and `infra/api/Dockerfile`. An operator following our own recipe set the exact value the gate was blind to. The meta-suite mutant passed only because the fixture had been written to the gate's own invented literal — textbook fixture leakage, in the one check standing behind a tenancy ruling | **P0** | **CLOSED** — inverted to an ALLOW-LIST of the single permitted runtime. A block-list of worker classes CANNOT be completed, because the next one has a name nobody has written yet; an allow-list is closed by construction and an unrecognised value fails closed, which is the polarity rule `isFalse()` already states. Three mutants: the real spelling, the invented one, and `Some\Runtime\NobodyHasNamedYet` — all refused |
+| R27-2 | **The gate renders with its own `--env-file`, so the tracked `infra/.env` — the seam every document points an operator at — was invisible to it.** Flipping `APP_RUNTIME` there produced a rendered config carrying a worker runtime on all four PHP services while the gate reported OK | **P1** | **CLOSED** — `api/.env` and `infra/.env` are read as TEXT, since no renderer resolves a tracked `.env` the way deployment does. Two mutants |
+| R27-3 | **Worker mode is fundamentally a Caddyfile directive, and no gate read that file at all** — while the Caddyfile shipped the block ready to uncomment with a precondition list that did not mention the ruling. A `command: ['frankenphp','run','--config',…]` override was equally unread | **P1** | **CLOSED** — the Caddyfile is checked for an UNCOMMENTED `worker` directive, with the false-positive direction pinned too (the documented block is a comment on purpose, and flagging it would make the honest fix "delete the documentation") |
+| R27-4 | **The entropy test pinned the INCREMENT and not the BASE DRAW.** Three mutants passed it: 24-bit increment entropy cut to 12 with a constant offset (sibling guessable in 4096 tries); `random_bytes(8)` at the re-randomise site zeroed (every id after the first a pure function of the clock); and `random_bytes` removed entirely, so **two processes emit byte-identical identifiers** — a primary-key collision between workers, not merely guessability | **P1** | **CLOSED** — `testTwoProcessesAtOneFrozenInstantDisagree()` observes BOTH draws across two real subprocesses (the clock advances, because the 8-byte draw is only reached on a millisecond change and a frozen-clock-only version missed it), and the distinct-delta assertion became a birthday test over 1000 draws rather than a spread check over 200. All three mutants now fail, the message naming which draw broke |
+| R27-5 | **The new block's four rule entries had no floor and no generated cases** — `compose-config.sh` was one of three gates with no `--dump-rules`, so dropping half of them left the meta-suite at 400/0 | **P1** | **CLOSED** — `--dump-rules` added (printed BEFORE the Docker probe, so it works with no daemon), five rule sets floored, and every member pinned by name including the permitted runtime itself, whose previous value was a class that does not exist |
+| R27-6 | **The retracted "unguessable … enumerable access to every tenant's documents" claim survived verbatim on the `Domain/` PORT** — in the file this commit edited, five lines above the docblock it added, pointing at the adapter that retracts it. `Domain/` outranks `Infrastructure/`, so this was the worse instance | **P1** | **CLOSED** — retracted on the port, with the weaker true half kept (an id is not a COUNTER). `TenantId`'s exception message qualified the same way |
+| R27-7 | The delete-condition for the control named **Wave 9** (payments) at four sites; the portal is Wave 10. Following the gate's own comment deletes a tenancy control one wave before the token that justifies deleting it | **P1** | **CLOSED** — all four |
+| R27-8 | The constraint was recorded in five places and **missing from all five OPERATOR-facing ones** that tell someone how to throw the switch: `api/.env`, `infra/.env`, `infra/api/Dockerfile`, `infra/api/Caddyfile` (all still saying TWO preconditions) and `infra/README.md` — which the Caddyfile falsely claimed records them, while `grep -c worker infra/README.md` was 0 | **P2** | **CLOSED** — all five, now three preconditions, each naming the gate |
+| R27-9 | `CLAUDE.md:54` and `:1166` still announced worker mode as newly reachable, 1230 lines above the entry forbidding it; the gate tables still said "six properties" | **P2** | **CLOSED** — reachable and permitted are different things, and both sentences now say so |
+| R27-10 | `HealthController` and `HttpSurfaceTest` asserted *"FrankenPHP runs the app in a persistent worker"* as present fact | **P2** | **CLOSED** — CAN run, currently gate-refused; the check itself was always right and is kept |
+| R27-11 | The seed account was **understated**: on the initial randomise `self::$rand` is unpacked FROM `self::$seed`, so `rand[1]`/`rand[2]` — emitted verbatim — ARE the first 8 of the seed's 16 bytes. One identifier halves the search space with no deltas at all | **P3** | **CLOSED** — the direction of the error was safe, which is exactly why it needed correcting: that entry is the project's authoritative statement of the dependency's entropy properties |
+| R27-12 | *"all ten cases green"* at four sites; the file has never had ten (8 at the parent, 12 now). And *"98 of 199 non-ascending, the same rate as the defect"* described a DETERMINISTIC experiment — the alternating-clock setup gives 99 every run, because the timestamp itself alternates downward; 98 came from a different experiment | **P3** | **CLOSED** — the direction rather than the total, and the two experiments told apart |
+| R27-13 | The refusal message rendered at second precision while the boundary is at millisecond precision, so the accepted and the refused instant printed IDENTICALLY — naming a value its own next sentence calls in range. It also re-read the clock, so for any moving clock it named a different instant than the one that threw | **P3** | **CLOSED** — read once, `RFC3339_EXTENDED` |
+
+**Two findings the fixes produced, caught by the new cases themselves and worth more than most of the round.**
+The meta-suite's mutation harness **ignored its own setup failure**: `re.subn` parses backslashes in a
+replacement STRING as escapes, so `Runtime\FrankenPhpSymfony\Runtime` died with `bad escape \F`, the mutation
+never applied, and the harness reported *"compose-config missed worker mode via infra-env"* — a setup error
+indistinguishable from a gate gap. And the compose fixture **never copied `api/.env`**, so the gate's
+`[[ -f ]] || continue` skipped it and that mutant was a silent no-op. Both are now failures rather than
+"missed": the harness aborts the case if its own mutation errors, and the mutation asserts it matched exactly one
+line. Same shape as the meta-gate that reported 33/33 for a gate detecting nothing.
+
+**Still not two consecutive clean rounds.** 14, 24, 18, 26. Every round has found real defects, and every round
+since the second has found defects introduced by the previous round's fixes — which is what the tier is for. The
+one structural improvement this round makes is the block-list-to-allow-list inversion: **it is the first fix in
+this sequence that closes a CLASS rather than an instance**, because it does not depend on anybody enumerating
+the dangerous values correctly.

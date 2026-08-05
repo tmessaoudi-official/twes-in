@@ -291,9 +291,12 @@ USER twes
 # either image can configure this one without reading the Dockerfile. Every one is overridable from `infra/.env`.
 ENV APP_ENV=prod \
     APP_DEBUG=0 \
-    # `SymfonyRuntime` is the default; worker mode is selected by swapping this for
-    # `Runtime\FrankenPhpSymfony\Runtime`. That seam exists ONLY because `public/index.php` uses
-    # `vendor/autoload_runtime.php` -- the hand-rolled bootstrap it replaced made worker mode unreachable.
+    # `SymfonyRuntime` is the default, and it is the ONLY permitted value: worker mode WOULD be selected by
+    # swapping this for `Runtime\FrankenPhpSymfony\Runtime`, and `scripts/gates/compose-config.sh` refuses that
+    # until the client portal (Wave 10) has its own `random_bytes(32)` token -- `UuidV7` seeds its generator state
+    # once per PROCESS, so a worker serving many requests lets a recoverable seed span TENANTS (Gotchas
+    # 2026-08-05). The seam exists at all only because `public/index.php` uses `vendor/autoload_runtime.php` --
+    # the hand-rolled bootstrap it replaced made worker mode unreachable.
     APP_RUNTIME="Symfony\\Component\\Runtime\\SymfonyRuntime" \
     # FrankenPHP serves the Symfony front controller from here.
     SERVER_NAME=:80 \

@@ -119,9 +119,13 @@ final class UuidV7GeneratorTest extends TestCase
      * generator's state is `static` on `UuidV7`, and because this adapter always passes an explicit time,
      * `generate()` re-randomises whenever `$time !== self::$time` — on ANY difference, not only a forward one. So
      * a single `nextIdentifier()` at another millisecond ANYWHERE IN THE PROCESS resets the counter mid-sequence:
-     * two generators with clocks one second apart, alternating, gave 98 of 199 non-ascending pairs, which is the
-     * same rate as the defect this case exists to pin. Under `SystemClock` it holds — 5000 ids, 0 inversions,
-     * because real time only moves forward — and that is the production path, pinned by
+     * two generators with clocks one second apart, alternating, give **99 of 199 non-ascending pairs — every
+     * single B-to-A pair, deterministically**, because the timestamp itself alternates downward. (This said "98 of
+     * 199 … the same rate as the defect", which was wrong twice: 98 came from a DIFFERENT experiment — one
+     * generator's own sequence with a foreign call interleaved, which really is a coin toss and really does vary
+     * run to run — and attaching a rate to the deterministic case invites re-measuring something that cannot
+     * move. Round 4 filed it.) Under `SystemClock` it holds, because real time only moves forward — that is the
+     * production path, pinned by
      * {@see self::testIdentifiersFromTheSystemClockAreMonotonic()}. The multi-clock case is a REPLAY: a data
      * migration or an event stream pinning "now" to a historical moment, which is exactly what `FrozenClock`
      * exists for. Nothing consumes this generator yet; when a replay path is built it needs its own ordering
@@ -219,7 +223,12 @@ final class UuidV7GeneratorTest extends TestCase
         $deltas = [];
         $previous = $tail($generator->nextIdentifier());
 
-        for ($i = 0; $i < 200; ++$i) {
+        // A THOUSAND, not two hundred, and the number is load-bearing rather than generous. The distinct-count
+        // assertion below is a BIRTHDAY test on the increment's space, and its power comes from the sample size:
+        // over 2^24 a thousand draws expect ~0.03 collisions, while over a 2^12 space they expect ~94. At 200
+        // draws a 12-bit increment still yields ~195 distinct values and slipped past — which is exactly the
+        // mutant round 4 constructed (a large constant offset plus 12 random bits, keeping the median high).
+        for ($i = 0; $i < 1000; ++$i) {
             $current = $tail($generator->nextIdentifier());
             $deltas[] = ($current - $previous) & (2 ** 48 - 1);
             $previous = $current;
@@ -242,9 +251,16 @@ final class UuidV7GeneratorTest extends TestCase
         // AND NOT ALL EQUAL, which catches a constant increment of any size — a large fixed step would pass the
         // median assertion above while being exactly as predictable as `+1`.
         self::assertGreaterThan(
-            190,
+            995,
             \count(array_unique($deltas)),
-            'the increments must be independent draws, not one repeated step',
+            \sprintf(
+                'only %d of %d increments were distinct. Over the full 24-bit space a thousand draws expect ~0.03 '
+                . 'collisions, so a shortfall here means the increment comes from a much smaller space — which is '
+                . 'guessable even when the median stays large, because a constant offset raises the median '
+                . 'without adding one bit of entropy.',
+                \count(array_unique($deltas)),
+                \count($deltas),
+            ),
         );
     }
 
@@ -268,6 +284,80 @@ final class UuidV7GeneratorTest extends TestCase
             self::assertNotInstanceOf(SymfonyInvalidArgumentException::class, $caught);
             self::assertInstanceOf(SymfonyInvalidArgumentException::class, $caught->getPrevious());
             self::assertStringContainsString('48 UNSIGNED bits', $caught->getMessage());
+        }
+    }
+
+    /**
+     * **AND THE PER-MILLISECOND BASE DRAW MUST COME FROM A CSPRNG, WHICH THE CASE ABOVE CANNOT SEE.**
+     *
+     * `testTheRandomFieldIsNotMerelyASequentialCounter()` measures deltas WITHIN one frozen millisecond, so it is
+     * blind to the base being a constant. Round 4 filed three mutants that pass it: cutting the increment's entropy
+     * from 24 bits to 12 (a sibling guessable in 4096 tries), replacing `random_bytes(8)` at the re-randomise site
+     * with zero bytes (every identifier after the first becomes a pure function of the clock —
+     * `019f…-7000-8000-000000000000`), and removing `random_bytes` entirely so **two separate processes emit
+     * byte-identical identifiers**. That last one is worse than guessability: it is a primary-key collision between
+     * two workers.
+     *
+     * The property that catches all three is CROSS-PROCESS DISAGREEMENT: two independent processes handed the SAME
+     * frozen instant must produce different identifiers, because the only thing that can differ between them is the
+     * per-process seed. A deterministic generator cannot satisfy it and no amount of in-process cleverness fakes it.
+     *
+     * Run as real subprocesses, since the state is `static` and one process cannot un-seed itself. `PHP_BINARY`
+     * rather than a literal `php`, so this works wherever the suite does.
+     */
+    public function testTwoProcessesAtOneFrozenInstantDisagree(): void
+    {
+        // THE CLOCK ADVANCES between the third and fourth identifier, and that is not incidental. `symfony/uid`
+        // seeds `self::$seed` with `random_bytes(16)` on the FIRST randomise and uses `random_bytes(8)` only when
+        // the millisecond CHANGES — so a frozen clock never reaches the second draw at all. A mutant zeroing it
+        // therefore survived a frozen-clock-only version of this case while making every identifier after the
+        // first a pure function of the clock. Both draws are now observed.
+        $script = <<<'PHP'
+            require $argv[1];
+            $clock = Twes\Infrastructure\Shared\FrozenClock::at('2026-07-29T12:00:00+00:00');
+            $g = new Twes\Infrastructure\Shared\UuidV7Generator($clock);
+            echo $g->nextIdentifier(), "\n", $g->nextIdentifier(), "\n";
+            $clock->advanceBy('PT1S');
+            echo $g->nextIdentifier(), "\n";
+            $clock->advanceBy('PT1S');
+            echo $g->nextIdentifier(), "\n";
+            PHP;
+
+        $autoload = \dirname(__DIR__, 3) . '/vendor/autoload.php';
+        $emitted = [];
+
+        for ($process = 0; $process < 2; ++$process) {
+            $output = shell_exec(\sprintf(
+                '%s -r %s %s',
+                escapeshellarg(\PHP_BINARY),
+                escapeshellarg($script),
+                escapeshellarg($autoload),
+            ));
+
+            self::assertIsString($output, 'the subprocess produced no output');
+            $emitted[] = array_values(array_filter(explode("\n", trim($output))));
+        }
+
+        self::assertCount(4, $emitted[0], 'each process must emit four identifiers');
+        self::assertCount(4, $emitted[1], 'each process must emit four identifiers');
+
+        // EVERY POSITION, because the two random draws are reached at different ones: index 0-1 come from the
+        // first seed, index 2-3 from a re-randomise on a changed millisecond. A mutant can kill either alone.
+        foreach ([0, 1, 2, 3] as $position) {
+            self::assertNotSame(
+                $emitted[0][$position],
+                $emitted[1][$position],
+                \sprintf(
+                    "two PROCESSES driven by the SAME clock produced the SAME identifier at position %d (%s), so "
+                    . "the per-process randomness is not random — every id is a pure function of the clock. That "
+                    . "is a primary-key collision between workers as well as full enumerability, and the "
+                    . "same-millisecond delta test cannot see it because it only measures the INCREMENT. "
+                    . "Positions 0-1 come from the initial 16-byte seed, 2-3 from the 8-byte re-randomise on a "
+                    . "changed millisecond — check which one this is.",
+                    $position,
+                    $emitted[0][$position],
+                ),
+            );
         }
     }
 

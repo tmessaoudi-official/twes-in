@@ -52,7 +52,9 @@ Composer plugin this container's configuration disables. **The clause that used 
 § Gotchas 2026-08-02 records the correction: `autoload_runtime.php` was there the whole time, `composer
 dump-autoload` regenerates it, and `symfony/runtime` is allow-listed. Both `bin/console` and
 `public/index.php` require it today, which is what makes `APP_RUNTIME` — and therefore FrankenPHP worker mode
-— reachable at all. That correction sat 800 lines below this sentence for three days.
+— **technically reachable, and then DELIBERATELY REFUSED**: `scripts/gates/compose-config.sh` blocks worker mode
+on every route until the Wave 10 portal token exists (§ Gotchas, 2026-08-05). Reachable and permitted are
+different things, and this sentence said only the first for a commit. That correction sat 800 lines below this sentence for three days.
 
 **Not yet built:** the Doctrine repository (the MAPPER and its round-trip contract test landed 2026-08-01) and a wired
 `deptrac`. **The `infra/` tier LANDED** — three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
@@ -417,7 +419,16 @@ number is written here, because one written beside the thing it counts is the fi
 | `spdx-headers.sh` | licensing invariant 8(c), on every source file — **and that the search roots COVER every tracked source file**, which is the direction that was missing when `api/phpunit.xml` sat unscanned with no identifier |
 | `dependency-licences.php` | every dependency permissive (licensing invariant 8(a)) |
 | `locale-key-parity.php` | every locale carries the same key set |
-| `compose-config.sh` | every compose configuration RENDERS, and a set of security properties survives rendering — **no count is written here, because this row said "four" while listing six**, and the gate itself deleted its own count for exactly that reason: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines**, and a sixth added 2026-08-05: **in the PRODUCTION configuration only, every service declares `cap_drop: [ALL]`.** That one is prod-scoped on purpose rather than as an exemption — the dev overlay deliberately does not harden — and it is a FULL-SET check over whatever services the rendered config contains, because the gap that prompted it was `migrate` being missed while the six long-running services were hardened. A one-shot is short-lived, not low-privilege: `migrate` is the ONLY container holding the owner credential, the role that can `DROP POLICY` on every tenant table. Capabilities are orthogonal to `read_only` and `no-new-privileges`, both already present: Docker's default set includes `NET_RAW`, which is raw sockets on the network the database sits on. **The receiver check is not hypothetical hardening either** — `compose.yaml` ran `messenger:consume async` and `scheduler_default` while `config/packages/messenger.yaml` did not exist and no `#[AsSchedule]` provider did either, so BOTH the worker and the scheduler crash-looped on the first `docker compose up`. The receiver set is DERIVED (transport keys from `messenger.yaml`, `scheduler_<name>` from each `#[AsSchedule]`), never written down, and the attribute scan is anchored to the start of a line because the unanchored version matched the literal `#[AsSchedule('<name>')]` inside a DOCBLOCK and admitted `scheduler_<name>` to the allowed set. It needs `docker compose` but no daemon; it is the one gate here that SKIPS when the binary is absent, which is tolerated because every other gate still runs and CI has Docker |
+| `compose-config.sh` | every compose configuration RENDERS, and a set of security properties survives rendering — **no count is written here, because this row said "four" while listing six**, and the gate itself deleted its own count for exactly that reason: the owner credential is on `migrate` and nowhere else, the scheduler is pinned to ONE replica, nothing but the API is on the `edge` network, and `internal` really is `internal: true`. **Plus a fifth added 2026-08-02: every Messenger receiver a service consumes must be one the application actually defines**, and a sixth added 2026-08-05: **in the PRODUCTION configuration only, every service declares `cap_drop: [ALL]`.** **Plus a SEVENTH added 2026-08-05: FrankenPHP WORKER MODE is refused on every route** — the rendered
+compose environment, `api/.env`, `infra/.env`, `FRANKENPHP_CONFIG`/`CADDY_SERVER_EXTRA_DIRECTIVES`, and an
+uncommented `worker` directive in the Caddyfile. It is an ALLOW-LIST on `APP_RUNTIME` rather than a pattern match,
+because the first version block-listed two class names that **exist in no package** while the spelling this repo
+itself prescribes walked straight through — and its meta-suite mutant passed only because the fixture had been
+written to the gate's own invented literal. A block-list of runtime classes cannot be completed; an allow-list of
+the one permitted runtime is closed by construction. Two of the routes are TEXT checks rather than rendered ones,
+because `render()` supplies its own `--env-file` and so cannot see a tracked `.env`, and because worker mode is a
+Caddyfile directive that no renderer reads. Seven cases plus the commented-block false-positive direction. Deleted
+in Wave 10 when the portal token lands, not before (§ Gotchas 2026-08-05). That one is prod-scoped on purpose rather than as an exemption — the dev overlay deliberately does not harden — and it is a FULL-SET check over whatever services the rendered config contains, because the gap that prompted it was `migrate` being missed while the six long-running services were hardened. A one-shot is short-lived, not low-privilege: `migrate` is the ONLY container holding the owner credential, the role that can `DROP POLICY` on every tenant table. Capabilities are orthogonal to `read_only` and `no-new-privileges`, both already present: Docker's default set includes `NET_RAW`, which is raw sockets on the network the database sits on. **The receiver check is not hypothetical hardening either** — `compose.yaml` ran `messenger:consume async` and `scheduler_default` while `config/packages/messenger.yaml` did not exist and no `#[AsSchedule]` provider did either, so BOTH the worker and the scheduler crash-looped on the first `docker compose up`. The receiver set is DERIVED (transport keys from `messenger.yaml`, `scheduler_<name>` from each `#[AsSchedule]`), never written down, and the attribute scan is anchored to the start of a line because the unanchored version matched the literal `#[AsSchedule('<name>')]` inside a DOCBLOCK and admitted `scheduler_<name>` to the allowed set. It needs `docker compose` but no daemon; it is the one gate here that SKIPS when the binary is absent, which is tolerated because every other gate still runs and CI has Docker |
 | `makefile-conventions.sh` | **the Makefile's own naming convention: a bare target acts on DEVELOPMENT, `-prod` on PRODUCTION, and no other suffix means an environment** (developer ruling, 2026-08-05). That direction rather than the reverse because of blast radius — muscle memory types the short name, so the short name must be the harmless one. It is a NAME-VERSUS-BEHAVIOUR check and derives what each target actually does (which of `$(DC)` / `$(DC_PROD)` / the target-scoped `$(DCX)` its recipe drives) rather than comparing against a list of expected names, which would drift with the Makefile. It also enforces the SCOPE axis — a bare aggregate must invoke its narrow siblings, which is what `gate` meaning "the API tier only" violated. **It failed its own subject twice while being written**: `build-front-prod` drove the DEV stack, and the `-dev` check sat behind a skip that swallowed the ORIGINAL defect it exists to catch, because that defect's target shared a recipe with a sibling and so had no detected stack. Both are pinned by mutants |
 | `shell-syntax.sh` | every tracked shell script parses — **including the other gates**, which is why it is here and not in Wave 12 with `infra/` |
 | `no-orphaned-docblocks.php` | no doc comment that attaches to no declaration — two `T_DOC_COMMENT`s with nothing but whitespace, a comment or an attribute between them, because PHP attaches only the LATER one and the first then documents nothing. Added at round 17 after **three** successive rounds filed a stranded doc comment and round 16's own fix created a fresh one. **Rewritten as a tokenizer pass at round 18**, which found the original line-pattern version missing four of five genuine shapes — a blank line between the blocks (the most natural way to author them), an attribute between them, and a single-line second block — and found its comment asserting that a closing and opening delimiter on ONE line "is not this defect", which was false. A positional rule enforces one SPELLING; the defect is a question about tokens. Nothing else can see it: `php -l` treats comments as comments, `php-cs-fixer` reported `0 of 69 fixable` over a tree carrying seven, and PHPStan would catch only the subset that also loses a `@param`/`@return` generic |
@@ -581,7 +592,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | Flutter client, owed | semantics/a11y tests, golden or real screenshots at a **desktop** window size as well as a phone one, the shared pricing vectors, **a build of all six targets** (Android, iOS, Linux, Windows, macOS, Web — not cross-compilable, so three CI runners; matrix in `build-waves.plan.md` § Wave 12), and a real bundle identifier | Wave 11 — `mobile/README.md` |
 | **Makefile conventions** | `scripts/gates/makefile-conventions.sh` — a bare target acts on dev, `-prod` on production, no other suffix means an environment; and a bare aggregate must invoke its narrow siblings | **Runs** (added 2026-08-05 after the developer found the Makefile using the suffix for TWO different questions: `up`/`up-prod` marked the STACK while `build-front`/`build-front-dev` marked the ARTEFACT FLAVOUR, so a bare name meant "dev" in one family and "prod" in the other — and `build-front` was both at once) |
 | **Shell syntax** | `scripts/gates/shell-syntax.sh` — `bash -n` over every tracked shell script, discovered from `git ls-files` plus a shebang sweep rather than a written list | **Runs** (added at round 11, which pointed out that ten scripts already existed and already passed, while this row deferred the check to the wave that would add *more* — so the ones that existed went unchecked, and a syntax error in a gate is the worst place for one: the gate stops detecting and its non-zero exit reads as a detection) |
-| Infra | `scripts/gates/compose-config.sh` — every configuration renders AND holds its security properties | **Runs**; it is in `composer gate` and has its own row in § Architecture. This row said "Wave 12 — owed" while the gate was already enforcing six properties |
+| Infra | `scripts/gates/compose-config.sh` — every configuration renders AND holds its security properties | **Runs**; it is in `composer gate` and has its own row in § Architecture, which enumerates the properties — no count is written here, because this row said "Wave 12 — owed" while the gate was already enforcing six, and a seventh landed 2026-08-05 |
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
@@ -1164,7 +1175,10 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   allow-listed in `composer.json`. [Verified: deleted the file, re-ran `composer dump-autoload`, it came back;
   `Symfony\Component\Runtime\SymfonyRuntime` loads.] **The cost was not stylistic.** `autoload_runtime.php` is the
   ONLY mechanism by which `APP_RUNTIME` selects a runtime, so worker mode — the single largest performance feature
-  of the server this project just standardised on — was not "not yet enabled", it was *impossible*, and the
+  of the server this project just standardised on — was not "not yet enabled", it was *impossible*. **It is now
+  reachable and deliberately REFUSED by a gate**, for a tenancy reason discovered later; see the 2026-08-05 entry
+  below. Fixing the bootstrap was still right: a switch blocked ON PURPOSE is a decision, one broken by accident
+  is not, and the
   Caddyfile's honest-sounding note about the two remaining preconditions was therefore incomplete in a way nobody
   could see. This is the FIFTH instance in this file of a reasoned-not-tried claim (the four in the 2026-07-30 entry,
   plus the twenty-round Composer misdiagnosis), and the pattern is now unmistakable: **a paragraph explaining why
@@ -1296,21 +1310,31 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   - **Same-millisecond siblings are correlated within 2^24**, because the random field is INCREMENTED rather
     than redrawn (measured over 1999 pairs). Different milliseconds are independent — but two documents in one
     request share a millisecond routinely, so the correlated case is the ordinary one.
-  - **The seed is recoverable from the output.** 21 observed same-millisecond deltas leak 504 of 512 bits; a
-    reviewer brute-forced the last byte and then *computed* a later identifier exactly, across two generator
-    instances with different clocks — because the state is `static` on `UuidV7`, seeded once per PROCESS.
+  - **The seed is recoverable from the output, and MORE CHEAPLY than this entry first said.** 21 observed
+    same-millisecond deltas leak 504 of the seed block's 512 bits; a reviewer brute-forced the last byte and then
+    *computed* a later identifier exactly, across two generator instances with different clocks — because the
+    state is `static` on `UuidV7`, seeded once per PROCESS. Round 4 then showed the first step is free: on the
+    initial randomise `self::$rand` is unpacked FROM `self::$seed`, so `rand[1]`/`rand[2]` — emitted verbatim in
+    groups 3-5 — **are the first 8 of the seed's 16 bytes**. One identifier halves the search space with no deltas
+    at all. The earlier error understated the weakness, which is exactly why it needed correcting: this entry is
+    now the project's authoritative statement of the dependency's entropy properties.
   **`symfony/uid` is KEPT** — ordering is what v7 is for, and the hand-written version it replaced failed to
   ascend on about half of all consecutive same-millisecond pairs, which is the worse defect. What changes is what
   the identifier is allowed to mean. Two constraints follow, and **both are mechanised rather than written down**,
   because § Gotchas already records four times that a control asserted in prose is not a control:
-  - the unauthenticated **client portal (Wave 9) gets its own `random_bytes(32)` token**, never the document
+  - the unauthenticated **client portal (Wave 10) gets its own `random_bytes(32)` token**, never the document
     primary key — the portal is the one surface where an identifier IS the credential;
   - **FrankenPHP worker mode must not be enabled until that token exists**, enforced by
     `scripts/gates/compose-config.sh` on both `APP_RUNTIME` and FrankenPHP's `FRANKENPHP_CONFIG` seam, with a
     mutant per spelling. One process per request is what confines the recoverable seed to a single tenant; a
     worker process is what makes it span them. Delete that check when the portal token lands, not before.
   The lesson under the lesson: **the entropy claim had NO test**, and a reviewer proved it by reducing the
-  increment to a constant `+1` — emitting `…ceb7, ceb8, ceb9` — with all ten cases green. Distinctness, ordering
+  increment to a constant `+1` — emitting `…ceb7, ceb8, ceb9` — with **all EIGHT cases then in the file** green.
+  (Written as "ten" at four sites for a commit; the file has never had ten — 8 at the parent commit, 12 now. A
+  citation whose number moves with the suite states the direction, not the total.) Round 4 then showed that test
+  pins the INCREMENT and not the BASE DRAW: three further mutants passed it, one making two processes emit
+  byte-identical identifiers. `testTwoProcessesAtOneFrozenInstantDisagree()` closes that, and the entropy
+  assertion is now a birthday test over a thousand draws rather than a spread check over two hundred. Distinctness, ordering
   and well-formedness are all satisfied by a perfect counter, so none of them is an entropy test.
   `testTheRandomFieldIsNotMerelyASequentialCounter()` is.
 - **2026-08-05 — the HTML documentation page took THREE silent failures to get right, every one a 200 with the correct

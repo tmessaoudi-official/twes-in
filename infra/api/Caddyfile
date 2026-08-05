@@ -43,7 +43,7 @@
 		# to run the request loop. That package's newest release (1.0.0) declares
 		# `symfony/http-kernel: ^5.4 || ^6.0 || ^7.0` and this project is on Symfony 8.1, so Composer refuses it.
 		#
-		# There is a second, better reason to wait. A resident kernel REUSES database connections across requests,
+		# There is a second reason to wait. A resident kernel REUSES database connections across requests,
 		# and a tenant left bound on a connection is a cross-tenant read for whoever gets it next — the precise
 		# failure `PostgresRowLevelSecurityIsolation` was built against, with `assertNoTenantPinnedOnTheConnection()`
 		# and `discardSessionState()` for it. Those controls exist and are tested, but nothing has yet proven them
@@ -55,7 +55,18 @@
 		#         file /app/public/index.php
 		#         num 4
 		#     }
-		# and `infra/README.md` records the two preconditions as owed.
+		# **AND A THIRD PRECONDITION, now the binding one: the client portal (Wave 10) must have its own
+		# `random_bytes(32)` token first.** `UuidV7` seeds its generator state once per PROCESS and a worker
+		# process serves many requests, so a seed recoverable from about two dozen observed identifiers stops
+		# being confined to one tenant -- a certification round computed a later identifier exactly, across two
+		# generator instances. See CLAUDE.md Gotchas 2026-08-05.
+		#
+		# THIS IS NO LONGER A MATTER OF DISCIPLINE. `scripts/gates/compose-config.sh` reads THIS FILE and fails on
+		# an uncommented `worker` directive, and separately refuses any `APP_RUNTIME` other than `SymfonyRuntime`
+		# in `api/.env`, `infra/.env` and the rendered compose environment. Uncommenting the block below turns the
+		# gate red. Delete that check in Wave 10 when the token lands, and not before.
+		#
+		# `infra/README.md` records the preconditions as owed.
 		#
 		# `FRANKENPHP_CONFIG` is the seam by which that is switched on WITHOUT editing this file: setting it to
 		# `worker /app/public/index.php 4` is the documented spelling. It is empty by default, so the block above
