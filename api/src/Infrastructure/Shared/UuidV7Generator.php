@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Twes\Infrastructure\Shared;
 
+use Symfony\Component\Uid\UuidV7;
 use Twes\Domain\Shared\Clock;
 use Twes\Domain\Shared\IdGenerator;
 
@@ -29,11 +30,28 @@ use Twes\Domain\Shared\IdGenerator;
  * authorisation check becomes enumerable access to every tenant's documents. With a UUID, the same bug
  * leaks nothing without a valid identifier to begin with.
  *
- * **Why hand-written rather than symfony/uid.** It would be one MIT line in composer.json and is the
- * intended dependency; it cannot be installed in the environment this landed in, since every Composer
- * dist URL is refused by egress policy. The layout below is 20 lines and fully pinned by tests, so this
- * is a small, verified implementation rather than a blocked wave. Swapping in symfony/uid later changes
- * this one class and no caller.
+ * **`symfony/uid`, ADOPTED 2026-08-05 — and the paragraph that argued against it was false.** It read:
+ * *"Why hand-written rather than symfony/uid. It would be one MIT line in composer.json and is the intended
+ * dependency; it cannot be installed in the environment this landed in, since every Composer dist URL is
+ * refused by egress policy."* `symfony/uid` was already installed, already in `composer.json` as a runtime
+ * requirement, and already used by five files in this same layer — every Doctrine row entity types its
+ * identifier columns as `Symfony\Component\Uid\Uuid`. So the stated blocker was not merely stale, it was
+ * contradicted by the imports two directories away. `CLAUDE.md` § Gotchas: *"a paragraph explaining why
+ * something cannot work is the highest-value thing in this repository to spend ten minutes disproving."*
+ *
+ * **THE CLOCK PORT SURVIVES, which is the only thing that made adopting a real decision rather than a
+ * formality.** `UuidV7::generate()` takes an optional `\DateTimeInterface`, so the injected {@see Clock} is
+ * still what determines the timestamp and the tests stay deterministic. Had it read `microtime()`
+ * unconditionally, keeping the hand-written version would have been correct — ambient time is permitted in
+ * `Infrastructure/`, but a generator whose output cannot be frozen is a generator whose ordering property
+ * cannot be tested.
+ *
+ * **And it fixes a real defect the hand-written version had: WITHIN-MILLISECOND ORDERING.** Ours called
+ * `random_bytes(10)` afresh on every call, so two identifiers minted in the same millisecond sorted
+ * ARBITRARILY — directly against the sortability this class's first paragraph gives as the whole reason for
+ * choosing v7 over v4. Symfony re-randomises only when the millisecond changes and otherwise INCREMENTS the
+ * random field, so same-millisecond identifiers are monotonic. Two documents created in one request is the
+ * ordinary case, not the exotic one, so this was reachable rather than theoretical.
  */
 final readonly class UuidV7Generator implements IdGenerator
 {
@@ -41,28 +59,9 @@ final readonly class UuidV7Generator implements IdGenerator
 
     public function nextIdentifier(): string
     {
-        // 'Uv' is seconds-then-milliseconds, i.e. the Unix timestamp in milliseconds.
-        $milliseconds = (int) $this->clock->now()->format('Uv');
-
-        // pack('J') gives 8 big-endian bytes; the low 6 carry the 48-bit timestamp field.
-        $timestamp = substr(pack('J', $milliseconds), 2, 6);
-        $bytes = $timestamp . random_bytes(10);
-
-        // Byte 6's high nibble is the version: 0111 = 7.
-        $bytes[6] = \chr((\ord($bytes[6]) & 0x0F) | 0x70);
-
-        // Byte 8's two high bits are the variant: 10 = RFC 9562.
-        $bytes[8] = \chr((\ord($bytes[8]) & 0x3F) | 0x80);
-
-        $hex = bin2hex($bytes);
-
-        return \sprintf(
-            '%s-%s-%s-%s-%s',
-            substr($hex, 0, 8),
-            substr($hex, 8, 4),
-            substr($hex, 12, 4),
-            substr($hex, 16, 4),
-            substr($hex, 20, 12),
-        );
+        // The canonical lowercase RFC 9562 form, which is what `IdGenerator` promises and what
+        // `DocumentIdentity` refuses an uppercase spelling of. `generate()` returns that form and the
+        // constructor re-validates it, so a malformed value cannot escape this method.
+        return new UuidV7(UuidV7::generate($this->clock->now()))->toRfc4122();
     }
 }

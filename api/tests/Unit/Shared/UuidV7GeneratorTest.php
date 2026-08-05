@@ -99,6 +99,54 @@ final class UuidV7GeneratorTest extends TestCase
         self::assertCount(1000, array_unique($identifiers));
     }
 
+    /**
+     * SAME MILLISECOND, STILL ASCENDING — the property the hand-written implementation did not have.
+     *
+     * This class's opening paragraph gives sortability as the entire reason for choosing v7 over v4: *"new
+     * identifiers sort after old ones … inserts append to the right-hand edge of the index instead of landing
+     * at random depths."* The previous implementation called `random_bytes(10)` afresh per call, so within one
+     * millisecond the 74 random bits were independent draws and the order was a coin toss — half the pairs
+     * inverted. The test above could not see it: distinctness and ordering are different properties, and 1000
+     * distinct values say nothing about their sequence.
+     *
+     * `symfony/uid` re-randomises only when the millisecond changes and otherwise increments the random field,
+     * so the ordering holds inside a millisecond as well as across them. Two documents created in one request
+     * share a millisecond routinely, so this is the ordinary case rather than an exotic one.
+     *
+     * Asserted as STRICT ascent over the canonical string form, because that is the form the column stores and
+     * `ORDER BY` compares. A `sort()`-and-compare would pass on a reversed list.
+     */
+    public function testIdentifiersFromOneFrozenMillisecondAreMonotonic(): void
+    {
+        $generator = new UuidV7Generator(FrozenClock::at('2026-07-29T12:00:00+00:00'));
+
+        $identifiers = [];
+
+        for ($i = 0; $i < 200; ++$i) {
+            $identifiers[] = $generator->nextIdentifier();
+        }
+
+        $inversions = [];
+
+        for ($i = 1; $i < \count($identifiers); ++$i) {
+            if (strcmp($identifiers[$i], $identifiers[$i - 1]) <= 0) {
+                $inversions[] = \sprintf('%d: %s <= %s', $i, $identifiers[$i], $identifiers[$i - 1]);
+            }
+        }
+
+        self::assertSame(
+            [],
+            $inversions,
+            \sprintf(
+                "%d of %d consecutive identifiers minted in ONE millisecond did not ascend, so the sortability "
+                . "this class exists for does not hold within a millisecond:\n  %s",
+                \count($inversions),
+                \count($identifiers) - 1,
+                implode("\n  ", \array_slice($inversions, 0, 5)),
+            ),
+        );
+    }
+
     public function testTheSystemClockIsUtc(): void
     {
         self::assertSame('UTC', new SystemClock()->now()->getTimezone()->getName());

@@ -950,7 +950,9 @@ final class DocumentTotalsTest extends TestCase
      * The reported position is the POSITION, not the array key — round 16 found round 15's `array_values()` fix
      * revertible with the suite green.
      *
-     * `list<DocumentLine>` is a docblock claim and PHPStan, which would enforce it, is blocked on Composer egress.
+     * `list<DocumentLine>` was a docblock claim that nothing enforced. PHPStan now DOES (level 6 over `tests/` too),
+        // and it is what found the annotation and this test contradicting each other — the annotation was the one
+        // that was wrong, and both parameters now read `array<int, …>`.
      * So a non-sequential caller made the message name "document line 8" while `DocumentTotals::lineNets()` exposes
      * 0 and 1. An index a client is told to fix has to be the index the client can see.
      */

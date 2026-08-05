@@ -60,13 +60,19 @@ shortcut for the hard domain problems (Factur-X, UBL, Peppol, XAdES, HTML→PDF)
 
 ## PHP / Symfony (API)
 
-Locked in `api/composer.lock` as of Wave 0, 2026-07-29. **Not yet installed** — GitHub egress in the
-development container is restricted to this repository, so Composer cannot fetch dist archives
-(`CLAUDE.md` § Gotchas). The lock is committed and fully pinned, so `composer install` on a network that
-can reach them needs no other change.
+Locked in `api/composer.lock`. **INSTALLED, and this paragraph said *"Not yet installed — GitHub egress in
+the development container is restricted to this repository, so Composer cannot fetch dist archives"* for
+four days after it was.** The 403 is per-repository AUTHORIZATION on three GitHub hosts, not a network
+block: `composer config -g use-github-api false && composer config -g github-protocols https` then
+`composer install --prefer-source` installs the whole locked tree, dev dependencies included
+(`CLAUDE.md` § Gotchas carries the full correction).
 
-The full locked tree is **52 runtime + 54 dev packages**, distributed **MIT ×82, BSD-3-Clause ×23,
-Apache-2.0 ×1** — every one permissive. That is not a claim from inspection: it is checked on every gate
+The full locked tree is **74 runtime + 46 dev packages**, distributed **MIT ×96, BSD-3-Clause ×24** —
+every one permissive. **The previous figures — "52 runtime + 54 dev … MIT ×82, BSD-3-Clause ×23,
+Apache-2.0 ×1" — no longer reproduce**, and are quoted rather than silently replaced because this is the
+file licensing invariant 8(a) names as the record: `deptrac` and `phpstan/phpstan` left `require-dev` on
+2026-08-02, and Symfony packages arrived with the application. Derive these numbers from the lock rather
+than trusting this sentence; the gate does. That is not a claim from inspection: it is checked on every gate
 run by `scripts/gates/dependency-licences.php`, which reads the lock and fails on anything outside the
 allowlist. Direct requirements:
 
@@ -114,11 +120,15 @@ allowlist. Direct requirements:
 `bcmath` (the domain's exact decimal arithmetic — see `CLAUDE.md` § "Architecture" for why this replaced
 a decimal *library*), `pdo_pgsql`, `mbstring`, `intl`, `simplexml`, `ctype`, `iconv`.
 
-**Two tools are fetched as vendor-official phars rather than via Composer**, because Composer's dist URLs
-are blocked and these two publish from their own domains: PHPUnit from `phar.phpunit.de` and php-cs-fixer
-from `cs.symfony.com`. `scripts/dev/fetch-tools.sh` verifies both against pinned SHA-256 hashes — an
-unverified phar is arbitrary code from the network, which this project's licensing position cannot
-tolerate. Same licences as the table above; the phars are not committed.
+**THREE tools are fetched as vendor-official phars rather than via Composer** — this said "Two" while the
+table above already listed the third. PHPUnit from `phar.phpunit.de`, php-cs-fixer from `cs.symfony.com`,
+PHPStan from `raw.githubusercontent.com`. **Not "because Composer's dist URLs are blocked"**, which was the
+refuted premise: they are phars because a pinned SHA-256 phar runs in a checkout with NO vendor tree at all,
+which is what keeps `gate:style`, `gate:test` and `gate:static` independent of a successful
+`composer install`. `phpstan/phpstan` additionally is not in the lock at all — it entered only as a
+dependency of `deptrac` and left with it. `scripts/dev/fetch-tools.sh` verifies all three against pinned
+SHA-256 hashes — an unverified phar is arbitrary code from the network, which this project's licensing
+position cannot tolerate. Same licences as the table above; the phars are not committed.
 
 **One dependency deliberately NOT taken:** `brick/math` (MIT, and a fine library). `Money` uses `bcmath`
 instead, which keeps `Domain/` at literally zero Composer dependencies — enforced by
@@ -308,8 +318,17 @@ distribute it":
 put to the developer rather than resolved conveniently. Four facts, all verified locally: the Flutter SDK ships
 `MaterialIcons_LICENSE.txt` beside the binary whose first line is *"Attribution 4.0 International"* —
 **CC-BY-4.0**. Google's `material-design-icons` repository states Apache-2.0 for the icon set, which would be a
-weaker obligation, but that **cannot be verified from this container** — GitHub egress is restricted to this
-repository. The binary carries **no nameID 13 at all** [Verified: parsed; only nameID 0 *"Copyright 2019 Google
+weaker obligation. **That IS now verified and it does NOT disturb the ruling** — the claim that it *"cannot be
+verified from this container — GitHub egress is restricted to this repository"* was false, and
+`CLAUDE.md` § Gotchas is explicit that *"a documented impossibility gets read once and never re-tested"*,
+which is why it survived in four places. [Verified 2026-08-05:
+`curl https://raw.githubusercontent.com/google/material-design-icons/master/LICENSE` → HTTP 200, *"Apache
+License, Version 2.0"* — the same host `fetch-tools.sh` already downloads the PHPStan phar from.] The ruling
+stands on its own two grounds, neither of which was the egress claim: the licence that travelled WITH the
+binary we vendored is the SDK's own `MaterialIcons_LICENSE.txt`, whose first line is *"Attribution 4.0
+International"*, and the copy in the bundle is tree-shaken — a modified work under either licence. Complying
+with the stricter reading therefore satisfies both. Re-opening it in Apache's favour would be a licensing
+decision under invariant 10 and is the developer's to make, not a build fix. The binary carries **no nameID 13 at all** [Verified: parsed; only nameID 0 *"Copyright 2019 Google
 LLC"* and nameID 1 *"Material Icons"*], so the name-table cross-check that makes every vendored font's sidecar
 into evidence cannot run on it. And the copy in the bundle is **tree-shaken** — 7736 bytes from 1645184 — a
 *modified* work, which engages CC-BY § 3(a)(1)(b) and Apache-2.0 § 4(b).

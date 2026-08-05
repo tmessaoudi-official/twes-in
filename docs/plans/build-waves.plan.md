@@ -11,6 +11,31 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
+- [2026-08-05 23:30] RULED **`symfony/uid` is adopted for identifier generation; the hand-written UUIDv7 layout is
+  deleted.** The class docblock had argued against the dependency — *"it cannot be installed in the environment this
+  landed in, since every Composer dist URL is refused by egress policy"* — while `symfony/uid` was already a runtime
+  requirement in `composer.json`, already installed, and already used by five files in the same layer (every Doctrine
+  row entity types its identifier columns as `Symfony\Component\Uid\Uuid`). So the stated blocker was contradicted
+  by imports two directories away. Two things made this a decision rather than a formality, and both were checked
+  before committing to it: **`UuidV7::generate()` takes an optional `\DateTimeInterface`**, so the injected `Clock`
+  port survives and the tests stay deterministic — had it read `microtime()` unconditionally, keeping the hand-written
+  version would have been correct, because a generator whose output cannot be frozen is one whose ordering property
+  cannot be tested. And **the hand-written version had a real defect**: it drew `random_bytes(10)` afresh per call, so
+  identifiers minted inside one millisecond sorted arbitrarily — **108 of 199 consecutive pairs did not ascend** —
+  directly against the sortability its own first paragraph gives as the entire reason for choosing v7 over v4. Two
+  documents created in one request share a millisecond routinely. Symfony re-randomises only when the millisecond
+  changes and otherwise increments the random field. Pinned by `testIdentifiersFromOneFrozenMillisecondAreMonotonic()`,
+  which the old implementation fails; the seven pre-existing cases pass unchanged, so the swap is behaviour-compatible
+  on everything the suite already pinned.
+- [2026-08-05 23:30] AGREED: **the Material Icons Apache-2.0 grant is verified, and the 2026-07-30 ruling STANDS
+  unchanged.** Four artefacts recorded that grant as *"cannot be verified from this container — GitHub egress is
+  restricted"*; `curl https://raw.githubusercontent.com/google/material-design-icons/master/LICENSE` returns HTTP 200
+  and the Apache text, from the same host `fetch-tools.sh` already downloads the PHPStan phar from. The claim is
+  retracted at all four sites and the ruling is deliberately NOT re-opened: its grounds were never the egress claim
+  but (a) the licence the Flutter SDK supplies BESIDE the binary is the CC-BY-4.0 one, and (b) the shipped copy is
+  tree-shaken, i.e. a modified work under either licence — so complying with the stricter reading satisfies both.
+  Relaxing to Apache-2.0 would be a licensing decision under invariant 10 and is the developer's to make; recorded
+  here so that it is visibly available rather than silently foreclosed by a corrected footnote.
 - [2026-08-05 22:00] AGREED: **PHPStan is CONFIGURED AND WIRED at level 6, and every one of its findings is fixed
   rather than baselined.** `api/phpstan.neon.dist` over `src/` and `tests/`; `composer gate:static` repointed from
   `vendor/bin/phpstan` — a path that can never exist, since PHPStan is not a Composer dependency here — to the
@@ -545,7 +570,10 @@ was restricted by organisation policy so `composer install` could not run. Gener
   `api/phpstan.neon.dist` at level 6 and green. **`deptrac` alone remains**, and it is installable rather than
   blocked: its phar is simply not at the path PHPStan's is, the project having moved org from `qossmic/`.
 
-`api/composer.lock` is committed and fully pinned, so the next session with reachable dist URLs runs
+~~`api/composer.lock` is committed and fully pinned, so the next session with reachable dist URLs runs~~
+**Superseded 2026-08-01: the dist URLs were never the blocker.** `composer install --prefer-source` works in
+THIS container and installed the whole tree. Historical text preserved; the recipe is in `CLAUDE.md` § Gotchas.
+What that sentence originally continued with:
 `composer install` and continues. These items are **Wave 0's remainder, not Wave 1's scope** — and
 **Wave 1's PERSISTENCE was gated on these and they have LANDED** (2026-08-01), so the gate is discharged.
 The original sentence read "must not start until they land". Amended at round 13: this read "Wave 1 must not start",
@@ -2124,12 +2152,12 @@ precisely when that matters. Frozen commits: **round 1 = `d75003a`, round 2 = `2
 | R25-17 | `.claude/agents/completeness-reviewer.md` told the completeness lens PHPStan was uninstallable AND that `infra/` is the one tier that does not exist. A reviewer found the first in its own charter while reviewing the commit that installed the tool | **P2** | **CLOSED** this round, with the developer's authorisation (agent definitions require it) |
 | R25-18 | 11 skill banners + `inspect`'s degradation note told a future agent to run `vendor/bin/phpstan`; `.claude/settings.json` allow-listed the same path | **P2** | **CLOSED** `2508e54` |
 | R25-19 | 5 stale claims in this file, including the 2026-07-30 *"leave both owed"* ruling whose premise was the twenty-round misdiagnosis | **P2** | **CLOSED** `2508e54`, amended in place |
-| R25-20 | `THIRD-PARTY-NOTICES.md` says **"Two tools"** are fetched as phars while listing three; says the tree is *"Not yet installed"* while `api/vendor/` holds 120 packages; and states the locked tree as *"52 runtime + 54 dev"* | **P2** | **OPEN** — the file licensing invariant 8(a) names as the record, so the counts matter |
-| R25-21 | `UuidV7Generator:32-35` justifies hand-rolling with *"it cannot be installed … every Composer dist URL is refused by egress policy"* — `symfony/uid` is installed and used by five files in the same layer | **P2** | **OPEN** — decide whether to adopt `symfony/uid` or restate the reason honestly |
-| R25-22 | The Material Icons Apache-2.0 grant is recorded in four places as *"cannot be verified from this container"*; `curl raw.githubusercontent.com/google/material-design-icons/master/LICENSE` returns 200 and the Apache text. The RULING is unaffected; its stated ground is false | **P2** | **OPEN** — licensing invariant 10 territory, so verify and restate rather than quietly amend |
-| R25-23 | `CLAUDE.md:289` assigns the ambient-`time()`/`getenv()` P0 to *"a banned-function rule (PHPStan)"*; `no-ambient-calls-in-domain.php` delivers it and `phpstan.neon.dist` configures nothing of the kind. Now that CLAUDE.md says PHPStan is green, a reader concludes it is covered | **P2** | **OPEN** |
-| R25-24 | Two `api/tests/` comments still name the refuted blocker (`DocumentTotalsTest:953` *"PHPStan … is blocked on Composer egress"*, `DocumentNumberSequenceContract:41` *"currently blocked on Composer egress"*), plus `build-waves.plan.md`'s *"the next session with reachable dist URLs"* | **P3** | **OPEN** |
-| R25-25 | `CLAUDE.md:49-51` says `bin/console` uses the classic bootstrap instead of `vendor/autoload_runtime.php`; `api/bin/console` requires `autoload_runtime.php` and its own comment names the false claim it replaced | **P3** | **OPEN** |
+| R25-20 | `THIRD-PARTY-NOTICES.md` says **"Two tools"** are fetched as phars while listing three; says the tree is *"Not yet installed"* while `api/vendor/` holds 120 packages; and states the locked tree as *"52 runtime + 54 dev"* | **P2** | **CLOSED** this round — 74 + 46 = 120, MIT ×96 / BSD-3-Clause ×24, derived from the lock; "Not yet installed" and "Two tools" both corrected, with the superseded figures quoted rather than swapped out |
+| R25-21 | `UuidV7Generator:32-35` justifies hand-rolling with *"it cannot be installed … every Composer dist URL is refused by egress policy"* — `symfony/uid` is installed and used by five files in the same layer | **P2** | **CLOSED** this round, and it was a LATENT DEFECT rather than a stale comment — see the ruling in `## Decisions Log`. `symfony/uid` adopted; the hand-written version produced **108 of 199 non-ascending** identifiers within one millisecond, against the sortability this class exists for |
+| R25-22 | The Material Icons Apache-2.0 grant is recorded in four places as *"cannot be verified from this container"*; `curl raw.githubusercontent.com/google/material-design-icons/master/LICENSE` returns 200 and the Apache text. The RULING is unaffected; its stated ground is false | **P2** | **CLOSED** this round at all four sites — the Apache grant is verified (HTTP 200 from the host `fetch-tools.sh` already uses) and the claim retracted. **The RULING is untouched**: its grounds are the SDK's own CC-BY-4.0 sidecar and the tree-shaking, neither of which was the egress claim. Re-opening it in Apache's favour remains an invariant-10 decision for the developer |
+| R25-23 | `CLAUDE.md:289` assigns the ambient-`time()`/`getenv()` P0 to *"a banned-function rule (PHPStan)"*; `no-ambient-calls-in-domain.php` delivers it and `phpstan.neon.dist` configures nothing of the kind. Now that CLAUDE.md says PHPStan is green, a reader concludes it is covered | **P2** | **CLOSED** this round — the rule is `no-ambient-calls-in-domain.php`, and `phpstan.neon.dist` has no `banned`/`forbid`/`disallow` key at all |
+| R25-24 | Two `api/tests/` comments still name the refuted blocker (`DocumentTotalsTest:953` *"PHPStan … is blocked on Composer egress"*, `DocumentNumberSequenceContract:41` *"currently blocked on Composer egress"*), plus `build-waves.plan.md`'s *"the next session with reachable dist URLs"* | **P3** | **CLOSED** this round — all three |
+| R25-25 | `CLAUDE.md:49-51` says `bin/console` uses the classic bootstrap instead of `vendor/autoload_runtime.php`; `api/bin/console` requires `autoload_runtime.php` and its own comment names the false claim it replaced | **P3** | **CLOSED** this round — `bin/console` and `public/index.php` both require `autoload_runtime.php`, which is what makes worker mode reachable |
 | R25-26 | `DocumentLine::net()`'s out-of-range arm is pre-empted by the constructor's `RoundingMode::Up` product check, so its tag is deliberately narrower than its callers' — recorded so it is not "corrected" to match them | **P3** | **CLOSED** this round, as a stated limit |
 | R25-27 | Commit-message arithmetic: `d75003a` says "49 findings" (reproducible figure 52, measured mid-fix); `2508e54` says "eight cases drive `Instantiator`" (four do) and double-counts `schema-tenancy` outside the twelve gates | **P3** | **CLOSED** as recorded — a pushed commit message cannot be amended, so the corrections live in `## Decisions Log` and here |
 

@@ -145,9 +145,14 @@ const MAX_FONT_BYTES = 8 * 1024 * 1024;
  *
  *   - the SDK ships `MaterialIcons_LICENSE.txt` beside it whose first line is "Attribution 4.0
  *     International", i.e. **CC-BY-4.0**;
- *   - Google's `material-design-icons` repository states Apache-2.0 for the icon set, a weaker obligation —
- *     but that cannot be verified from this container, because GitHub egress is restricted to this repository
- *     (see CLAUDE.md § Gotchas), so it is not the reading we rely on;
+ *   - Google's `material-design-icons` repository states Apache-2.0 for the icon set, a weaker obligation.
+ *     **It IS verifiable and the claim that it was not is retracted** — this line said it "cannot be verified
+ *     from this container, because GitHub egress is restricted to this repository", which is the misdiagnosis
+ *     CLAUDE.md § Gotchas records, and it survived here because a documented impossibility gets read once and
+ *     never re-tested [Verified 2026-08-05: HTTP 200 and the Apache text from raw.githubusercontent.com, the
+ *     same host fetch-tools.sh downloads the PHPStan phar from]. It is still not the reading we rely on, now
+ *     for a reason that holds: the licence supplied WITH the binary is the SDK's CC-BY-4.0 sidecar, and the
+ *     shipped copy is tree-shaken, i.e. modified under either licence;
  *   - complying with CC-BY-4.0 satisfies Apache-2.0 § 4(a) as well, so the stricter reading is correct under
  *     either. Attribution, licence notice, licence URI and a **statement of modification** (the shipped copy
  *     is tree-shaken from 1645184 to ~7736 bytes) all live in `MaterialIcons-LICENSE.txt`.

@@ -47,8 +47,12 @@ found the contradiction.
 `.env` — plus Doctrine ORM, DBAL and Migrations, the attribute-mapped persistence model under
 `src/Infrastructure/Persistence/Doctrine/Entity/`, and `migrations/Version20260801120000.php`, the first
 migration. `Kernel` and `bin/console` are **hand-written rather than Flex-generated**, because `symfony/flex` is a
-Composer plugin this container's configuration disables — which is also why `bin/console` uses the classic
-bootstrap instead of `vendor/autoload_runtime.php`.
+Composer plugin this container's configuration disables. **The clause that used to follow — *"which is also why
+`bin/console` uses the classic bootstrap instead of `vendor/autoload_runtime.php`"* — was false**, and
+§ Gotchas 2026-08-02 records the correction: `autoload_runtime.php` was there the whole time, `composer
+dump-autoload` regenerates it, and `symfony/runtime` is allow-listed. Both `bin/console` and
+`public/index.php` require it today, which is what makes `APP_RUNTIME` — and therefore FrankenPHP worker mode
+— reachable at all. That correction sat 800 lines below this sentence for three days.
 
 **Not yet built:** the Doctrine repository (the MAPPER and its round-trip contract test landed 2026-08-01) and a wired
 `deptrac`. **The `infra/` tier LANDED** — three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
@@ -290,7 +294,11 @@ driving it — phorj is unfinished and nothing here is designed for it.
   is why they are listed separately: a framework dependency shows up as a `use` statement, but
   `time()`, `random_int()`, `getenv()`, `file_get_contents()` and `date()` are **bare function calls
   with no `use` at all** — so a `use`-grep does not see them. Both are P0; the second needs a
-  banned-function rule (PHPStan) rather than an import check.
+  **banned-function rule, and `scripts/gates/no-ambient-calls-in-domain.php` IS that rule** — not PHPStan,
+  which this line named until 2026-08-05 and which configures nothing of the kind (`phpstan.neon.dist` has no
+  `banned`, `forbid` or `disallow` key). The distinction matters now that PHPStan runs and is green: a reader
+  told the rule belongs to PHPStan would conclude a green PHPStan covers it. It does not, and the gate needs
+  nothing installed, which is why it is the primary mechanism rather than the fallback.
 - **No Doctrine mapping of any kind on a domain type. Persistence uses a SEPARATE MODEL in
   `Infrastructure/`, mapped with ATTRIBUTES, and a repository translates** (developer ruling, 2026-08-01,
   after challenging the previous wording). `#[ORM\` anywhere under `Domain/` is still a P0 and

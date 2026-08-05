@@ -38,7 +38,8 @@ use Twes\Domain\Document\DocumentType;
  * recorded five separate times that a control enforced by memory is not a control, so the contract is a test
  * class instead: an adapter that does not extend this has not been shown to satisfy anything.
  *
- * When the Postgres adapter lands (Wave 1's persistence, currently blocked on Composer egress), it gets
+ * When the Postgres adapter lands (Wave 1's persistence — no longer blocked; Doctrine, the migration and the
+ * mapper have all landed, and only the repository itself is owed), it gets
  * `PostgresDocumentNumberSequenceTest extends DocumentNumberSequenceContract` in the **integration** suite,
  * against a real row lock. The cases below do not change; only {@see self::sequence()} does. That is the point
  * — the same assertions run against the double and against the database, so "the fake behaves differently from
