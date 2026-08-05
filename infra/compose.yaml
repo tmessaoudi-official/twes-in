@@ -31,7 +31,7 @@ x-api-image: &api-image
   build:
     context: ..
     dockerfile: infra/api/Dockerfile
-    # `target: runtime` IS MANDATORY AND ITS ABSENCE WAS A LATENT TRAP THAT WENT LIVE ON 2026-08-05.
+    # `target: prod` IS MANDATORY AND ITS ABSENCE WAS A LATENT TRAP THAT WENT LIVE ON 2026-08-05.
     #
     # BuildKit builds the LAST stage in a Dockerfile when no target is named. Until the `dev` stage was added, the
     # last stage happened to BE `runtime`, so every untargeted build produced the production image — correct, but by
@@ -47,7 +47,7 @@ x-api-image: &api-image
     #
     # `compose.override.yaml` overrides this with `target: dev`, so dev is explicit and prod is explicit, and neither
     # depends on stage ORDER in the Dockerfile ever again.
-    target: runtime
+    target: prod
   image: twes-in/api:${TWES_VERSION:-dev}
 
 x-api-environment: &api-environment
@@ -326,7 +326,7 @@ services:
       context: ..
       dockerfile: infra/admin/Dockerfile
       target: build
-      # DEV OR PROD BUNDLE, from one Dockerfile. `make build-front` leaves this at `production`;
+      # DEV OR PROD BUNDLE, from one Dockerfile. `make build-front` sets this to `development`;
       # `make build-front-dev` passes `development`, which keeps source maps so a browser stack trace names our file
       # and line instead of `main-4f2a91.js:1:88231`. There is no security delta between the two bundles — only
       # optimisation — which is why an argument is right here where the API tier needed a separate image for Xdebug.

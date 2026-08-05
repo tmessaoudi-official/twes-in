@@ -2031,6 +2031,77 @@ fi
 assert_at_least "schema-tenancy: the tenant-column lookalike set has not shrunk" \
   "$(printf '%s\n' "$schema_rules" | awk '$1=="lookalike"' | grep -c .)" 10
 
+echo "== makefile-conventions: the gate on the Makefile's own naming =="
+# WHY THIS SECTION. `makefile-conventions.sh` failed its own subject twice while being written: `build-front-prod`
+# drove the DEV stack, and the `-dev` check sat behind a skip that swallowed the ORIGINAL defect it exists to catch.
+# A gate that cannot catch the bug it was written for is the shape this suite exists to expose.
+mc_work="$WORK/mc"; rm -rf "$mc_work"; mkdir -p "$mc_work"
+cp "$REPO_ROOT/Makefile" "$mc_work/Makefile"
+
+mc_clean="$(bash "$REPO_ROOT/scripts/gates/makefile-conventions.sh" "$mc_work/Makefile" 2>&1)" && mc_rc=0 || mc_rc=$?
+if (( mc_rc == 0 )) && printf '%s' "$mc_clean" | grep -qF 'named for the stack it drives'; then
+  printf '  ok   — makefile-conventions passes on the real Makefile\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — makefile-conventions is not clean on the real Makefile (rc=%s): %s\n' "$mc_rc" "$mc_clean"
+  failed=$((failed + 1))
+fi
+
+# MUTANT A -- the ORIGINAL defect: a `-dev` suffix. Written as a target that SHARES its recipe with a sibling, which
+# is how `build-front-dev` really looked and which the gate's first version could not see.
+python3 - "$mc_work/Makefile" <<'PYMCA'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+s = s.replace('build-front:      DCX := $(DC)', 'build-front-dev:  DCX := $(DC)', 1)
+s = s.replace('build-front: ## Build DEVELOPMENT', 'build-front-dev: ## Build DEVELOPMENT', 1)
+s = s.replace('build-front build-front-prod: check-env', 'build-front-dev build-front-prod: check-env', 1)
+p.write_text(s)
+PYMCA
+mc_a="$(bash "$REPO_ROOT/scripts/gates/makefile-conventions.sh" "$mc_work/Makefile" 2>&1)" && mc_a_rc=0 || mc_a_rc=$?
+if (( mc_a_rc != 0 )) && printf '%s' "$mc_a" | grep -qF 'uses a `-dev` suffix'; then
+  printf '  ok   — makefile-conventions catches a reintroduced `-dev` suffix\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — makefile-conventions missed a `-dev` suffix (rc=%s)\n' "$mc_a_rc"
+  failed=$((failed + 1))
+fi
+cp "$REPO_ROOT/Makefile" "$mc_work/Makefile"
+
+# MUTANT B -- a BARE target pointed at the production stack, which is the dangerous direction.
+sed -i 's/^logs-prod: DCX := $(DC_PROD)$/logs: DCX := $(DC_PROD)/' "$mc_work/Makefile"
+mc_b="$(bash "$REPO_ROOT/scripts/gates/makefile-conventions.sh" "$mc_work/Makefile" 2>&1)" && mc_b_rc=0 || mc_b_rc=$?
+if (( mc_b_rc != 0 )) && printf '%s' "$mc_b" | grep -qF 'carries no `-prod` suffix'; then
+  printf '  ok   — makefile-conventions catches a bare target driving production\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — makefile-conventions missed a bare target driving production (rc=%s)\n' "$mc_b_rc"
+  failed=$((failed + 1))
+fi
+cp "$REPO_ROOT/Makefile" "$mc_work/Makefile"
+
+# MUTANT C -- a new dev target with no production twin, i.e. the convention applied only halfway.
+printf '\n.PHONY: tailone\ntailone: ## Tail one service.\n\t$(DC) logs -f api\n' >> "$mc_work/Makefile"
+mc_c="$(bash "$REPO_ROOT/scripts/gates/makefile-conventions.sh" "$mc_work/Makefile" 2>&1)" && mc_c_rc=0 || mc_c_rc=$?
+if (( mc_c_rc != 0 )) && printf '%s' "$mc_c" | grep -qF 'has no `tailone-prod` twin'; then
+  printf '  ok   — makefile-conventions catches a dev target with no production twin\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — makefile-conventions missed a missing production twin (rc=%s)\n' "$mc_c_rc"
+  failed=$((failed + 1))
+fi
+cp "$REPO_ROOT/Makefile" "$mc_work/Makefile"
+
+# MUTANT D -- the SCOPE axis: bare `gate` must invoke its narrow siblings, or "gate" means one tier again.
+sed -i '/^\t@$(MAKE) --no-print-directory gate-api$/d' "$mc_work/Makefile"
+mc_d="$(bash "$REPO_ROOT/scripts/gates/makefile-conventions.sh" "$mc_work/Makefile" 2>&1)" && mc_d_rc=0 || mc_d_rc=$?
+if (( mc_d_rc != 0 )) && printf '%s' "$mc_d" | grep -qF 'bare `gate` does not invoke it'; then
+  printf '  ok   — makefile-conventions catches a bare aggregate that stopped aggregating\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — makefile-conventions missed a non-aggregating bare `gate` (rc=%s)\n' "$mc_d_rc"
+  failed=$((failed + 1))
+fi
+
 echo "== compose-config: the infra gate, and the receiver check that would have caught a crash-looping worker =="
 # WHY THIS SECTION EXISTS AT ALL: `compose-config.sh` shipped in 5b46f69 with no case here, so the meta-suite's own
 # "a gate on disk has no case in this suite" rule was RED at that commit. A gate nothing tests is the exact false

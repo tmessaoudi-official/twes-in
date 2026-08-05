@@ -89,7 +89,7 @@ COPY admin/ ./
 
 # The production build. `--configuration production` is what enables budgets, hashing and optimisation; without it
 # a "working" build can ship a development bundle that is an order of magnitude larger and leaks source maps.
-# CONFIGURABLE, so one Dockerfile serves both `make build-front` and `make build-front-dev`. Unlike the API tier
+# CONFIGURABLE, so one Dockerfile serves both `make build-front` and `make build-front-prod`. Unlike the API tier
 # there is no SECURITY delta between a dev and a prod bundle — only optimisation and source maps — so a build
 # argument is correct here where the API needed a whole separate target for Xdebug's sake.
 #

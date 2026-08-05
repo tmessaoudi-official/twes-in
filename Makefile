@@ -36,6 +36,30 @@ ENV_FLAGS := --env-file .env $(if $(wildcard $(INFRA)/.env.local),--env-file .en
 export TWES_UID := $(shell id -u)
 export TWES_GID := $(shell id -g)
 
+# ==============================================================================================================
+# THE NAMING CONVENTION, and it is a rule rather than a habit (developer ruling, 2026-08-05).
+#
+#     A BARE TARGET NAME ACTS ON DEVELOPMENT.  `-prod` ACTS ON PRODUCTION.  NO OTHER SUFFIX MEANS AN ENVIRONMENT.
+#
+# WHY THAT DIRECTION and not the reverse: BLAST RADIUS. Muscle memory types the short name, so the short name must
+# be the harmless one. `make down` and `make build-front` are typed dozens of times a day; if bare meant production,
+# each of those reflexes would reach a live system. The dangerous operation should cost a deliberate suffix.
+#
+# WHAT IT REPLACED. The suffix used to answer TWO DIFFERENT QUESTIONS. `up`/`up-prod` marked which STACK a target
+# drives; `build-front`/`build-front-dev` marked which ARTEFACT FLAVOUR it produces — so the bare form meant "dev"
+# in one family and "prod" in the other. The proof was `build-front`, which was BOTH at once: it ran on the dev
+# stack and produced a production bundle, with no suffix to say either. Since both write to the same shared volume,
+# `make build-front-dev` followed by `make up-prod` served an unminified bundle WITH OUR TYPESCRIPT SOURCE MAPS out
+# of "production", and neither name warned you.
+#
+# `scripts/gates/makefile-conventions.sh` enforces this now, so it cannot drift back.
+#
+# HOW ONE RECIPE SERVES BOTH: `DCX` is a TARGET-SCOPED variable, set to `$(DC)` for the bare name and `$(DC_PROD)`
+# for the `-prod` one, and the recipe is then written ONCE for both targets. Two stanzas, one body — so a change to
+# the dev behaviour cannot be forgotten on the production twin, which is the drift this whole section is about.
+# The `name: ## help` lines carry no recipe and exist only so `make help` lists both.
+# ==============================================================================================================
+
 # Dev: no `-f`, so `compose.override.yaml` is auto-merged. Prod: explicit, so it never is.
 DC      := cd $(INFRA) && docker compose $(ENV_FLAGS)
 DC_PROD := cd $(INFRA) && docker compose $(ENV_FLAGS) -f compose.yaml -f compose.prod.yaml
@@ -77,9 +101,17 @@ check-env:
 # --------------------------------------------------------------------------------------------------------------
 # Development
 # --------------------------------------------------------------------------------------------------------------
-.PHONY: up
-up: check-env deps ## Start the development stack (source-mounted, database published on localhost).
-	$(DC) up -d --build
+.PHONY: up up-prod
+up:      DCX := $(DC)
+up-prod: DCX := $(DC_PROD)
+up: ## Start the development stack (source-mounted, database published on localhost).
+up-prod: ## Start the PRODUCTION stack (hardened, HTTPS, replicas). SERVER_NAME is required.
+# `deps` ON THE DEV SIDE ONLY. It installs `api/vendor` onto the HOST for the bind mount; production has no bind
+# mount and carries vendor inside the image. A shared prerequisite would install DEV dependencies as a side effect of
+# starting production, which inverts the whole split.
+up: deps
+up up-prod: check-env
+	$(DCX) up -d --build
 	@echo
 	@$(MAKE) --no-print-directory urls
 
@@ -104,70 +136,93 @@ urls: ## Print the local URLs.
 	echo "  Admin    http://localhost:$$port/admin/   (run 'make build-front' first)"; \
 	echo "  Flutter  http://localhost:$$port/app/     (run 'make build-front' first)"
 
-.PHONY: down
+.PHONY: down down-prod
+down:      DCX := $(DC)
+down-prod: DCX := $(DC_PROD)
 down: ## Stop the development stack, keeping volumes.
-	$(DC) down
+down-prod: ## Stop the PRODUCTION stack, keeping volumes.
+down down-prod:
+	$(DCX) down
 
 .PHONY: destroy
 destroy: ## Stop the stack and DELETE ITS DATA. Irreversible.
 	@printf 'This deletes the database volume. Type "yes" to continue: ' && read ans && [ "$$ans" = yes ]
 	$(DC) down --volumes
 
-.PHONY: logs
+.PHONY: logs logs-prod
+logs:      DCX := $(DC)
+logs-prod: DCX := $(DC_PROD)
 logs: ## Follow logs from every service.
-	$(DC) logs -f --tail=100
+logs-prod: ## Follow logs from the PRODUCTION stack.
+logs logs-prod:
+	$(DCX) logs -f --tail=100
 
-.PHONY: ps
+.PHONY: ps ps-prod
+ps:      DCX := $(DC)
+ps-prod: DCX := $(DC_PROD)
 ps: ## Show the state of every service.
-	$(DC) ps
+ps-prod: ## Show the state of the PRODUCTION stack.
+ps ps-prod:
+	$(DCX) ps
 
-.PHONY: shell
+.PHONY: shell shell-prod
+shell:      DCX := $(DC)
+shell-prod: DCX := $(DC_PROD)
 shell: ## Open a shell in the API container.
-	$(DC) exec api sh
+shell-prod: ## Open a shell in the PRODUCTION API container (incident access).
+shell shell-prod:
+	$(DCX) exec api sh
 
-.PHONY: console
+.PHONY: console console-prod
+console:      DCX := $(DC)
+console-prod: DCX := $(DC_PROD)
 console: ## Run a Symfony console command: make console CMD="debug:router"
+console-prod: ## Run a console command against PRODUCTION: make console-prod CMD="debug:router"
+console console-prod:
 	@[ -n "$(CMD)" ] || { echo 'CMD="<console command>" is required, e.g. make console CMD=debug:router'; exit 1; }
-	$(DC) exec api php bin/console $(CMD)
+	$(DCX) exec api php bin/console $(CMD)
 
 # --------------------------------------------------------------------------------------------------------------
 # Build
 # --------------------------------------------------------------------------------------------------------------
-.PHONY: build
-build: check-env ## Build the API image.
-	$(DC) build api
+.PHONY: build build-prod
+build:      DCX := $(DC)
+build-prod: DCX := $(DC_PROD)
+build: ## Build the DEV API image (Xdebug, Composer, writable cache).
+build-prod: ## Build the PRODUCTION API image (no debugger, no Composer, read-only cache).
+build build-prod: check-env
+	$(DCX) build api
 
-.PHONY: build-front
-build-front: check-env ## Build PRODUCTION Angular and Flutter bundles into the volumes the API serves.
-	$(DC) run --rm --build admin-build
-	$(DC) run --rm --build flutter-build
-
-.PHONY: build-front-dev
-# DEVELOPMENT bundles: Angular unminified with source maps, Flutter in `profile`. The point is a browser stack trace
-# that names our file and line instead of `main-4f2a91.js:1:88231`, and a debugger that steps through TypeScript and
-# Dart rather than compiler output.
+# THE SWAP, 2026-08-05. `build-front` used to build the PRODUCTION bundle and `build-front-dev` the development one —
+# the inversion that made the whole convention incoherent, because every other bare name meant dev. Renamed rather
+# than aliased: an alias would keep the ambiguous name working and the ambiguity is the defect.
 #
-# NOT `flutter --debug`: Flutter's web debug build uses DDC rather than dart2js, so it can behave differently from
-# what ships — the wrong thing to hand somebody chasing a rendering bug. `profile` keeps the real compiler.
-#
-# The image TAGS carry the configuration (see compose.yaml), so this and `build-front` cannot collide in the build
-# cache. Without that, running this and then `build-front` would be a cache hit that silently served the unminified
-# bundle WITH OUR TYPESCRIPT SOURCE MAPS in production.
-#
-# TARGET-SCOPED `export`, NOT a leading assignment — AND THIS TARGET SHIPPED BROKEN FOR ONE COMMIT because the
-# lesson was written down forty lines below and not applied here. `$(DC)` expands to `cd infra && docker compose ...`,
-# so `NG_CONFIGURATION=development $(DC) run ...` sets the variable for the `cd` and compose never sees it. Compose
-# then falls back to its own `${NG_CONFIGURATION:-production}` default and this target built the PRODUCTION bundle
-# under the production tag — byte-identical work to `make build-front`, reported as a development build.
-#
-# [Verified: `sh -c 'FOO=bar cd /tmp && env | grep -c ^FOO='` -> 0; and the compose render under the old spelling
-# reported `args={'NG_CONFIGURATION': 'production'}`.] Note the second-order failure: because the TAG also came out
-# `production-dev`, the tag-carries-the-configuration protection was inert too, so nothing downstream could notice.
-build-front-dev: export NG_CONFIGURATION := development
-build-front-dev: export FLUTTER_BUILD_MODE := profile
-build-front-dev: check-env ## Build DEVELOPMENT front-end bundles (source maps, unminified).
-	$(DC) run --rm --build admin-build
-	$(DC) run --rm --build flutter-build
+# **IF YOU HAVE MUSCLE MEMORY FOR THE OLD BEHAVIOUR, `build-front` NOW PRODUCES A DEV BUNDLE.** Both write to the
+# same shared volume that the prod stack also serves, so `make build-front && make up-prod` would serve an unminified
+# bundle with our TypeScript source maps. `up-prod` therefore states the requirement in `infra/README.md`, and the
+# bundles carry their flavour in the image tag so the two cannot collide in the build cache.
+# `DCX` HERE TOO, so the `-prod` name is TRUE rather than merely intended. The first version of this stanza ran BOTH
+# flavours through `$(DC)` — the builders live in the base compose file, so it worked — and `makefile-conventions.sh`
+# immediately failed it: *"`build-front-prod` is named for production but its recipe drives DEV"*. That is the exact
+# class of defect this whole rename is about, caught by the gate written in the same commit, in my own code. The
+# production bundle is now built in the production configuration context, which also means a future prod-only
+# override of a builder would apply. [Verified: the build-profile services resolve and run under the prod file chain
+# without `SERVER_NAME`, which the serving services do require.]
+.PHONY: build-front build-front-prod
+build-front:      DCX := $(DC)
+build-front-prod: DCX := $(DC_PROD)
+build-front:      NG_CONFIGURATION := development
+build-front:      FLUTTER_BUILD_MODE := profile
+build-front-prod: NG_CONFIGURATION := production
+build-front-prod: FLUTTER_BUILD_MODE := release
+build-front build-front-prod: export NG_CONFIGURATION
+build-front build-front-prod: export FLUTTER_BUILD_MODE
+build-front: ## Build DEVELOPMENT front-end bundles (source maps, unminified).
+build-front-prod: ## Build PRODUCTION front-end bundles (minified, no source maps).
+build-front build-front-prod: check-env
+	$(DCX) run --rm --build admin-build
+	$(DCX) run --rm --build flutter-build
+	@echo "Built NG_CONFIGURATION=$(NG_CONFIGURATION) FLUTTER_BUILD_MODE=$(FLUTTER_BUILD_MODE) into the shared volumes."
 
 # --------------------------------------------------------------------------------------------------------------
 # PHP dependencies — installed BY THE CONTAINER, ONTO THE HOST TREE.
@@ -291,52 +346,83 @@ test: ## Run the API unit+functional suites inside the container.
 # --------------------------------------------------------------------------------------------------------------
 # Database
 # --------------------------------------------------------------------------------------------------------------
-.PHONY: migrate
-migrate: check-env ## Run migrations. Uses the OWNING role -- the only place that credential is used.
-	$(DC) run --rm migrate
+.PHONY: migrate migrate-prod
+migrate:      DCX := $(DC)
+migrate-prod: DCX := $(DC_PROD)
+migrate: ## Run migrations. Uses the OWNING role -- the only place that credential is used.
+migrate-prod: ## Run migrations against PRODUCTION, as the OWNING role.
+migrate migrate-prod: check-env
+	$(DCX) run --rm migrate
 
-.PHONY: psql
+.PHONY: psql psql-prod
+psql:      DCX := $(DC)
+psql-prod: DCX := $(DC_PROD)
 psql: ## Open psql against the stack's database as the superuser.
-	$(DC) exec database psql --username "$${POSTGRES_USER:-postgres}" --dbname "$${POSTGRES_DB:-twes}"
+psql-prod: ## Open psql against the PRODUCTION database as the superuser.
+psql psql-prod:
+	$(DCX) exec database psql --username "$${POSTGRES_USER:-postgres}" --dbname "$${POSTGRES_DB:-twes}"
 
-.PHONY: backup
+.PHONY: backup backup-prod
+backup:      DCX := $(DC)
+backup-prod: DCX := $(DC_PROD)
 backup: ## Dump the database to infra/backups/ with a UTC timestamp.
+backup-prod: ## Dump the PRODUCTION database to infra/backups/ with a UTC timestamp.
+backup backup-prod:
 	@mkdir -p $(INFRA)/backups
 	@stamp=$$(date -u +%Y%m%dT%H%M%SZ); \
-	$(DC) exec -T database \
+	$(DCX) exec -T database \
 		pg_dump --username "$${POSTGRES_USER:-postgres}" --dbname "$${POSTGRES_DB:-twes}" --format=custom \
 		> "backups/twes-$$stamp.dump" && echo "wrote $(INFRA)/backups/twes-$$stamp.dump"
 
-.PHONY: restore
+.PHONY: restore restore-prod
+restore:      DCX := $(DC)
+restore-prod: DCX := $(DC_PROD)
 restore: ## Restore from a dump: make restore DUMP=backups/twes-....dump  (path relative to infra/)
+restore-prod: ## Restore PRODUCTION from a dump. Prompts — it overwrites live data.
+restore restore-prod:
 	@[ -n "$(DUMP)" ] || { echo "DUMP=<path relative to infra/> is required"; exit 1; }
 	@printf 'This OVERWRITES the current database. Type "yes" to continue: ' && read ans && [ "$$ans" = yes ]
-	$(DC) exec -T database \
+	$(DCX) exec -T database \
 		pg_restore --username "$${POSTGRES_USER:-postgres}" --dbname "$${POSTGRES_DB:-twes}" --clean --if-exists \
 		< "$(DUMP)"
 
 # --------------------------------------------------------------------------------------------------------------
 # Production
 # --------------------------------------------------------------------------------------------------------------
-.PHONY: up-prod
-up-prod: check-env ## Start the production stack (hardened, HTTPS, replicas).
-	$(DC_PROD) up -d --build
-
-.PHONY: down-prod
-down-prod: ## Stop the production stack.
-	$(DC_PROD) down
-
+# `up-prod`, `down-prod` and every other `-prod` target are defined BESIDE THEIR DEV TWIN above, sharing one recipe
+# through the target-scoped `DCX`. They are not repeated here: two copies of a recipe is exactly the drift the
+# convention exists to prevent, and it is what let `build-front` and `build-front-dev` diverge in the first place.
+#
+# `config-prod` is the one production target with NO dev twin, and deliberately: rendering the dev configuration is
+# what `docker compose config` does by default, and `gate-infra` already checks both.
 .PHONY: config-prod
 config-prod: ## Render the production configuration without starting anything.
 	$(DC_PROD) config
 
+# THERE IS NO `destroy-prod`, AND ITS ABSENCE IS THE POINT. `destroy` deletes the database volume; a one-word command
+# that does that to production is a foot-gun no convention should require for symmetry's sake. Deleting production
+# data is a deliberate, manual act with a backup taken first (`make backup-prod`).
+
 # --------------------------------------------------------------------------------------------------------------
 # Quality
 # --------------------------------------------------------------------------------------------------------------
+# THE SECOND AXIS THE OLD NAMING CONFLATED: SCOPE. `gate` used to mean "the API tier only" while `gate-infra` meant
+# infra — so a bare name meant "dev" in one family, "prod" in another, and "just one tier" in a third. The rule now
+# matches the environment one: **the bare name is the WHOLE thing, a suffix NARROWS it.**
 .PHONY: gate
-gate: ## Run the API tier's full quality gate on the host.
+gate: ## Run EVERY tier's quality gate.
+	@$(MAKE) --no-print-directory gate-api
+	@$(MAKE) --no-print-directory gate-infra
+	@$(MAKE) --no-print-directory gate-make
+
+.PHONY: gate-api
+gate-api: ## Run the API tier's quality gate on the host.
 	cd api && COMPOSER_ALLOW_SUPERUSER=1 composer gate
 
 .PHONY: gate-infra
 gate-infra: ## Validate every compose configuration renders and holds its security properties.
 	bash scripts/gates/compose-config.sh
+
+.PHONY: gate-make
+gate-make: ## Check this Makefile's own naming convention (bare = dev, -prod = production).
+	bash scripts/gates/makefile-conventions.sh

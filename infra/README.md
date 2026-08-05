@@ -12,13 +12,13 @@ PHP, no Node, no Flutter on the host. The images bring their own.
 ```sh
 make env          # writes infra/.env.local with four freshly generated secrets. Run once.
 make up           # installs api/vendor if missing, builds the dev image, starts the stack. First run 5-10 min.
-make build-front  # PRODUCTION Angular and Flutter bundles into the volumes the API serves. Slow — see below.
+make build-front  # DEVELOPMENT front-end bundles into the volumes the API serves. Slow first time — see below.
 ```
 
 For a development loop, add:
 
 ```sh
-make build-front-dev  # the same bundles with source maps, unminified
+make build-front-prod # the PRODUCTION bundles: minified, no source maps. Needed before `make up-prod`.
 make debug-on         # arm Xdebug (see "Debugging with an IDE" below); make debug-off to disarm
 make test             # the API test suites, inside the container
 make composer CMD="require symfony/uid"   # Composer in the container, so the host needs no PHP
@@ -71,6 +71,47 @@ trust store.** It ships its own compiled-in root list, so `update-ca-certificate
 `npm` — `NODE_EXTRA_CA_CERTS` is what adds to Node's list without replacing it. See that directory's own README
 and the comments in each Dockerfile.
 
+## Target naming — bare means development, `-prod` means production
+
+Developer ruling, 2026-08-05, and `scripts/gates/makefile-conventions.sh` enforces it:
+
+> **A bare target name acts on DEVELOPMENT. `-prod` acts on PRODUCTION. No other suffix means an environment.**
+
+That direction, and not the reverse, because of **blast radius**: muscle memory types the short name, so the short
+name has to be the harmless one. `make down` and `make build-front` are typed dozens of times a day — if bare meant
+production, every one of those reflexes would reach a live system.
+
+| | development | production |
+|---|---|---|
+| start / stop | `up` · `down` | `up-prod` · `down-prod` |
+| build the API image | `build` | `build-prod` |
+| build front-end bundles | `build-front` | `build-front-prod` |
+| migrate | `migrate` | `migrate-prod` |
+| inspect | `logs` · `ps` · `shell` · `console` · `psql` | `logs-prod` · `ps-prod` · `shell-prod` · `console-prod` · `psql-prod` |
+| data | `backup` · `restore` · `destroy` | `backup-prod` · `restore-prod` · **no `destroy-prod`** |
+
+Two deliberate asymmetries, both stated in the gate's exemption list with their reasons:
+
+- **There is no `destroy-prod`.** `destroy` deletes the database volume. A one-word command that does that to
+  production is a foot-gun no convention should demand for symmetry's sake.
+- **`install`, `composer`, `test` and `debug-*` are development-only** and carry no suffix, because Composer,
+  PHPUnit and Xdebug are absent from the production image by design — a `-prod` twin could not run.
+
+`config-prod` is the one production-only target, because rendering the dev configuration is just
+`docker compose config`.
+
+**What this replaced, since it is a trap worth knowing about.** The suffix used to answer two different questions:
+`up`/`up-prod` marked which STACK a target drove, and `build-front`/`build-front-dev` marked which ARTEFACT FLAVOUR
+it produced — so the bare form meant "dev" in one family and "prod" in the other. `build-front` was both at once. And
+because both bundle targets write to the **same shared volume that the production stack also serves**,
+`make build-front-dev` followed by `make up-prod` served an unminified bundle carrying our TypeScript source maps out
+of "production". **So run `make build-front-prod` before `make up-prod`** — the flavour in the volume has to match the
+stack that serves it.
+
+A third axis had the same problem: `gate` meant "the API tier only". The rule there is the same shape — **the bare
+name is the whole thing, a suffix narrows it** — so `gate` now runs every tier and `gate-api`, `gate-infra`,
+`gate-make` narrow it.
+
 ## dev and prod are different ARTEFACTS, not one artefact with a flag
 
 Developer ruling, 2026-08-04: *"dev should be an easy env to debug and test and prod should be very optimized and
@@ -87,7 +128,7 @@ rulings: `docs/plans/dev-prod-separation.plan.md`.
 | OPcache | `validate_timestamps=1`, no preload, JIT off | `validate_timestamps=0`, preload, JIT tracing |
 | errors | `display_errors=On`, argument values in traces | logged only; `zend.exception_ignore_args=On` |
 | capabilities | Docker defaults | `cap_drop: ALL` on every service, adds established by test |
-| front-end bundles | `make build-front-dev` — source maps, unminified (1.31 MB) | `make build-front` — minified, no maps (189 kB) |
+| front-end bundles | `make build-front` — source maps, unminified (1.31 MB) | `make build-front-prod` — minified, no maps (189 kB) |
 
 **Why Xdebug forces two images rather than a switch.** A debugger in a production image is a remote-code-execution
 amplifier: `xdebug.mode` is settable from any `.ini` a compromised process can write, and Xdebug can be told to

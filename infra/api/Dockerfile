@@ -179,9 +179,14 @@ RUN composer dump-autoload --no-dev --optimize --no-interaction \
     && composer clear-cache
 
 # ==============================================================================================================
-# STAGE 3 — runtime. Derives from `base`, so the extensions are the SAME layer the dependencies resolved against.
+# STAGE 3 — prod. Derives from `base`, so the extensions are the SAME layer the dependencies resolved against.
+#
+# NAMED `prod`, NOT `runtime`, SINCE 2026-08-05. The old pair was `runtime` and `dev` — one named a ROLE and the other
+# an ENVIRONMENT, so the two stages could not be read as a pair and `target: runtime` in compose did not visibly
+# correspond to `target: dev` in the overlay. `prod`/`dev` is the same vocabulary the Makefile and the compose files
+# now use everywhere.
 # ==============================================================================================================
-FROM base AS runtime
+FROM base AS prod
 
 # `postgresql-client` for `pg_isready` and for operational access during an incident; `tzdata` so timestamps in
 # logs are comparable. The apk lists are dropped in the same layer so they never persist into the image.
