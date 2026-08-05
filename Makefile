@@ -153,9 +153,21 @@ build-front: check-env ## Build PRODUCTION Angular and Flutter bundles into the 
 # The image TAGS carry the configuration (see compose.yaml), so this and `build-front` cannot collide in the build
 # cache. Without that, running this and then `build-front` would be a cache hit that silently served the unminified
 # bundle WITH OUR TYPESCRIPT SOURCE MAPS in production.
+#
+# TARGET-SCOPED `export`, NOT a leading assignment — AND THIS TARGET SHIPPED BROKEN FOR ONE COMMIT because the
+# lesson was written down forty lines below and not applied here. `$(DC)` expands to `cd infra && docker compose ...`,
+# so `NG_CONFIGURATION=development $(DC) run ...` sets the variable for the `cd` and compose never sees it. Compose
+# then falls back to its own `${NG_CONFIGURATION:-production}` default and this target built the PRODUCTION bundle
+# under the production tag — byte-identical work to `make build-front`, reported as a development build.
+#
+# [Verified: `sh -c 'FOO=bar cd /tmp && env | grep -c ^FOO='` -> 0; and the compose render under the old spelling
+# reported `args={'NG_CONFIGURATION': 'production'}`.] Note the second-order failure: because the TAG also came out
+# `production-dev`, the tag-carries-the-configuration protection was inert too, so nothing downstream could notice.
+build-front-dev: export NG_CONFIGURATION := development
+build-front-dev: export FLUTTER_BUILD_MODE := profile
 build-front-dev: check-env ## Build DEVELOPMENT front-end bundles (source maps, unminified).
-	NG_CONFIGURATION=development $(DC) run --rm --build admin-build
-	FLUTTER_BUILD_MODE=profile $(DC) run --rm --build flutter-build
+	$(DC) run --rm --build admin-build
+	$(DC) run --rm --build flutter-build
 
 # --------------------------------------------------------------------------------------------------------------
 # PHP dependencies — installed BY THE CONTAINER, ONTO THE HOST TREE.

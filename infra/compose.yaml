@@ -31,6 +31,23 @@ x-api-image: &api-image
   build:
     context: ..
     dockerfile: infra/api/Dockerfile
+    # `target: runtime` IS MANDATORY AND ITS ABSENCE WAS A LATENT TRAP THAT WENT LIVE ON 2026-08-05.
+    #
+    # BuildKit builds the LAST stage in a Dockerfile when no target is named. Until the `dev` stage was added, the
+    # last stage happened to BE `runtime`, so every untargeted build produced the production image — correct, but by
+    # accident. Appending `FROM base AS dev` silently redirected every one of them.
+    #
+    # Two consequences, both the exact opposite of what the dev/prod split is for:
+    #   1. `make up-prod` tagged the DEBUGGER image as `twes-in/api:${TWES_VERSION}` — Xdebug, Composer, git, psql,
+    #      `display_errors=On` and argument values in stack traces, the settings whose own comments say they leak the
+    #      schema and log tenant ids and amounts.
+    #   2. It could not even start: the `dev` stage never runs `composer install`, and production has no bind mount
+    #      to supply `vendor/`, so the entrypoint dies on `autoload_runtime.php` and reports
+    #      `the database schema is NOT up to date` — pointing whoever debugs it at the database.
+    #
+    # `compose.override.yaml` overrides this with `target: dev`, so dev is explicit and prod is explicit, and neither
+    # depends on stage ORDER in the Dockerfile ever again.
+    target: runtime
   image: twes-in/api:${TWES_VERSION:-dev}
 
 x-api-environment: &api-environment

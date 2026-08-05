@@ -111,7 +111,22 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=64m
-      - /app/var/cache:noexec,nosuid,size=256m
+      # **NO tmpfs OVER `/app/var/cache`, AND ITS PRESENCE MADE THE PRODUCTION STACK UNSTARTABLE.**
+      #
+      # The image WARMS `var/cache/prod` at build time and then `chmod -R 555`s it, precisely so that production
+      # never needs to write there. A writable tmpfs mounted over that path therefore adds nothing — and it MASKS
+      # the warmed contents, including `Twes_KernelProdContainer.preload.php`, which `conf.d/10-opcache.ini` names
+      # in `opcache.preload`. A missing preload target is a PHP STARTUP FATAL, and `opcache.enable_cli=1` means it
+      # fires for every `php` invocation — so the first casualty is the entrypoint's own database probe, and the
+      # operator is told `the database did not accept a connection` about a database that is perfectly healthy.
+      #
+      # [Verified: with this line present the api container exits 1 on that message; with only this line removed and
+      # nothing else changed, the same image serves `/health` 200.] It is the same bootstrap deadlock the Dockerfile
+      # documents at the `cache:warmup` step, arriving from the mount side instead of the config side.
+      #
+      # If a future cache POOL needs to be writable, point it at Valkey — which is already in this stack — rather
+      # than reopening this directory. A read-only compiled container is a security property, not an inconvenience:
+      # write permission here lets a compromised process replace the compiled container, which is code.
       - /app/var/log:noexec,nosuid,size=64m
       # Caddy's certificate and configuration storage. Persisted below rather than tmpfs, because losing it means
       # re-requesting certificates on every restart and hitting the ACME rate limit.
@@ -146,7 +161,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=64m
-      - /app/var/cache:noexec,nosuid,size=256m
+      # No tmpfs over `/app/var/cache` — see the `api` service above. It masks the build-warmed opcache preload
+      # script and turns every `php` invocation into a startup fatal.
       - /app/var/log:noexec,nosuid,size=64m
     deploy:
       # Workers scale horizontally: Messenger's transport hands each message to exactly one consumer.
@@ -171,7 +187,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=64m
-      - /app/var/cache:noexec,nosuid,size=256m
+      # No tmpfs over `/app/var/cache` — see the `api` service above. It masks the build-warmed opcache preload
+      # script and turns every `php` invocation into a startup fatal.
       - /app/var/log:noexec,nosuid,size=64m
     deploy:
       # **ONE. NEVER MORE.** Two schedulers issue every recurring invoice twice, which in a billing product means
@@ -211,7 +228,8 @@ services:
     read_only: true
     tmpfs:
       - /tmp:noexec,nosuid,size=64m
-      - /app/var/cache:noexec,nosuid,size=256m
+      # No tmpfs over `/app/var/cache` — see the `api` service above. It masks the build-warmed opcache preload
+      # script and turns every `php` invocation into a startup fatal.
       - /app/var/log:noexec,nosuid,size=64m
     deploy:
       resources:
