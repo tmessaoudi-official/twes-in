@@ -1,0 +1,28 @@
+# This file is part of twes-in.
+#
+# (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+# ==============================================================================================================
+# TWIG — present for ONE reason: the HTML documentation page at `/api`.
+#
+# There are no application templates and none are planned. This is a JSON API; its two user interfaces are the
+# Angular admin and the Flutter client, both of which consume the API rather than being rendered by it. So the only
+# template Twig ever loads is API Platform's Swagger UI page, which lives in the vendor tree.
+# ==============================================================================================================
+twig:
+    # The application's own template directory. Empty, and deliberately declared anyway: without a `default_path`
+    # Twig warns, and an operator reading this file should be able to see that we own no templates rather than
+    # having to infer it from an absence.
+    default_path: '%kernel.project_dir%/templates'
+
+    # STRICT. A misspelled variable is an error rather than an empty string. The default is already `true` in dev
+    # and `false` in prod; stating it means the documentation page cannot silently render half-blank in production —
+    # which is exactly the failure mode that made `/admin/` a 200-with-an-empty-page for weeks.
+    strict_variables: true
+
+when@prod:
+    twig:
+        # No debug output and no auto-reload stat per template in production.
+        debug: false

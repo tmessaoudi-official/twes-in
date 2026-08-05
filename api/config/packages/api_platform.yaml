@@ -60,25 +60,45 @@ api_platform:
     enable_docs: true
     enable_entrypoint: true
 
-    # OFF: no SwaggerUI-driven "try it out" in production, and no ReDoc. They pull remote assets, which is a
-    # same-origin and privacy question this project has already ruled on for the Flutter build.
+    # SWAGGER UI IS ON, and the comment here previously said the opposite for a reason that was WRONG.
+    #
+    # It read: *"OFF: no SwaggerUI-driven 'try it out' in production, and no ReDoc. They pull remote assets, which is
+    # a same-origin and privacy question this project has already ruled on for the Flutter build."* Two errors in one
+    # sentence. First, they were not off because of that — they were off because `symfony/twig-bundle` was not
+    # installed, so there was no HTML renderer at all and `/api` returned
+    # `400 Serialization for the format "html" is not supported` to any browser. Second, the privacy claim is false
+    # for Swagger UI and ReDoc: API Platform ships BOTH locally and references them through `asset()`, resolving to
+    # `public/bundles/apiplatform/`. [Verified: `swagger-ui/swagger-ui.css`, `swagger-ui/oauth2-redirect.html`,
+    # `redoc/redoc.standalone.js` and the Open Sans fonts are all `asset()` calls in the bundle's own template.]
+    #
+    # **SCALAR IS THE ONE THAT REALLY DOES FETCH FROM A CDN** — `<script src="https://cdn.jsdelivr.net/npm/@scalar/
+    # api-reference">`, hardcoded in that template with no asset indirection — so the original objection applies to
+    # exactly one of the three, and Scalar stays off. `enable_swagger_ui` and `enable_re_doc` are opt-in per UI, so
+    # this is a precise choice rather than an all-or-nothing one.
+    enable_swagger_ui: true
+    # ReDoc as well: it is local, it costs nothing to enable, and it is the better read-only reference view while
+    # Swagger UI is the better "try it out" one. `/api/docs?ui=re_doc` selects it.
+    enable_re_doc: true
     swagger:
         versions: [3]
 
-    # `html` IS DELIBERATELY ABSENT, and its presence in the DEFAULT was a live defect. API Platform's default
-    # `docs_formats` includes `html: ['text/html']` for the documentation UI — but this project ships no HTML UI (see
-    # `swagger` above), so `text/html` was advertised in content negotiation with nothing able to render it. A browser
-    # opening the API entrypoint therefore got:
+    # `html` IS BACK, and it is what makes `/api` a readable page in a browser while staying a JSON API to every
+    # client. Content negotiation picks per request, on the SAME URL:
     #
-    #   400  {"detail":"Serialization for the format \"html\" is not supported."}
+    #   Accept: text/html                     -> the Swagger UI documentation page
+    #   Accept: application/ld+json           -> the Hydra entrypoint (the default for an API client)
+    #   Accept: application/vnd.openapi+json  -> the raw OpenAPI document
+    #   Accept: application/vnd.openapi+yaml  -> the same in YAML
     #
-    # [Verified: a real Chromium navigation to `/api` returned 400 before this block and 200 after; `curl` with no
-    # `Accept` header returned 200 in BOTH cases, because it never asks for html — which is why only a browser saw it.]
-    # Offering a format we cannot produce is worse than not offering it: negotiation picks html for every browser.
+    # It was REMOVED on 2026-08-04 because `text/html` was being offered with nothing able to render it, which made a
+    # browser hitting `/api` get `400 Serialization for the format "html" is not supported`. Removing it was the right
+    # call THEN — offering a format we cannot produce is worse than not offering it — and re-adding it is right now
+    # that Twig is installed and the renderer exists. The order matters: the renderer first, then the offer.
     docs_formats:
         jsonopenapi: ['application/vnd.openapi+json']
         yamlopenapi: ['application/vnd.openapi+yaml']
         jsonld: ['application/ld+json']
+        html: ['text/html']
 
     openapi:
         contact:

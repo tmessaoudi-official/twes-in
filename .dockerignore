@@ -73,3 +73,8 @@ docs
 !api/README.md
 qa-shots
 var
+
+# GENERATED bundle assets, EXCLUDED so the image cannot inherit whatever a developer happens to have on disk. The
+# Dockerfile runs `assets:install` itself in both stages, which ties the assets to the vendor tree in THAT image
+# rather than to the host's. Copying them in would be the "works on my machine" divergence one directory over.
+api/public/bundles

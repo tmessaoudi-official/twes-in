@@ -1245,6 +1245,25 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   forgotten on the production twin. That duplication is precisely what let `build-front` and `build-front-dev` diverge
   in the first place. The `name: ## help` lines carry no recipe and exist only so `make help` lists both.
 
+- **2026-08-05 — the HTML documentation page took THREE silent failures to get right, every one a 200 with the correct
+  `<title>`.** `/api` now serves Swagger UI to a browser and JSON-LD to a client on the same URL (`html` back in
+  `docs_formats`, `symfony/twig-bundle` + `symfony/asset` installed). Each failure is worth keeping because none was
+  visible from `curl`, an exit code, or a passing test:
+  **(1)** the assets 404'd — the Caddyfile serves ONLY the front controller, so `public/bundles/**` reached the final
+  `handle` and got `404`; fixed with a narrow `handle /bundles/*` file server rather than a file server over `public/`.
+  **(2)** `Content-Security-Policy: default-src 'none'; ...; sandbox` — correct for an API response, fatal for a
+  document — blocked every stylesheet and disabled script execution. Chromium said
+  `Refused to load the stylesheet ...` while `curl` fetched each asset with 200.
+  **(3)** the fix for (2) did not apply, because an unmatched `header` and a matcher-scoped `header` overriding the
+  same field is ORDER-DEPENDENT and Caddy did not resolve it the way the file read. **Two DISJOINT matchers
+  (`@apiDocs` / `@apiData`) is the fix**: exactly one applies to any request, so ordering stops mattering. Resource
+  endpoints keep `default-src 'none'` and the docs get `'self'`.
+  Also corrected: I claimed all three UIs "pull remote assets". Swagger UI is fully local, **Scalar** hardcodes
+  `cdn.jsdelivr.net`, and **ReDoc fetches `cdn.redoc.ly/redoc/logo-mini.svg`** — which our own `img-src 'self' data:`
+  BLOCKS [Verified: Chromium `requestfailed` with `errorText: csp`], so ReDoc is safe only *because of* the policy.
+  That makes the CSP a privacy control rather than defence in depth, and the functional suite CANNOT see it — it goes
+  through the kernel, not Caddy. Pinning it belongs in the empty `e2e` suite and is owed.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See

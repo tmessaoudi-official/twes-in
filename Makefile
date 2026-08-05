@@ -116,21 +116,24 @@ up up-prod: check-env
 	@$(MAKE) --no-print-directory urls
 
 .PHONY: urls
-# `OpenAPI`, and NOT `Docs http://.../api/docs`, which is what this printed until 2026-08-04. That path returns 404 to
-# a BROWSER — `{"detail":"Swagger UI, ReDoc and Scalar are disabled.","status":404}` — because
-# `config/packages/api_platform.yaml` deliberately ships no HTML documentation UI: they fetch remote assets, and that
-# is a same-origin and privacy question this project has already ruled on for the Flutter build. So the URL was not
-# broken, it was advertising a feature we chose not to have.
+# THE HTML DOCUMENTATION PAGE, added 2026-08-05, and this comment block previously argued the opposite.
 #
-# Easy to miss, and worth recording HOW it was missed: `curl` with no `Accept` header gets 200 on that path, because
-# content negotiation hands it the machine-readable document. Only a real browser, sending `Accept: text/html`, gets
-# the 404. It surfaced from a screenshot, which is exactly the case CLAUDE.md's visual-evidence rule exists for.
+# It said `/api/docs` "returns 404 to a browser ... because `api_platform.yaml` deliberately ships no HTML
+# documentation UI: they fetch remote assets". That was right about the 404 and WRONG about the reason. Swagger UI and
+# ReDoc are shipped LOCALLY by API Platform and referenced through `asset()`; only SCALAR fetches from a CDN. The real
+# cause was that `symfony/twig-bundle` was not installed, so there was no HTML renderer at all.
 #
-# `.jsonopenapi` is the format name API Platform registers for OpenAPI here; `/api/docs.json` is NOT a route and 404s.
+# With Twig installed and `html` back in `docs_formats`, `/api` is content-negotiated on ONE url:
+#   a browser (`Accept: text/html`) gets the Swagger UI page; a client (`Accept: application/ld+json`) gets the Hydra
+#   entrypoint; `application/vnd.openapi+json` gets the raw OpenAPI document.
+#
+# `.jsonopenapi` is still listed because it is the machine-readable form worth having in front of a reader, and it is
+# the one a `curl` with no `Accept` header will not give you by default.
 urls: ## Print the local URLs.
 	@port=$$(grep -hE '^HTTP_PORT=' $(INFRA)/.env.local $(INFRA)/.env 2>/dev/null | head -1 | cut -d= -f2); \
 	port=$${port:-8080}; \
-	echo "  API      http://localhost:$$port/api"; \
+	echo "  API docs http://localhost:$$port/api           (HTML in a browser, JSON-LD to a client)"; \
+	echo "  ReDoc    http://localhost:$$port/api/docs?ui=re_doc"; \
 	echo "  OpenAPI  http://localhost:$$port/api/docs.jsonopenapi"; \
 	echo "  Health   http://localhost:$$port/health/ready"; \
 	echo "  Admin    http://localhost:$$port/admin/   (run 'make build-front' first)"; \
@@ -248,17 +251,24 @@ COMPOSER_FLAGS ?=
 install: ## (Re)install PHP deps into api/vendor using the container's PHP. COMPOSER_FLAGS=--prefer-source if needed.
 	$(DC) run --rm --no-deps --build --entrypoint composer api \
 		install --no-interaction --no-progress $(COMPOSER_FLAGS)
-	@echo "api/vendor is on the host now — point your IDE's PHP interpreter at the container and it will resolve."
+	# THE BUNDLE ASSETS TOO, and in the same target for the same reason as vendor: the dev tree is bind-mounted, so
+	# both have to exist ON THE HOST. `assets:install` publishes API Platform's Swagger UI css/js/fonts into
+	# `api/public/bundles/`, which the HTML documentation page at `/api` loads through `asset()`. Without it the page
+	# renders with no stylesheet — a 200, a working document, and something that looks broken.
+	#
+	# It CANNOT be done in the dev image: that stage has no `vendor/` (by design), so `bin/console` will not run there.
+	$(DC) run --rm --no-deps --entrypoint php api bin/console assets:install public --no-interaction
+	@echo "api/vendor and api/public/bundles are on the host now — point your IDE's PHP interpreter at the container."
 
 .PHONY: deps
 # The cheap guard `up` depends on. A bind-mounted `api/` REPLACES the image's vendor tree, so if the host has no
 # `vendor/` the container has none either and every command dies with `Failed to open stream: autoload.php`. This
 # makes the first `make up` on a fresh clone work without the developer having to know that.
 deps:
-	@[ -f api/vendor/autoload.php ] || { \
-		echo "api/vendor is missing — installing it in the container first (one time)."; \
+	@if [ ! -f api/vendor/autoload.php ] || [ ! -d api/public/bundles/apiplatform ]; then \
+		echo "api/vendor or api/public/bundles is missing — setting up the dev tree first (one time)."; \
 		$(MAKE) --no-print-directory install; \
-	}
+	fi
 
 .PHONY: composer
 composer: ## Run Composer in the container: make composer CMD="require symfony/uid"

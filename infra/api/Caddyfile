@@ -113,18 +113,60 @@
 		path /api /api/* /health /health/*
 	}
 
+	# THE DOCUMENTATION PATHS — the only ones under `/api` that legitimately render as a DOCUMENT rather than as data.
+	# Used below to relax the Content-Security-Policy for exactly these and nothing else, so every RESOURCE endpoint
+	# (`/api/currencies`, and everything Wave 2 onwards adds) keeps the full lockdown.
+	#
+	# `/api` is included even though a CLIENT gets JSON-LD from it: content negotiation means one path serves both, and
+	# Caddy matches on the path, not on the negotiated response type. The residual exposure is worth naming rather than
+	# glossing — a relaxed policy on a JSON response only matters if a browser RENDERS it as a document, which
+	# `X-Content-Type-Options: nosniff` below already prevents.
+	@apiDocs {
+		path /api /api/docs /api/docs.* /api/contexts/*
+	}
+
+	# AND ITS COMPLEMENT. The two matchers are DISJOINT on purpose: an unmatched `header` plus a matched one that
+	# override the same field is ORDER-DEPENDENT, and Caddy did not resolve it the way the file reads — the strict
+	# policy kept winning on the documentation paths. [Verified: `/api` still answered `default-src 'none'` with the
+	# relaxed `header @apiDocs` present.] With two disjoint matchers exactly one applies to any request, so the result
+	# does not depend on directive order at all.
+	@apiData {
+		path /api/* /health /health/*
+		not path /api /api/docs /api/docs.* /api/contexts/*
+	}
+
 	handle @php {
 		root * /app/public
 		# A strict Content-Security-Policy for API responses: they are DATA and must never be interpreted as a
 		# document. `sandbox` neuters any HTML that somehow reaches a browser from this path.
+		#
+		# RELAXED FOR `@apiDocs` IMMEDIATELY BELOW, and it has to be: `default-src 'none'` plus `sandbox` blocks every
+		# stylesheet, image and script AND disables script execution outright, so with it in force the HTML
+		# documentation page rendered as a bare unstyled document with broken images and no Swagger UI widget at all —
+		# a 200, a correct `<title>`, zero external requests, and nothing usable. [Verified: Chromium reported
+		# `Refused to load the stylesheet ... because it violates the following Content Security Policy` for every
+		# asset, while `curl` fetched each of them with 200. Nothing short of looking at the page could see it.]
 		header {
-			Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
 			# Never cached by a shared cache: every API response is tenant-scoped, and a shared cache that keyed
 			# on URL alone would serve one tenant's invoice to another. This is the HTTP-layer echo of the
-			# row-level security below it.
+			# row-level security below it. Applies to the documentation too — it is cheap and harmless there.
 			Cache-Control "no-store, private"
 			Vary "Accept, Authorization"
 		}
+
+		# THE STRICT POLICY, for every API response that is DATA. Scoped to `@apiData` rather than left unmatched, so
+		# that it and the documentation policy below are mutually exclusive.
+		header @apiData Content-Security-Policy "default-src 'none'; frame-ancestors 'none'; sandbox"
+
+		# The documentation page's own policy, replacing the one above for `@apiDocs` only. Everything is `'self'` —
+		# no CDN and no third-party origin, which is what makes the whole page self-hosted — and the two
+		# `'unsafe-inline'` allowances are what Swagger UI genuinely needs: API Platform's template carries an inline
+		# bootstrap script, and the widget injects styles at runtime.
+		#
+		# `frame-ancestors 'none'` is KEPT, so the page still cannot be embedded. `sandbox` is dropped, because it
+		# disables script execution unconditionally and the page is a script.
+		header @apiDocs Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+
 		php_server {
 			# The front controller is the ONLY entry point. Without this, a request for a `.php` file that happens
 			# to exist anywhere under the root would execute it.
@@ -132,6 +174,30 @@
 			# `index.php` is not resolved as a directory index, so `/api/` cannot be served by path traversal.
 			resolve_root_symlink
 		}
+	}
+
+	# ----------------------------------------------------------------------------------------------------------
+	# THE API'S OWN DOCUMENTATION ASSETS — API Platform's Swagger UI css, js and fonts, published into
+	# `public/bundles/apiplatform/` by `assets:install`.
+	#
+	# THIS BLOCK IS WHY THE DOCUMENTATION PAGE IS STYLED AT ALL. Without it the final `handle` below answers 404 to
+	# every asset the page requests. [Verified: `/bundles/apiplatform/swagger-ui/swagger-ui.css` returned 404 and a
+	# real Chromium screenshot showed a bare document with broken images.]
+	#
+	# NARROW ON PURPOSE, and NOT a file server over `public/`. This server executes ONLY the front controller — that
+	# property is what stops any `.php` reaching a writable path from being run — so the static exception is scoped to
+	# the one generated directory rather than to the document root. Nothing under `bundles/` is ours or executable; it
+	# is a copy of a dependency's public assets.
+	#
+	# `handle`, NOT `handle_path`: these files really do live at `bundles/...` beneath the root, so the prefix must be
+	# KEPT. `handle_path` would strip it and look for `/app/public/apiplatform/...`.
+	handle /bundles/* {
+		root * /app/public
+		# Versioned by the dependency rather than content-hashed, so a long immutable max-age would be wrong — a
+		# `composer update` changes the bytes at the same URL. A day keeps the page snappy while bounding how long a
+		# stale asset can outlive an upgrade.
+		header Cache-Control "public, max-age=86400"
+		file_server
 	}
 
 	# ----------------------------------------------------------------------------------------------------------

@@ -133,3 +133,10 @@ gha-creds-*.json
 # Site-specific CA certificates for the build (see infra/api/ca-certificates/README.md). A CA is a trust
 # decision that belongs to a site, not to this repository.
 infra/api/ca-certificates/*.crt
+
+# GENERATED bundle assets. `bin/console assets:install` copies (or symlinks) each bundle's public directory here —
+# for us that is API Platform's Swagger UI css/js/fonts, which the HTML documentation page at `/api` loads through
+# `asset()`. Derived entirely from `vendor/`, so committing it would be committing a copy of a dependency: it would
+# drift from the installed version, and it would put third-party assets in our tree where the licence audit does not
+# look for them. The Dockerfile regenerates it in both image stages, so nothing depends on a developer having run it.
+/api/public/bundles/

@@ -29,5 +29,11 @@ return [
      * rather than a hand-rolled limit/offset. Registering it here is what makes that rule real instead of a
      * table entry.
      */
+    // TWIG, purely so the API has an HTML documentation page. It renders API Platform's Swagger UI template and
+    // nothing else — there are no application templates, and none are planned: this is a JSON API whose two user
+    // interfaces are the Angular admin and the Flutter client. Registered for `all` rather than `dev` only, because
+    // a contract you cannot read in a browser in production is a contract nobody reads.
+    Symfony\Bundle\TwigBundle\TwigBundle::class => ['all' => true],
+
     ApiPlatform\Symfony\Bundle\ApiPlatformBundle::class => ['all' => true],
 ];

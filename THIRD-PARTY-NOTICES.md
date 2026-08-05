@@ -76,6 +76,10 @@ allowlist. Direct requirements:
 | `symfony/console` | v8.1.2 | MIT | CLI commands | composer.lock |
 | `symfony/runtime` | v8.1.0 | MIT | front-controller bootstrap | composer.lock |
 | `symfony/dotenv` | v8.1.2 | MIT | environment loading | composer.lock |
+| `symfony/twig-bundle` | v8.1.2 | MIT | the HTML documentation UI at `/api` — Twig renders API Platform's Swagger UI template | composer.lock |
+| `symfony/twig-bridge` | v8.1.2 | MIT | pulled in by twig-bundle; Symfony's Twig integration | composer.lock |
+| `twig/twig` | v3.28.0 | **BSD-3-Clause** | the template engine itself. Permissive and on the permitted list; noted in bold only because it is the one new entry that is not MIT | composer.lock |
+| `symfony/asset` | v8.1.0 | MIT | resolves `asset()` to the LOCALLY SERVED Swagger UI css/js/fonts under `public/bundles/apiplatform/`. Without it the documentation page has no stylesheet | composer.lock |
 | `symfony/yaml` | v8.1.2 | MIT | configuration | composer.lock |
 | `symfony/translation` | v8.1.1 | MIT | i18n — FR/AR/EN catalogues | composer.lock |
 | `symfony/uid` | v8.1.0 | MIT | UUIDv7 (adapter written by hand meanwhile — see below) | composer.lock |

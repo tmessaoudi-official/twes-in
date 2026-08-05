@@ -2031,6 +2031,7 @@ fi
 assert_at_least "schema-tenancy: the tenant-column lookalike set has not shrunk" \
   "$(printf '%s\n' "$schema_rules" | awk '$1=="lookalike"' | grep -c .)" 10
 
+# clean-case-inline: makefile-conventions.sh passes on the real Makefile
 echo "== makefile-conventions: the gate on the Makefile's own naming =="
 # WHY THIS SECTION. `makefile-conventions.sh` failed its own subject twice while being written: `build-front-prod`
 # drove the DEV stack, and the `-dev` check sat behind a skip that swallowed the ORIGINAL defect it exists to catch.

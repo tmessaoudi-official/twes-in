@@ -188,6 +188,87 @@ final class HttpSurfaceTest extends WebTestCase
         );
     }
 
+    /**
+     * THE HTML DOCUMENTATION PAGE, which is the whole point of installing Twig — and the reason this test exists at
+     * all is that the feature failed silently twice while being built, both times with a 200 and a correct title.
+     *
+     * What this asserts is that the RENDERER is wired: a browser-shaped `Accept` gets `text/html` rather than
+     * `400 Serialization for the format "html" is not supported`, which is what `/api` returned for every browser
+     * while `html` was in `docs_formats` with no Twig installed.
+     *
+     * WHAT IT CANNOT ASSERT, stated rather than left to be discovered: the STYLESHEET and the Content-Security-Policy.
+     * Both are Caddy-layer concerns and this suite goes through the Symfony kernel, so it never sees a Caddy header.
+     * Those were verified against the real stack with Chromium — assets 200, zero external requests, the strict policy
+     * still on `/api/currencies` — and pinning them belongs in the `e2e` suite, which is empty. Recorded as owed.
+     */
+    public function testTheEntrypointServesHtmlToABrowserAndJsonLdToAClient(): void
+    {
+        $client = static::createClient();
+
+        // A real browser's header, not a bare `text/html`: the `*/*;q=0.8` tail is what makes content negotiation
+        // interesting, and a stricter header would not reproduce what a browser actually sends.
+        $client->request('GET', '/api', server: [
+            'HTTP_ACCEPT' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        ]);
+
+        self::assertResponseIsSuccessful();
+        // A PREFIX rather than an exact match: the charset's CASE is not ours to pin (`charset=UTF-8` here, lowercase
+        // on other Symfony paths), and asserting it exactly fails the test on something the contract does not care
+        // about.
+        self::assertStringStartsWith(
+            'text/html',
+            (string) $client->getResponse()->headers->get('Content-Type'),
+        );
+
+        $html = (string) $client->getResponse()->getContent();
+        self::assertStringContainsString('<html', $html, 'the entrypoint must render a document for a browser');
+        self::assertStringContainsString(
+            'twes-in API',
+            $html,
+            'the rendered page must carry our own title rather than a framework default',
+        );
+
+        // SAME URL, client header, machine-readable body. This is the half that must not regress: the documentation
+        // page is an addition to the entrypoint, not a replacement for it.
+        $client->request('GET', '/api', server: ['HTTP_ACCEPT' => 'application/ld+json']);
+
+        self::assertResponseIsSuccessful();
+        self::assertStringStartsWith(
+            'application/ld+json',
+            (string) $client->getResponse()->headers->get('Content-Type'),
+        );
+        self::assertStringContainsString('"@type":"Entrypoint"', (string) $client->getResponse()->getContent());
+    }
+
+    /**
+     * Every format the contract declares must actually be served. Asserted as a SET rather than one at a time,
+     * because the failure this guards against is a format being ADVERTISED and not producible — which is exactly what
+     * `html` was until Twig arrived, and what makes negotiation pick a broken representation for a whole class of
+     * client.
+     */
+    public function testEveryDeclaredDocumentationFormatIsServed(): void
+    {
+        $client = static::createClient();
+
+        /** @var array<string, string> $formats path => expected Content-Type prefix */
+        $formats = [
+            '/api/docs.jsonopenapi' => 'application/vnd.openapi+json',
+            '/api/docs.yamlopenapi' => 'application/vnd.openapi+yaml',
+            '/api/docs.jsonld' => 'application/ld+json',
+        ];
+
+        foreach ($formats as $path => $contentType) {
+            $client->request('GET', $path);
+
+            self::assertResponseIsSuccessful(\sprintf('%s must be served', $path));
+            self::assertStringStartsWith(
+                $contentType,
+                (string) $client->getResponse()->headers->get('Content-Type'),
+                \sprintf('%s must be served as %s', $path, $contentType),
+            );
+        }
+    }
+
     public function testTheApiEntrypointIsReachable(): void
     {
         $client = static::createClient();

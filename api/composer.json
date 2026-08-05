@@ -25,6 +25,7 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
         "predis/predis": "^3.5",
+        "symfony/asset": "^8.1",
         "symfony/console": "8.1.*",
         "symfony/doctrine-messenger": "8.1.*",
         "symfony/dotenv": "8.1.*",
@@ -34,6 +35,7 @@
         "symfony/runtime": "8.1.*",
         "symfony/scheduler": "^8.1",
         "symfony/translation": "8.1.*",
+        "symfony/twig-bundle": "^8.1",
         "symfony/uid": "8.1.*",
         "symfony/yaml": "8.1.*"
     },
@@ -83,7 +85,8 @@
             "@php ../scripts/gates/no-owner-connection-in-application.php",
             "@php ../scripts/gates/locale-key-parity.php",
             "bash ../scripts/gates/test-gates.sh",
-            "bash ../scripts/gates/compose-config.sh"
+            "bash ../scripts/gates/compose-config.sh",
+            "bash ../scripts/gates/makefile-conventions.sh"
         ],
         "gate:licences": "@php ../scripts/gates/dependency-licences.php",
         "gate:schema": "@php ../scripts/gates/schema-tenancy.php",

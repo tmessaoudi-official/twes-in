@@ -178,6 +178,17 @@ COPY api/ ./
 RUN composer dump-autoload --no-dev --optimize --no-interaction \
     && composer clear-cache
 
+# THE BUNDLE ASSETS, generated here rather than copied from the build context. `assets:install` publishes each
+# bundle's public directory into `public/bundles/` — for us that is API Platform's Swagger UI css, js and fonts, which
+# the HTML documentation page at `/api` loads through `asset()`. Without this the page renders with NO STYLESHEET: a
+# 200, a working document, and something that looks broken.
+#
+# COPIED, NOT SYMLINKED (`--symlink` is absent deliberately): the `vendor/` tree these would point at is in this
+# stage, and the runtime stage takes `/app/` wholesale — a relative symlink would survive that, but a copy cannot be
+# broken by a later `COPY` reordering, and `public/` is `chmod 555` in the runtime image where a dangling link would
+# be silent. `api/public/bundles` is in `.dockerignore`, so the host's copy can never leak in and mask this.
+RUN APP_ENV=prod php bin/console assets:install public --no-interaction
+
 # ==============================================================================================================
 # STAGE 3 — prod. Derives from `base`, so the extensions are the SAME layer the dependencies resolved against.
 #
@@ -436,6 +447,15 @@ COPY api/ ./
 # because the id is taken. The passwd entry is still created when the id is free, because a few tools print
 # warnings without one; it is not required for correctness.
 # ==============================================================================================================
+# NO `assets:install` IN THIS STAGE, AND THE ATTEMPT TO ADD ONE FAILED THE BUILD — worth recording, because the
+# reason is the whole shape of the dev image. This stage never runs `composer install`: `vendor/` comes from the
+# bind-mounted host tree, which is what lets an IDE resolve it. So there is no `vendor/autoload_runtime.php` here and
+# `bin/console` cannot run AT ALL at build time. [Verified: the build died on exactly that, pointing at the
+# `composer install` note in `vendor/.gitignore`.]
+#
+# The dev tree's `public/bundles/` is therefore generated on the HOST, by `make install` — the same target that
+# installs vendor, for the same reason, in the same place. `make up` depends on it through `deps`.
+
 ARG TWES_UID=1000
 ARG TWES_GID=1000
 RUN if ! getent group "${TWES_GID}" >/dev/null 2>&1; then addgroup -g "${TWES_GID}" -S twes; fi \
