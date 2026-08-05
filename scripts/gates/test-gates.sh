@@ -2322,6 +2322,41 @@ PYGT
   fi
   mv "$cc_root/base.held" "$cc_root/infra/compose.yaml"
 
+  # MUTANTS J and K -- FRANKENPHP WORKER MODE, blocked by developer ruling 2026-08-05 until the client portal has
+  # its own token. BOTH SPELLINGS, because either check alone is half a check: `APP_RUNTIME` selects the runtime,
+  # and `FRANKENPHP_CONFIG` can declare a worker without touching it. The constraint is a TENANCY one -- `UuidV7`
+  # seeds its generator state once per PROCESS and a worker process serves many requests, so a seed recoverable
+  # from ~24 observed identifiers stops being confined to one tenant.
+  for cc_worker in runtime config; do
+    cp "$cc_root/infra/compose.yaml" "$cc_root/base.held"
+    python3 - "$cc_root/infra/compose.yaml" "$cc_worker" <<'PYWK'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); lines = p.read_text().split('\n')
+for i, line in enumerate(lines):
+    if line.startswith('  APP_RUNTIME:'):
+        if sys.argv[2] == 'runtime':
+            lines[i] = "  APP_RUNTIME: 'Runtime\\FrankenPhpSymfony\\FrankenPhpWorkerRuntime'"
+        else:
+            lines.insert(i + 1, "  FRANKENPHP_CONFIG: 'worker /app/public/index.php'")
+        break
+else:
+    raise SystemExit('APP_RUNTIME anchor not found')
+p.write_text('\n'.join(lines))
+PYWK
+    cc_w="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_w_rc=0 || cc_w_rc=$?
+    if (( cc_w_rc != 0 )) && printf '%s' "$cc_w" | grep -qF 'spans TENANTS' ; then
+      printf '  ok   — compose-config catches FrankenPHP worker mode declared via %s\n' "$cc_worker"
+      passed=$((passed + 1))
+    elif (( cc_w_rc != 0 )) && printf '%s' "$cc_w" | grep -qF 'declares a FrankenPHP worker through'; then
+      printf '  ok   — compose-config catches FrankenPHP worker mode declared via %s\n' "$cc_worker"
+      passed=$((passed + 1))
+    else
+      printf '  FAIL — compose-config missed worker mode via %s (rc=%s)\n' "$cc_worker" "$cc_w_rc"
+      failed=$((failed + 1))
+    fi
+    mv "$cc_root/base.held" "$cc_root/infra/compose.yaml"
+  done
+
   # SCOPING CASE -- NOT a mutant, and renamed from "MUTANT F" because calling it one weakened this suite's own
   # convention that a mutant is reverted-and-red. Nothing is mutated: it asserts the CLEAN tree still passes, which is
   # what would break if the capability assertion were global instead of prod-only, since the dev overlay carries no

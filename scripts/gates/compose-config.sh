@@ -216,6 +216,42 @@ if 'prod' in overlay:
                 'it a setuid binary inside the image can still raise privilege, which defeats the point of dropping '
                 'capabilities in the first place.' % name)
 
+# 6d. FRANKENPHP WORKER MODE MUST STAY OFF UNTIL THE PORTAL TOKEN EXISTS (developer ruling, 2026-08-05).
+#
+#     This is a TENANCY constraint wearing a performance flag's clothes, and it is here because a constraint stated
+#     only in prose is the shape CLAUDE.md § Gotchas records four separate times. `UuidV7` keeps its generator state
+#     in `static` properties, seeded ONCE PER PROCESS with `random_bytes(16)` and thereafter advanced only by
+#     `hash('sha512', ...)`. A certification round showed 21 observed same-millisecond identifiers leak 504 of that
+#     seed's 512 bits, brute-forced the last byte, and then COMPUTED a later identifier exactly -- across two
+#     generator instances with different clocks.
+#
+#     Under `SymfonyRuntime` one process serves one request, so that chain cannot leave a tenant. A WORKER process
+#     serves many, which is precisely what makes it span tenants. The ruling is that a v7 identifier is an ORDERING
+#     artefact and never a credential, so the fix is a separate `random_bytes(32)` token on the unauthenticated
+#     client portal (Wave 9) -- and until that exists, worker mode is the one switch that must not be thrown.
+#
+#     Matched on the RUNTIME CLASS and on FrankenPHP's own `worker` config seam, because either alone would be
+#     half a check: `APP_RUNTIME` selects the runtime, and `FRANKENPHP_CONFIG`/`CADDY_SERVER_EXTRA_DIRECTIVES` can
+#     declare a worker without touching it. Delete this block when the portal token lands, not before, and say so
+#     in the commit.
+for name, svc in sorted(services.items()):
+    env = svc.get('environment') or {}
+    if isinstance(env, list):
+        env = dict((e.split('=', 1) + [''])[:2] for e in env)
+    runtime = str(env.get('APP_RUNTIME') or '')
+    if 'FrankenPhpWorkerRuntime' in runtime or 'FrankenPHPWorkerRuntime' in runtime:
+        problems.append(
+            '%s selects a FrankenPHP WORKER runtime via APP_RUNTIME. That is blocked until the client portal has '
+            'its own random_bytes(32) token: UuidV7 seeds its generator state once per PROCESS, and a worker '
+            'process serves many requests, so a seed recoverable from ~24 observed identifiers spans TENANTS. '
+            'See CLAUDE.md Gotchas 2026-08-05.' % name)
+    for key in ('FRANKENPHP_CONFIG', 'CADDY_SERVER_EXTRA_DIRECTIVES'):
+        if 'worker' in str(env.get(key) or '').lower():
+            problems.append(
+                '%s declares a FrankenPHP worker through %s. Blocked for the same reason as APP_RUNTIME above -- '
+                'and this is the half a runtime-only check would miss, since a worker can be declared here '
+                'without APP_RUNTIME changing at all.' % (name, key))
+
 # 7. THE DOCUMENT RENDERER MUST BE ABLE TO RENDER. Gotenberg takes an allow-list and a deny-list and applies them as
 #    a CONJUNCTION -- a deny match is absolute -- so `--chromium-deny-list=.*` refuses EVERY conversion including the
 #    local ones the allow-list was meant to permit, and no allow-list can override it. That shipped: the renderer was

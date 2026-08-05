@@ -25,5 +25,16 @@ namespace Twes\Domain\Shared;
  */
 interface IdGenerator
 {
+    /**
+     * @throws \LogicException if the clock reads an instant no identifier can encode
+     *
+     * **DECLARED ON THE PORT, because an adapter's refusals are part of the contract a caller programs
+     * against.** The v7 timestamp field is 48 unsigned bits, so a pre-epoch or year-10889 instant has no
+     * representation — and the previous implementation returned a WELL-FORMED identifier with a silently WRONG
+     * timestamp for both, which for a sortable key means a row that sorts into the wrong decade forever.
+     * `\LogicException` and not a domain exception with a translation key: a clock outside the representable
+     * range is our own configuration fault, never something a user typed, so `CLAUDE.md` § "Translation keys"
+     * maps it to `error.internal`.
+     */
     public function nextIdentifier(): string;
 }

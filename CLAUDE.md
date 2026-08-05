@@ -1283,6 +1283,36 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   forgotten on the production twin. That duplication is precisely what let `build-front` and `build-front-dev` diverge
   in the first place. The `name: ## help` lines carry no recipe and exist only so `make help` lists both.
 
+- **2026-08-05 — A UUIDv7 IDENTIFIER IS AN ORDERING ARTEFACT, NEVER A SECRET** (developer ruling). Recorded
+  beside money-is-never-a-float and the gapless sequence because it is the same kind of decision: a security
+  property assumed in the wrong place is unfixable once a public surface depends on it. `UuidV7Generator`'s
+  docblock claimed *"74 bits of randomness follow the timestamp, so an identifier is not guessable … with
+  `/invoices/1234`, a single missing authorisation check becomes enumerable access to every tenant's documents"*.
+  A certification round measured all three clauses and refuted two:
+  - **It is 64 bits, not 74.** `symfony/uid` spends 10 of the 12 `rand_a` bits on sub-millisecond precision, and
+    those are a deterministic function of the clock. [Verified: they equal the sub-millisecond for 1000 of 1000
+    values; `symfony/uid`'s own docblock says "a 58-bit timestamp and 64 extra unique bits".] 74 was exact for
+    the hand-written `random_bytes(10)` layout and became false in the commit that deleted it.
+  - **Same-millisecond siblings are correlated within 2^24**, because the random field is INCREMENTED rather
+    than redrawn (measured over 1999 pairs). Different milliseconds are independent — but two documents in one
+    request share a millisecond routinely, so the correlated case is the ordinary one.
+  - **The seed is recoverable from the output.** 21 observed same-millisecond deltas leak 504 of 512 bits; a
+    reviewer brute-forced the last byte and then *computed* a later identifier exactly, across two generator
+    instances with different clocks — because the state is `static` on `UuidV7`, seeded once per PROCESS.
+  **`symfony/uid` is KEPT** — ordering is what v7 is for, and the hand-written version it replaced failed to
+  ascend on about half of all consecutive same-millisecond pairs, which is the worse defect. What changes is what
+  the identifier is allowed to mean. Two constraints follow, and **both are mechanised rather than written down**,
+  because § Gotchas already records four times that a control asserted in prose is not a control:
+  - the unauthenticated **client portal (Wave 9) gets its own `random_bytes(32)` token**, never the document
+    primary key — the portal is the one surface where an identifier IS the credential;
+  - **FrankenPHP worker mode must not be enabled until that token exists**, enforced by
+    `scripts/gates/compose-config.sh` on both `APP_RUNTIME` and FrankenPHP's `FRANKENPHP_CONFIG` seam, with a
+    mutant per spelling. One process per request is what confines the recoverable seed to a single tenant; a
+    worker process is what makes it span them. Delete that check when the portal token lands, not before.
+  The lesson under the lesson: **the entropy claim had NO test**, and a reviewer proved it by reducing the
+  increment to a constant `+1` — emitting `…ceb7, ceb8, ceb9` — with all ten cases green. Distinctness, ordering
+  and well-formedness are all satisfied by a perfect counter, so none of them is an entropy test.
+  `testTheRandomFieldIsNotMerelyASequentialCounter()` is.
 - **2026-08-05 — the HTML documentation page took THREE silent failures to get right, every one a 200 with the correct
   `<title>`.** `/api` now serves Swagger UI to a browser and JSON-LD to a client on the same URL (`html` back in
   `docs_formats`, `symfony/twig-bundle` + `symfony/asset` installed). Each failure is worth keeping because none was
