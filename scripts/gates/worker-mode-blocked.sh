@@ -144,63 +144,25 @@ done
 # THE SEAM SET, DERIVED. Every `{$NAME}` the Caddyfiles themselves splice, minus the one that is a hostname. A
 # hand-written list was version 3's defeat: a fifth seam added to the Caddyfile was silently out of scope while the
 # gate's own header claimed the knob set was derived from the Caddyfile's enumeration. It is now true.
-# WHICH FILES ARE CADDY CONFIGS — derived from what is actually SERVED, not from the filename. A certification round
-# defeated the filename test two ways: `infra/api/tests/Caddyfile` was excluded from scope by a path pattern yet
-# reached the image (`.dockerignore` covers `api/tests`, not `infra/api/tests`), and renaming the served file to
-# `infra/api/frankenphp.conf` retired the `worker` and `import` rules entirely while a decoy `Caddyfile` kept the
-# seam derivation non-empty so anti-vacuity stayed satisfied.
-#
-# So the set is the UNION of (a) every tracked path whose name contains `Caddyfile` and (b) the SOURCE of every
-# `COPY` in any Dockerfile whose DESTINATION is passed to `--config`. (b) is what ties the rule to the artefact
-# instead of to a naming convention, and it is derived per run rather than written down.
+# WHICH FILES ARE CADDY CONFIGS, AND WHICH SEAMS THEY SPLICE — from `lib/caddy-configs.sh`, SHARED with
+# `compose-config.sh`. It lived here and a near-copy lived there, and the two derived DIFFERENT sets: a tracked
+# `admin/Caddyfile` yielded five seams from this gate and four from the sibling, so the rendered half never checked
+# the fifth. Two gates asking the same question of the same knob set must derive it the same way.
+# shellcheck source=lib/caddy-configs.sh
+source "$REPO_ROOT/scripts/gates/lib/caddy-configs.sh"
+
 caddy_relatives=()
-for relative in "${in_scope[@]}"; do
-    [[ "$relative" == *Caddyfile* ]] && caddy_relatives+=("$relative")
-done
-
-# The `--config` destinations any Dockerfile serves, then the COPY sources that land on them.
-served_destinations="$(
-    for relative in "${in_scope[@]}"; do
-        [[ "$(basename "$relative")" == Dockerfile* ]] || continue
-        grep -ohE -- '--config[",[:space:]]+[^",[:space:]]+' "$REPO_ROOT/$relative" 2>/dev/null || true
-    done | grep -ohE '/[^",[:space:]]+' | sort -u || true
-)"
-# `|| true` for the SAME reason and with the same evidence as the sibling gate's derivation: `grep` exits 1 on no
-# match, and under `set -euo pipefail` that aborts the ASSIGNMENT -- the gate exited 1 printing NOTHING AT ALL when a
-# fixture had no `--config` line. [Verified with `bash -x`: the trace ends at `served_destinations=`.] The empty case
-# is not suppressed; it is handled by the seam-derivation guard below, which fails with a message.
-
-for relative in "${in_scope[@]}"; do
-    [[ "$(basename "$relative")" == Dockerfile* ]] || continue
-    while IFS= read -r destination; do
-        [[ -z "$destination" ]] && continue
-        while IFS= read -r source; do
-            [[ -z "$source" ]] && continue
-            # Already present by name? Then nothing to add.
-            for known in "${caddy_relatives[@]:-}"; do
-                [[ "$known" == "$source" ]] && continue 2
-            done
-            caddy_relatives+=("$source")
-        done < <(
-            grep -E "^COPY[[:space:]]+[^[:space:]]+[[:space:]]+${destination}([[:space:]]|$)" \
-                "$REPO_ROOT/$relative" 2>/dev/null | awk '{print $2}' | sort -u
-        )
-    done <<< "$served_destinations"
-done
+mapfile -t caddy_relatives < <(caddy_config_paths "$REPO_ROOT")
 
 caddyfiles=()
 for relative in "${caddy_relatives[@]:-}"; do
-    [[ -n "$relative" && -f "$REPO_ROOT/$relative" ]] && caddyfiles+=("$REPO_ROOT/$relative")
+    [[ -n "$relative" ]] && caddyfiles+=("$REPO_ROOT/$relative")
 done
 
 SEAM_VARIABLES=()
-if (( ${#caddyfiles[@]} > 0 )); then
-    while IFS= read -r name; do
-        [[ -z "$name" ]] && continue
-        [[ "$name" == "$STRUCTURAL_PLACEHOLDER" ]] && continue
-        SEAM_VARIABLES+=("$name")
-    done < <(grep -ohE '\{\$[A-Za-z_][A-Za-z0-9_]*' "${caddyfiles[@]}" | sed 's/^{\$//' | sort -u)
-fi
+mapfile -t SEAM_VARIABLES < <(caddy_seam_variables "$REPO_ROOT" "$STRUCTURAL_PLACEHOLDER")
+# `mapfile` on empty input yields one empty element; drop it so the anti-vacuity guard sees a true zero.
+(( ${#SEAM_VARIABLES[@]} == 1 )) && [[ -z "${SEAM_VARIABLES[0]}" ]] && SEAM_VARIABLES=()
 
 if [[ "${1:-}" == '--dump-rules' ]]; then
     printf 'permitted_runtime %s\n' "$PERMITTED_RUNTIME"

@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-06 03:10] AGREED: the Caddy-config and seam derivation lives ONCE, in `scripts/gates/lib/caddy-configs.sh`, sourced by both worker-mode gates — a near-copy in each is how they came to derive different sets. Libraries under `scripts/gates/lib/` are excluded from the gate inventory but must be sourced, required or executed by a gate, checked and proven by a mutant. And Wave 10's deletion instruction is a PROCEDURE ending in *"run `composer gate` and fix everything it reports"*, because a hand-written collateral list has been incomplete three times running.
 - [2026-08-06 01:20] AGREED: the worker-mode value axis is REBUILT rather than patched — the analysis moves to `scripts/gates/lib/worker-mode-analyse.php`, does exactly two total operations (join continuations into logical lines; one quote-aware scan per line), and compares text against committed literals WITHOUT extracting any value. `SERVER_NAME` stops being an exemption and gets a structural no-brace rule plus a quote-balance rule; Caddy configs are identified by what the Dockerfile SERVES rather than by filename; only declaration positions are judged.
 - [2026-08-05 23:10] AGREED: `extra.runtime` in any `composer.json` must be ABSENT or hold nothing but `class` equal to the permitted runtime — an allow-list of KEYS, because `symfony/runtime`'s ComposerPlugin consumes three keys and BAKES every other one into the generated bootstrap. Reading `class` alone left `autoload_template` (which replaces the bootstrap wholesale) and `dotenv_path`+`dotenv_overload` (which override the container's own `DATABASE_URL` and hand a serving process the OWNER role) both open.
 - [2026-08-05 21:30] AGREED: the worker-mode control INVERTS its three polarities rather than extending its lists — scope by exclusion, seam set derived from the Caddyfile's own placeholders, and a whole-line allow-list plus an EMPTY-seam rule instead of per-dialect value parsing. **The four Caddyfile seams are KEPT**: the developer challenged the proposal to delete them, and they are FrankenPHP's own image's variable names, declared in `infra/.env` and both Dockerfile targets, so deleting them would invent a project-specific spelling of a conventional thing and still not close `api/.env.prod`.
@@ -1428,14 +1429,38 @@ within a millisecond rather than redrawing it, so siblings are correlated within
 seed is recoverable from about 24 observed identifiers — a reviewer computed a later identifier exactly. Those
 are properties of an ORDERING key, which is all a v7 is here.
 Two consequences for this wave: the token is generated and stored separately from the document id, and **BOTH
-worker-mode checks are deleted by THIS wave and no earlier** — the whole of
-`scripts/gates/worker-mode-blocked.sh` (delete the file, its `composer gate:architecture` entry, and its case block
-in `test-gates.sh`) **and** the `APP_RUNTIME`/seam block inside `scripts/gates/compose-config.sh`. This instruction
-named only the second for three commits, so an author following it would have left the first standing and been
-unable to enable worker mode at all — while `worker-mode-blocked.sh:46` said "DELETE THIS GATE IN WAVE 10" and
-nothing here agreed. Deleting them also means restoring the four Caddyfile seams to being freely settable, which is
-the capability the emptiness rule borrows rather than removes. Both checks exist solely because one process per
-request is what keeps the recoverable seed inside a single tenant. Landing the token is what earns the switch.
+worker-mode checks are deleted by THIS wave and no earlier**.
+
+**The deletion is a PROCEDURE, not a list, and that is a finding rather than laziness.** Three successive versions of
+this instruction were hand-written lists and every one was incomplete: the first named only
+`compose-config.sh`; the second added the gate file, its `composer` entry and its `test-gates.sh` case block, and a
+dry run still left **three** failures; a dry run at the commit that added a shared library and three cross-gate
+assertions left **six** [Verified: `418 passed, 6 failed` after performing exactly the documented steps against a
+copy of the working tree]. The collateral grows every time the control is strengthened, so a list written today is
+wrong by the next commit. Do this instead:
+
+1. **Delete the text gate and its library**: `scripts/gates/worker-mode-blocked.sh`,
+   `scripts/gates/lib/worker-mode-analyse.php`, `scripts/gates/lib/worker-mode-run.php`.
+2. **Delete the `APP_RUNTIME`/seam block in `scripts/gates/compose-config.sh`** — its `SEAM_KEYS` derivation, its
+   `worker_env_key` line in `--dump-rules`, and the numbered property in its header.
+3. **Delete `scripts/gates/lib/caddy-configs.sh`** once nothing sources it. `test-gates.sh` asserts that every
+   library under `lib/` is reached by a gate, so leaving it orphaned is itself a failure.
+4. **Then run `composer gate` and fix every single thing it reports.** That is the step the previous instructions
+   skipped, and it is the only one that can be complete. Expect it to name: the `WORKER_RULES` block and its four
+   ratchets, the `scanned_pattern`-stays-deleted case, the three cross-gate assertions (same seam set / both source
+   the library / a fifth seam outside `infra/`), the `compose_min=4` ratchet on `worker_env_key`, the eight
+   `cc_route` worker cases, MUTANT E, and **both** Docker-aware shrinkage floors.
+5. **Then `grep -rl 'worker-mode-blocked\|worker mode\|APP_RUNTIME' -- . ':!*.lock'`** and reconcile the prose:
+   `CLAUDE.md` (§ Architecture ×2, § "Quality gate", the command block, § Gotchas), `infra/api/Caddyfile`,
+   `infra/README.md`, `api/.env`, `infra/.env`, `api/public/index.php`,
+   `api/src/Infrastructure/Shared/UuidV7Generator.php`, `api/src/Domain/Shared/IdGenerator.php` and
+   `api/composer.json`'s two `scripts-descriptions` entries.
+6. **Restore the four Caddyfile seams to being freely settable.** The emptiness rule BORROWS that capability rather
+   than removing it — the names are FrankenPHP's own and were deliberately kept — so deleting the gate is what
+   returns them.
+
+Both checks exist solely because one process per request is what keeps the recoverable seed inside a single tenant.
+Landing the token is what earns the switch.
 
 ## Wave 11 — Flutter client — all six targets
 
@@ -2624,3 +2649,34 @@ Docker-less checkout.
 
 The four documentation items are one editing pass and are open only because this commit stopped at the code. Naming
 them here rather than leaving them to a later round is the whole point of the table.
+
+
+### Round 30 residue closed — the six open items
+
+All six are now closed, and two of them turned out to be worse than filed.
+
+- **R30-14 / R30-15 / R30-16** — the three stale documentation sites. `CLAUDE.md:426` regained the verb my own edit
+  had deleted (the row read as a subject-less fragment beginning *"in Wave 10 when…"*) and lost the false
+  *"CI has Docker"* claim, which had survived in the same diff that corrected `compose-config.sh` to say the opposite.
+  That gate's numbered-property header, which still described the two-of-four hand-written seam list and the
+  `worker`-substring test, now describes what the code does.
+- **R30-13** — the two gates really did derive different sets. The derivation moved to
+  `scripts/gates/lib/caddy-configs.sh`, which BOTH now source, and three assertions pin it: the sets are equal, both
+  gates source the library rather than carrying a near-copy, and **a tracked Caddyfile outside `infra/` puts its seam
+  in scope for both** — the last built from a real fixture with an `admin/Caddyfile`, which is the case that proved
+  the divergence. `TWES_CADDY_NO_INDEX=1` is a DECLARED degradation for the compose fixture, which has no git index;
+  the fallback walk is scoped to `infra/` so it still cannot reach `.claude/worktrees/`.
+- **R30-12** — that derivation had no mutant, so `31eaeba` was undelivered by this file's own standard. The
+  fifth-seam case above is it.
+- **R30-10** — the dry run was run, and the documented steps leave **six** failures rather than the three filed. The
+  instruction is now a procedure whose fourth step is *"run `composer gate` and fix everything it reports"*, because
+  the collateral grows with every strengthening of the control and any list written today is wrong by the next
+  commit.
+
+**One structural improvement fell out of it.** Adding a `lib/` directory broke the gate inventory — `test-gates.sh`
+counted the library files as gates and demanded a clean-fixture case for each. A library has no CLI, no exit code and
+no `--dump-rules`, so it is excluded from the gate set — but **the exclusion is checked**, per this file's rule that
+an exemption inside a cross-check is where drift hides: every file under `scripts/gates/lib/` must be sourced,
+required or executed by a gate. Proven by a mutant: an orphan library fires it. The first version of that check
+matched only `source|require` with a `lib/` prefix and missed BOTH existing libraries, since one is invoked as
+`php <path>` and the other via `require __DIR__ . '/…'`.

@@ -554,6 +554,67 @@ assert_at_least "worker-mode: the not-a-seam list has not GROWN beyond 1" "$((2 
 assert_contains "worker-mode: every seam and the permitted runtime survive" "$WORKER_RULES" \
   'Symfony\Component\Runtime\SymfonyRuntime' FRANKENPHP_CONFIG CADDY_SERVER_EXTRA_DIRECTIVES \
   CADDY_GLOBAL_OPTIONS CADDY_EXTRA_CONFIG
+# THE TWO GATES MUST DERIVE THE SAME SEAM SET, and this case exists because for two commits they did not. One walked
+# `find "$INFRA"`, the other every tracked path containing `Caddyfile` plus the source of every served `COPY`; a
+# tracked `admin/Caddyfile` yielded five seams from one and four from the other, so the rendered half never checked
+# the fifth. Both commit messages asserted they matched. Nothing checked it, so nothing caught it.
+#
+# Asserted on `--dump-rules` output rather than by reading the source, because the question is what the gates DO.
+wm_seam_set="$(bash "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" --dump-rules \
+  | awk '$1=="seam_variable"{print $2}' | sort | tr '\n' ' ')"
+cc_seam_set="$(bash "$REPO_ROOT/scripts/gates/compose-config.sh" --dump-rules \
+  | awk '$1=="worker_env_key"{print $2}' | sort | tr '\n' ' ')"
+if [[ -n "$wm_seam_set" && "$wm_seam_set" == "$cc_seam_set" ]]; then
+  printf '  ok   — both worker-mode gates derive the SAME seam set (%s)\n' "${wm_seam_set% }"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — the two gates derive DIFFERENT seam sets: text=[%s] rendered=[%s]\n' "$wm_seam_set" "$cc_seam_set"
+  failed=$((failed + 1))
+fi
+
+# ...and that the derivation is genuinely SHARED rather than two copies that happen to agree today. A near-copy in
+# each gate is exactly how they drifted, so the check is that both SOURCE the one library.
+wm_shares=0; cc_shares=0
+grep -q 'source .*lib/caddy-configs.sh' "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" && wm_shares=1
+grep -q 'source .*lib/caddy-configs.sh' "$REPO_ROOT/scripts/gates/compose-config.sh" && cc_shares=1
+if (( wm_shares && cc_shares )); then
+  printf '  ok   — both gates SOURCE lib/caddy-configs.sh rather than carrying a near-copy\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — a gate carries its own Caddy-config derivation (text=%d rendered=%d)\n' "$wm_shares" "$cc_shares"
+  failed=$((failed + 1))
+fi
+
+# AND THE DERIVATION MUST BE LOAD-BEARING. Reverting it to the single hard-coded path -- the exact defect `31eaeba`
+# exists to fix -- left the whole meta-suite green, so that commit was undelivered by this file's own standard.
+# A tracked second Caddyfile carrying a FIFTH seam must be seen by BOTH gates.
+fifth_root="$WORK/fifthseam"
+rm -rf "$fifth_root"
+mkdir -p "$fifth_root/scripts/gates/lib" "$fifth_root/infra/api" "$fifth_root/api" "$fifth_root/admin"
+# FROM THE WORKING TREE, for the reason every fixture here does: the gate under test may be uncommitted, and an
+# archive of the last commit then omits it so every case reports a missing subject as a missed detection.
+cp -a "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" "$REPO_ROOT/scripts/gates/compose-config.sh" \
+      "$fifth_root/scripts/gates/"
+cp -a "$REPO_ROOT/scripts/gates/lib/." "$fifth_root/scripts/gates/lib/"
+cp -a "$REPO_ROOT/infra/.env" "$REPO_ROOT/infra/compose.yaml" "$fifth_root/infra/"
+cp -a "$REPO_ROOT/infra/api/Caddyfile" "$REPO_ROOT/infra/api/Dockerfile" "$fifth_root/infra/api/"
+cp -a "$REPO_ROOT/api/.env" "$REPO_ROOT/api/composer.json" "$fifth_root/api/"
+printf '{$CADDY_ADMIN_EXTRA}\n' > "$fifth_root/admin/Caddyfile"
+git -C "$fifth_root" init -q >/dev/null 2>&1
+git -C "$fifth_root" add -A >/dev/null 2>&1
+fifth_wm="$(cd "$fifth_root" && bash scripts/gates/worker-mode-blocked.sh --dump-rules \
+  | awk '$1=="seam_variable"{print $2}' | sort | tr '\n' ' ')"
+fifth_cc="$(cd "$fifth_root" && bash scripts/gates/compose-config.sh --dump-rules \
+  | awk '$1=="worker_env_key"{print $2}' | sort | tr '\n' ' ')"
+if [[ "$fifth_wm" == *CADDY_ADMIN_EXTRA* && "$fifth_cc" == *CADDY_ADMIN_EXTRA* ]]; then
+  printf '  ok   — a Caddyfile OUTSIDE infra/ puts its seam in scope for BOTH gates\n'
+  passed=$((passed + 1))
+else
+  printf '  FAIL — a fifth seam outside infra/ is invisible to a gate: text=[%s] rendered=[%s]\n' \
+    "$fifth_wm" "$fifth_cc"
+  failed=$((failed + 1))
+fi
+
 # `scanned_pattern` must stay DELETED. Reintroducing it would be a silent return to the inclusion-list polarity
 # that `api/.env.prod`, `Dockerfile.dev` and `composer.json` all walked through, and nothing else would notice.
 if printf '%s\n' "$WORKER_RULES" | grep -q '^scanned_pattern'; then
@@ -2614,8 +2675,7 @@ wm_fixture() {
   cp -a "$REPO_ROOT/infra/api/Dockerfile" "$REPO_ROOT/infra/api/Caddyfile" \
         "$REPO_ROOT/infra/api/docker-entrypoint.sh" "$wm_root/infra/api/"
   mkdir -p "$wm_root/scripts/gates/lib"
-  cp -a "$REPO_ROOT/scripts/gates/lib/worker-mode-analyse.php" \
-        "$REPO_ROOT/scripts/gates/lib/worker-mode-run.php" "$wm_root/scripts/gates/lib/"
+  cp -a "$REPO_ROOT/scripts/gates/lib/." "$wm_root/scripts/gates/lib/"
   cp -a "$REPO_ROOT/api/.env" "$REPO_ROOT/api/.env.test" "$REPO_ROOT/api/composer.json" "$wm_root/api/"
   # ONLY THE TRACKED FILE. `cp -a api/public` pulled in 3.7MB of generated Swagger UI and ReDoc bundles that
   # `assets:install` writes and git ignores, and `git add -A` then TRACKED them -- so the fixture did not mirror
@@ -2952,7 +3012,35 @@ echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 gates_on_disk="$(cd "$REPO_ROOT" && git ls-files -- scripts/gates \
   | sed 's|^scripts/gates/||' \
   | grep -E '\.(php|sh)$' \
-  | grep -v '^test-gates.sh$' | sort | tr '\n' ' ')"
+  | grep -v '^test-gates.sh$' | grep -v '^lib/' | sort | tr '\n' ' ')"
+
+# `lib/` IS EXCLUDED FROM THE GATE SET, and that exclusion is itself checked -- § Gotchas: "an exemption inside a
+# cross-check is where the drift hides". A file under `scripts/gates/lib/` is a LIBRARY: it has no CLI, no exit code
+# and no `--dump-rules`, and it is exercised through whichever gate sources or requires it. So instead of a clean
+# case, each one must be REACHED from a gate. A library nothing reaches is dead code masquerading as coverage.
+libs_on_disk="$(cd "$REPO_ROOT" && git ls-files -- scripts/gates/lib \
+  | sed 's|^scripts/gates/lib/||' | grep -E '\.(php|sh)$' | sort | tr '\n' ' ')"
+unreached=""
+for lib in $libs_on_disk; do
+  # EVERY WAY A LIBRARY IS REACHED HERE, and the first version matched only `source|require` with a `lib/` prefix --
+  # which missed both of the ones that existed: the driver is invoked as `php <path>` and the analysis is pulled in
+  # with `require __DIR__ . '/worker-mode-analyse.php'`, neither of which contains `lib/`. Searching for the BASENAME
+  # after any of these verbs covers a sourced shell library, a required PHP class and an executed script alike.
+  #
+  # The library itself is excluded from the search, or its own filename inside its own header would satisfy this.
+  if ! grep -rqE "(source|require|include|php|bash)[^\n]*${lib}" "$REPO_ROOT/scripts/gates" \
+       --include='*.sh' --include='*.php' --exclude="${lib}"; then
+    unreached="$unreached $lib"
+  fi
+done
+if [[ -z "$unreached" ]]; then
+  printf '  ok   — every library under scripts/gates/lib is sourced or required by a gate (%s)\n' \
+    "$(printf '%s' "$libs_on_disk" | wc -w) libs"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — a library under scripts/gates/lib is reached by nothing (%s)\n' "$unreached"
+  failed=$((failed + 1))
+fi
 
 # a) every gate on disk has a clean-fixture case in THIS suite
 #

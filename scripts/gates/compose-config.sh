@@ -59,22 +59,25 @@ readonly INFRA="$REPO_ROOT/infra"
 # diagnostic.] The root cause is not suppressed: an empty derivation is REFUSED three lines down, with a message.
 # What `|| true` does is let "no match" become an empty string that a real check can then reject, rather than an
 # abort with no explanation.
-# EVERY CADDYFILE UNDER `infra/`, not the one path that exists today. `worker-mode-blocked.sh` derives from all of
-# them and this read `$INFRA/api/Caddyfile` alone, so a second Caddyfile -- `infra/admin/Caddyfile`, say -- would
-# have had its seams checked by the text sweep and NOT by the rendered one. Latent rather than live (there is one
-# today), and closed by construction rather than left as a note, because "there is only one today" is the assumption
-# every hand-written list in this repository has been broken on.
+# THE SEAM KEYS, from `lib/caddy-configs.sh` — the SAME derivation `worker-mode-blocked.sh` uses, and that is the
+# fix rather than a tidy-up. This gate walked `find "$INFRA"` while the sibling walked every tracked path containing
+# `Caddyfile` plus the source of every served `COPY`; a certification round added a tracked `admin/Caddyfile` and got
+# FOUR seams here against FIVE there, so the rendered half — the only half that can see an `env_file:`, a YAML anchor
+# or a value assembled across an overlay — never checked the fifth. Both commit messages asserted the sets matched.
 #
-# A `find` SCOPED TO `infra/` rather than `git ls-files`, and the scoping is what makes it safe. The rule this
-# repository learned in § Gotchas 2026-07-31 is that a recursive walk from the REPO ROOT reads reviewer worktrees
-# placed at `.claude/worktrees/`; a walk under `infra/` cannot reach them. It also has to work without a git index,
-# because the meta-suite's fixture for this gate is a plain directory copy -- an index-based version FAILED that
-# fixture, which is how this was caught. The sibling gate uses `git ls-files` because it sweeps the whole tree and
-# genuinely needs the index to stay out of the worktrees.
+# `TWES_CADDY_NO_INDEX=1` because THIS gate's meta-suite fixture is a plain directory copy with no git index. That is
+# a DECLARED degradation, not a silent one: the fallback walk is scoped to `infra/`, narrow enough that it cannot
+# reach the reviewer worktrees at `.claude/worktrees/` that § Gotchas 2026-07-31 forbids walking into. An
+# index-based-only version FAILED that fixture, which is how the coupling was found.
+# shellcheck source=lib/caddy-configs.sh
+source "$REPO_ROOT/scripts/gates/lib/caddy-configs.sh"
+
 SEAM_KEYS="$(
-    find "$INFRA" -type f -name '*Caddyfile*' -print0 \
-        | xargs -0 -r grep -ohE '\{\$[A-Za-z_][A-Za-z0-9_]*' \
-        | sed 's/^{\$//' | grep -v '^SERVER_NAME$' | sort -u | paste -sd, - || true
+    if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+        caddy_seam_variables "$REPO_ROOT" 'SERVER_NAME'
+    else
+        TWES_CADDY_NO_INDEX=1 caddy_seam_variables "$REPO_ROOT" 'SERVER_NAME'
+    fi | paste -sd, -
 )"
 readonly SEAM_KEYS
 
@@ -296,10 +299,17 @@ if 'prod' in overlay:
 #     artefact and never a credential, so the fix is a separate `random_bytes(32)` token on the unauthenticated
 #     client portal (Wave 10) -- and until that exists, worker mode is the one switch that must not be thrown.
 #
-#     Matched on the RUNTIME CLASS and on FrankenPHP's own `worker` config seam, because either alone would be
-#     half a check: `APP_RUNTIME` selects the runtime, and `FRANKENPHP_CONFIG`/`CADDY_SERVER_EXTRA_DIRECTIVES` can
-#     declare a worker without touching it. Delete this block when the portal token lands, not before, and say so
-#     in the commit.
+#     Matched on the RUNTIME CLASS and on ALL FOUR of the Caddyfile's seams, because either alone would be half a
+#     check: `APP_RUNTIME` selects the runtime, and a seam can declare a worker without touching it. The seam set is
+#     DERIVED (see `SEAM_KEYS` at the top of this file), not the two names this paragraph used to list -- a
+#     hand-written pair omitted `CADDY_GLOBAL_OPTIONS`, which splices into the block that CONTAINS `frankenphp { }`,
+#     and `CADDY_EXTRA_CONFIG`, where an `import` would live. And the test is EMPTINESS, not the substring `worker`:
+#     a YAML block scalar carries the directive on lines the key never appears on.
+#
+#     This paragraph described the superseded mechanism for two commits after the code changed 40 lines below it,
+#     which is the stale-prose defect this gate exists to catch in others. Delete this block when the portal token
+#     lands, not before -- and delete `scripts/gates/worker-mode-blocked.sh` with it, which is the half this one
+#     cannot see. Say so in the commit.
 #     AN ALLOW-LIST, NOT A BLOCK-LIST -- and the first version of this check was a block-list, which is why round 4
 #     of the certification filed it P0 on all three lenses at once. It matched `FrankenPhpWorkerRuntime` and
 #     `FrankenPHPWorkerRuntime`; NEITHER CLASS EXISTS. The package's runtime is `Runtime\FrankenPhpSymfony\Runtime`,
