@@ -117,17 +117,34 @@ other two is the default failure mode here, not an unusual one.
    Treat any claim here about what exists as the first thing to verify, not as context.
 
 10. **TENANCY WIRING THAT WAVE 1 OWES — check this whenever a repository or a Doctrine mapping appears.**
-   `PostgresRowLevelSecurityIsolation` carries guards that Wave 1's connection lifecycle owes calls to, and **ZERO** of them are on the `TenantIsolationStrategy` port, which declares `bind()` and nothing else. **Do not trust any list of them written in prose, including this one.** Round 13 corrected the count from "only one"; round 14's correction carried three wrong numbers; round 15 found the replacement's ENUMERATION wrong as well — it listed six while the grep it itself prescribed returned ten, and no consistent criterion produced six. Three consecutive rounds. So: **derive the set, then classify it yourself.**
+   `PostgresRowLevelSecurityIsolation` carries guards that Wave 1's connection lifecycle owes calls to, and **all but one of them are absent from the `TenantIsolationStrategy` port.** That sentence read *"**ZERO** of them are on the port, which declares `bind()` and nothing else"* until 2026-08-06, when `assertStillBoundTo()` was moved onto it — so the port now declares `bind()` and `assertStillBoundTo()`, and the rest remain concrete-only. Do not infer from this that moving the others is owed: the static ones cannot go on an interface as written, and that is the reason none of them is there. **Do not trust any list of them written in prose, including this one — and note that this very sentence was wrong for the length of one commit, which is the second stale claim found in this row on the same day.** Round 13 corrected the count from "only one"; round 14's correction carried three wrong numbers; round 15 found the replacement's ENUMERATION wrong as well — it listed six while the grep it itself prescribed returned ten, and no consistent criterion produced six. Three consecutive rounds. So: **derive the set, then classify it yourself.**
    ```
    grep -n 'public static function \(assert\|discard\)\|public function assert' \
      api/src/Infrastructure/Tenancy/PostgresRowLevelSecurityIsolation.php
    ```
    What matters for your review is not the count but **which of them a caller must invoke explicitly**, and that is a question about COMPOSITION: several are composed into `assertConnectionCannotBypassPolicies()` and are therefore reached by one call, while others are not composed and are reached by nobody unless a pool calls them. Read the composition at the top of `assertConnectionCannotBypassPolicies()` and work out the delta — that delta is the wiring Wave 1 owes, **Do not expect that delta to equal the plan's numbered list**, and do not expect either side to state a count — the plan deliberately no longer does. The two are not the same kind of thing: one of the plan's obligations is the eviction CONTRACT inside another rather than a method, and `assertStillBoundTo()` is stated in a separate paragraph of its own. Round 17 added `assertConnectionCannotCreateLargeObjects()` to the numbered list, which the plan had previously named **nowhere at all** — so the control that verifies the large-object revocation actually happened was owed by nobody, which is exactly the finding this reconciliation exists to produce. So reconcile the two sides yourself and report the difference as a finding if either is missing something — that reconciliation IS the review, and this clause has itself been wrong five rounds running, which is the strongest possible argument for deriving rather than trusting it. The static ones cannot go on an interface as written, which is why none is on the port. Note also that `discardSessionState()` throws `ConnectionMustBeEvicted`, so the pool's obligation there is to CLOSE the connection rather than return it, and the zero-large-objects rule is a rule **plus** a capability revocation (`infra/README.md` § "No large objects, ever") rather than only a call. `assertStillBoundTo()` guards against a savepoint rollback silently
-   reverting the tenant binding — a cross-tenant read AND write, reproduced. It is called by nothing yet.
-   A change that lands a tenant-scoped repository, or enables Doctrine's nested transactions, without
-   wiring that re-check (or without removing the shape, per `build-waves.plan.md` Wave 1) is a **P0**.
+   reverting the tenant binding — a cross-tenant read AND write, reproduced. **WIRED 2026-08-06, and NO
+   repository calls it: `Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingMiddleware` makes the call
+   from the DBAL seam that EMITS the savepoint, tagged `doctrine.middleware` on the `default` connection only.**
+   So do NOT look for repository call sites — that is the wrong shape, and this row instructed you to look for
+   them until 2026-08-06. The reason the seam beats a per-repository call is that DBAL issues a savepoint for you
+   on any nested `beginTransaction()` (DBAL 4 has no other way to nest, and
+   `setNestTransactionsWithSavepoints(false)` throws), so the code that CREATES the divergence need not contain
+   the word "savepoint" and its author has no cue to check.
+   What IS a **P0** now: removing or narrowing that middleware; dropping its `connection: default` tag or its
+   `autoconfigure: false` (DoctrineBundle's autoconfiguration would then tag it for every connection, or a scoped
+   tag would be added ALONGSIDE the unscoped one rather than replacing it); adding a DBAL connection that carries
+   tenant data without it; making the guard degrade to a no-op instead of throwing when the driver's native
+   connection is not a `\PDO`; or widening its predicate to fire on a FULL `ROLLBACK`, which discards the binding
+   legitimately on every rolled-back request and would make the guard something a developer deletes.
+   Two things it deliberately does NOT do, so do not report either as a gap: it does not check after
+   `RELEASE SAVEPOINT` (a release does not revert a transaction-local setting — measured), and it is not
+   registered on the `owner` connection (migrations are legitimately tenant-less).
    This row exists because the obligation previously lived only in a docblock and one Decisions Log line,
-   and you are chartered at load time — so if it is not written here, you cannot know to look.
+   and you are chartered at load time — so if it is not written here, you cannot know to look. **And note what
+   this correction itself demonstrates: a charter is code that goes stale.** Before believing any subsystem claim
+   in this file, `grep` for the thing it names — the row you are reading was factually wrong for the length of
+   one commit.
 
 11. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
    with a `## Decisions Log`. If this change resolved a design decision, is it recorded there, in the
