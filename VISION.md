@@ -44,6 +44,17 @@ typed logic with no framework or I/O in it. That makes the idea cheap to keep op
 architecture in `CLAUDE.md` is justified entirely by this being a billing system, and would be correct
 if phorj never shipped. Do not let this item influence a single current decision.
 
+**What such a port would actually need is now written down, and writing it down changed nothing here.**
+`docs/PHORJ-REQUIREMENTS.md` measures phorj at `1.0.0-nightly.0` and lists the gaps as requirements addressed
+**outward, to phorj** — it is not a plan twes-in has adopted, and nothing in it is a reason to defer anything.
+Two findings from it are worth surfacing at this level, because they cut in opposite directions and both were
+measured rather than assumed. In phorj's favour: its `decimal` is a **kernel fixed-point `i128` type whose
+overflow faults**, which is stricter than the `bcmath`-over-strings `Money` this project had to write itself —
+so the crown-jewel risk of a port is smaller than it looks. Against: its PostgreSQL driver connects with
+**`NoTls` and nothing else**, and its guidance is to store decimal columns as `TEXT` — either of which would be
+disqualifying for a billing system today. That is the honest shape of the gap: the foundation is better than
+ours, the edges are not there yet.
+
 **twes-in as a phorj showcase.** A real, non-trivial product in the language would be the strongest
 argument for it. Downstream of the above, and equally not a commitment.
 
