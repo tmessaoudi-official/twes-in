@@ -266,6 +266,7 @@ assert_gate "clean: spdx-headers" spdx-headers.sh 0
 assert_gate "clean: locale-key-parity" locale-key-parity.php 0
 assert_gate "clean: dependency-licences" dependency-licences.php 0
 assert_gate "clean: shell-syntax" shell-syntax.sh 0
+assert_gate "clean: no-forgeable-tenancy" no-forgeable-tenancy-in-production.sh 0
 
 echo "== ambient clock, randomness, environment and I/O =="
 for pair in \
@@ -3121,6 +3122,53 @@ PYWM
   fi
 done
 
+echo "== no-forgeable-tenancy: the header adapter must stay disabled in every tracked file =="
+# WAVE 1 SCAFFOLDING. Delete this whole block in Wave 7 together with the gate, `HeaderTenantResolver` and
+# `TWES_TRUST_TENANT_HEADER` -- see the gate's own header for why it is deleted WITH the wave rather than before it.
+#
+# The REFUSAL cases first, then the FALSE-POSITIVE cases, and the second group is what keeps the gate usable: prose
+# legitimately names the knob, and the gate's FIRST version reported its own subject's PHP docblock as
+# configuration because PHP comments are not `#`-led.
+for tenancy_route in \
+  'dotenv-one:api/.env:TWES_TRUST_TENANT_HEADER=1' \
+  'dotenv-true:api/.env:TWES_TRUST_TENANT_HEADER=true' \
+  'dotenv-on:api/.env:TWES_TRUST_TENANT_HEADER=on' \
+  'dotenv-quoted:api/.env:TWES_TRUST_TENANT_HEADER="1"' \
+  'dotenv-spaced:api/.env:TWES_TRUST_TENANT_HEADER = 1' \
+  'infra-dotenv:infra/.env:TWES_TRUST_TENANT_HEADER=1' \
+  'yaml-mapping:api/config/services.yaml:    TWES_TRUST_TENANT_HEADER: 1' \
+  'php-env-write:api/src/UI/Probe.php:<?php $_ENV["TWES_TRUST_TENANT_HEADER"] = "1";' \
+  ; do
+  tenancy_name="${tenancy_route%%:*}"
+  tenancy_rest="${tenancy_route#*:}"
+  tenancy_path="${tenancy_rest%%:*}"
+  tenancy_line="${tenancy_rest#*:}"
+
+  fresh_fixture
+  mkdir -p "$WORK/repo/$(dirname "$tenancy_path")"
+  printf '%s\n' "$tenancy_line" >> "$WORK/repo/$tenancy_path"
+  assert_gate "no-forgeable-tenancy catches $tenancy_name" no-forgeable-tenancy-in-production.sh 1
+done
+
+for tenancy_ok in \
+  'shell-comment:api/.env:# TWES_TRUST_TENANT_HEADER=1 would be a cross-tenant read' \
+  'php-docblock:api/src/UI/Probe.php:<?php /** TWES_TRUST_TENANT_HEADER, which is 0 in every committed file. */' \
+  'php-line-comment:api/src/UI/Probe2.php:<?php // set TWES_TRUST_TENANT_HEADER: it is 0 everywhere' \
+  'prose-backtick:api/.env:# `TWES_TRUST_TENANT_HEADER`, which is `0` in api/.env' \
+  'disabled-again:api/.env:TWES_TRUST_TENANT_HEADER=0' \
+  'disabled-yaml:api/config/services.yaml:    TWES_TRUST_TENANT_HEADER: 0' \
+  ; do
+  tenancy_name="${tenancy_ok%%:*}"
+  tenancy_rest="${tenancy_ok#*:}"
+  tenancy_path="${tenancy_rest%%:*}"
+  tenancy_line="${tenancy_rest#*:}"
+
+  fresh_fixture
+  mkdir -p "$WORK/repo/$(dirname "$tenancy_path")"
+  printf '%s\n' "$tenancy_line" >> "$WORK/repo/$tenancy_path"
+  assert_gate "no-forgeable-tenancy does NOT flag: $tenancy_name" no-forgeable-tenancy-in-production.sh 0
+done
+
 echo "== the gate SET is fully wired -- no gate exists that nothing runs =="
 # Round 12 found shell-syntax.sh absent from `composer gate` one commit after it was added and documented as
 # FIRST in the gate command block. The reason it went unnoticed is that the clean-fixture block above is a
@@ -3316,9 +3364,9 @@ fi
 # 466/448, and contradicted its own commit message. The floors below are what is asserted; the totals
 # are not written down.]
 if docker compose version >/dev/null 2>&1; then
-  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 465
+  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 480
 else
-  assert_at_least "the suite itself has not shrunk (no docker)" "$passed" 438
+  assert_at_least "the suite itself has not shrunk (no docker)" "$passed" 453
 fi
 
 echo

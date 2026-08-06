@@ -112,3 +112,19 @@ services:
             $assertRevokedCapabilities: '%env(bool:TWES_ASSERT_REVOKED_CAPABILITIES)%'
         tags:
             - { name: 'doctrine.middleware', connection: 'default' }
+
+    # THE REQUEST-TENANCY SEAM. Wave 1 scaffolding; Wave 7 replaces the resolver with an authenticated one and
+    # DELETES the header adapter, the env variable and the gate together.
+    #
+    # `HeaderTenantResolver` trusts a caller-supplied header, so it is NOT authentication and is disabled in every
+    # committed configuration. Three independent controls, because one would not be enough: it refuses loudly when
+    # not permitted, `TWES_TRUST_TENANT_HEADER` is 0 in api/.env AND infra/.env, and
+    # `scripts/gates/no-forgeable-tenancy-in-production.sh` refuses any other value in a tracked file.
+    Twes\UI\Http\Tenancy\HeaderTenantResolver:
+        arguments:
+            $permitted: '%env(bool:TWES_TRUST_TENANT_HEADER)%'
+
+    # The PORT → the only adapter that exists today. Explicit rather than auto-aliased so that the day Wave 7 adds
+    # a second implementation, the choice of which one is wired is a visible one-line diff here rather than an
+    # autowiring accident -- and so that removing the header adapter breaks THIS line loudly.
+    Twes\Infrastructure\Tenancy\TenantResolver: '@Twes\UI\Http\Tenancy\HeaderTenantResolver'

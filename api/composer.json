@@ -83,6 +83,7 @@
             "bash ../scripts/gates/spdx-headers.sh",
             "@php ../scripts/gates/no-orphaned-docblocks.php",
             "@php ../scripts/gates/no-owner-connection-in-application.php",
+            "bash ../scripts/gates/no-forgeable-tenancy-in-production.sh",
             "@php ../scripts/gates/locale-key-parity.php",
             "bash ../scripts/gates/compose-config.sh",
             "bash ../scripts/gates/worker-mode-blocked.sh",
