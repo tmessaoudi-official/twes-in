@@ -14,12 +14,13 @@ newer port and had already removed a credential-leak vector present in the earli
 
 | File | Role |
 |---|---|
-| `install.sh` | **SessionStart hook.** `cp -u` the three docs below into `~/.claude/`, and create `var/claude/`. Nothing else. |
+| `install.sh` | **SessionStart hook.** Copies the three docs below into `~/.claude/` **unconditionally** — the repo is the truth — and creates `var/claude/`. Nothing else. It used `cp -u` until 2026-08-06, and this row said so; that was a defect rather than a description, because `cp -u` compares the **source** mtime, so a fresh `git clone` stamps every repo file newer than the target and it clobbered unconditionally anyway, while a hand-edited target silently won forever. Neither behaviour was chosen. A pre-existing foreign `~/.claude/CLAUDE.md` is snapshotted **once** to `<name>.pre-bootstrap.bak` and that snapshot is never touched again. |
 | `CLAUDE-global.md` | The global reasoning framework → installed as `~/.claude/CLAUDE.md`. The 8-phase workflow, the four-dimension Completion Gate, the 18 Core Operating Rules, evidence grades. |
 | `THINKING.md` | 33 named mental models → `~/.claude/THINKING.md`. Reference only, not auto-loaded — read it or `@THINKING.md` when you want the frameworks in context. |
 | `BLAST-RADIUS.md` | State-dependent destructive-command reference → `~/.claude/BLAST-RADIUS.md`. |
 | `hooks/precompact-handoff.sh` | **PreCompact hook.** Writes `var/claude/handoff/{latest,handoff-<stamp>}.md` before compaction. Deterministic — no LLM call. |
 | `hooks/test-precompact-handoff.sh` | Test suite for the above. Run it after any edit to the hook. |
+| `test-install.sh` | Test suite for `install.sh`, pinning the repo-is-truth contract and the once-only snapshot. Run it after any edit to the installer. Ported from `rent-watch` on 2026-08-06, which is where the `cp -u` defect above was diagnosed. |
 | `hooks/log-helpers.sh` | `log_obs()`, shared by the hooks. |
 | `apply-pending-settings.sh` | The `.claude/settings.json` hand-over relay. See below — currently **not needed here**, kept deliberately. |
 
@@ -94,7 +95,13 @@ ls -l ~/.claude/{CLAUDE.md,THINKING.md,BLAST-RADIUS.md}
 head -40 ~/.claude/CLAUDE.md          # should open with the twes-in adaptation header
 bash -n scripts/claude-bootstrap/*.sh scripts/claude-bootstrap/hooks/*.sh
 bash scripts/claude-bootstrap/hooks/test-precompact-handoff.sh
+bash scripts/claude-bootstrap/test-install.sh
 ```
+
+Neither test suite is wired into `composer gate`, and that is deliberate rather than an omission: both
+drive `install.sh`/the PreCompact hook against a sandboxed `HOME`, so they exercise the **session
+bootstrap** rather than the product, and a gate step that rewrites `$HOME` is a worse trade than a
+documented manual run. Run them after any edit to the script they cover — that is the whole protocol.
 
 ## What was rejected from the bundle, and why
 

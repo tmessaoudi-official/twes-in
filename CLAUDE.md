@@ -593,7 +593,19 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
-`gate:test`. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — is the one step no documented environment makes pass**: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). Round 22 filed this; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **`gate:static` now passes** — see its row above. **Two of seven steps also failed for a different reason for one commit:**
+`gate:test`. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — was for three commits the one step no documented environment made pass**, which is fixed here by writing the invocation down rather than describing it: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). **The whole chain green, verbatim** — the local dev credentials are the throwaway ones already committed in `api/.env`, and the shape is what matters rather than the values:
+
+```
+pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start   # two clusters share 5432; see § Gotchas
+cd api && COMPOSER_ALLOW_SUPERUSER=1 \
+  TWES_SCHEMA_DSN="pgsql:host=127.0.0.1;port=5432;dbname=twes_in;user=twes_owner;password=twes_owner" \
+  TWES_SCHEMA_USER=twes composer gate
+```
+
+The DSN connects as the **owner** because reading `pg_policy`, `pg_class.relowner` and `pg_authid` needs a
+role that can see them, while `TWES_SCHEMA_USER=twes` names the **runtime** role every ownership and
+`TRUNCATE` assertion is made ABOUT. Getting those two backwards is the mistake the parameter names invite.
+Round 22 filed the missing invocation; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **`gate:static` now passes** — see its row above. **Two of seven steps also failed for a different reason for one commit:**
 `gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit` and exited 127 while
 this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the tier was
 always actually verified with. **The REASON this row gave for that was false when it was written and is corrected
