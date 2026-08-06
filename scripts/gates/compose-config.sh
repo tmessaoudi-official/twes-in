@@ -121,18 +121,27 @@ fi
 # obstacle at lint time. Deliberately obvious values, so a copy-paste into a real `.env` is self-evidently wrong.
 readonly RENDER_ENV="$(mktemp)"
 
-cat > "$RENDER_ENV" <<'EOF'
-APP_ENV=prod
-APP_DEBUG=0
+# SEEDED FROM THE REAL `infra/.env`, then only the SECRETS overridden. The first version wrote a wholly synthetic
+# file, and `docker compose --env-file` REPLACES the project env-file rather than layering over it -- so every value
+# declared in the tracked `infra/.env` was structurally invisible to this gate. That mattered twice: it made
+# `CLAUDE.md`'s claim that "both directions are needed and neither is sufficient" false (the rendered half never
+# covered the text half's primary file), and it made the runtime-role check below unable to see the very edit it
+# exists to catch -- a reviewer changed `TWES_DB_RUNTIME_ROLE` to the owner role and this gate rendered the
+# PLACEHOLDER value instead, reporting OK.
+#
+# Later assignments win in a compose env-file [Verified: `X=a` then `X=b` renders `b`], so appending the placeholder
+# secrets after the real file gives both properties: real values are visible, and `${VAR:?...}` still renders
+# without a credential in the repository.
+#
+# ONLY the four secrets are overridden. Role NAMES are deliberately NOT, because they are what the check reads; and
+# `SERVER_NAME` is not, because it splices into the Caddyfile and a tampered value must reach the renderer.
+cat "$INFRA/.env" > "$RENDER_ENV"
+
+cat >> "$RENDER_ENV" <<'EOF'
 APP_SECRET=GATE-RENDERING-ONLY-NOT-A-SECRET
-SERVER_NAME=:80
-POSTGRES_DB=twes
-POSTGRES_USER=postgres
-POSTGRES_PASSWORD=GATE-RENDERING-ONLY
-TWES_DB_RUNTIME_ROLE=twes
-TWES_DB_RUNTIME_PASSWORD=GATE-RENDERING-ONLY
-TWES_DB_OWNER_ROLE=twes_owner
-TWES_DB_OWNER_PASSWORD=GATE-RENDERING-ONLY
+POSTGRES_PASSWORD=GATE-RENDERING-ONLY-NOT-A-SECRET
+TWES_DB_RUNTIME_PASSWORD=GATE-RENDERING-ONLY-NOT-A-SECRET
+TWES_DB_OWNER_PASSWORD=GATE-RENDERING-ONLY-NOT-A-SECRET
 EOF
 
 # THE RECEIVERS THE APPLICATION ACTUALLY DEFINES, DERIVED rather than written down here. A second hand-maintained
@@ -195,6 +204,71 @@ if holders != ['migrate']:
         'DATABASE_URL_OWNER is held by %s; it must be held by `migrate` and nothing else. A serving container '
         'that can reach the owning role can ALTER TABLE ... DISABLE ROW LEVEL SECURITY on every tenant table.'
         % (', '.join(holders) or 'no service'))
+
+# 1b. AND THE ROLE INSIDE `DATABASE_URL` IS THE RESTRICTED ONE. Check 1 above asserts only that the owner
+#     *variable* is confined to `migrate`, and a certification round showed that is not the same property: the
+#     runtime DSN's user is interpolated from `TWES_DB_RUNTIME_ROLE`, so changing ONE TOKEN in the tracked
+#     `infra/.env` gives every serving container the owning role, with every gate green. The reviewer proved the
+#     breach against the live migrated database -- `ALTER TABLE document DISABLE ROW LEVEL SECURITY`,
+#     `relrowsecurity` t -> f.
+#
+#     Nothing else could see it: `docker-entrypoint.sh` refuses `DATABASE_URL_OWNER` in the environment and never
+#     inspects the role inside `DATABASE_URL`; `no-owner-connection-in-application.php` looks for the named `owner`
+#     CONNECTION, not a DSN; `schema-tenancy.php` is TOLD the runtime role's name and believes it.
+#
+#     RELATIONAL, not an allow-list of role names, so it survives an operator renaming the roles: whatever user the
+#     OWNER dsn names, no other DSN in the configuration may use it. That is the same shape as the Gotenberg
+#     allow/deny check below -- assert the relationship between two values rather than banning a literal.
+def dsn_user(value):
+    match = re.match(r'^[a-z0-9+.-]+://([^:@/]+)', str(value or ''))
+    return match.group(1) if match else None
+
+
+owner_roles = {
+    dsn_user(env.get('DATABASE_URL_OWNER'))
+    for env in ((s.get('environment') or {}) for s in services.values())
+    if dsn_user(env.get('DATABASE_URL_OWNER'))
+}
+
+if not owner_roles:
+    problems.append(
+        'no service declares DATABASE_URL_OWNER, so the runtime role could not be compared against the owning '
+        'role and this check asserted NOTHING. A rendered configuration with no owner DSN is not a safe one -- it '
+        'means migrations have nowhere safe to run.')
+
+for name, svc in sorted(services.items()):
+    env = svc.get('environment') or {}
+    runtime_role = dsn_user(env.get('DATABASE_URL'))
+    if runtime_role is None:
+        continue
+    if runtime_role in owner_roles:
+        problems.append(
+            '%s connects as "%s" in DATABASE_URL, which is the role DATABASE_URL_OWNER names. The runtime role '
+            'must own nothing: a table\'s owner can ALTER TABLE ... DISABLE ROW LEVEL SECURITY in one statement, '
+            'and FORCE ROW LEVEL SECURITY stops an owner SKIPPING policies, not REMOVING them.'
+            % (name, runtime_role))
+    if runtime_role in ('postgres', 'root'):
+        problems.append(
+            '%s connects as "%s" in DATABASE_URL. A superuser is exempt from row-level security entirely, so every '
+            'tenancy assertion in this project would be vacuous against it.' % (name, runtime_role))
+
+# 1c. NO SERVICE MAY OVERRIDE THE SERVER INVOCATION. FrankenPHP takes `--worker` as a CLI FLAG -- an entire switch
+#     class no text rule in this repository had a rule for, found by a certification round and proven resident
+#     (four requests, one pid). `docker-entrypoint.sh` ends in `exec "$@"`, so a compose `command:` IS the server
+#     invocation.
+#
+#     An ALLOW-LIST of what a command may name, not a block-list of flags: the next worker spelling is a flag
+#     nobody has written yet, and this project has been defeated three times by enumerating the forbidden side.
+#     No compose service has any business naming the server binary at all -- the image's own CMD does that.
+for name, svc in sorted(services.items()):
+    command = svc.get('command')
+    words = command.split() if isinstance(command, str) else [str(w) for w in (command or [])]
+    if any('frankenphp' in word for word in words):
+        problems.append(
+            '%s overrides the server invocation (`command` names frankenphp). The image CMD is the only place the '
+            'server is invoked, because `--worker` is a CLI FLAG: a command override enables worker mode without '
+            'touching APP_RUNTIME, the Caddyfile or any seam. Blocked until the client portal (Wave 10) has its '
+            'own random_bytes(32) token.' % name)
 
 # 2. Exactly one scheduler.
 replicas = ((services.get('scheduler') or {}).get('deploy') or {}).get('replicas')

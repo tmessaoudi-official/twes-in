@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-06 05:40] AGREED: the worker-mode control STOPS text-scanning. A `frankenphp adapt` ORACLE on the rendered configuration replaces detection (it asks the server, so the CLI flag, directives, seams, block scalars and indirection close by construction); only the `APP_RUNTIME` literal allow-list and `extra.runtime` remain as the no-Docker layer; the comment/continuation machinery is DELETED rather than patched. Five versions were each defeated within one round and the fifth regressed against the fourth. The oracle is NOT yet built — the pinned image would not pull here.
 - [2026-08-06 03:10] AGREED: the Caddy-config and seam derivation lives ONCE, in `scripts/gates/lib/caddy-configs.sh`, sourced by both worker-mode gates — a near-copy in each is how they came to derive different sets. Libraries under `scripts/gates/lib/` are excluded from the gate inventory but must be sourced, required or executed by a gate, checked and proven by a mutant. And Wave 10's deletion instruction is a PROCEDURE ending in *"run `composer gate` and fix everything it reports"*, because a hand-written collateral list has been incomplete three times running.
 - [2026-08-06 01:20] AGREED: the worker-mode value axis is REBUILT rather than patched — the analysis moves to `scripts/gates/lib/worker-mode-analyse.php`, does exactly two total operations (join continuations into logical lines; one quote-aware scan per line), and compares text against committed literals WITHOUT extracting any value. `SERVER_NAME` stops being an exemption and gets a structural no-brace rule plus a quote-balance rule; Caddy configs are identified by what the Dockerfile SERVES rather than by filename; only declaration positions are judged.
 - [2026-08-05 23:10] AGREED: `extra.runtime` in any `composer.json` must be ABSENT or hold nothing but `class` equal to the permitted runtime — an allow-list of KEYS, because `symfony/runtime`'s ComposerPlugin consumes three keys and BAKES every other one into the generated bootstrap. Reading `class` alone left `autoload_template` (which replaces the bootstrap wholesale) and `dotenv_path`+`dotenv_overload` (which override the container's own `DATABASE_URL` and hand a serving process the OWNER role) both open.
@@ -2680,3 +2681,82 @@ an exemption inside a cross-check is where drift hides: every file under `script
 required or executed by a gate. Proven by a mutant: an orphan library fires it. The first version of that check
 matched only `source|require` with a `lib/` prefix and missed BOTH existing libraries, since one is invoked as
 `php <path>` and the other via `require __DIR__ . '/…'`.
+
+### Certification round 31 — thirty-nine findings, and the decision to stop patching
+
+**39 findings from a full three-lens panel against frozen `4d51c08`: 13 P0.** The count is not the point. **Four of
+the seven new worker-mode P0s were REGRESSIONS** — routes that BOTH earlier versions refused and the round-30
+rewrite broke:
+
+| Route | Why v5 missed it | Oracle used |
+|---|---|---|
+| a comment line ending in `\` swallows the next real declaration | `logicalLines()` starts a continuation buffer from a comment line; the joined line then begins `#` and is discarded wholesale | `docker compose config` renders the worker runtime at five sites |
+| `scan()` cuts at an unquoted `//` | a comment leader in NONE of the five dialects the file itself lists; one URL hides the rest of the line. Deleting the cut leaves the suite green, so it protected nothing | instrumented `CODE=[…DOCS_URL=https:]` |
+| a comment WITHOUT a trailing `\` terminates the logical line | BuildKit CONTINUES the instruction across it — the docblock's "this is what BuildKit does" was half of it, so the split-keyword attack is reachable again by putting a comment at the split point | real BuildKit build of the tracked bytes |
+| the declaration-position rule skips an assignment preceded by `(` | `(FRANKENPHP_CONFIG="worker …" exec "$@")` in the tracked entrypoint; propagates, and no rendering can see it | `sh -c`/`bash -c` both print it from `env` |
+
+Three of those share ONE cause: the comment handling inside `logicalLines()`. **A transformation set is an
+enumeration too** was round 30's lesson, and round 30's fix proved it again from the inside — the two "total
+operations" that replaced five strips became the attack surface within one round.
+
+**Plus a whole switch class with no rule anywhere: FrankenPHP's `--worker` CLI FLAG.** `docker-entrypoint.sh` ends in
+`exec "$@"`, so a compose `command:` IS the server invocation. Proven resident: four requests, one pid.
+
+**And two findings recorded FIXED that were not.** R30-6(a): `EXCLUDED_PATTERNS` applies to `in_scope` but not to
+`caddy_config_paths()`, so a served `infra/api/tests/Caddyfile` is COUNTED (`caddyfiles=2`) and never READ.
+R30-8: `extra.runtime` is scoped to files NAMED `composer.json`, and `ENV COMPOSER=composer-worker.json` reaches the
+owner role — proven with a real Composer run and a live DSN escalation.
+
+**AGREED (developer, 2026-08-06): stop text-scanning. Ask the server.** Five versions have been defeated within one
+round each and the fifth was net-negative against its predecessor. The design:
+
+1. **An ORACLE for the Caddy side** — render the real configuration, run `frankenphp adapt` on the effective
+   Caddyfile, assert **zero workers**. That closes the CLI flag, directives, seams, block scalars, indirection and
+   `import` BY CONSTRUCTION, because the server answers. Same shift this project already made for tenancy:
+   `BehaviouralIsolationTest` attacks a real database rather than cataloguing predicates.
+2. **Keep only the two rules never defeated in three rounds** as the no-Docker layer: the `APP_RUNTIME` literal
+   allow-list and `extra.runtime` (filename scoping fixed).
+3. **DELETE the comment/continuation machinery** rather than patch it — reverting three regressions beats fixing
+   them.
+
+**WHAT LANDED IN THIS COMMIT, all four mutant-proven, and what did NOT.**
+
+Landed — the independent tenancy P0 and the architectural defect that hid it:
+
+- **The runtime DSN's ROLE is checked** (security F6). `TWES_DB_RUNTIME_ROLE=twes_owner` — one token in the tracked
+  `infra/.env` — gave every serving container the owning role with every gate green; a reviewer proved the breach
+  against the live migrated database (`ALTER TABLE document DISABLE ROW LEVEL SECURITY`, `relrowsecurity` t → f).
+  The check is **RELATIONAL, not an allow-list of names**, so it survives an operator renaming the roles: whatever
+  user the OWNER dsn names, no other DSN may use it. Plus a superuser refusal, since a superuser is exempt from row
+  security entirely and would make every tenancy assertion here vacuous.
+- **`compose-config.sh` can now SEE `infra/.env`** (correctness C8). `docker compose --env-file` REPLACES the project
+  env-file rather than layering, so every value declared in the tracked `infra/.env` was structurally invisible to
+  the rendered half — which made *"both directions are needed and neither is sufficient"* FALSE, and made the role
+  check above **unable to see the very edit it exists to catch**. The render environment is now SEEDED from the real
+  file with only the four secrets overridden (later assignments win in a compose env-file — verified). This is why
+  the first version of the F6 fix reported OK on the breach.
+- **No service may override the server invocation** — an allow-list on the invocation rather than a block-list of
+  flags, closing the CLI-flag class in the rendered configuration.
+
+**NOT landed, and open:** the `frankenphp adapt` oracle itself. It needs `dunglas/frankenphp:1.12.6-php8.5-alpine`,
+and a pull timed out in this container [Verified: `docker pull -q` → failed at 240s], so it could not be built and
+mutant-proven here. The dialect machinery is therefore still in place and still carries the four regressions above.
+**That is a deliberate stop, not an oversight**: half-stripping the machinery while the oracle that replaces it does
+not exist would leave the gate weaker than either end state.
+
+**Also open from round 31, itemised so none is lost:** the four dialect regressions (C1-C5); R30-6(a) and R30-8
+(`caddy_config_paths` ignoring exclusions; `extra.runtime` scoped to a filename); the three `caddy_config_paths`
+clause-(b) evasions (`--config=`, a flagged `COPY`, a directory destination); the DEAD `not_a_seam` ratchet (renamed
+to `structural_placeholder` in `6f58a87` and never updated, so it is arithmetically incapable of failing — a second
+exempt placeholder passes it); the library-reachability rule being satisfied by any comment INCLUDING its own;
+`TWES_CADDY_NO_INDEX` being fail-open and ungated; `PERMITTED_SEAM_TEMPLATES` having no ratchet; four unpinned rules
+(`inspected == 0` — still, though R30-11 records it FIXED — the continuation escape-hatch, the `\`-escape rule, the
+unreadable-file rule); the compose fixture copying 153 gitignored files including `infra/.env.local`; the Wave 10
+`[Verified: 418 passed, 6 failed]` citation, which reproduces as 407/58 or 395/70 depending on which steps are
+applied; and the stale prose at `CLAUDE.md:428`, `:591`, `:643` and `infra/README.md:189`.
+
+**Two process notes.** The "flaky meta-suite" observed by one lens was **disk pressure in its own scratchpad**, not a
+fixture race — `/` at 94% with a leaked 3GB directory; freeing space reproduced a clean run. And `excluded` is **87**,
+not the 86 quoted mid-session; no tracked file writes either number.
+
+**Still no two consecutive clean rounds.** 14, 24, 18, 26, 17, 31, 28, 39.
