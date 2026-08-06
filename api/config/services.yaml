@@ -30,6 +30,13 @@ services:
             - '../src/Infrastructure/Tenancy/TenantId.php'
             # Doctrine entities are ROWS, not services -- the container must never construct one.
             - '../src/Infrastructure/Persistence/Doctrine/Entity/'
+            # The savepoint-guard WRAPPERS. Each is constructed by the middleware around an object DBAL supplies
+            # (a Driver, a driver Connection, a prepared Statement), so none can be autowired and none should be
+            # a service: the container listed all three before this exclusion existed, purely because they sit
+            # under an autowired namespace. Only the MIDDLEWARE itself is a service -- see its own entry below.
+            - '../src/Infrastructure/Tenancy/Doctrine/SavepointTenantBindingDriver.php'
+            - '../src/Infrastructure/Tenancy/Doctrine/SavepointTenantBindingConnection.php'
+            - '../src/Infrastructure/Tenancy/Doctrine/SavepointTenantBindingStatement.php'
 
     Twes\UI\:
         resource: '../src/UI/'
@@ -38,3 +45,22 @@ services:
             # scalars, so the container cannot autowire them and must not try; this is the same argument that
             # excludes the Doctrine entities above. The state PROVIDER is a service and stays autowired.
             - '../src/UI/Http/ApiResource/'
+
+    # THE SAVEPOINT TENANT-BINDING GUARD, on the RUNTIME connection only.
+    #
+    # `autoconfigure: false` is the load-bearing part. DoctrineBundle registers an autoconfiguration for
+    # `Doctrine\DBAL\Driver\Middleware` that tags every implementation with a bare `doctrine.middleware`, which
+    # means EVERY connection -- and `debug:container` confirmed it: before this entry existed the middleware
+    # appeared as both `...SavepointTenantBindingMiddleware.default` and `...owner`. Leaving autoconfiguration on
+    # while adding a scoped tag would produce both the scoped and the unscoped registration rather than replacing
+    # it.
+    #
+    # Scoped to `default` because `owner` exists solely so migrations have a credential that is not the
+    # application's. A migration is legitimately tenant-less and runs before any tenant exists, so a tenancy guard
+    # there guards nothing and would only be able to fail. The security boundary between the two connections is
+    # described in doctrine.yaml.
+    Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingMiddleware:
+        autowire: true
+        autoconfigure: false
+        tags:
+            - { name: 'doctrine.middleware', connection: 'default' }

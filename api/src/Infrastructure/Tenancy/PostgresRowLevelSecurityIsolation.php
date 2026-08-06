@@ -230,11 +230,23 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * to know what the application believes. So the check has to be app-side, and it has to be a re-read
      * rather than a cached flag, because the whole failure is that the cached belief is the stale thing.
      *
-     * **Obligation, recorded so it cannot be forgotten:** every tenant-scoped repository must call this after
-     * any savepoint release or rollback, and Wave 1 owes the wiring. Nothing calls it today because no
-     * repository exists yet — which is why this docblock states the obligation instead of the method quietly
-     * existing. A capability with a test and a recorded obligation is not the same thing as a rule nothing
-     * consults; if Wave 1 lands repositories without these calls, that is a completeness-reviewer P0.
+     * **WIRED 2026-08-06, and NO REPOSITORY CALLS IT — deliberately.** This docblock said *"every tenant-scoped
+     * repository must call this after any savepoint release or rollback, and Wave 1 owes the wiring"*, and that
+     * obligation is now discharged in a way that removes the requirement rather than distributing it:
+     * {@see \Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingMiddleware} makes the call from the DBAL
+     * seam that emits the savepoint. That is strictly stronger than a per-repository call, because DBAL issues a
+     * savepoint for you on any nested `beginTransaction()` — so the code that creates the divergence need not
+     * contain the word, and a repository author has no cue to check. `build-waves.plan.md` ranked the options and
+     * this was the strongest available one; the one it ranked first, forbidding savepoint-backed nesting in
+     * configuration, turned out not to exist in DBAL 4.
+     *
+     * Two corrections to the sentence this replaces, both measured rather than argued. **"or rollback" was the only
+     * half that matters**: `RELEASE SAVEPOINT` does not revert a transaction-local setting [Verified on a live
+     * connection], so a re-check after a release could never fire. And a **full** rollback must NOT be re-checked —
+     * it discards the binding legitimately, so a check there would throw on every rolled-back request.
+     *
+     * This method also moved onto {@see TenantIsolationStrategy}, so a caller holding the port can reach it without
+     * an `instanceof`. See the port for the obligation as stated to implementors.
      */
     public function assertStillBoundTo(\PDO $connection, TenantContext $context): void
     {

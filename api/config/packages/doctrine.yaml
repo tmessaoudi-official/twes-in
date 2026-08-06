@@ -32,9 +32,20 @@ doctrine:
                 # concern behind it is live and unaffected: a rolled-back savepoint RESTORES the
                 # transaction-local `twes.tenant_id` set by `set_config(..., true)`, so a nested rollback can
                 # silently rebind a connection to a PREVIOUS tenant.
-                # `PostgresRowLevelSecurityIsolation::assertStillBoundTo()` exists to catch exactly that, and
-                # since DBAL now always uses savepoints the shape is always reachable -- which makes wiring that
-                # check a Wave 1 obligation rather than an optional hardening.
+                # `TenantIsolationStrategy::assertStillBoundTo()` exists to catch exactly that, and since DBAL now
+                # always uses savepoints the shape is always reachable -- which made wiring that check a Wave 1
+                # obligation rather than an optional hardening.
+                #
+                # WIRED 2026-08-06, and the note above understated the situation: DBAL does not merely default to
+                # savepoints, it REFUSES to do anything else. `setNestTransactionsWithSavepoints(false)` throws
+                # `InvalidArgumentException` ("no longer supported") and the method is deprecated with no
+                # replacement planned, so "forbid savepoint-backed nesting in configuration" -- one of the three
+                # options build-waves.plan.md offered for this -- is not an option that exists.
+                #
+                # The remedy is `SavepointTenantBindingMiddleware`, tagged below on THIS connection only. It sits
+                # at the seam that emits the savepoint rather than in each repository, so it catches a savepoint
+                # Doctrine issued on a nested beginTransaction() as well as one the application issued itself --
+                # and neither call site has to remember anything.
 
             owner:
                 url: '%env(resolve:DATABASE_URL_OWNER)%'

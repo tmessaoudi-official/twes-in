@@ -198,6 +198,12 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   in-memory and was FALSE in production — round 22 measured it. **(b) WAVE 4 OWES IT: the PDF renderer must FORMAT
   quantity, never print the raw string**, or an issued invoice reads `2.000000 ×`. That is the only place the
   instability becomes user-visible, and it is where the byte-identical re-download guarantee actually bites.
+- [2026-08-06 20:00] AGREED (decision 1 of 2 the savepoint section reserved for Wave 1): **`assertStillBoundTo()` lives on the `TenantIsolationStrategy` PORT**, not only on `PostgresRowLevelSecurityIsolation`. A guard reachable only by narrowing the abstraction is a guard the abstraction's users will not call. The port states the obligation to implementors, including that a `database`-per-tenant adapter satisfies it trivially — there is no binding to diverge when the tenant IS the connection — which is the right shape for a port: stated once, with the adapter for which it cannot fail saying so in three lines instead of each caller learning which adapters need it.
+- [2026-08-06 20:00] AGREED (decision 2 of 2): **the re-check is driven from the DBAL seam that emits the savepoint, not from repository code.** `SavepointTenantBindingMiddleware` + three wrappers, tagged `doctrine.middleware` on the `default` connection only. Chosen because it is the strongest option that EXISTS: the plan's first-ranked alternative — forbid savepoint-backed nested transactions in configuration — is not available in DBAL 4, where `setNestTransactionsWithSavepoints(false)` throws and `beginTransaction()` above level 1 creates a savepoint unconditionally [Verified in `vendor/doctrine/dbal/src/Connection.php`]. Decisive advantage over a per-repository call: DBAL issues a savepoint for you on a nested `beginTransaction()`, so the code that CREATES the divergence need not contain the word "savepoint" and its author has no cue to check. `autoconfigure: false` on the service is load-bearing — DoctrineBundle's autoconfiguration tags every `Driver\Middleware` for EVERY connection, and `debug:container` showed both `.default` and `.owner` before the explicit definition existed.
+- [2026-08-06 20:00] FOUND: **the prescription's "after any savepoint release or rollback" was half wrong, and a FULL rollback must be excluded.** `RELEASE SAVEPOINT` does not revert a transaction-local setting [Verified on a live connection], so that half could never fire. And `ROLLBACK` (no `TO` clause) discards the binding legitimately, so checking it would throw on every rolled-back request — the failure mode that gets a guard deleted rather than merely reported. Both directions are cases, and a mutant widening the predicate to every `ROLLBACK` turns 23 passing tests into 5 failures.
+- [2026-08-06 20:00] FOUND: **PostgreSQL accepts four spellings of a savepoint rollback and the `SAVEPOINT` keyword is OPTIONAL** [Verified: `ROLLBACK TO sp1`, `ROLLBACK TRANSACTION TO SAVEPOINT sp2`, `ROLLBACK WORK TO SAVEPOINT sp3` and Doctrine's own form all accepted]. `stripos($sql, 'ROLLBACK TO SAVEPOINT')` matches only Doctrine's and misses three that application code can write. The predicate is derived from the grammar instead — same polarity inversion `worker-mode-blocked.sh` needed three defeats to learn — and a mutant restoring the literal spelling turns 23 passing tests into 6 failures.
+- [2026-08-06 20:00] RECORDED: the guard **refuses to run rather than degrading** when the driver's native connection is not a `\PDO`. The tempting `if (!$native instanceof \PDO) { return; }` is unreachable under `pdo_pgsql` — and it is the silent-no-op shape § Gotchas records four times, on a control whose failure is a cross-tenant read. It throws a `\LogicException` naming the supported driver.
+
 - [2026-08-06 18:30] AGREED: **the rendered document number's PATTERN is derived from the stored string, and `InvoiceMapper` is therefore stateless.** Implementing the 2026-08-01 ruling turned out to remove a dependency rather than add one: `NumberPattern::format()` is left-zero-padding, so `padded(strlen($rendered))->format($sequence)` reproduces `$rendered` exactly for every *(width, sequence)* pair [Verified: 48 of 48 combinations of width {1,2,3,7,8,20} × sequence {1,9,10,41,99,100,12345678,PHP_INT_MAX}, zero mismatches]. Chosen over keeping the injected default for the reason the whole column exists: an absent dependency cannot be misconfigured and a default can. The derivation is CHECKED against the stored string rather than trusted — § Gotchas 2026-07-31's *"a control may not derive its own expected value from the input it is validating"* — so a row whose two halves disagree is refused instead of reading back as a number nobody issued.
 - [2026-08-06 18:30] AGREED: **the AUTHORED pattern width is not recovered when a sequence outran its padding, and that is accepted rather than worked around.** Width 3 with sequence 12345 renders `12345`, and every width from 1 to 5 renders it identically — so the difference is unobservable on any document, payload or audit, and recovering it would need the second column the 2026-08-01 ruling rejected by name. The consequence for the round-trip contract test: that one case asserts RENDERING equality and cannot use the whole-aggregate backstop, because the pattern objects legitimately differ.
 - [2026-08-06 18:30] FOUND: **the migrations' CHECK constraints were asserted by NOTHING**, five of them, since `Version20260801120000`. Lower risk than the usual unenforced-control shape — PostgreSQL cannot quietly stop applying a constraint — but a constraint nobody names is one a future `diff`-generated migration can drop with every test still green. `api/tests/Integration/Document/DocumentNumberConstraintsTest.php` now covers the two new ones and the pre-existing `document_number_is_positive` beside them, asserting the CONSTRAINT NAME rather than "something threw". Still uncovered and named here so it is visibly owed: `document_type_is_known`, `document_state_is_known`, `document_vat_rounding_point_is_known`, `document_number_sequence_type_is_known` and `document_number_sequence_starts_at_one`.
@@ -367,9 +373,12 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   transaction-local settings — so the binding is silently undone and subsequent queries read the OLD tenant's
   rows under the NEW tenant's name. **A cross-tenant read with the whole isolation suite green**, because
   nothing in it crosses a savepoint. Closed by `assertStillBoundTo()`: a re-read, not a cached flag, because the
-  stale cached belief IS the failure. Mutation-proven. **Nothing calls it yet** — no repository exists — so Wave
-  1 owes the wiring and the docblock says so; landing repositories without those calls is a
-  `completeness-reviewer` **P0**.
+  stale cached belief IS the failure. Mutation-proven. ~~**Nothing calls it yet** — no repository exists — so Wave
+  1 owes the wiring and the docblock says so~~ **(true when written; WIRED 2026-08-06 — see that date's entries.
+  The wiring is a DBAL middleware at the savepoint-emitting seam, so no repository calls it and none should: DBAL
+  issues a savepoint on any nested `beginTransaction()`, where a repository author has no cue to check.
+  Annotated inline rather than rewritten, because a dated log entry is a record)**; landing repositories without
+  those calls is a `completeness-reviewer` **P0**.
 - [2026-07-30 05:20] RECORDED: **R2-13's three named evasions were still live seven rounds after being
   reported** — `new ($expr)()`, `new (self::CONST)()` and `DateTimeImmutable::createFromFormat()` each produced
   `no-ambient-calls: OK` with exit 0. Both fixes ban a SHAPE rather than resolving an expression, and the
@@ -1005,23 +1014,47 @@ inclusive tax, a worked case showing the extraction. Until then `VatRoundingPoin
 the kernel carries, and it is genuinely one implementation rather than two — which is the invariant that line
 was really about.
 
-**WAVE 1 ALSO OWES THE SAVEPOINT RE-CHECK WIRING** (round 9, P2-2 — the obligation existed only in a
-Decisions Log line and a docblock, i.e. in neither place a Wave 1 session or its reviewer would look).
-`PostgresRowLevelSecurityIsolation::assertStillBoundTo()` exists, is tested and is called by **nothing**. A
-`ROLLBACK TO SAVEPOINT` reverts the transaction-local tenant binding while the PHP-side context still holds
-the new tenant, which permits a cross-tenant **read and write** — reproduced against a real policed table.
-Doctrine emits savepoints for nested transactions, so this becomes live the moment persistence lands.
+**~~WAVE 1 ALSO OWES THE SAVEPOINT RE-CHECK WIRING~~ — DONE 2026-08-06, and both decisions were made rather than
+inherited.** (Round 9, P2-2 — the obligation existed only in a Decisions Log line and a docblock, i.e. in neither
+place a Wave 1 session or its reviewer would look.) `assertStillBoundTo()` existed, was tested and was called by
+**nothing**. A `ROLLBACK TO SAVEPOINT` reverts the transaction-local tenant binding while the PHP-side context still
+holds the new tenant, which permits a cross-tenant **read and write** — reproduced against a real policed table.
+Doctrine emits savepoints for nested transactions, so it went live the moment persistence landed.
 
-Two things Wave 1 must decide rather than inherit, because round 9 showed the obligation is addressed to a
-layer that cannot see its own trigger — repository code does not issue the savepoint and cannot observe it:
+The two decisions, with what actually happened to each:
 
 1. **Put `assertStillBoundTo()` on the `TenantIsolationStrategy` port**, not only the concrete class. A
    repository injected with the port — which is the point of the seam — cannot call it today without an
-   `instanceof`, so correct code written against the abstraction is defenceless.
+   `instanceof`, so correct code written against the abstraction is defenceless. **DONE**: the method is on the
+   port, with the obligation stated to implementors there, and the note that a `database`-per-tenant adapter
+   satisfies it trivially because there is no binding to diverge.
 2. **Prefer removing the shape to checking for it**: either drive the re-check from the savepoint-emitting
    seam (a DBAL middleware), or forbid savepoint-backed nested transactions in configuration. A check every
    caller must remember is the weakest of the three, and this repo already records that a control enforced
-   only by a reviewer's memory is not a control.
+   only by a reviewer's memory is not a control. **DONE, and one of the three options DOES NOT EXIST**:
+   `Connection::setNestTransactionsWithSavepoints(false)` throws `InvalidArgumentException` ("no longer
+   supported") and is `@deprecated No replacement planned`, while `beginTransaction()` above nesting level 1 calls
+   `createSavepoint()` unconditionally [Verified: `vendor/doctrine/dbal/src/Connection.php:1005-1012` and
+   `:1048-1064`]. So savepoint-backed nesting cannot be turned off, and the middleware is the answer rather than
+   the preference. `SavepointTenantBindingMiddleware` (+ `Driver`, `Connection`, `Statement` wrappers) is tagged
+   `doctrine.middleware` on the **`default`** connection only — not `owner`, which exists so migrations have a
+   non-application credential and is legitimately tenant-less.
+
+**Three findings from building it, each of which changes what the prescription above should have said:**
+- **Only the ROLLBACK half matters.** The wording said to re-check *"after any savepoint release or rollback"*.
+  `RELEASE SAVEPOINT` does **not** revert a transaction-local setting [Verified on a live connection: after
+  `RELEASE SAVEPOINT sp1` a value set inside the savepoint was still present], so a check there could never fire —
+  the vacuity shape § Gotchas records four times.
+- **A FULL rollback must NOT be checked**, and getting this wrong would have made the guard unusable rather than
+  merely noisy: `ROLLBACK` discards the binding legitimately on every rolled-back request, so a check would throw
+  on correct code and the first person to hit it would delete the middleware. Pinned by a case, and a mutant that
+  widens the predicate to every `ROLLBACK` turns 23 passing tests into 5 failures.
+- **PostgreSQL accepts FOUR spellings and the `SAVEPOINT` keyword is OPTIONAL** — `ROLLBACK TO sp1`,
+  `ROLLBACK TRANSACTION TO SAVEPOINT sp2`, `ROLLBACK WORK TO SAVEPOINT sp3`, plus the form Doctrine emits [Verified:
+  all four accepted]. So the obvious `stripos($sql, 'ROLLBACK TO SAVEPOINT')` matches only what Doctrine happens to
+  emit and misses three forms application code can produce. The predicate is derived from the GRAMMAR instead —
+  begins with `ROLLBACK`, carries a `TO` clause — which is the polarity inversion
+  `scripts/gates/worker-mode-blocked.sh` needed three defeats to learn.
 
 **WAVE 1 ALSO OWES THE CONNECTION-LIFECYCLE WIRING FOR THE SEVENTH AND EIGHTH CARRIERS** (round 12). This is
 recorded here rather than only in a docblock because that is precisely the omission round 11 recorded *closing*

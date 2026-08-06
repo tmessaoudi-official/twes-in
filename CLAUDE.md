@@ -1489,6 +1489,34 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   matter, because every width from 1 to 5 renders `12345` identically. A round-trip contract test has to assert the
   OBSERVABLE property there and cannot use a whole-object equality backstop — the objects legitimately differ.
 
+- **2026-08-06 — ONE OF THE THREE REMEDIES A PLAN OFFERED DID NOT EXIST, and finding that out took five minutes of
+  reading vendor code rather than a design argument.** `build-waves.plan.md` reserved two decisions for Wave 1 on
+  the savepoint tenant-binding divergence, and ranked the options for the second: drive the re-check from the
+  savepoint-emitting seam, **or forbid savepoint-backed nested transactions in configuration**, or check in every
+  repository (*"the weakest of the three"*). The middle option is not available: DBAL 4's
+  `setNestTransactionsWithSavepoints(false)` throws `InvalidArgumentException` — *"no longer supported"* — the method
+  is `@deprecated No replacement planned`, and `beginTransaction()` above nesting level 1 calls `createSavepoint()`
+  unconditionally. [Verified: `vendor/doctrine/dbal/src/Connection.php:1005-1012` and `:1048-1064`.] **So a plan that
+  offers N options is offering an untested claim about each of them**, and the cheapest thing to do before choosing
+  is to confirm the ones you are about to reject still exist — otherwise "we chose the middleware" reads as a
+  preference when it was the only option.
+  Three further findings, each of which changes what the surviving remedy has to do:
+  **(1) Only the ROLLBACK half of "release or rollback" matters.** `RELEASE SAVEPOINT` does not revert a
+  transaction-local setting [Verified on a live connection: after `RELEASE SAVEPOINT sp1` a value set inside the
+  savepoint was still present], so a re-check there could never fire — the vacuity shape this section already
+  records four times, arriving this time from a plan's own prescription rather than from code.
+  **(2) A FULL rollback must NOT be re-checked, and getting that wrong makes the guard worse than absent.** `ROLLBACK`
+  discards the binding legitimately on every rolled-back request, so a check would throw on entirely correct code and
+  the first person to hit it would delete the middleware. The distinction is safe only because DBAL's `rollBack()`
+  reaches the driver as a method rather than as exec'd SQL — which is worth knowing rather than relying on.
+  **(3) PostgreSQL accepts FOUR spellings and the `SAVEPOINT` keyword is OPTIONAL** — `ROLLBACK TO sp1`,
+  `ROLLBACK TRANSACTION TO SAVEPOINT sp2`, `ROLLBACK WORK TO SAVEPOINT sp3`, plus the form Doctrine emits [Verified:
+  all four accepted]. `stripos($sql, 'ROLLBACK TO SAVEPOINT')` matches only Doctrine's own and misses three that
+  application code can write, so the predicate is derived from the GRAMMAR instead — begins with `ROLLBACK`, carries
+  a `TO` clause. That is the same polarity inversion `scripts/gates/worker-mode-blocked.sh` needed three defeats to
+  learn, and it is the second time in this project that **enumerating accepted spellings of a thing the database or
+  the shell defines** has been the defect.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See
