@@ -58,7 +58,25 @@ a mechanical guarantee phorj lacks.
   source tree and no toolchain to lint yet, and a hook pointing at an absent binary is worse than no
   hook. Add them with the first application code.
 - **`.mcp.json` / MCP servers** — none in either sibling repo, nothing this project needs yet.
-- **`cross-check` skill** — validates formal specs against Jira. Neither exists here.
+- **`cross-check` skill — REJECTED 2026-07-29, ADOPTED 2026-08-06.** The original reason was correct at the
+  time: the machine bundle's version validated formal specs against Jira, and neither Jira nor its MCP server
+  exists here. What changed is the SKILL, not this repo — the `stack` port deleted the Jira mode and invented
+  a `--drift` mode (doc-vs-reality verification), and `rent-watch` carried that forward. That version is worth
+  more here than in any sibling: doc-vs-reality drift is twes-in's most-filed defect across eight consecutive
+  certification rounds — prose asserting a control nothing implements, corrections that do not reach the
+  sentence they correct, `[Verified]` figures that silently stopped being true. Ported to
+  `.claude/skills/cross-check/` with a `--drift` table built from this repo's own recurring drift shapes.
+  Edited in place rather than annotated below, per CLAUDE.md § Gotchas 2026-07-29.
+- **`settings.json.template` — rejected WHOLESALE, not cherry-picked**, and this is the most dangerous omission
+  the cross-repo comparison found (2026-08-06: the `rent-watch` port records it and twes-in's list did not). Four
+  separate landmines, each tested upstream: its `PreToolUse: rtk hook claude` would block **every** Bash call
+  (`rtk` is absent here, and a non-zero `PreToolUse` exit blocks before permission rules are even evaluated); its
+  `deny: Bash(git push *)` would **revoke this repo's push authorisation**, contradicting § "Git autonomy"; its
+  `"model": "opus"` would override the session model; and its 16 `enabledPlugins` are user-scoped and do not
+  transfer. `.claude/settings.json` here is written from scratch instead.
+- **The machine bundle's `bin/` (34 scripts) and `mcp/` (48 files)** — neither travels. The `bin/` scripts assume a
+  persistent `~/.claude` and the developer's own paths; the `mcp/` set configures servers this session has no
+  credentials for. Nothing here needs either, and a wrapper pointing at an absent server fails at the worst moment.
 - **A CI workflow** — deliberately not written yet. There is nothing to build or test, and a workflow
   that runs no real gate is a green tick that means nothing. `CLAUDE.md` § "Quality gate" records the
   per-tier commands to wire when each stack lands.

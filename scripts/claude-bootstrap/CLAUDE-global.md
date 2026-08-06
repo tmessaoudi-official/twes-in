@@ -4,6 +4,13 @@
   a copy of the global reasoning framework, EDITED (not merely disclaimed) for this container,
   on the principle that a rule pointing at machinery which does not exist here is worse than no rule.
 
+  CHAIN POSITION (recorded 2026-08-06, after comparing all five ports): twes-in was the THIRD bundle
+  integration — phorj (2026-07-22), pdfturbo (07-27), twes-in (07-29), stack (08-05), rent-watch (08-06).
+  So two ports are DOWNSTREAM of this one, and a fix made here is worth offering to them: this repo's
+  SPDX-headered hooks and its `test-precompact-handoff.sh` are both absent from at least one sibling, and
+  rent-watch's own copy of this file cites twes-in as the reference for the MAXIMAL panel tiering. The
+  `cross-check` skill travelled the other way, arriving here on 2026-08-06 from the stack/rent-watch line.
+
   Installed to ~/.claude/CLAUDE.md by scripts/claude-bootstrap/install.sh (a SessionStart hook),
   because a cloud session gets a FRESH ~/.claude every time and never reads the developer's own.
 
@@ -518,5 +525,5 @@ description of intent, not a literal output script. The plain-text question prot
 
 ## Global Skills Reference
 
-**This project's skills are REPO-NATIVE** under `.claude/skills/` — read in place, nothing installed, and there is no `~/.claude/refs/SKILLS.md`. **`ls .claude/skills/` is the authoritative list of THIS PROJECT's skills** — never restate a count in prose, it drifts. Note that `~/.claude/skills/` is **not** empty: the host installs its own set there [Verified: `ls ~/.claude/skills | wc -l` → 40], so the full set available in a session is the union of both, and the host's may change without notice. Never assume a host skill exists without checking, and never assume the repo set is everything. As built: `/ask-human` (the plain-text question protocol), `/converge` (the certification ladder, mechanised), `/sweep` (Phase 6 diff review), `/expanding-context` (Phase 1/3C widening), `/sleuth` (behavioural bug hunt + output-path-divergence lens K), `/inspect` (10-lens health), `/gaps` (incompleteness), `/forge` (adversarial design critic), `/aggregate-findings` (cross-stage dedup), `/pre-commit` (evidence table), `/handoff`, `/retrospective`. Anything else named in this framework (`/mega-analysis`, `/audit`, `/bootstrap`, `/templatize`, `/memory-*`, `/adapt-project`, `/skill-audit`, `/recent`, `/expand`, `/cross-check`, `/qa-sweep`, `/validate-infra`, `/loop` as a global) is **NOT installed here** — `/loop` is provided by the host instead.
+**This project's skills are REPO-NATIVE** under `.claude/skills/` — read in place, nothing installed, and there is no `~/.claude/refs/SKILLS.md`. **`ls .claude/skills/` is the authoritative list of THIS PROJECT's skills** — never restate a count in prose, it drifts. Note that `~/.claude/skills/` is **not** empty: the host installs its own set there [Verified: `ls ~/.claude/skills | wc -l` → 40], so the full set available in a session is the union of both, and the host's may change without notice. Never assume a host skill exists without checking, and never assume the repo set is everything. As built: `/ask-human` (the plain-text question protocol), `/converge` (the certification ladder, mechanised), `/sweep` (Phase 6 diff review), `/expanding-context` (Phase 1/3C widening), `/sleuth` (behavioural bug hunt + output-path-divergence lens K), `/inspect` (10-lens health), `/gaps` (incompleteness), `/forge` (adversarial design critic), `/aggregate-findings` (cross-stage dedup), `/pre-commit` (evidence table), `/handoff`, `/retrospective`, and `/cross-check` (doc validation, plus a `--drift` mode that verifies a doc's checkable claims against the tree — ADDED 2026-08-06 from the stack/rent-watch line, and listed as NOT-installed here until then). Anything else named in this framework (`/mega-analysis`, `/audit`, `/bootstrap`, `/templatize`, `/memory-*`, `/adapt-project`, `/skill-audit`, `/recent`, `/expand`, `/qa-sweep`, `/validate-infra`, `/loop` as a global) is **NOT installed here** — `/loop` is provided by the host instead.
 

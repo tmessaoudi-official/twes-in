@@ -96,6 +96,16 @@ bash -n scripts/claude-bootstrap/*.sh scripts/claude-bootstrap/hooks/*.sh
 bash scripts/claude-bootstrap/hooks/test-precompact-handoff.sh
 ```
 
+## What was rejected from the bundle, and why
+
+**Recorded once, in `docs/plans/claude-bundle-integration.plan.md` § "Rejected, with reasons"** — not restated here.
+The machine bundle held 48 skills, 39 hooks, 34 `bin/` scripts and 48 `mcp/` files; almost none of it travels, and
+each rejected entry is a landmine that was tested upstream rather than a matter of taste. The `rent-watch` port keeps
+its equivalent list in this README; twes-in keeps it in the plan file because that is where this repo's decision
+register lives, and **two copies of a landmine list is exactly the drift this project files most often**. If you are
+about to re-import something from the machine bundle, read that section first — `settings.json.template` in
+particular would revoke this repo's push authorisation and block every Bash call.
+
 ## Known limits
 
 - **New skills need a session restart to appear.** Claude Code watches an existing `.claude/skills/`
