@@ -28,9 +28,13 @@ rendered-number column, the Doctrine repository with its port, the savepoint ten
 rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel, lifecycle, numbering and `Invoice`
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. Still owed in Wave 1:
-the **HTTP surface's invoice endpoints** — its tenancy seam landed 2026-08-06 (`TenantResolver` port,
-`RequestTenantBinder` on `kernel.request`, and a development-only header adapter refused in production by a gate),
-so what remains is the resources and their state providers. The connection-lifecycle wiring closed out on 2026-08-06 (`SessionStateReleaser` for release,
+the **invoice WRITE endpoint** — the tenancy seam and the READ path both landed 2026-08-06 (`TenantResolver` port,
+`RequestTenantBinder` on `kernel.request`, a development-only header adapter refused in production by a gate, and
+`GET /api/invoices/{id}` through `InvoiceProvider`). What remains is `POST`, which needs an input DTO, edge
+validation, the gapless number allocator and a caller-owned transaction — `InvoiceRepository::save()` refuses
+outside one. **Every monetary and quantity field is a decimal STRING on the wire**, never a JSON number, and a
+functional test asserts the encoded payload rather than the PHP type — the type declaration is the enforcement, so
+asserting it again is a dead assertion PHPStan refuses. The connection-lifecycle wiring closed out on 2026-08-06 (`SessionStateReleaser` for release,
 `ConnectionProvisioningGuardMiddleware` for acquisition, the latter cached once per (role, database) per TTL window
 against a measured ~10.8 ms per connection). Note the repository writes with DBAL rather than through the UnitOfWork, and § Gotchas 2026-08-06
 records the measured reason — a whole-rewrite through the identity map is impossible, not merely slow.
