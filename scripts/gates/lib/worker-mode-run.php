@@ -137,27 +137,23 @@ echo json_encode([
  */
 function composerRuntimeViolations(string $relative, string $contents, string $permittedRuntime): array
 {
-    // A FILE THAT CANNOT CARRY THE KEY HAS NOTHING TO RULE OUT. Widening the scope from files NAMED
-    // `composer.json` to every tracked `.json` immediately produced six false positives:
-    // `admin/.vscode/*.json` and `admin/tsconfig*.json` are JSONC -- JSON WITH COMMENTS, which is what VS
-    // Code and the TypeScript compiler actually consume -- so `json_decode` fails on them by design.
+    // JSON IS DECODED UNCONDITIONALLY, and an undecodable file is SKIPPED rather than refused. Both halves are
+    // corrections of my own two previous attempts, which were wrong in opposite directions:
     //
-    // The unparseable-is-a-violation rule is KEPT and narrowed to files that MENTION `runtime`: if a file
-    // could carry the key and cannot be parsed, it has not been ruled out. A JSONC file can never be a
-    // Composer root package (Composer requires strict JSON), so refusing to refuse one that never mentions
-    // `runtime` concedes nothing.
-    if (!str_contains($contents, '"runtime"')) {
-        return [];
-    }
-
+    //   v1 refused every `.json` that would not parse -> six FALSE POSITIVES, because `admin/.vscode/*.json` and
+    //      `admin/tsconfig*.json` are JSONC (JSON with comments), which is what VS Code and tsc actually consume.
+    //   v2 narrowed to files containing the literal `\"runtime\"` -> a REAL BYPASS, because JSON allows
+    //      `\"\\u0072untime\"`, which `json_decode` resolves to `runtime` and Composer honours. Two lenses reached
+    //      the OWNER database role through it.
+    //
+    // The resolution is to stop second-guessing the consumer: **Composer requires STRICT JSON**, so a file that
+    // does not decode can never be a root package and there is nothing to rule out. That single fact removes the
+    // false positives AND the bypass, and it needed no substring test at all -- the `unverifiable = violation`
+    // instinct was simply wrong here, because the unverifiable file is one COMPOSER rejects too.
     $data = json_decode($contents, true);
 
     if (!is_array($data)) {
-        return [sprintf(
-            '%s: could not be parsed as JSON, so extra.runtime could not be ruled out — an unverifiable file is a '
-            . 'violation, not a pass.',
-            $relative,
-        )];
+        return [];                              // Composer requires strict JSON; this file can never be a root package
     }
 
     $extra = $data['extra']['runtime'] ?? null;

@@ -81,6 +81,33 @@ SEAM_KEYS="$(
 )"
 readonly SEAM_KEYS
 
+# THE CONFIG PATHS THE DOCKERFILES ACTUALLY SERVE, derived from their own `--config` arguments rather than written
+# down. Used to refuse a `volumes:` mount that replaces the served config — a route invisible to every text rule and
+# to the oracle alike, because a mount is neither a tracked Caddyfile nor a `COPY` source.
+SERVED_CONFIG_PATHS="$(
+    {
+        if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            git -C "$REPO_ROOT" ls-files -z | tr '\0' '\n' | grep -E '(^|/)Dockerfile' | sed "s|^|$REPO_ROOT/|"
+        else
+            # No index (the meta-suite fixture is a plain directory copy). Scoped to `infra/`, narrow enough that it
+            # cannot reach the reviewer worktrees at `.claude/worktrees/` that § Gotchas 2026-07-31 forbids walking.
+            find "$INFRA" -type f -name 'Dockerfile*' 2>/dev/null
+        fi
+    } | xargs -r grep -ohE -- '--config[=[:space:],"]+[^",[:space:]]+' 2>/dev/null \
+        | grep -ohE '/[^",[:space:]]+' | sort -u | paste -sd, - || true
+)"
+readonly SERVED_CONFIG_PATHS
+
+# A DERIVED SET THAT CAME BACK EMPTY MEANS THE DERIVATION BROKE, not that nothing is served. The first version read
+# `git ls-files` only, so in the meta-suite's index-less fixture the set was empty and the mount check silently
+# asserted NOTHING — the fail-open shape this whole control has been rewritten to remove, reintroduced in the fix for
+# it. Refused with a message instead.
+if [[ -z "$SERVED_CONFIG_PATHS" ]]; then
+    echo "compose-config: FAIL — derived NO served config path from any Dockerfile, so the mount check would assert" >&2
+    echo "  nothing. Either every Dockerfile moved or none passes --config to the server." >&2
+    exit 1
+fi
+
 # THE PINNED IMAGE, read from the Dockerfile's own ARG rather than written here -- a second copy of a version pin is
 # how the two drift, and this project has paid for a hand-written list at every level already.
 FRANKENPHP_IMAGE=""
@@ -203,10 +230,18 @@ readonly INSPECTOR="$(mktemp --suffix=.py)"
 trap 'rm -f "$RENDER_ENV" "$INSPECTOR"' EXIT
 
 cat > "$INSPECTOR" <<'PYEOF'
-import re, sys, yaml
+import json
+import re
+import subprocess
+import sys
+
+import yaml
 
 overlay = sys.argv[1]
 KNOWN_RECEIVERS = set(sys.argv[2].split(',')) if len(sys.argv) > 2 and sys.argv[2] else set()
+# The API tier's root, so DBAL's own DsnParser can be reached, and the config paths the Dockerfiles actually SERVE.
+API_DIR = sys.argv[4] if len(sys.argv) > 4 else ''
+SERVED_CONFIG_PATHS = {p for p in (sys.argv[5].split(',') if len(sys.argv) > 5 and sys.argv[5] else []) if p}
 # Derived by the caller from the Caddyfile, never hard-coded: see the SEAM_KEYS comment in compose-config.sh.
 SEAM_KEYS = [k for k in (sys.argv[3].split(',') if len(sys.argv) > 3 and sys.argv[3] else []) if k]
 cfg = yaml.safe_load(sys.stdin)
@@ -235,10 +270,67 @@ if holders != ['migrate']:
 #     RELATIONAL, not an allow-list of role names, so it survives an operator renaming the roles: whatever user the
 #     OWNER dsn names, no other DSN in the configuration may use it. That is the same shape as the Gotenberg
 #     allow/deny check below -- assert the relationship between two values rather than banning a literal.
-def dsn_user(value):
-    match = re.match(r'^[a-z0-9+.-]+://([^:@/]+)', str(value or ''))
-    return match.group(1) if match else None
+def dsn_users(values):
+    """Resolve DSN users with DBAL's OWN parser, never a regex.
 
+    A regex here was a P0 twice over, because the gate's parser and the app's disagreed in two ways a certification
+    round exploited against the live database:
+
+      `postgresql://twes%5Fowner:pw@db/twes`            DBAL rawurldecodes -> twes_owner; the regex saw `twes%5Fowner`
+      `postgresql://twes:pw@db/twes?user=twes_owner`    DBAL merges the QUERY over the userinfo; the regex saw `twes`
+
+    Both handed a serving container the table-OWNING role, which can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` in
+    one statement -- proven live, `relrowsecurity` t -> f. The lesson generalises past DSNs: every check in this file
+    that re-implements a parser the real consumer already has will diverge from it eventually, so call the consumer's.
+
+    Failure to reach the parser is a VIOLATION, not a skip: an unverifiable DSN has not been cleared.
+    """
+    script = (
+        'require $argv[1] . "/vendor/autoload.php";'
+        '$parser = new Doctrine\\DBAL\\Tools\\DsnParser(["postgresql" => "pdo_pgsql", "postgres" => "pdo_pgsql"]);'
+        '$out = [];'
+        'foreach (array_slice($argv, 2) as $dsn) {'
+        '    try { $out[$dsn] = $parser->parse($dsn)["user"] ?? null; }'
+        '    catch (\\Throwable $e) { $out[$dsn] = null; }'
+        '}'
+        'echo json_encode($out);'
+    )
+    wanted = sorted({v for v in values if v})
+    if not wanted:
+        return {}
+    done = subprocess.run(['php', '-r', script, API_DIR] + wanted, capture_output=True, text=True)
+    if done.returncode != 0:
+        raise RuntimeError('DBAL DsnParser unreachable: ' + (done.stderr or '').strip().split('\n')[0])
+    return json.loads(done.stdout)
+
+
+all_dsns = []
+for _svc in services.values():
+    _env = _svc.get('environment') or {}
+    if isinstance(_env, list):
+        _env = dict((e.split('=', 1) + [''])[:2] for e in _env)
+    for _key in ('DATABASE_URL', 'DATABASE_URL_OWNER'):
+        if _env.get(_key):
+            all_dsns.append(str(_env[_key]))
+
+try:
+    RESOLVED = dsn_users(all_dsns)
+except RuntimeError as exc:
+    problems.append('could not resolve DSN users with DBAL\'s own parser (%s), so the runtime role was NOT '
+                    'verified. An unverifiable credential is a violation, not a pass.' % exc)
+    RESOLVED = {}
+
+
+def dsn_user(value):
+    return RESOLVED.get(str(value or ''))
+
+
+# The superuser's name is configuration, so it is READ rather than guessed. `postgres` and `root` stay as a floor
+# for the case where no service declares POSTGRES_USER at all.
+superuser_roles = {'postgres', 'root'} | {
+    str(env.get('POSTGRES_USER')) for env in ((s.get('environment') or {}) for s in services.values())
+    if env.get('POSTGRES_USER')
+}
 
 owner_roles = {
     dsn_user(env.get('DATABASE_URL_OWNER'))
@@ -263,10 +355,15 @@ for name, svc in sorted(services.items()):
             'must own nothing: a table\'s owner can ALTER TABLE ... DISABLE ROW LEVEL SECURITY in one statement, '
             'and FORCE ROW LEVEL SECURITY stops an owner SKIPPING policies, not REMOVING them.'
             % (name, runtime_role))
-    if runtime_role in ('postgres', 'root'):
+    # RELATIONAL, like the owner check beside it. This was a literal `('postgres','root')` name list while the
+    # superuser's name is CONFIGURATION in the same rendered file (`POSTGRES_USER`) -- so renaming both let the
+    # runtime connect as the cluster superuser, which is exempt from row-level security ENTIRELY. The relational
+    # data was available and the adjacent clause's own stated principle was simply not applied here.
+    if runtime_role and runtime_role in superuser_roles:
         problems.append(
-            '%s connects as "%s" in DATABASE_URL. A superuser is exempt from row-level security entirely, so every '
-            'tenancy assertion in this project would be vacuous against it.' % (name, runtime_role))
+            '%s connects as "%s" in DATABASE_URL, which is the role POSTGRES_USER names — the cluster superuser. A '
+            'superuser is exempt from row-level security entirely, so every tenancy assertion in this project would '
+            'be vacuous against it.' % (name, runtime_role))
 
 # 1c. NO SERVICE MAY OVERRIDE THE SERVER INVOCATION. FrankenPHP takes `--worker` as a CLI FLAG -- an entire switch
 #     class no text rule in this repository had a rule for, found by a certification round and proven resident
@@ -277,14 +374,34 @@ for name, svc in sorted(services.items()):
 #     nobody has written yet, and this project has been defeated three times by enumerating the forbidden side.
 #     No compose service has any business naming the server binary at all -- the image's own CMD does that.
 for name, svc in sorted(services.items()):
-    command = svc.get('command')
-    words = command.split() if isinstance(command, str) else [str(w) for w in (command or [])]
+    # `entrypoint:` AS WELL AS `command:`. Reading only `command` was a P0 on two lenses at once: `entrypoint:`
+    # overrides the image ENTRYPOINT *and discards its CMD*, so it IS the invocation, and it bypasses
+    # `docker-entrypoint.sh` altogether. `--worker` is a real flag of `frankenphp php-server`.
+    words = []
+    for field in ('command', 'entrypoint'):
+        value = svc.get(field)
+        words += value.split() if isinstance(value, str) else [str(w) for w in (value or [])]
     if any('frankenphp' in word for word in words):
         problems.append(
             '%s overrides the server invocation (`command` names frankenphp). The image CMD is the only place the '
             'server is invoked, because `--worker` is a CLI FLAG: a command override enables worker mode without '
             'touching APP_RUNTIME, the Caddyfile or any seam. Blocked until the client portal (Wave 10) has its '
             'own random_bytes(32) token.' % name)
+
+# 1d. NO MOUNT MAY REPLACE THE SERVED CONFIG. A `volumes:` bind mount over the Caddyfile path is neither a name
+#     match nor a `COPY` source, so it is invisible to the config derivation, to the text sweep and to the oracle --
+#     which then affirmatively reports "no worker" while a resident worker runs. A reviewer proved it: four requests,
+#     one process. Derived from the `--config` destinations the Dockerfiles actually serve, not a written path.
+for name, svc in sorted(services.items()):
+    for volume in (svc.get('volumes') or []):
+        target = volume.get('target') if isinstance(volume, dict) else (
+            volume.split(':')[1] if isinstance(volume, str) and ':' in volume else None)
+        if target and target in SERVED_CONFIG_PATHS:
+            problems.append(
+                '%s mounts over %s, the config the server is handed. A mount is not a `COPY` and not a tracked '
+                'Caddyfile, so it is invisible to every text rule AND to the adapt oracle — which then reports "no '
+                'worker" while a resident worker runs. Blocked until the client portal (Wave 10) has its own '
+                'random_bytes(32) token.' % (name, target))
 
 # 2. Exactly one scheduler.
 replicas = ((services.get('scheduler') or {}).get('deploy') or {}).get('replicas')
@@ -553,7 +670,7 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     # The inspector is written to a FILE rather than heredoc'd, because `python3 - <<'PY' <<<"$rendered"` has TWO
     # stdin redirections and the last one wins -- so Python received the rendered YAML as its own source and died
     # with `SyntaxError: invalid decimal literal` on `timeout: 3s`. Script and data must arrive by different routes.
-    if ! printf '%s' "$rendered" | python3 "$INSPECTOR" "$overlay" "$RECEIVERS" "$SEAM_KEYS"
+    if ! printf '%s' "$rendered" | python3 "$INSPECTOR" "$overlay" "$RECEIVERS" "$SEAM_KEYS" "$REPO_ROOT/api" "$SERVED_CONFIG_PATHS"
     then
         failures=$((failures + 1))
     else

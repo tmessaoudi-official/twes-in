@@ -2347,6 +2347,13 @@ else
   # `cat "$INFRA/.env" > "$RENDER_ENV"` comment in compose-config.sh. Omitting it makes every value-level assertion
   # about the rendered configuration vacuous, which is the fixture-omission defect this suite already records twice.
   cp -a "$REPO_ROOT/infra/.env" "$cc_root/infra/.env"
+  # `api/vendor` IS PART OF THE FIXTURE, symlinked. The gate resolves DSN users with DBAL's OWN parser rather than a
+  # regex (a regex diverged from it two ways, both exploited against the live database), so a fixture that cannot
+  # reach DBAL cannot exercise the role check at all -- it reports "could not resolve DSN users", which is the
+  # fail-closed answer and therefore the WRONG message for these routes. Symlinked rather than copied: it is ~100MB
+  # and gitignored, so copying it would be slow and would also re-introduce the fixture-fidelity defect.
+  mkdir -p "$cc_root/api"
+  [[ -d "$REPO_ROOT/api/vendor" ]] && ln -sfn "$REPO_ROOT/api/vendor" "$cc_root/api/vendor"
 
   # Baseline: the copied tree must be CLEAN, or every mutant below proves nothing.
   cc_clean="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_clean_rc=0 || cc_clean_rc=$?
@@ -2761,7 +2768,7 @@ declare -A WM_EXPECT=(
   [caddyfile-no-placeholders]='derived NO seam variables'
   [no-approved-declaration]='saw NO approved runtime or seam declaration'
   [no-caddy-config]='derived NO seam variables'
-  [composer-unparseable]='could not be parsed as JSON'
+  [OK-composer-unparseable]='__never__'
   [seam-legacy-env-form]='is not one of the permitted seam declarations'
   [seam-quoted-key]='is not one of the permitted seam declarations'
   [seam-append-operator]='is not one of the permitted seam declarations'
@@ -2823,13 +2830,13 @@ for wm_route in export-infra-env export-api-env dockerfile-runtime legacy-env-fo
                 dockerfile-seam caddy-global-options seam-multiline-yaml fifth-seam \
                 composer-extra-runtime composer-autoload-template composer-dotenv-overload \
                 caddyfile-uncommented caddyfile-same-line caddyfile-import \
-                caddyfile-no-placeholders no-approved-declaration no-caddy-config composer-unparseable \
+                caddyfile-no-placeholders no-approved-declaration no-caddy-config \
                 seam-legacy-env-form seam-quoted-key seam-append-operator \
                 seam-continuation-after-quote seam-hash-leading-value runtime-split-name \
                 server-name-block-injection server-name-brace caddyfile-renamed-served-config \
                 OK-commented-block OK-inline-comment OK-crlf OK-php-docblock \
                 OK-caddy-word-in-comment OK-seam-comment-says-worker OK-comment-names-app-runtime \
-                OK-composer-permitted-class; do
+                OK-composer-permitted-class OK-composer-unparseable; do
   wm_fixture
   python3 - "$wm_root" "$wm_route" <<'PYWM'
 import json
@@ -3045,12 +3052,13 @@ elif route == 'no-caddy-config':
     (root / 'infra/api/Caddyfile').unlink()
     d = root / 'infra/api/Dockerfile'
     d.write_text('\n'.join(l for l in d.read_text().split('\n') if 'Caddyfile' not in l))
-elif route == 'composer-unparseable':
-    # An unverifiable file is a violation, not a pass -- the fail-closed polarity the whole gate is about. The
-    # payload MENTIONS `runtime`, because the rule is narrowed to files that could carry the key: `.vscode/*.json`
-    # and `tsconfig*.json` are JSONC and fail `json_decode` by design, so refusing every unparseable JSON produced
-    # six false positives on the real tree. This is the shape that matters -- a file that could be a Composer root
-    # package and cannot be read.
+elif route == 'OK-composer-unparseable':
+    # NOW A FALSE-POSITIVE DIRECTION, and the inversion is the finding. This asserted that an unparseable JSON file
+    # is a VIOLATION. Two attempts at that rule were wrong in opposite ways -- refusing every unparseable `.json`
+    # flagged six JSONC files (`.vscode/*`, `tsconfig*`), and narrowing to files containing the literal `"runtime"`
+    # opened a real bypass via `"\u0072untime"`, which `json_decode` resolves and Composer honours. The resolution is
+    # that **Composer requires STRICT JSON**, so a file that does not decode can never be a root package: there is
+    # nothing to rule out, and refusing it was the wrong polarity all along. This case now pins that it does NOT fire.
     (root / 'api/composer.json').write_text('{ "extra": { "runtime": { this is not json\n')
 elif route == 'caddyfile-no-placeholders':
     # THE PRICE OF DERIVING THE KNOB SET: a hand-written list could not come back empty, and a derived one can.

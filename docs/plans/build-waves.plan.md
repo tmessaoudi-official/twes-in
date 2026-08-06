@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-06 12:40] AGREED: no gate re-implements a parser its real consumer already has. DSN users come from DBAL's own DsnParser, JSON from json_decode (and an undecodable file is SKIPPED, because Composer requires strict JSON so it can never be a root package), and the superuser is read from POSTGRES_USER relationally. Failure to REACH a resolver is a violation, not a skip.
 - [2026-08-06 07:15] AGREED: the worker ORACLE is live — `frankenphp adapt` on the rendered configuration, asserting zero workers, with three distinct verdicts (unparseable config / non-JSON output / worker present) because collapsing them made the first version report a worker on a clean tree. It closes the Caddy-GRAMMAR class by construction; `APP_RUNTIME`, `extra.runtime` and the `--worker` CLI flag are NOT covered by it and stay with the text rules and the invocation allow-list.
 - [2026-08-06 05:40] AGREED: the worker-mode control STOPS text-scanning. A `frankenphp adapt` ORACLE on the rendered configuration replaces detection (it asks the server, so the CLI flag, directives, seams, block scalars and indirection close by construction); only the `APP_RUNTIME` literal allow-list and `extra.runtime` remain as the no-Docker layer; the comment/continuation machinery is DELETED rather than patched. Five versions were each defeated within one round and the fifth regressed against the fourth. The oracle is NOT yet built — the pinned image would not pull here.
 - [2026-08-06 03:10] AGREED: the Caddy-config and seam derivation lives ONCE, in `scripts/gates/lib/caddy-configs.sh`, sourced by both worker-mode gates — a near-copy in each is how they came to derive different sets. Libraries under `scripts/gates/lib/` are excluded from the gate inventory but must be sourced, required or executed by a gate, checked and proven by a mutant. And Wave 10's deletion instruction is a PROCEDURE ending in *"run `composer gate` and fix everything it reports"*, because a hand-written collateral list has been incomplete three times running.
@@ -2922,3 +2923,51 @@ suite green. They are not pinned here because the honest options are to construc
 on any tree small enough to have no in-scope files — or to delete whichever cannot fire, per this file's own rule
 about checks that cannot fail. **That is a decision about which, not a mechanical fix**, and doing it badly is how
 `caddyfiles == 0` and `scanned == 0` came to exist. Recorded as owed rather than guessed at.
+
+### Round 32 — the parser theme closed; the artefact theme partly
+
+**AGREED (developer, 2026-08-06): stop writing a second parser next to the real one, and make the oracle ask about
+the artefact rather than the source.** Round 32 filed 32 findings, 12 P0, and 20 of them fell into those two themes.
+
+**THEME 1 — CLOSED. Every value-reading check now calls the consumer's own resolver.**
+
+| Was | Now | The divergence it had |
+|---|---|---|
+| a regex over `DATABASE_URL` | **DBAL's own `DsnParser`**, via `php -r` against the real vendor tree | it rawurldecodes (`twes%5Fowner` → `twes_owner`) and merges the QUERY over the userinfo (`?user=twes_owner`). Both handed a serving container the OWNING role with every gate green, proven live (`relrowsecurity` t → f) |
+| `('postgres','root')` name list | **relational against `POSTGRES_USER`** in the same rendered file | the superuser's name is configuration; renaming both let the runtime connect as the cluster superuser, exempt from row security entirely. The relational data was available and the adjacent clause's own principle was simply not applied |
+| `str_contains($contents, '"runtime"')` | **`json_decode` unconditionally; an undecodable file is SKIPPED** | JSON allows `"runtime"`, which decodes to `runtime` and Composer honours. **Composer requires STRICT JSON**, so a file that does not decode can never be a root package — there is nothing to rule out, and the `unverifiable = violation` instinct was the wrong polarity all along. That single fact removed six JSONC false positives AND the bypass |
+
+Failure to reach a resolver is a VIOLATION, never a skip: an unverifiable credential has not been cleared.
+
+**THEME 2 — PARTLY closed.** Three of the five artefact-level routes now refuse:
+
+- **`entrypoint:` as well as `command:`** — it overrides the image ENTRYPOINT *and discards its CMD*, so it IS the
+  invocation, and it bypasses `docker-entrypoint.sh` entirely. Both lenses found this independently.
+- **A `volumes:` mount over the served config** — invisible to the config derivation, the text sweep AND the oracle,
+  which then affirmatively printed "no worker" while a resident worker ran (four requests, one process). The served
+  paths are DERIVED from the Dockerfiles' own `--config` arguments; both the long and short volume syntaxes are
+  covered, and a harmless mount correctly does not fire.
+- The derivation is **index-independent**, because the first version read `git ls-files` only and the meta-suite's
+  index-less fixture therefore produced an EMPTY set — the mount check silently asserted nothing. Fail-open, in the
+  fix for a fail-open. An empty derivation is now refused with a message.
+
+**STILL OPEN and named:** the tracked Dockerfile `CMD`/`ENTRYPOINT` (nothing checks it, while the gate's own message
+calls the image CMD *"the only place the server is invoked"*), and a config **generated at build time** (`RUN sed -i`,
+heredoc `COPY`, `RUN printf | cat -`), which needs the oracle to adapt the BUILT image rather than the repo file. That
+is the remaining half of theme 2 and it needs `docker compose build` inside a gate.
+
+**Process findings, recorded because they are worse than the code ones.** My `[Verified]` evidence for the oracle —
+`474 passed, 0 failed`, `composer gate EXIT=0` — was produced **with the Docker daemon down**, i.e. in the one
+environment where the oracle and both its mutants do not run. The real figure with the daemon up is 475, and three
+commit messages quoted the shrinkage ratchet's pre-increment value as the total. Separately, the skip message states a
+false fact and prescribes an impossible remedy: with the image present and the daemon down it says the image *"is not
+present locally"* and tells you to `docker pull`. Both are owed.
+
+Also owed from round 32: the three `COPY` evasions and the oracle's block-scalar mutant are unpinned (the latter is
+killed by the pre-existing seam rule through a shared message disjunction, so half the oracle's mutant coverage is
+vacuous); the library-reachability rule filters `\.(php|sh)$` and so cannot see `worker-oracle.py`; nothing lints
+tracked Python; and `CLAUDE.md` mentions the oracle zero times while its § Architecture row still describes the text
+rules as the mechanism.
+
+`composer gate` EXIT=0: **474 passed, 0 failed**, `OK (779 tests, 3092 assertions)`, PHPStan `[OK] No errors`,
+php-cs-fixer `0 of 91`.
