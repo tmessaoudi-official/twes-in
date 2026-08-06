@@ -360,9 +360,15 @@ Developer ruling, 2026-07-29: **multi-currency, i18n, l10n and a11y are all in t
 deferred. Recorded here with the hard parts named, because three of them are genuinely difficult and
 one is routinely discovered too late.
 
-- **Translation-key parity is mechanically checked, not hoped for.** Every locale carries the same key
-  set; a missing key fails the build. `pdfturbo` solved exactly this with a `PostToolUse` hook doing a
-  three-way key diff on any locale write, and that hook is the model to port once the locales exist.
+- **Translation-key parity is mechanically checked, not hoped for. BOTH HALVES NOW EXIST** (this item
+  said the hook was "the model to port once the locales exist" until 2026-08-06; the locales landed in
+  Wave 1 and the hook on 2026-08-06). Every locale carries the same key set; a missing key fails the
+  build via `scripts/gates/locale-key-parity.php`, and `.claude/hooks/gates-on-write.sh` runs that same
+  gate on any write under `api/translations/` so the divergence is reported in the turn that causes it.
+  Note the deliberate difference from pdfturbo's version, which does its own three-way key diff: ours
+  **invokes the gate** rather than reimplementing the comparison, so there is exactly one definition of
+  parity in this repo. What is still NOT checked — and stays a judgement rather than a grep — is
+  COVERAGE: whether a user-reachable refusal has a key at all. See `CLAUDE.md` § "Translation keys".
 - **RTL is the expensive one, and it reaches the PDF.** If Arabic is a target locale — the natural
   assumption for Tunisia — then right-to-left affects the Angular admin, the Flutter client **and the
   generated PDF documents**. Browser and Flutter RTL are well-trodden; **bidirectional text and Arabic

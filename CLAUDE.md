@@ -1439,6 +1439,33 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   "is the process alive", never "does the thing it exists for work". `compose-config.sh` now asserts the RELATIONSHIP
   between the two lists rather than banning a string, with a mutant.
 
+- **2026-08-06 — the gates split on ONE INVISIBLE FLAG, and a file Claude has just CREATED is untracked, so four of
+  them cannot see it at all.** § Gotchas 2026-07-31 rules that a gate enumerates from `git ls-files` rather than a
+  recursive walk, because a parallel certification round places reviewer worktrees INSIDE the working tree. Every gate
+  obeys it. What none of them says out loud is that they obey it in **two different ways**, and the difference is the
+  whole behaviour:
+
+  | enumeration | gates | sees a new untracked file? |
+  |---|---|---|
+  | `ls-files --cached --others --exclude-standard` | `spdx-headers.sh`, `shell-syntax.sh` | **yes** |
+  | `ls-files` (cached only) | `no-orphaned-docblocks.php`, `no-owner-connection-in-application.php`, `worker-mode-blocked.sh`, `compose-config.sh` | **no** |
+
+  Found by writing the `PostToolUse` hooks: the hook's own test suite reported the SPDX gate catching a brand-new file
+  and `no-orphaned-docblocks.php` reporting clean on the same file, with a textbook stranded doc comment in it — the
+  defect three successive certification rounds filed. At `composer gate` time this is invisible, because by then the
+  file has been `git add`ed. **So the blind spot is exactly the window in which new code is written**, and a hook that
+  says "clean" there is the *"a control that silently does not run"* shape this section already records four times.
+  The fix is the gates' own mechanism rather than a workaround: `GIT_INDEX_FILE` pointed at a throwaway index holding
+  `HEAD`'s tree plus the one path, which `git ls-files` honours, leaving the real index untouched. Contents are always
+  read from the working tree, so the index only ever contributes the NAME — which is why a stale `HEAD` tree is
+  harmless. Two alternatives were rejected: `git add --intent-to-add` on the real index (a hook must leave no state —
+  the developer would find a path staged that they never staged), and teaching the four gates `--others` (four gates
+  changed to serve a hook, and in `worker-mode-blocked.sh` it would widen a security control's scope for an unrelated
+  reason). Pinned by a mutant: replacing the `export GIT_INDEX_FILE` line with a no-op turns `27 passed` into
+  `26 passed, 1 failed`, and the case that flips is the orphaned-docblock one, whose fixture is left deliberately
+  UNTRACKED for that reason. **The generalisable part is not about git:** two implementations of one documented rule
+  is one rule and one silent exception, and the exception is invisible precisely because the rule is written down.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See
@@ -1452,10 +1479,37 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
 
 ## Claude config in this repo
 
-- `.claude/settings.json` — `defaultMode: auto`, pre-approved read-only/build commands, `deny: []`,
-  and the two bootstrap hooks (SessionStart install, PreCompact handoff). Note: `allow` entries are
+- `.claude/settings.json` — `defaultMode: auto`, pre-approved read-only/build commands, **`deny: []`
+  AND `ask: []`**, and the hooks: SessionStart install, PreCompact handoff, and the `PostToolUse`
+  write-time pair below. Note: `allow` entries are
   **inert in cloud sessions** (they need a workspace-trust dialog a cloud session never shows), so
   `defaultMode` is what actually takes effect. Don't grow the allow list expecting cloud effect.
+  **Both `deny` and `ask` stay empty permanently** (developer instruction, 2026-08-06): a web session
+  has no terminal, so a blocked or prompted command is not handed back to the developer to run — it is
+  simply lost. That is a stronger reason than the inherited "dead end" wording and it is why the
+  discipline in § "Git autonomy" is the only control. `rent-watch` carries four `deny` entries over
+  `.env` files; they are **not** ported here, and porting them would break the tier — `api/.env`,
+  `api/.env.prod` and `infra/.env` are committed templates that the gates read on every run.
+- `.claude/hooks/**` — the repo-local `PostToolUse` hooks, on `Edit|Write`, plus their own test suite
+  (`bash .claude/hooks/test-hooks-on-write.sh` — it reports its own case count; none is written here).
+  Distinct from `scripts/claude-bootstrap/hooks/`,
+  which is the **portable** bundle installed into `~/.claude/`; these are twes-in-specific and travel
+  nowhere. **That suite is NOT in `composer gate`, and saying so is the point rather than an omission**:
+  it is the third such suite here (`test-install.sh` and `hooks/test-precompact-handoff.sh` are the
+  others) and all three drive a hook against a sandboxed `HOME`/`CLAUDE_PROJECT_DIR`, so gating them
+  would put a step that rewrites the environment inside the build. `shell-syntax.sh` covers the
+  hooks parsing; the behaviour is covered by running the suite after any edit to a hook. That is the
+  whole protocol, and it is a weaker guarantee than a gate — stated so nobody has to discover it.
+  - `lint-on-write.sh` — the one file that changed: `php -l` then php-cs-fixer `check`
+    (`--path-mode=intersection`, run from `api/` because the fixer reads `composer.json` from the cwd),
+    or `bash -n` for a `.sh`. **PHPStan is deliberately out** at 11.3s per file [measured]; `gate:static`
+    covers it. **Nothing is auto-formatted** — `check`, never `fix` — because a doc comment's position is
+    part of its truth here, and both facts are pinned by an assertion rather than left to memory.
+  - `gates-on-write.sh` — **owns no rules.** Every check is an invocation of a real script in
+    `scripts/gates/`, so a write-time verdict is the gate's own verdict with the gate's own message.
+    Routing is biased towards over-running (under-routing only defers a finding to `composer gate`), so
+    every `.php` write runs the whole architecture set. `test-gates.sh`, `schema-tenancy.php` and
+    `compose-config.sh` are excluded and each exclusion is pinned.
 - `.claude/skills/**` — repo-native slash skills, read in place.
 - `.claude/agents/**` — the three certification-lens reviewers.
 - `.claude/settings.local.json` is gitignored — machine-local overrides go there.

@@ -15,7 +15,7 @@ a mechanical guarantee phorj lacks.
 
 - [2026-07-29 08:45] AGREED: the integration targets the **repo**, not `~/.claude`. Cloud sessions load the repo's `CLAUDE.md`, `.claude/{settings.json,skills,agents}` and load **none** of `~/.claude/`, which is a fresh empty directory every session. Anything the framework needs there has to travel in the repo and be reinstalled at session start.
 - [2026-07-29 08:50] AGREED: source of truth is **pdfturbo's port**, with phorj consulted for the pieces pdfturbo lacks (its `hooks/test-precompact-handoff.sh`, and its numbered-invariants CLAUDE.md shape). Not the raw machine bundle — the ports already carry the container adaptations.
-- [2026-07-29 08:55] AGREED: `install.sh` is ported **one-directional only** (`cp -u` three docs into `~/.claude`, create `var/claude/`). phorj's copy also ran `cp -R /root/.claude /root/.claude.json` into its working tree at every SessionStart, with a commented-out `git push --force-with-lease` beneath it. `~/.claude.json` holds the OAuth account, `userID` and `machineID`, and the working tree is one `git add -A` from history. Not reproduced. `/claude-bundle/` is gitignored as a belt-and-braces guard.
+- [2026-07-29 08:55] AGREED: `install.sh` is ported **one-directional only** (`cp -u` three docs into `~/.claude`, create `var/claude/`; **`cp -u` was replaced by an unconditional copy on 2026-08-06 — see that date's entries — because it compares the SOURCE mtime and a fresh clone makes every repo file newer, so it clobbered anyway. The one-directional ruling is unaffected; only the copy semantics changed. Annotated inline because a dated log entry is a record and must not be silently rewritten, but a reader arriving here must not conclude `cp -u` is current**). phorj's copy also ran `cp -R /root/.claude /root/.claude.json` into its working tree at every SessionStart, with a commented-out `git push --force-with-lease` beneath it. `~/.claude.json` holds the OAuth account, `userID` and `machineID`, and the working tree is one `git add -A` from history. Not reproduced. `/claude-bundle/` is gitignored as a belt-and-braces guard.
 - [2026-07-29 09:00] AGREED: `AskUserQuestion` is **forbidden project-wide** — it times out in this container, so a question asked that way can hang the turn and vanish. Every question is plain text: context + minimal example + numbered options + recommended first with its reason + a visible escape, then STOP. Every skill declares `disallowed-tools: AskUserQuestion`. Honest limit: that binds per-turn and clears on the next user message.
 - [2026-07-29 09:05] AGREED: **12 skills**, pdfturbo's set unchanged in roster — `ask-human`, `converge`, `sweep`, `expanding-context`, `sleuth`, `inspect`, `gaps`, `aggregate-findings`, `pre-commit`, `handoff`, `retrospective`, `forge`. phorj's `cross-check` is not imported (it validates formal specs against Jira; neither exists here).
 - [2026-07-29 09:10] AGREED: **three reviewer agents**, one per certification lens, renamed and re-chartered for this domain rather than copied: `domain-correctness-reviewer` (money arithmetic, tax, state machines, migrations), `tenancy-security-reviewer` (multi-tenant isolation, auth, payment/PII safety), `completeness-reviewer` (evidence actually delivered, and the change reaching all three client tiers). pdfturbo's names (`export-fidelity-reviewer`, `safety-promises-reviewer`) describe a PDF editor's promises and would have been theatre here.
@@ -30,6 +30,10 @@ a mechanical guarantee phorj lacks.
 - [2026-07-29 12:45] RULED (developer, closing the open item): **commit identity is `Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>` for author and committer, with NO `Co-Authored-By` and NO `Claude-Session` trailer.** This **overrides the container harness**, which mandates both. The OPEN RULING recorded on 2026-07-29 11:30 is therefore closed in favour of the sibling repos' convention, and Rule 10 plus its "No Co-Authored-By" sub-clause are reinstated in `scripts/claude-bootstrap/CLAUDE-global.md` rather than deferred. Also recorded: the container's SessionStart sets the git identity to `Claude <noreply@anthropic.com>`, so a session must set `git config user.name`/`user.email` **before its first commit** — the default is wrong, and that is the mechanism by which the first six commits got the wrong author.
 - [2026-07-29 12:45] DONE: the six bootstrap commits were **retroactively re-authored** at the developer's explicit request, via `git filter-branch` (author + committer rewritten, both Claude trailers stripped from the messages) followed by one authorised `--force-with-lease` push. [Verified: `git diff --stat refs/original/refs/heads/master master` was **empty** — tree content byte-identical before and after, only metadata changed; `git log --format='%(trailers:only)' | grep -i claude` returns nothing.] Note the `--force-with-lease` first failed with `stale info` because `filter-branch` also rewrites `refs/remotes/origin/*`, making the lease compare against a rewritten tracking ref; fixed by `git fetch` then passing the real remote SHA as an explicit lease. **The force-push authorisation was for this fix only and does not generalise** — `CLAUDE.md` § "Git autonomy" still forbids it otherwise.
 
+- [2026-08-06 16:55] RULED (developer, explicit): **`permissions.deny` and `permissions.ask` both stay EMPTY, permanently.** *"there should be no permissions denies ! in this env claude code in the web ! because if you are denied to do something i can't run it myself ! so there must be full autonomy !"* This is stronger than the inherited pdfturbo rationale (which reasoned about dead ends) because it names the mechanism: a web session has no terminal, so a blocked command is not deferred to the developer, it is simply lost. Verified across the family — all five repos are `defaultMode: auto` with `ask: 0`; twes-in and three siblings have `deny: 0`, and **`rent-watch` has four `deny` entries** (`Read(./.env)`, `Read(./.env.*)`, `Edit(./.env)`, `Edit(./.env.*)`). Those are NOT ported here and porting them would be actively wrong: `api/.env` and `infra/.env` are **committed templates** in this repo, read by the gates and by every session, and `api/.env.prod` is the committed half of Symfony's own dotenv cascade that `worker-mode-blocked.sh` reads on every run.
+- [2026-08-06 17:10] AGREED: **the `PostToolUse` deferral from 2026-07-29 is closed by building it**, adapted rather than ported — see § "Rejected, with reasons" for the four measurements that decided the adaptation. The durable finding it produced is graduated to `CLAUDE.md` § Gotchas: the gates split on ONE invisible flag, `--others`, so a file Claude has just CREATED is untracked and four of them cannot see it at all.
+- [2026-08-06 17:10] AGREED: **an adaptation is not a rename.** A ported artefact must be re-grounded on this project's own subjects, and two instances in one day prove the point rather than illustrate it: the ported `test-install.sh` asserted a multi-repo scenario whose sibling example was *twes-in* — this repo, so the scenario it described was impossible — and pdfturbo's hook shape would have brought oxlint and TypeScript into a tier that has neither. Substituting names passes a diff and fails the artefact.
+
 ## Formal Plan
 
 | Phase | Deliverable | Status |
@@ -38,7 +42,7 @@ a mechanical guarantee phorj lacks.
 | 2 | `.claude/skills/` × 12, container-adapted + re-grounded on this domain, each with `disallowed-tools: AskUserQuestion` | built |
 | 3 | `.claude/agents/` × 3 — one per certification lens, re-chartered for a billing domain | built |
 | 4 | `CLAUDE.md` — Routing / Questions are plain text / **Licensing invariants** / API contract / Certification ladder / Git autonomy / Plans / Quality gate / Gotchas | built |
-| 5 | `.claude/settings.json` — `defaultMode: auto`, `deny: []`, the two bootstrap hooks (written directly; no relay needed here) | built |
+| 5 | `.claude/settings.json` — `defaultMode: auto`, `deny: []` **and `ask: []`** (developer instruction 2026-08-06: in a web session a denied or prompted command is an unrecoverable dead end, because there is no terminal in which to run it by hand — so full autonomy is a requirement, not a convenience), the two bootstrap hooks, and since 2026-08-06 the **`PostToolUse` pair** (written directly; no relay needed here) | built |
 | 6 | `.gitignore` — Claude block, reference-clone guards, three-stack ignores | built |
 | 7 | `docs/plans/reimplementation-strategy.plan.md` — the licensing findings and build-vs-fork analysis | built |
 | 8 | Developer rules the open items — commit trailers, and Questions 1–4 plus licence in the strategy plan | **all ruled 2026-07-29** |
@@ -50,13 +54,39 @@ a mechanical guarantee phorj lacks.
   the question guard), a hard deadlock (`advisor-completion-guard` needs a tool that does not exist
   here), terminal-only output nobody can see in a web session (statusline, banner, context-bar,
   git-status, subagent-status), or writes to a filesystem that evaporates (`edit-log`,
-  `session-remember`). Two hooks are registered: SessionStart install, PreCompact handoff.
-- **Repo-local `PostToolUse` lint hooks** — pdfturbo wires `oxlint-on-write.sh` and
-  `locale-sync-check.sh`. Both are good patterns (`jq` the payload from stdin, early `exit 0` guard,
-  `exit 2` + stderr so Claude fixes it in the same turn), and the equivalents here would be a
-  PHP-CS-Fixer/PHPStan hook and a translation-key-parity hook. **Deferred, not rejected**: there is no
-  source tree and no toolchain to lint yet, and a hook pointing at an absent binary is worse than no
-  hook. Add them with the first application code.
+  `session-remember`). Hooks registered: SessionStart install, PreCompact handoff (both matchers), and
+  since 2026-08-06 the `PostToolUse` pair on `Edit|Write` — this sentence read *"Two hooks are
+  registered"* and is corrected in place rather than annotated below, per § Gotchas 2026-07-29. Derive
+  the live set from `.claude/settings.json`; no count is written here.
+- **Repo-local `PostToolUse` lint hooks — DEFERRED 2026-07-29, BUILT 2026-08-06.** pdfturbo wires
+  `oxlint-on-write.sh` and `locale-sync-check.sh`; phorj, stack and rent-watch each wire their own.
+  The pattern travels (`jq` the payload from stdin, early `exit 0` guard, `exit 2` + stderr so Claude
+  fixes it in the same turn) and the content does not. The original deferral reason was correct when
+  written — *"there is no source tree and no toolchain to lint yet, and a hook pointing at an absent
+  binary is worse than no hook"* — and its own closing condition (*"add them with the first
+  application code"*) has been met since Wave 1: there is a PHP tree, a pinned php-cs-fixer phar, a
+  running PHPStan and fourteen gates.
+  Built as **`.claude/hooks/{lint-on-write,gates-on-write}.sh`** with
+  `test-hooks-on-write.sh` beside them, adapted rather than ported. What the adaptation decided, each
+  from a measurement rather than a preference:
+  - **`lint-on-write.sh`** — `php -l` then php-cs-fixer `check` on the one file (0.33s), and `bash -n`
+    on a `.sh`. **PHPStan is deliberately absent at 11.3s per file** — it loads the whole `src/`
+    symbol table whatever path you give it, so there is no per-file mode to exploit, and `gate:static`
+    covers it. **Nothing is auto-formatted**, because in this repo a doc comment's POSITION is part of
+    its truth (`no-orphaned-docblocks.php` exists because three certification rounds filed a stranded
+    one), so a hook that rewrites what was just written is the worse trade.
+  - **`gates-on-write.sh` owns no rules at all.** Every check is `bash`/`php` on a script in
+    `scripts/gates/` — same invocation, same exit code, same message as `composer gate` makes. That is
+    the previous commit's lesson applied ("call the consumer's own parser instead of a second, worse
+    one"); a write-time copy of a gate's rules would be the drifting-second-rule-set shape § Gotchas
+    records four times. The most it owns is the ROUTING, and the routing is deliberately biased
+    towards OVER-running: under-routing only delays a finding to `composer gate`, over-routing costs
+    milliseconds. So every `.php` write runs the whole architecture set (290ms for five gates) rather
+    than re-deriving each gate's own scope.
+  - `test-gates.sh`, `schema-tenancy.php` and `compose-config.sh` stay out (48s; needs a database;
+    needs Docker) and each exclusion is pinned by an assertion, so re-adding one is a deliberate act.
+  - Not rejected, not deferred, just noted: `.ts`/`.dart` are unlinted at write time because `ng lint`
+    and `flutter analyze` are whole-project, and neither tier holds domain code yet.
 - **`.mcp.json` / MCP servers** — none in either sibling repo, nothing this project needs yet.
 - **`cross-check` skill — REJECTED 2026-07-29, ADOPTED 2026-08-06.** The original reason was correct at the
   time: the machine bundle's version validated formal specs against Jira, and neither Jira nor its MCP server

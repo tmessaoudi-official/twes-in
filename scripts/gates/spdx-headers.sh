@@ -34,6 +34,14 @@ readonly -a SEARCH_ROOTS=(
   # gate would have reported OK while never looking at it. That direction -- do the roots COVER every tracked
   # source file -- is the half CLAUDE.md records as the one that was missing when `api/phpunit.xml` sat unscanned.
   "infra"
+  # `.claude`, added 2026-08-06 with the first tracked shell script under it — the two
+  # PostToolUse write-time hooks and their test suite. Found the same way `infra` was: not by
+  # noticing the directory, but by the COVERAGE half at the end of this gate reporting three
+  # files with an in-scope extension under NO search root, on the very first run of the hooks'
+  # own test suite. Everything else under `.claude/` is `.md` (skills, agent charters) or
+  # `.json` (settings), neither of which is in EXTENSIONS, so this root has exactly the three
+  # subjects today and exists as the forward guard for the next tracked hook.
+  ".claude"
 )
 
 # Individual files that live at a tier's top level rather than inside one of the roots above. They exist

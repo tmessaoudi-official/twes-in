@@ -649,7 +649,7 @@ assert_contains "compose: the permitted runtime and both rendered seams survive"
   'Symfony\Component\Runtime\SymfonyRuntime' FRANKENPHP_CONFIG CADDY_SERVER_EXTRA_DIRECTIVES
 
 assert_at_least "spdx: search roots have not shrunk" \
-  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 12
+  "$(printf '%s' "$SPDX_RULES" | sed -n 's/^roots //p' | wc -w)" 13
 assert_at_least "spdx: individually-listed files have not shrunk" \
   "$(printf '%s' "$SPDX_RULES" | sed -n 's/^files //p' | wc -w)" 6
 
@@ -756,7 +756,7 @@ assert_contains "layers: every forbidden pair survives" "$LAYER_RULES" \
   'Twes\\Application' 'Twes\\Infrastructure' 'Twes\\UI'
 assert_contains "spdx: every search root survives" "$SPDX_RULES" \
   api/src api/tests api/tools api/config api/bin api/public api/migrations admin/src mobile/lib mobile/test \
-  scripts infra
+  scripts infra .claude
 assert_contains "spdx: every extension survives" "$SPDX_RULES" \
   php ts dart sh xml sql yaml yml html scss css js ini neon
 # `api/phpstan.neon.dist` and `admin/eslint.config.js` were NOT pinned here, and the first is the one file
@@ -3316,9 +3316,9 @@ fi
 # 466/448, and contradicted its own commit message. The floors below are what is asserted; the totals
 # are not written down.]
 if docker compose version >/dev/null 2>&1; then
-  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 464
+  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 465
 else
-  assert_at_least "the suite itself has not shrunk (no docker)" "$passed" 437
+  assert_at_least "the suite itself has not shrunk (no docker)" "$passed" 438
 fi
 
 echo
