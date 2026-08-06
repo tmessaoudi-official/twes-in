@@ -546,11 +546,28 @@ WORKER_RULES="$(bash "$REPO_ROOT/scripts/gates/worker-mode-blocked.sh" --dump-ru
 worker_seams="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="seam_variable"' | wc -l)"
 worker_excluded="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="excluded_pattern"' | wc -l)"
 worker_lines="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="permitted_runtime_line"' | wc -l)"
-worker_not_seam="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="not_a_seam"' | wc -l)"
+# `structural_placeholder`, NOT `not_a_seam`. The dump key was renamed and this line was not, so `worker_not_seam`
+# was ALWAYS 0 and the MAXIMUM below could never fail -- a gate exempting a SECOND placeholder from the emptiness
+# rule passed it, and the natural second candidate is `FRANKENPHP_CONFIG`, the seam a worker directive goes in.
+# § Gotchas 2026-07-30 verbatim: a permission that nothing consults permits everything.
+worker_not_seam="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="structural_placeholder"' | wc -l)"
+if (( worker_not_seam == 0 )); then
+  printf '  FAIL — worker-mode: --dump-rules emits no `structural_placeholder`, so its MAXIMUM asserts nothing\n'
+  failed=$((failed + 1))
+else
+  printf '  ok   — worker-mode: the structural-placeholder MAXIMUM has a subject to count (%d)\n' "$worker_not_seam"
+  passed=$((passed + 1))
+fi
 assert_at_least "worker-mode: all four Caddyfile seam variables are derived" "$worker_seams" 4
 assert_at_least "worker-mode: the exclusion list has not GROWN beyond 5" "$((10 - worker_excluded))" 5 "$worker_excluded"
 assert_at_least "worker-mode: the permitted-line list has not GROWN beyond 3" "$((6 - worker_lines))" 3 "$worker_lines"
-assert_at_least "worker-mode: the not-a-seam list has not GROWN beyond 1" "$((2 - worker_not_seam))" 1 "$worker_not_seam"
+assert_at_least "worker-mode: the structural-placeholder list has not GROWN beyond 1" "$((2 - worker_not_seam))" 1 "$worker_not_seam"
+
+# (5) AND THE SEAM TEMPLATES, which had NO ratchet at all -- a four-entry PERMISSION set, dumped by `--dump-rules`,
+# while the gate's own comment says every permission list carries a MAXIMUM because widening one is how a route is
+# reopened. Coverage of a widening was incidental: whichever of the refusal routes it happened to collide with.
+worker_templates="$(printf '%s\n' "$WORKER_RULES" | awk '$1=="permitted_seam_template"' | wc -l)"
+assert_at_least "worker-mode: the seam-template list has not GROWN beyond 4" "$((8 - worker_templates))" 4 "$worker_templates"
 assert_contains "worker-mode: every seam and the permitted runtime survive" "$WORKER_RULES" \
   'Symfony\Component\Runtime\SymfonyRuntime' FRANKENPHP_CONFIG CADDY_SERVER_EXTRA_DIRECTIVES \
   CADDY_GLOBAL_OPTIONS CADDY_EXTRA_CONFIG
@@ -2309,7 +2326,15 @@ if ! docker compose version >/dev/null 2>&1; then
 else
   cc_root="$WORK/composecfg"
   mkdir -p "$cc_root"
-  cp -a "$REPO_ROOT/infra" "$cc_root/infra"
+  # TRACKED PATHS ONLY. `cp -a "$REPO_ROOT/infra"` pulled in 153 GITIGNORED files -- `infra/.env.local`, which is
+  # the SECRETS file, plus 152 proxy CA certificates -- so the fixture did not mirror the tracked tree it stands in
+  # for, and the fallback config walk then enumerated them. Same defect as the `cp -a api/public` one this suite
+  # already records, in the fixture for the gate whose derivation this round set out to align.
+  mkdir -p "$cc_root/infra"
+  (cd "$REPO_ROOT" && git ls-files -z -- infra) | while IFS= read -r -d '' tracked_path; do
+    mkdir -p "$cc_root/$(dirname "$tracked_path")"
+    cp -a "$REPO_ROOT/$tracked_path" "$cc_root/$tracked_path"
+  done
   cp -a "$REPO_ROOT/scripts" "$cc_root/scripts"
   mkdir -p "$cc_root/api/config/packages" "$cc_root/api/src"
   cp -a "$REPO_ROOT/api/config/packages/messenger.yaml" "$cc_root/api/config/packages/"
@@ -3121,8 +3146,22 @@ for lib in $libs_on_disk; do
   # after any of these verbs covers a sourced shell library, a required PHP class and an executed script alike.
   #
   # The library itself is excluded from the search, or its own filename inside its own header would satisfy this.
-  if ! grep -rqE "(source|require|include|php|bash)[^\n]*${lib}" "$REPO_ROOT/scripts/gates" \
-       --include='*.sh' --include='*.php' --exclude="${lib}"; then
+  # COMMENTS DO NOT COUNT. The first version's regex was satisfied by ANY mention, including its OWN explanatory
+  # comment in this file -- so deleting the only real `require` of the analysis library left the check green while
+  # the gate died. The second version STRIPPED the comment leader, which changes nothing: the remaining text still
+  # matches. Comment lines are DELETED.
+  lib_referenced=0
+  while IFS= read -r candidate; do
+    [[ "$(basename "$candidate")" == "$lib" ]] && continue
+    if sed -E '/^[[:space:]]*(#|\/\/|\*)/d' "$candidate" 2>/dev/null \
+        | grep -qE "(source|require|include|php|bash)[^\n]*${lib}"; then
+      lib_referenced=1
+      break
+    fi
+  done < <(git -C "$REPO_ROOT" ls-files -- scripts/gates \
+             | grep -E '\.(sh|php)$' | sed "s|^|$REPO_ROOT/|")
+
+  if (( ! lib_referenced )); then
     unreached="$unreached $lib"
   fi
 done

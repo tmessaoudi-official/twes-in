@@ -1437,8 +1437,7 @@ worker-mode checks are deleted by THIS wave and no earlier**.
 this instruction were hand-written lists and every one was incomplete: the first named only
 `compose-config.sh`; the second added the gate file, its `composer` entry and its `test-gates.sh` case block, and a
 dry run still left **three** failures; a dry run at the commit that added a shared library and three cross-gate
-assertions left **six** [Verified: `418 passed, 6 failed` after performing exactly the documented steps against a
-copy of the working tree]. The collateral grows every time the control is strengthened, so a list written today is
+assertions left MORE failures still [NO NUMBER IS QUOTED HERE, and that is the second correction to this citation. It said `418 passed, 6 failed`; two reviewers independently reproduced `407 passed, 58 failed` with Docker and `398/49` or `395/70` without, depending on which of steps 1-3 were applied — and the prediction in step 4 missed roughly forty of them, the entire case block among them. A dry-run total is a function of which steps you performed and of the suite at that commit, so it is not a fact to record: RUN IT and read what the gate says, which is what step 4 now tells you to do]. The collateral grows every time the control is strengthened, so a list written today is
 wrong by the next commit. Do this instead:
 
 1. **Delete the text gate and its library**: `scripts/gates/worker-mode-blocked.sh`,
@@ -2870,3 +2869,56 @@ directory destination); the DEAD `not_a_seam` ratchet; the library-reachability 
 `TWES_CADDY_NO_INDEX` fail-open; `PERMITTED_SEAM_TEMPLATES` unratcheted; four unpinned rules; the compose fixture
 copying 153 gitignored files including `infra/.env.local`; the Wave 10 `[Verified]` citation; and the stale prose at
 `CLAUDE.md:428`, `:591`, `:643` and `infra/README.md:189`.
+
+### Round 31's remaining list — eight closed, one investigated and left open
+
+`composer gate` EXIT=0: **474 passed, 0 failed**, `OK (779 tests, 3092 assertions)`, PHPStan `[OK] No errors`,
+php-cs-fixer `0 of 91`, `schema-tenancy: OK`.
+
+**Closed, each proven:**
+
+- **The three `caddy_config_paths` clause-(b) evasions.** All three were ordinary rather than exotic, and each hid a
+  served config carrying an active `worker {}` behind a decoy `Caddyfile` that kept anti-vacuity satisfied:
+  `--config=/path` (the `=` form), `COPY --chown=… src dest` (ANY flag breaks a two-token pattern), and
+  `COPY src /etc/frankenphp/` (a directory destination never equals the `--config` argument). Parsed with **awk over
+  the instruction's token structure** rather than a regex over its text, because "COPY takes flags" is a property of
+  the instruction, not a spelling to enumerate. [Verified: all three → `an ACTIVE worker directive`; decoy-only
+  baseline → 0.]
+- **The DEAD `not_a_seam` ratchet.** The dump key was renamed to `structural_placeholder` and this line was not, so
+  the count was ALWAYS 0 and the MAXIMUM was arithmetically incapable of failing — a gate exempting a SECOND
+  placeholder passed it, and the natural candidate is `FRANKENPHP_CONFIG`. Fixed, **and given an anti-vacuity clause
+  of its own**: if `--dump-rules` emits no `structural_placeholder`, the MAXIMUM has no subject and that is now a
+  failure rather than a silent pass. That is the fix for the CLASS, not the instance.
+- **`PERMITTED_SEAM_TEMPLATES` now has a MAXIMUM.** A four-entry permission set, dumped by `--dump-rules`, with no
+  ratchet at all, while the gate's own comment says every permission list carries one.
+- **The library-reachability rule no longer accepts a comment** — including its own explanatory comment, which
+  satisfied version 1. Version 2 STRIPPED the comment leader, which changes nothing because the remaining text still
+  matches; comment lines are now DELETED. [Verified by the realistic mutant: deleting the only real
+  `require __DIR__ . '/worker-mode-analyse.php'` → `a library under scripts/gates/lib is reached by nothing
+  ( worker-mode-analyse.php)`, where before it stayed green while the gate died.]
+- **`TWES_CADDY_NO_INDEX` can no longer contradict reality.** It was honoured unconditionally from the environment, so
+  setting it narrowed BOTH gates' config set to `infra/` on a normal checkout while every anti-vacuity guard stayed
+  satisfied — a fail-open switch reachable from any tracked Makefile or composer script. It is now honoured only when
+  `git rev-parse` confirms there really is no index, which is the fact it was standing in for.
+- **The compose fixture no longer copies gitignored files.** `cp -a "$REPO_ROOT/infra"` pulled in 153 of them —
+  `infra/.env.local`, the SECRETS file, plus 152 proxy CA certificates — so the fixture did not mirror the tracked
+  tree and the fallback walk enumerated them. Now built from `git ls-files -- infra`.
+- **The four stale prose sites.** `CLAUDE.md:428` said the value rule compares a *"normalised"* line, which is what
+  round 30's rewrite REMOVED as the shared cause of three P0s, and omitted three implemented axes; `:591` and
+  `infra/README.md:189` still said `extra.runtime.class` — the latter in a line rewritten by the very commit that
+  widened the rule; `:643` said `ls scripts/gates/` is the inventory, which stopped being true when `lib/` became a
+  member. The remaining matches for those phrases are HISTORICAL statements about what earlier versions were beaten
+  by, which are correct as written.
+- **The Wave 10 `[Verified]` citation.** It claimed `418 passed, 6 failed`; two reviewers independently reproduced
+  `407/58`, `398/49` and `395/70` depending on which steps were applied. NO number is quoted there now: a dry-run
+  total is a function of which steps you performed and of the suite at that commit, so it is not a fact to record —
+  step 4 says to run it and read what the gate reports. A stale total also survived OUTSIDE the corrected bracket
+  ("assertions left **six**"), which is this file's append-don't-replace defect in miniature.
+
+**Investigated and DELIBERATELY LEFT OPEN: the four unpinned rules** (`inspected == 0`, the fast-reject continuation
+escape-hatch, the `\`-escapes-inside-a-quote rule, unreadable-file-is-a-violation). Each survives deletion with the
+suite green. They are not pinned here because the honest options are to construct a fixture that reaches each — and
+`inspected == 0` looks unreachable for the same reason the two DELETED guards were, since the seam guard fires first
+on any tree small enough to have no in-scope files — or to delete whichever cannot fire, per this file's own rule
+about checks that cannot fail. **That is a decision about which, not a mechanical fix**, and doing it badly is how
+`caddyfiles == 0` and `scanned == 0` came to exist. Recorded as owed rather than guessed at.

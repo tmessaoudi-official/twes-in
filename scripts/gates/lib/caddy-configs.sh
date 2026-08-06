@@ -39,7 +39,13 @@ caddy_config_paths() {
     local root="$1"
     local -a tracked=()
 
-    if [[ "${TWES_CADDY_NO_INDEX:-0}" == '1' ]]; then
+    # THE FALLBACK IS ONLY HONOURED WHEN THERE REALLY IS NO INDEX. It used to be honoured unconditionally from the
+    # environment, so `TWES_CADDY_NO_INDEX=1` narrowed BOTH gates' config set to `infra/` on a normal checkout while
+    # `infra/api/Caddyfile` kept the seam derivation non-empty and every anti-vacuity guard satisfied -- a fail-open
+    # switch reachable from any tracked Makefile or composer script. Asking git whether an index exists is the fact
+    # the variable was standing in for, so the variable can no longer contradict it.
+    if [[ "${TWES_CADDY_NO_INDEX:-0}" == '1' ]] \
+        && ! git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
         # DECLARED degradation, scoped to `infra/` so it cannot reach `.claude/worktrees/`.
         mapfile -t tracked < <(cd "$root" && find infra -type f 2>/dev/null | sort || true)
     else
@@ -53,11 +59,22 @@ caddy_config_paths() {
         done
 
         # The `--config` destinations any Dockerfile serves, then the COPY sources landing on them.
+        #
+        # THREE SPELLINGS DEFEATED THE FIRST VERSION, and all three were ordinary rather than exotic -- the regex
+        # demanded `--config` followed by whitespace/quote/comma and `^COPY <src> <dest>` with exactly two tokens:
+        #
+        #   `--config=/etc/frankenphp/x.conf`          the `=` form
+        #   `COPY --chown=10001:10001 src dest`        ANY flag breaks a two-token pattern (`--from=`, `--link`, ...)
+        #   `COPY src /etc/frankenphp/`                a DIRECTORY destination never equals the `--config` argument
+        #
+        # With a decoy `Caddyfile` keeping anti-vacuity satisfied, each hid a second config carrying an active
+        # `worker {}`. Parsing is done with awk over the instruction's real token structure rather than a regex over
+        # its text, because "COPY takes flags" is a property of the instruction, not a spelling to enumerate.
         local destinations
         destinations="$(
             for relative in "${tracked[@]}"; do
                 [[ "$(basename "$relative")" == Dockerfile* ]] || continue
-                grep -ohE -- '--config[",[:space:]]+[^",[:space:]]+' "$root/$relative" 2>/dev/null || true
+                grep -ohE -- '--config[=[:space:],"]+[^",[:space:]]+' "$root/$relative" 2>/dev/null || true
             done | grep -ohE '/[^",[:space:]]+' | sort -u || true
         )"
 
@@ -66,8 +83,29 @@ caddy_config_paths() {
             [[ -z "$destination" ]] && continue
             for relative in "${tracked[@]}"; do
                 [[ "$(basename "$relative")" == Dockerfile* ]] || continue
-                grep -E "^COPY[[:space:]]+[^[:space:]]+[[:space:]]+${destination}([[:space:]]|$)" \
-                    "$root/$relative" 2>/dev/null | awk '{print $2}' || true
+                # awk: drop the instruction word and every `--flag`, then treat the LAST remaining token as the
+                # destination and everything before it as sources. A destination ending `/` is a DIRECTORY, so the
+                # served path is that directory plus the source's basename.
+                awk -v want="$destination" '
+                    /^COPY[[:space:]]/ {
+                        n = 0
+                        for (i = 2; i <= NF; i++) {
+                            if ($i ~ /^--/) { continue }
+                            tok[++n] = $i
+                        }
+                        if (n < 2) { next }
+                        dest = tok[n]
+                        for (i = 1; i < n; i++) {
+                            src = tok[i]
+                            if (dest == want) { print src; continue }
+                            if (dest ~ /\/$/) {
+                                base = src
+                                sub(/.*\//, "", base)
+                                if (dest base == want) { print src }
+                            }
+                        }
+                    }
+                ' "$root/$relative" 2>/dev/null || true
             done
         done <<< "$destinations"
     } | sort -u | while IFS= read -r relative; do
