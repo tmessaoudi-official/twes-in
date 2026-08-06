@@ -3021,8 +3021,12 @@ elif route == 'no-caddy-config':
     d = root / 'infra/api/Dockerfile'
     d.write_text('\n'.join(l for l in d.read_text().split('\n') if 'Caddyfile' not in l))
 elif route == 'composer-unparseable':
-    # An unverifiable file is a violation, not a pass -- the fail-closed polarity the whole gate is about.
-    (root / 'api/composer.json').write_text('{ this is not json\n')
+    # An unverifiable file is a violation, not a pass -- the fail-closed polarity the whole gate is about. The
+    # payload MENTIONS `runtime`, because the rule is narrowed to files that could carry the key: `.vscode/*.json`
+    # and `tsconfig*.json` are JSONC and fail `json_decode` by design, so refusing every unparseable JSON produced
+    # six false positives on the real tree. This is the shape that matters -- a file that could be a Composer root
+    # package and cannot be read.
+    (root / 'api/composer.json').write_text('{ "extra": { "runtime": { this is not json\n')
 elif route == 'caddyfile-no-placeholders':
     # THE PRICE OF DERIVING THE KNOB SET: a hand-written list could not come back empty, and a derived one can.
     # An empty derivation must FAIL rather than check nothing -- otherwise renaming a placeholder, or moving the

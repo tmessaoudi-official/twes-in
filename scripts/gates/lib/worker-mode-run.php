@@ -81,13 +81,44 @@ foreach ($request['files'] as $relative) {
         $violations = [...$violations, ...$analysis->violationsFor($relative, $contents)];
     }
 
-    if (str_ends_with($relative, 'composer.json')) {
+    // EVERY TRACKED JSON FILE, not just files NAMED `composer.json`. The filename scoping was an inclusion
+    // enumeration and a certification round walked through it: `ENV COMPOSER=composer-worker.json` makes ANY file
+    // the root package (Composer's `Factory::getComposerFile()` honours `$_ENV['COMPOSER']`), so a tracked
+    // `api/composer-worker.json` carrying `extra.runtime` reached the OWNER database role with every gate green.
+    // Checking any JSON that HAS the key costs nothing on a file that does not.
+    if (str_ends_with($relative, '.json')) {
         $violations = [...$violations, ...composerRuntimeViolations($relative, $contents, $request['permitted_runtime'])];
     }
 
     if (in_array($relative, $request['caddyfiles'], true)) {
         $violations = [...$violations, ...caddyViolations($relative, $contents, $analysis)];
     }
+}
+
+// EVERY IDENTIFIED CADDY CONFIG IS READ, even one the SCOPE excludes. The loop above only reaches files in
+// `in_scope`, while the caddyfiles set comes from an UNFILTERED derivation -- so a served `infra/api/tests/Caddyfile`
+// was COUNTED (`caddyfiles=2`, its placeholders even feeding the seam set) and never READ, with `.dockerignore`
+// excluding `api/tests` but not `infra/api/tests`. Two rounds recorded that FIXED while it reproduced. A config the
+// gate itself calls a config is in scope for the Caddy rules by definition: the exclusion list is about where
+// CONFIGURATION lives, not about what the server is handed.
+foreach ($request['caddyfiles'] as $servedRelative) {
+    if (in_array($servedRelative, $request['files'], true)) {
+        continue;                               // already read by the loop above
+    }
+
+    $servedContents = @file_get_contents($request['root'] . '/' . $servedRelative);
+
+    if (false === $servedContents) {
+        $violations[] = sprintf(
+            '%s: is served as a Caddy config and could not be read, so nothing about it was verified.',
+            $servedRelative,
+        );
+        continue;
+    }
+
+    ++$inspected;
+    ++$scanned;
+    $violations = [...$violations, ...caddyViolations($servedRelative, $servedContents, $analysis)];
 }
 
 echo json_encode([
@@ -106,6 +137,19 @@ echo json_encode([
  */
 function composerRuntimeViolations(string $relative, string $contents, string $permittedRuntime): array
 {
+    // A FILE THAT CANNOT CARRY THE KEY HAS NOTHING TO RULE OUT. Widening the scope from files NAMED
+    // `composer.json` to every tracked `.json` immediately produced six false positives:
+    // `admin/.vscode/*.json` and `admin/tsconfig*.json` are JSONC -- JSON WITH COMMENTS, which is what VS
+    // Code and the TypeScript compiler actually consume -- so `json_decode` fails on them by design.
+    //
+    // The unparseable-is-a-violation rule is KEPT and narrowed to files that MENTION `runtime`: if a file
+    // could carry the key and cannot be parsed, it has not been ruled out. A JSONC file can never be a
+    // Composer root package (Composer requires strict JSON), so refusing to refuse one that never mentions
+    // `runtime` concedes nothing.
+    if (!str_contains($contents, '"runtime"')) {
+        return [];
+    }
+
     $data = json_decode($contents, true);
 
     if (!is_array($data)) {

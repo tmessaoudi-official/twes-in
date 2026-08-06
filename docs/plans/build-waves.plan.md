@@ -2817,3 +2817,56 @@ regressions are still open, and stripping it is the next step now that its repla
 
 `composer gate` EXIT=0: **473 passed, 0 failed**, `OK (779 tests, 3092 assertions)`, PHPStan `[OK] No errors`,
 php-cs-fixer `0 of 91`, `spdx-headers: OK — 152`, `schema-tenancy: OK`.
+
+### Round 31's four regressions closed, and one DEVIATION from the agreed plan
+
+**The agreed plan said "delete the comment/continuation machinery". I did not delete the seam and `SERVER_NAME`
+rules, and the reason is worth recording rather than burying.** The oracle SKIPS when the pinned image is absent, and
+my own previous commit message conceded it closes the Caddy-GRAMMAR class rather than the whole control. Deleting
+those two text rules would have traded a partially-working check for NO check on a Docker-less machine — the
+"documented hole becomes a reopened route" shape this file records. What was deleted is the part that was pure loss.
+
+**The four regressions, each fixed at its root and each proven by a mutant with the mutation ASSERTED first:**
+
+| # | Cause | Fix |
+|---|---|---|
+| C1 | a comment line ending in `\` STARTED a continuation buffer; the joined line then began `#` and was discarded wholesale, swallowing every declaration up to the next uncontinued line | a comment line never starts a continuation — it is emitted as its own logical line |
+| C3 | a comment WITHOUT a trailing `\` TERMINATED the logical line, while BuildKit CONTINUES the instruction across it | a comment inside a continuation is skipped, not treated as the end |
+| C2 | `scan()` cut at an unquoted `//`, a comment leader in NONE of the five dialects this file lists | the cut is DELETED. It was pure loss: it hid a seam behind any URL, and removing it changed no case — the proof it never protected anything |
+| C4 | inherited C1: an ACTIVE `worker { }` in the Caddyfile was invisible if the line before it was a comment ending in `\` | closed by C1's fix |
+
+[Verified, one violation each against a fixture with the mutation asserted applied: `# a note \` + a worker runtime →
+caught; `DOCS_URL=https://…` hiding a seam on the same logical line → caught; a comment at the split point of
+`ENV APP_RUN\`/`TIME=…` → caught; a comment ending in `\` before `worker {` → `infra/api/Caddyfile:55: an ACTIVE
+worker directive`.]
+
+**C4 nearly went into this commit as "not closed" on VACUOUS evidence.** My first two attempts used the anchor
+`\t\t# worker {`; the real line is `\t\t#     worker {`, so the mutation never applied and the gate correctly
+reported zero violations against an unmutated tree. I read that as a miss. Asserting the mutation applied — the
+habit this file already records twice — is what turned a false conclusion into a passing check.
+
+**Two findings that two rounds recorded FIXED while they reproduced are now actually fixed:**
+
+- **R30-8** — `extra.runtime` was scoped to files NAMED `composer.json`. `ENV COMPOSER=composer-worker.json` makes
+  ANY file the root package (`Factory::getComposerFile()` honours `$_ENV['COMPOSER']`), and the reviewer reached the
+  OWNER database role through it. Now every tracked `.json` is checked. [Verified: a tracked
+  `api/composer-worker.json` carrying the worker class is refused.]
+- **R30-6(a)** — the Caddy rules only ran for files in `in_scope`, while the caddyfiles set is UNFILTERED, so a
+  served `infra/api/tests/Caddyfile` was COUNTED and never READ. Every identified Caddy config is now read whatever
+  the scope says: the exclusion list is about where CONFIGURATION lives, not about what the server is handed.
+
+**Widening the JSON scope produced six false positives and taught something worth keeping.** `admin/.vscode/*.json`
+and `admin/tsconfig*.json` are **JSONC** — JSON with comments, which is what VS Code and the TypeScript compiler
+actually consume — so `json_decode` fails on them by design. The unparseable-is-a-violation rule is KEPT and narrowed
+to files that MENTION `runtime`: a file that could carry the key and cannot be parsed has not been ruled out, while a
+JSONC file can never be a Composer root package. The meta-suite case was updated to match, because its old payload
+(`{ this is not json`) no longer exercises the rule that matters.
+
+`composer gate` EXIT=0: **472 passed, 0 failed**, `OK (779 tests, 3092 assertions)`, PHPStan `[OK] No errors`,
+php-cs-fixer `0 of 91`, `schema-tenancy: OK`.
+
+**Still open from round 31:** the three `caddy_config_paths` clause-(b) evasions (`--config=`, a flagged `COPY`, a
+directory destination); the DEAD `not_a_seam` ratchet; the library-reachability rule satisfiable by its own comment;
+`TWES_CADDY_NO_INDEX` fail-open; `PERMITTED_SEAM_TEMPLATES` unratcheted; four unpinned rules; the compose fixture
+copying 153 gitignored files including `infra/.env.local`; the Wave 10 `[Verified]` citation; and the stale prose at
+`CLAUDE.md:428`, `:591`, `:643` and `infra/README.md:189`.

@@ -93,6 +93,17 @@ final class WorkerModeAnalysis
             $body = $continues ? substr($physical, 0, -1) : $physical;
 
             if (null === $buffer) {
+                // A COMMENT LINE NEVER STARTS A CONTINUATION. It did, and it was the worst defect in this file: a
+                // comment ending in `\` began a buffer, the joined logical line then started with `#`, and
+                // `violationsFor()` discarded the whole thing as a comment -- swallowing every real declaration up
+                // to the next uncontinued line. `# a note \` + `APP_RUNTIME=...FrankenPhpWorkerRuntime` was
+                // invisible, and `docker compose config` rendered that worker runtime at five sites. BOTH earlier
+                // versions of this gate refused it, so it was a REGRESSION, and the same shape hid an active
+                // `worker { }` block in the Caddyfile from `caddyViolations()`.
+                if ($this->startsWithCommentLeader(ltrim($body))) {
+                    $out[] = ['line' => $physical, 'at' => $number];
+                    continue;
+                }
                 $startedAt = $number;
                 $buffer = $body;
             } else {
@@ -102,6 +113,12 @@ final class WorkerModeAnalysis
                 // exists to defeat still walked through, and the meta-suite said so.
                 if (!$this->startsWithCommentLeader(ltrim($body))) {
                     $buffer .= $body;
+                } else {
+                    // A COMMENT INSIDE A CONTINUATION DOES NOT END IT. BuildKit skips the comment line and keeps
+                    // reading the instruction, so terminating here let the split-keyword attack back in simply by
+                    // putting a comment at the split point -- proven with a real BuildKit build of the tracked
+                    // bytes. The docblock above claimed this handling "is what BuildKit does"; it was half of it.
+                    continue;
                 }
             }
 
@@ -159,10 +176,12 @@ final class WorkerModeAnalysis
                 break;
             }
 
-            if ('/' === $char && $i + 1 < $length && '/' === $logicalLine[$i + 1]) {
-                $code = substr($logicalLine, 0, $i);
-                break;
-            }
+            // NO `//` CUT. It was here and it was pure loss: `//` is a comment leader in none of the five dialects
+            // this file lists (dotenv, Dockerfile, YAML, Caddy, Make), so any URL earlier on a line hid everything
+            // after it -- `DOCS_URL=https://…` masked an `APP_RUNTIME` and a seam on the same logical line, which
+            // both earlier versions refused. Removing it changed no meta-suite case, which is the proof it never
+            // protected anything: no in-scope file mentions a keyword after `//`. The `*`-leader rule above still
+            // covers PHP docblocks, which is the only reason `//` looked plausible.
         }
 
         return ['code' => rtrim($code), 'balanced' => null === $quote];
