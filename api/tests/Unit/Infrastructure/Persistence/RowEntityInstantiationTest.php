@@ -60,8 +60,17 @@ final class RowEntityInstantiationTest extends TestCase
      * test pass.
      */
     private const array DEFAULTED = [
-        // The one NULLABLE column: a document is created unnumbered and `Invoice::issue()` allocates afterwards.
+        // THE NULLABLE PAIR: a document is created unnumbered and `Invoice::issue()` allocates afterwards, so both
+        // halves of the number default to null. They are listed as two entries rather than one because this list is
+        // keyed by property and a single entry would leave the sibling unguarded — but they are ONE decision, and the
+        // migration's `document_number_halves_are_paired` is what stops them diverging in the database.
+        //
+        // The comment here said "The one NULLABLE column" until 2026-08-06, when `number_rendered` landed and made it
+        // false. Corrected in place rather than annotated, per `CLAUDE.md` § Gotchas 2026-07-29 — and worth noting
+        // that this test is what forced the correction: it failed the moment the new property appeared, refusing to
+        // accept a defaulted field that nobody had declared deliberate.
         DocumentRow::class . '::number',
+        DocumentRow::class . '::numberRendered',
         // NOT NULL, and the default IS the contract: 1 is the number sequence port's second guarantee, so a row
         // that has handed nothing out is at 1. This is the shape the assertion below guards against everywhere
         // else, permitted here because the value is the domain's, not a convenience.

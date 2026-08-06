@@ -89,11 +89,43 @@ class DocumentRow
      * `integer` stops at 2 147 483 647, so an `integer` column would reject a value the domain admits. `bigint`
      * matches PHP's own integer width exactly, which is why it is right rather than a wider `NUMERIC`.
      *
-     * Stored as the INTEGER rather than the rendered string: `NumberPattern` renders, it does not identify, and
-     * the pattern is per-tenant configuration that may change.
+     * Stored as the INTEGER **as well as** the rendered string in `$numberRendered`, and the split is the point:
+     * this column IDENTIFIES — `(company_id, type, number)` uniqueness, every ORDER BY, and the gapless-sequence
+     * audit trail are all built on it — while the string RENDERS. `NumberPattern` renders and does not identify,
+     * so a padded string could never carry the ordering; and the integer alone could never carry the rendering,
+     * which is what the paragraph on `$numberRendered` explains. Both, not either.
      */
     #[ORM\Column(type: 'bigint', nullable: true)]
     public ?int $number = null;
+
+    /**
+     * The number AS IT WAS RENDERED WHEN THE DOCUMENT WAS ISSUED. NULL exactly when `$number` is NULL.
+     *
+     * **This column exists so that a configuration change cannot restate a document somebody already holds**
+     * (ruled 2026-08-01). A document number is *(type, pattern, sequence)* and the pattern is per-tenant
+     * configuration on a settings table Wave 1 has not built. Re-rendering a persisted sequence through whatever
+     * width is current means an administrator widening the pattern from 7 to 8 turns an already-issued `0000041`
+     * into `00000041` — a different number on a legal document a client holds, against a product that promises
+     * byte-identical re-download. Storing the string makes that structurally impossible rather than merely
+     * unlikely: the read path has no configuration to consult.
+     *
+     * `VARCHAR(20)`, matching `NumberPattern::MAX_WIDTH`, and the bound is the same one that column comment
+     * derives: the widest thing a pattern can render is `MAX_WIDTH` characters, because `format()` grows past the
+     * padding only up to the digits of a `PHP_INT_MAX` sequence, which is 19. [Verified: `strlen((string)
+     * PHP_INT_MAX)` → 19, `MAX_WIDTH` → 20.]
+     *
+     * DIGITS ONLY, enforced by a CHECK constraint in the migration rather than left to convention. `NumberPattern`
+     * renders zero-padded digits and nothing else today; the day a prefix or a year is wanted, the constraint fails
+     * and the change becomes a visible decision about what a stored number means, instead of a string that quietly
+     * stops being sortable, comparable or parseable.
+     *
+     * Rejected: snapshotting the pattern (a width column) per document — equivalent guarantee, more indirection,
+     * and rejected by name in the ruling. Also rejected: treating rendering as presentational and recomputing it,
+     * which is the cheaper reading and unfixable once real invoices exist — the same class of decision as the
+     * gapless sequence and money-is-never-a-float.
+     */
+    #[ORM\Column(name: 'number_rendered', type: 'string', length: 20, nullable: true)]
+    public ?string $numberRendered = null;
 
     /** `VatRoundingPoint`'s backed values. Persisted PER DOCUMENT: a company changing its setting must not restate a document a client already holds. */
     #[ORM\Column(name: 'vat_rounding_point', type: 'string', length: 32)]
@@ -126,9 +158,12 @@ class DocumentRow
      * then writes every mapped field by reflection. So the mapping is untouched and this parameter list binds
      * only OUR code — which is the only code that gets a column wrong.
      *
-     * `$number` is absent on purpose: it is the one nullable column, its default is `null`, and a document is
-     * created unnumbered. `Invoice::issue()` allocates the number afterwards, so requiring it here would force
-     * every caller to pass `null` and would make the one genuinely optional column look mandatory.
+     * `$number` and `$numberRendered` are absent on purpose: they are the nullable columns, both default to `null`,
+     * and a document is created unnumbered. `Invoice::issue()` allocates the number afterwards, so requiring them
+     * here would force every caller to pass `null` twice and would make the genuinely optional columns look
+     * mandatory. **They are the one pair this constructor's guard does not cover**, which is why the migration
+     * carries `document_number_halves_are_paired` and the mapper refuses a sequence with no rendered string: the
+     * protection they need is a RELATIONSHIP between two columns, and a required parameter cannot express one.
      */
     public function __construct(
         Uuid $companyId,

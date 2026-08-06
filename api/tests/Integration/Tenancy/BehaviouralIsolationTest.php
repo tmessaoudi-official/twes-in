@@ -84,6 +84,16 @@ final class BehaviouralIsolationTest extends TestCase
         'state' => ['draft', 'issued'],
         'currency' => ['TND', 'EUR'],
         'vat_rounding_point' => ['per_line', 'per_rate_group'],
+        // ADDED 2026-08-06 with `document_number_rendered_is_digits`, and it arrived exactly the way the paragraph
+        // above predicts: `Version20260806180000` landed, the type-derived value for a `varchar` column was not
+        // digits, and this suite went RED naming the table and PostgreSQL's own constraint name rather than quietly
+        // leaving `document` unattacked. That is the whole design of this map working as intended.
+        //
+        // '1' and '2' MATCH what `scalarFor()` synthesises for the `number` bigint beside it, which is free and
+        // deliberate: `rowFor()`'s docblock notes these rows may be domain-invalid (a draft carrying a number), so
+        // agreement is not required — but a rendered string that disagreed with its own sequence would be a fixture
+        // that looks like the corruption `InvoiceMapper::numberFrom()` refuses, and a reader would waste time on it.
+        'number_rendered' => ['1', '2'],
     ];
 
     /**

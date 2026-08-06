@@ -24,9 +24,14 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  * completely unpoliced while looking finished. `assertPolicedTablesAreBeyondThisRolesReach()` derives its subject
  * set from tables that already HAVE row security, so a table missing it is invisible to that check by
  * construction (round 7 filed that precisely). This migration therefore issues the isolation statements itself,
- * and `scripts/gates/schema-tenancy.php` is what stops the next one forgetting the RLS statements. It no longer
- * checks KEY SHAPES — those moved to `BehaviouralIsolationTest` on 2026-08-01 — so the composite keys below
- * are proven by attack rather than by catalogue introspection.
+ * and `scripts/gates/schema-tenancy.php` is what stops the next one forgetting the RLS statements. **It DOES check
+ * KEY SHAPES, so the composite keys below are proven both by catalogue introspection and by attack.** This paragraph
+ * said the key axis "moved to `BehaviouralIsolationTest` on 2026-08-01" and that was true for exactly one day: the
+ * axis was RESTORED to the gate on 2026-08-02 after two certification lenses independently reproduced a cross-tenant
+ * oracle without it, and `CLAUDE.md` § Architecture records why the round trip is the useful part — a probe's reach
+ * is bounded by its fixture's value space, so a soft-delete partial unique index is invisible to an attack suite in
+ * both directions. Key shapes are a CATALOGUE property. Corrected in place rather than annotated below, per
+ * § Gotchas 2026-07-29.
  *
  * **The policy SQL comes from `policySqlFor()` rather than being written out here**, so the migration and the
  * checker cannot disagree. That is the same "one definition" rule the rest of this codebase follows for tax and

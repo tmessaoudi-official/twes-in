@@ -392,6 +392,202 @@ final class InvoiceMapperTest extends TestCase
         $mapper->toAggregate($tenant, $rows);
     }
 
+    /**
+     * THE RENDERED NUMBER IS PERSISTED, AND IT IS WHAT COMES BACK — ruled 2026-08-01.
+     *
+     * A document number is *(type, pattern, sequence)* and the pattern is per-tenant CONFIGURATION. Before this
+     * column existed the mapper re-rendered a persisted sequence through a default width, so an administrator
+     * widening the pattern from 7 to 8 turned an already-issued `0000041` into `00000041` — **a different number on
+     * a legal document a client already holds**, and one this product promises to re-download byte-identically.
+     *
+     * The sequence stays the identity: `(company_id, type, number)` uniqueness and every ORDER BY are built on it,
+     * and CLAUDE.md § Gotchas records that a gapless sequence is what a tax authority audits. The string is stored
+     * BESIDE it, and the read path derives its pattern from the string rather than from configuration.
+     */
+    public function testTheRenderedNumberSurvivesTheRoundTripAsAString(): void
+    {
+        $tnd = Currency::of('TND');
+        $mapper = new InvoiceMapper();
+        $tenant = TenantId::fromString(self::COMPANY);
+
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41));
+
+        $rows = $mapper->toRows($tenant, self::identity(), $invoice);
+
+        // THE COLUMN IS ASSERTED DIRECTLY, not only through the round trip. `toRows()` writing the wrong string
+        // while `toAggregate()` reads it back consistently is a fixed point of the round trip — the same structural
+        // blindness `testToRowsStampsTheBoundTenantAndParentOnEveryRow()` exists for.
+        self::assertSame('0000041', $rows[0]->numberRendered, 'the rendered string on the row');
+        self::assertSame(41, $rows[0]->number, 'the raw sequence, which stays the identity');
+
+        [, $restored] = $mapper->toAggregate($tenant, $rows);
+
+        // NON-NULL ASSERTED ONCE, then plain `->`. Two chained `?->` calls is what PHPStan flagged
+        // (`nullsafe.neverNull`): the first `assertSame` against a non-null string already narrows the receiver, so
+        // the second nullsafe operator is dead — and a dead `?->` reads as though the value might be null, which is
+        // exactly the state this test exists to rule out. `assertNotNull` says it instead of implying it.
+        $number = $restored->number();
+        self::assertNotNull($number, 'an issued document must come back numbered');
+
+        self::assertSame('0000041', $number->number(), 'the rendered number after a round trip');
+        self::assertSame('invoice 0000041', $number->toString(), 'the qualified form');
+    }
+
+    /**
+     * THE READ PATH IGNORES CONFIGURATION ENTIRELY, which is the whole point of the column.
+     *
+     * This is the case that would have failed before the column existed: a document issued under one width, read
+     * back while the tenant's configuration says another. The assertion is that the WIDTH IN THE STORED STRING wins
+     * — nine digits stay nine digits — because the mapper has no pattern to consult any more. `InvoiceMapper` is now
+     * stateless, and that is a stronger guarantee than a correct default: there is no configuration on the read path
+     * to be wrong.
+     */
+    public function testAPersistedNumberRendersFromItsStoredStringAndNotFromAnyConfiguration(): void
+    {
+        $tnd = Currency::of('TND');
+        $tenant = TenantId::fromString(self::COMPANY);
+
+        $rows = new InvoiceMapper()->toRows(
+            $tenant,
+            self::identity(),
+            Invoice::draft($tnd)
+                ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+                ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(9), 41)),
+        );
+
+        self::assertSame('000000041', $rows[0]->numberRendered);
+
+        // A DIFFERENT mapper instance reads it — standing in for "a later request, after the setting changed".
+        [, $restored] = new InvoiceMapper()->toAggregate($tenant, $rows);
+
+        // Asserted through the RENDERING rather than through a `pattern()` accessor, and deliberately: adding a
+        // getter to a domain value object so a test can look inside it widens the domain's public surface for test
+        // convenience, which is the wrong direction. Nine characters back is the whole observable claim.
+        $number = $restored->number();
+        self::assertNotNull($number, 'an issued document must come back numbered');
+        self::assertSame('000000041', $number->number());
+    }
+
+    /**
+     * A SEQUENCE THAT OUTRAN ITS PADDING: the RENDERING round-trips, the WIDTH deliberately does not.
+     *
+     * `NumberPattern::format()` GROWS rather than truncating — truncating would produce a duplicate number, which
+     * for a numbered legal document is the worst outcome available. So width 3 with sequence 12345 renders `12345`,
+     * and the stored string carries no trace of the 3. [Verified: `padded(3)->format(12345)` and
+     * `padded(5)->format(12345)` are both `12345`.]
+     *
+     * **That is accepted rather than worked around, and this test is where the acceptance is recorded.** Recovering
+     * the 3 would need a second column, and the 2026-08-01 ruling rejected snapshotting the pattern per document as
+     * *"equivalent guarantee, more indirection"*. It is genuinely equivalent here because the width has NO
+     * observable effect once the sequence outruns it: every width from 1 to 5 renders this document identically, so
+     * there is nothing a client, a PDF or an auditor could distinguish. The contract is the rendered document, not
+     * the object graph — which is also why this case cannot use the whole-aggregate backstop the others rely on.
+     */
+    public function testASequenceThatOutranItsPaddingRoundTripsItsRenderingButNotItsWidth(): void
+    {
+        $tnd = Currency::of('TND');
+        $tenant = TenantId::fromString(self::COMPANY);
+        $mapper = new InvoiceMapper();
+
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(3), 12345));
+
+        $rows = $mapper->toRows($tenant, self::identity(), $invoice);
+        [, $restored] = $mapper->toAggregate($tenant, $rows);
+
+        $authored = $invoice->number();
+        $number = $restored->number();
+        self::assertNotNull($authored, 'the fixture must be issued');
+        self::assertNotNull($number, 'an issued document must come back numbered');
+
+        self::assertSame('12345', $rows[0]->numberRendered, 'grown past the padding, as format() promises');
+        self::assertSame(
+            $authored->number(),
+            $number->number(),
+            'the RENDERED number is identical, which is the guarantee that matters',
+        );
+        // The width difference is visible as the LENGTH of what came back: five characters, from a pattern authored
+        // at three. No `pattern()` accessor for the same reason as the case above.
+        self::assertSame(5, \strlen($number->number()), 'the recovered width, deliberately not 3');
+    }
+
+    /** A draft has neither half, and the two must be absent together. */
+    public function testADraftPersistsNeitherHalfOfTheNumber(): void
+    {
+        $tnd = Currency::of('TND');
+        $rows = new InvoiceMapper()->toRows(
+            TenantId::fromString(self::COMPANY),
+            self::identity(),
+            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
+        );
+
+        self::assertNull($rows[0]->number, 'the sequence');
+        self::assertNull($rows[0]->numberRendered, 'the rendered string');
+    }
+
+    /**
+     * A ROW WITH A SEQUENCE AND NO RENDERED STRING IS REFUSED, rather than re-rendered from a guess.
+     *
+     * The database forbids this pairing (`document_number_halves_are_paired`), so reaching it means either a
+     * migration ran without its constraint or our own layer built the row wrong — `error.internal` either way, per
+     * CLAUDE.md § "Translation keys". **Re-rendering from a default is exactly the behaviour the ruling removed**,
+     * so falling back to one here would reintroduce the defect at the only place still able to.
+     */
+    public function testASequenceWithNoRenderedStringIsRefused(): void
+    {
+        $tnd = Currency::of('TND');
+        $tenant = TenantId::fromString(self::COMPANY);
+        $mapper = new InvoiceMapper();
+
+        $rows = $mapper->toRows(
+            $tenant,
+            self::identity(),
+            Invoice::draft($tnd)
+                ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+                ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41)),
+        );
+        $rows[0]->numberRendered = null;
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/carries sequence 41 with no rendered number/');
+
+        $mapper->toAggregate($tenant, $rows);
+    }
+
+    /**
+     * A STORED STRING THAT DISAGREES WITH ITS SEQUENCE IS REFUSED — the check that makes the derivation safe.
+     *
+     * The pattern is DERIVED from the stored string's length, and CLAUDE.md § Gotchas 2026-07-31 records the trap
+     * that invites: *"a control may not derive its own expected value from the input it is validating."* Deriving
+     * and then trusting would let `0000041` stored against sequence 99 read back as invoice 99 rendered `0000099`,
+     * silently — a number nobody issued. So the re-render is compared against the stored string, which is what turns
+     * a derivation into a checked round trip.
+     */
+    public function testARenderedStringThatDisagreesWithItsSequenceIsRefused(): void
+    {
+        $tnd = Currency::of('TND');
+        $tenant = TenantId::fromString(self::COMPANY);
+        $mapper = new InvoiceMapper();
+
+        $rows = $mapper->toRows(
+            $tenant,
+            self::identity(),
+            Invoice::draft($tnd)
+                ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+                ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41)),
+        );
+        // Same LENGTH as the correct rendering, so a length-only check would pass this.
+        $rows[0]->numberRendered = '0000099';
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessageMatches('/stored as "0000099".*sequence 41 renders as "0000041"/');
+
+        $mapper->toAggregate($tenant, $rows);
+    }
+
     private static function identity(
         VatRoundingPoint $vatRoundingPoint = VatRoundingPoint::PerRateGroup,
     ): DocumentIdentity {

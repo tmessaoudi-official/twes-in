@@ -1466,6 +1466,29 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   UNTRACKED for that reason. **The generalisable part is not about git:** two implementations of one documented rule
   is one rule and one silent exception, and the exception is invisible precisely because the rule is written down.
 
+- **2026-08-06 — A RENDERED VALUE CAN DETERMINE ITS OWN FORMATTER, which turned a persisted-configuration problem into
+  a DELETED dependency.** The 2026-08-01 ruling — persist an issued document's rendered number beside its sequence, so
+  no later setting can restate a legal document a client holds — read like a column to add and a default to keep. It
+  was not. `NumberPattern::format()` is left-zero-padding and grows rather than truncating, so for **every**
+  *(width, sequence)* pair `padded(strlen($rendered))->format($sequence) === $rendered`. [Verified: 48 of 48
+  combinations of width {1,2,3,7,8,20} × sequence {1,9,10,41,99,100,PHP_INT_MAX}, zero mismatches.] So the stored
+  string determines a pattern that re-renders it byte-identically, and `InvoiceMapper`'s `NumberPattern` constructor
+  dependency — which certification round 21 filed as a real hazard, not a placeholder — is **gone** rather than
+  merely defaulted. **An absent dependency cannot be misconfigured and a default can**, which is why this is
+  structurally stronger than getting the default right, and why the settings table Wave 1 has not built can now only
+  govern what NEW numbers look like.
+  Three things generalise past document numbers. **(1)** When a value is persisted alongside the input that produced
+  it, check whether the value determines the transformation before adding a column to record the transformation —
+  the second column is often unnecessary, and the ruling here had already rejected it on grounds of indirection
+  without anyone noticing it was also redundant. **(2)** The derivation must then be **CHECKED**, not trusted:
+  § Gotchas 2026-07-31 records a P0 where a validator read its expected column name out of the policy it was
+  validating and therefore always agreed with itself, and deriving a pattern from a stored string has the same
+  structure — `0000041` stored against sequence 99 would read back as invoice 99 rendered `0000099`, a number nobody
+  issued. One `!==` turns a derivation into a checked round trip. **(3)** What is NOT recovered is worth stating
+  rather than hiding: for a sequence that outran its padding the authored width is unrecoverable, and it does not
+  matter, because every width from 1 to 5 renders `12345` identically. A round-trip contract test has to assert the
+  OBSERVABLE property there and cannot use a whole-object equality backstop — the objects legitimately differ.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See

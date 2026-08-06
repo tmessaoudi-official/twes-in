@@ -41,10 +41,10 @@ use Twes\Infrastructure\Tenancy\TenantId;
  * round-trip contract test, not by care"*, and `InvoiceMapperTest` is that test. Read it before changing anything
  * here: it asserts field by field, and its whole-object backstop is what catches a field nobody named.
  *
- * **A NUMBER PATTERN IS A CONSTRUCTOR DEPENDENCY, AND THAT IS THE UNCOMFORTABLE PART.** `DocumentNumber` is
+ * **THE NUMBER PATTERN WAS A CONSTRUCTOR DEPENDENCY, AND IT IS NOW GONE — CLOSED 2026-08-06.** `DocumentNumber` is
  * *(type, pattern, sequence)*. The row stores type and sequence; the PATTERN is per-tenant configuration, on a
- * settings table Wave 1 has not built. So reconstituting a number needs a pattern from somewhere, and until that
- * table exists it comes from here as a default.
+ * settings table Wave 1 has not built. So reconstituting a number needed a pattern from somewhere, and it came from
+ * here as a default width of 7.
  *
  * That was a REAL HAZARD rather than a placeholder — filed by certification round 21, because an administrator
  * widening the width from 7 to 8 re-renders an already-issued invoice as `00000041` instead of `0000041`: a different
@@ -57,30 +57,34 @@ use Twes\Infrastructure\Tenancy\TenantId;
  * indirection) and ruling rendering presentational (the cheaper reading, and unfixable once real invoices exist —
  * the same class of decision as the gapless sequence and money-is-never-a-float).
  *
- * **STILL OWED, and this constructor dependency is the placeholder until it lands:** a migration adding the column,
- * the field on `DocumentRow`, both directions here, and a round-trip case. Until then `toAggregate()` re-renders
- * from a default width, which is exactly the behaviour the ruling exists to remove — so a document issued before the
- * column lands and read after it may render differently, once. `build-waves.plan.md`'s Decisions Log carries the
- * ruling; this docblock said "a product decision owed to the developer" until the ruling was made, and leaving that
- * sentence in place afterwards is the stale-prose shape `CLAUDE.md` § Gotchas records repeatedly.
+ * **ALL FOUR OWED PIECES LANDED 2026-08-06** — this paragraph listed them as owed until then, and the accompanying
+ * warning that "a document issued before the column lands and read after it may render differently, once" **never
+ * materialised**: `select count(*) from document` was 0 in every database at the time the column landed, so no
+ * document has ever been read back through the old default. `Version20260806…` adds the column with a
+ * paired-nullability and a digits-only CHECK plus a backfill that is a no-op on empty data;
+ * {@see DocumentRow::$numberRendered} is the field; {@see numberFrom()} is the read direction, which derives the
+ * pattern from the stored string and then CHECKS the re-render against it; and `InvoiceMapperTest` carries six cases
+ * including both refusals and the sequence-outran-its-padding case.
+ *
+ * The consequence worth carrying forward: **`toAggregate()` now consults no configuration at all**, so the settings
+ * table this docblock waits on cannot affect an issued document's rendering when it arrives. It governs what NEW
+ * numbers look like and nothing else, which is the only thing a tenant setting should ever have been able to do.
  */
 final readonly class InvoiceMapper
 {
-    /**
-     * @param NumberPattern $numberPattern used ONLY to re-render a persisted sequence. See the class docblock: this
-     *                                     is per-tenant configuration standing in for a settings table that does not
-     *                                     exist yet, and changing it changes how already-issued numbers RENDER.
+    /*
+     * NO CONSTRUCTOR, NO STATE, AND THAT IS THE POINT OF THE 2026-08-01 RULING.
+     *
+     * This class used to take a `NumberPattern` — nullable, defaulting to `padded(7)` — used for exactly one thing:
+     * re-rendering a persisted sequence on the way out. Its own docblock called that "the uncomfortable part" and
+     * certification round 21 filed it as a real hazard rather than a placeholder, because widening the pattern from
+     * 7 to 8 re-rendered an already-issued `0000041` as `00000041`.
+     *
+     * With the rendering PERSISTED, the read path derives its pattern from the stored string ({@see numberFrom()})
+     * and there is nothing left to inject. **That is strictly stronger than a correct default**: a default can be
+     * wrong, and an absent dependency cannot. It also means the mapper is a pure function of its arguments, so
+     * wiring it as a service later needs no configuration and no per-tenant scoping.
      */
-    private NumberPattern $numberPattern;
-
-    public function __construct(?NumberPattern $numberPattern = null)
-    {
-        // Resolved in the body, not as a parameter default: `NumberPattern`'s constructor is private -- `padded()`
-        // is the factory, and it enforces the 1..MAX_WIDTH bounds that a raw `new` would bypass. PHP permits `new`
-        // in an initialiser but not a static call, so a nullable parameter is the only shape that keeps the
-        // validated factory in the path.
-        $this->numberPattern = $numberPattern ?? NumberPattern::padded(7);
-    }
 
     /**
      * @return array{DocumentRow, list<DocumentLineRow>, list<DocumentChargeRow>}
@@ -113,11 +117,18 @@ final readonly class InvoiceMapper
             $invoice->currency()->code(),
             $identity->vatRoundingPoint->value,
         );
-        // `number` STAYS an assignment, because it is the one nullable column and a draft has none. The RAW
-        // SEQUENCE, never the rendered string: `NumberPattern` renders, it does not identify — so persisting
-        // `0000041` would bake today's pattern into the row and make the column unusable for ordering or
-        // uniqueness.
+        // BOTH HALVES OF THE NUMBER, and they stay assignments because they are the nullable pair a draft has
+        // neither of. The RAW SEQUENCE identifies — `NumberPattern` renders and does not identify, so a padded
+        // string alone would make the column unusable for ordering and for `(company_id, type, number)` uniqueness.
+        // The RENDERED STRING is stored beside it so that no later configuration change can restate a document a
+        // client already holds; see {@see DocumentRow::$numberRendered} for the ruling and the rejected alternatives.
+        //
+        // WRITTEN TOGETHER, ON PURPOSE. The database enforces the pairing (`document_number_halves_are_paired`) and
+        // `toAggregate()` refuses a half, but the cheapest protection is that the two lines cannot be separated by
+        // an edit that only looks at one of them — CLAUDE.md § Gotchas: decide a condition ONCE, where every path
+        // reads it.
         $document->number = $invoice->number()?->sequence();
+        $document->numberRendered = $invoice->number()?->number();
 
         $lines = [];
 
@@ -274,9 +285,7 @@ final readonly class InvoiceMapper
             Invoice::fromPersistedState(
                 $currency,
                 $state,
-                null === $document->number
-                    ? null
-                    : new DocumentNumber($type, $this->numberPattern, $document->number),
+                self::numberFrom($type, $document),
                 // NO `array_values()`, unlike `DocumentCalculator`: `usort()` above re-indexes in place, so both
                 // are already lists and `array_map()` preserves that. PHPStan reports the wrapper as having no
                 // effect, and a call with no effect beside one that is load-bearing thirty lines away in another
@@ -285,5 +294,87 @@ final readonly class InvoiceMapper
                 $charges,
             ),
         ];
+    }
+
+    /**
+     * Reconstitute a `DocumentNumber` FROM THE STORED STRING, with no configuration involved.
+     *
+     * **The pattern is derived from the string's own length, and that is exact rather than approximate.**
+     * `NumberPattern::format()` is `str_pad($sequence, $width, '0', STR_PAD_LEFT)`, which grows past the padding
+     * rather than truncating, so for any *(width, sequence)* the rendered string satisfies
+     * `padded(strlen($rendered))->format($sequence) === $rendered`. [Verified: 48 of 48 combinations of width
+     * {1,2,3,7,8,20} × sequence {1,9,10,41,99,100,12345678,PHP_INT_MAX}, zero mismatches.] So the string determines
+     * a pattern that re-renders it byte-identically, and there is nothing left for a settings table to get wrong.
+     *
+     * What is NOT recovered is the AUTHORED width when the sequence outran it: width 3 with sequence 12345 renders
+     * `12345`, and every width from 1 to 5 renders that document identically. Accepted, because the difference has
+     * no observable effect on any document, payload or audit — see
+     * `InvoiceMapperTest::testASequenceThatOutranItsPaddingRoundTripsItsRenderingButNotItsWidth()`.
+     *
+     * **AND THEN THE DERIVATION IS CHECKED**, which is what keeps it honest. CLAUDE.md § Gotchas 2026-07-31 records
+     * a real P0 of exactly this shape: *"a control may not derive its own expected value from the input it is
+     * validating"* — a policy checker read its column name out of the policy it was validating and therefore always
+     * agreed with itself. Deriving a pattern from `$numberRendered` and then trusting it has the same structure, and
+     * the same consequence: `0000041` stored against sequence 99 would read back as invoice 99 rendered `0000099`,
+     * a number nobody ever issued. Comparing the re-render against the stored string is what turns a derivation into
+     * a checked round trip, and it costs one `!==`.
+     *
+     * Both refusals are `\LogicException` — `error.internal` per CLAUDE.md § "Translation keys". A user cannot fix
+     * either: one means a migration ran without its CHECK constraint, the other means the row is corrupt.
+     *
+     * @throws \LogicException if the two halves disagree, or if only one of them is present
+     */
+    private static function numberFrom(DocumentType $type, DocumentRow $document): ?DocumentNumber
+    {
+        if (null === $document->number) {
+            // THE CONVERSE IS A REFUSAL TOO, not a silent null. A rendered string with no sequence is a document
+            // that prints a number it cannot be ordered by or found under, and returning null here would hide it:
+            // the aggregate would read back as a DRAFT while the row carries `0000041`, so `issue()` would allocate
+            // a second number and the first would become a permanent hole in a gapless sequence.
+            if (null !== $document->numberRendered) {
+                throw new \LogicException(\sprintf(
+                    'Document %s carries rendered number "%s" with no sequence. The sequence is what identifies a '
+                    . 'document; a rendered string alone cannot be ordered by, made unique, or audited, and reading '
+                    . 'this row back as a draft would let issue() allocate a second number and leave the first as a '
+                    . 'permanent hole in a gapless sequence.',
+                    $document->id->toRfc4122(),
+                    $document->numberRendered,
+                ));
+            }
+
+            return null;
+        }
+
+        if (null === $document->numberRendered) {
+            throw new \LogicException(\sprintf(
+                'Document %s carries sequence %d with no rendered number. The rendered string is what makes a '
+                . 're-download byte-identical, and re-rendering from a default width here is precisely the '
+                . 'behaviour the 2026-08-01 ruling removed — it is how an already-issued 0000041 becomes 00000041. '
+                . 'The migration forbids this pairing, so reaching it means the constraint is missing or our own '
+                . 'layer built the row wrong.',
+                $document->id->toRfc4122(),
+                $document->number,
+            ));
+        }
+
+        // `NumberPattern::padded()` refuses a width outside 1..MAX_WIDTH, so a corrupt string of 21 characters
+        // throws here rather than rendering a legal-looking number. Deliberately NOT clamped with `min()`: a clamp
+        // would silently accept the corruption and then fail the comparison below with a confusing message, and the
+        // clamp itself would be dead code for every valid value — `PHP_INT_MAX` is 19 digits and MAX_WIDTH is 20.
+        $number = new DocumentNumber($type, NumberPattern::padded(\strlen($document->numberRendered)), $document->number);
+
+        if ($number->number() !== $document->numberRendered) {
+            throw new \LogicException(\sprintf(
+                'Document %s has a rendered number stored as "%s", but sequence %d renders as "%s". The two halves '
+                . 'of a document number disagree, so this row cannot be read back without inventing a number: '
+                . 'returning either one would put a figure on a legal document that nobody issued.',
+                $document->id->toRfc4122(),
+                $document->numberRendered,
+                $document->number,
+                $number->number(),
+            ));
+        }
+
+        return $number;
     }
 }

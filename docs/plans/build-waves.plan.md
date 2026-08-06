@@ -198,6 +198,11 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   in-memory and was FALSE in production — round 22 measured it. **(b) WAVE 4 OWES IT: the PDF renderer must FORMAT
   quantity, never print the raw string**, or an issued invoice reads `2.000000 ×`. That is the only place the
   instability becomes user-visible, and it is where the byte-identical re-download guarantee actually bites.
+- [2026-08-06 18:30] AGREED: **the rendered document number's PATTERN is derived from the stored string, and `InvoiceMapper` is therefore stateless.** Implementing the 2026-08-01 ruling turned out to remove a dependency rather than add one: `NumberPattern::format()` is left-zero-padding, so `padded(strlen($rendered))->format($sequence)` reproduces `$rendered` exactly for every *(width, sequence)* pair [Verified: 48 of 48 combinations of width {1,2,3,7,8,20} × sequence {1,9,10,41,99,100,12345678,PHP_INT_MAX}, zero mismatches]. Chosen over keeping the injected default for the reason the whole column exists: an absent dependency cannot be misconfigured and a default can. The derivation is CHECKED against the stored string rather than trusted — § Gotchas 2026-07-31's *"a control may not derive its own expected value from the input it is validating"* — so a row whose two halves disagree is refused instead of reading back as a number nobody issued.
+- [2026-08-06 18:30] AGREED: **the AUTHORED pattern width is not recovered when a sequence outran its padding, and that is accepted rather than worked around.** Width 3 with sequence 12345 renders `12345`, and every width from 1 to 5 renders it identically — so the difference is unobservable on any document, payload or audit, and recovering it would need the second column the 2026-08-01 ruling rejected by name. The consequence for the round-trip contract test: that one case asserts RENDERING equality and cannot use the whole-aggregate backstop, because the pattern objects legitimately differ.
+- [2026-08-06 18:30] FOUND: **the migrations' CHECK constraints were asserted by NOTHING**, five of them, since `Version20260801120000`. Lower risk than the usual unenforced-control shape — PostgreSQL cannot quietly stop applying a constraint — but a constraint nobody names is one a future `diff`-generated migration can drop with every test still green. `api/tests/Integration/Document/DocumentNumberConstraintsTest.php` now covers the two new ones and the pre-existing `document_number_is_positive` beside them, asserting the CONSTRAINT NAME rather than "something threw". Still uncovered and named here so it is visibly owed: `document_type_is_known`, `document_state_is_known`, `document_vat_rounding_point_is_known`, `document_number_sequence_type_is_known` and `document_number_sequence_starts_at_one`.
+- [2026-08-06 18:30] RECORDED: **two existing tests refused the new column until it was declared deliberate, and both were right.** `BehaviouralIsolationTest` went red because its row synthesiser produced a non-digit value for a `varchar` under a digits-only CHECK — the map's own docblock predicts exactly this and calls it "a new table arrives RED rather than unattacked" — and `RowEntityInstantiationTest` refused a defaulted property absent from its `DEFAULTED` list. Neither was a false positive and neither needed weakening; both needed one declared line. Worth recording because the instinct on a red suite after adding a column is to assume the test is stale.
+
 - [2026-08-01 18:00] AGREED: **the RENDERED document number is persisted alongside the sequence** — resolving item 3
   of § "Awaiting the developer" and the contradiction between two adjacent rows of this plan. One column. The
   SEQUENCE remains the identity for ordering and the `(company_id, type, number)` uniqueness scope; the STRING makes
@@ -205,8 +210,19 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   invoice 41 as `00000041` on a document a client already holds. Rejected: snapshotting the pattern per document
   (equivalent guarantee, more indirection) and ruling rendering presentational (the cheaper reading, and unfixable
   once real invoices exist — the same class as the gapless sequence and money-is-never-a-float).
-  **OWED, and deliberately not started here:** a migration adding the column, `DocumentRow`, the mapper writing and
-  reading it, and the round-trip case. `InvoiceMapper`'s class docblock states the hazard at the line that changes.
+  **BUILT 2026-08-06, all four pieces:** `api/migrations/Version20260806180000.php` (the column plus a
+  paired-nullability and a digits-only CHECK), `DocumentRow::$numberRendered`, both mapper directions, and six cases
+  in `InvoiceMapperTest` plus twelve in the new `DocumentNumberConstraintsTest`. **The implementation went further
+  than the ruling asked, and the extra part is the interesting one:** the read path DERIVES its pattern from the
+  stored string's own length rather than from configuration, because `format()` is left-zero-padding and therefore
+  `padded(strlen($rendered))->format($sequence) === $rendered` for every *(width, sequence)* pair [Verified: 48 of 48
+  combinations, zero mismatches]. So `InvoiceMapper`'s `NumberPattern` constructor dependency is **deleted**, not
+  merely bypassed — the mapper is stateless and there is no configuration on the read path left to be wrong, which is
+  strictly stronger than a correct default. The derivation is then CHECKED against the stored string, because
+  § Gotchas 2026-07-31 records a P0 where a validator derived its expected value from the input it was validating.
+  What is deliberately NOT recovered is the AUTHORED width when a sequence outran its padding (width 3, sequence
+  12345 → `12345`): every width from 1 to 5 renders that document identically, so the difference has no observable
+  effect on any document, payload or audit.
 - [2026-08-01 18:00] AGREED: **certification rounds PAUSE until the behavioural suite lands**, then one MAXIMAL round
   against the new shape. Rationale, and it is specific rather than fatigue: **four of round 22's six P0s are in code
   this plan's 16:00 ruling says to DELETE.** Reviewing axes with no future is the expensive kind of thorough, and the
@@ -961,7 +977,7 @@ the developer approved:
 
 **Still owed in this wave** and NOT closed by the above: `scripts/dev/provision-dev-database.sh` (see the
 2026-08-01 12:15 Decisions Log entry — the dev database's ownership was corrected by hand, so a fresh container
-reproduces the wrong shape); **the Doctrine REPOSITORY** — the mapper and its round-trip contract test LANDED at `b8d82c3`, hardened at `030550e`; what is owed is the repository that uses it, translating the four rows ↔
+reproduces the wrong shape); **the Doctrine REPOSITORY** — the mapper and its round-trip contract test LANDED at `b8d82c3`, hardened at `030550e`, and the RENDERED-NUMBER COLUMN the mapper was waiting on landed 2026-08-06 (see the Decisions Log), which is what makes the mapper's shape final rather than provisional; what is owed is the repository that uses it, translating the four rows ↔
 `Invoice`, with the **round-trip contract test** that is the accepted price of the immutability ruling; the
 savepoint re-check wiring below (now live rather than hypothetical — DBAL 4 always uses savepoints for nested
 transactions, so the shape is reachable today); the connection-lifecycle wiring; and the boundary rule that no
@@ -1237,7 +1253,7 @@ migration has nothing to invent:
 | `document.type` | non-null enum `('invoice','quote','credit','delivery_note')` | `DocumentType`'s **backed values**, not its case names. A PHP rename must not be a data migration |
 | `document.state` | non-null enum `('draft','issued','cancelled')` | `DocumentState`'s backed values, same argument |
 | `document.currency` | non-null `CHAR(3)` | the DOCUMENT's currency, fixed at `Invoice::draft()` and not inferred from the first line. A `Money` is *(amount, currency)*; see the `product` table above for why one column per row rather than one per amount |
-| `document.number` | nullable `bigint` | the raw counter, **null until issued** — `Invoice::number()` returns null for a draft. **`bigint`, not `integer`** (round 15): `DocumentNumber` accepts any `int >= 1` up to `PHP_INT_MAX` and PostgreSQL `integer` stops at 2 147 483 647, so the domain admitted a value persistence would reject — the identical mismatch the quantity bound was added to eliminate, unnoticed one table over. `bigint` matches PHP's own integer width exactly, which is why it is the right answer rather than a wider `NUMERIC`: there is then no value the domain can hold and the column cannot. Stored as the integer rather than the rendered string because the pattern is per-tenant configuration and may change: `NumberPattern` renders, it does not identify |
+| `document.number` | nullable `bigint` | the raw counter, **null until issued** — `Invoice::number()` returns null for a draft. **`bigint`, not `integer`** (round 15): `DocumentNumber` accepts any `int >= 1` up to `PHP_INT_MAX` and PostgreSQL `integer` stops at 2 147 483 647, so the domain admitted a value persistence would reject — the identical mismatch the quantity bound was added to eliminate, unnoticed one table over. `bigint` matches PHP's own integer width exactly, which is why it is the right answer rather than a wider `NUMERIC`: there is then no value the domain can hold and the column cannot. Stored as the integer **as well as** the rendered string in `document.number_rendered` (added 2026-08-06), and the split is the point: this column IDENTIFIES — ordering, the `(company_id, type, number)` uniqueness scope, the gapless audit trail — while the string RENDERS. `NumberPattern` renders and does not identify, so a padded string could never carry the ordering; and the integer alone could never carry the rendering, which is what made an administrator's width change able to restate an issued document. This clause read *"stored as the integer rather than the rendered string"* until the column landed, which contradicted the row three above it — the contradiction § "Awaiting the developer" item 3 was opened to resolve |
 | `document.vat_rounding_point` | non-null enum `('per_rate_group','per_line')` | per-company configuration, so it is persisted per document as issued — a company changing it must not restate a document a client holds |
 | **`UNIQUE (company_id, type, number)`** | — | **the gapless sequence's only real guarantee.** `DocumentNumberSequence` cannot promise uniqueness across processes; this constraint is what makes a broken adapter loud instead of silent |
 | `document_line.quantity` | non-null `NUMERIC(21,6)` | `DocumentLine::MAX_INTEGER_DIGITS` (15) + `DocumentLine::MAX_SCALE` (6). Both constants exist because round 14 found this the ONE persisted decimal in the domain bounded at neither end — it accepted 601 decimals and 40 integer digits, so no `NUMERIC` could have stored what the domain admitted |
@@ -2184,13 +2200,15 @@ synthesise — that is a property of the technique, not a bug to fix.
 
 ## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **TWO ITEMS ARE OPEN**
 
-**3. ~~THE RENDERED DOCUMENT NUMBER IS NOT REPRODUCIBLE FROM ITS ROW~~ — RULED 2026-08-01 18:00: the rendered
-string is PERSISTED alongside the sequence.** See the Decisions Log. Kept here with its reasoning rather than
-deleted, because the IMPLEMENTATION is still owed — a migration column, `DocumentRow`, both mapper directions and a
-round-trip case — and because the reasoning is what a future reader needs in order not to reopen it. Original
+**3. ~~THE RENDERED DOCUMENT NUMBER IS NOT REPRODUCIBLE FROM ITS ROW~~ — RULED 2026-08-01 18:00, and **BUILT
+2026-08-06**: the rendered string is PERSISTED alongside the sequence.** See the Decisions Log for what landed. Kept
+here with its reasoning rather than deleted — not because anything is still owed (nothing is), but because the
+reasoning is what a future reader needs in order not to reopen it, and because one clause of the original problem
+statement below is now FALSE and worth seeing crossed out rather than vanished: `InvoiceMapper` no longer *"takes it
+as a constructor dependency and defaults to width 7"*, it takes no constructor at all. Original
 statement of the problem: `DocumentNumber` is *(type, pattern, sequence)*. The row stores
 type and sequence; `NumberPattern` is per-tenant configuration on a settings table no wave has built, so
-`InvoiceMapper` takes it as a constructor dependency and defaults to width 7. An administrator widening that to 8
+~~`InvoiceMapper` takes it as a constructor dependency and defaults to width 7~~ (false since 2026-08-06: it takes no constructor). An administrator widening that to 8
 re-renders an already-issued invoice as `00000041` instead of `0000041` — **a different number on a legal document a
 client already holds**. This plan states BOTH principles as settled, in adjacent rows: *"the pattern is per-tenant
 configuration and may change: `NumberPattern` renders, it does not identify"* and, three rows above, *"a company
