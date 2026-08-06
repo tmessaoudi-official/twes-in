@@ -30,9 +30,20 @@ namespace Twes\Domain\Document;
  * for 2026-07-31: tenancy is AMBIENT CONTEXT, not a field. A `company_id` in `Domain/` is a P0, the
  * database-per-tenant mode `TenantIsolationStrategy` exists to allow has no such column at all, and the reductio is
  * decisive — if a tenant must sit inside a value object for safety, it must equally sit inside `Invoice`,
- * `DocumentLine` and `Money`, and a field every type needs is not a field. The repository takes the tenant as an
- * explicit argument instead, which is also what enforces the boundary rule that no tenant-less path may hydrate an
- * aggregate.
+ * `DocumentLine` and `Money`, and a field every type needs is not a field.
+ *
+ * **The sentence that followed said *"The repository takes the tenant as an explicit argument instead, which is also
+ * what enforces the boundary rule that no tenant-less path may hydrate an aggregate"*, and it was NOT BUILDABLE.**
+ * `TenantId` lives in `Infrastructure/Tenancy/`, so a `Domain/` port declaring that parameter is an outward
+ * dependency and a P0 — `scripts/gates/layer-dependencies.php` refuses it. [Verified 2026-08-06: a probe interface in
+ * this namespace declaring `f(TenantId $t)` produced *"Domain references Twes\Infrastructure\Tenancy\TenantId,
+ * which is outward"*, exit 1.] Corrected in place rather than annotated below, per `CLAUDE.md` § Gotchas 2026-07-29.
+ *
+ * What {@see InvoiceRepository} does instead: the port takes NO tenant, and the adapter is constructed with the
+ * request's `TenantContext` and refuses when none is bound. That is stronger, not weaker — a parameter is satisfied
+ * by whatever tenant id the caller happens to hold, including the wrong one, while a context resolved once cannot be
+ * forged at the call site. Note the reductio in the paragraph above applies to a PARAMETER on every method exactly
+ * as it applies to a FIELD on every type.
  *
  * **THE ID IS A STRING, and it started as a `Symfony\Component\Uid\Uuid`.** `layer-dependencies.php` refused
  * that immediately — *"Domain references the third-party namespace Symfony\Component\Uid\Uuid. The domain layer

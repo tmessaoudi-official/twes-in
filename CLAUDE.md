@@ -23,11 +23,14 @@ nothing here is built for it. Do not treat it as a requirement, do not design ar
 do not defer a decision waiting for it. See `VISION.md`.
 
 Status: **Wave 0 landed, not yet certified; Wave 1's domain, Symfony application, Doctrine mapping, first
-migration and schema gate all landed** (2026-08-01). Wave 1's document kernel, lifecycle, numbering and `Invoice`
+migration and schema gate all landed** (2026-08-01), and **its persistence closed out on 2026-08-06** — the
+rendered-number column, the Doctrine repository with its port, the savepoint tenant-binding guard, and the boundary
+rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel, lifecycle, numbering and `Invoice`
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. Still owed in Wave 1:
-the **Doctrine repository** — the mapper and its round-trip contract test landed, so what remains is the repository that uses them — the
-savepoint re-check wiring, the connection-lifecycle wiring, and the HTTP surface.
+the **connection-lifecycle wiring** (the numbered obligations plus the eviction contract nested in the first) and the
+**HTTP surface**. Note the repository writes with DBAL rather than through the UnitOfWork, and § Gotchas 2026-08-06
+records the measured reason — a whole-rewrite through the identity map is impossible, not merely slow.
 `docs/plans/build-waves.plan.md` § Wave 1 is authoritative.
 
 `api/` holds a framework-free `Domain/` (money, pricing, **documents**) and `Infrastructure/` (tenancy, clock,
@@ -1516,6 +1519,30 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   a `TO` clause. That is the same polarity inversion `scripts/gates/worker-mode-blocked.sh` needed three defeats to
   learn, and it is the second time in this project that **enumerating accepted spellings of a thing the database or
   the shell defines** has been the defect.
+
+- **2026-08-06 — A RULING CAN BE UNBUILDABLE, and the gate is what tells you which of two rulings wins.**
+  `DocumentIdentity`'s docblock recorded, as a settled decision, that *"the repository takes the tenant as an explicit
+  argument"* — and that is impossible here: `TenantId` lives in `Infrastructure/Tenancy/`, so a `Domain/` port naming
+  it is an outward dependency and a P0. [Verified: a probe interface in `Domain/Document/` declaring `f(TenantId $t)`
+  produced *"Domain references Twes\Infrastructure\Tenancy\TenantId, which is outward"*, exit 1.] Two recorded
+  rulings collided — that one, and § Architecture's zero-outward-dependency rule — and the tie-break was not a
+  judgement call: one of them is enforced by a gate and the other was prose. **The prose loses.** The remedy is also
+  the more interesting half: the adapter is constructed with the request's `TenantContext` and refuses when none is
+  bound, which is STRONGER than a parameter, because a parameter is satisfied by whatever tenant id the caller happens
+  to hold — including the wrong one — while a context resolved once cannot be forged at the call site. And the
+  reductio § Gotchas 2026-07-31 applied to a FIELD on every type applies identically to a PARAMETER on every method:
+  if `find()` needs it, so do `save()` and every query method the interface ever grows.
+  Two further findings from the same change, both measured:
+  **(1) A whole-rewrite through Doctrine's UnitOfWork is IMPOSSIBLE, not merely inefficient.** `remove()` on the child
+  row at position 0 plus `persist()` of a new row at the same composite primary key raises
+  `EntityIdentityCollisionException` from the identity map, **before any SQL is emitted** [Verified against the
+  migrated schema]. That is the same immutability mismatch that put the mapping on a separate model, one level down —
+  so the repository writes with DBAL, and what the ORM mapping is FOR (schema validation, typed rows, future
+  `migrations:diff`) now has to be stated explicitly, or the mapping reads as unused.
+  **(2) A `Domain/` port gets no auto-alias.** Symfony aliases an interface to its single implementation only when the
+  INTERFACE is in an autowired resource, and `Twes\Domain\` is deliberately excluded. So every domain port needs its
+  binding written in `services.yaml`; without it the failure is a message about an unresolvable argument, which points
+  at the consumer rather than at the missing line. [Verified: `debug:container` before and after.]
 
 ## Git & CI
 

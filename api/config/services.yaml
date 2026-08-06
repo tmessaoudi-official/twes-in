@@ -37,6 +37,10 @@ services:
             - '../src/Infrastructure/Tenancy/Doctrine/SavepointTenantBindingDriver.php'
             - '../src/Infrastructure/Tenancy/Doctrine/SavepointTenantBindingConnection.php'
             - '../src/Infrastructure/Tenancy/Doctrine/SavepointTenantBindingStatement.php'
+            # `RowHydrator` is a namespace for three static functions, not a service. It has no constructor
+            # dependencies and nothing injects it — `DoctrineInvoiceRepository` calls it statically, which is
+            # deliberate (see its docblock: a separate class for testability, not for injection).
+            - '../src/Infrastructure/Persistence/Doctrine/RowHydrator.php'
 
     Twes\UI\:
         resource: '../src/UI/'
@@ -64,3 +68,16 @@ services:
         autoconfigure: false
         tags:
             - { name: 'doctrine.middleware', connection: 'default' }
+
+    # THE INVOICE REPOSITORY PORT → its Doctrine adapter.
+    #
+    # An EXPLICIT alias, because Symfony will not create one here. Auto-aliasing an interface to its single
+    # implementation happens when the INTERFACE is found in an autowired resource, and `Twes\Domain\` is
+    # deliberately absent from autowiring — the domain has no services and registering it would let the container
+    # instantiate domain objects (see the comment at the top of this file). So without this line the alias simply
+    # does not exist, and the first `Application/` handler to ask for `InvoiceRepository` fails to autowire with a
+    # message about an unresolvable argument rather than about a missing alias.
+    #
+    # This is the shape every future domain port will need: the port is in `Domain/`, the adapter in
+    # `Infrastructure/`, and the binding between them is configuration.
+    Twes\Domain\Document\InvoiceRepository: '@Twes\Infrastructure\Persistence\Doctrine\DoctrineInvoiceRepository'
