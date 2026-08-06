@@ -104,7 +104,13 @@ readonly HEADER_WINDOW=40
 # configuration files under `infra/api/conf.d*/` among them — and NONE of them was ever checked, so the convention
 # was upheld by memory rather than by this gate. The trigger was adding a sixth (`conf.d-dev/60-xdebug.ini`) and
 # noticing the reported count did not move. [Verified: `139 file(s)` both before and after the new file was staged.]
-readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini neon)
+readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini neon
+    # `py` added 2026-08-06 with the first tracked Python file (`scripts/gates/lib/worker-oracle.py`). The gate
+    # reported the SAME COUNT after that file was staged, which is the tell § Gotchas 2026-08-05 records for `ini`:
+    # an unenforced convention is not a convention, and the cheapest way to learn what a gate is not looking at is
+    # to make it look at one more thing.
+    py
+)
 
 if [[ "${1:-}" == "--dump-rules" ]]; then
   printf 'roots %s\n' "${SEARCH_ROOTS[*]}"

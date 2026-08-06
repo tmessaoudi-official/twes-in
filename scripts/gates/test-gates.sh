@@ -2475,7 +2475,21 @@ PYGT
   # weakened to `grep -qiE 'APP_RUNTIME|worker'`, which the gate's unconditional `worker_sources=` counts line
   # satisfied on every path — so the message half had collapsed into the exit code, the exact failure
   # CLAUDE.md § Gotchas records ("assert on the MESSAGE, not just a non-zero exit code").
+  # THE ORACLE ROUTES only run when the pinned FrankenPHP image is present, because the oracle SKIPS without it
+  # and a mutant that cannot fire would report a miss against a gate that is behaving correctly. Recorded
+  # rather than hidden: on a machine without the image these two are not exercised.
+  oracle_routes=''
+  wm_image="dunglas/frankenphp:$(grep -m1 -oE 'ARG FRANKENPHP_VERSION=[^[:space:]]+' \
+    "$REPO_ROOT/infra/api/Dockerfile" | sed 's/.*=//')"
+  if docker image inspect "$wm_image" >/dev/null 2>&1; then
+    oracle_routes='oracle-block-scalar-seam oracle-server-name-injection'
+  else
+    printf '  ok   — oracle mutants SKIPPED, %s absent (the oracle itself skips too, so they cannot fire)\n' \
+      "$wm_image"
+    passed=$((passed + 1))
+  fi
   for cc_route in real-runtime unknown-runtime frankenphp-config caddy-extra seam-without-runtime \
+                  $oracle_routes \
                   runtime-role-is-owner runtime-role-is-superuser command-names-frankenphp \
                   env-file-value-is-visible \
                   caddy-global-options caddy-extra-config seam-nonempty-innocuous; do
@@ -2506,7 +2520,32 @@ def set_compose(value=None, extra=None):
     p.write_text('\n'.join(lines))
 
 # ---- ROUND 31's TENANCY P0 AND THE CLI-FLAG CLASS -------------------------------------------------------------
-if route == 'runtime-role-is-owner':
+# ---- THE ORACLE'S OWN MUTANTS. Both of these defeated the BASH version of the oracle silently: it built
+# ---- `docker -e KEY=VALUE` arguments from a separator-joined list read with `read -r`, which cannot carry a
+# ---- multi-line value -- so the injection was TRUNCATED before reaching the server and the oracle adapted a
+# ---- configuration nobody would ever run, then reported it clean. A multi-line value IS the attack.
+if route == 'oracle-block-scalar-seam':
+    p = root / 'infra/compose.yaml'
+    lines = p.read_text().split('\n')
+    for i, line in enumerate(lines):
+        if line.startswith('  APP_RUNTIME:'):
+            lines[i + 1:i + 1] = ['  CADDY_SERVER_EXTRA_DIRECTIVES: |', '    php_server {',
+                                  '      worker /app/public/index.php', '    }']
+            break
+    else:
+        raise SystemExit('no APP_RUNTIME anchor')
+    p.write_text('\n'.join(lines))
+elif route == 'oracle-server-name-injection':
+    # `{$SERVER_NAME}` splices at SITE-BLOCK position, and `php_server` takes `worker` as a subdirective, so this
+    # closes a complete `:80` site containing a worker and opens `:81 {` to swallow the rest of the file. Proven
+    # against FrankenPHP's own adapter by a certification round.
+    p = root / 'infra/.env'
+    payload = 'SERVER_NAME=":80 {\n\tphp_server {\n\t\tworker /app/public/index.php\n\t}\n}\n:81"'
+    text = p.read_text().replace('SERVER_NAME=:80', payload, 1)
+    if 'php_server' not in text:
+        raise SystemExit('SERVER_NAME was not replaced; this case would be vacuous')
+    p.write_text(text)
+elif route == 'runtime-role-is-owner':
     # THE VERIFIED BREACH: one token in the tracked `infra/.env` gives every serving container the OWNING role, which
     # can `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` on every tenant table. A reviewer proved it against the live
     # migrated database. Nothing saw it: the entrypoint refuses only `DATABASE_URL_OWNER`,
@@ -2582,7 +2621,7 @@ PYWK
       cc_w="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_w_rc=0 || cc_w_rc=$?
       # THE GATE'S OWN WORDS, one of two exact phrases depending on which half fires.
       if (( cc_w_rc != 0 )) \
-        && printf '%s' "$cc_w" | grep -qE 'the only permitted value is|to a non-empty value|which is the role DATABASE_URL_OWNER names|superuser is exempt|overrides the server invocation'; then
+        && printf '%s' "$cc_w" | grep -qE 'the only permitted value is|to a non-empty value|which is the role DATABASE_URL_OWNER names|superuser is exempt|overrides the server invocation|reports a WORKER|DOES NOT PARSE'; then
         printf '  ok   — compose-config catches worker mode via %s\n' "$cc_route"
         passed=$((passed + 1))
       else
@@ -3226,7 +3265,7 @@ fi
 # 466/448, and contradicted its own commit message. The floors below are what is asserted; the totals
 # are not written down.]
 if docker compose version >/dev/null 2>&1; then
-  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 462
+  assert_at_least "the suite itself has not shrunk (with docker)" "$passed" 464
 else
   assert_at_least "the suite itself has not shrunk (no docker)" "$passed" 437
 fi

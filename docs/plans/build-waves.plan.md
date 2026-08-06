@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-06 07:15] AGREED: the worker ORACLE is live — `frankenphp adapt` on the rendered configuration, asserting zero workers, with three distinct verdicts (unparseable config / non-JSON output / worker present) because collapsing them made the first version report a worker on a clean tree. It closes the Caddy-GRAMMAR class by construction; `APP_RUNTIME`, `extra.runtime` and the `--worker` CLI flag are NOT covered by it and stay with the text rules and the invocation allow-list.
 - [2026-08-06 05:40] AGREED: the worker-mode control STOPS text-scanning. A `frankenphp adapt` ORACLE on the rendered configuration replaces detection (it asks the server, so the CLI flag, directives, seams, block scalars and indirection close by construction); only the `APP_RUNTIME` literal allow-list and `extra.runtime` remain as the no-Docker layer; the comment/continuation machinery is DELETED rather than patched. Five versions were each defeated within one round and the fifth regressed against the fourth. The oracle is NOT yet built — the pinned image would not pull here.
 - [2026-08-06 03:10] AGREED: the Caddy-config and seam derivation lives ONCE, in `scripts/gates/lib/caddy-configs.sh`, sourced by both worker-mode gates — a near-copy in each is how they came to derive different sets. Libraries under `scripts/gates/lib/` are excluded from the gate inventory but must be sourced, required or executed by a gate, checked and proven by a mutant. And Wave 10's deletion instruction is a PROCEDURE ending in *"run `composer gate` and fix everything it reports"*, because a hand-written collateral list has been incomplete three times running.
 - [2026-08-06 01:20] AGREED: the worker-mode value axis is REBUILT rather than patched — the analysis moves to `scripts/gates/lib/worker-mode-analyse.php`, does exactly two total operations (join continuations into logical lines; one quote-aware scan per line), and compares text against committed literals WITHOUT extracting any value. `SERVER_NAME` stops being an exemption and gets a structural no-brace rule plus a quote-balance rule; Caddy configs are identified by what the Dockerfile SERVES rather than by filename; only declaration positions are judged.
@@ -2760,3 +2761,59 @@ fixture race — `/` at 94% with a leaked 3GB directory; freeing space reproduce
 not the 86 quoted mid-session; no tracked file writes either number.
 
 **Still no two consecutive clean rounds.** 14, 24, 18, 26, 17, 31, 28, 39.
+
+### The worker ORACLE landed — asking the server instead of the files
+
+**`scripts/gates/lib/worker-oracle.py`, wired into `compose-config.sh`.** The image pull that "timed out" last commit
+succeeded in **16 seconds** — the daemon was down, not the network. I wrote `[Verified: docker pull failed at 240s]`
+without running `docker version` first, which is the reasoned-not-tried pattern this file records five times, and it
+cost a commit's worth of scope. The correction belongs here rather than beside the old claim: that citation was wrong.
+
+**What the oracle does.** For each rendered configuration, for each serving service (one carrying `SERVER_NAME`), for
+each Caddy config the SHARED derivation identifies: run `frankenphp adapt` with that service's real environment and
+assert the adapted JSON contains **no worker**. `adapt` splices every `{$…}` placeholder, parses Caddy's grammar and
+follows an `import`, so it answers the question the way the server will.
+
+**Three verdicts, kept distinct on purpose:** adapt exited non-zero; adapt succeeded but its output is not JSON; adapt
+succeeded and a worker is present. Collapsing them is what made the first version report *"a WORKER"* on a CLEAN tree
+— it captured `2>&1`, adapt's stderr warnings polluted the JSON, `json.load` threw, and the error path returned `-1`
+which `!= 0` printed as a worker. A message diagnosing the opposite of what happened, in the gate written to stop
+exactly that.
+
+**Six routes, verified against the real binary:**
+
+| Route | Verdict |
+|---|---|
+| clean tree | no worker |
+| one-line seam (`FRANKENPHP_CONFIG: 'worker …'`) | **WORKER** |
+| seam as a YAML **block scalar** | **WORKER** |
+| multi-line `SERVER_NAME` closing the site block | **WORKER** |
+| uncommented Caddyfile `worker` | refused (DOES NOT PARSE — the residual `# }` makes it malformed; a well-formed one reports WORKER) |
+| Caddyfile `import` | refused (DOES NOT PARSE) |
+
+**The middle two are the point.** They defeated the BASH version of this same oracle *silently*: it built
+`docker -e KEY=VALUE` arguments from a separator-joined list read with `read -r`, which **cannot carry a multi-line
+value** — and a multi-line value IS the attack. The oracle adapted a configuration nobody would ever run and reported
+it clean. Moving the loop into Python makes the environment travel as a dict into a list argv: no shell, no quoting,
+no separator, and a newline is just a byte. Both are now meta-suite mutants, guarded on image presence because the
+oracle skips without it (and the skip says what goes unchecked).
+
+**A fourth defect in my own wiring, worth its line:** the first caller swapped file descriptors
+(`2>&1 1>&3 3>&-` inside a command substitution) and the entire block produced **no output at all** — a gate that
+printed nothing and asserted nothing. The count now travels in a file, and a missing count is treated as ONE FAILURE
+rather than zero, because the oracle not reporting is the same class of event as the oracle finding something.
+
+**And widening one gate found a stray, again.** `spdx-headers.sh` reported the SAME COUNT (151) after
+`worker-oracle.py` was staged — `py` was not in its extension list, so the first tracked Python file's header was
+unenforced. Adding `py` moved it to 152, exactly one. That is the `ini` finding of 2026-08-05 recurring: an
+unenforced convention is not a convention, and the cheapest way to learn what a gate is not looking at is to make it
+look at one more thing.
+
+**What the oracle does NOT cover, stated rather than left to be discovered:** `APP_RUNTIME` (a Symfony concern the
+Caddy config knows nothing about), `extra.runtime`, and the `--worker` CLI FLAG — `adapt` reads the Caddyfile, not the
+command line. Those remain with the text rules and the invocation allow-list, which is why the round-31 open list
+below still matters: the oracle closes the Caddy-GRAMMAR class, not the whole control. The dialect machinery's four
+regressions are still open, and stripping it is the next step now that its replacement exists for that class.
+
+`composer gate` EXIT=0: **473 passed, 0 failed**, `OK (779 tests, 3092 assertions)`, PHPStan `[OK] No errors`,
+php-cs-fixer `0 of 91`, `spdx-headers: OK — 152`, `schema-tenancy: OK`.

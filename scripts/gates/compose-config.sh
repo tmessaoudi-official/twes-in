@@ -81,6 +81,22 @@ SEAM_KEYS="$(
 )"
 readonly SEAM_KEYS
 
+# THE PINNED IMAGE, read from the Dockerfile's own ARG rather than written here -- a second copy of a version pin is
+# how the two drift, and this project has paid for a hand-written list at every level already.
+FRANKENPHP_IMAGE=""
+if frankenphp_version="$(grep -m1 -oE 'ARG FRANKENPHP_VERSION=[^[:space:]]+' "$INFRA/api/Dockerfile" 2>/dev/null)"; then
+    FRANKENPHP_IMAGE="dunglas/frankenphp:${frankenphp_version#ARG FRANKENPHP_VERSION=}"
+fi
+readonly FRANKENPHP_IMAGE
+
+# The Caddy configs the oracle adapts, from the SHARED derivation both worker-mode gates use.
+CADDY_CONFIGS=()
+if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    mapfile -t CADDY_CONFIGS < <(caddy_config_paths "$REPO_ROOT")
+else
+    mapfile -t CADDY_CONFIGS < <(TWES_CADDY_NO_INDEX=1 caddy_config_paths "$REPO_ROOT")
+fi
+
 # A DERIVED set that came back empty means the derivation broke, not that there are no seams -- and the seam loop
 # would then check nothing while every other property still reported clean. That is fail-OPEN, which is the exact
 # polarity error the sibling gate was rewritten to remove, so it is refused here rather than tolerated. (The first
@@ -498,6 +514,37 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     fi
 
     printf '  ok   — %s renders\n' "$overlay"
+
+    # THE WORKER ORACLE — see `lib/worker-oracle.py` for why it exists and why it is Python. The short version: five
+    # text-scanning versions of this control were each defeated within one round, so the question is put to
+    # `frankenphp adapt`, which resolves the effective configuration the way the server will. The environment travels
+    # as a dict into a list argv, because the bash version could not carry a multi-line value and two live injections
+    # were silently truncated before reaching the server.
+    #
+    # The image is derived from the Dockerfile's own ARG. If it is absent the oracle SKIPS with a message naming what
+    # goes unchecked — the same tolerated skip as the `docker compose` one, and for the same reason: every text rule
+    # still runs, and a skip that says what it did not check is honest where a silent pass is not.
+    if [[ -n "$FRANKENPHP_IMAGE" ]] && docker image inspect "$FRANKENPHP_IMAGE" >/dev/null 2>&1; then
+        oracle_count="$(mktemp)"
+        printf '%s' "$rendered" \
+            | python3 -c 'import json,sys,yaml; print(json.dumps(yaml.safe_load(sys.stdin)))' \
+            | python3 "$REPO_ROOT/scripts/gates/lib/worker-oracle.py" \
+                "$FRANKENPHP_IMAGE" "$REPO_ROOT" "$overlay" \
+                "$(printf '%s\n' "${CADDY_CONFIGS[@]:-}")" "$oracle_count"
+        oracle_failures="$(cat "$oracle_count" 2>/dev/null || echo 1)"
+        rm -f "$oracle_count"
+        # A missing or unreadable count is treated as ONE FAILURE, not zero: the oracle not reporting is the same
+        # class of event as the oracle finding something, and defaulting it to clean is the fail-open polarity this
+        # control has been rewritten five times to remove.
+        [[ "$oracle_failures" =~ ^[0-9]+$ ]] || oracle_failures=1
+        failures=$((failures + oracle_failures))
+    else
+        printf '  ok   — %s: worker ORACLE SKIPPED, %s is not present locally. `docker pull %s` enables it.\n' \
+            "$overlay" "${FRANKENPHP_IMAGE:-<unresolved>}" "${FRANKENPHP_IMAGE:-<unresolved>}"
+        printf '         Unchecked without it: any worker reachable through Caddy GRAMMAR rather than a literal — a\n'
+        printf '         seam value, a SERVER_NAME that restructures blocks, an `import`. The text rules still cover\n'
+        printf '         APP_RUNTIME, extra.runtime and the server invocation.\n'
+    fi
 
     # The rendered document is inspected with Python rather than grep: `grep -q DATABASE_URL_OWNER` would match the
     # string anywhere in the file, including in a comment or in the migration service where it BELONGS. The
