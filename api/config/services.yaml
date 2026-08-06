@@ -41,6 +41,9 @@ services:
             # dependencies and nothing injects it — `DoctrineInvoiceRepository` calls it statically, which is
             # deliberate (see its docblock: a separate class for testability, not for injection).
             - '../src/Infrastructure/Persistence/Doctrine/RowHydrator.php'
+            # The provisioning-guard DRIVER, for the same reason as the savepoint wrappers: the middleware constructs
+            # it around a Driver that DBAL supplies, so it cannot be autowired and must not be a service.
+            - '../src/Infrastructure/Tenancy/Doctrine/ConnectionProvisioningGuardDriver.php'
 
     Twes\UI\:
         resource: '../src/UI/'
@@ -81,3 +84,31 @@ services:
     # This is the shape every future domain port will need: the port is in `Domain/`, the adapter in
     # `Infrastructure/`, and the binding between them is configuration.
     Twes\Domain\Document\InvoiceRepository: '@Twes\Infrastructure\Persistence\Doctrine\DoctrineInvoiceRepository'
+
+    # THE CONNECTION PROVISIONING GUARD -- obligations 2, 3 and 4 of Wave 1's connection-lifecycle list.
+    #
+    # Same scoping and the same `autoconfigure: false` reasoning as the savepoint middleware above: DoctrineBundle
+    # tags every `Driver\Middleware` for EVERY connection, and this belongs on the runtime connection only. The
+    # `owner` connection is the migrations credential -- it is SUPPOSED to own the tenant tables, so asserting that it
+    # cannot would fail by design.
+    #
+    # THE TTL IS THE STALENESS WINDOW, and it is here rather than hidden in the class because it is the one number a
+    # deployment might argue about: it bounds how long an `ALTER ROLE twes BYPASSRLS` can go unnoticed by the runtime
+    # check. 300s is chosen against the measurement that made caching necessary at all -- the assertions cost ~10.8 ms,
+    # so at 300s a busy process pays them roughly once per five minutes instead of once per request. Lower it and the
+    # cost returns; raise it and the window widens. `scripts/gates/schema-tenancy.php` checks the same role attributes,
+    # ownership and TRUNCATE at deploy time, which is what makes a runtime window tolerable rather than the only line
+    # of defence.
+    #
+    # `assertRevokedCapabilities` is FALSE outside production on purpose and NOT keyed on `%kernel.environment%`: the
+    # real question is whether this database has had its capabilities revoked, and the provisioned test database
+    # deliberately grants TEMPORARY because the column-fidelity suite needs a scratch table.
+    Twes\Infrastructure\Tenancy\Doctrine\ConnectionProvisioningGuardMiddleware:
+        autoconfigure: false
+        arguments:
+            $isolation: '@Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation'
+            $verifiedProvisioning: '@cache.app'
+            $verificationTtl: 300
+            $assertRevokedCapabilities: '%env(bool:TWES_ASSERT_REVOKED_CAPABILITIES)%'
+        tags:
+            - { name: 'doctrine.middleware', connection: 'default' }

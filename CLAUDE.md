@@ -28,8 +28,9 @@ rendered-number column, the Doctrine repository with its port, the savepoint ten
 rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel, lifecycle, numbering and `Invoice`
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. Still owed in Wave 1:
-the **connection-lifecycle wiring** (the numbered obligations plus the eviction contract nested in the first) and the
-**HTTP surface**. Note the repository writes with DBAL rather than through the UnitOfWork, and § Gotchas 2026-08-06
+the **HTTP surface** — the connection-lifecycle wiring closed out on 2026-08-06 (`SessionStateReleaser` for release,
+`ConnectionProvisioningGuardMiddleware` for acquisition, the latter cached once per (role, database) per TTL window
+against a measured ~10.8 ms per connection). Note the repository writes with DBAL rather than through the UnitOfWork, and § Gotchas 2026-08-06
 records the measured reason — a whole-rewrite through the identity map is impossible, not merely slow.
 `docs/plans/build-waves.plan.md` § Wave 1 is authoritative.
 
@@ -1543,6 +1544,27 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   INTERFACE is in an autowired resource, and `Twes\Domain\` is deliberately excluded. So every domain port needs its
   binding written in `services.yaml`; without it the failure is a message about an unresolvable argument, which points
   at the consumer rather than at the missing line. [Verified: `debug:container` before and after.]
+
+- **2026-08-06 — AN IN-PROCESS CACHE AMORTISES ACROSS NOTHING IN PHP, and the sentence explaining why the design
+  worked is where it became visible that it did not.** Wiring the acquire-time tenancy guards needed the ~10.8 ms of
+  catalogue queries [measured: 7.33 + 3.14 + 0.36 ms, 50 runs each] to stop being paid per request. The obvious
+  implementation is `private array $verified = []` on the middleware, and it is worthless: **PHP is shared-nothing**,
+  so under PHP-FPM every request gets a fresh execution context — a `static` does not survive between requests, and a
+  fresh kernel rebuilds the service anyway. The cache would have amortised across a single request and paid the full
+  cost on every one, **while looking optimised**. That is worse than not caching at all, because the code then claims
+  a property it does not have and the next reader believes it. A PSR-6 pool is the only thing in the ecosystem that
+  crosses a request boundary. **What caught it was writing the property's docblock** — the paragraph justifying the
+  design contradicted the design, three lines in. Worth generalising: when a comment explaining WHY something works
+  is hard to finish, that is evidence about the code, not about the comment.
+  Two more findings from the same change:
+  **(1) A cached security check must be cached in NEITHER direction on failure.** Not as success — one bad start-up
+  disables the guard for the whole window. Not as failure either — the fix for a wrongly-provisioned database is to
+  fix the database, and a cached failure keeps rejecting one that was just repaired. So the write happens only after
+  every applicable assertion passes, while the re-entrancy marker is set before.
+  **(2) `ArrayAdapter::getValues()` retains a placeholder for a key merely LOOKED UP**, so asserting an empty pool
+  fails on correct code. `isHit()` is the property that matters and the only one the consumer acts on — a fixture
+  detail masquerading as a defect, and the second time in one day that an assertion about a *representation* rather
+  than a *property* produced a false failure (the other was comparing a `NUMERIC(21,6)` quantity by string).
 
 ## Git & CI
 

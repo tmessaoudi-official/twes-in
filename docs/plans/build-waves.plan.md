@@ -198,6 +198,11 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   in-memory and was FALSE in production — round 22 measured it. **(b) WAVE 4 OWES IT: the PDF renderer must FORMAT
   quantity, never print the raw string**, or an issued invoice reads `2.000000 ×`. That is the only place the
   instability becomes user-visible, and it is where the byte-identical re-download guarantee actually bites.
+- [2026-08-06 23:30] RULED (developer, against a measurement): **the acquire-time provisioning guards run ONCE PER (ROLE, DATABASE) PER TTL WINDOW, not per acquisition.** The list said "when one is ACQUIRED", which under PHP-FPM means every request at ~10.8 ms [measured: 7.33 + 3.14 + 0.36 ms, 50 runs each]. Caching is CORRECT rather than merely cheaper because every property checked is catalogue state that is static per (role, database); the one per-session property — a connection arriving already bound — cannot exist on a brand-new backend and belongs to obligation 1. TTL 300s, in `services.yaml` where the number is visible, because it IS the staleness window. Rejected: per-acquisition as written (a fifth of a 50 ms response to re-verify a constant); environment-keyed cadence (splits a security guarantee by environment, which this project refuses outside the two prod-only items and their stated reason); moving the checks entirely into `composer gate` (they would stop being runtime guards, and items 3–4 cannot go there at all).
+- [2026-08-06 23:30] FOUND, and it invalidated the first implementation: **an in-process cache amortises across NOTHING under PHP-FPM.** PHP is shared-nothing — a `static` does not survive between requests and a fresh kernel rebuilds the service — so the obvious `private array $verified` would have paid the full ~10.8 ms on every single request while LOOKING optimised. That is worse than not caching, because the code would claim a property it does not have. A PSR-6 pool is the only thing in the ecosystem that crosses a request boundary; `cache.app` reads in well under a millisecond. Caught by writing the property's own docblock, which is worth recording: the sentence explaining WHY the design worked is where it became visible that it did not.
+- [2026-08-06 23:30] AGREED: **a failed verification is cached in NEITHER direction.** Not as success — one bad start-up would disable the guard for the whole TTL. Not as failure either — the fix for a wrongly-provisioned database is to fix the database, and a cached failure would keep rejecting one that had just been repaired. So the pool is written only after every applicable assertion passes, while the in-kernel marker is set BEFORE (re-entrancy: the assertions query the same connection). Pinned by a mutant that caches before the check.
+- [2026-08-06 23:30] RECORDED: three fixture defects found while testing this, each a real thing to know. `twes_in_test` has NO row-level security enabled, so the composite check refuses it as vacuous — correct behaviour, and why this test needs a migrated probe. The OWNER role legitimately FAILS the guard (it owns the tenant tables), so it cannot serve as a second passing role — the "two roles, two cache entries" case became a pure assertion on `cacheKeyFor()` instead, which is a better question anyway. And `ArrayAdapter::getValues()` retains a placeholder for a key merely LOOKED UP, so `getValues() === []` fails on correct code; `isHit()` is the property that matters.
+
 - [2026-08-06 22:30] AGREED: **the release half of the connection lifecycle is `SessionStateReleaser`, a `ResetInterface` service — and "when a connection is RETURNED" had to be reinterpreted because THERE IS NO POOL.** PHP-FPM gives one process per request and closes the connection with it, so under HTTP there is nothing to intercept; the moment that exists is `ServicesResetter` between units of work, which Messenger's `ResetServicesListener` invokes after every message. A worker consuming jobs for different tenants on one connection is exactly the hazard the obligation describes, and `compose.yaml` runs one. Using the ecosystem's own reset contract rather than inventing a `release()` is § "The Symfony ecosystem is the ONLY vocabulary"; autoconfiguration tags it `kernel.reset` with no manual wiring [Verified: `debug:container --tag=kernel.reset`]. `ConnectionMustBeEvicted` closes the connection and RETHROWS — closing is the eviction, since DBAL reconnects lazily and there is no pool to remove it from.
 - [2026-08-06 22:30] MEASURED, AND IT RAISES A DECISION THIS LIST PREDATES: **the ACQUIRE-time obligations cost ~10.8 ms per connection.** `assertConnectionCannotBypassPolicies()` is **7.33 ms**, `assertConnectionCannotCreateLargeObjects()` **3.14 ms**, `assertConnectionCannotCreateTemporaryObjects()` **0.36 ms** (50 runs each, against the migrated dev database). Item 2 says to run the composite "when one is ACQUIRED", which under PHP-FPM means every request. The observation that makes this a real fork rather than a cost to accept: **almost every property checked is STATIC per (role, database)** — `rolsuper`, `rolbypassrls`, table ownership, function ACLs — so per-acquire checking re-verifies a constant. The one genuinely per-session property is `assertSessionTenantIsUnset()`, which is cheap. Deliberately NOT resolved unilaterally: the list calls a missing obligation a `completeness-reviewer` P0, so changing the cadence is a decision rather than an optimisation. **Escalated to the developer.**
 
@@ -974,7 +979,7 @@ missing its header. **Every one of those four is a test that must be watched fai
 cross-tenant reads — are decided here. `CLAUDE.md` § Gotchas records both as day-zero rulings
 precisely because they are unfixable later.
 
-## Wave 1 — Client & the invoice core — **DOMAIN LANDED 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD AND BOUNDARY RULE 2026-08-06; connection-lifecycle wiring and the HTTP surface still owed**
+## Wave 1 — Client & the invoice core — **DOMAIN 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD, BOUNDARY RULE AND THE WHOLE CONNECTION LIFECYCLE 2026-08-06; the HTTP surface still owed**
 
 **PERSISTENCE IS NO LONGER BLOCKED, and the reason it was is worth keeping because I had it wrong for twenty
 rounds.** The heading here said "persistence BLOCKED" and pointed at network egress; the actual obstacle was
@@ -1003,8 +1008,9 @@ had landed at `b8d82c3`, hardened at `030550e`, and the rendered-number column t
 earlier the same day, which is what made its shape final rather than provisional. ~~the savepoint re-check wiring
 below~~ **— LANDED 2026-08-06**, as a DBAL middleware; see that section. ~~and the boundary rule that no tenant-less
 path may hydrate an aggregate~~ **— LANDED 2026-08-06 in the repository adapter, which refuses on both `save()` and
-`find()`**, each pinned by a case and by a mutant. **Still owed: the connection-lifecycle wiring** (the numbered list
-further down, plus the eviction contract nested in its first item).
+`find()`**, each pinned by a case and by a mutant. ~~**Still owed: the connection-lifecycle wiring**~~ **— CLOSED 2026-08-06**: every numbered obligation further down
+is wired, including the eviction contract nested in the first. **What Wave 1 still owes is the HTTP SURFACE** — the
+`functional` and `e2e` suites, and the API contract a shipped mobile client freezes.
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
@@ -1103,16 +1109,32 @@ a count here drifts every time either half changes, and it has twice. It read "t
    **close and discard it**, never return it — catching and ignoring that exception re-creates the eighth
    carrier in full. The driver failure travels as `$previous`, so the release path never masks an in-flight
    business exception.
-2. **`assertConnectionCannotBypassPolicies()` when one is ACQUIRED** — which now composes the session-lifetime
+2. **~~`assertConnectionCannotBypassPolicies()` when one is ACQUIRED~~ — WIRED 2026-08-06 as
+   `ConnectionProvisioningGuardMiddleware`, at the seam that acquires a connection (`Driver\Middleware::connect()`),
+   and ONCE PER (ROLE, DATABASE) PER TTL WINDOW rather than per acquisition.** That cadence is a developer ruling
+   taken against a measurement: the composite is **7.33 ms** and the two production-only checks below add **3.14 ms**
+   and **0.36 ms** (50 runs each), so per-acquisition under PHP-FPM means ~10.8 ms on every request. What makes
+   caching correct rather than merely cheaper is that **every property checked is STATIC per (role, database)** —
+   `rolsuper`, `rolbypassrls`, `rolreplication`, ownership, `TRUNCATE`, function ACLs — so per-acquisition
+   re-verifies a constant. The genuinely per-session property is not checkable here at all: a brand-new backend
+   cannot carry a `twes.tenant_id`, so that hazard belongs to REUSE and is obligation 1's.
+   **The cache is a POOL, not an in-process flag, and the first draft got this wrong**: PHP is shared-nothing, so a
+   `static` does not survive between requests and a fresh kernel rebuilds the service — an in-process cache would
+   have paid the full cost on every request while LOOKING optimised. A failed verification is cached in NEITHER
+   direction: not as success (one bad start-up would disable the guard forever) and not as failure (the fix for a
+   wrongly-provisioned database is to fix the database). Three mutants pin it. **The gap, stated:** drift inside the
+   TTL window is not caught at runtime — `scripts/gates/schema-tenancy.php` already asserts the same role
+   attributes, ownership and `TRUNCATE` at deploy time [6 hits], and an attacker who can `ALTER ROLE` can also
+   `DROP POLICY`, which no cadence would survive. **Original text follows:** — which now composes the session-lifetime
    and large-object checks, so this is one call rather than three. Round 12 found the seventh-class guard
    reachable only from its own test; composing it is what makes "a check nobody calls is not a check" hold.
-3. **`assertConnectionCannotCreateTemporaryObjects()` in PRODUCTION only**, and deliberately not in the
+3. **~~`assertConnectionCannotCreateTemporaryObjects()` in PRODUCTION only~~ — WIRED 2026-08-06** in the same middleware, behind `TWES_ASSERT_REVOKED_CAPABILITIES`. Deliberately NOT keyed on `%kernel.environment%`: the real question is whether THIS DATABASE has had its capabilities revoked, and an environment name is a proxy that goes wrong the day a staging database is provisioned like production. These two also CANNOT move into `composer gate` — the gate runs against the test database, which grants `TEMPORARY` and has not run the `REVOKE EXECUTE` statements [0 hits for either in `schema-tenancy.php`] — so acquisition is the only place they can run. **Original text follows:**, and deliberately not in the
    composite: the test database grants `TEMPORARY` because the column-fidelity suite needs a scratch table, so
    composing it would fail every run. `pg_temp` PRECEDES `public` in the search path, so a temporary table named
    after a policed one intercepts every unqualified reference to it — the leak arrives under the real table's
    own name. [Verified: with a temporary `shadow_probe` present, `current_schemas(true)` reads
    `{pg_temp_6,pg_catalog,public}` and an unqualified `shadow_probe::regclass` resolves into `pg_temp_6`.]
-4. **`assertConnectionCannotCreateLargeObjects()` in PRODUCTION only**, and not in the composite for the
+4. **~~`assertConnectionCannotCreateLargeObjects()` in PRODUCTION only~~ — WIRED 2026-08-06** in the same middleware, behind `TWES_ASSERT_REVOKED_CAPABILITIES`. Deliberately NOT keyed on `%kernel.environment%`: the real question is whether THIS DATABASE has had its capabilities revoked, and an environment name is a proxy that goes wrong the day a staging database is provisioned like production. These two also CANNOT move into `composer gate` — the gate runs against the test database, which grants `TEMPORARY` and has not run the `REVOKE EXECUTE` statements [0 hits for either in `schema-tenancy.php`] — so acquisition is the only place they can run. **Original text follows:**, and not in the composite for the
    identical reason as item 3: the test database has not run the `REVOKE EXECUTE` statements, so composing it
    would fail every run. The method's own docblock says "owed as Wave 1 wiring", and **this list was the place
    that owed it — round 17 found the obligation addressed to nobody.** The paragraph below named
