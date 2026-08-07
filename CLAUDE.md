@@ -835,7 +835,11 @@ who set it can correct it |
 here rather than deleted** so the file→table direction of this cross-check closes; round 16 found six keys with no
 row at all, three of them in this class |
 | TRANSPORT-level refusals, not domain ones | n/a | `error.not_found`, `error.tenant_required`,
-`error.validation_failed` and `error.internal` belong to the HTTP layer that does not exist yet. Listed because a
+`error.validation_failed` and `error.internal` belong to the HTTP layer — which **EXISTS since 2026-08-06**, and this
+cell read *"does not exist yet"* until the panel found it saying so twelve lines above the paragraph announcing the
+transport. Three of these four are now reachable answers of the live transport: `error.not_found` from
+`IssueInvoiceProcessor` and `InvoiceProvider`, `error.tenant_required` from the boundary refusal, and
+`error.validation_failed` from the validator. None of them RESOLVES its key yet — see the paragraph below. Listed because a
 cross-check that silently scopes members out is the exemption-inside-a-check shape § Gotchas records |
 | a currency mismatch **while pricing a product** | **yes** | `money.currency_mismatch`, which has existed since Wave 0. Round 15 found the single coarse row above claiming this got no key while the key was there, translated, in all three locales — the row was right about documents and wrong about pricing, where a user really can type a cost and a price in two currencies |
 

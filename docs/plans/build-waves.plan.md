@@ -1030,7 +1030,10 @@ the developer approved:
    from `policySqlFor()` so the migration and the checker cannot disagree.
 4. **`scripts/gates/schema-tenancy.php`** — the blocker below, now **CLOSED**.
 
-**Still owed in this wave** and NOT closed by the above: `scripts/dev/provision-dev-database.sh` (see the
+**Still owed in this wave** and NOT closed by the above: ~~`scripts/dev/provision-dev-database.sh`~~ **— LANDED
+2026-08-07, and then found DEFECTIVE by the panel: it reassigns the DATABASE and SCHEMA owner but never a RELATION
+owner, and skips every attribute check for a role that already exists. Both were demonstrated as live cross-tenant
+breaches. See the round-1 findings below.** (see the
 2026-08-01 12:15 Decisions Log entry — the dev database's ownership was corrected by hand, so a fresh container
 reproduces the wrong shape); ~~**the Doctrine REPOSITORY**~~ **— LANDED 2026-08-06**, `DoctrineInvoiceRepository`
 plus the `InvoiceRepository` port beside the aggregate, `PersistedInvoice`, `RowHydrator`, and
@@ -1047,10 +1050,27 @@ is wired, including the eviction contract nested in the first. ~~**What Wave 1 s
 opens a transaction — the **Postgres gapless counter** (`PostgresDocumentNumberSequence`), and edge validation on input
 DTOs that carry `string` for every amount. `scripts/gates/layer-dependencies.php` now requires `Application/` to be
 non-empty, per its own instruction to add a layer as soon as it acquires code. The `functional` suite holds three
-classes; **`e2e` is still empty**, and what it owes is named in § "Quality gate": the Caddy-level CSP cannot be seen
+classes (**FIVE as of 2026-08-07** — a count written beside the thing it counts, which is the defect this file
+records against itself); **`e2e` HELD NO CODE WHEN THIS WAS WRITTEN AND HOLDS `ServedSurfaceTest` SINCE 2026-08-07**,
+corrected in place here rather than three lines below, because what it owed is named in § "Quality gate": the Caddy-level CSP cannot be seen
 through the kernel.
 
-**WAVE 1 IS COMPLETE as of 2026-08-07.** ~~What Wave 1 still owes is the `e2e` SUITE~~ **— LANDED**:
+**WAVE 1 IS *NOT* COMPLETE, AND THE CLAIM THAT IT WAS IS RETRACTED HERE (2026-08-07).** The MAXIMAL panel refuted
+it on the wave's own `In:` line, which names **Client (+ contacts)** and **Product** — neither of which exists in any
+form. [Verified: 0 tracked files under `api/src/**` matching client/contact; the only `/Product` file is
+`Domain/Pricing/ProductPricing.php`, a pricing value object rather than an aggregate; the only tables any migration
+creates are `document`, `document_line`, `document_charge`, `document_number_sequence` and `messenger_messages`.] The
+tenant SETTINGS table is also absent, which this file states at § "numbering" as something *"Wave 1 must create
+anyway"* — `services.yaml` hard-wires `$numberWidth: 7` and `CreateInvoiceProcessor` hard-wires `PerRateGroup` in its
+place. And Deliverable 2 (the migration template) is recorded as unmet by this very section.
+
+**HOW THE WRONG CLAIM WAS MADE, because the mechanism matters more than the error:** I tracked this section's
+*"still owed"* ANNOTATIONS and struck them off as they landed, and never re-read the `In:` line those annotations are
+supposed to be a view of. A checklist derived from a scope statement is not the scope statement, and when the two
+disagree the scope statement wins. The panel's completeness lens was told to falsify the claim and did so in one
+`git ls-files`.
+
+What DID land is the invoice core: ~~the `e2e` SUITE~~ **— LANDED**:
 `api/tests/E2E/ServedSurfaceTest.php`, 42 cases against a really-running FrankenPHP/Caddy, which found a real
 duplicate-header defect in `infra/api/Caddyfile` on its first run (§ Gotchas 2026-08-07). It is deliberately outside
 `composer gate` — it fails rather than skipping without a live stack, so `gate:test` excludes it and `gate:e2e` is the
