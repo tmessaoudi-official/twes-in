@@ -354,6 +354,27 @@ test: ## Run the API unit+functional suites inside the container.
 		api php tools/bin/phpunit-12.phar $(if $(ARGS),$(ARGS),--testsuite $(TEST_SUITES))
 
 # --------------------------------------------------------------------------------------------------------------
+# THE `e2e` SUITE, WHICH `make gate` DELIBERATELY DOES NOT REACH AND HAD NO PATH TO AT ALL.
+#
+# `composer gate:e2e` asks a REALLY-RUNNING FrankenPHP/Caddy what it actually sent — the two disjoint CSP policies,
+# the `/bundles/*` file server, the catch-all's 404, the site-wide headers, and that no field is sent twice. None of
+# that is visible through the kernel, so it cannot live in `gate:test`, and it FAILS rather than skipping when no
+# server answers — which is why it is outside `composer gate` (wiring it in would make every gate run require a
+# built image and a live stack).
+#
+# The consequence, which the panel filed: it was reachable through no `make` target whatsoever, while `make` is how
+# a developer drives the stack in the first place. So the owed step was owed AND unrunnable by the documented route.
+#
+# `$(DC) exec api` rather than the host, so `TWES_E2E_BASE_URL` can default to the service name on the compose
+# network instead of a published port a developer may not have mapped. Override it for a host-side run.
+# --------------------------------------------------------------------------------------------------------------
+TWES_E2E_BASE_URL ?= http://api
+
+.PHONY: e2e
+e2e: ## Run the e2e suite against the RUNNING development stack (needs `make up` first).
+	$(DC) exec -e TWES_E2E_BASE_URL='$(TWES_E2E_BASE_URL)' api composer gate:e2e
+
+# --------------------------------------------------------------------------------------------------------------
 # Database
 # --------------------------------------------------------------------------------------------------------------
 .PHONY: migrate migrate-prod

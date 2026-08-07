@@ -121,12 +121,24 @@ $user = getenv('TWES_SCHEMA_USER') ?: getenv('TWES_TEST_DB_SUPERUSER');
 $password = getenv('TWES_SCHEMA_PASSWORD') ?: getenv('TWES_TEST_DB_SUPERUSER_PASSWORD');
 $runtimeRole = getenv('TWES_SCHEMA_RUNTIME_ROLE') ?: getenv('TWES_TEST_DB_USER') ?: 'twes';
 
-if (!is_string($dsn) || '' === $dsn || !is_string($user) || '' === $user) {
+// A DSN THAT ALREADY CARRIES `user=` IS SUFFICIENT ON ITS OWN, and requiring TWES_SCHEMA_USER anyway was a real
+// trap rather than a nicety. For a `pgsql:` DSN, libpq takes the connection string's own `user=` in preference to
+// PDO's third argument [verified: DSN `user=twes_owner` with third argument `twes` connects as `twes_owner`], so the
+// variable this gate INSISTED on was then discarded — a required value that nothing consults, which is the shape
+// CLAUDE.md § Gotchas records under "a permission that nothing consults permits everything". Worse, its name reads
+// like the role the gate asks ABOUT (that is TWES_SCHEMA_RUNTIME_ROLE), so the natural way to satisfy it was to pass
+// the runtime role as the connection credential and get a connection that cannot read `pg_authid`.
+$dsnCarriesUser = is_string($dsn) && 1 === preg_match('/(^|;)\s*user\s*=/i', $dsn);
+
+if (!is_string($dsn) || '' === $dsn || (!$dsnCarriesUser && (!is_string($user) || '' === $user))) {
     fwrite(STDERR, "schema-tenancy: FAIL — no database to inspect.\n"
         . "  This gate reads a REAL MIGRATED SCHEMA; it is the only one here that does, and it cannot be\n"
-        . "  satisfied by reading code. Set TWES_SCHEMA_DSN and TWES_SCHEMA_USER (TWES_SCHEMA_PASSWORD if the\n"
-        . "  role needs one), or let it fall back to the integration suite's TWES_TEST_DSN /\n"
-        . "  TWES_TEST_DB_SUPERUSER pair.\n"
+        . "  satisfied by reading code. Set TWES_SCHEMA_DSN, with either a `user=` inside it or a separate\n"
+        . "  TWES_SCHEMA_USER (plus TWES_SCHEMA_PASSWORD if the role needs one), or let it fall back to the\n"
+        . "  integration suite's TWES_TEST_DSN / TWES_TEST_DB_SUPERUSER pair.\n"
+        . "  NOTE which role is which: TWES_SCHEMA_USER is the role this gate CONNECTS AS and needs to be able\n"
+        . "  to read pg_policy, pg_class.relowner and pg_authid — so, the OWNER. The role every ownership and\n"
+        . "  TRUNCATE assertion is made ABOUT is TWES_SCHEMA_RUNTIME_ROLE, defaulting to \"twes\".\n"
         . "  It FAILS rather than skipping, deliberately: an unpoliced tenant table is invisible to every other\n"
         . "  check in this directory, so a skipped run here reports a clean bill over the one thing nothing else\n"
         . "  can see. CLAUDE.md § Gotchas records four separate controls that silently did not run.\n");
@@ -135,7 +147,11 @@ if (!is_string($dsn) || '' === $dsn || !is_string($user) || '' === $user) {
 }
 
 try {
-    $connection = new PDO($dsn, $user, '' === (string) $password ? null : (string) $password, [
+    // NORMALISED TO `null`, NOT PASSED THROUGH. `getenv()` returns `false` for an unset variable and `new PDO()`
+    // declares `?string`, so handing it straight over is an uncaught TypeError rather than a connection attempt —
+    // which is exactly what the first version of the DSN-carries-user relaxation above did, dying at this line with
+    // a stack trace instead of the diagnosis the block above spent ten lines writing.
+    $connection = new PDO($dsn, '' === (string) $user ? null : (string) $user, '' === (string) $password ? null : (string) $password, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
     ]);
 } catch (PDOException $failure) {

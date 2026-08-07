@@ -224,6 +224,49 @@ final class InvoiceProviderTest extends TestCase
         new InvoiceProvider($repository, $this->scope)->provide(new Get(), ['id' => 'NOT-A-UUID']);
     }
 
+    /**
+     * **A CORRUPT ROW IS NOT A 404 — the document exists and something is wrong with OUR data.**
+     *
+     * The provider used to wrap the whole lookup in `catch (\InvalidArgumentException)` in order to answer a malformed
+     * id, and that catch was wide enough to swallow a HYDRATION failure: an amount that no longer parses, a currency
+     * code no longer known, any of the mapper's own refusals. So a document that demonstrably EXISTS answered
+     * `404 No such invoice.`, the client was told it was absent, and the only trace was a 404 indistinguishable from
+     * millions of legitimate ones. Nobody was ever told to investigate.
+     *
+     * With the id checked up front by `DocumentIdentity::isWellFormedId()` — the one definition of that rule — the
+     * catch is gone and this propagates, which the transport turns into a 500 and `error.internal` per `CLAUDE.md`
+     * § "Translation keys": our own fault is not the client's to interpret.
+     *
+     * The id here is WELL FORMED, which is the whole point. A malformed one never reaches `find()` any more, so this
+     * case and `testAnIllFormedIdIsAlsoNotFoundRatherThanABadRequest()` now exercise genuinely different paths — and
+     * the mutant is direct: re-wrap the lookup in that catch and this case goes red while the other stays green.
+     */
+    public function testACorruptRowPropagatesRatherThanAnsweringNotFound(): void
+    {
+        $repository = new class implements InvoiceRepository {
+            public function save(DocumentIdentity $identity, Invoice $invoice): void
+            {
+                throw new \LogicException('not under test');
+            }
+
+            public function find(string $id): ?PersistedInvoice
+            {
+                // What the mapper raises for a stored amount that is no longer a well-formed decimal.
+                throw new \InvalidArgumentException('An amount must be a decimal string, got "1.2.3".');
+            }
+
+            public function findForMutation(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('The read path must not lock for mutation.');
+            }
+        };
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('An amount must be a decimal string');
+
+        new InvoiceProvider($repository, $this->scope)->provide(new Get(), ['id' => self::DOCUMENT]);
+    }
+
     /** A non-string route value is a 404 too, not a TypeError reaching the client as a 500. */
     public function testANonStringIdIsNotFound(): void
     {

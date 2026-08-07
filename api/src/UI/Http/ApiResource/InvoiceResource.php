@@ -15,6 +15,8 @@ namespace Twes\UI\Http\ApiResource;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\Response as OpenApiResponse;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Twes\UI\Http\State\CreateInvoiceProcessor;
 use Twes\UI\Http\State\InvoiceProvider;
@@ -79,13 +81,49 @@ use Twes\UI\Http\State\IssueInvoiceProcessor;
             // `input: false` — there is nothing to send. Every part of a document number is the server's, and a
             // client that could name one could pick a legal document number.
             input: false,
-            // `read: false` because the processor's handler must do the lookup INSIDE its own transaction: the
-            // counter's `SELECT … FOR UPDATE` locks the sequence row for the life of that transaction, so a read
-            // performed by API Platform beforehand would be a separate transaction observing a separate state.
+            // `read: false` because the processor's handler must do the lookup INSIDE its own transaction, for two
+            // reasons that are both about correctness rather than efficiency.
+            //
+            // The lookup is a LOCKING read (`InvoiceRepository::findForMutation()`), and the lock it takes has to be
+            // the one held while the number is allocated and the document written — a read API Platform performed
+            // beforehand would be a separate transaction whose lock was already released, so two concurrent issues
+            // would each act on a stale draft and one of their numbers would end up allocated to no document.
+            //
+            // And the tenant is bound to the connection with `set_config(..., true)`, TRANSACTION-LOCAL, so a query
+            // issued outside a transaction is issued UNBOUND: the canonical policy compares against NULL and the
+            // document is invisible even to the tenant that owns it.
+            //
+            // **This comment previously said the counter's `SELECT … FOR UPDATE` was what made the read's placement
+            // matter.** That statement outlived the code: the counter is now one atomic
+            // `INSERT … ON CONFLICT DO UPDATE … RETURNING`, with no `FOR UPDATE` anywhere in it, precisely so that
+            // serialisation is a property of the statement rather than of a lock somebody must remember to take.
             read: false,
             // 200, not the `Post` default of 201: this creates nothing. It transitions a document that exists, and
             // the response is that same document at its new state.
             status: 200,
+            // EVERY ANSWER THIS OPERATION CAN GIVE IS DECLARED, because two of them were not and a generated client
+            // is written against the specification rather than against the processor. `IssueInvoiceProcessor` answers
+            // 404 for a document that is absent OR belongs to another tenant (indistinguishably, which is the design
+            // of row-level security) and 422 for a domain refusal — issuing a document that is not a draft, or one
+            // with no lines. Neither appeared in the schema, so a client generated from it had no branch for the two
+            // outcomes a caller is most likely to hit: a double-click and a stale page.
+            //
+            // Descriptions rather than content schemas: the 422 body is Symfony's RFC 9457 problem detail, which
+            // API Platform already documents globally, and restating its shape here is a second copy that would
+            // drift. What was missing is that these statuses EXIST.
+            openapi: new OpenApiOperation(
+                responses: [
+                    '200' => new OpenApiResponse(description: 'The document, now issued, carrying its number.'),
+                    '404' => new OpenApiResponse(
+                        description: 'No such invoice — absent, or belonging to another tenant. The two are '
+                            . 'deliberately indistinguishable.',
+                    ),
+                    '422' => new OpenApiResponse(
+                        description: 'The document cannot be issued: it is not a draft (a second issue of the same '
+                            . 'document lands here), or it has no lines.',
+                    ),
+                ],
+            ),
             processor: IssueInvoiceProcessor::class,
         ),
     ],

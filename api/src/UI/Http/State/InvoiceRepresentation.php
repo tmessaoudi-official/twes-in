@@ -117,12 +117,23 @@ final readonly class InvoiceRepresentation
     }
 
     /**
-     * VAT per rate group as decimal strings, keyed by the rate.
+     * VAT per rate group as decimal strings, keyed by the rate at its CANONICAL scale.
+     *
+     * **THE KEYS ARE `"19.0000000000"`, NOT `"19"` — and this docblock claimed the latter.** `Rate::percentage()`
+     * rescales to `PERCENTAGE_SCALE`, which is 10, so nineteen per cent is `19.0000000000` on the wire. [Verified:
+     * `Rate::fromPercentage('19')->percentage()` → `'19.0000000000'`.]
+     *
+     * That verbosity is DELIBERATE and must not be "tidied", which is why the correction is here rather than in the
+     * emission. `docs/spec/pricing-vectors.json` § `conventions.rates` mandates exactly ten decimal places as the
+     * one cross-tier spelling of a rate, and `PricingVectorsTest` asserts the raw string against that — because
+     * round 15 found that a tier emitting `19` and a tier emitting `19.0000000000` for the same required table BOTH
+     * passed, each normalising the declared value before comparing, which made the fixture's own spelling
+     * unobservable. Trimming the key here would put the API back on the wrong side of that finding and would also
+     * stop a client matching a key against `lines[].vatRate`, which carries the same form from the same method.
      *
      * A typed loop rather than `array_map`, because `array_map` preserving string keys is true but not *provable*
-     * to a static analyser from the callback alone — and the keys are the meaningful identity here (`"19"`, `"7"`
-     * are what an invoice prints and what a tax return aggregates by), so losing them silently would be worse than
-     * a slightly longer method.
+     * to a static analyser from the callback alone — and the keys are the meaningful identity here (they are what a
+     * tax return aggregates by), so losing them silently would be worse than a slightly longer method.
      *
      * @return array<string, string>
      */

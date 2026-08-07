@@ -104,6 +104,47 @@ final class TenantBindingWiringTest extends WebTestCase
     }
 
     /**
+     * **THE ISSUE OPERATION DECLARES ITS 404 AND ITS 422 IN THE EXPORTED SCHEMA.**
+     *
+     * Asserted against the OpenAPI factory's own output rather than against the attribute, because a generated client
+     * is written from the exported document and that is the artefact that was wrong: the processor answers 404 for a
+     * document that is absent or belongs to another tenant, and 422 for a domain refusal — a second issue of the same
+     * document, or one with no lines — and neither status appeared, so a generated client had no branch for the two
+     * outcomes a caller is most likely to hit. A double-click and a stale page.
+     *
+     * In this class rather than a new one because it needs the same booted kernel and nothing else. The mutant is
+     * direct: delete the `openapi:` argument from the operation and this goes red.
+     *
+     * **A STALE `var/cache/test` MADE THIS FAIL AGAINST CORRECT CODE, and that is worth knowing before you debug the
+     * attribute.** The first run reported `404` absent while the same factory booted by hand in the same environment
+     * returned `[200, 404, 422, 400]`; `rm -rf var/cache/test` fixed it. So a metadata change can leave this class
+     * asserting the PREVIOUS schema — the *a suite whose result depends on state the suite did not set is not a suite
+     * that has been run* shape, one level over from § Gotchas 2026-08-05's `env -i` finding. Not fixed by clearing the
+     * cache in `setUp()`, which would pay a container rebuild on every functional case; read a surprising failure here
+     * as "clear the cache first" and only then as a defect in the attribute.
+     */
+    public function testTheIssueOperationDeclaresItsFailureResponses(): void
+    {
+        self::bootKernel();
+        $factory = self::getContainer()->get('api_platform.openapi.factory');
+        self::assertInstanceOf(\ApiPlatform\OpenApi\Factory\OpenApiFactoryInterface::class, $factory);
+
+        $paths = $factory()->getPaths()->getPath('/api/invoices/{id}/issue');
+        self::assertNotNull($paths, 'the issue operation must be in the exported schema at all');
+
+        $post = $paths->getPost();
+        self::assertNotNull($post);
+
+        foreach (['404', '422'] as $status) {
+            self::assertArrayHasKey(
+                $status,
+                $post->getResponses() ?? [],
+                $status . ' is an answer this operation really gives, so a client generated from the schema needs it',
+            );
+        }
+    }
+
+    /**
      * Every class in a connection's driver decoration chain, innermost last, as a set.
      *
      * A set rather than a list because order is DBAL's business and asserting it would pin a detail this project has

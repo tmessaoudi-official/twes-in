@@ -43,11 +43,17 @@ MAKEFILE="${1:-$REPO_ROOT/Makefile}"
 #                              and `gate-infra` already checks both.
 #   destroy                  — NO `destroy-prod`, deliberately. A one-word command that deletes the production
 #                              database is a foot-gun no convention should demand for symmetry.
+#   e2e                      — same reason as `test`, one step further: the suite runs THROUGH the container's own
+#                              `composer gate:e2e`, and neither Composer nor the PHPUnit phar is in the production
+#                              image. Worth stating rather than filing away, because the served surface is exactly
+#                              what one would most want to assert against the PRODUCTION stack — its overlay is the
+#                              one that hardens — and doing so needs a host-side runner pointed at a published port
+#                              rather than an `exec`. Recorded as owed in `build-waves.plan.md`, not as unwanted.
 #   gate*                    — the SCOPE axis, not the environment axis: bare `gate` means every tier, a suffix
 #                              narrows it. Checked separately below.
 readonly -a ENV_EXEMPT=(
   help env urls check-env deps
-  install composer test
+  install composer test e2e
   debug-on debug-off debug-status
   config-prod destroy
   gate gate-api gate-infra gate-make

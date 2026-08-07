@@ -1092,7 +1092,41 @@ MAXIMAL loop, not a closure.
 | R1-3 | `provision-dev-database.sh` reassigns the DATABASE and SCHEMA owner and never a RELATION owner | **P0** | **CLOSED 2026-08-07** — `REASSIGN OWNED BY <runtime> TO <owner>` inside the target database, chosen over a loop of `ALTER TABLE ... OWNER TO` because it covers every object KIND at once rather than the kinds somebody enumerated. Detector written first and shown failing (`'twes_devprobe_owner'` vs `'twes_devprobe_app'`); mutant: replace with `SELECT 1` → red |
 | R1-4 | The same script skips every attribute check for a role that already exists | **P0** | **CLOSED 2026-08-07** — an unconditional `ALTER ROLE ... NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS` on the found path. The PASSWORD is still never overwritten and the asymmetry is stated in the script: a credential is the developer's choice, an attribute that defeats tenant isolation is not. Detector written first and shown failing on all five attributes; mutant: replace with `SELECT 1` → red |
 | R1-5 | **"WAVE 1 IS COMPLETE" refuted on the wave's own `In:` line** — Client (+contacts) and Product do not exist; the tenant settings table is absent | **P0** | **CLOSED** — retracted in place above, with the mechanism |
-| R1-P1s | Three of the findings are **false comments written in the same commits**, each sitting over the defect it described; three tests assert mutants that survive; `REQUIRED_NON_EMPTY_LAYERS` is untestable; the issue operation's 404 is undeclared in OpenAPI; `CLAUDE.md`'s bare-`phpunit` block is `&&`-chained and red; `make gate` cannot reach `gate:e2e`; `amountsByRate` emits `"19.0000000000"`; corrupt money answers 404; `TWES_SCHEMA_USER` is documented backwards | P1 | **OPEN** — the sweep is planned as one change |
+| R1-P1s | Three of the findings are **false comments written in the same commits**, each sitting over the defect it described; three tests assert mutants that survive; `REQUIRED_NON_EMPTY_LAYERS` is untestable; the issue operation's 404 is undeclared in OpenAPI; `CLAUDE.md`'s bare-`phpunit` block is `&&`-chained and red; `make gate` cannot reach `gate:e2e`; `amountsByRate` emits `"19.0000000000"`; corrupt money answers 404; `TWES_SCHEMA_USER` is documented backwards | P1 | **SWEPT 2026-08-07**, one change, and two of them were not what they looked like — see below |
+
+**The P1 sweep, and what it actually found.** Two of the nine were **not defects**, which is the useful part:
+
+- **`amountsByRate` emitting `"19.0000000000"` is CORRECT.** `docs/spec/pricing-vectors.json` § `conventions.rates`
+  mandates exactly ten decimal places as the one cross-tier spelling of a rate, and `PricingVectorsTest` asserts the raw
+  string against it — because round 15 found a tier emitting `19` and a tier emitting `19.0000000000` BOTH passing, each
+  normalising before comparing. Trimming would put the API back on the wrong side of that finding and stop a client
+  matching a key against `lines[].vatRate`. **The defect was the DOCBLOCK**, which claimed the keys were `"19"` and
+  `"7"`. Corrected there instead. Checking before "fixing" is what stopped a contract regression.
+- **`TWES_SCHEMA_USER` was documented backwards, and the correction did not work either.** It is the role the gate
+  CONNECTS AS (`new PDO($dsn, $user, …)`); the role asked about is `TWES_SCHEMA_RUNTIME_ROLE`. But the documented
+  invocation worked anyway, because for a `pgsql:` DSN libpq prefers the connection string's own `user=` over PDO's
+  third argument [verified: DSN `user=twes_owner` + third argument `twes` → `current_user` is `twes_owner`] — so the
+  gate INSISTED on a variable it then discarded, which is the *declared but unconsulted* shape. Writing the honest
+  invocation (`TWES_SCHEMA_RUNTIME_ROLE=twes`, no `TWES_SCHEMA_USER`) made the gate FAIL. Fixed in the gate: a DSN that
+  already carries `user=` is now sufficient, the refusal message says which role is which, and `getenv()`'s `false` is
+  normalised to `null` — the first attempt died with an uncaught TypeError at `new PDO()` instead of the ten-line
+  diagnosis above it.
+
+The seven real ones: two false present-tense comments citing the counter's `SELECT … FOR UPDATE`, which the atomic
+upsert deleted (`InvoiceResource`, `IssueInvoiceHandler`); the **corrupt-row 404** — `catch (\InvalidArgumentException)`
+around the whole lookup swallowed a HYDRATION failure, so a document that demonstrably existed answered "no such
+invoice" with nobody told to investigate, closed by extracting `DocumentIdentity::isWellFormedId()` as the ONE
+definition of a rule that had accumulated three copies; the issue operation's **404 and 422 now in the exported
+schema**, asserted against the OpenAPI factory rather than the attribute; **`make e2e`**, which did not exist, so the
+owed step was owed AND unrunnable by the documented route (exempted from the `-prod` twin rule for the same reason
+`test` is — Composer and PHPUnit are absent from the production image — with the host-side production runner recorded
+as owed rather than unwanted); and `CLAUDE.md`'s gate block, which ran a **bare `phpunit`** that includes the `e2e`
+suite and so was red by construction on any machine without a live stack, `&&`-chained so the first failure swallowed
+the six steps after it.
+
+**Still open from this row, and named rather than quietly dropped:** `REQUIRED_NON_EMPTY_LAYERS` remains untestable
+(the honest options are a fixture that reaches it or deleting a check that cannot fail — a decision about which, not a
+mechanical fix), and the two rounding constants in `InvoiceRepresentation` are still unpinned.
 
 **One process finding, and it is the important one.** My panel prompt said reviewers could *"mutate in place and
 restore immediately"*. One did, in the real tree, during the freeze — and a second lens read a half-mutated file and

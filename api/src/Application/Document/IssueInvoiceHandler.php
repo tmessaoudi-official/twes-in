@@ -32,9 +32,16 @@ use Twes\Domain\Document\PersistedInvoice;
  * both refuse to run outside a transaction precisely so that neither can be called in a way that permits either
  * outcome, and this handler is what supplies the transaction they insist on.
  *
- * **THE READ IS INSIDE THE TRANSACTION TOO**, and not only for symmetry with {@see CreateInvoiceHandler}: the row is
- * locked by the counter's `SELECT … FOR UPDATE` for the life of this transaction, so a read outside it would be a
- * second transaction queueing behind the first.
+ * **THE READ IS INSIDE THE TRANSACTION TOO**, and not only for symmetry with {@see CreateInvoiceHandler}. It is a
+ * LOCKING read — `InvoiceRepository::findForMutation()` — and the guarantee it buys lasts exactly as long as the
+ * transaction that took it, so a read performed outside would release the lock before the number was allocated and
+ * two concurrent issues would each act on a stale draft. The tenant binding is transaction-local as well
+ * (`set_config(..., true)`), so a read outside a transaction is issued UNBOUND and finds nothing at all.
+ *
+ * **THAT SENTENCE USED TO CITE THE COUNTER'S `SELECT … FOR UPDATE`, and it outlived the code it described.** The
+ * counter is one atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING` and contains no `FOR UPDATE` — deliberately,
+ * so that serialisation is a property of the statement rather than of a lock somebody must remember to take. The
+ * lock that matters here is on the DOCUMENT, taken by this handler, and it is the second thing R1-2 needed.
  *
  * ## The number never comes from anywhere but the allocator
  *

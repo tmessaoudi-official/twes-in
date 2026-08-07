@@ -619,18 +619,20 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
 `gate:test`. **`gate:e2e` is NOT in that chain** and is run separately against a live stack; `gate:test` excludes the
 `e2e` suite EXPLICITLY (`--exclude-testsuite e2e`) rather than by listing the other three, so a suite added later is
-included by default rather than silently unrun. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — was for three commits the one step no documented environment made pass**, which is fixed here by writing the invocation down rather than describing it: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). **The whole chain green, verbatim** — the local dev credentials are the throwaway ones already committed in `api/.env`, and the shape is what matters rather than the values:
+included by default rather than silently unrun. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — was for three commits the one step no documented environment made pass**, which is fixed here by writing the invocation down rather than describing it: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself. **`TWES_SCHEMA_USER` is the role the gate CONNECTS AS, and this sentence said the exact opposite for three commits** — `schema-tenancy.php:138` passes it straight to `new PDO($dsn, $user, …)`, while the role every ownership and `TRUNCATE` assertion is made ABOUT is `TWES_SCHEMA_RUNTIME_ROLE` (falling back to `TWES_TEST_DB_USER`, then to the literal `twes`). The invocation below worked anyway, by a coincidence worth knowing rather than relying on: for a `pgsql:` DSN, libpq takes the connection string's own `user=` in preference to PDO's third argument. [Verified: DSN `user=twes_owner` with third argument `twes` → `current_user` is `twes_owner`.] So it is written explicitly below instead. **The whole chain green, verbatim** — the local dev credentials are the throwaway ones already committed in `api/.env`, and the shape is what matters rather than the values:
 
 ```
 pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start   # two clusters share 5432; see § Gotchas
 cd api && COMPOSER_ALLOW_SUPERUSER=1 \
   TWES_SCHEMA_DSN="pgsql:host=127.0.0.1;port=5432;dbname=twes_in;user=twes_owner;password=twes_owner" \
-  TWES_SCHEMA_USER=twes composer gate
+  TWES_SCHEMA_RUNTIME_ROLE=twes composer gate
 ```
 
 The DSN connects as the **owner** because reading `pg_policy`, `pg_class.relowner` and `pg_authid` needs a
-role that can see them, while `TWES_SCHEMA_USER=twes` names the **runtime** role every ownership and
-`TRUNCATE` assertion is made ABOUT. Getting those two backwards is the mistake the parameter names invite.
+role that can see them, while `TWES_SCHEMA_RUNTIME_ROLE=twes` names the **runtime** role every ownership and
+`TRUNCATE` assertion is made ABOUT. Getting those two backwards is the mistake the parameter names invite —
+and this file made it: `TWES_SCHEMA_USER` sounds like the subject and is the credential. It is omitted here
+because the DSN already carries the credential and would override it.
 Round 22 filed the missing invocation; the sentence before it claimed `gate:static` was the only failing step, one commit after the same claim was filed as false. **`gate:static` now passes** — see its row above. **Two of seven steps also failed for a different reason for one commit:**
 `gate:style` and `gate:test` pointed at `vendor/bin/php-cs-fixer` and `vendor/bin/phpunit` and exited 127 while
 this table called the tier green. They now run the pinned phars in `api/tools/bin/`, which is what the tier was
@@ -670,10 +672,24 @@ php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
 php   scripts/gates/schema-tenancy.php     # needs a migrated database; see the table above for the env vars
 bash  scripts/gates/test-gates.sh          # LAST, and the gates' OWN tests -- see § Gotchas on why this one matters
-cd api && php tools/bin/phpunit-12.phar && php tools/bin/phpstan.phar analyse --no-progress \
-       && php tools/bin/php-cs-fixer.phar check && composer validate \
-       && php bin/console lint:container && php bin/console doctrine:schema:validate --skip-sync
+cd api
+php tools/bin/phpunit-12.phar --exclude-testsuite e2e   # bare `phpunit` here was RED by construction -- see below
+php tools/bin/phpstan.phar analyse --no-progress
+php tools/bin/php-cs-fixer.phar check
+composer validate
+php bin/console lint:container
+php bin/console doctrine:schema:validate --skip-sync
 ```
+
+**Two things in that block were wrong until 2026-08-07 and both are worth knowing.** It ran a BARE
+`php tools/bin/phpunit-12.phar`, which since the `e2e` suite landed includes `ServedSurfaceTest` — and that suite
+FAILS rather than skipping when no server answers, deliberately, so the documented command was red on any machine
+without a running stack. `composer gate:test` had `--exclude-testsuite e2e` and this hand-written twin did not, which
+is the divergence a second copy of a command always eventually produces. And the steps were `&&`-CHAINED, so the
+first failure silently swallowed the six after it: the same defect as § Gotchas 2026-08-01's `test | tail && git
+commit`, one level milder — there the verdict was discarded, here five verdicts were never produced. **Read each
+step's own status.** The `e2e` suite is run separately, against a live stack: `make e2e`, or `composer gate:e2e` with
+`TWES_E2E_BASE_URL` set.
 
 **Derive this block from `api/composer.json` rather than trusting it.** It listed twelve of the fourteen for a
 commit — `worker-mode-blocked.sh` and `makefile-conventions.sh` were absent while both had rows in the tables above
