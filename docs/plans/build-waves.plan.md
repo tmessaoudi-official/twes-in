@@ -10,6 +10,7 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-07 07:40] AGREED: **the dev provisioner refuses on WHOSE objects a database holds, not WHETHER it holds any.** `provision-test-database.sh`'s "refuse any relation" guard cannot transfer — a dev database legitimately holds migrated tables and the script must be re-runnable — so the question becomes ownership: a relation owned by neither of our two roles means a shared or foreign database, where `REVOKE CREATE ON SCHEMA public FROM PUBLIC` breaks whatever else was using it. It also never overwrites an existing role's password, because both scripts know the same two role names and an ALTER would silently replace a credential the other chose.
 - [2026-08-07 04:10] AGREED: **the gapless counter is ONE atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING`, not `SELECT … FOR UPDATE`.** The three-statement form was written first, works, and had its lock deleted with the suite green TWICE — `INSERT … ON CONFLICT DO NOTHING` blocks on its own, so the `SELECT` never serialised anything under contention and the window the lock closed was reachable only by a harness interleaving statements inside the method. A lock that nothing can observe is one refactor from deletion. The plan's own prescription and the port's were amended in place; the substance (no `nextval`, a row, inside the caller's transaction, serialised) is unchanged.
 - [2026-08-07 04:10] AGREED: **`POST /api/invoices` creates a DRAFT and `POST /api/invoices/{id}/issue` issues it** — two single-purpose operations rather than an `issue: true` flag, because the domain models `draft()` and `issue()` separately and issuing is irreversible: it consumes a number from a gapless legal sequence permanently. A flag would make that reachable two ways. Consequence stated rather than hidden: a draft cannot be EDITED over HTTP (there is no `PUT`/`PATCH`), so a client builds the whole document and posts it once; editing a draft is a contract addition wanting its own shape decision.
 - [2026-08-07 04:10] AGREED: **a write response is the document READ BACK inside the write transaction**, never the aggregate just built. `NUMERIC(21,6)` returns `2.000000` for a stored `2`, so returning the aggregate makes `POST` and a later `GET` disagree byte-for-byte on one document — and the mobile client freezes the contract on app-store timelines. Inside the transaction, not after it, so the read cannot observe a different state or need the tenant binding re-established.
@@ -602,14 +603,21 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   with nothing implementing it, and `doctrine_migration_versions` in the local dev database was consequently owned
   by the runtime role. `scripts/gates/schema-tenancy.php` now refuses **any** table owned by the runtime role,
   tenant-owned or not, which is what makes the configuration checked rather than merely intended.
-  **STILL OWED as a consequence: a `scripts/dev/provision-dev-database.sh`.** `provision-test-database.sh` gets
+  **LANDED 2026-08-07 as a consequence: `scripts/dev/provision-dev-database.sh`.** `provision-test-database.sh` gets
   `twes_in_test` right, but nothing provisions the DEV database — `twes_in` was owned by `twes`, so `public`
   belonged to `pg_database_owner` and the runtime role held implicit `CREATE`. It was corrected by hand on
   2026-08-01, which means a fresh container reproduces the wrong shape. The script needs only the small subset:
   database owned by `twes_owner`, `REVOKE CREATE ON SCHEMA public FROM PUBLIC`, `USAGE` to `twes`, `CREATE` to
   `twes_owner`, and default privileges granting DML-but-never-TRUNCATE. Deliberately NOT the test script's twelve
   roles — `BYPASSRLS` and `REPLICATION` fixtures exist to make dangerous shapes testable and have no business in a
-  development database.
+  development database. **Built exactly to that subset**, plus three statements that subset did not name and a
+  refusal: `ALTER SCHEMA public OWNER TO pg_database_owner` (a pre-15 dump leaves `public` owned by a concrete role,
+  which keeps `CREATE` regardless of who owns the database), `REVOKE CREATE ON SCHEMA public FROM <runtime>` (an
+  explicit grant is what somebody types to make a permission error go away, and revoking from `PUBLIC` does not
+  touch it), no `GRANT TEMPORARY` (the test database needs it and a temporary table outlives the tenant binding its
+  rows were selected under), and a guard refusing any database holding relations owned by neither role. Covered by
+  `api/tests/Integration/Tenancy/DevDatabaseProvisioningTest.php`, which EXECUTES the script; seven mutants proven
+  killed.
 - [2026-08-01 11:30] AGREED: **"enum" in this plan's column tables means `VARCHAR(32)` + `CHECK`, not a native
   PostgreSQL enum type.** `doctrine_migrations.transactional` is true and PostgreSQL refuses to add an enum value
   and use it in the same transaction, so a native type would force every future `DocumentType` addition — Wave 2's
@@ -1040,8 +1048,9 @@ non-empty, per its own instruction to add a layer as soon as it acquires code. T
 classes; **`e2e` is still empty**, and what it owes is named in § "Quality gate": the Caddy-level CSP cannot be seen
 through the kernel.
 
-**What Wave 1 still owes, and it is now ONE item plus one suite:** `scripts/dev/provision-dev-database.sh`, and the
-`e2e` suite above. Everything else in this section is struck through.
+**What Wave 1 still owes is the `e2e` SUITE, and nothing else.** ~~`scripts/dev/provision-dev-database.sh`~~
+**— LANDED 2026-08-07**, with the ownership topology the 2026-08-01 entry specified plus three defensive statements
+and a foreign-database refusal; see that entry. Everything else in this section is struck through.
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive

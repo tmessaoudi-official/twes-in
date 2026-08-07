@@ -687,6 +687,7 @@ read its own status.
 | PHP 8.5.8, PostgreSQL 18.4 | sury.org and PGDG apt repositories | yes |
 | PHPUnit, php-cs-fixer | `bash scripts/dev/fetch-tools.sh` — official phars, pinned SHA-256 | yes (`phar.phpunit.de`, `cs.symfony.com`) |
 | PostgreSQL roles for the tenancy proof | `sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres bash scripts/dev/provision-test-database.sh` | n/a |
+| **The DEV database (`twes_in`)** | `sudo -u postgres bash scripts/dev/provision-dev-database.sh` — needs no environment at all, and its defaults match `api/.env`. **Run it before the first `doctrine:migrations:migrate`**: it is what makes `twes_in` owned by `twes_owner` rather than by the runtime role, and a database owned by the runtime role hands it `CREATE` on `public` through `pg_database_owner` with no grant anywhere to find. Two roles only — never the test script's twelve, because a `BYPASSRLS` fixture has no business on a developer's own cluster. Re-runnable, and it never overwrites an existing role's password, so it cannot clobber the test fixture | n/a |
 | Node 26.5.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
 | Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` | yes (`registry.npmjs.org`) |
 | Flutter 3.44.8 | `flutter_linux_3.44.8-stable.tar.xz` from `storage.googleapis.com` | yes |
@@ -694,12 +695,18 @@ read its own status.
 
 Two notes that cost time to rediscover. The container's default Node is **22.22.2**, one patch below Angular
 22's `^22.22.3` floor, so Angular CLI refuses to install until Node is upgraded. And Flutter warns loudly about
-running as root but works; the warning is not a failure. The **integration suite's
-database prerequisites** are:
+running as root but works; the warning is not a failure. The **database prerequisites** are TWO scripts, and they
+are for different databases — running only the first leaves `twes_in` in the shape § Gotchas 2026-08-01 records as a
+P0:
 
 ```
 sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres bash scripts/dev/provision-test-database.sh
+sudo -u postgres bash scripts/dev/provision-dev-database.sh
 ```
+
+The second needs no environment and is safe to re-run; it refuses a database holding relations owned by neither of
+its two roles, which is what stops it being pointed at something shared. Its own coverage is
+`api/tests/Integration/Tenancy/DevDatabaseProvisioningTest.php`, which EXECUTES it rather than reading it.
 
 **The `TWES_TEST_DB_SUPERUSER_PASSWORD` is not optional and the script REFUSES without it** (round 17). It sets
 a password on the cluster's pre-existing superuser, and `pg_authid` is a **shared** catalogue — so that one
@@ -1629,6 +1636,36 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   `instanceof.alwaysTrue`. The annotation was the wrong thing: the interface really does hand over `mixed`, and the
   guard is what narrows it. Suppressing the finding would have been the tempting move and would have left a promise
   standing in for an enforcement.
+
+- **2026-08-07 — A DEFENSIVE STATEMENT IS UNOBSERVABLE ON A DEFAULT CLUSTER, so the fixture has to leave the default
+  state before any mutant can reach it.** `provision-dev-database.sh` carries four statements that describe a
+  PostgreSQL a modern default is not: `REVOKE CREATE ON SCHEMA public FROM PUBLIC`, `REVOKE CREATE … FROM <runtime>`,
+  `GRANT USAGE ON SCHEMA public TO <runtime>` and `ALTER SCHEMA public OWNER TO pg_database_owner`. **Every one of
+  them could be deleted with the whole suite green**, because on PostgreSQL 15+ `PUBLIC` already lacks `CREATE` and
+  already holds `USAGE` [Verified on 18.4: `has_schema_privilege('public','public','CREATE'), … 'USAGE'` → `f, t`], and
+  a freshly created database already has `public` owned by `pg_database_owner`. Same shape as the tenancy gate's
+  *a probe's reach is bounded by its fixture's value space*, arriving from the other side: here the fixture was in the
+  state the code defends against reaching, so the defence had nothing to do. Fixed by a case that BREAKS all four
+  properties first and asserts the break — a detector before the repair — which is what Rule 7 asks of an infra change.
+  Three further findings from the same work, each cheap to re-learn the hard way:
+  **(1) `psql -c` DOES NOT INTERPOLATE `:'VAR'`.** It hands the string straight to the server, so a `--set` variable
+  arrives literally and comes back as `syntax error at or near ":"`. Interpolation happens in psql's lexer, which runs
+  on stdin and `-f` only. That is not a detail: `:"VAR"` as an identifier and `:'VAR'` as a literal are what let psql
+  do the QUOTING, so a database name or password containing a quote character cannot end the statement early — the
+  `-c` alternative is shell interpolation, which can.
+  **(2) TWO FIXTURE AXES IN ONE CASE MADE ONE OF THEM UNTESTABLE.** Granting `CREATE` to a role that already OWNS the
+  schema adds no distinguishable ACL entry — the privilege is implicit in ownership — so reassigning the owner carried
+  it away and the mutant deleting `REVOKE CREATE … FROM <runtime>` survived a case that appeared to cover it
+  [Verified by hand: the grant appears as `<runtime>=C/pg_database_owner` and persists when `public` is owned by
+  `pg_database_owner`, and does not appear at all when the runtime role owns it]. Split into two cases. The
+  generalisation: when a fixture sets several properties the code under test also sets, one of them can silently
+  cancel another, and the symptom is a surviving mutant rather than a failing test.
+  **(3) `bash -n`'s "unexpected EOF while looking for matching `"`" meant exactly that** — `x="$(cmd <<'H' … H
+)`
+  with the closing `)` on its own line never closes the opening quote; it needs `)"`. I spent two hypotheses on exotic
+  heredoc-inside-command-substitution parsing, both refuted by a five-line reproduction, before reading the message
+  literally. The write-time `lint-on-write.sh` hook caught it before it could reach a commit, which is what that hook
+  is for.
 
 ## Git & CI
 
