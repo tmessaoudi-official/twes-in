@@ -44,6 +44,18 @@ final class InMemoryInvoiceRepository implements InvoiceRepository
     /** How many times `save()` was called — the only way to see a write that a re-read would otherwise hide. */
     public int $saves = 0;
 
+    /**
+     * Every id handed to `findForMutation()`, in order.
+     *
+     * RECORDED, for the same reason `$saves` is: a handler that read with `find()` where it must not is otherwise
+     * indistinguishable from one that read correctly, because both return the same document. The SERIALISABILITY the
+     * mutating read guarantees cannot be reproduced in memory — a fake with one thread has nothing to serialise — so
+     * what a handler test can assert is that the handler ASKED for it, and `IssueInvoiceHandlerTest` does.
+     *
+     * @var list<string>
+     */
+    public array $mutatingReads = [];
+
     public function save(DocumentIdentity $identity, Invoice $invoice): void
     {
         ++$this->saves;
@@ -53,5 +65,14 @@ final class InMemoryInvoiceRepository implements InvoiceRepository
     public function find(string $id): ?PersistedInvoice
     {
         return $this->documents[$id] ?? null;
+    }
+
+    public function findForMutation(string $id): ?PersistedInvoice
+    {
+        $this->mutatingReads[] = $id;
+
+        // The same lookup. The guarantee is NOT reproduced and must not be faked — see `$mutatingReads`, and
+        // `DoctrineInvoiceRepositoryTest` for the two-transaction proof against a real row lock.
+        return $this->find($id);
     }
 }

@@ -80,4 +80,41 @@ interface InvoiceRepository
      * @throws \InvalidArgumentException if `$id` is not a canonical UUID — an ill-formed id must not reach a query
      */
     public function find(string $id): ?PersistedInvoice;
+
+    /**
+     * The same lookup, plus a guarantee: **no other transaction may mutate this document until mine ends.**
+     *
+     * **THIS EXISTS BECAUSE `find()` DOES NOT PROVIDE THAT, AND AN ISSUE PERFORMED ON A STALE READ BURNS A DOCUMENT
+     * NUMBER.** Two concurrent issues of one draft, with an ordinary read: both see `draft`, the counter serialises
+     * the allocations so they take 1 and 2, both build an issued aggregate from their own stale snapshot, and the
+     * second `save()` overwrites the first. The document ends up numbered 2, **number 1 is allocated to no document
+     * at all**, and the client that already received a 200 for invoice 1 finds it renumbered. [Verified against the
+     * migrated schema with two live transactions: `allocated=[1,2] on documents=[2]` — 1 orphaned. With this
+     * guarantee: `allocated=[1] on documents=[1]`.] A hole in an invoice sequence is what a tax authority reads as a
+     * suppressed sale, which is why § Gotchas 2026-07-31 forbids `nextval()` in the first place; reaching the same
+     * hole through a stale read would have made that whole decision worthless.
+     *
+     * **STATED AS A GUARANTEE, NOT AS A LOCK, and that is not squeamishness about naming.** `Domain/` must be able
+     * to express this for an adapter that is not PostgreSQL and possibly not SQL — a database-per-tenant deployment,
+     * an event store, a test double. What every one of them owes is serialisability over one document, and how they
+     * get there is theirs. The Postgres adapter uses `SELECT … FOR UPDATE`.
+     *
+     * **CALL IT BEFORE ALLOCATING ANYTHING.** The guarantee is only worth having if it is acquired before the first
+     * statement that can block on something else: the counter row is itself contended, so a caller that allocated
+     * first would already have taken the number it is trying not to waste. Acquiring the document first also fixes
+     * ONE lock order for every writer — document, then counter — which is what makes a deadlock between two issues
+     * impossible rather than unlikely.
+     *
+     * A separate method rather than a flag on `find()`: a read path must NOT take this. `GET /api/invoices/{id}`
+     * runs on the same rows, and a plain fetch that quietly took a write lock would serialise every reader behind
+     * every writer for no reason a caller could see.
+     *
+     * @param string $id a canonical lowercase-hyphenated UUID, exactly as {@see self::find()} takes
+     *
+     * @throws \RuntimeException if there is no current tenant, or no active transaction — a guarantee that outlives
+     *                           no transaction is not a guarantee, so this refuses rather than returning a document
+     *                           it cannot protect
+     * @throws \InvalidArgumentException if `$id` is not a canonical UUID
+     */
+    public function findForMutation(string $id): ?PersistedInvoice;
 }

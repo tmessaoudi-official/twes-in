@@ -212,6 +212,11 @@ final class InvoiceProviderTest extends TestCase
             {
                 throw new \InvalidArgumentException('A document id must be a canonical lowercase-hyphenated UUID.');
             }
+
+            public function findForMutation(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('The read path must not lock for mutation.');
+            }
         };
 
         $this->expectException(NotFoundHttpException::class);
@@ -262,6 +267,19 @@ final class InvoiceProviderTest extends TestCase
             public function find(string $id): ?PersistedInvoice
             {
                 return $this->persisted;
+            }
+
+            /**
+             * A REFUSAL, not a delegation, and it is an assertion in disguise.
+             *
+             * `findForMutation()` takes a row lock that lasts until the transaction commits. A read endpoint must
+             * never take one — every reader would then queue behind every writer, for a guarantee no caller asked
+             * for — so a provider that reached for it is a defect, and this is what makes that defect a failing test
+             * instead of a latency regression nobody can attribute.
+             */
+            public function findForMutation(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('The read path must not lock for mutation.');
             }
         };
     }

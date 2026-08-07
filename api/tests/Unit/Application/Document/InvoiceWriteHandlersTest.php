@@ -234,6 +234,53 @@ final class InvoiceWriteHandlersTest extends TestCase
         self::assertSame($writesBefore + 1, $repository->saves, 'and it wrote once');
     }
 
+    /**
+     * ISSUING READS THE DOCUMENT WITH `findForMutation()`, NOT `find()` — and it does so BEFORE allocating.
+     *
+     * Both halves are asserted because both are the defect. With a plain read, two concurrent issues of one draft
+     * each see `draft`, each allocate (the counter serialises them, so 1 and 2), each build an issued aggregate from
+     * their own stale snapshot, and the second save overwrites the first: the document is numbered 2 while **number
+     * 1 is allocated to no document at all**, and the client that already received a 200 for invoice 1 finds it
+     * renumbered. A hole in an invoice sequence is what a tax authority reads as a suppressed sale, which is the
+     * whole reason § Gotchas 2026-07-31 forbids `nextval()`.
+     *
+     * **WHAT THIS CASE CAN AND CANNOT SEE, stated so it is not mistaken for the proof.** An in-memory fake with one
+     * thread has nothing to serialise, so the GUARANTEE is unobservable here; the two-transaction proof against a
+     * real row lock is `DoctrineInvoiceRepositoryTest`, and the end-to-end no-hole property is
+     * `InvoiceLifecycleTest`. What is observable here — and nowhere else — is that the handler ASKED, and in the
+     * right order relative to the allocation. That is the half a change to this one line would break, and without
+     * this case the change is invisible: both reads return the same document.
+     */
+    public function testIssuingTakesTheDocumentForMutationBeforeItAllocatesANumber(): void
+    {
+        $repository = new InMemoryInvoiceRepository();
+        self::creator($repository)->handle(self::command());
+
+        $sequence = new InMemoryDocumentNumberSequence();
+        $heldWhenAllocated = null;
+        $sequence->beforeAllocating = static function () use ($repository, &$heldWhenAllocated): void {
+            $heldWhenAllocated = \count($repository->mutatingReads);
+        };
+
+        new IssueInvoiceHandler($repository, new DocumentNumberAllocator($sequence), new RecordingTransactionalScope(), 7)
+            ->handle(new IssueInvoice(self::FIRST_ID));
+
+        self::assertSame(
+            [self::FIRST_ID],
+            $repository->mutatingReads,
+            'the issue transition must hold the document, so it reads with findForMutation() exactly once',
+        );
+
+        // AND THE ORDER, sampled at the instant the number is taken. Allocating first would leave this at 0, and the
+        // document would then be held only after the number it is trying not to waste had already been consumed.
+        self::assertSame(
+            1,
+            $heldWhenAllocated,
+            'the document is held BEFORE the counter is touched — one lock order for every writer, document then '
+            . 'counter, which is also what makes a deadlock between two issues impossible rather than unlikely',
+        );
+    }
+
     /** An unknown id is `null` — not an exception — so the transport can answer 404 without distinguishing why. */
     public function testIssuingAnUnknownInvoiceReturnsNull(): void
     {

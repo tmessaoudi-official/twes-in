@@ -38,8 +38,21 @@ final class InMemoryDocumentNumberSequence implements DocumentNumberSequence
      */
     public function __construct(private readonly ?int $forcedCounter = null) {}
 
+    /**
+     * Called with nothing, once, immediately before a number is handed out — an ORDERING seam.
+     *
+     * It exists because ordering is the one property of the issue transition that no return value reveals: allocating
+     * before the document is held and allocating after it are indistinguishable from the number that comes back, and
+     * the difference is a permanent hole in an invoice sequence (see `IssueInvoiceHandler`). A caller sets this to
+     * observe whatever state must already be true at that instant. Null by default, so every existing case is
+     * unaffected.
+     */
+    public ?\Closure $beforeAllocating = null;
+
     public function allocateNext(DocumentType $type): int
     {
+        ($this->beforeAllocating ?? static fn(): null => null)();
+
         if (null !== $this->forcedCounter) {
             return $this->forcedCounter;
         }

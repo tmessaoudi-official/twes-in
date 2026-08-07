@@ -90,17 +90,30 @@ final readonly class IssueInvoiceHandler
     public function handle(IssueInvoice $command): ?PersistedInvoice
     {
         return $this->transaction->transactional(function () use ($command): ?PersistedInvoice {
-            $persisted = $this->invoices->find($command->documentId);
+            // `findForMutation()` AND NOT `find()`, and this is the difference between a correct invoice sequence
+            // and a hole in one. With an ordinary read, two concurrent issues of one draft both see `draft`, both
+            // allocate (the counter serialises them, so 1 and 2), both build an issued aggregate from their own
+            // stale snapshot, and the second save overwrites the first: the document is numbered 2 and **number 1
+            // is allocated to no document at all**, while the client that already got a 200 for invoice 1 finds it
+            // renumbered. [Verified against the migrated schema with two live transactions: `allocated=[1,2]
+            // on documents=[2]`.] The port states the guarantee; this is the call that asks for it.
+            $persisted = $this->invoices->findForMutation($command->documentId);
 
             if (null === $persisted) {
                 return null;
             }
 
-            // THE NUMBER IS ALLOCATED AFTER THE DOCUMENT IS FOUND, and the order matters. Allocating first and then
-            // discovering the document does not exist would consume a number for nothing — and because the whole
-            // transaction rolls back it would in fact be returned, which is exactly why the ordering must not be
-            // treated as unimportant: it is correct today only because of the rollback, and it would become a real
-            // gap the moment anything committed in between.
+            // THE NUMBER IS ALLOCATED AFTER THE DOCUMENT IS FOUND, AND AFTER IT IS HELD. Two separate reasons, and
+            // the second is the load-bearing one:
+            //
+            // Allocating before knowing the document exists would consume a number for nothing — recoverable today,
+            // because the whole transaction rolls back, but correct only for that reason and a real gap the moment
+            // anything commits in between.
+            //
+            // Allocating before HOLDING the document is the defect above, and it is not recoverable by a rollback:
+            // both transactions commit, each believing it acted on a draft. The ordering here is therefore part of
+            // the gaplessness guarantee rather than tidiness — one lock order for every writer, document then
+            // counter, which is also what makes a deadlock between two issues impossible rather than unlikely.
             $issued = $persisted->invoice->issue(
                 $this->numbers->allocate(DocumentType::Invoice, $this->numberPattern),
             );

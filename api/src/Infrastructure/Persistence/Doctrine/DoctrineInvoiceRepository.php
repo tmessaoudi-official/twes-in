@@ -81,7 +81,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         // names the PRIMARY KEY columns rather than a constraint name, which is what keeps this statement correct if
         // the constraint is ever renamed. `company_id` is in the key and never in the SET list: a document cannot
         // change tenant, and an UPDATE that could rewrite it would be a cross-tenant move performed by our own code.
-        $this->connection->executeStatement(
+        $written = $this->connection->executeStatement(
             'INSERT INTO document (company_id, id, type, state, currency, number, number_rendered, vat_rounding_point)'
             . ' VALUES (:company_id, :id, :type, :state, :currency, :number, :number_rendered, :vat_rounding_point)'
             . ' ON CONFLICT (company_id, id) DO UPDATE SET'
@@ -91,7 +91,21 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             // issued document, and none of them can, because the aggregate refuses to mutate once issued —
             // Invoice::issue() is the last transition that alters anything but state.
             . ' type = EXCLUDED.type, currency = EXCLUDED.currency,'
-            . ' vat_rounding_point = EXCLUDED.vat_rounding_point',
+            . ' vat_rounding_point = EXCLUDED.vat_rounding_point'
+            // **A DOCUMENT NUMBER IS WRITE-ONCE, AND THIS IS THE STRUCTURAL HALF OF THAT.** The row must currently
+            // carry no number, or the same one being written. Everything legitimate satisfies it: a draft has NULL,
+            // an issue writes over NULL, a re-save of the same state matches, and a cancellation leaves the number
+            // alone. What it refuses is a RENUMBER — and that is not a hypothetical tidiness rule, it is the second
+            // half of R1-2. `findForMutation()` stops two concurrent issues from ever both reaching this statement;
+            // this stops the hole from existing at all if anything ever reads without holding the row, which is the
+            // *forgetting must be impossible* rule (§ Gotchas 2026-07-29) applied to the number instead of to the
+            // tenant. It is also the enforcement of the byte-identical-re-download guarantee: a client holding
+            // invoice 41 must not find it renumbered, ever, by any path.
+            //
+            // A `WHERE` on `DO UPDATE` rather than a CHECK or a trigger, because only this form can compare the
+            // EXISTING row to the incoming one. A CHECK sees one row; a trigger would put business meaning in a
+            // persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses outright.
+            . ' WHERE document.number IS NULL OR document.number = EXCLUDED.number',
             [
                 'company_id' => $document->companyId->toRfc4122(),
                 'id' => $document->id->toRfc4122(),
@@ -103,6 +117,21 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                 'vat_rounding_point' => $document->vatRoundingPoint,
             ],
         );
+
+        // ZERO ROWS WRITTEN MEANS THE `WHERE` ABOVE REFUSED, and it is the only thing that can produce it: the row
+        // exists (or `ON CONFLICT` would have inserted it) and its number is neither absent nor the one being
+        // written. Throwing here rather than returning quietly is what makes the guard a guard — a silent no-op would
+        // leave the caller believing it had issued a document, commit the number it allocated, and produce exactly
+        // the hole this predicate exists to prevent.
+        if (0 === $written) {
+            throw new \RuntimeException(\sprintf(
+                'Refusing to renumber document %s: it already carries a different document number. A number is '
+                . 'write-once — a client holding invoice N must never find it renumbered — so this is either a stale '
+                . 'read of a document another transaction has since issued (load it with findForMutation() before '
+                . 'allocating) or an attempt to rewrite a legal document\'s identity.',
+                $identity->id,
+            ));
+        }
 
         // DELETE-THEN-INSERT, scoped by tenant AND document. The tenant predicate is redundant under row-level
         // security and written anyway: it costs nothing, it makes the statement correct when read in isolation, and
@@ -149,6 +178,39 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 
     public function find(string $id): ?PersistedInvoice
     {
+        return $this->load($id, lockRow: false);
+    }
+
+    public function findForMutation(string $id): ?PersistedInvoice
+    {
+        // REFUSED OUTSIDE A TRANSACTION, because `FOR UPDATE` outside one is worse than useless. PostgreSQL takes the
+        // row lock and releases it at the end of the implicit single-statement transaction, so the method would
+        // return successfully having guaranteed nothing at all — and the caller's whole reason for choosing this over
+        // `find()` is a guarantee that lasts until it commits. The port says so; this is where it is enforced, next
+        // to `save()`'s refusal for the same reason and with the same shape.
+        if (!$this->connection->isTransactionActive()) {
+            throw new \RuntimeException(\sprintf(
+                'Cannot load document %s for mutation outside a transaction. The row lock this takes is released '
+                . 'when the statement\'s implicit transaction ends, so it would guarantee nothing while appearing to '
+                . 'succeed — and the caller asked for this method precisely because it is about to allocate a '
+                . 'document number, which cannot be given back. Wrap the call.',
+                $id,
+            ));
+        }
+
+        return $this->load($id, lockRow: true);
+    }
+
+    /**
+     * ONE implementation for both readers, differing only in whether the document row is locked.
+     *
+     * A parameter rather than two methods with two copies of the query: the SELECT list, the `type` predicate and
+     * the hydration are correctness rules — the `type` predicate especially, which is what stops a quote being
+     * served as an invoice — and a second copy is how one of them gets fixed and the other does not. `CLAUDE.md`
+     * § Gotchas records that shape repeatedly; here it would be a tenancy-adjacent rule diverging silently.
+     */
+    private function load(string $id, bool $lockRow): ?PersistedInvoice
+    {
         $tenant = $this->currentTenant('read document ' . $id);
 
         // VALIDATED BEFORE IT REACHES A QUERY, by the type that owns the rule. Constructing a throwaway
@@ -172,9 +234,16 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         //
         // Here rather than in the provider or the processor, because both would need it and two copies of one rule
         // drift. The port is `InvoiceRepository`: an invoice is the only thing it is contracted to find.
+        // `FOR UPDATE` ON THE PARENT ROW ONLY, and only for a caller that asked. It is the FIRST statement such a
+        // caller issues against `document`, which is what makes it the serialiser: a competing issue blocks here,
+        // before it can touch the counter, so it never takes the number it would have had to waste. The lines and
+        // charges below are deliberately NOT locked — the aggregate's consistency boundary is the document, every
+        // writer reaches the children only through it, and `FOR UPDATE` on the child queries would take locks that
+        // change nothing while enlarging what a reader can wait behind.
         $documentRow = $this->connection->fetchAssociative(
             'SELECT company_id, id, type, state, currency, number, number_rendered, vat_rounding_point'
-            . ' FROM document WHERE company_id = :company_id AND id = :id AND type = :type',
+            . ' FROM document WHERE company_id = :company_id AND id = :id AND type = :type'
+            . ($lockRow ? ' FOR UPDATE' : ''),
             ['company_id' => $tenant->toString(), 'id' => $id, 'type' => DocumentType::Invoice->value],
         );
 

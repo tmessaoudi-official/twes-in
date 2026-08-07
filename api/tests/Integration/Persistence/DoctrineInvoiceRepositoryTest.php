@@ -19,10 +19,12 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Document\DocumentIdentity;
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\DocumentNumber;
+use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\NumberPattern;
+use Twes\Domain\Document\PersistedInvoice;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
@@ -163,6 +165,13 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
      */
     public function testSavingTwiceReplacesTheChildRowsRatherThanAccumulatingThem(): void
     {
+        // ITS OWN DOCUMENT. This class has no `setUp()` and its cases share one probe database, so reusing
+        // `self::DOCUMENT` here meant saving a DRAFT over a row an earlier case had already ISSUED — which
+        // `save()`'s write-once number guard now refuses, correctly: un-numbering an issued document is not a
+        // transition the aggregate can perform, so no legitimate caller can ask for it. The case was only ever
+        // passing because of declaration order.
+        $document = 'dddddddd-dddd-4ddd-8ddd-000000002000';
+        $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
         $tnd = Currency::of('TND');
         $repository = self::repositoryFor(self::TENANT_A);
 
@@ -170,14 +179,14 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('2', Money::of('2.000', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('3', Money::of('3.000', $tnd), Rate::fromPercentage('19')));
-        self::inTransaction(static fn() => $repository->save(self::identity(), $three));
+        self::inTransaction(static fn() => $repository->save($identity, $three));
 
         // ONE line, at position 0 — the exact PK the previous save already used.
         $one = Invoice::draft($tnd)
             ->withLine(new DocumentLine('9', Money::of('9.000', $tnd), Rate::fromPercentage('7')));
-        self::inTransaction(static fn() => $repository->save(self::identity(), $one));
+        self::inTransaction(static fn() => $repository->save($identity, $one));
 
-        $restored = $repository->find(self::DOCUMENT);
+        $restored = $repository->find($document);
         self::assertNotNull($restored);
         self::assertCount(1, $restored->invoice->lines(), 'the old lines are GONE, not merged');
         self::assertSame(
@@ -191,7 +200,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
             1,
             (int) self::connection()->fetchOne(
                 'SELECT count(*) FROM document_line WHERE company_id = ? AND document_id = ?',
-                [self::TENANT_A, self::DOCUMENT],
+                [self::TENANT_A, $document],
             ),
             'exactly one child row in the table',
         );
@@ -200,16 +209,20 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
     /** A document belonging to another tenant is NOT FOUND, which is the only honest answer under row-level security. */
     public function testAnotherTenantsDocumentIsNotFound(): void
     {
+        // ITS OWN DOCUMENT, for the reason the case above gives: reusing `self::DOCUMENT` wrote a draft over a row an
+        // earlier case had issued, which the write-once number guard refuses.
+        $document = 'dddddddd-dddd-4ddd-8ddd-000000002001';
+        $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
         $tnd = Currency::of('TND');
         $invoice = Invoice::draft($tnd)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
 
         $ownersRepository = self::repositoryFor(self::TENANT_A);
-        self::inTransaction(static fn() => $ownersRepository->save(self::identity(), $invoice));
+        self::inTransaction(static fn() => $ownersRepository->save($identity, $invoice));
 
         // Same id, different tenant. The document exists; this tenant may not see it.
         self::assertNull(
-            self::repositoryFor(self::TENANT_B)->find(self::DOCUMENT),
+            self::repositoryFor(self::TENANT_B)->find($document),
             'another tenant must get null — not an error naming the document, which would itself be a leak',
         );
     }
@@ -268,6 +281,164 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $this->expectExceptionMessage('outside a transaction');
 
         $repository->save(self::identity(), Invoice::draft(Currency::of('TND')));
+    }
+
+    /**
+     * `findForMutation()` OUTSIDE A TRANSACTION IS REFUSED, and the reason is subtler than `save()`'s.
+     *
+     * PostgreSQL will happily take the `FOR UPDATE` lock and release it at the end of the statement's implicit
+     * transaction. So the method would return the document, having guaranteed **nothing**, while appearing to have
+     * succeeded — and the caller chose it over `find()` precisely because it is about to allocate a document number,
+     * which cannot be given back. A guarantee that outlives no transaction is not a guarantee.
+     */
+    public function testLoadingForMutationOutsideATransactionIsRefused(): void
+    {
+        $repository = self::repositoryFor(self::TENANT_A);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('outside a transaction');
+
+        $repository->findForMutation(self::DOCUMENT);
+    }
+
+    /**
+     * **THE ROW LOCK, PROVEN WITH TWO LIVE TRANSACTIONS — and the plain read proven NOT to take it.**
+     *
+     * This is the whole of R1-2. With an ordinary read, two concurrent issues of one draft both see `draft`, both
+     * allocate (the counter serialises them, so 1 and 2), both build an issued aggregate from their own stale
+     * snapshot, and the second save overwrites the first: the document is numbered 2 and **number 1 is allocated to
+     * no document at all**. `InvoiceLifecycleTest` asserts that end-to-end consequence; what is asserted here is the
+     * mechanism, on the one statement that provides it.
+     *
+     * **Both directions, because either alone is worthless.** If only the blocking half were asserted, a repository
+     * that locked on EVERY read would pass — and would serialise every `GET /api/invoices/{id}` behind every writer,
+     * which is a latency regression nobody could attribute to a tenancy fix. If only the non-blocking half were
+     * asserted, the lock could be missing entirely.
+     *
+     * `lock_timeout` is how blocking is OBSERVED rather than waited on: without it the second transaction would hang
+     * until the first commits, and a hanging test is indistinguishable from a slow one. `55P03` is
+     * `lock_not_available`, which is PostgreSQL saying "somebody else holds this" — exactly the assertion.
+     */
+    public function testLoadingForMutationBlocksAConcurrentWriterWhileAPlainReadDoesNot(): void
+    {
+        // ITS OWN DOCUMENT, written here rather than relied upon. This class has no `setUp()` and its cases share a
+        // probe database, so a case that read `self::DOCUMENT` would pass only because an earlier case had written it
+        // — an ordering dependency, and the first reordering would turn this proof into a null-check failure whose
+        // message says nothing about locks.
+        $locked = 'dddddddd-dddd-4ddd-8ddd-00000000100c';
+        $identity = new DocumentIdentity($locked, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
+        $tnd = Currency::of('TND');
+        $holder = self::repositoryFor(self::TENANT_A);
+        self::inTransaction(static fn() => $holder->save(
+            $identity,
+            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
+        ));
+
+        self::connection()->beginTransaction();
+
+        try {
+            self::assertNotNull($holder->findForMutation($locked), 'the holder must actually get the document');
+
+            $rival = self::secondConnection();
+            $rivalRepository = new DoctrineInvoiceRepository(
+                $rival,
+                InMemoryTenantContext::forTenant(TenantId::fromString(self::TENANT_A)),
+                new InvoiceMapper(),
+            );
+            $rival->executeStatement("SET lock_timeout = '400ms'");
+            $rival->beginTransaction();
+
+            // A PLAIN READ IS UNAFFECTED. Asserted FIRST, so that a repository which locked on every read fails here
+            // rather than at the assertion below, where the failure would read as "the lock does not work".
+            self::assertNotNull(
+                $rivalRepository->find($locked),
+                'find() must NOT wait on a writer: a read endpoint that queued behind every issue would be a '
+                . 'latency regression with no visible cause',
+            );
+
+            try {
+                $rivalRepository->findForMutation($locked);
+                self::fail(
+                    'A second findForMutation() must block while the first transaction holds the row. It did not, so '
+                    . 'two concurrent issues can each act on a stale draft — and the loser\'s number is allocated to '
+                    . 'no document, a permanent hole in the invoice sequence.',
+                );
+            } catch (\Doctrine\DBAL\Exception $blocked) {
+                self::assertStringContainsString(
+                    '55P03',
+                    $blocked->getMessage(),
+                    'the refusal must be lock_not_available — anything else means the statement failed for an '
+                    . 'unrelated reason and this case proved nothing: ' . $blocked->getMessage(),
+                );
+            } finally {
+                $rival->close();
+            }
+        } finally {
+            self::connection()->rollBack();
+        }
+    }
+
+    /**
+     * **A DOCUMENT NUMBER IS WRITE-ONCE, AND `save()` REFUSES TO REWRITE ONE.** The structural half of R1-2.
+     *
+     * `findForMutation()` stops two concurrent issues from both reaching `save()`. This stops the damage existing at
+     * all if anything ever reads without holding the row — the *forgetting must be impossible* rule (§ Gotchas
+     * 2026-07-29) applied to the number instead of to the tenant. It is also the enforcement of the
+     * byte-identical-re-download guarantee: a client holding invoice 41 must never find it renumbered, by any path.
+     *
+     * Three cases in one, because the guard is a conjunction and a predicate that refused too much would be worse
+     * than none: rewriting a number is refused, re-saving the SAME number is not (the port promises `save()` is
+     * idempotent on the identity), and a state change that leaves the number alone is not — that is `cancel()`, which
+     * Wave 2 needs and which a naive "an issued row is immutable" guard would have broken.
+     */
+    public function testADocumentNumberCannotBeRewrittenOnceAssigned(): void
+    {
+        $document = 'dddddddd-dddd-4ddd-8ddd-000000002002';
+        $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
+        $tnd = Currency::of('TND');
+        $repository = self::repositoryFor(self::TENANT_A);
+
+        $draft = Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
+        // 141 AND 142 RATHER THAN 41 AND 42. `document_number_unique_per_tenant_and_type` is a real unique index and
+        // 41 is already taken by another case in this class, so reusing it made the refusal arrive as a `23505` from
+        // the index instead of from the guard under test — a case that appeared to pass for the wrong reason. Worth
+        // noting rather than silently renumbering: the index refuses a renumber to an ALREADY-USED number, and the
+        // guard refuses one to a FRESH number, which is exactly the concurrent case (the loser's number is new).
+        $issued = $draft->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
+        self::inTransaction(static fn() => $repository->save($identity, $issued));
+
+        // RELOADED THROUGH A CLOSURE, not by calling `find()` inline three times. The lookups are interleaved with
+        // writes so each one must be fresh, and `?? self::fail()` is what keeps them non-nullable without a dead
+        // `assertNotNull` — PHPStan narrows the second inline call from the first and then reports the check as
+        // provably true, which is the half-hollow-assertion class this project's configuration exists to catch.
+        $reload = static fn(): PersistedInvoice => $repository->find($document)
+            ?? self::fail('the document must be readable back between the writes this case makes');
+
+        // IDEMPOTENT ON THE SAME NUMBER. Asserted first: a guard that refused this would break the port's own promise
+        // and every retry path that relies on it.
+        self::inTransaction(static fn() => $repository->save($identity, $issued));
+        self::assertSame(141, $reload()->invoice->number()?->sequence(), 'still 141');
+
+        // A CANCELLATION IS STILL ALLOWED — same number, different state. Wave 2 needs this, and the reason the
+        // predicate is written about the NUMBER rather than about the STATE is precisely so it survives.
+        $cancelled = $issued->cancel();
+        self::inTransaction(static fn() => $repository->save($identity, $cancelled));
+
+        $afterCancel = $reload();
+        self::assertSame(
+            DocumentState::Cancelled,
+            $afterCancel->invoice->state(),
+            'cancelling an issued document keeps its number and must not be refused',
+        );
+        self::assertSame(141, $afterCancel->invoice->number()?->sequence(), 'and it keeps the number it was issued');
+
+        // AND THE REFUSAL. A different number over the same row is what a stale-read issue produces.
+        $renumbered = $draft->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 142));
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Refusing to renumber document');
+
+        self::inTransaction(static fn() => $repository->save($identity, $renumbered));
     }
 
     /** An ill-formed id is refused before it reaches a query, by the same rule `DocumentIdentity` enforces. */
@@ -408,5 +579,34 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         }
 
         return self::$connection;
+    }
+
+    /**
+     * A SECOND, INDEPENDENT connection — deliberately not memoised, and the only way to observe a row lock.
+     *
+     * A lock is a relationship between two sessions, so a single connection cannot see one: `FOR UPDATE` twice on the
+     * same session is a no-op, and a test written that way would pass against a repository that took no lock at all.
+     * Its caller closes it, because the case leaves it holding a failed transaction.
+     */
+    private static function secondConnection(): Connection
+    {
+        try {
+            $second = DriverManager::getConnection([
+                'driver' => 'pdo_pgsql',
+                'host' => self::host(),
+                'port' => (int) self::port(),
+                'dbname' => self::DATABASE,
+                'user' => self::ownerRole(),
+                'password' => self::ownerPassword(),
+            ]);
+            $second->executeStatement(
+                \sprintf("SELECT set_config('%s', ?, false)", PostgresRowLevelSecurityIsolation::TENANT_SETTING),
+                [self::TENANT_A],
+            );
+
+            return $second;
+        } catch (\Doctrine\DBAL\Exception $exception) {
+            self::fail('Could not open the second probe connection: ' . $exception->getMessage());
+        }
     }
 }

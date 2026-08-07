@@ -1763,6 +1763,48 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     `debug:container --tag` lists a phantom second tag with an empty connection column, in the one command a reader
     would use to check the scoping.
 
+- **2026-08-07 — A DOCUMENT NUMBER IS WRITE-ONCE, AND THE LOCK IS THE SECOND LINE RATHER THAN THE FIRST.** Recorded
+  beside money-is-never-a-float and the gapless sequence because it is the same kind of decision: once documents exist
+  it cannot be retrofitted. The panel's R1-2 was that two concurrent issues of one draft each act on a stale read.
+  Reproduced with two live transactions before any code changed: both see `draft`, the counter serialises them so they
+  take 1 and 2, both build an issued aggregate from their own snapshot, and the second save overwrites the first —
+  `allocated=[1,2] on documents=[2]`, so **number 1 is allocated to no document at all**, and the client that already
+  received a 200 for invoice 1 finds it renumbered. That is the hole § Gotchas 2026-07-31 forbids `nextval()` to
+  avoid, reached by a different road.
+  - **The hole check has to be a SET DIFFERENCE, and getting that wrong is how the whole thing hides.** My first probe
+    compared the counter against the document's current number, reported *"no hole"*, and was wrong: in a lost update
+    the OVERWRITING number is the one that matches. The property is that every number the counter has handed out is on
+    some document.
+  - **Two fixes, and the ordering of their importance is the finding.** A row lock (`findForMutation()`, a new port
+    method whose contract is stated as a *guarantee* — no other transaction may mutate this document until mine ends —
+    with `FOR UPDATE` merely being how the Postgres adapter delivers it) stops the second issue from ever reaching the
+    write, and must be taken BEFORE the allocation, because the counter row is itself contended: a caller that
+    allocated first would already hold the number it is trying not to waste. That also fixes ONE lock order for every
+    writer, document then counter, which makes a deadlock between two issues impossible rather than unlikely.
+    **But the lock is not what closes the hole.** `save()`'s upsert now carries
+    `WHERE document.number IS NULL OR document.number = EXCLUDED.number` and throws on zero rows written, so a
+    renumber is refused by the STATEMENT whatever read produced it. That is the *forgetting must be impossible* rule
+    applied to the number instead of to the tenant, and it is also the enforcement of the byte-identical-re-download
+    guarantee — which nothing enforced before. A `WHERE` on `DO UPDATE` rather than a CHECK (which sees one row) or a
+    trigger (business meaning in a persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses).
+  - **The predicate is about the NUMBER and deliberately not about the STATE**, which is what lets `cancel()` still
+    save: same number, different state. A guard phrased as *"an issued row is immutable"* would have read more
+    naturally and broken Wave 2.
+  - **It also caught two pre-existing order-dependent tests** — cases sharing one document id with no `setUp()`, so
+    they were writing a DRAFT over a row an earlier case had ISSUED, i.e. asking to un-number a legal document. The
+    guard was right and the fixtures were wrong; both now own their document. A guard that fires on your own suite is
+    worth reading before assuming it is too strict.
+  - **The composed end-to-end case does NOT pin the lock, and its mutant is what proved that.** Reverting
+    `findForMutation()` to `find()` left it green, because the rival holds the row for the whole handler run so the
+    unlocked handler simply blocks later — at `save()` instead of at the read — and rolls back all the same. § Gotchas
+    2026-07-31's *the test is not arriving* with a new ending: the distinguishing interleaving needs the rival to
+    COMMIT between the victim's read and its write, which no single-threaded case can express while the handler owns
+    its transaction. **It would take a second PHP process** — stated that way rather than as an impossibility, per
+    this section's own rule — and it is not needed for the hole, which the write-once predicate closes structurally.
+    The lock is pinned in BOTH directions instead (it blocks a second mutating read; a plain `find()` does not),
+    because a repository that locked on every read would pass a one-directional test and serialise every
+    `GET /api/invoices/{id}` behind every writer, with no visible cause.
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See

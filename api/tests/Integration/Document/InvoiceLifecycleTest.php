@@ -235,6 +235,97 @@ final class InvoiceLifecycleTest extends TestCase
         self::assertSame([1, 2, 3], $allocated);
     }
 
+    /**
+     * **AN ISSUE THAT CANNOT HOLD THE DOCUMENT ALLOCATES NOTHING — the outcome half of R1-2.**
+     *
+     * The panel's finding: with an ordinary read, two concurrent issues of one draft both see `draft`, both allocate
+     * (the counter serialises them, so 1 and 2), both build an issued aggregate from their own stale snapshot, and the
+     * second save overwrites the first. The document ends up numbered 2 while **number 1 is allocated to no document
+     * at all** — the permanent hole that § Gotchas 2026-07-31 forbids `nextval()` to avoid — and the client that
+     * already received a 200 for invoice 1 finds it renumbered. [Reproduced against this schema with two live
+     * transactions before the fix: `allocated=[1,2] on documents=[2]`.]
+     *
+     * **The real handler is what runs here, and the rival is a bare row lock rather than a second handler.** A second
+     * handler would need its transaction held open across `transactional()`, which the port deliberately does not
+     * allow; and "another transaction is holding this document" is the real-world CONDITION, so producing it with the
+     * statement that produces it is honest, whereas re-implementing the handler's steps beside it would assert a copy.
+     * `lock_timeout` is how the block is observed rather than waited on.
+     *
+     * **WHAT THIS CASE DOES NOT PIN, because its mutant survived and saying so is the point.** Reverting
+     * `findForMutation()` to `find()` leaves this GREEN. The reason is that the rival holds the row for the whole
+     * handler run, so a handler that read without the lock simply blocks later — at `save()`'s UPDATE instead of at
+     * the read — and rolls back all the same. § Gotchas 2026-07-31: *when a mutant survives a test written to kill
+     * it, the test is not weak, it is not arriving.* The interleaving that distinguishes the two reads needs the rival
+     * to COMMIT between the victim's read and the victim's write, which no single-threaded case can express while the
+     * handler owns its own transaction; it would take a second PHP process, and that is what it would take rather than
+     * something that cannot be done.
+     *
+     * **It is not needed for the hole, and that is the design answer rather than a consolation.** The hole is closed
+     * STRUCTURALLY by `save()`'s write-once number predicate — a stale-read issue that reaches `save()` with a fresh
+     * number is refused by the statement itself, whatever read produced it — and that is pinned by three mutants in
+     * `DoctrineInvoiceRepositoryTest::testADocumentNumberCannotBeRewrittenOnceAssigned()`. The row lock is pinned in
+     * both directions by `testLoadingForMutationBlocksAConcurrentWriterWhileAPlainReadDoesNot()`, and the handler's
+     * use of it, in the right order relative to the allocation, by
+     * `InvoiceWriteHandlersTest::testIssuingTakesTheDocumentForMutationBeforeItAllocatesANumber()`. What THIS case
+     * adds is the composed outcome: a real handler, a real block, and no number spent.
+     *
+     * **The assertion is a SET DIFFERENCE, not a comparison with the document's number** — and that is the whole
+     * lesson of the finding. Comparing the counter against the surviving row's number reports "no hole" for exactly
+     * the lost-update case, because the overwriting number is the one that matches. Every number the counter has
+     * handed out must be ON a document.
+     */
+    public function testAnIssueThatCannotHoldTheDocumentAllocatesNoNumber(): void
+    {
+        $created = self::creator()->handle(self::command());
+
+        // A RIVAL TRANSACTION HOLDS THE ROW, on its own connection — a lock is a relationship between two sessions,
+        // so a single connection could not express this and a test written that way would pass with no lock at all.
+        $rival = self::rivalConnection();
+        $rival->beginTransaction();
+        $rival->executeQuery(
+            'SELECT id FROM document WHERE company_id = :t AND id = :id FOR UPDATE',
+            ['t' => self::TENANT, 'id' => $created->identity->id],
+        );
+
+        self::connection()->executeStatement("SET lock_timeout = '400ms'");
+
+        try {
+            self::issuer()->handle(new IssueInvoice($created->identity->id));
+            self::fail(
+                'The issue must not proceed while another transaction holds the document: acting on a stale draft is '
+                . 'what allocates a number to a document somebody else is about to renumber.',
+            );
+        } catch (\Doctrine\DBAL\Exception $blocked) {
+            self::assertStringContainsString('55P03', $blocked->getMessage(), $blocked->getMessage());
+        } finally {
+            self::connection()->executeStatement('SET lock_timeout = 0');
+            $rival->rollBack();
+            $rival->close();
+        }
+
+        // NOTHING WAS ALLOCATED, so the next successful issue is number 1. Read from the counter as well as from the
+        // document, because the counter is where a burned number would be visible and the document is where it would
+        // not.
+        $issued = self::issuer()->handle(new IssueInvoice($created->identity->id));
+        self::assertSame(1, $issued?->invoice->number()?->sequence(), 'the first issued invoice is number 1');
+
+        $handedOut = (int) self::connection()->fetchOne(
+            'SELECT next_value - 1 FROM document_number_sequence WHERE company_id = :t AND type = :type',
+            ['t' => self::TENANT, 'type' => 'invoice'],
+        );
+        $onDocuments = array_map('intval', self::connection()->fetchFirstColumn(
+            'SELECT number FROM document WHERE company_id = :t AND number IS NOT NULL',
+            ['t' => self::TENANT],
+        ));
+
+        self::assertSame(
+            [],
+            array_values(array_diff(range(1, $handedOut), $onDocuments)),
+            'every number the counter handed out must be ON a document — a set difference, because comparing the '
+            . 'counter against the surviving row\'s number is exactly how a lost update reports "no hole"',
+        );
+    }
+
     /** A document that does not exist is `null` from the handler, which the transport turns into a 404. */
     public function testIssuingAnAbsentDocumentReturnsNull(): void
     {
@@ -291,6 +382,35 @@ final class InvoiceLifecycleTest extends TestCase
     private static function ids(): IdGenerator
     {
         return new UuidV7Generator(new \Twes\Infrastructure\Shared\SystemClock());
+    }
+
+    /**
+     * A SECOND, INDEPENDENT connection that can hold a row lock — never memoised, and its caller closes it.
+     *
+     * Bound to the same tenant, session-scoped, for the reason `self::connection()` documents: the probe database is
+     * fresh, so the runtime role has no grants here and the owner is used, and `document` is `FORCE ROW LEVEL
+     * SECURITY` so even the owner needs the binding to see anything.
+     */
+    private static function rivalConnection(): Connection
+    {
+        try {
+            $rival = DriverManager::getConnection([
+                'driver' => 'pdo_pgsql',
+                'host' => self::host(),
+                'port' => (int) self::port(),
+                'dbname' => self::DATABASE,
+                'user' => self::ownerRole(),
+                'password' => self::ownerPassword(),
+            ]);
+            $rival->executeStatement(
+                \sprintf("SELECT set_config('%s', ?, false)", PostgresRowLevelSecurityIsolation::TENANT_SETTING),
+                [self::TENANT],
+            );
+
+            return $rival;
+        } catch (\Doctrine\DBAL\Exception $exception) {
+            self::fail('Could not open the rival probe connection: ' . $exception->getMessage());
+        }
     }
 
     private static function repository(): DoctrineInvoiceRepository
