@@ -670,6 +670,7 @@ php   scripts/gates/no-ambient-calls-in-domain.php
 bash  scripts/gates/spdx-headers.sh
 php   scripts/gates/no-orphaned-docblocks.php
 php   scripts/gates/no-owner-connection-in-application.php
+bash  scripts/gates/no-forgeable-tenancy-in-production.sh   # ABSENT from this block for four commits -- see below
 php   scripts/gates/locale-key-parity.php
 php   scripts/gates/dependency-licences.php
 php   scripts/gates/schema-tenancy.php     # needs a migrated database; see the table above for the env vars
@@ -693,9 +694,14 @@ commit`, one level milder — there the verdict was discarded, here five verdict
 step's own status.** The `e2e` suite is run separately, against a live stack: `make e2e`, or `composer gate:e2e` with
 `TWES_E2E_BASE_URL` set.
 
-**Derive this block from `api/composer.json` rather than trusting it.** It listed twelve of the fourteen for a
-commit — `worker-mode-blocked.sh` and `makefile-conventions.sh` were absent while both had rows in the tables above
-— which is the hand-written-list defect this file records against every other enumeration in it. `ls scripts/gates/` is the inventory EXCEPT for `lib/`, which holds LIBRARIES rather than gates — they have no CLI, no exit code and no `--dump-rules`, and `test-gates.sh` asserts instead that every one of them is sourced, required or executed by a gate (comment lines deleted first, because a mention is not a reference). Every actual gate is wired into `composer gate`; it
+**Derive this block from `api/composer.json` rather than trusting it, and note it has now been wrong TWICE.** It
+listed twelve of the fourteen for a commit — `worker-mode-blocked.sh` and `makefile-conventions.sh` were absent while
+both had rows in the tables above — and then fourteen of the fifteen, with
+`no-forgeable-tenancy-in-production.sh` missing, which round 2 filed (R2K-9's sibling R2K-7). The absent one was a
+SECURITY gate both times, and the second time the block had just been rewritten by the commit that de-chained it — so
+the rewrite touched every line and still did not derive the list. This is the hand-written-list defect this file
+records against every other enumeration in it, recurring inside the fix for a different defect in the same block.
+`ls scripts/gates/` minus `lib/` is the inventory; `composer gate`'s own chain is the wiring. `ls scripts/gates/` is the inventory EXCEPT for `lib/`, which holds LIBRARIES rather than gates — they have no CLI, no exit code and no `--dump-rules`, and `test-gates.sh` asserts instead that every one of them is sourced, required or executed by a gate (comment lines deleted first, because a mention is not a reference). Every actual gate is wired into `composer gate`; it
 runs LAST there for a reason worth knowing, because a Composer script chain stops at the first failure, so with the
 meta-suite in the middle the three gates after it never executed on any run where it was red — and it was red at
 the commit that added `worker-mode-blocked.sh`, so that gate had never once run under `composer gate`.

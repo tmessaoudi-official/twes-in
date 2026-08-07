@@ -50,7 +50,7 @@ final class InMemoryInvoiceRepository implements InvoiceRepository
      * RECORDED, for the same reason `$saves` is: a handler that read with `find()` where it must not is otherwise
      * indistinguishable from one that read correctly, because both return the same document. The SERIALISABILITY the
      * mutating read guarantees cannot be reproduced in memory — a fake with one thread has nothing to serialise — so
-     * what a handler test can assert is that the handler ASKED for it, and `IssueInvoiceHandlerTest` does.
+     * what a handler test can assert is that the handler ASKED for it, and `InvoiceWriteHandlersTest` does.
      *
      * @var list<string>
      */

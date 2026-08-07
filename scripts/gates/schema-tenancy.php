@@ -128,7 +128,26 @@ $runtimeRole = getenv('TWES_SCHEMA_RUNTIME_ROLE') ?: getenv('TWES_TEST_DB_USER')
 // CLAUDE.md § Gotchas records under "a permission that nothing consults permits everything". Worse, its name reads
 // like the role the gate asks ABOUT (that is TWES_SCHEMA_RUNTIME_ROLE), so the natural way to satisfy it was to pass
 // the runtime role as the connection credential and get a connection that cannot read `pg_authid`.
-$dsnCarriesUser = is_string($dsn) && 1 === preg_match('/(^|;)\s*user\s*=/i', $dsn);
+// PARSED RATHER THAN PATTERN-MATCHED, because the first version's `/(^|;)\s*user\s*=/i` could not see a DSN whose
+// FIRST parameter is the user: in `pgsql:user=twes_owner;host=…` the `user=` is preceded by the scheme colon, which is
+// neither `;` nor start-of-string. That is a valid PDO DSN, and the gate refused it while telling the reader to add a
+// `user=` it already had — the exact trap this relaxation was written to remove, reproduced inside the removal. Round
+// 2's correctness and completeness lenses found it independently.
+//
+// So the scheme is stripped and the remainder split on `;`, which is what PDO itself does, rather than guessing at the
+// separators a key may follow. `array_key_exists` rather than a truthiness test: `user=` with an empty value is a
+// declared-but-empty credential and must NOT count as carrying one.
+$dsnCarriesUser = false;
+
+if (is_string($dsn) && str_contains($dsn, ':')) {
+    foreach (explode(';', substr($dsn, strpos($dsn, ':') + 1)) as $pair) {
+        [$key, $value] = array_pad(explode('=', $pair, 2), 2, '');
+
+        if ('user' === strtolower(trim($key)) && '' !== trim($value)) {
+            $dsnCarriesUser = true;
+        }
+    }
+}
 
 if (!is_string($dsn) || '' === $dsn || (!$dsnCarriesUser && (!is_string($user) || '' === $user))) {
     fwrite(STDERR, "schema-tenancy: FAIL — no database to inspect.\n"

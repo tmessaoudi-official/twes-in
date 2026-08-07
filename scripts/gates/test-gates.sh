@@ -2226,6 +2226,52 @@ else
   failed=$((failed + 1))
 fi
 
+# ------------------------------------------------------------------------------------------------------------
+# THE `TWES_SCHEMA_USER`-OPTIONAL RELAXATION, WHICH HAD NO CASE AT ALL.
+#
+# `schema-tenancy.php` accepts a DSN that already carries its own `user=`, because libpq prefers the connection
+# string's user over PDO's third argument -- so demanding the variable anyway made it a required value that was then
+# discarded. `CLAUDE.md`'s documented green-gate invocation now runs through that branch, so it is the path a reader
+# follows, and neither this suite nor `SchemaTenancyGateTest` exercised it (round 2, R2K-9).
+#
+# THREE cases, because the branch has three outcomes and its first version got one of them wrong: a `user=` in any
+# position must satisfy it (the original `/(^|;)\s*user\s*=/i` could not see one immediately after the scheme colon,
+# which is a valid PDO DSN), and an EMPTY `user=` must NOT -- a declared-but-blank credential is not a credential.
+#
+# All three assert on the REFUSAL MESSAGE rather than on a bare exit code, so a crash cannot pass for a detection.
+# They need no database: the refusal being tested happens before any connection is attempted, and a DSN pointed at
+# port 1 fails afterwards with a DIFFERENT message, which is what distinguishes the two.
+for dsn_case in \
+  'user-last:pgsql:host=127.0.0.1;port=1;dbname=nope;user=someone:reaches-connect' \
+  'user-first:pgsql:user=someone;host=127.0.0.1;port=1;dbname=nope:reaches-connect' \
+  'user-empty:pgsql:host=127.0.0.1;port=1;dbname=nope;user=:refuses'
+do
+  dsn_label="${dsn_case%%:*}"
+  dsn_rest="${dsn_case#*:}"
+  dsn_expect="${dsn_rest##*:}"
+  dsn_value="${dsn_rest%:*}"
+
+  dsn_output="$(cd "$REPO_ROOT" && env -u TWES_SCHEMA_USER -u TWES_TEST_DSN -u TWES_TEST_DB_SUPERUSER \
+    TWES_SCHEMA_DSN="$dsn_value" php scripts/gates/schema-tenancy.php 2>&1)" || true
+
+  if [[ "$dsn_expect" == 'reaches-connect' ]]; then
+    dsn_ok=$(printf '%s' "$dsn_output" | grep -qF 'could not connect' && echo yes || echo no)
+    dsn_what="a DSN carrying user= ($dsn_label) does not need TWES_SCHEMA_USER"
+  else
+    dsn_ok=$(printf '%s' "$dsn_output" | grep -qF 'no database to inspect' && echo yes || echo no)
+    dsn_what="an EMPTY user= in the DSN is not a credential ($dsn_label)"
+  fi
+
+  if [[ "$dsn_ok" == 'yes' ]]; then
+    printf '  ok   — %s\n' "$dsn_what"
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — %s\n' "$dsn_what"
+    printf '         got: %s\n' "$(printf '%s' "$dsn_output" | head -1)"
+    failed=$((failed + 1))
+  fi
+done
+
 # The rule set, through --dump-rules, with a committed minimum for the reason the orphan gate has one: generating
 # a case from a rule set means deleting an entry deletes its own case.
 schema_rules="$(php "$REPO_ROOT/scripts/gates/schema-tenancy.php" --dump-rules)"
