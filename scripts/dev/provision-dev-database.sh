@@ -40,15 +40,27 @@
 # RE-RUNNABLE, and that is a requirement rather than a nicety: a developer runs it before migrating and again
 # afterwards. It never overwrites an existing role's password — see the role block for why.
 #
-# IT CORRECTS, RATHER THAN ONLY CREATES, AND THAT IS THE WHOLE VALUE OF RUNNING IT ON AN EXISTING CLUSTER. Three
-# things are stated unconditionally so a database or role already in the wrong shape is repaired instead of
-# tolerated: the DATABASE's owner, the runtime role's ATTRIBUTES (a pre-existing role was previously skipped
-# outright, so a leftover SUPERUSER or BYPASSRLS `twes` was accepted in silence — and either one means row-level
-# security never applies to the application's own connection), and the OWNER OF EVERY RELATION the runtime role
-# holds (`REASSIGN OWNED BY`, because correcting the database and the schema left `doctrine_migration_versions`
-# owned by `twes` — the very shape § Gotchas 2026-08-01 records as a P0). The password is the one exception, and
-# the asymmetry is deliberate: a credential is the developer's choice, an attribute that defeats tenant
-# isolation is not.
+# IT CORRECTS, RATHER THAN ONLY CREATES, AND THAT IS THE WHOLE VALUE OF RUNNING IT ON AN EXISTING CLUSTER.
+# Everything below is stated unconditionally so a database or role already in the wrong shape is repaired instead
+# of tolerated. **No count is written here: the first version of this paragraph said "three things" and was wrong
+# within a day**, which is the count-beside-the-thing-it-counts defect this repository records against itself.
+# The AXES, and each was found by a certification round rather than designed in:
+#
+#   - the DATABASE's owner, and the SCHEMA's;
+#   - the runtime role's ATTRIBUTES -- a pre-existing role was skipped outright, so a leftover SUPERUSER or
+#     BYPASSRLS `twes` was accepted in silence, and either one means row-level security never applies to the
+#     application's own connection;
+#   - the OWNER OF EVERY RELATION the runtime role holds (`REASSIGN OWNED BY`), because correcting the database
+#     and the schema still left `doctrine_migration_versions` owned by `twes` -- the shape § Gotchas 2026-08-01
+#     records as a P0;
+#   - its MEMBERSHIP of the owner role, which is the ordinary convenience edit that reopens the whole bypass:
+#     `SET ROLE twes_owner; ALTER TABLE document DISABLE ROW LEVEL SECURITY`, which `FORCE` does not prevent;
+#   - its privileges on tables and sequences that ALREADY EXIST, because `ALTER DEFAULT PRIVILEGES` governs only
+#     objects that do not exist yet -- so a hand-issued `GRANT ALL` survived every earlier run, `TRUNCATE`
+#     included, and `TRUNCATE` is never subject to row security at any privilege level.
+#
+# The password is the one exception, and the asymmetry is deliberate: a credential is the developer's choice, an
+# attribute or a grant that defeats tenant isolation is not.
 set -euo pipefail
 
 DB="${TWES_DEV_DB_NAME:-twes_in}"
@@ -291,6 +303,35 @@ GRANT CONNECT ON DATABASE :"DB" TO :"RUNTIME_ROLE";
 -- It is a no-op when the runtime role owns nothing, so it is issued unconditionally for the same reason
 -- `ALTER DATABASE ... OWNER TO` is: a probe would add a branch whose false arm cannot be reached.
 REASSIGN OWNED BY :"RUNTIME_ROLE" TO :"OWNER_ROLE";
+
+-- THE RUNTIME ROLE IS NOT A MEMBER OF THE OWNER. This is the ordinary convenience edit that reopens the whole
+-- bypass: with the grant in place, `twes` reaches `SET ROLE twes_owner; ALTER TABLE document DISABLE ROW LEVEL
+-- SECURITY` on every tenant table, and `FORCE` stops an owner SKIPPING a policy rather than REMOVING one.
+--
+-- `provision-test-database.sh` carries this same grant as a COMMENTED-OUT line with a note saying it "reopens the
+-- whole bypass", precisely because it is what somebody types to silence a permission error. R1-4 closed a
+-- pre-existing role's ATTRIBUTES; membership is the same class one axis over, and it was still open.
+--
+-- Issued unconditionally: `REVOKE` on a role that is not a member is a no-op with a NOTICE, so a probe would add a
+-- branch whose false arm cannot be reached -- the same reasoning as every other unconditional statement here.
+REVOKE :"OWNER_ROLE" FROM :"RUNTIME_ROLE";
+
+-- EXISTING TABLES, RESET TO THE PERMITTED SET. `ALTER DEFAULT PRIVILEGES` below governs objects that do not exist
+-- yet, so it says nothing whatever about a table already in the database -- and a `GRANT ALL` issued by hand on one
+-- therefore survived every previous run. `TRUNCATE` is the privilege that matters: it is never subject to row
+-- security at any privilege level, so it erases every tenant's rows with all policies intact.
+--
+-- **STATED AS THE PERMITTED SET, NOT AS A LIST OF DANGEROUS PRIVILEGES.** `REVOKE ALL` then `GRANT` the four is
+-- closed by construction; a `REVOKE TRUNCATE, TRIGGER, REFERENCES` is fail-open for whichever privilege nobody
+-- thought of, which is the polarity error this repository has had to correct on three separate gates. The four
+-- granted here are exactly the four the default privileges below grant, so an existing table and a future one end
+-- up in the same shape.
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"RUNTIME_ROLE";
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO :"RUNTIME_ROLE";
+-- Sequences likewise: USAGE and SELECT, never UPDATE -- nothing here calls `setval`, because a document number
+-- comes from a counter ROW rather than a sequence.
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM :"RUNTIME_ROLE";
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"RUNTIME_ROLE";
 
 -- THE CORE OF THE SCRIPT. `public` is world-creatable by default on a pre-15 dump and creatable by the
 -- database owner always, so both the PUBLIC grant and any explicit one to the runtime role have to go.

@@ -18,9 +18,12 @@ use Doctrine\DBAL\Driver\Middleware\AbstractDriverMiddleware;
 use Doctrine\Persistence\ManagerRegistry;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Contracts\Service\ResetInterface;
 use Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingDriver;
 use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingDriver;
 use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingMiddleware;
+use Twes\Infrastructure\Tenancy\InMemoryTenantContext;
+use Twes\Infrastructure\Tenancy\TenantId;
 
 /**
  * THE CONTAINER HALF: is the binding middleware actually INSTALLED, and on which connection?
@@ -157,6 +160,47 @@ final class TenantBindingWiringTest extends WebTestCase
                 $status . ' is an answer this operation really gives, so a client generated from the schema needs it',
             );
         }
+    }
+
+    /**
+     * **THE TENANT CONTEXT IS RESET BETWEEN UNITS OF WORK, and this is the one tenancy control that fails OPEN.**
+     *
+     * `SessionStateReleaser` already discards the DATABASE session between Messenger messages — its docblock names the
+     * hazard: *"a worker consuming a queue of jobs for DIFFERENT TENANTS on ONE connection … and `compose.yaml` runs
+     * one"*. The application-side tenant was the other half and had no reset, so message #1's tenant survived into
+     * message #2 and `TenantBindingConnection::beginTransaction()` would bind it onto #2's transaction. Both messages
+     * then read and write tenant A, successfully, and nothing downstream can tell a stale binding from a correct one.
+     *
+     * Every other tenancy failure here fails closed — an unbound session sees nothing, a rebind is refused. That is why
+     * this one is worth a case even while it is latent: `grep -rn "AsMessageHandler" src/` returns nothing today, so no
+     * path carries a tenant across a message yet, and the point is that it lands before the first one does.
+     *
+     * Asserted through the CONTAINER rather than by calling `reset()` on an instance, because the defect was that
+     * Symfony never called it. A unit test of `reset()` would have passed against the broken tree: the method would
+     * simply never have run.
+     */
+    public function testTheTenantContextIsResetBetweenUnitsOfWork(): void
+    {
+        self::bootKernel();
+        $context = self::getContainer()->get(InMemoryTenantContext::class);
+        self::assertInstanceOf(InMemoryTenantContext::class, $context);
+
+        // A `ResetInterface` service is what Symfony's `services_resetter` collects, and the resetter is what runs
+        // between messages and between requests in a resident runtime. Asking the resetter to run is therefore the
+        // production path, not a stand-in for it.
+        $context->switchTo(TenantId::fromString('0199a5b2-0000-7000-8000-00000000030a'));
+        self::assertTrue($context->hasTenant(), 'the fixture must start with a tenant bound');
+
+        $resetter = self::getContainer()->get('services_resetter');
+        self::assertInstanceOf(ResetInterface::class, $resetter);
+        $resetter->reset();
+
+        self::assertFalse(
+            $context->hasTenant(),
+            'the tenant must NOT survive a reset: it is what binds the database session, so carrying it into the next '
+            . 'message binds that message to the previous tenant — the one tenancy failure here that succeeds while '
+            . 'being wrong',
+        );
     }
 
     /**

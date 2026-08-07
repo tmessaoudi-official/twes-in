@@ -32,12 +32,33 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  * `assertConnectionCannotCreateTemporaryObjects()` **0.36 ms** (50 runs each, migrated database) — ~10.8 ms, which
  * under PHP-FPM would be paid on every request, roughly a fifth of a 50 ms API response.
  *
- * The observation that makes caching CORRECT rather than merely cheaper: **every property checked is STATIC per
- * (role, database)** — `rolsuper`, `rolbypassrls`, `rolreplication`, table ownership, `TRUNCATE`, and function ACLs
- * are catalogue state that no request can alter. Re-verifying them per acquisition re-verifies a constant. The
- * genuinely per-session property — a connection arriving already bound to a tenant — is NOT checkable here at all: a
- * brand-new backend cannot carry a `twes.tenant_id`, so that hazard belongs to REUSE and is
- * {@see SessionStateReleaser}'s job.
+ * **MOST of what is checked is STATIC per (role, database)** — `rolsuper`, `rolbypassrls`, `rolreplication`, table
+ * ownership, `TRUNCATE`, and function ACLs are catalogue state that no request can alter, so re-verifying them per
+ * acquisition re-verifies a constant.
+ *
+ * **THIS DOCBLOCK SAID *EVERY* PROPERTY WAS, AND THAT WAS FALSE.** Round 2's security lens found that
+ * `assertConnectionCannotBypassPolicies()` composes three assertions that are per-SESSION rather than catalogue:
+ * `assertNoTenantPinnedOnTheConnection()` reads `current_setting()`, and `assertNoSessionLifetimeDataIsMaterialised()`
+ * reads `pg_my_temp_schema()` and `pg_cursors`. So the sentence justifying the cache was wrong about the very
+ * assertions inside it — and the previous version went on to claim the pin was "NOT checkable here at all", which the
+ * code disproves by checking it.
+ *
+ * The pin is the one that matters, because it needs no privilege and no SQL: a DSN carrying
+ * `options=-ctwes.tenant_id=<other>` (or `PGOPTIONS`) arrives with a SESSION-scoped setting, and a `ROLLBACK TO
+ * SAVEPOINT` then reverts `bind()`'s transaction-local value to it. [Reproduced by the panel on a live cluster: after
+ * the rollback the session was bound to another tenant and read that tenant's invoice.]
+ *
+ * **WHY IT NEVERTHELESS CANNOT SLIP PAST THE CACHE, and why the fix is the key rather than the caching:** `verifyOnce`
+ * writes the cache ONLY after every assertion has passed, so a pinned DSN fails its first connection and is never
+ * cached as good. And the pin is a property of the DSN, identical on every connection built from it — so it cannot
+ * differ between a cached verification and a later acquisition. That second half was true by COINCIDENCE until the
+ * `options` fragment was added to {@see self::cacheKeyFor()}: two DSNs differing only in `options` hashed to one key,
+ * so a clean connection could have vouched for a pinned one. It now holds by construction.
+ *
+ * The residual risk is the honest one: a per-session property verified once per TTL window is verified for the
+ * SESSION that ran it. That is acceptable for the pin because of the DSN argument above, and it is why a genuinely
+ * per-session check must not be added into this cached block without re-reading this paragraph — the reason the
+ * correction is here rather than appended below the false sentence.
  *
  * **THE GAP THIS LEAVES, stated rather than left to be discovered:** provisioning that drifts *during* a process's
  * lifetime is not caught until the cached verification expires — a window bounded by `$verificationTtl` and stated in
@@ -126,12 +147,19 @@ final class ConnectionProvisioningGuardMiddleware implements Middleware
      */
     public static function cacheKeyFor(array $params): string
     {
+        // `options` IS IN THE KEY, and it was not until round 2. It is the one connection parameter that changes a
+        // SESSION-scoped setting — `options=-ctwes.tenant_id=<other>` arrives with a tenant already pinned, which a
+        // `ROLLBACK TO SAVEPOINT` can then revert `bind()` to. Two DSNs differing only in `options` previously hashed
+        // to the same key, so a clean connection could have vouched for a pinned one. Nothing exploited that (the
+        // cache is written only after every assertion passes, so a pinned DSN fails its first connection), which is
+        // exactly the kind of by-coincidence safety this project does not build tenancy on.
         return 'twes.tenancy.provisioning.' . sha1(\sprintf(
-            '%s@%s:%s/%s',
+            '%s@%s:%s/%s?%s',
             \is_scalar($params['user'] ?? null) ? (string) $params['user'] : '?',
             \is_scalar($params['host'] ?? null) ? (string) $params['host'] : '?',
             \is_scalar($params['port'] ?? null) ? (string) $params['port'] : '?',
             \is_scalar($params['dbname'] ?? null) ? (string) $params['dbname'] : '?',
+            \is_scalar($params['options'] ?? null) ? (string) $params['options'] : '',
         ));
     }
 

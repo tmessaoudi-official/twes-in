@@ -64,9 +64,17 @@ export TWES_GID := $(shell id -g)
 DC      := cd $(INFRA) && docker compose $(ENV_FLAGS)
 DC_PROD := cd $(INFRA) && docker compose $(ENV_FLAGS) -f compose.yaml -f compose.prod.yaml
 
+# THE CHARACTER CLASS INCLUDES DIGITS, and it did not until `e2e` was added — so the target the panel had just asked
+# for was reachable by name and invisible in the one command that enumerates targets. The closed P1 was "the owed step
+# is unrunnable by the route a developer uses"; being listed is half of being runnable. There is no `git ls-files`-style
+# derivation available to a grep over a Makefile, so the fix is the class itself: 40 documented targets match with
+# digits and 39 without, and the difference was exactly `e2e`. [Measured.]
+#
+# The comment is HERE rather than in the recipe: a `#` line inside a recipe is passed to the shell and `make` echoes
+# it, so the first version of this note printed itself above the help output.
 .PHONY: help
 help: ## Show this help.
-	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
+	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 # --------------------------------------------------------------------------------------------------------------

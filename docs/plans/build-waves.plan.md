@@ -1124,16 +1124,84 @@ as owed rather than unwanted); and `CLAUDE.md`'s gate block, which ran a **bare 
 suite and so was red by construction on any machine without a live stack, `&&`-chained so the first failure swallowed
 the six steps after it.
 
-**Still open from this row, and named rather than quietly dropped:** `REQUIRED_NON_EMPTY_LAYERS` remains untestable
-(the honest options are a fixture that reaches it or deleting a check that cannot fail — a decision about which, not a
-mechanical fix), and the two rounding constants in `InvoiceRepresentation` are still unpinned.
+**Still open from this row, and named rather than quietly dropped:** `REQUIRED_NON_EMPTY_LAYERS` remains untestable —
+the honest options are a fixture that reaches it or deleting a check that cannot fail, which is a decision about which
+rather than a mechanical fix.
 
-**One process finding, and it is the important one.** My panel prompt said reviewers could *"mutate in place and
+**THE ACCOUNTING OF THIS ROUND IS INCOMPLETE, and round 2 filed that as its own finding (R2K-8).** The header says "25
+findings, 5 P0"; the table holds five P0 rows plus one aggregate row enumerating nine P1 items, so **at most 14 are
+accounted for** and nothing records the remaining eleven or any P2/P3. Worse, inside that row the closure prose said
+"The seven real ones:" and enumerated **six**, while one of the nine — *three tests assert mutants that survive* —
+appeared in no closure sentence and no still-open sentence at all. It was simply lost, and
+`DocumentIdentity::isWellFormedId()` arriving with no test of its own is a live fourth instance of exactly that item,
+created by the sweep that was supposed to close it.
+
+Corrected rather than re-tallied: the eleven unrecorded findings are **not recoverable** — round 1's full list existed
+only in a conversation that has since been compacted, which is the whole reason this section was written and the reason
+it was written too late. What IS recorded here is every finding that drove a change, plus this admission. **The
+durable fix is procedural and applies to round 2 onward: a finding is written into this file when it is FILED, not when
+it is closed** — a closure-time record cannot distinguish an item that was resolved from one that was forgotten, which
+is precisely what happened to the mutant-coverage item. Round 2's twenty-four findings are recorded below in the tables
+that accompany their closures, each with the lens that filed it.
+
+**The two rounding constants in `InvoiceRepresentation` are now CLOSED**, and the count in the sentence that deferred
+them was wrong too (round 2's R2K-11: the file has ONE constant, not two — the second lives in
+`CreateInvoiceProcessor`). Both are pinned: the mode by two vectors, one per side of the midpoint, because an exact tie
+alone leaves `Up` and `Ceiling` alive; the rounding point on the create response, where a client sees it.
+
+**One process finding from round 1, and it is the important one.** My panel prompt said reviewers could *"mutate in place and
 restore immediately"*. One did, in the real tree, during the freeze — and a second lens read a half-mutated file and
 came within one step of filing a fabricated P0. That is § Gotchas 2026-07-29's *freeze means freeze* from the other
 direction: it is not enough to stop committing, the prompt must make mutation impossible. Round 2's prompt confines
 every mutation to a `git archive` copy with its own `COMPOSER_VENDOR_DIR`, per § Gotchas 2026-08-05 — a shared
 `vendor/` is build state that `git status` cannot see.
+
+### Wave 1 boundary — round 2 (MAXIMAL, frozen `1db4845`): 24 findings, 3 P0, NOT clean
+
+Recorded AS FILED rather than at closure, per R2K-8 above. Isolation worked: each lens ran in its own `git archive` of
+the frozen commit with its own `api/vendor` (a `cp -al` hardlink farm plus a real copy of the 3.9 MB `vendor/composer`,
+so `dump-autoload` could not reach ours) and its own git index; the real tree was verified clean and at `1db4845` by
+all three at the end. Only the tenancy lens was permitted the `integration` suite and `pg_ctlcluster`, because the probe
+databases have fixed names. **Three findings were reached independently by two lenses each**, which is the return on
+running a panel rather than one reviewer.
+
+| # | Lens | Finding | Sev | Status |
+|---|---|---|---|---|
+| R2S-1 | tenancy | **A stale `var/cache/test` reports GREEN over a missing tenancy control.** `APP_DEBUG=0` means no freshness check, so deleting `TenantBindingMiddleware`'s registration leaves all 949 tests passing on any warm cache. Exactly one test detects it | **P0** | **CLOSED `fa47c39`** — `tests/bootstrap.php` discards `var/cache/test` once per run. Verified with the cache deliberately warm |
+| R2K-1 | completeness | `README.md` still claimed no HTTP surface, no repository or mapper, `infra/` a stub, no Doctrine — nine lines below its own announcement that Doctrine had landed | **P0** | **CLOSED `fa47c39`** |
+| R2K-2 | completeness | The Wave 1 heading still ended `— WAVE COMPLETE` with the retraction 45 lines below it, and `CLAUDE.md:31` still called the write path "the last thing Wave 1 owed" | **P0** | **CLOSED `fa47c39`** |
+| R2C-1 | correctness | The corrupt-row 404 was still open in `IssueInvoiceProcessor` — worse there than on the read path, because a client told "no such invoice" about a document it just created creates a second one | P1 | **CLOSED `fa47c39`** |
+| R2C-2 · R2C-3 · R2K-4 | correctness ×2, completeness | **The write-once predicate guarded `number` alone** while the statement rewrote `number_rendered`, `type`, `currency` and `vat_rounding_point`, and the child rows had no predicate at all. `vat_rounding_point` is not on the aggregate, so the stated reason could never have held | P1 | **CLOSED `1feb348`** — a pre-read and a state-only branch; three mutants |
+| R2C-4 | correctness | `InvoiceRepresentation::MODE` survived all eight rounding modes | P1 | **CLOSED `1feb348`** — two vectors, one per side of the midpoint |
+| R2C-5 | correctness | `CreateInvoiceProcessor`'s `VatRoundingPoint` — which fixes how much tax every API-created document declares — flipped green | P1 | **CLOSED `1feb348`** |
+| R2C-6 · R2K-3 | correctness, completeness | `DocumentIdentity::isWellFormedId()`, extracted as "the ONE definition", had no test; `/D`, the anchors and case sensitivity all mutated freely | P1 | **CLOSED `1feb348`** — `DocumentIdentityTest`; /D kills 1, `^` kills 3, `i` kills 3 |
+| R2K-5 | completeness | R1-4's fix reached role ATTRIBUTES only. **Role MEMBERSHIP and pre-existing table grants are the same breach class**: a leftover `GRANT owner TO runtime` survives, and the runtime role then reaches `SET ROLE` + `DISABLE ROW LEVEL SECURITY` | P1 | **CLOSED** — `REVOKE owner FROM runtime`, plus `REVOKE ALL`/`GRANT` the four on existing tables and sequences (the permitted set, not a list of dangerous privileges). Two detectors written first, two mutants |
+| R2S-2 | tenancy | `SessionStateReleaser` resets the database session between messages; `InMemoryTenantContext` was not `ResetInterface`, so the application-side tenant survived — **fail-OPEN**, the only tenancy shape here that succeeds while being wrong | P1 | **CLOSED** — `ResetInterface`; asserted through `services_resetter`, because the defect was that Symfony never called it. Two mutants |
+| R2S-3 | tenancy | The guard cache's justification claimed EVERY property checked is catalogue state; three are per-session, and `cacheKeyFor()` omitted `options` — where a tenant pin arrives | P2 | **CLOSED** — `options` in the key, claim corrected. Safety was previously by coincidence |
+| R2S-4 | tenancy | A **fourth** site of the `autoconfigure: false` claim, in the assertion message a developer reads under failure, after § Gotchas claimed all three were corrected | P2 | **CLOSED `fa47c39`** |
+| R2K-6 | completeness | `make e2e` existed and `make help` could not list it: the regex character class had no digits | P2 | **CLOSED** — 40 targets match with digits, 39 without, and the difference was exactly `e2e` |
+| R2K-7 | completeness | `CLAUDE.md`'s hand-written gate block lists 14 of 15 gates; `no-forgeable-tenancy-in-production.sh` is absent | P2 | **OPEN** |
+| R2K-8 | completeness | This file's round-1 record accounts for at most 14 of 25 findings and silently dropped one | P2 | **CLOSED** — see the admission above; the durable fix is to record a finding when FILED |
+| R2K-9 | completeness | The `TWES_SCHEMA_USER` relaxation has no case in either suite, and its predicate misses a DSN whose FIRST parameter is `user=` | P2 | **OPEN** |
+| R2C-8 | correctness | Same regex blind spot, found independently | P3 | **OPEN** (with R2K-9) |
+| R2C-7 | correctness | `InMemoryInvoiceRepository`'s docblock cites `IssueInvoiceHandlerTest`, which does not exist | P3 | **OPEN** |
+| R2K-10 | completeness | `build-waves.plan.md:775` still says the i18n catalogues have no consumer and there is no HTTP layer, with a stale count of nine keys (35) | P2 | **OPEN** |
+| R2K-11 · R2K-12 | completeness | Two stale counts: "two rounding constants" (one), and "FIVE functional classes" (six) | P3 | **R2K-11 CLOSED** above; R2K-12 **OPEN** |
+
+**What the panel CLEARED, recorded because the findings must not read as broader than they are.** The tenancy lens
+attacked and could not break: the binding's reach across every path that opens a transaction; the tenant-less early
+return (unbound `SELECT count(*)` → 0, unbound insert refused, and `FORCE` applies even to the table owner); the
+savepoint guard's installation and load-bearingness; `REASSIGN OWNED BY` leaving no privilege residue in either the
+NULL-ACL or materialised-ACL case; whether the `schema-tenancy.php` relaxation can produce a false clean (identical
+verdicts as owner and as the runtime role, `violations=2`, exit 1 both times); leaks in the propagating 500 (`env=prod`
+gives title/detail/status/type and nothing else); and PII (`api/src/` contains no logger call at all). Crucially it
+**bounded** the correctness lens's lead: the restatable columns were confined to the bound tenant, because
+`ON CONFLICT (company_id, id)` plus the `WITH CHECK` half refuse every cross-tenant write with a byte-identical error
+whether the target exists or not — so no existence oracle, and `FOR UPDATE` does not lock RLS-filtered rows, so no
+blocking side channel. That is what made it a P1 rather than a P0. The completeness lens cleared `findForMutation()`'s
+full-set coverage (all three read-path fakes REFUSE it), every other write path to `document`, both DBAL connections,
+the full exported OpenAPI status set, the gate chain (all 15 wired), and cross-tier reach — established as genuinely
+moot today rather than assumed, since neither client tier holds transport code and no OpenAPI artefact is committed.
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive

@@ -390,6 +390,89 @@ final class DevDatabaseProvisioningTest extends TestCase
     }
 
     /**
+     * **IT REVOKES A LEFTOVER `GRANT <owner> TO <runtime>` — R2K-5, the same breach class as R1-4 one axis over.**
+     *
+     * R1-4 closed role ATTRIBUTES for a pre-existing role. The CLASS is "pre-existing state that lets the runtime role
+     * bypass row security", and membership was the axis still open: with `twes_owner` granted to `twes`, the runtime
+     * role reaches `SET ROLE twes_owner; ALTER TABLE document DISABLE ROW LEVEL SECURITY` — and `FORCE` does not stop
+     * an owner REMOVING a policy, only skipping one.
+     *
+     * This is not a hypothetical. `provision-test-database.sh` carries the grant as a COMMENTED-OUT line with a note
+     * saying it *"reopens the whole bypass"*, precisely because it is the ordinary convenience edit somebody makes to
+     * silence a permission error. `testTheRuntimeRoleCannotAssumeTheOwner()` proves the un-granted shape on a clean
+     * cluster; this proves the script REPAIRS a granted one, which is the case the script exists for.
+     */
+    public function testItRevokesALeftoverGrantOfTheOwnerToTheRuntimeRole(): void
+    {
+        $superuser = self::superuserConnection();
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::RUNTIME_ROLE));
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::OWNER_ROLE));
+
+        // THE CONVENIENCE EDIT, verbatim.
+        $superuser->exec(\sprintf('GRANT %s TO %s', self::OWNER_ROLE, self::RUNTIME_ROLE));
+
+        // THE DETECTOR. If this ever fails the fixture is not dangerous and everything below asserts nothing.
+        self::assertTrue(self::runtimeCanReachTheOwner(), 'the fixture must start with the bypass open');
+
+        self::provision();
+
+        self::assertFalse(
+            self::runtimeCanReachTheOwner(),
+            'the grant must be REVOKED: while it stands the application\'s own credential can SET ROLE to the table '
+            . 'owner and DISABLE ROW LEVEL SECURITY on every tenant table, which FORCE does not prevent',
+        );
+    }
+
+    /**
+     * **IT STRIPS A PRE-EXISTING `TRUNCATE` FROM THE RUNTIME ROLE — the other half of R2K-5.**
+     *
+     * `ALTER DEFAULT PRIVILEGES` governs objects that do not exist yet, so it says nothing about a table already in
+     * the database. A `GRANT ALL` issued by hand on an existing table therefore survived every previous run — and
+     * `TRUNCATE` is never subject to row security at any privilege level, so it erases every tenant's rows with all
+     * policies intact. `BehaviouralIsolationTest` attacks that grant on the test database; nothing repaired it here.
+     *
+     * The fix states the PERMITTED set rather than enumerating the forbidden one — `REVOKE ALL` then `GRANT` the four
+     * — which is the polarity this project has had to learn three times on its gates: a list of dangerous privileges
+     * is fail-open for whichever one nobody thought of, and a closed permitted set is not.
+     */
+    public function testItStripsAPreExistingTruncateGrantFromTheRuntimeRole(): void
+    {
+        $superuser = self::superuserConnection();
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::RUNTIME_ROLE));
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::OWNER_ROLE));
+        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', self::DATABASE));
+        $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', self::DATABASE, self::OWNER_ROLE));
+
+        $inDatabase = self::connectionTo(self::DATABASE, self::superuserName(), self::superuserPassword());
+        $inDatabase->exec(\sprintf('CREATE TABLE existing_table (id int PRIMARY KEY)'));
+        $inDatabase->exec(\sprintf('ALTER TABLE existing_table OWNER TO %s', self::OWNER_ROLE));
+        // THE HAND-ISSUED GRANT. `ALL` rather than `TRUNCATE` alone, because that is what somebody actually types.
+        $inDatabase->exec(\sprintf('GRANT ALL ON existing_table TO %s', self::RUNTIME_ROLE));
+
+        self::assertTrue(
+            self::tablePrivilege(self::RUNTIME_ROLE, 'existing_table', 'TRUNCATE'),
+            'THE DETECTOR: the fixture must start with TRUNCATE granted on an EXISTING table, which no default '
+            . 'privilege governs',
+        );
+
+        self::provision();
+
+        self::assertFalse(
+            self::tablePrivilege(self::RUNTIME_ROLE, 'existing_table', 'TRUNCATE'),
+            'TRUNCATE must be revoked: it bypasses row security at every privilege level, so it erases every '
+            . 'tenant\'s rows with all policies in place',
+        );
+
+        // AND THE FOUR IT MUST KEEP, so the repair is not a blanket revoke that leaves the application unable to work.
+        foreach (['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as $privilege) {
+            self::assertTrue(
+                self::tablePrivilege(self::RUNTIME_ROLE, 'existing_table', $privilege),
+                $privilege . ' must survive: the runtime role still has to serve requests',
+            );
+        }
+    }
+
+    /**
      * **IT REPAIRS A `public` SCHEMA CARRYING A PRE-15 OR HAND-MODIFIED PRIVILEGE SHAPE.**
      *
      * FOUR statements in the script are DEFENSIVE (three here, one in the sibling case below) — they describe a state a default PostgreSQL 18 cluster is not in —
@@ -594,6 +677,21 @@ final class DevDatabaseProvisioningTest extends TestCase
     private static function asOwner(string $statement): void
     {
         self::connectionTo(self::DATABASE, self::OWNER_ROLE, 'devprobe')->exec($statement);
+    }
+
+    /** Can the runtime role reach the owner, by inheritance OR by `SET ROLE`? Either one reopens the whole bypass. */
+    private static function runtimeCanReachTheOwner(): bool
+    {
+        $result = self::superuserConnection()->query(\sprintf(
+            "SELECT pg_has_role('%s', '%s', 'USAGE') OR pg_has_role('%s', '%s', 'SET')",
+            self::RUNTIME_ROLE,
+            self::OWNER_ROLE,
+            self::RUNTIME_ROLE,
+            self::OWNER_ROLE,
+        ));
+        self::assertNotFalse($result);
+
+        return self::isPostgresTrue($result->fetchColumn());
     }
 
     /** One role attribute from `pg_roles`, by name — the catalogue rather than a `\d+` transcript. */

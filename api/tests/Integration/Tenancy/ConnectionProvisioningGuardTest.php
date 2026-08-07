@@ -305,4 +305,40 @@ final class ConnectionProvisioningGuardTest extends TestCase
             );
         }
     }
+
+    /**
+     * **TWO DSNs DIFFERING ONLY IN `options` DO NOT SHARE A CACHE ENTRY.**
+     *
+     * `options` is the one connection parameter that arrives with a SESSION-scoped setting already applied —
+     * `options=-ctwes.tenant_id=<other>` needs no privilege and no SQL, and a `ROLLBACK TO SAVEPOINT` can revert
+     * `bind()`'s transaction-local value to it. It was absent from the cache key until round 2, so a clean connection
+     * and a pinned one hashed identically and the first could have vouched for the second.
+     *
+     * Nothing exploited it, because `verifyOnce()` writes the cache only after every assertion has passed — so a pinned
+     * DSN fails its own first connection and is never cached as good. That is safety by coincidence, which is not what
+     * a tenancy boundary is built on, and this case is what makes it structural.
+     *
+     * Asserted on the KEY rather than through a connection, because the key is the whole property and building two
+     * live connections would test PostgreSQL's `options` handling instead.
+     */
+    public function testTwoDsnsDifferingOnlyInOptionsDoNotShareACacheEntry(): void
+    {
+        $base = ['user' => 'twes', 'host' => '127.0.0.1', 'port' => 5432, 'dbname' => 'twes_in'];
+
+        self::assertNotSame(
+            ConnectionProvisioningGuardMiddleware::cacheKeyFor($base),
+            ConnectionProvisioningGuardMiddleware::cacheKeyFor(
+                [...$base, 'options' => '-ctwes.tenant_id=0199a5b2-0000-7000-8000-0000000009ff'],
+            ),
+            'a pinned DSN must not share a verification with a clean one: `options` carries a session-scoped tenant, '
+            . 'which is precisely what the pin assertion inside the cached block exists to refuse',
+        );
+
+        // AND THE SAME PARAMETERS STILL HASH THE SAME, so the fix is not "make every key unique", which would retire
+        // the cache and the 10.8 ms it exists to save.
+        self::assertSame(
+            ConnectionProvisioningGuardMiddleware::cacheKeyFor($base),
+            ConnectionProvisioningGuardMiddleware::cacheKeyFor($base),
+        );
+    }
 }
