@@ -170,8 +170,31 @@
 			# Never cached by a shared cache: every API response is tenant-scoped, and a shared cache that keyed
 			# on URL alone would serve one tenant's invoice to another. This is the HTTP-layer echo of the
 			# row-level security below it. Applies to the documentation too — it is cheap and harmless there.
-			Cache-Control "no-store, private"
-			Vary "Accept, Authorization"
+			#
+			# **`>` IS DEFERRED-SET, and the first version of this block had it on neither field — the `e2e` suite
+			# found that on its first run.** Without it, Caddy writes the field before the PHP handler runs and
+			# Symfony then sends its OWN value, so the response carried BOTH lines:
+			# `Cache-Control: no-store, private` *and* `Cache-Control: no-cache, private`, plus `Vary: Accept,
+			# Authorization` *and* `Vary: Accept`. [Verified against the running stack; one line each after the fix.]
+			#
+			# It was not a hole — RFC 9110 lets a recipient combine repeated field lines, so a conforming cache saw
+			# the union and `no-store` won — but the outcome depended on recipient behaviour rather than on this
+			# file, which is not a property to rely on. `>` defers the set until the response is written, so the
+			# edge is authoritative.
+			#
+			# **IT IS ON BOTH FIELDS FOR EXPLICITNESS, NOT BECAUSE BOTH NEED IT — measured, because the obvious
+			# reading is wrong.** A `header` block containing ANY deferred operation is applied as a whole after the
+			# response is written, so `>` on one field silently fixes the other. [Verified against the running stack:
+			# with `>` on `Vary` alone, both fields came back single-valued.] Relying on that would make a correct
+			# response depend on a neighbouring line — delete the wrong one and the other regresses with nothing
+			# saying why. Stating it per field is what makes each one's behaviour readable on its own line.
+			#
+			# THE ACCEPTED COST, stated because it is a real one: `>Vary` REPLACES whatever the application sent, so
+			# an endpoint that later needs to vary on something else — `Accept-Language`, say — must widen this
+			# floor rather than declaring it locally. That is a visible diff here instead of a silent divergence
+			# between two layers, which is the trade being made.
+			>Cache-Control "no-store, private"
+			>Vary "Accept, Authorization"
 		}
 
 		# THE STRICT POLICY, for every API response that is DATA. Scoped to `@apiData` rather than left unmatched, so

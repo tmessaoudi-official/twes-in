@@ -609,11 +609,14 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 | **Makefile conventions** | `scripts/gates/makefile-conventions.sh` — a bare target acts on dev, `-prod` on production, no other suffix means an environment; and a bare aggregate must invoke its narrow siblings | **Runs** (added 2026-08-05 after the developer found the Makefile using the suffix for TWO different questions: `up`/`up-prod` marked the STACK while `build-front`/`build-front-dev` marked the ARTEFACT FLAVOUR, so a bare name meant "dev" in one family and "prod" in the other — and `build-front` was both at once) |
 | **Shell syntax** | `scripts/gates/shell-syntax.sh` — `bash -n` over every tracked shell script, discovered from `git ls-files` plus a shebang sweep rather than a written list | **Runs** (added at round 11, which pointed out that ten scripts already existed and already passed, while this row deferred the check to the wave that would add *more* — so the ones that existed went unchecked, and a syntax error in a gate is the worst place for one: the gate stops detecting and its non-zero exit reads as a detection) |
 | **Worker mode blocked** | `scripts/gates/worker-mode-blocked.sh` — no tracked file may select a runtime other than `SymfonyRuntime`, declare a non-empty Caddyfile seam, carry an active `worker` or `import` directive in a Caddyfile, or carry ANY `extra.runtime` key in ANY tracked `.json` (not just `class`, and not just a file NAMED `composer.json` — `symfony/runtime` bakes every other key into the generated bootstrap, and `ENV COMPOSER=<file>` makes any file the root package). Scope is EXCLUSION-based and the seam set is DERIVED, for the reasons in § Architecture | **Runs** (added 2026-08-05). It needs nothing installed — no Docker, no vendor tree — so unlike its sibling it can never skip, which is the whole reason it is a separate gate. **This table had no row for it for two commits while § Architecture had one**, which is the direction that keeps going wrong here: a gate is easier to add than to finish adding. Deleted in Wave 10 |
+| **Served surface (`e2e`)** | `composer gate:e2e` with `TWES_E2E_BASE_URL` pointing at a running stack — the CSP, the asset file server, the catch-all, the site-wide headers, and that no field is sent twice | **Runs** (added 2026-08-07). **NOT in `composer gate`, and that is the point rather than an omission**: it FAILS rather than skipping when no server is reachable, which is the same call the integration suite makes, so wiring it into the chain would have made every gate run require a built image and a live stack. `gate:test` is `phpunit --exclude-testsuite e2e`; `gate:e2e` is the named, owed step. It found a real defect on its first run — see § Gotchas 2026-08-07 |
 | Infra | `scripts/gates/compose-config.sh` — every configuration renders AND holds its security properties | **Runs**; it is in `composer gate` and has its own row in § Architecture, which enumerates the properties — no count is written here, because this row said "Wave 12 — owed" while the gate was already enforcing six, and a seventh landed 2026-08-05 |
 
 **The one command to run the API tier's gate is `composer gate`**, and it works today — it chains
 `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`, `gate:style`, `gate:mapping` and
-`gate:test`. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — was for three commits the one step no documented environment made pass**, which is fixed here by writing the invocation down rather than describing it: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). **The whole chain green, verbatim** — the local dev credentials are the throwaway ones already committed in `api/.env`, and the shape is what matters rather than the values:
+`gate:test`. **`gate:e2e` is NOT in that chain** and is run separately against a live stack; `gate:test` excludes the
+`e2e` suite EXPLICITLY (`--exclude-testsuite e2e`) rather than by listing the other three, so a suite added later is
+included by default rather than silently unrun. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — was for three commits the one step no documented environment made pass**, which is fixed here by writing the invocation down rather than describing it: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself (`TWES_SCHEMA_USER` names the role the gate ASKS ABOUT, not the one it connects as). **The whole chain green, verbatim** — the local dev credentials are the throwaway ones already committed in `api/.env`, and the shape is what matters rather than the values:
 
 ```
 pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start   # two clusters share 5432; see § Gotchas
@@ -788,8 +791,10 @@ through the kernel) and `e2e` (a really-booted server). **`functional` HOLDS COD
 said both were empty for a commit after it did — and note that only some of it boots a kernel: the two processor
 classes drive the state providers and processors directly, because their subject is the translation between the wire
 and the domain, while `InvoiceWriteSurfaceTest` and `HttpSurfaceTest` need the real serializer, validator and router.
-**`e2e` IS still empty**, and what it owes is named in this section: the Caddy-level CSP that makes the local
-documentation UI safe cannot be seen through the kernel, because the kernel is not what serves it.
+**`e2e` HOLDS CODE since 2026-08-07** — `ServedSurfaceTest`, which asks a really-running FrankenPHP/Caddy what it
+actually sent: the two disjoint CSP policies, the narrow `/bundles/*` file server, the catch-all's 404, the site-wide
+security headers surviving every handler, and no repeated field. None of that is visible through the kernel, because
+the kernel is not what serves it. **It is deliberately NOT in `composer gate`** — see the row in the table above.
 
 Derive the real command names from `composer.json` / `package.json` / `pubspec.yaml` rather than
 trusting the table above — a command written in prose drifts from the one that exists.
@@ -1666,6 +1671,44 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   heredoc-inside-command-substitution parsing, both refuted by a five-line reproduction, before reading the message
   literally. The write-time `lint-on-write.sh` hook caught it before it could reach a commit, which is what that hook
   is for.
+
+- **2026-08-07 — THE `e2e` SUITE FOUND A REAL DEFECT ON ITS FIRST RUN, and it was one no other layer could see: two
+  values for one header.** `infra/api/Caddyfile` set `Cache-Control "no-store, private"` and
+  `Vary "Accept, Authorization"` at the site level. The served response carried **both** those AND Symfony's own
+  `Cache-Control: no-cache, private` and `Vary: Accept` — two lines each. Caddy's `header` writes the field before the
+  PHP handler runs, so the application's value is added afterwards. RFC 9110 lets a recipient combine repeated field
+  lines, so a conforming cache saw the union and `no-store` won: **not a hole, but an outcome decided by the recipient
+  rather than by our configuration**, which is not a property to build a tenancy boundary on. Fixed with Caddy's `>`
+  (deferred-set) prefix, which applies the operation after the response is written.
+  Three things generalise, and the second is the one worth keeping:
+  **(1) `>` ON ONE FIELD SILENTLY FIXES THE WHOLE BLOCK.** A `header` block containing any deferred operation is
+  applied as a unit after the response is written [Verified against the running stack: with `>` on `Vary` alone, both
+  fields came back single-valued]. So the first mutant I wrote — remove `>` from `Cache-Control` only — SURVIVED, and
+  I nearly filed the test as weak. It was not: the mutant was not a mutant. Both fields carry the prefix anyway, for
+  explicitness, because a correct response that depends on a neighbouring line regresses when somebody deletes the
+  other one.
+  **(2) MY OWN TEST HELPER WAS BLIND TO THE DEFECT IT FOUND.** `get()` parses headers into a MAP, so a repeated field
+  collapses to whichever line came last — the defect was visible only because the application's line happened to be
+  second. Had Caddy's been second, every value assertion in the class would have passed on a response carrying two
+  conflicting policies. This is the *assert the property, not the representation* shape this section already records
+  twice, and the fix was a case that counts RAW header lines. A check on a collapsed representation cannot see a
+  duplication defect at all.
+  **(3) A DELETED `header @apiDocs` LEAVES THE DOCS PATH WITH NO CSP AT ALL, not with the strict one.** The two
+  matchers are disjoint by design, so there is no fallback — which is correct for ordering-independence and means a
+  deleted line is an unprotected path rather than an over-protected one. Found while building the before/after
+  evidence, and covered: the suite asserts the exact policy, so `null` fails.
+  **(4) PHPStan CALLED THE SUITE'S OWN UNREACHABLE-SERVER GUARD `always false`, AND IT WAS RIGHT.** The transport
+  helper used `file_get_contents` plus the magic `$http_response_header`, whose existence in the calling scope depends
+  on whether a request produced headers at all — so on a refused connection the guard could not fire and the next line
+  would have raised an undefined-variable warning instead of the message telling you to start the stack. The fix was to
+  delete the magic variable (`fopen` + `stream_get_meta_data`, where `false` from `fopen` IS the connection failure),
+  not to suppress the finding. A static-analysis complaint about a TEST's own error path is worth reading as a bug
+  report: that path is, by construction, the one no green run ever executes.
+
+  **The visual half is what the header assertions cannot give.** With the strict policy applied to `/api`, real
+  Chromium renders the documentation page as broken image placeholders and unstyled links with no Swagger UI widget —
+  a 200, a correct `<title>`, nothing usable. That is § Gotchas 2026-08-05's description, reproduced and photographed
+  rather than recalled, and it is why this page needs a rendered check and not only a status code.
 
 ## Git & CI
 

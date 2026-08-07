@@ -10,6 +10,8 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-07 08:15] AGREED: **the `e2e` suite FAILS without a live stack and is therefore NOT in `composer gate`.** Skipping is the shape this project refuses — § Gotchas records 62 tenancy tests skipping while the run reported `OK` — but making the whole gate require a built image and a running server is too high a price for one suite. So `gate:test` is `phpunit --exclude-testsuite e2e` (excluding by NAME, so a future suite is included by default) and `gate:e2e` is a separate, named, owed step, exactly as the three hook suites already are.
+- [2026-08-07 08:15] AGREED: **a header the edge owns is set with Caddy's `>` deferred prefix, on every field, even though one suffices.** A `header` block with any deferred operation is applied as a unit, so `>` on one field fixes its neighbours — measured. Relying on that makes a correct response depend on a line that could be deleted for unrelated reasons, so each field states its own behaviour. The accepted cost is that `>Vary` replaces whatever the application sent, so an endpoint needing a different `Vary` must widen the edge's floor — a visible diff instead of a silent divergence between two layers.
 - [2026-08-07 07:40] AGREED: **the dev provisioner refuses on WHOSE objects a database holds, not WHETHER it holds any.** `provision-test-database.sh`'s "refuse any relation" guard cannot transfer — a dev database legitimately holds migrated tables and the script must be re-runnable — so the question becomes ownership: a relation owned by neither of our two roles means a shared or foreign database, where `REVOKE CREATE ON SCHEMA public FROM PUBLIC` breaks whatever else was using it. It also never overwrites an existing role's password, because both scripts know the same two role names and an ALTER would silently replace a credential the other chose.
 - [2026-08-07 04:10] AGREED: **the gapless counter is ONE atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING`, not `SELECT … FOR UPDATE`.** The three-statement form was written first, works, and had its lock deleted with the suite green TWICE — `INSERT … ON CONFLICT DO NOTHING` blocks on its own, so the `SELECT` never serialised anything under contention and the window the lock closed was reachable only by a harness interleaving statements inside the method. A lock that nothing can observe is one refactor from deletion. The plan's own prescription and the port's were amended in place; the substance (no `nextval`, a row, inside the caller's transaction, serialised) is unchanged.
 - [2026-08-07 04:10] AGREED: **`POST /api/invoices` creates a DRAFT and `POST /api/invoices/{id}/issue` issues it** — two single-purpose operations rather than an `issue: true` flag, because the domain models `draft()` and `issue()` separately and issuing is irreversible: it consumes a number from a gapless legal sequence permanently. A flag would make that reachable two ways. Consequence stated rather than hidden: a draft cannot be EDITED over HTTP (there is no `PUT`/`PATCH`), so a client builds the whole document and posts it once; editing a draft is a contract addition wanting its own shape decision.
@@ -1008,7 +1010,7 @@ missing its header. **Every one of those four is a test that must be watched fai
 cross-tenant reads — are decided here. `CLAUDE.md` § Gotchas records both as day-zero rulings
 precisely because they are unfixable later.
 
-## Wave 1 — Client & the invoice core — **DOMAIN 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD, BOUNDARY RULE AND THE WHOLE CONNECTION LIFECYCLE 2026-08-06; THE INVOICE HTTP SURFACE 2026-08-06 (read) AND 2026-08-07 (write)**
+## Wave 1 — Client & the invoice core — **DOMAIN 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD, BOUNDARY RULE AND THE WHOLE CONNECTION LIFECYCLE 2026-08-06; THE INVOICE HTTP SURFACE 2026-08-06 (read) AND 2026-08-07 (write); THE `e2e` SUITE 2026-08-07 — WAVE COMPLETE**
 
 **PERSISTENCE IS NO LONGER BLOCKED, and the reason it was is worth keeping because I had it wrong for twenty
 rounds.** The heading here said "persistence BLOCKED" and pointed at network egress; the actual obstacle was
@@ -1048,7 +1050,11 @@ non-empty, per its own instruction to add a layer as soon as it acquires code. T
 classes; **`e2e` is still empty**, and what it owes is named in § "Quality gate": the Caddy-level CSP cannot be seen
 through the kernel.
 
-**What Wave 1 still owes is the `e2e` SUITE, and nothing else.** ~~`scripts/dev/provision-dev-database.sh`~~
+**WAVE 1 IS COMPLETE as of 2026-08-07.** ~~What Wave 1 still owes is the `e2e` SUITE~~ **— LANDED**:
+`api/tests/E2E/ServedSurfaceTest.php`, 42 cases against a really-running FrankenPHP/Caddy, which found a real
+duplicate-header defect in `infra/api/Caddyfile` on its first run (§ Gotchas 2026-08-07). It is deliberately outside
+`composer gate` — it fails rather than skipping without a live stack, so `gate:test` excludes it and `gate:e2e` is the
+named step. ~~`scripts/dev/provision-dev-database.sh`~~
 **— LANDED 2026-08-07**, with the ownership topology the 2026-08-01 entry specified plus three defensive statements
 and a foreign-database refusal; see that entry. Everything else in this section is struck through.
 

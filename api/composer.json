@@ -100,7 +100,8 @@
         ],
         "gate:static": "@php tools/bin/phpstan.phar analyse --no-progress",
         "gate:style": "@php tools/bin/php-cs-fixer.phar check --diff",
-        "gate:test": "@php tools/bin/phpunit-12.phar"
+        "gate:test": "@php tools/bin/phpunit-12.phar --exclude-testsuite e2e",
+        "gate:e2e": "@php tools/bin/phpunit-12.phar --testsuite e2e"
     },
     "scripts-descriptions": {
         "gate": "Run the API tier's full quality gate. Green means every step, not most of them. NOTE there is deliberately NO `config.process-timeout` raise. One was added and then removed in the same change: `test-gates.sh` had hit 597s and blown Composer's 300-second default, and raising the ceiling looked like the fix -- but the real cause was that the meta-suite's worker-mode fixture ran `cp -a api/public`, pulling in 3.7MB of UNTRACKED generated Swagger UI and ReDoc bundles that `git add -A` then tracked, so the fixture did not mirror the tracked tree it stands in for. Copying only the tracked `index.php` and adding a derived per-file fast reject to the gate brought it to 48s [measured], well inside the default. A raised timeout would have left the fixture-fidelity defect in place and hidden it.",
