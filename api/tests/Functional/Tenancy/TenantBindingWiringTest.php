@@ -66,7 +66,10 @@ final class TenantBindingWiringTest extends WebTestCase
             self::driverChainOf('default')[TenantBindingDriver::class] ?? false,
             'The default connection must be wrapped by TenantBindingDriver, or nothing writes twes.tenant_id and '
             . 'every tenant-owned read returns nothing while every write is refused by row-level security. '
-            . 'Check the doctrine.middleware tag on TenantBindingMiddleware in config/services.yaml.',
+            . 'This case fires only when the middleware is not a SERVICE AT ALL — deleting its entry from '
+            . 'config/services.yaml is not enough, because the Twes\Infrastructure\ resource import then '
+            . 'autowires it anyway with DoctrineBundle\'s bare tag. [Measured: deleting the entry alone turns the '
+            . 'OWNER case red instead of this one.] So look for an added `exclude:` line, or a moved file.',
         );
     }
 
@@ -85,8 +88,16 @@ final class TenantBindingWiringTest extends WebTestCase
             TenantBindingDriver::class,
             $chain,
             'The owner connection must NOT be wrapped: it is the migration credential, tenant-less by design. '
-            . 'Seeing it here means `autoconfigure: false` was dropped from TenantBindingMiddleware — DoctrineBundle '
-            . 'then tags it for EVERY connection. Chain: ' . implode(', ', array_keys($chain)),
+            // THE LIKELY CAUSE FIRST, AND `autoconfigure: false` IS NOT IT — this message said it was, which made
+            // it a FOURTH site of the claim `services.yaml`, `TenantBindingMiddleware` and CLAUDE.md were amended
+            // to retract, in the one place a developer reads while something is broken. [Measured: dropping only
+            // `autoconfigure: false` leaves this case GREEN; deleting the whole entry turns it red, because the
+            // resource import then autowires the middleware with a bare, unscoped tag.]
+            . 'The likely cause is that the `{ name: doctrine.middleware, connection: default }` tag was removed or '
+            . 'its `connection` attribute lost, which makes DoctrineBundle\'s bare autoconfigured tag the only one '
+            . 'left — and a bare tag means EVERY connection. It is NOT `autoconfigure: false`, which is cosmetic: '
+            . 'MiddlewaresPass skips every doctrine.middleware tag carrying no `connection`, so the bare tag and '
+            . 'the scoped one never compete. Chain: ' . implode(', ', array_keys($chain)),
         );
     }
 
@@ -115,13 +126,17 @@ final class TenantBindingWiringTest extends WebTestCase
      * In this class rather than a new one because it needs the same booted kernel and nothing else. The mutant is
      * direct: delete the `openapi:` argument from the operation and this goes red.
      *
-     * **A STALE `var/cache/test` MADE THIS FAIL AGAINST CORRECT CODE, and that is worth knowing before you debug the
-     * attribute.** The first run reported `404` absent while the same factory booted by hand in the same environment
-     * returned `[200, 404, 422, 400]`; `rm -rf var/cache/test` fixed it. So a metadata change can leave this class
-     * asserting the PREVIOUS schema — the *a suite whose result depends on state the suite did not set is not a suite
-     * that has been run* shape, one level over from § Gotchas 2026-08-05's `env -i` finding. Not fixed by clearing the
-     * cache in `setUp()`, which would pay a container rebuild on every functional case; read a surprising failure here
-     * as "clear the cache first" and only then as a defect in the attribute.
+     * **A STALE `var/cache/test` USED TO MAKE THIS FAIL AGAINST CORRECT CODE — and noticing only that direction is how
+     * a P0 survived.** The first run reported `404` absent while the same factory booted by hand returned
+     * `[200, 404, 422, 400]`; clearing the cache fixed it, and this docblock recorded it as a debugging tip and
+     * stopped there. It is the FALSE-POSITIVE direction that mattered: with `APP_DEBUG=0` a kernel performs no
+     * freshness check, so deleting `TenantBindingMiddleware`'s registration left the whole 949-test suite GREEN on any
+     * machine with a warm cache. The second MAXIMAL round filed that as a P0.
+     *
+     * `tests/bootstrap.php` now discards `var/cache/test` once per run, so neither direction can occur and this note
+     * is history rather than advice. Kept because the lesson is not about caches: I met the symptom, explained it,
+     * wrote the explanation down, and never asked what the same mechanism does when it hides a failure instead of
+     * inventing one.
      */
     public function testTheIssueOperationDeclaresItsFailureResponses(): void
     {

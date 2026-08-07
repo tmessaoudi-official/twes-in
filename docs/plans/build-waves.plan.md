@@ -1010,7 +1010,7 @@ missing its header. **Every one of those four is a test that must be watched fai
 cross-tenant reads — are decided here. `CLAUDE.md` § Gotchas records both as day-zero rulings
 precisely because they are unfixable later.
 
-## Wave 1 — Client & the invoice core — **DOMAIN 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD, BOUNDARY RULE AND THE WHOLE CONNECTION LIFECYCLE 2026-08-06; THE INVOICE HTTP SURFACE 2026-08-06 (read) AND 2026-08-07 (write); THE `e2e` SUITE 2026-08-07 — WAVE COMPLETE**
+## Wave 1 — Client & the invoice core — **THE INVOICE CORE LANDED; THE WAVE IS *NOT* COMPLETE** (domain 2026-07-31; schema 2026-08-01; repository, savepoint guard, boundary rule and the connection lifecycle 2026-08-06; the invoice HTTP surface 2026-08-06 read / 2026-08-07 write; the `e2e` suite 2026-08-07). **Still owed: Client (+ contacts), Product, the tenant settings table** — see the retraction below, and note that the heading said `WAVE COMPLETE` for two commits AFTER that retraction was written 45 lines beneath it, which is this file's own append-don't-replace defect landing on the one line a reader and every table of contents render first.
 
 **PERSISTENCE IS NO LONGER BLOCKED, and the reason it was is worth keeping because I had it wrong for twenty
 rounds.** The heading here said "persistence BLOCKED" and pointed at network egress; the actual obstacle was

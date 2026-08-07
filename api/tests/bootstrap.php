@@ -45,6 +45,61 @@ if (is_file($composerAutoloader)) {
         new Dotenv()->bootEnv(__DIR__ . '/../.env');
     }
 
+    /*
+     * DISCARD THE COMPILED TEST CONTAINER, BECAUSE A STALE ONE MAKES THE SUITE REPORT GREEN OVER A MISSING
+     * TENANCY CONTROL. This is the most serious defect the second MAXIMAL round found, and it is a defect in the
+     * suite rather than in the application.
+     *
+     * `phpunit.xml` sets `APP_DEBUG=0` — correctly, because several cases assert non-debug behaviour (a
+     * propagating hydration failure must answer a bare 500 with no message and no trace; with `APP_DEBUG=1` it
+     * exposes both). But a kernel booted with `$debug = false` performs NO freshness check on
+     * `var/cache/test/…Container.php`: it loads it and never asks whether `config/services.yaml` has changed
+     * since. So a change to service wiring is invisible to every kernel-booting test until somebody clears the
+     * cache by hand, which nothing in the suite, in `composer gate` or in the Makefile does.
+     *
+     * WHAT THAT COSTS, measured rather than argued. Exactly ONE test of 949 detects the absence of
+     * `TenantBindingMiddleware` — the control whose missing call site was round 1's headline P0, without which
+     * every tenant-owned read returns nothing and every write is refused. Delete its registration from
+     * `config/services.yaml`, leave the cache warm, and:
+     *
+     *     $ php tools/bin/phpunit-12.phar --filter TenantBindingWiringTest
+     *     OK (4 tests, 27 assertions)
+     *
+     * The same tree with the cache cleared reports `Failures: 1`. [Verified: those two runs differed in nothing
+     * but the cache.] `CLAUDE.md` § Gotchas records four separate controls that silently did not run; this is the
+     * first one where the silence was produced by a build artefact rather than by a skip.
+     *
+     * `TenantBindingWiringTest`'s own docblock already warned about the HARMLESS direction of this — a stale cache
+     * making a correct tree fail — and stopped there. The false-POSITIVE direction is the one that matters, and
+     * noticing only the direction that inconvenienced me is the honest account of how it survived.
+     *
+     * TWO ALTERNATIVES, both rejected on merit. `APP_DEBUG=1` would restore freshness checking and change the
+     * behaviour the suite asserts, which trades a real assertion for a build concern. Clearing the cache in a
+     * `pre-gate:test` Composer script would cover `composer gate` and miss every other invocation — the bare
+     * `phpunit` command in `CLAUDE.md` § "Quality gate", `make test`, and an IDE runner — which is precisely the
+     * second-copy-of-a-command divergence this project keeps recording. Here it applies however PHPUnit is
+     * launched, because PHPUnit itself is what runs this file.
+     *
+     * The cost is ONE container rebuild per suite run, not per test: the functional suite takes 3.6 s cold against
+     * 1.4 s warm [measured], on a full run of 40 s. Only `test` is removed, never `dev` — a developer's own cache
+     * is not this file's business.
+     */
+    $compiled = __DIR__ . '/../var/cache/test';
+
+    if (is_dir($compiled)) {
+        $entries = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($compiled, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST,
+        );
+
+        foreach ($entries as $entry) {
+            /** @var SplFileInfo $entry */
+            $entry->isDir() && !$entry->isLink() ? @rmdir($entry->getPathname()) : @unlink($entry->getPathname());
+        }
+
+        @rmdir($compiled);
+    }
+
     return;
 }
 

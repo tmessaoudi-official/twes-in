@@ -18,6 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Twes\Application\Document\IssueInvoice;
 use Twes\Application\Document\IssueInvoiceHandler;
+use Twes\Domain\Document\DocumentIdentity;
 use Twes\UI\Http\ApiResource\InvoiceResource;
 
 /**
@@ -71,28 +72,42 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
             throw new NotFoundHttpException('An invoice id must be a string.');
         }
 
+        // AN ILL-FORMED ID IS ANSWERED HERE, BEFORE THE HANDLER, and this used to be a `catch` around the whole
+        // `handle()` call. **That catch was the corrupt-row 404, and it survived the sweep that closed the identical
+        // defect in `InvoiceProvider` one file over** — a full-set miss, found by the second MAXIMAL round.
+        //
+        // `handle()` contains `findForMutation()`, which hydrates through `InvoiceMapper`, and every refusal the mapper
+        // can raise for corrupt column data — `InvalidMoneyAmount`, `UnknownCurrency`, `InvalidRate` — extends
+        // `\InvalidArgumentException`. So a document that demonstrably EXISTS answered `404 No such invoice.`, and the
+        // only trace was a 404 indistinguishable from millions of legitimate ones.
+        //
+        // **It is worse on this path than on the read path**, which is why it is fixed here rather than merely noted:
+        // a client told "no such invoice" about a document it just created will create a second one. A duplicate
+        // legal document, from a swallowed exception.
+        //
+        // 404 RATHER THAN 400 for the malformed id, unchanged and deliberate: distinguishing "malformed" from "absent"
+        // tells an unauthenticated prober that its guess had the right SHAPE, which is a small existence oracle for
+        // free. Both answers are "no such document".
+        if (!DocumentIdentity::isWellFormedId($id)) {
+            throw new NotFoundHttpException('No such invoice.');
+        }
+
         try {
             $issued = $this->handler->handle(new IssueInvoice($id));
-        } catch (\InvalidArgumentException $malformed) {
-            // AN ILL-FORMED ID IS A 404, NOT A 400 — the same call `InvoiceProvider` makes and for the same reason:
-            // distinguishing "malformed" from "absent" tells an unauthenticated prober that its guess had the right
-            // SHAPE, which is a small existence oracle for free.
-            //
-            // CAUGHT BEFORE `\DomainException` BELOW because it is the narrower case, not because of ordering luck:
-            // `\InvalidArgumentException` is a `\LogicException` and the two hierarchies are disjoint, so this arm
-            // cannot swallow a transition refusal.
-            //
-            // WHAT ELSE COULD THEORETICALLY LAND HERE, stated because "no such invoice" would be the wrong answer for
-            // it: `DocumentNumber`'s constructor raises `\InvalidArgumentException` for a non-positive sequence. It is
-            // unreachable — `DocumentNumberAllocator` checks the counter first and raises `SequenceContractViolated`,
-            // a `\LogicException`, precisely so a broken adapter is reported as OUR fault rather than the caller's. If
-            // that guard is ever removed, this catch turns a server fault into a 404 and the failure becomes silent.
-            throw new NotFoundHttpException('No such invoice.', $malformed);
         } catch (\DomainException $refused) {
             // The document exists and refuses the transition: already issued, already cancelled, or empty. A real
             // 422 — the caller can act on it, and the transaction has already rolled back, so no number was spent.
             throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         }
+
+        // NO `catch (\InvalidArgumentException)`, AND ITS ABSENCE IS THE FIX. What used to be caught here is now
+        // either impossible (the id is checked above) or genuinely ours, and ours must propagate: a hydration failure
+        // becomes a 500 and `error.internal` per `CLAUDE.md` § "Translation keys". The one other thing that could
+        // theoretically arrive is `DocumentNumber`'s refusal of a non-positive sequence, which is unreachable because
+        // `DocumentNumberAllocator` checks the counter first and raises `SequenceContractViolated`, a
+        // `\LogicException` — and if that guard is ever removed, a server fault should surface as one rather than as
+        // a 404. **The previous version of this comment enumerated exactly that case and omitted hydration**, which is
+        // the same false-enumeration shape the sweep was fixing next door.
 
         if (null === $issued) {
             throw new NotFoundHttpException('No such invoice.');

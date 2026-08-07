@@ -20,7 +20,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Twes\Application\Document\CreateInvoiceHandler;
 use Twes\Application\Document\IssueInvoiceHandler;
+use Twes\Domain\Document\DocumentIdentity;
 use Twes\Domain\Document\DocumentNumberAllocator;
+use Twes\Domain\Document\Invoice;
+use Twes\Domain\Document\InvoiceRepository;
+use Twes\Domain\Document\PersistedInvoice;
 use Twes\Tests\Support\FixedIdGenerator;
 use Twes\Tests\Support\InMemoryDocumentNumberSequence;
 use Twes\Tests\Support\InMemoryInvoiceRepository;
@@ -184,6 +188,56 @@ final class InvoiceWriteProcessorTest extends TestCase
 
         new IssueInvoiceProcessor(self::issueHandler(new InMemoryInvoiceRepository()))
             ->process(null, new Post(), ['id' => 42]);
+    }
+
+    /**
+     * **A CORRUPT ROW IS NOT A 404 ON THE WRITE PATH EITHER — and this is where the sweep missed.**
+     *
+     * `InvoiceProviderTest` has had this case since the P1 sweep; its counterpart here did not exist, and the
+     * processor's `catch (\InvalidArgumentException)` around the whole `handle()` call was therefore free to swallow a
+     * hydration failure. `handle()` reaches `findForMutation()` → `InvoiceMapper`, and every refusal the mapper raises
+     * for corrupt column data — `InvalidMoneyAmount`, `UnknownCurrency`, `InvalidRate` — extends
+     * `\InvalidArgumentException`. So a document that demonstrably existed answered `404 No such invoice.`
+     *
+     * **Worse here than on the read path, which is why the missing case matters more than the missing fix:** a client
+     * told "no such invoice" about a document it just created will create a second one. A duplicate legal document,
+     * produced by a swallowed exception.
+     *
+     * The id is WELL FORMED, which is the point — a malformed one no longer reaches the handler at all, so this case
+     * and `testAnIllFormedIdIsNotFound()` now exercise genuinely different paths. Mutant: reinstate the catch and this
+     * goes red while that one stays green.
+     */
+    public function testACorruptRowPropagatesRatherThanAnsweringNotFound(): void
+    {
+        $repository = new class implements InvoiceRepository {
+            public function save(DocumentIdentity $identity, Invoice $invoice): void
+            {
+                throw new \LogicException('not under test');
+            }
+
+            public function find(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('the issue path reads for MUTATION, never with find()');
+            }
+
+            public function findForMutation(string $id): ?PersistedInvoice
+            {
+                // What the mapper raises for a stored amount that cannot be represented in the document's currency.
+                throw new \InvalidArgumentException('Amount "1.0001" cannot be represented exactly in TND.');
+            }
+        };
+
+        $handler = new IssueInvoiceHandler(
+            $repository,
+            new DocumentNumberAllocator(new InMemoryDocumentNumberSequence()),
+            new RecordingTransactionalScope(),
+            7,
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('cannot be represented exactly in TND');
+
+        new IssueInvoiceProcessor($handler)->process(null, new Post(), ['id' => self::FIRST_ID]);
     }
 
     /** Issuing an already-issued invoice is a 422: the transition guard refused, and the caller's page is stale. */

@@ -17,9 +17,16 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 > **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
 > `flutter create`), each green on its own toolchain, and each carrying the branding seam and — for Flutter —
 > the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or transport**
-> code yet: no invoicing, no models, no API client. There is still **no HTTP surface** on the API, no repository
-> or mapper, and `infra/` is a README stub. Read
-> `docs/plans/build-waves.plan.md` for exactly what is and is not built.
+> code yet: no invoicing, no models, no API client.
+> **The API's HTTP surface, its Doctrine repository and the `infra/` tier have ALL landed since**, and this paragraph
+> denied each of them for several commits while the paragraph three lines above announced Doctrine — two contradictory
+> statements in one file, which the second certification round filed as a P0. `api/src/UI/` holds the invoice resource,
+> its state provider and both write processors; `api/src/Infrastructure/Persistence/` holds `DoctrineInvoiceRepository`,
+> `InvoiceMapper` and the gapless number counter; `infra/` holds three Dockerfiles, three compose files, a Caddyfile,
+> an entrypoint and a database init script, and both stacks have been run end to end.
+> **Wave 1 is NOT complete**, and its own scope line says why: Client, contacts, Product and the tenant settings table
+> do not exist. Read `docs/plans/build-waves.plan.md` for exactly what is and is not built — and trust that file over
+> this paragraph, which is a summary and will drift again.
 
 ## Licence — dual
 
@@ -94,8 +101,9 @@ session. An unbound connection sees **nothing**, not everything. See
 | `docs/plans/build-waves.plan.md` | The wave-by-wave build plan and what is deliberately out of scope. |
 | `docs/plans/pricing-and-documents.plan.md` | Profit-rate pricing, delivery notes, and the generic charge model. |
 | `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
-| `api/` | The Symfony API. **Wave 0 landed** (`Domain/Money`, `Domain/Pricing`, `Infrastructure/` — tenancy, clock, ids) **plus Wave 1's pure domain** (`Domain/Document` — the calculation kernel, lifecycle, numbering and the `Invoice` aggregate); four test suites. No HTTP layer or Doctrine yet. |
-| `admin/` · `mobile/` · `infra/` | Angular admin (Wave 8), Flutter client (Wave 11), deployment written from scratch (Wave 12). Each README lists the tests and enforcers it owes as gate conditions. |
+| `api/` | The Symfony API. **Wave 0 landed** (`Domain/Money`, `Domain/Pricing`, `Infrastructure/` — tenancy, clock, ids) **plus most of Wave 1**: `Domain/Document` (the calculation kernel, lifecycle, numbering, the `Invoice` aggregate), the Symfony application, Doctrine and the first migrations, the persistence adapter, and the invoice HTTP surface — `GET /api/invoices/{id}`, `POST /api/invoices`, `POST /api/invoices/{id}/issue`. Four test suites. **Still owed in Wave 1: Client (+ contacts), Product, and the tenant settings table.** |
+| `admin/` · `mobile/` | Angular admin (Wave 8), Flutter client (Wave 11). Scaffolded and green on their own toolchains; neither holds domain or transport code. Each README lists the tests and enforcers it owes as gate conditions. |
+| `infra/` | Deployment, **written from scratch** — never copied from `invoiceninja/dockerfiles`, which is GPL-2.0 (licensing invariant 7). Three Dockerfiles, three compose files, a Caddyfile, an entrypoint and a database init script; both the development and the production stack have been run end to end. Wave 12 still owes CI. |
 | `scripts/gates/` | The architecture, licensing and shell-syntax gates, plus their own test suite. `ls` it for the list — a count written in prose drifts. |
 | `docs/spec/pricing-vectors.json` | The pricing arithmetic every tier tests against, so three implementations cannot drift. |
 | `.claude/` | Repo-native Claude Code skills and reviewer agents, read in place. |

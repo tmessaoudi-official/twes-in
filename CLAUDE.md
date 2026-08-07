@@ -28,7 +28,9 @@ rendered-number column, the Doctrine repository with its port, the savepoint ten
 rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel, lifecycle, numbering and `Invoice`
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. **The invoice WRITE path
-closed out on 2026-08-07**, which was the last thing Wave 1 owed: `POST /api/invoices` creates a draft and
+closed out on 2026-08-07** — the last thing Wave 1's *invoice core* owed, and **NOT** the last thing the wave owes:
+Client, contacts, Product and the tenant settings table are all absent, and this sentence claimed otherwise for two
+commits after `build-waves.plan.md` retracted it. `POST /api/invoices` creates a draft and
 `POST /api/invoices/{id}/issue` issues it — two single-purpose operations rather than one `issue: true` flag, so an
 irreversible act is not reachable two ways. With it came the first `Application/` code (`CreateInvoiceHandler`,
 `IssueInvoiceHandler`, and a `TransactionalScope` port whose adapter is the only thing that opens a transaction), the
