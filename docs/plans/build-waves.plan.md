@@ -10,6 +10,13 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+- [2026-08-07 04:10] AGREED: **the gapless counter is ONE atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING`, not `SELECT … FOR UPDATE`.** The three-statement form was written first, works, and had its lock deleted with the suite green TWICE — `INSERT … ON CONFLICT DO NOTHING` blocks on its own, so the `SELECT` never serialised anything under contention and the window the lock closed was reachable only by a harness interleaving statements inside the method. A lock that nothing can observe is one refactor from deletion. The plan's own prescription and the port's were amended in place; the substance (no `nextval`, a row, inside the caller's transaction, serialised) is unchanged.
+- [2026-08-07 04:10] AGREED: **`POST /api/invoices` creates a DRAFT and `POST /api/invoices/{id}/issue` issues it** — two single-purpose operations rather than an `issue: true` flag, because the domain models `draft()` and `issue()` separately and issuing is irreversible: it consumes a number from a gapless legal sequence permanently. A flag would make that reachable two ways. Consequence stated rather than hidden: a draft cannot be EDITED over HTTP (there is no `PUT`/`PATCH`), so a client builds the whole document and posts it once; editing a draft is a contract addition wanting its own shape decision.
+- [2026-08-07 04:10] AGREED: **a write response is the document READ BACK inside the write transaction**, never the aggregate just built. `NUMERIC(21,6)` returns `2.000000` for a stored `2`, so returning the aggregate makes `POST` and a later `GET` disagree byte-for-byte on one document — and the mobile client freezes the contract on app-store timelines. Inside the transaction, not after it, so the read cannot observe a different state or need the tenant binding re-established.
+- [2026-08-07 04:10] AGREED: **a client may not choose `vatRoundingPoint`.** `PerRateGroup` and `PerLine` produce numerically different tax figures, so a per-request choice would be a client choosing how much tax a document declares. It is company configuration, persisted per document so a later settings change cannot restate a document already sent; every document gets `PerRateGroup` until the settings table exists, which makes `PerLine` unreachable over HTTP today.
+- [2026-08-07 04:10] AGREED: **`FixedCharge::MAX_LABEL_LENGTH = 64`, measured in CHARACTERS**, a derived bound rather than a ruled one. It was the last persisted value in the domain with no bound at either end — round 14's `quantity` finding one field over — and a write endpoint is where an unbounded client-supplied string stops being theoretical. No migration follows: `document_charge.label` is `TEXT`, so unlike `DocumentLine::MAX_SCALE` this is a refusal we impose rather than one the schema imposes on us. `strlen` would make the bound depend on the alphabet, and `ar` is a first-class locale here.
+- [2026-08-07 04:10] AGREED: **`phpstan/phpdoc-parser` and `phpdocumentor/type-resolver` are RUNTIME dependencies** (both MIT, recorded in `THIRD-PARTY-NOTICES.md`). PHP has no generics, so an input DTO's `list<NewInvoiceLineInput>` exists only in a docblock, and `property_info`'s PhpStan extractor — which resolves it for the Serializer AND for the published OpenAPI schema — is registered only when both are non-dev requirements. Without them the nested objects arrive as raw arrays, `#[Assert\Valid]` cascades onto nothing, and the contract document types `lines` as an untyped array.
+- [2026-08-07 04:10] AGREED: **the operation collects denormalization errors**, so a JSON number where a decimal string belongs is a 422 naming `lines[0].unitNet` rather than an opaque `400 {"detail":"The input data is misformatted."}`. Money-is-never-a-float makes that the single most likely client mistake against this endpoint, and a refusal that does not say WHERE is one a client cannot act on.
 - [2026-08-06 12:40] AGREED: no gate re-implements a parser its real consumer already has. DSN users come from DBAL's own DsnParser, JSON from json_decode (and an undecodable file is SKIPPED, because Composer requires strict JSON so it can never be a root package), and the superuser is read from POSTGRES_USER relationally. Failure to REACH a resolver is a violation, not a skip.
 - [2026-08-06 07:15] AGREED: the worker ORACLE is live — `frankenphp adapt` on the rendered configuration, asserting zero workers, with three distinct verdicts (unparseable config / non-JSON output / worker present) because collapsing them made the first version report a worker on a clean tree. It closes the Caddy-GRAMMAR class by construction; `APP_RUNTIME`, `extra.runtime` and the `--worker` CLI flag are NOT covered by it and stay with the text rules and the invocation allow-list.
 - [2026-08-06 05:40] AGREED: the worker-mode control STOPS text-scanning. A `frankenphp adapt` ORACLE on the rendered configuration replaces detection (it asks the server, so the CLI flag, directives, seams, block scalars and indirection close by construction); only the `APP_RUNTIME` literal allow-list and `extra.runtime` remain as the no-Docker layer; the comment/continuation machinery is DELETED rather than patched. Five versions were each defeated within one round and the fifth regressed against the fourth. The oracle is NOT yet built — the pinned image would not pull here.
@@ -542,7 +549,11 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   tax authority audits for gaps. The shape that satisfies the contract is a per-`(tenant, type)` counter ROW
   under `SELECT ... FOR UPDATE` in the same transaction that persists the document. Recorded in
   `DocumentNumberSequence`'s contract and enforced by `DocumentNumberSequenceContract`, which every adapter
-  must extend.
+  must extend. **[AMENDED 2026-08-07 — the `SELECT ... FOR UPDATE` half only.** The entry is left as agreed
+  because a dated log records what was decided, not what is current: the mechanism narrowed to "a counter row
+  advanced inside the caller's transaction" once the adapter was measured, since the lock in the three-statement
+  form closed a window no test could reach. Everything else here stands verbatim, including the ban on `nextval`.
+  See the 2026-08-07 entry below and `CLAUDE.md` § Gotchas.**]
 - [2026-07-31 10:20] AGREED: **`Invoice::issue()`'s two failure causes get distinct exception types** — a
   `\DomainException` (422) for the user-fixable empty invoice, a `\LogicException` (500) for a number allocated
   from the wrong type's sequence. Both raised bare `\DomainException` before, so an HTTP layer could only tell a
@@ -989,7 +1000,7 @@ missing its header. **Every one of those four is a test that must be watched fai
 cross-tenant reads — are decided here. `CLAUDE.md` § Gotchas records both as day-zero rulings
 precisely because they are unfixable later.
 
-## Wave 1 — Client & the invoice core — **DOMAIN 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD, BOUNDARY RULE AND THE WHOLE CONNECTION LIFECYCLE 2026-08-06; the HTTP surface still owed**
+## Wave 1 — Client & the invoice core — **DOMAIN 2026-07-31; SCHEMA 2026-08-01; REPOSITORY, SAVEPOINT GUARD, BOUNDARY RULE AND THE WHOLE CONNECTION LIFECYCLE 2026-08-06; THE INVOICE HTTP SURFACE 2026-08-06 (read) AND 2026-08-07 (write)**
 
 **PERSISTENCE IS NO LONGER BLOCKED, and the reason it was is worth keeping because I had it wrong for twenty
 rounds.** The heading here said "persistence BLOCKED" and pointed at network egress; the actual obstacle was
@@ -1019,8 +1030,18 @@ earlier the same day, which is what made its shape final rather than provisional
 below~~ **— LANDED 2026-08-06**, as a DBAL middleware; see that section. ~~and the boundary rule that no tenant-less
 path may hydrate an aggregate~~ **— LANDED 2026-08-06 in the repository adapter, which refuses on both `save()` and
 `find()`**, each pinned by a case and by a mutant. ~~**Still owed: the connection-lifecycle wiring**~~ **— CLOSED 2026-08-06**: every numbered obligation further down
-is wired, including the eviction contract nested in the first. **What Wave 1 still owes is the HTTP SURFACE** — the
-`functional` and `e2e` suites, and the API contract a shipped mobile client freezes.
+is wired, including the eviction contract nested in the first. ~~**What Wave 1 still owes is the HTTP SURFACE**~~
+**— THE INVOICE SURFACE CLOSED 2026-08-07.** `GET /api/invoices/{id}` landed 2026-08-06; `POST /api/invoices` and
+`POST /api/invoices/{id}/issue` landed 2026-08-07, and with them the first `Application/` code — `CreateInvoice`,
+`IssueInvoice` and their handlers, plus a `TransactionalScope` port whose adapter is the only thing in the codebase that
+opens a transaction — the **Postgres gapless counter** (`PostgresDocumentNumberSequence`), and edge validation on input
+DTOs that carry `string` for every amount. `scripts/gates/layer-dependencies.php` now requires `Application/` to be
+non-empty, per its own instruction to add a layer as soon as it acquires code. The `functional` suite holds three
+classes; **`e2e` is still empty**, and what it owes is named in § "Quality gate": the Caddy-level CSP cannot be seen
+through the kernel.
+
+**What Wave 1 still owes, and it is now ONE item plus one suite:** `scripts/dev/provision-dev-database.sh`, and the
+`e2e` suite above. Everything else in this section is struck through.
 
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
@@ -1196,9 +1217,20 @@ invoice sequence is what a tax authority reads as a suppressed sale, and France 
 `nextval()` is *deliberately* non-transactional — it does not roll back — so every failed or rolled-back issue
 burns its number and leaves a permanent hole. That is correct for a surrogate primary key and disqualifying
 here, and it rules out `SERIAL`, `IDENTITY` and any `CACHE n` along with it. The shape that satisfies the
-contract is a per-`(tenant, type)` counter **row** taken under `SELECT ... FOR UPDATE` inside the same
+contract is a per-`(tenant, type)` counter **row** advanced inside the same
 transaction that persists the document, so a rollback returns the number. Accepted cost: issues for one
 `(tenant, type)` serialise. Two invoices sharing a number is worse than a queued request.
+
+**THIS CLAUSE SAID `SELECT ... FOR UPDATE` AND WAS AMENDED ON 2026-08-07, when the adapter was written and
+measured.** The substance is unchanged — not a sequence, a row, inside the caller's transaction, serialised — and
+what changed is that it now requires the OUTCOME rather than naming one statement. The three-statement form was
+built first and it works; deleting its ` FOR UPDATE` left the whole suite green **twice**, because
+`INSERT … ON CONFLICT DO NOTHING` blocks on its own and the `SELECT` was therefore never the statement that
+serialised anything under contention. The window the lock actually closed sat between the first session's own
+`SELECT` and its `UPDATE`, reachable only by a harness that interleaves statements inside the method — so the lock
+was correct and unobservable. `PostgresDocumentNumberSequence` issues ONE atomic
+`INSERT … ON CONFLICT DO UPDATE … RETURNING` instead, which has no such window; see `CLAUDE.md` § Gotchas
+2026-08-07 for the measurements and for the general lesson.
 
 **The contract is a TEST CLASS, not a docblock, and the Postgres adapter must extend it.** `DocumentNumberSequence`
 numbers its guarantees `**1. ` … in its own docblock — derive the set from there, never from a number written
@@ -1206,9 +1238,11 @@ here — and `DocumentNumberSequenceContract` asserts **all of them but ONE**. T
 starts at 1, independent per type and never reused, each with cases generated from `DocumentType` rather than
 hand-picked.
 
-**THE UNASSERTED ONE IS #5, SERIALISED, AND THE ADAPTER OWES A CONCURRENCY TEST FOR IT** (recorded here at round
-17). The port states it as *"because the counter is gapless, concurrent issues for one `(tenant, type)` must
-serialise"* — the guarantee `SELECT ... FOR UPDATE` exists to deliver, and the only one whose violation is two
+**THE UNASSERTED ONE IS #5, SERIALISED, AND THE ADAPTER OWED A CONCURRENCY TEST FOR IT — PAID 2026-08-07** (the
+obligation was recorded here at round 17; `PostgresDocumentNumberSequenceTest::testConcurrentAllocationsForOneTenantSerialise()`
+discharges it, and the two rounds it took to make that case actually observe the thing it asserts are recorded in
+`CLAUDE.md` § Gotchas 2026-08-07). The port states it as *"because the counter is gapless, concurrent issues for one `(tenant, type)` must
+serialise"* — the guarantee the row lock exists to deliver, and the only one whose violation is two
 invoices sharing a number, which this plan calls a worse outcome than a queued request. It is not asserted in the
 contract class because the in-memory double is single-process and has no concurrency to violate, so **extending
 `DocumentNumberSequenceContract` does not discharge it**: what it takes is two connections allocating for one
@@ -1222,17 +1256,26 @@ docblock and the plan" while this paragraph still read "Four guarantees" and `gr
 returned **zero** — so the class asserting the plan had been fixed was the only record that it had not. That grep
 is the check either way: it now finds the guarantee named in this paragraph, and a zero means the drift is back.
 
-When persistence unblocks, `PostgresDocumentNumberSequenceTest extends
-DocumentNumberSequenceContract` goes in the **integration** suite against a real row lock, and the assertions do
-not change; only the subject does. The reference in-memory double lives under `tests/Support/` and **not** in
+**LANDED 2026-08-07.** `PostgresDocumentNumberSequenceTest extends
+DocumentNumberSequenceContract` is in the **integration** suite against a real database, and the contract's assertions
+did not change; only the subject did. Its fixture opens a TRANSACTION, because the adapter refuses without one — the
+increment must roll back with the document — and a fresh tenant per `sequence()` call is what makes each one "empty"
+without truncating anything. Guarantee 5 is discharged by
+`testConcurrentAllocationsForOneTenantSerialise()`; `testARolledBackAllocationReturnsTheNumberRatherThanBurningIt()`
+covers the property that disqualifies `nextval()`, and `InvoiceLifecycleTest` covers it end to end through the real
+handlers. The reference in-memory double lives under `tests/Support/` and **not** in
 `src/`, because an in-memory counter in production restarts at 1 in every worker and issues duplicate legal
 document numbers — the one failure mode worse than having no implementation at all, because it looks like it
 works. The double is itself held to the contract rather than trusted.
 
-**Still owed here:** nothing forces a number to come from the allocator — `Invoice::issue()` accepts any
+**DISCHARGED 2026-08-07.** Nothing forces a number to come from the allocator — `Invoice::issue()` accepts any
 well-typed `DocumentNumber`, which is correct for rehydration from a database row and means the *application*
-layer is what must never mint one by hand. That is a Wave 1 use-case-handler obligation and a
-`completeness-reviewer` P0 if a handler constructs a `DocumentNumber` directly.
+layer is what must never mint one by hand. That was a Wave 1 use-case-handler obligation and a
+`completeness-reviewer` P0 if a handler constructed a `DocumentNumber` directly. `IssueInvoiceHandler` takes a
+`DocumentNumberAllocator` and never the class, and the assertion that makes it real is
+`InvoiceWriteHandlersTest::testTheIssuedNumberIsTakenFromTheSequenceAndNotMinted()`: it pre-consumes two values from
+the same counter behind the handler's back and requires the handler to come back with **3**. A handler minting its own
+would produce 1 while satisfying every other assertion in the class.
 
 **WAVE 1 OWES A BOUNDARY RULE, NOT A `TenantId` MOVE — round 13's finding stands, its REMEDY IS REVERSED**
 (round 14). `DocumentNumber` makes the document TYPE inseparable from the number and leaves the TENANT
@@ -1373,7 +1416,7 @@ that the column exists", and the counter existed only in prose in three places):
 | `document_number_sequence.company_id` | non-null `uuid` | `TENANT_COLUMN`. **This table is tenant-owned**, so it is in `schema-tenancy.php`'s subject set and in `assertPolicedTablesAreBeyondThisRolesReach()`'s — it carries the three RLS statements like every other tenant-owned table. Nothing said so before |
 | `document_number_sequence.type` | non-null enum, `DocumentType`'s backed values | sequences are per type |
 | `document_number_sequence.next_value` | non-null `bigint`, `CHECK (next_value >= 1)` | the counter. `bigint` for the same reason `document.number` is |
-| — | `PRIMARY KEY (company_id, type)` | **one row per `(tenant, type)`, and the primary key is what makes it so.** `DocumentNumberSequence`'s contract is a row taken under `SELECT ... FOR UPDATE`; two rows for one pair would silently allow two concurrent issues to take the same number, which is the outcome guarantee 5 exists to prevent |
+| — | `PRIMARY KEY (company_id, type)` | **one row per `(tenant, type)`, and the primary key is what makes it so.** `DocumentNumberSequence`'s contract is a row advanced inside the caller's transaction; two rows for one pair would silently allow two concurrent issues to take the same number, which is the outcome guarantee 5 exists to prevent — and the `ON CONFLICT (company_id, type)` the adapter relies on is resolved by THIS constraint, so it is load-bearing for the mechanism and not only for the data |
 
 **And the per-tenant `NumberPattern`, plus the per-company `vat_rounding_point` DEFAULT** — both named as persisted
 configuration and neither specified (round 15). They belong on the company/tenant settings table that Wave 1 must

@@ -41,8 +41,14 @@ namespace Twes\Domain\Document;
  * > a permanent gap. That is correct behaviour for a surrogate primary key and disqualifying for a legal
  * > document number. The same objection rules out `IDENTITY` and `SERIAL` columns, and any caching
  * > (`CACHE n`) makes it worse. The shape that satisfies this contract is a per-`(tenant, type)` counter ROW
- * > taken under `SELECT ... FOR UPDATE` inside the *same* transaction that persists the document, so a
- * > rollback returns the number.
+ * > advanced inside the *same* transaction that persists the document, so a rollback returns the number.
+ * >
+ * > **This clause used to prescribe `SELECT ... FOR UPDATE` specifically, and that was narrowed to "advanced
+ * > inside the same transaction" once the adapter was measured.** A row lock taken in its own `SELECT` is one
+ * > way; a single `INSERT … ON CONFLICT DO UPDATE … RETURNING` is another, and it is what
+ * > {@see \Twes\Infrastructure\Persistence\Doctrine\PostgresDocumentNumberSequence} does — because the lock in
+ * > the three-statement form turned out to close a window no test could reach, so its presence was unprovable.
+ * > What this port requires is the OUTCOME (guarantees 1, 4 and 5), not a particular statement.
  *
  * **2. Starting at 1.** The first document of a tenant's life is number 1, not 0 — {@see DocumentNumber} and
  * {@see NumberPattern} both refuse a non-positive sequence, and this port is where the value comes from.

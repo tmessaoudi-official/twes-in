@@ -15,41 +15,21 @@ namespace Twes\UI\Http\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Twes\Domain\Document\DocumentTotals;
 use Twes\Domain\Document\InvoiceRepository;
-use Twes\Domain\Document\PersistedInvoice;
-use Twes\Domain\Shared\RoundingMode;
-use Twes\UI\Http\ApiResource\FixedChargeResource;
-use Twes\UI\Http\ApiResource\InvoiceLineResource;
 use Twes\UI\Http\ApiResource\InvoiceResource;
-use Twes\UI\Http\ApiResource\InvoiceTotalsResource;
 
 /**
- * Translates a persisted `Invoice` into its HTTP representation.
+ * `GET /api/invoices/{id}` — fetch one invoice belonging to the current tenant.
  *
- * The transport-boundary twin of the Doctrine mapper: the aggregate cannot carry an `#[ApiResource]` attribute
- * because § Architecture forbids a framework dependency in `Domain/`, so something has to translate. Dependencies
- * point inward — this knows `Domain/`, and `Domain/` knows nothing about this.
- *
- * **THE ROUNDING MODE IS NOT A CHOICE MADE HERE.** `docs/spec/pricing-vectors.json` states it for every consumer:
- * *"half_up on every amount and every rate. There is NO per-case override."* Those vectors are the cross-tier
- * contract that stops Angular, Flutter and the server each inventing a rule, so this provider applies the same
- * mode the vectors do and passing anything else would put the server outside its own contract.
- *
- * **THE ROUNDING POINT, by contrast, COMES FROM THE DOCUMENT.** `PerRateGroup` versus `PerLine` is persisted per
- * document precisely so a company changing its setting cannot restate a document a client already holds — so it is
- * read from `DocumentIdentity` and never from configuration.
+ * The TRANSLATION itself lives in {@see InvoiceRepresentation}, shared with the two write processors, because all
+ * three answer with the same resource and the figures they assemble must not differ between a create response and a
+ * later fetch of the same document. What is left here is this operation's own job: turning a route variable into a
+ * lookup, and turning every way that lookup can fail into the same answer.
  *
  * @implements ProviderInterface<InvoiceResource>
  */
 final readonly class InvoiceProvider implements ProviderInterface
 {
-    /**
-     * The mode the cross-tier vectors mandate. A constant rather than a parameter: a configurable rounding mode
-     * would be a way to serve numbers that disagree with the vectors every client validates against.
-     */
-    private const RoundingMode MODE = RoundingMode::HalfUp;
-
     public function __construct(private InvoiceRepository $invoices) {}
 
     /**
@@ -84,88 +64,6 @@ final readonly class InvoiceProvider implements ProviderInterface
             throw new NotFoundHttpException('No such invoice.');
         }
 
-        return self::represent($persisted);
-    }
-
-    /**
-     * VAT per rate group as decimal strings, keyed by the rate.
-     *
-     * A typed loop rather than `array_map`, because `array_map` preserving string keys is true but not *provable*
-     * to a static analyser from the callback alone — and the keys are the meaningful identity here (`"19"`, `"7"`
-     * are what an invoice prints and what a tax return aggregates by), so losing them silently would be worse than
-     * a slightly longer method.
-     *
-     * @return array<string, string>
-     */
-    private static function amountsByRate(DocumentTotals $totals): array
-    {
-        $byRate = [];
-
-        // `vatByRate()` yields `VatGroup` objects, not `Money` — each carries its rate, its BASE and its vat, and
-        // the base is what makes the group auditable. Only the vat is on the wire today; a client needing the base
-        // is a contract addition, not a guess to make here.
-        foreach ($totals->vatByRate() as $group) {
-            $byRate[$group->rate()->percentage()] = $group->vat()->amount();
-        }
-
-        return $byRate;
-    }
-
-    private static function represent(PersistedInvoice $persisted): InvoiceResource
-    {
-        $invoice = $persisted->invoice;
-        $totals = $invoice->totals($persisted->identity->vatRoundingPoint, self::MODE);
-        $number = $invoice->number();
-
-        $lineNets = $totals->lineNets();
-        $vatByLine = $totals->vatByLine();
-
-        $lines = [];
-
-        // NO `assert($line instanceof DocumentLine)`. `Invoice::lines()` is already typed as a list of them, so
-        // PHPStan reports the assertion as always-true — the same half-hollow-assertion class `CLAUDE.md` records
-        // its PHPStan configuration catching in the SET-ROLE escalation proof. A dead assertion reads as a check.
-        foreach ($invoice->lines() as $position => $line) {
-            $lines[] = new InvoiceLineResource(
-                position: $position,
-                quantity: $line->quantity(),
-                unitNet: $line->unitNet()->amount(),
-                vatRate: $line->vatRate()->percentage(),
-                // BY POSITION, from the totals rather than recomputed. `vatByLine()` is the ALLOCATED share of the
-                // rate group's VAT — largest remainder, ties to the earliest line — so recomputing `net × rate`
-                // here would produce figures that do not sum to `vatByRate`, which is the defect the allocation
-                // rule exists to prevent.
-                net: $lineNets[$position]->amount(),
-                vat: $vatByLine[$position]->amount(),
-            );
-        }
-
-        $charges = [];
-
-        foreach ($invoice->fixedCharges() as $position => $charge) {
-            $charges[] = new FixedChargeResource(
-                position: $position,
-                label: $charge->label(),
-                amount: $charge->amount()->amount(),
-            );
-        }
-
-        return new InvoiceResource(
-            id: $persisted->identity->id,
-            state: $invoice->state()->value,
-            currency: $invoice->currency()->code(),
-            number: $number?->number(),
-            sequence: $number?->sequence(),
-            lines: $lines,
-            fixedCharges: $charges,
-            totals: new InvoiceTotalsResource(
-                subtotalNet: $totals->subtotalNet()->amount(),
-                vatByRate: self::amountsByRate($totals),
-                vatTotal: $totals->vatTotal()->amount(),
-                fixedChargesTotal: $totals->fixedChargesTotal()->amount(),
-                total: $totals->total()->amount(),
-                vatRoundingPoint: $persisted->identity->vatRoundingPoint->value,
-            ),
-        );
+        return InvoiceRepresentation::of($persisted);
     }
 }

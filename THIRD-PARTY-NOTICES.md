@@ -99,6 +99,9 @@ allowlist. Direct requirements:
 | `symfony/property-access` | v8.1.0 | MIT | pulled by API Platform | composer.lock |
 | `symfony/property-info` | v8.1.2 | MIT | pulled by API Platform | composer.lock |
 | `symfony/type-info` | v8.1.0 | MIT | pulled by API Platform | composer.lock |
+| `phpstan/phpdoc-parser` | 2.3.3 | MIT | **a DIRECT runtime requirement, not a dev tool — read the reason before removing it.** PHP has no generics, so a `list<NewInvoiceLineInput>` on an input DTO exists only in a docblock. `symfony/property-info` registers its `PhpStanExtractor` — and therefore resolves those element types for the Serializer AND for the published OpenAPI schema — only when this package and `phpdocumentor/type-resolver` are both NON-DEV requirements of the root package [Verified: `FrameworkExtension.php:2193-2196`]. Move it to `require-dev` and `POST /api/invoices` deserialises its lines into raw arrays, `#[Assert\Valid]` cascades onto nothing, and the contract document types `lines` as an untyped array | composer.lock |
+| `phpdocumentor/type-resolver` | 2.0.0 | MIT | the second half of the condition above — the extractor needs a docblock CONTEXT factory as well as a parser | composer.lock |
+| `phpdocumentor/reflection-common` | 2.2.0 | MIT | pulled by `phpdocumentor/type-resolver` | composer.lock |
 | `symfony/web-link` | v8.1.0 | MIT | `Link` headers — 103 Early Hints and Vulcain preloading, both of which FrankenPHP serves | composer.lock |
 | `psr/link` | 2.0.1 | MIT | PSR-13 link interfaces, pulled by `symfony/web-link` | composer.lock |
 | `willdurand/negotiation` | 3.1.0 | MIT | content negotiation, pulled by API Platform | composer.lock |

@@ -25,9 +25,12 @@ use Symfony\Component\Uid\Uuid;
  * suppressed sale, and France and Tunisia both audit for it. `SERIAL`, `IDENTITY` and any `CACHE n` fall to the
  * same objection.
  *
- * So the counter is an ordinary row, taken under `SELECT ... FOR UPDATE` inside the same transaction that
- * persists the document. Accepted cost, ruled explicitly: issues for one `(tenant, type)` SERIALISE. Two
- * invoices sharing a number is worse than a queued request.
+ * So the counter is an ordinary row, advanced inside the same transaction that persists the document — by one atomic
+ * `INSERT … ON CONFLICT DO UPDATE … RETURNING`, which is what
+ * {@see \Twes\Infrastructure\Persistence\Doctrine\PostgresDocumentNumberSequence} issues and where the reasoning
+ * lives. (This sentence said `SELECT ... FOR UPDATE` until that adapter was written and measured; the lock in that
+ * form closed a window no test could reach, so its presence was unprovable.) Accepted cost, ruled explicitly: issues
+ * for one `(tenant, type)` SERIALISE. Two invoices sharing a number is worse than a queued request.
  *
  * **`PRIMARY KEY (company_id, type)` is what makes it one row per pair.** Two rows for one pair would let two
  * concurrent issues take the same number — the outcome the port's fifth guarantee (serialised) exists to

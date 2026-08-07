@@ -71,7 +71,11 @@
       </trans-unit>
       <trans-unit id="20" resname="document.charge_label_empty">
         <source>document.charge_label_empty</source>
-        <target>يجب أن يكون للرسم عنوان. فهو يُطبع على الوثيقة، ويجب أن يتمكن العميل من قراءة ما يُحاسب عليه.</target>
+        <target>يجب أن يكون للرسم عنوان. فهو ما يُعرّف الرسم ويشرحه، حتى لا يظهر في الفاتورة مبلغ لا يمكن تبريره.</target>
+      </trans-unit>
+      <trans-unit id="35" resname="document.charge_label_too_long">
+        <source>document.charge_label_too_long</source>
+        <target>عنوان الرسم «{label}» يتكون من {length} حرفًا، والحد الأقصى المسموح به هو {max}. العنوان يُعرّف الرسم — مثل «stamp_duty» أو «late_fee» — ولا يصفه في جملة كاملة.</target>
       </trans-unit>
       <trans-unit id="21" resname="document.line_not_found">
         <source>document.line_not_found</source>

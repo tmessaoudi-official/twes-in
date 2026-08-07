@@ -36,12 +36,17 @@ const DOMAIN_VENDOR_ALLOWLIST = [];
 /**
  * Layers that must contain code, not merely exist.
  *
- * Only Domain today: Application has no use cases yet in Wave 0, and a gate that demanded them would be
- * scheduling work rather than checking it. Add a layer here as soon as it acquires code, because an empty
- * layer is otherwise indistinguishable from a passing one — which is how "api/src/Domain was renamed"
- * reads as a clean gate run.
+ * Domain since Wave 0. **Application joined it when the invoice write path landed** — which is what this list's
+ * own instruction asked for: add a layer as soon as it acquires code, because an empty layer is otherwise
+ * indistinguishable from a passing one, and that is how "api/src/Domain was renamed" reads as a clean gate run.
+ * Until then it was deliberately absent, because a gate demanding code that does not exist is scheduling work
+ * rather than checking it.
+ *
+ * `Infrastructure` and `UI` are still absent, and for a different reason than "not yet": neither appears in
+ * FORBIDDEN_BY_LAYER at all, because both are legitimately allowed to reference everything. A layer this gate does
+ * not police cannot be required to be non-empty by it — `$perLayer` is only populated for the layers it walks.
  */
-const REQUIRED_NON_EMPTY_LAYERS = ['Domain'];
+const REQUIRED_NON_EMPTY_LAYERS = ['Domain', 'Application'];
 
 /*
  * Note on what counts as "third-party": a reference with no backslash left after the leading one is a

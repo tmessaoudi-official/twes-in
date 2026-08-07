@@ -65,7 +65,11 @@
       </trans-unit>
       <trans-unit id="20" resname="document.charge_label_empty">
         <source>document.charge_label_empty</source>
-        <target>Le frais doit avoir un libellé. Il est imprimé sur le document : le client doit pouvoir lire ce qui lui est facturé.</target>
+        <target>Le frais doit avoir un libellé. C'est ce qui permet de l'identifier et de l'expliquer, pour qu'aucun montant d'une facture ne soit injustifiable.</target>
+      </trans-unit>
+      <trans-unit id="35" resname="document.charge_label_too_long">
+        <source>document.charge_label_too_long</source>
+        <target>Le libellé du frais « {label} » comporte {length} caractères ; {max} au maximum sont autorisés. Un libellé identifie le frais — « stamp_duty », « late_fee » — plutôt que de le décrire en une phrase.</target>
       </trans-unit>
       <trans-unit id="21" resname="document.line_not_found">
         <source>document.line_not_found</source>

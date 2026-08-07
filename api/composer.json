@@ -24,6 +24,8 @@
         "doctrine/doctrine-bundle": "^3.3",
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
+        "phpdocumentor/type-resolver": "^2.0",
+        "phpstan/phpdoc-parser": "^2.3",
         "predis/predis": "^3.5",
         "symfony/asset": "^8.1",
         "symfony/console": "8.1.*",

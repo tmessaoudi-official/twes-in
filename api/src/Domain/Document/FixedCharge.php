@@ -31,6 +31,25 @@ use Twes\Domain\Money\Money;
  */
 final readonly class FixedCharge
 {
+    /**
+     * The longest a label may be — a **derived** bound, flagged as such because no plan rules it.
+     *
+     * Added when the first write path landed, and for the reason round 14 recorded against `quantity`: this was the
+     * only persisted string in this domain with **no bound at either end**, and a write endpoint is where an
+     * unbounded client-supplied value becomes a real one rather than a theoretical one.
+     *
+     * Sixty-four, because this field is an IDENTIFIER and not prose — `stamp_duty`, `late_fee`, `eco_tax`. Display
+     * text is the translation layer's, which is the whole point of the docblock below. If the developer needs more,
+     * this is one constant.
+     *
+     * **NO MIGRATION FOLLOWS FROM IT, and that is the difference from `DocumentLine::MAX_SCALE`.** That bound
+     * existed because `NUMERIC(21,6)` would REJECT a value the domain accepted — the domain-admits-what-persistence-
+     * rejects mismatch. Here the column is `TEXT`, which accepts everything the domain accepts, so the bound is a
+     * refusal we impose and not one the schema imposes on us. [Verified: `label TEXT NOT NULL` in
+     * `migrations/Version20260801120000.php`.]
+     */
+    public const int MAX_LABEL_LENGTH = 64;
+
     /** A stable identifier, trimmed. See the constructor for why trimming happens on store. */
     private string $label;
 
@@ -39,7 +58,8 @@ final readonly class FixedCharge
      *                      is the translation layer's job; a document rendered in Arabic must not carry a
      *                      French label baked into its stored figures
      *
-     * @throws \InvalidArgumentException if the label is empty or the amount is negative
+     * @throws \InvalidArgumentException if the label is empty, longer than {@see self::MAX_LABEL_LENGTH}, or the
+     *                                   amount is negative
      */
     public function __construct(
         string $label,
@@ -56,6 +76,20 @@ final readonly class FixedCharge
                 'A fixed charge needs a stable label. An unlabelled charge on an invoice is a figure '
                 . 'nobody can explain to a customer or an auditor.',
             );
+        }
+
+        // MEASURED IN CHARACTERS, NOT BYTES. `strlen()` would make the bound depend on the alphabet — a 64-character
+        // Arabic label is 128 bytes in UTF-8 — and a label refused for being in the wrong script is a defect, not a
+        // bound. `mb_strlen` with an explicit encoding rather than the ambient default, which is configuration.
+        if (mb_strlen($label, 'UTF-8') > self::MAX_LABEL_LENGTH) {
+            throw new \InvalidArgumentException(\sprintf(
+                'Fixed charge label "%s" is %d characters; at most %d are allowed. This field is a stable '
+                . 'IDENTIFIER that a translation layer resolves into display text, not the display text itself — '
+                . 'so a label long enough to be a sentence is a sign it is being used as the wrong thing.',
+                mb_substr($label, 0, self::MAX_LABEL_LENGTH, 'UTF-8') . '…',
+                mb_strlen($label, 'UTF-8'),
+                self::MAX_LABEL_LENGTH,
+            ));
         }
 
         if ($amount->isNegative()) {

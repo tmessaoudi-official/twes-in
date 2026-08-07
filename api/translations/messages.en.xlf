@@ -70,7 +70,11 @@
       </trans-unit>
       <trans-unit id="20" resname="document.charge_label_empty">
         <source>document.charge_label_empty</source>
-        <target>The charge needs a label. It is printed on the document, so a client has to be able to read what they are being charged for.</target>
+        <target>The charge needs a label. It is how the charge is identified and explained, so a figure on an invoice is never one nobody can account for.</target>
+      </trans-unit>
+      <trans-unit id="35" resname="document.charge_label_too_long">
+        <source>document.charge_label_too_long</source>
+        <target>The charge label “{label}” is {length} characters; at most {max} are allowed. A label identifies the charge — “stamp_duty”, “late_fee” — rather than describing it in a sentence.</target>
       </trans-unit>
       <trans-unit id="21" resname="document.line_not_found">
         <source>document.line_not_found</source>

@@ -14,6 +14,7 @@ namespace Twes\Infrastructure\Persistence\Doctrine;
 
 use Doctrine\DBAL\Connection;
 use Twes\Domain\Document\DocumentIdentity;
+use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
@@ -163,10 +164,18 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ));
         }
 
+        // FILTERED BY TYPE, and that predicate is a correctness fix rather than an optimisation. Without it this
+        // method returned ANY document sharing the id — a quote or a credit note — as a `PersistedInvoice`, so
+        // `GET /api/invoices/{quoteId}` would have served a quote rendered as an invoice, and issuing one would have
+        // allocated a number from the INVOICE sequence for a document of another type. Unreachable today because no
+        // other type is created yet, which is precisely why it had to be closed before one is.
+        //
+        // Here rather than in the provider or the processor, because both would need it and two copies of one rule
+        // drift. The port is `InvoiceRepository`: an invoice is the only thing it is contracted to find.
         $documentRow = $this->connection->fetchAssociative(
             'SELECT company_id, id, type, state, currency, number, number_rendered, vat_rounding_point'
-            . ' FROM document WHERE company_id = :company_id AND id = :id',
-            ['company_id' => $tenant->toString(), 'id' => $id],
+            . ' FROM document WHERE company_id = :company_id AND id = :id AND type = :type',
+            ['company_id' => $tenant->toString(), 'id' => $id, 'type' => DocumentType::Invoice->value],
         );
 
         if (false === $documentRow) {

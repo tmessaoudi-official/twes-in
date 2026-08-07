@@ -280,6 +280,60 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $repository->find(strtoupper(self::DOCUMENT));
     }
 
+    /**
+     * A DOCUMENT OF ANOTHER TYPE IS NOT FOUND BY THE INVOICE REPOSITORY, even under the right tenant and the right id.
+     *
+     * Without the `type` predicate this method returned any document sharing the id as a `PersistedInvoice`, so
+     * `GET /api/invoices/{quoteId}` would have served a quote rendered as an invoice — and issuing it would have taken
+     * a number from the INVOICE sequence for a document of another type. Unreachable today because Wave 1 creates no
+     * other type, which is exactly why it had to be closed before one exists.
+     *
+     * The row is inserted directly rather than through `save()`, because the write path already refuses a non-invoice
+     * identity — see the case below — so this is the only way to produce the state being tested.
+     */
+    public function testADocumentOfAnotherTypeIsNotFoundByTheInvoiceRepository(): void
+    {
+        $quoteId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+        $repository = self::repositoryFor(self::TENANT_A);
+
+        self::connection()->executeStatement(
+            'INSERT INTO document (company_id, id, type, state, currency, vat_rounding_point)'
+            . ' VALUES (?, ?, ?, ?, ?, ?)',
+            [self::TENANT_A, $quoteId, DocumentType::Quote->value, 'draft', 'TND', 'per_rate_group'],
+        );
+
+        self::assertNull(
+            $repository->find($quoteId),
+            'a quote must not come back from the INVOICE repository — the port is contracted to find invoices',
+        );
+    }
+
+    /**
+     * And the write half: saving somebody else's document type is OUR bug, so it is a `\LogicException`.
+     *
+     * **The refusal belongs to `InvoiceMapper` and this test found that out the useful way.** A guard was added to
+     * `save()` first; a mutant deleting it reported that the mapper had refused anyway, with a *better* message —
+     * naming the consequence, that an `Invoice` written under another type files its number in that type's sequence and
+     * leaves a permanent hole in the invoice one. So the repository's copy was deleted rather than kept: two
+     * definitions of one rule is what this repository has recorded drifting, and the surviving definition is the one
+     * that explains itself.
+     *
+     * Asserted from the repository rather than by calling the mapper directly, because what must hold is that the
+     * REPOSITORY refuses — wherever the check physically lives.
+     */
+    public function testSavingADocumentOfAnotherTypeIsRefused(): void
+    {
+        $repository = self::repositoryFor(self::TENANT_A);
+
+        $this->expectException(\LogicException::class);
+        $this->expectExceptionMessage('was handed a quote identity');
+
+        self::inTransaction(static fn() => $repository->save(
+            new DocumentIdentity(self::DOCUMENT, DocumentType::Quote, VatRoundingPoint::PerRateGroup),
+            Invoice::draft(Currency::of('TND')),
+        ));
+    }
+
     private static function identity(): DocumentIdentity
     {
         return new DocumentIdentity(self::DOCUMENT, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);

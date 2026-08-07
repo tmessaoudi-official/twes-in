@@ -84,8 +84,18 @@ components, `psr/*`, `doctrine/inflector`, `composer/semver` and `willdurand/neg
 the code**. `CLAUDE.md` § "The API contract is ours to design" makes an API change that fails to reach the
 OpenAPI spec a **P0** for `completeness-reviewer`, and the only durable way to satisfy that is for the spec not
 to be a separate artefact anyone can forget. Secondary: pagination, filtering, sorting, content negotiation,
-RFC 7807 problem details, validation wiring, and a mature HTTP test client — which is what the currently-empty
-`functional` suite needs.
+RFC 7807 problem details, validation wiring, and a mature HTTP test client — which is what the
+`functional` suite needs. (That suite was empty when this was written and holds three classes since 2026-08-06.)
+
+**WHERE THE CONTRACT IS RECORDED, since `CLAUDE.md` says to record it here "once" and this section is the closest
+thing.** The machine-readable form is the **generated OpenAPI document**, which is this section's own stated reason
+for adopting API Platform: *"the only durable way to satisfy that is for the spec not to be a separate artefact
+anyone can forget."* Writing an endpoint table here as well would be exactly that separate artefact, so there is
+none — and `InvoiceWriteSurfaceTest` pins the parts of the document that silently degrade (the typed line items, the
+`Length` bound, the routes and their verbs). What DOES belong in prose is the set of decisions a schema cannot
+express, and those are in `build-waves.plan.md`'s Decisions Log: why creating and issuing are two operations, why
+there is no `PUT`/`PATCH`/`DELETE`, why a client may not choose where VAT is rounded, why a write response is the
+document read back, and why every amount is a string on the wire in both directions.
 
 **The constraint, and it is absolute.** API Platform's default idiom is `#[ApiResource]` on a Doctrine entity.
 That is forbidden twice here: it puts a framework attribute in `Domain/`, and it is a third-party namespace in

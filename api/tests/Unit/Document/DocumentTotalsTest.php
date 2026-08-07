@@ -517,6 +517,43 @@ final class DocumentTotalsTest extends TestCase
             'stable label',
             static fn(): mixed => new FixedCharge('   ', Money::of('1.000', $tnd)),
         ];
+        // ADDED WITH THE WRITE PATH. Until an HTTP endpoint accepted a label, an unbounded one was theoretical;
+        // `document_charge.label` is `TEXT`, so nothing downstream refuses any length either. This was the last
+        // persisted value in the domain with no bound at all — round 14's `quantity` finding, one field over.
+        yield 'a fixed-charge label longer than MAX_LABEL_LENGTH' => [
+            \InvalidArgumentException::class,
+            'at most ' . FixedCharge::MAX_LABEL_LENGTH . ' are allowed',
+            static fn(): mixed => new FixedCharge(
+                str_repeat('a', FixedCharge::MAX_LABEL_LENGTH + 1),
+                Money::of('1.000', $tnd),
+            ),
+        ];
+    }
+
+    /**
+     * THE LABEL BOUND IS IN CHARACTERS, NOT BYTES — so an Arabic label is not refused for being Arabic.
+     *
+     * `strlen()` would make the bound depend on the alphabet: a 64-character Arabic label is 128 bytes in UTF-8, and
+     * an Arabic-speaking tenant would find the field half as long as the documentation says. This project ships `ar`
+     * as a first-class locale and vendors a font specifically so Arabic renders, so a byte bound here would be a
+     * defect rather than a limitation.
+     *
+     * The mutant: swap `mb_strlen($label, 'UTF-8')` for `strlen($label)` and this case fails while every other label
+     * case stays green, because they are all ASCII.
+     */
+    public function testTheFixedChargeLabelBoundIsMeasuredInCharactersRatherThanBytes(): void
+    {
+        // Arabic "rasm" (a charge), repeated to exactly the bound. Multi-byte in UTF-8, so `strlen` sees far more.
+        $label = str_repeat('رسم', (int) (FixedCharge::MAX_LABEL_LENGTH / 3));
+
+        self::assertLessThanOrEqual(FixedCharge::MAX_LABEL_LENGTH, mb_strlen($label, 'UTF-8'), 'fixture sanity');
+        self::assertGreaterThan(FixedCharge::MAX_LABEL_LENGTH, \strlen($label), 'the fixture must expose the bug');
+
+        self::assertSame(
+            $label,
+            new FixedCharge($label, Money::of('1.000', Currency::of('TND')))->label(),
+            'a label within the CHARACTER bound must be accepted whatever its byte length',
+        );
     }
 
     /**

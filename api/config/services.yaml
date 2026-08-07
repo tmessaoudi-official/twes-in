@@ -6,10 +6,15 @@
 
 # Service wiring. Note what is autowired and what is NOT.
 #
-# `Twes\Domain\` is deliberately ABSENT from autowiring. The domain has no services -- it is entities, value
-# objects and PORT INTERFACES, and CLAUDE.md § Architecture requires it to depend on nothing. Registering it
-# here would let the container instantiate domain objects, which is how a framework starts reaching inside a
-# layer that is supposed to know nothing about it.
+# `Twes\Domain\` is deliberately ABSENT from autowiring as a RESOURCE. It is mostly entities, value objects and
+# PORT INTERFACES, and CLAUDE.md § Architecture requires it to depend on nothing; importing the namespace would let
+# the container instantiate anything under it, which is how a framework starts reaching inside a layer that is
+# supposed to know nothing about it.
+#
+# **It is not true that the domain has no services at all, and this comment said so until the invoice write path
+# landed.** `DocumentNumberAllocator` is one -- stateless, with a port as its only collaborator -- and it has an
+# explicit entry below. The rule that survives is the one that was doing the work: no resource import, and every
+# domain class the container may construct is named individually with the argument for it written down.
 parameters:
 
 services:
@@ -128,3 +133,69 @@ services:
     # a second implementation, the choice of which one is wired is a visible one-line diff here rather than an
     # autowiring accident -- and so that removing the header adapter breaks THIS line loudly.
     Twes\Infrastructure\Tenancy\TenantResolver: '@Twes\UI\Http\Tenancy\HeaderTenantResolver'
+
+    # ==============================================================================================================
+    # THE INVOICE WRITE PATH. Three more domain ports, each needing the same explicit alias for the same reason as
+    # `InvoiceRepository` above: `Twes\Domain\` is not an autowired resource, so Symfony creates no alias for an
+    # interface that lives there. Without these lines the failure is a message about an unresolvable ARGUMENT, which
+    # points at the consumer rather than at the missing binding.
+    # ==============================================================================================================
+
+    # TIME. `SystemClock` and never `FrozenClock`, which exists for tests -- an ambient `time()` call in `Domain/` is
+    # a P0 that `no-ambient-calls-in-domain.php` refuses, so the clock is a port and this line is where the real one
+    # is chosen. Explicit rather than auto-aliased because there are TWO implementations, so an auto-alias would be
+    # impossible anyway and a wrong choice here is a frozen production clock.
+    Twes\Domain\Shared\Clock: '@Twes\Infrastructure\Shared\SystemClock'
+
+    # Identifier generation. UUIDv7, so identifiers sort by creation time -- which is what v7 is FOR, and the reason
+    # `symfony/uid` is used rather than a hand-rolled layout that failed to ascend for about half of all consecutive
+    # same-millisecond pairs.
+    #
+    # A UUIDv7 IS AN ORDERING ARTEFACT AND NEVER A SECRET (developer ruling, CLAUDE.md § Gotchas 2026-08-05): the
+    # random field is incremented rather than redrawn within a millisecond, and the generator's seed is recoverable
+    # from its own output. So a document id may appear in a URL an authenticated tenant can reach, and the Wave 10
+    # client portal gets its own `random_bytes(32)` token instead of ever using a primary key as a credential.
+    Twes\Domain\Shared\IdGenerator: '@Twes\Infrastructure\Shared\UuidV7Generator'
+
+    # The unit of work. The port is in `Application/` rather than `Domain/` because no domain invariant is expressed
+    # in terms of atomicity -- see the interface. The adapter takes the DEFAULT connection: `owner` owns the
+    # tenant-owned tables and can DROP POLICY on them, which `no-owner-connection-in-application.php` refuses.
+    Twes\Application\Shared\TransactionalScope: '@Twes\Infrastructure\Persistence\Doctrine\DbalTransactionalScope'
+
+    # The gapless counter. A PostgreSQL SEQUENCE is FORBIDDEN as the implementation (CLAUDE.md § Gotchas
+    # 2026-07-31): `nextval()` does not roll back, so a failed issue would leave a permanent hole in a legal
+    # sequence. The adapter is a counter ROW under SELECT ... FOR UPDATE, and it refuses to run outside a
+    # transaction.
+    Twes\Domain\Document\DocumentNumberSequence: '@Twes\Infrastructure\Persistence\Doctrine\PostgresDocumentNumberSequence'
+
+    # `DocumentNumberAllocator` is a DOMAIN SERVICE, not a port: it has exactly one implementation by construction,
+    # because it holds no state and only turns a counter into a `DocumentNumber`.
+    #
+    # IT IS THE FIRST ENTRY IN THIS FILE FOR A CONCRETE `Twes\Domain\` CLASS, so the top comment's claim that "the
+    # domain has no services" needed amending rather than tiptoeing past -- see it. The distinction that makes this
+    # legitimate: what that comment refuses is the RESOURCE IMPORT, which would let the container instantiate
+    # anything under `Domain/` including entities and value objects. One explicit entry, argued, is a different act.
+    #
+    # The alternative -- an application handler doing `new DocumentNumberAllocator($sequence)` -- was rejected
+    # because it puts the choice of sequence adapter in the handler's constructor signature, and the whole point of
+    # the port is that the handler does not make that choice.
+    Twes\Domain\Document\DocumentNumberAllocator:
+        arguments:
+            $sequence: '@Twes\Domain\Document\DocumentNumberSequence'
+
+    # HOW WIDE A NEW DOCUMENT NUMBER IS RENDERED -- `0000041` at width 7.
+    #
+    # A placeholder with a deliberate shape: this is per-tenant configuration that Wave 1 has no settings table for,
+    # so it is wired here, where changing it is a visible one-line diff, rather than defaulted inside a handler where
+    # it would be invisible. It governs NEW numbers only -- an issued document's rendered string is persisted, and
+    # re-reading it derives its own pattern from that string, so no later change here can restate a document a client
+    # already holds (CLAUDE.md § Gotchas 2026-08-06).
+    #
+    # AN INT, NOT A REGISTERED `NumberPattern`. A service definition with a `factory:` on the value object would work
+    # and is what this file said for one commit, and it contradicts the top comment directly: a value object in the
+    # container is precisely what "the container instantiating domain objects" means. The handler builds the pattern
+    # in its own constructor instead, so a misconfigured width still fails when the service is first used rather than
+    # on the first issue attempt.
+    Twes\Application\Document\IssueInvoiceHandler:
+        arguments:
+            $numberWidth: 7

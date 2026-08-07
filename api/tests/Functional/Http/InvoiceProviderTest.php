@@ -31,6 +31,7 @@ use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
 use Twes\UI\Http\ApiResource\InvoiceResource;
 use Twes\UI\Http\State\InvoiceProvider;
+use Twes\UI\Http\State\InvoiceRepresentation;
 
 /**
  * THE INVOICE READ REPRESENTATION — what goes on the wire, and what must not.
@@ -43,6 +44,10 @@ use Twes\UI\Http\State\InvoiceProvider;
  * the test cannot drift from the interface because PHP would refuse to compile it.
  */
 #[CoversClass(InvoiceProvider::class)]
+// AND THE REPRESENTATION, which is where most of what this class asserts now lives: the translation was extracted from
+// the provider when the write path landed, because `GET`, `POST` and the issue transition all answer with the same
+// resource and the figures they assemble must not differ between a create response and a later fetch.
+#[CoversClass(InvoiceRepresentation::class)]
 final class InvoiceProviderTest extends TestCase
 {
     private const DOCUMENT = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';

@@ -27,12 +27,20 @@ migration and schema gate all landed** (2026-08-01), and **its persistence close
 rendered-number column, the Doctrine repository with its port, the savepoint tenant-binding guard, and the boundary
 rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel, lifecycle, numbering and `Invoice`
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
-twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. Still owed in Wave 1:
-the **invoice WRITE endpoint** — the tenancy seam and the READ path both landed 2026-08-06 (`TenantResolver` port,
-`RequestTenantBinder` on `kernel.request`, a development-only header adapter refused in production by a gate, and
-`GET /api/invoices/{id}` through `InvoiceProvider`). What remains is `POST`, which needs an input DTO, edge
-validation, the gapless number allocator and a caller-owned transaction — `InvoiceRepository::save()` refuses
-outside one. **Every monetary and quantity field is a decimal STRING on the wire**, never a JSON number, and a
+twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. **The invoice WRITE path
+closed out on 2026-08-07**, which was the last thing Wave 1 owed: `POST /api/invoices` creates a draft and
+`POST /api/invoices/{id}/issue` issues it — two single-purpose operations rather than one `issue: true` flag, so an
+irreversible act is not reachable two ways. With it came the first `Application/` code (`CreateInvoiceHandler`,
+`IssueInvoiceHandler`, and a `TransactionalScope` port whose adapter is the only thing that opens a transaction), the
+**Postgres gapless counter** and the boundary the plan named a P0: an application handler never mints a
+`DocumentNumber`, it consumes one from `DocumentNumberAllocator`. The tenancy seam and the READ path landed 2026-08-06
+(`TenantResolver` port, `RequestTenantBinder` on `kernel.request`, a development-only header adapter refused in
+production by a gate, and `GET /api/invoices/{id}` through `InvoiceProvider`). **A create response is the document
+READ BACK inside the write transaction, not the aggregate just built** — `NUMERIC(21,6)` returns `2.000000` for a
+stored `2`, so returning the aggregate would make `POST` and a later `GET` disagree byte-for-byte on one document.
+**Every monetary and quantity field is a decimal STRING on the wire**, never a JSON number, in both directions: the
+input DTOs declare `string` and a JSON number is answered with a 422 naming `lines[0].unitNet`, which needed
+`COLLECT_DENORMALIZATION_ERRORS` on the operation — without it the answer was an opaque 400. A
 functional test asserts the encoded payload rather than the PHP type — the type declaration is the enforcement, so
 asserting it again is a dead assertion PHPStan refuses. The connection-lifecycle wiring closed out on 2026-08-06 (`SessionStateReleaser` for release,
 `ConnectionProvisioningGuardMiddleware` for acquisition, the latter cached once per (role, database) per TTL window
@@ -69,8 +77,9 @@ different things, and this sentence said only the first for a commit. That corre
 sentence for three days — and then this sentence named `compose-config.sh` as the enforcer for two more commits
 after the text routes had moved out of it, which is the same defect one level down.
 
-**Not yet built:** the Doctrine repository (the MAPPER and its round-trip contract test landed 2026-08-01) and a wired
-`deptrac`. **The `infra/` tier LANDED** — three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
+**Not yet built: a wired `deptrac`, and that is now the ONLY entry in this list.** It read *"the Doctrine repository
+… and a wired `deptrac`"* for a commit after `DoctrineInvoiceRepository` landed on 2026-08-06 — this file's signature
+defect one more time, in the paragraph whose whole job is to say what is absent. **The `infra/` tier LANDED** — three Dockerfiles, three compose files, an entrypoint, a Caddyfile, a database
 init script and its own gate — and both the development and the production stack have now been run end to end
 (2026-08-05). This sentence listed `infra/` as absent for three commits after it existed, and a reviewer's charter
 cites it. **PHPStan RUNS, from a pinned phar, and `composer gate:static` is wired to it** (2026-08-05) — this
@@ -768,8 +777,12 @@ worst outcome available.
 
 **Four test suites, deliberately separate** (`api/phpunit.xml`): `unit` (pure domain, no kernel, no
 database), `integration` (real PostgreSQL — the tenancy policy, column fidelity), `functional` (HTTP
-through the kernel) and `e2e` (a really-booted server). `functional` and `e2e` are empty until there is
-an HTTP surface to exercise.
+through the kernel) and `e2e` (a really-booted server). **`functional` HOLDS CODE since 2026-08-06** — this sentence
+said both were empty for a commit after it did — and note that only some of it boots a kernel: the two processor
+classes drive the state providers and processors directly, because their subject is the translation between the wire
+and the domain, while `InvoiceWriteSurfaceTest` and `HttpSurfaceTest` need the real serializer, validator and router.
+**`e2e` IS still empty**, and what it owes is named in this section: the Caddy-level CSP that makes the local
+documentation UI safe cannot be seen through the kernel, because the kernel is not what serves it.
 
 Derive the real command names from `composer.json` / `package.json` / `pubspec.yaml` rather than
 trusting the table above — a command written in prose drifts from the one that exists.
@@ -792,7 +805,7 @@ locale carries the same SET; nothing checks COVERAGE, and that direction stays d
 
 | Exception kind | Key? | Why |
 |---|---|---|
-| the user typed something invalid — a bad quantity, a negative price, a rate too precise | **yes** | they can retype it, and the message is the only instruction they get. `document.quantity_invalid`, `document.quantity_too_precise`, `document.quantity_too_large`, `document.unit_price_negative`, `document.vat_rate_invalid`, `document.charge_amount_negative`, `document.charge_label_empty`, `pricing.rate_too_precise`, `pricing.rate_invalid`, `pricing.rate_too_large`, `pricing.cost_negative`,
+| the user typed something invalid — a bad quantity, a negative price, a rate too precise | **yes** | they can retype it, and the message is the only instruction they get. `document.quantity_invalid`, `document.quantity_too_precise`, `document.quantity_too_large`, `document.unit_price_negative`, `document.vat_rate_invalid`, `document.charge_amount_negative`, `document.charge_label_empty`, `document.charge_label_too_long`, `pricing.rate_too_precise`, `pricing.rate_invalid`, `pricing.rate_too_large`, `pricing.cost_negative`,
 `pricing.net_price_negative`, `pricing.net_price_not_representable`, `document.line_total_too_large`,
 `document.total_too_large`, `money.amount_not_representable` |
 | the user acted on stale state — issuing twice, editing an issued document, removing a line that is gone | **yes** | plausible double-click or stale page, and a 409/422 the UI must explain. `document.illegal_transition`, `document.not_mutable`, `document.line_not_found` — plus the three
@@ -822,7 +835,9 @@ which is the nearest thing to automation available for a judgement call.
 The test of it: **would a competent user, reading only this message, know what to change?** If not, it is
 `error.internal`.
 
-**NOTHING READS THIS CATALOGUE YET, and that is stated rather than left to be discovered** (round 16). There is no HTTP layer — `functional` and `e2e` are empty suites — so `locale-key-parity.php` is the only consumer the tier permits, and it checks that the three locales carry the same SET, never that a key is used. Deleting every key would leave the suite green. Acceptable *only* while no transport exists: the moment one does, resolving these keys is part of it, and a key nothing resolves is then the declared-but-unconsulted shape § Gotchas records rather than an honest placeholder.
+**NOTHING READS THIS CATALOGUE, AND A TRANSPORT NOW EXISTS — so this is no longer an honest placeholder and is recorded as owed.** Round 16 stated the gap and said *"acceptable only while no transport exists: the moment one does, resolving these keys is part of it, and a key nothing resolves is then the declared-but-unconsulted shape § Gotchas records"*. That moment arrived on 2026-08-07 with `POST /api/invoices`, and the condition was not met. Deleting every key would still leave the suite green, because `locale-key-parity.php` checks that the three locales carry the same SET and never that a key is used.
+
+**Why it was not done in the same change, stated rather than glossed:** a dozen distinct keyed refusals all raise a bare `\InvalidArgumentException` whose only payload is an English sentence, so nothing at the transport can tell `document.quantity_too_precise` from `document.total_too_large`. Resolving these keys therefore needs a TYPED EXCEPTION PER REFUSAL in `Domain/` first — carrying its key and its placeholders — which is a larger deliverable than the endpoint that revealed it, and one that touches every guard in the document kernel. **What the write path does today instead:** the input DTOs' validator catches the SHAPE errors and Symfony translates its own constraint messages into all three locales, and a domain refusal that survives that becomes a 422 carrying the domain's English message. So a French or Arabic caller gets a translated message for the common case and an English one for the rest — better than a raw key, worse than the rule in this section, and the gap is here rather than in a commit message.
 
 **A placeholder carrying an ENUM takes a translated LABEL, never the backed value** (round 15). Backing
 `DocumentState` fixed `{state}`, `{from}` and `{to}` to the wire values, which is right for the wire and wrong for
@@ -1572,6 +1587,48 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   fails on correct code. `isHit()` is the property that matters and the only one the consumer acts on — a fixture
   detail masquerading as a defect, and the second time in one day that an assertion about a *representation* rather
   than a *property* produced a false failure (the other was comparing a `NUMERIC(21,6)` quantity by string).
+
+- **2026-08-07 — A LOCK CAN BE CORRECT AND UNPROVABLE, and the remedy was to change the CODE rather than build a
+  harness to see it.** The gapless counter was written the way this file and the port both prescribed —
+  `INSERT … ON CONFLICT DO NOTHING`, then `SELECT … FOR UPDATE`, then `UPDATE … + 1` — with a concurrency test written
+  specifically to prove the lock load-bearing, because `build-waves.plan.md` records zero concurrency assertions on
+  this adapter as a `completeness-reviewer` P0. **Deleting ` FOR UPDATE` left the whole suite green. Twice.** The
+  second time was after the fixture had already been corrected once, on a diagnosis that was also wrong.
+  - **What was actually happening:** `INSERT … ON CONFLICT DO NOTHING` **blocks on its own** whenever a concurrent
+    transaction has touched that key — `canceling statement due to lock timeout … while inserting index tuple`
+    [Verified on a live cluster]. So under contention the `SELECT` was never the statement that serialised the two
+    sessions, and the `lock_timeout` the test relied on fired from the wrong statement. My first diagnosis (that a
+    brand-new tenant made the *first* session create the row) was true and insufficient; committing a seed row first
+    changed nothing.
+  - **The window the lock really closed was between the first session's OWN `SELECT` and its `UPDATE`** — reachable
+    only by a harness that interleaves statements *inside* the method. So the three-statement form was correct
+    **only because of a lock nothing could observe**, which is this file's most-recorded defect class: § Gotchas
+    already holds four separate controls that existed and were enforced by nothing.
+  - **The fix was one atomic statement**: `INSERT … ON CONFLICT (…) DO UPDATE SET next_value =
+    document_number_sequence.next_value + 1 RETURNING next_value - 1`. There is no between-statements window to
+    protect, so serialisation stops being a property of code that must remember to take a lock and becomes a property
+    of the statement. [Verified: 1, 2, 3 on a new key; 1 again after a rollback; and with two overlapping transactions
+    the second is refused `55P03` while the first is open and returns the NEXT value once it commits — both for an
+    existing counter and for two sessions racing to create one.] It is also mutant-killable in a way the old form was
+    not: `EXCLUDED.next_value` for the table-qualified column, or dropping the `- 1`, each turns 11+ cases red.
+  - **The plan and the port were AMENDED rather than left to disagree**, per this section's 2026-07-29 rule. Their
+    substance is untouched — not a sequence, a row, inside the caller's transaction, serialised, at an accepted
+    throughput cost — and what changed is that they now require the OUTCOME instead of naming one statement.
+  - **The general lesson, and it is not about locks:** *"the test is not arriving"* (§ Gotchas 2026-07-31) has a second
+    ending. Sometimes the honest conclusion is not a better test but a design whose property is structural. A control
+    that only a bespoke harness can observe is one refactor away from being deleted by someone who cannot see it
+    working.
+  Two smaller findings from the same change, both worth keeping:
+  **(1) A guard added to `save()` was a SECOND COPY of a rule `InvoiceMapper` already enforced — and the mutant that
+  killed it is what revealed the duplicate.** Deleting the new guard produced the mapper's own refusal, with a *better*
+  message: it names the consequence (an `Invoice` written under another type files its number in that type's sequence
+  and leaves a hole in the invoice one). The new copy was deleted and the surviving definition is the one that explains
+  itself. A mutant does not only tell you whether a fix is load-bearing; it tells you whether it is the FIRST one.
+  **(2) A generic annotation can make a LIVE check look dead.** `@implements ProcessorInterface<NewInvoiceInput, …>`
+  narrowed a `mixed $data` parameter, so PHPStan reported the processor's own `instanceof` guard as
+  `instanceof.alwaysTrue`. The annotation was the wrong thing: the interface really does hand over `mixed`, and the
+  guard is what narrows it. Suppressing the finding would have been the tempting move and would have left a promise
+  standing in for an enforcement.
 
 ## Git & CI
 
