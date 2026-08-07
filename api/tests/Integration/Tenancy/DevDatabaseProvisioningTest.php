@@ -292,6 +292,104 @@ final class DevDatabaseProvisioningTest extends TestCase
     }
 
     /**
+     * **IT CORRECTS A PRE-EXISTING ROLE'S DANGEROUS ATTRIBUTES — R1-4.**
+     *
+     * The script skipped every check for a role that already existed: it probed `pg_roles`, found the name, and
+     * `continue`d. So a `twes` left over as SUPERUSER or BYPASSRLS from an experiment was accepted in silence, and
+     * `testItCreatesTwoRolesAndGivesNeitherADangerousAttribute()` could not see it, because that case runs against a
+     * clean cluster where the roles are created fresh with the attributes spelled out in the `CREATE`.
+     *
+     * That is not a cosmetic gap. A SUPERUSER or `BYPASSRLS` runtime role means row-level security **never applies**
+     * to the application's own connection — every tenant's documents readable through the ordinary code path, with
+     * the schema gate still reporting clean, because that gate reads the policies rather than asking who can ignore
+     * them. `REPLICATION` is the same breach by another road: `pg_basebackup` reads the whole cluster with row
+     * security never involved.
+     *
+     * **The password is still never overwritten, and that asymmetry is deliberate.** A password is a developer's
+     * own choice and the script must not clobber the test fixture's; an attribute that defeats tenant isolation is
+     * not a choice this script can defer to. So attributes are corrected and credentials are left alone.
+     */
+    public function testItCorrectsADangerousAttributeOnAPreExistingRole(): void
+    {
+        $superuser = self::superuserConnection();
+
+        // BOTH roles pre-created the careless way, and the runtime one carrying every attribute that matters.
+        $superuser->exec(\sprintf(
+            "CREATE ROLE %s LOGIN PASSWORD 'devprobe' SUPERUSER BYPASSRLS REPLICATION CREATEROLE CREATEDB",
+            self::RUNTIME_ROLE,
+        ));
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::OWNER_ROLE));
+
+        // THE DETECTOR. If this ever fails, the fixture is not producing the dangerous shape and everything below is
+        // asserting nothing — the *a fixture that cannot express a dangerous shape cannot detect it* rule.
+        self::assertTrue(self::roleHolds(self::RUNTIME_ROLE, 'rolbypassrls'), 'the fixture must start dangerous');
+        self::assertTrue(self::roleHolds(self::RUNTIME_ROLE, 'rolsuper'), 'the fixture must start dangerous');
+
+        self::provision();
+
+        foreach (['rolsuper', 'rolbypassrls', 'rolreplication', 'rolcreaterole', 'rolcreatedb'] as $attribute) {
+            self::assertFalse(
+                self::roleHolds(self::RUNTIME_ROLE, $attribute),
+                \sprintf(
+                    '%s must have %s REMOVED, not merely never granted: a role that already existed is exactly the '
+                    . 'case the script skipped, and BYPASSRLS or SUPERUSER on the application credential means row '
+                    . 'security never applies to it at all',
+                    self::RUNTIME_ROLE,
+                    $attribute,
+                ),
+            );
+        }
+    }
+
+    /**
+     * **IT REASSIGNS RELATIONS OWNED BY THE RUNTIME ROLE — R1-3.**
+     *
+     * The script corrected the DATABASE owner and the SCHEMA owner and never a RELATION owner. That leaves the exact
+     * state § Gotchas 2026-08-01 records as a P0: `doctrine_migration_versions` in this repository's own dev database
+     * was owned by the runtime role, one `ALTER TABLE … DISABLE ROW LEVEL SECURITY` from every tenant's data. `FORCE
+     * ROW LEVEL SECURITY` does not help — it stops an owner SKIPPING a policy, not REMOVING one.
+     *
+     * It is also invisible to every other check. `schema-tenancy.php` refuses a schema whose tenant tables the
+     * runtime role owns, so a fresh migration is caught — but this script's whole reason to exist is a database that
+     * is ALREADY in the wrong shape, and a developer who runs it expects to be told it is fixed. The
+     * foreign-role refusal does not fire either: the runtime role is one of the script's own two, not a stranger.
+     */
+    public function testItReassignsRelationsOwnedByTheRuntimeRole(): void
+    {
+        $superuser = self::superuserConnection();
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::RUNTIME_ROLE));
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::OWNER_ROLE));
+        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', self::DATABASE));
+
+        // The DATABASE owned correctly, so this case isolates the RELATION axis — otherwise the ownership correction
+        // already under test could account for the result and the new statement would be unpinned.
+        $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', self::DATABASE, self::OWNER_ROLE));
+
+        $inDatabase = self::connectionTo(self::DATABASE, self::superuserName(), self::superuserPassword());
+        $inDatabase->exec(\sprintf('GRANT CREATE ON SCHEMA public TO %s', self::RUNTIME_ROLE));
+        $inDatabase->exec(\sprintf('SET ROLE %s', self::RUNTIME_ROLE));
+        $inDatabase->exec('CREATE TABLE migration_versions (version text PRIMARY KEY)');
+        $inDatabase->exec('RESET ROLE');
+
+        // THE DETECTOR, and it is the whole point: an owner can remove a policy from its own table whatever FORCE
+        // says, so this ownership IS the breach rather than a step towards one.
+        self::assertSame(
+            self::RUNTIME_ROLE,
+            self::relationOwner('migration_versions'),
+            'the fixture must start with the relation owned by the runtime role',
+        );
+
+        self::provision();
+
+        self::assertSame(
+            self::OWNER_ROLE,
+            self::relationOwner('migration_versions'),
+            'the relation must be REASSIGNED: an owner can ALTER TABLE ... DISABLE ROW LEVEL SECURITY on its own '
+            . 'table, and FORCE stops an owner SKIPPING a policy rather than REMOVING one',
+        );
+    }
+
+    /**
      * **IT REPAIRS A `public` SCHEMA CARRYING A PRE-15 OR HAND-MODIFIED PRIVILEGE SHAPE.**
      *
      * FOUR statements in the script are DEFENSIVE (three here, one in the sibling case below) — they describe a state a default PostgreSQL 18 cluster is not in —
@@ -496,6 +594,41 @@ final class DevDatabaseProvisioningTest extends TestCase
     private static function asOwner(string $statement): void
     {
         self::connectionTo(self::DATABASE, self::OWNER_ROLE, 'devprobe')->exec($statement);
+    }
+
+    /** One role attribute from `pg_roles`, by name — the catalogue rather than a `\d+` transcript. */
+    private static function roleHolds(string $role, string $attribute): bool
+    {
+        // The attribute name is interpolated into the SELECT LIST, which is why it is checked against a closed set
+        // first: a column name cannot be a bound parameter, and this class must not become the one place in the suite
+        // where a string reaches a query unchecked.
+        self::assertContains(
+            $attribute,
+            ['rolsuper', 'rolbypassrls', 'rolreplication', 'rolcreaterole', 'rolcreatedb', 'rolinherit', 'rolcanlogin'],
+            'not a pg_roles attribute this helper knows',
+        );
+
+        $result = self::superuserConnection()->query(
+            \sprintf("SELECT %s FROM pg_roles WHERE rolname = '%s'", $attribute, $role),
+        );
+        self::assertNotFalse($result);
+
+        return self::isPostgresTrue($result->fetchColumn());
+    }
+
+    /** The owner of one relation in the probe database, or `''` when there is no such relation. */
+    private static function relationOwner(string $relation): string
+    {
+        $result = self::connectionTo(self::DATABASE, self::superuserName(), self::superuserPassword())->query(
+            \sprintf(
+                'SELECT pg_get_userbyid(c.relowner) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace'
+                . " WHERE n.nspname = 'public' AND c.relname = '%s'",
+                $relation,
+            ),
+        );
+        self::assertNotFalse($result);
+
+        return (string) $result->fetchColumn();
     }
 
     /**

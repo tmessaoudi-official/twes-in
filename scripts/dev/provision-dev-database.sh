@@ -39,6 +39,16 @@
 #
 # RE-RUNNABLE, and that is a requirement rather than a nicety: a developer runs it before migrating and again
 # afterwards. It never overwrites an existing role's password — see the role block for why.
+#
+# IT CORRECTS, RATHER THAN ONLY CREATES, AND THAT IS THE WHOLE VALUE OF RUNNING IT ON AN EXISTING CLUSTER. Three
+# things are stated unconditionally so a database or role already in the wrong shape is repaired instead of
+# tolerated: the DATABASE's owner, the runtime role's ATTRIBUTES (a pre-existing role was previously skipped
+# outright, so a leftover SUPERUSER or BYPASSRLS `twes` was accepted in silence — and either one means row-level
+# security never applies to the application's own connection), and the OWNER OF EVERY RELATION the runtime role
+# holds (`REASSIGN OWNED BY`, because correcting the database and the schema left `doctrine_migration_versions`
+# owned by `twes` — the very shape § Gotchas 2026-08-01 records as a P0). The password is the one exception, and
+# the asymmetry is deliberate: a credential is the developer's choice, an attribute that defeats tenant
+# isolation is not.
 set -euo pipefail
 
 DB="${TWES_DEV_DB_NAME:-twes_in}"
@@ -183,6 +193,28 @@ PROBE
     if [[ "$present" != "0" ]]; then
         found_roles+=("$role")
 
+        # THE ATTRIBUTES ARE CORRECTED ON A ROLE THAT ALREADY EXISTS, AND THE PASSWORD IS NOT. The first version
+        # `continue`d here, so a `twes` left over as SUPERUSER or BYPASSRLS from an experiment was accepted in
+        # silence -- and that is not cosmetic: either attribute means row-level security NEVER APPLIES to the
+        # application's own connection, so every tenant's documents are readable through the ordinary code path
+        # while `schema-tenancy.php` still reports clean, because that gate reads the policies rather than asking
+        # who can ignore them. REPLICATION is the same breach by another road: `pg_basebackup` reads the whole
+        # cluster with row security never involved. [Reproduced: a pre-created runtime role kept all five
+        # attributes across a full provisioning run, exit 0.]
+        #
+        # The ASYMMETRY with the password is the point rather than an inconsistency. A password is the
+        # developer's own choice and overwriting it would clobber the test fixture's credential -- the reason
+        # this script never touches one. An attribute that defeats tenant isolation is not a choice this script
+        # can defer to. So: credentials left alone, attributes stated unconditionally, exactly as
+        # `ALTER DATABASE ... OWNER TO` below is issued unconditionally so a wrongly-created database is
+        # CORRECTED rather than tolerated.
+        #
+        # `ALTER ROLE` rather than probing first and altering conditionally: the statement is idempotent, so a
+        # probe would add a branch whose false arm is unreachable and untestable.
+        psql_do --set ROLE="$role" > /dev/null <<'SQL'
+ALTER ROLE :"ROLE" NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;
+SQL
+
         continue
     fi
 
@@ -240,6 +272,25 @@ GRANT CONNECT ON DATABASE :"DB" TO :"RUNTIME_ROLE";
 -- that connection NEXT -- certification round 11 read one tenant's rows while bound to another through one.
 -- `provision-test-database.sh` says "in production this grant should simply be absent"; a development database
 -- is the closest thing to production a developer touches, so it is absent here.
+
+-- EVERY RELATION THE RUNTIME ROLE OWNS IS HANDED TO THE OWNER. Correcting the DATABASE and the SCHEMA is not
+-- enough, and this was the gap: `doctrine_migration_versions` in this repository's own development database was
+-- owned by `twes` (§ Gotchas 2026-08-01), one `ALTER TABLE ... DISABLE ROW LEVEL SECURITY` from every tenant's
+-- data. `FORCE ROW LEVEL SECURITY` does not help -- it stops an owner SKIPPING a policy, not REMOVING one.
+--
+-- Nothing else sees it. `schema-tenancy.php` refuses a schema whose tenant tables the runtime role owns, so a
+-- FRESH migration is caught; this script exists for a database that is ALREADY in the wrong shape, and the
+-- foreign-object refusal above does not fire either, because the runtime role is one of this script's own two
+-- rather than a stranger.
+--
+-- `REASSIGN OWNED BY` rather than a loop over `pg_class` issuing `ALTER TABLE ... OWNER TO`: it covers every
+-- object KIND at once -- tables, sequences, views, functions, types -- so a kind nobody thought of is handled
+-- rather than left behind, which is the enumeration defect this repository has recorded against three separate
+-- gates. It is per-database and this block runs inside the target database, which is exactly the scope wanted.
+--
+-- It is a no-op when the runtime role owns nothing, so it is issued unconditionally for the same reason
+-- `ALTER DATABASE ... OWNER TO` is: a probe would add a branch whose false arm cannot be reached.
+REASSIGN OWNED BY :"RUNTIME_ROLE" TO :"OWNER_ROLE";
 
 -- THE CORE OF THE SCRIPT. `public` is world-creatable by default on a pre-15 dump and creatable by the
 -- database owner always, so both the PUBLIC grant and any explicit one to the runtime role have to go.
