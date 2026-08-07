@@ -77,6 +77,76 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 
         [$document, $lines, $charges] = $this->mapper->toRows($tenant, $identity, $invoice);
 
+        // **AN ISSUED DOCUMENT'S CONTENT IS IMMUTABLE, AND ONLY ITS STATE MAY MOVE. This branch is what makes the
+        // byte-identical-re-download guarantee TRUE rather than nearly true.**
+        //
+        // The previous version guarded `number` alone — `WHERE document.number IS NULL OR document.number =
+        // EXCLUDED.number` — while the same statement's SET list rewrote `number_rendered`, `type`, `currency` and
+        // `vat_rounding_point`, and the three statements below `DELETE` and re-`INSERT` every line and charge row with
+        // no predicate whatsoever. So once the number matched, every other byte-determining column of a legal document
+        // a client already holds was freely rewritable. All three round-2 lenses found it independently, and its own
+        // comment claimed the opposite in the same breath: *"the enforcement of the byte-identical-re-download
+        // guarantee … ever, by any path"*.
+        //
+        // `vat_rounding_point` is the one that proves the claim was not merely imprecise. It does not live on the
+        // aggregate at all — it lives on the caller-supplied `DocumentIdentity` — so "the aggregate refuses to mutate
+        // once issued" could never have covered it, and the two settings declare DIFFERENT TAX on identical lines.
+        // [Measured by the panel on two TND lines of 0.003 at 19%: `per_rate_group` → vatTotal 0.001, `per_line` →
+        // vatTotal 0.002.] § Gotchas 2026-07-31 classes the per-line VAT allocation rule as unfixable-later precisely
+        // because re-rendering must reproduce the figures a client holds.
+        //
+        // **A PRE-READ AND A BRANCH rather than a wider `WHERE`, and the reason is the CHILD ROWS.** A predicate on the
+        // parent upsert cannot protect the lines and charges, because by the time it has run the row carries a number
+        // either way and PostgreSQL offers no `OLD` in `RETURNING` — so nothing downstream can tell "was already
+        // issued" from "just became issued". Reading the stored number first is what makes that distinction available,
+        // and it costs one indexed single-row lookup inside a transaction the caller already holds a lock in.
+        //
+        // Every legitimate save still passes. An ISSUE reads NULL (a draft has no number) and takes the whole-rewrite
+        // path below, correctly. A re-save of the same state matches on every column and moves nothing — and skips a
+        // pointless `DELETE`+`INSERT` of identical children, which is a small bonus rather than the point. `cancel()`
+        // changes `state` and leaves the number alone, which is exactly what this permits and what a guard phrased as
+        // *"an issued row is immutable"* would have broken. What it refuses is a renumber, a re-rendering, a currency
+        // change, a type change, a rounding-point change, and any rewrite of the lines or charges.
+        $storedNumber = $this->connection->fetchOne(
+            'SELECT number FROM document WHERE company_id = :company_id AND id = :id',
+            ['company_id' => $document->companyId->toRfc4122(), 'id' => $document->id->toRfc4122()],
+        );
+
+        if (null !== $storedNumber && false !== $storedNumber) {
+            // STATE ONLY. Every other column is a predicate rather than an assignment, so a caller that changed one
+            // gets a refusal instead of a silent partial write — the difference between a control and a convention.
+            $moved = $this->connection->executeStatement(
+                'UPDATE document SET state = :state'
+                . ' WHERE company_id = :company_id AND id = :id'
+                . ' AND number = :number AND number_rendered = :number_rendered'
+                . ' AND type = :type AND currency = :currency AND vat_rounding_point = :vat_rounding_point',
+                [
+                    'state' => $document->state,
+                    'company_id' => $document->companyId->toRfc4122(),
+                    'id' => $document->id->toRfc4122(),
+                    'number' => $document->number,
+                    'number_rendered' => $document->numberRendered,
+                    'type' => $document->type,
+                    'currency' => $document->currency,
+                    'vat_rounding_point' => $document->vatRoundingPoint,
+                ],
+            );
+
+            if (0 === $moved) {
+                throw new \RuntimeException(\sprintf(
+                    'Refusing to rewrite issued document %s: it already carries document number %s, and an issued '
+                    . 'document is immutable apart from its state. Something in this save differs from what is '
+                    . 'stored — the number, its rendered form, the type, the currency or the VAT rounding point — and '
+                    . 'a client may already hold the document as it was rendered. Only a state transition (issue → '
+                    . 'cancel) may be saved over an issued row.',
+                    $identity->id,
+                    (string) $storedNumber,
+                ));
+            }
+
+            return;
+        }
+
         // UPSERT on the primary key, so `save()` is idempotent on the identity as the port promises. `ON CONFLICT`
         // names the PRIMARY KEY columns rather than a constraint name, which is what keeps this statement correct if
         // the constraint is ever renamed. `company_id` is in the key and never in the SET list: a document cannot
@@ -92,15 +162,14 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             // Invoice::issue() is the last transition that alters anything but state.
             . ' type = EXCLUDED.type, currency = EXCLUDED.currency,'
             . ' vat_rounding_point = EXCLUDED.vat_rounding_point'
-            // **A DOCUMENT NUMBER IS WRITE-ONCE, AND THIS IS THE STRUCTURAL HALF OF THAT.** The row must currently
-            // carry no number, or the same one being written. Everything legitimate satisfies it: a draft has NULL,
-            // an issue writes over NULL, a re-save of the same state matches, and a cancellation leaves the number
-            // alone. What it refuses is a RENUMBER — and that is not a hypothetical tidiness rule, it is the second
-            // half of R1-2. `findForMutation()` stops two concurrent issues from ever both reaching this statement;
-            // this stops the hole from existing at all if anything ever reads without holding the row, which is the
-            // *forgetting must be impossible* rule (§ Gotchas 2026-07-29) applied to the number instead of to the
-            // tenant. It is also the enforcement of the byte-identical-re-download guarantee: a client holding
-            // invoice 41 must not find it renumbered, ever, by any path.
+            // **A DOCUMENT NUMBER IS WRITE-ONCE, AND THIS IS THE RACE-SAFE HALF OF THAT.** Reaching this statement
+            // means the pre-read above saw no number, so the row is a draft or does not exist. The predicate is kept
+            // anyway, because the pre-read and this statement are two steps: a caller that did NOT take the row lock
+            // — `findForMutation()` is the port's guarantee, not something this class can compel — could have another
+            // transaction issue the document in between. Then `document.number` is set, neither arm holds, zero rows
+            // are written and the throw below fires. So the branch above is the RULE and this is the backstop
+            // against the interleaving, which is the shape R1-2 was: two concurrent issues, each acting on a read
+            // that was true when it was taken.
             //
             // A `WHERE` on `DO UPDATE` rather than a CHECK or a trigger, because only this form can compare the
             // EXISTING row to the incoming one. A CHECK sees one row; a trigger would put business meaning in a
@@ -118,11 +187,11 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ],
         );
 
-        // ZERO ROWS WRITTEN MEANS THE `WHERE` ABOVE REFUSED, and it is the only thing that can produce it: the row
-        // exists (or `ON CONFLICT` would have inserted it) and its number is neither absent nor the one being
-        // written. Throwing here rather than returning quietly is what makes the guard a guard — a silent no-op would
-        // leave the caller believing it had issued a document, commit the number it allocated, and produce exactly
-        // the hole this predicate exists to prevent.
+        // ZERO ROWS WRITTEN MEANS ANOTHER TRANSACTION ISSUED THIS DOCUMENT BETWEEN THE PRE-READ AND THIS STATEMENT.
+        // Nothing else can produce it: the row exists (or `ON CONFLICT` would have inserted it), the pre-read saw no
+        // number, and the predicate only fails once one is present. Throwing rather than returning quietly is what
+        // makes the guard a guard — a silent no-op would leave the caller believing it had issued a document, commit
+        // the number it allocated, and produce exactly the hole this exists to prevent.
         if (0 === $written) {
             throw new \RuntimeException(\sprintf(
                 'Refusing to renumber document %s: it already carries a different document number. A number is '

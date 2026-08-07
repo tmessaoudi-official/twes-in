@@ -1802,9 +1802,20 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     **But the lock is not what closes the hole.** `save()`'s upsert now carries
     `WHERE document.number IS NULL OR document.number = EXCLUDED.number` and throws on zero rows written, so a
     renumber is refused by the STATEMENT whatever read produced it. That is the *forgetting must be impossible* rule
-    applied to the number instead of to the tenant, and it is also the enforcement of the byte-identical-re-download
-    guarantee — which nothing enforced before. A `WHERE` on `DO UPDATE` rather than a CHECK (which sees one row) or a
-    trigger (business meaning in a persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses).
+    applied to the number instead of to the tenant. A `WHERE` on `DO UPDATE` rather than a CHECK (which sees one row) or
+    a trigger (business meaning in a persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses).
+    **This entry claimed that predicate was "the enforcement of the byte-identical-re-download guarantee", and it was
+    not — all three lenses of round 2 found the gap independently.** The predicate guarded `number` while the same
+    statement's SET list rewrote `number_rendered`, `type`, `currency` and `vat_rounding_point`, and the child rows
+    were `DELETE`d and re-`INSERT`ed with no predicate at all. `vat_rounding_point` is the one that proves the claim
+    could never have held: it does not live on the aggregate, so *"the aggregate refuses to mutate once issued"* did
+    not cover it, and the two settings declare DIFFERENT TAX on identical lines (measured: 0.001 versus 0.002 on two
+    TND lines of 0.003 at 19%). Closed 2026-08-07 by a PRE-READ AND A BRANCH — if the stored row already carries a
+    number, `save()` issues a state-only `UPDATE` whose every other column is a PREDICATE, and never touches the
+    children. A wider `WHERE` on the upsert could not have done it: by the time that statement has run the row carries
+    a number either way, and PostgreSQL offers no `OLD` in `RETURNING`, so nothing downstream can tell *was already
+    issued* from *just became issued*. The upsert keeps its predicate as the race backstop for a caller that did not
+    take the row lock.
   - **The predicate is about the NUMBER and deliberately not about the STATE**, which is what lets `cancel()` still
     save: same number, different state. A guard phrased as *"an issued row is immutable"* would have read more
     naturally and broken Wave 2.

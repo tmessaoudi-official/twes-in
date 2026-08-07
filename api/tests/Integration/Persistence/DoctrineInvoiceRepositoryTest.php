@@ -384,7 +384,9 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
      * `findForMutation()` stops two concurrent issues from both reaching `save()`. This stops the damage existing at
      * all if anything ever reads without holding the row — the *forgetting must be impossible* rule (§ Gotchas
      * 2026-07-29) applied to the number instead of to the tenant. It is also the enforcement of the
-     * byte-identical-re-download guarantee: a client holding invoice 41 must never find it renumbered, by any path.
+     * byte-identical-re-download guarantee: a client holding invoice 41 must never find it RE-RENDERED, by any path —
+     * and that claim was broader than the code until round 2, which is why the arms below cover every column that
+     * determines the bytes rather than the number alone.
      *
      * Three cases in one, because the guard is a conjunction and a predicate that refused too much would be worse
      * than none: rewriting a number is refused, re-saving the SAME number is not (the port promises `save()` is
@@ -432,13 +434,49 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         );
         self::assertSame(141, $afterCancel->invoice->number()?->sequence(), 'and it keeps the number it was issued');
 
-        // AND THE REFUSAL. A different number over the same row is what a stale-read issue produces.
-        $renumbered = $draft->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 142));
+        // AND THE REFUSALS — every byte-determining column, not just the number.
+        //
+        // Round 2 found the predicate guarding `number` alone while the same statement rewrote `number_rendered`,
+        // `type`, `currency` and `vat_rounding_point`, and the child rows were replaced with no guard at all. So this
+        // case asserted the one column that was covered and read as though it covered the guarantee. Each arm below is
+        // a column that was freely rewritable on an issued legal document.
+        $refusals = [
+            'a different sequence' => $draft->issue(
+                new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 142),
+            ),
+            // SAME sequence, WIDER rendering — the arm the old predicate satisfied with `141 = 141`. This is what a
+            // per-tenant number-width setting would produce on an already-issued document.
+            'a wider rendering of the same sequence' => $draft->issue(
+                new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(8), 141),
+            ),
+        ];
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('Refusing to renumber document');
+        foreach ($refusals as $what => $rewrite) {
+            try {
+                self::inTransaction(static fn() => $repository->save($identity, $rewrite));
+                self::fail('An issued document must refuse ' . $what);
+            } catch (\RuntimeException $refused) {
+                self::assertStringContainsString('Refusing to rewrite issued document', $refused->getMessage(), $what);
+            }
+        }
 
-        self::inTransaction(static fn() => $repository->save($identity, $renumbered));
+        // A DIFFERENT CURRENCY and a different ROUNDING POINT are refused too, and both travel on the IDENTITY rather
+        // than on the aggregate — `vat_rounding_point` is not a property of `Invoice` at all, so "the aggregate refuses
+        // to mutate once issued" never covered it. The two rounding points declare DIFFERENT TAX on identical lines,
+        // which is why this is the arm that matters most.
+        $otherPoint = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerLine);
+
+        try {
+            self::inTransaction(static fn() => $repository->save($otherPoint, $issued));
+            self::fail('An issued document must refuse a change of VAT rounding point');
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('Refusing to rewrite issued document', $refused->getMessage());
+        }
+
+        // AND THE CHILD ROWS SURVIVED EVERY REFUSAL. The `DELETE`+re-`INSERT` of lines and charges carried no
+        // predicate, so a refusal that fired only on the parent would still have emptied them — asserted directly
+        // rather than inferred from the exception, because the exception is what a partial write looks like too.
+        self::assertCount(1, $reload()->invoice->lines(), 'the issued document still has its line');
     }
 
     /** An ill-formed id is refused before it reaches a query, by the same rule `DocumentIdentity` enforces. */

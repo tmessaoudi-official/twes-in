@@ -180,6 +180,54 @@ final class InvoiceProviderTest extends TestCase
     }
 
     /**
+     * **THE ROUNDING MODE IS `HalfUp`, ASSERTED ON A DIGIT THAT ONLY `HalfUp` PRODUCES.**
+     *
+     * `InvoiceRepresentation::MODE` decided every amount on the wire and survived **all eight** rounding modes with the
+     * suite green — including `Up` and `Ceiling`, which move a figure upward, so this was not a case of the fixtures
+     * being rounding-free. `RoundingMode::Unnecessary` proved that directly: nine cases errored, meaning nine fixtures
+     * do reach a value that requires rounding and not one assertion in the tree looked at the resulting digits. Every
+     * existing assertion is mode-INVARIANT by construction — is it a string, does create equal fetch, do the shares
+     * sum to the total.
+     *
+     * So the vector is chosen to be the one thing a mode-invariant assertion cannot be: an exact TIE.
+     * `0.010 × 5% = 0.0005` in TND, which has three decimals, so the third decimal is decided purely by the mode —
+     * `half_up` gives `0.001`, while `down`, `floor` and `half_even` all give `0.000` and `up`/`ceiling` would give
+     * `0.001` on the *positive* side but differ from `half_up` on a negative amount Wave 2's credit note will reach.
+     * `docs/spec/pricing-vectors.json` § `conventions.rates` mandates *"half_up on every amount and every rate. There
+     * is NO per-case override"*, so this pins the API to the cross-tier convention rather than to a local preference.
+     */
+    public function testTheWireRoundsHalfUpOnAnExactTie(): void
+    {
+        $tnd = Currency::of('TND');
+        // ONE line, at a rate and quantity whose VAT lands exactly on half a millime.
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('0.010', $tnd), Rate::fromPercentage('5')));
+
+        $resource = $this->represent($invoice);
+
+        self::assertSame(
+            '0.001',
+            $resource->totals->vatTotal,
+            'an exact tie must round HALF UP: 0.010 at 5% is 0.0005 TND, and truncation or half-even would give 0.000',
+        );
+
+        // AND THE OTHER DIRECTION, which is what distinguishes `HalfUp` from `Up` and `Ceiling`. On a positive tie all
+        // three agree, so the assertion above kills `Down`, `Floor` and `HalfEven` and leaves those two alive
+        // [measured]. Below the tie they diverge: 0.010 at 1% is 0.0001 TND, which `half_up` takes to 0.000 while
+        // `up` and `ceiling` take to 0.001. Two vectors, one per side of the midpoint, is what closes all eight modes.
+        $belowTheTie = $this->represent(
+            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('0.010', $tnd), Rate::fromPercentage('1'))),
+        );
+
+        self::assertSame(
+            '0.000',
+            $belowTheTie->totals->vatTotal,
+            'below the tie must round DOWN: 0.010 at 1% is 0.0001 TND, and `up` or `ceiling` would give 0.001. '
+            . 'Together with the tie above, these are the only assertions in the suite that see the rounding mode.',
+        );
+    }
+
+    /**
      * A MISSING DOCUMENT IS A 404 — and so is one belonging to ANOTHER TENANT, indistinguishably.
      *
      * That is the design of row-level security rather than a limitation of it: an error naming the document would

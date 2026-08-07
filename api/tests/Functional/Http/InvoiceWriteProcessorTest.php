@@ -191,6 +191,34 @@ final class InvoiceWriteProcessorTest extends TestCase
     }
 
     /**
+     * **EVERY DOCUMENT CREATED OVER HTTP IS `per_rate_group`, AND NOTHING ASSERTED IT.**
+     *
+     * `CreateInvoiceProcessor` decides the VAT rounding point for every invoice the API creates, because
+     * `NewInvoiceInput` deliberately has no such field — the processor's own comment says *"a client picking per
+     * request would be a client picking how much tax a document declares"*. Round 2 flipped that one value to
+     * `PerLine` and the whole suite stayed green, so the single most consequential constant on the write path was
+     * enforced by a comment.
+     *
+     * The two settings are not cosmetic: on identical lines they produce different tax (measured by the panel at
+     * 0.001 versus 0.002 on two TND lines of 0.003 at 19%), and the choice is PERSISTED per document precisely so a
+     * later configuration change cannot restate a document already sent. So this asserts it where a client sees it —
+     * on the create response — rather than by reading the constant back, which would be a test of the assignment
+     * rather than of the contract.
+     *
+     * `InvoiceProviderTest::testTheRoundingPointTravelsWithTheDocument()` does NOT cover this: it builds its own
+     * `DocumentIdentity` and never goes through a processor.
+     */
+    public function testEveryDocumentCreatedOverHttpRoundsVatPerRateGroup(): void
+    {
+        self::assertSame(
+            'per_rate_group',
+            self::create(self::validInput())->totals->vatRoundingPoint,
+            'the API fixes the rounding point, and per_rate_group is the choice — a client cannot pick how much tax '
+            . 'its document declares, and this value is frozen onto the document at creation',
+        );
+    }
+
+    /**
      * **A CORRUPT ROW IS NOT A 404 ON THE WRITE PATH EITHER — and this is where the sweep missed.**
      *
      * `InvoiceProviderTest` has had this case since the P1 sweep; its counterpart here did not exist, and the
