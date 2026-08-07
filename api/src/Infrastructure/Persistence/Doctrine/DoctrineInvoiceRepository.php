@@ -18,6 +18,7 @@ use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
+use Twes\Domain\Pricing\Rate;
 use Twes\Infrastructure\Tenancy\TenantContext;
 use Twes\Infrastructure\Tenancy\TenantId;
 
@@ -49,6 +50,30 @@ use Twes\Infrastructure\Tenancy\TenantId;
  */
 final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 {
+    /**
+     * The scale {@see self::childRowsAgree()} compares decimal columns at.
+     *
+     * **THE PROPERTY IS "AT LEAST AS WIDE AS EVERY DECIMAL COLUMN COMPARED", NOT "THE WIDEST OF THEM", and stating
+     * it the second way is what made this wrong.** The comment here read *"SCALE 6, the widest of the decimal
+     * columns involved"* — and 6 was the widest of `quantity NUMERIC(21,6)` and `unit_net NUMERIC(19,4)` while
+     * `vat_rate` is `NUMERIC(27,12)`. So a re-save of an ISSUED document changing the rate from 19 % to 19.00001 %
+     * compared EQUAL, the state-only branch returned success, and the change was silently discarded — which is
+     * precisely the *"ignoring a change is not refusing one"* behaviour round 3 added that branch's refusal to
+     * eliminate. Found by round 4's correctness lens; `NewInvoiceLineInput` accepts that rate and it travels on the
+     * wire at ten decimals, so the two are visibly different documents.
+     *
+     * A scale WIDER than a column can never be wrong, which is why one constant is safe once it is chosen this way:
+     * the column cannot hold a digit beyond its own scale, so nothing distinguishing is truncated, and `bccomp`
+     * treats trailing zeros as equal, so no spurious difference is introduced either. Under-shooting is the only
+     * failure mode, and it fails SILENTLY — the direction that costs the most.
+     *
+     * Anchored to `Rate::FRACTION_SCALE` rather than written as `12`, because that constant is what fixes the
+     * `vat_rate` column's scale in the first place; a literal here would be a second copy free to disagree with it.
+     * If a decimal column is ever added with a scale beyond it, this must move — and `Rate`'s own docblock argues
+     * that six decimals is not enough for a rate, which was the warning already in the tree when 6 was chosen.
+     */
+    private const int COMPARISON_SCALE = Rate::FRACTION_SCALE;
+
     public function __construct(
         private Connection $connection,
         private TenantContext $tenantContext,
@@ -438,9 +463,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                 $storedValue = $stored[$index][$column] ?? null;
 
                 if (\in_array($column, $decimalColumns, true)) {
-                    // SCALE 6, the widest of the decimal columns involved, so a comparison never truncates a digit
-                    // that distinguishes two values.
-                    if (0 !== bccomp((string) $value, (string) $storedValue, 6)) {
+                    if (0 !== bccomp((string) $value, (string) $storedValue, self::COMPARISON_SCALE)) {
                         return false;
                     }
 

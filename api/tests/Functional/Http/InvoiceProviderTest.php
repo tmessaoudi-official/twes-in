@@ -145,6 +145,40 @@ final class InvoiceProviderTest extends TestCase
         );
     }
 
+    /**
+     * **THE SAME RULE ON A FIXTURE THAT CAN ACTUALLY SEE IT, because `tndInvoice()` cannot.**
+     *
+     * Round 4's correctness lens replaced `$vatByLine[$position]` with `PriceCalculator::vat($net, $rate, MODE)` —
+     * recomputing each line's VAT instead of taking its ALLOCATED share, which is exactly the defect the
+     * largest-remainder rule exists to prevent — and **both suites stayed green**. Not an equivalent mutant: it is a
+     * different set of numbers on the wire. The reason nothing saw it is that `tndInvoice()` has **zero allocation
+     * remainder**, so the allocated and the recomputed shares are byte-identical there and the assertion above cannot
+     * distinguish two implementations. Its own comment anticipates a DIFFERENT vacuity (one line per rate group) and
+     * misses this one — the fixture-cannot-express-the-dangerous-shape rule (`CLAUDE.md` § Gotchas 2026-07-29)
+     * arriving through an arithmetic coincidence rather than a missing role.
+     *
+     * Two TND lines of `0.013` at 19 % is the smallest fixture with a remainder: the group base is `0.026`, whose VAT
+     * rounds to `0.005`, while each line recomputes to `0.002` — so recomputing gives `[0.002, 0.002]` summing to
+     * `0.004`, which is a **millime of tax that belongs to the document and appears on no line**.
+     *
+     * The EXACT shares are asserted here, not only their sum. The case above is right to assert the property rather
+     * than a tie-break-dependent figure; this one is the complement, and it pins the tie-break too — ties go to the
+     * EARLIEST line, so the extra millime is on line 0. Both remainders are equal here, which is what makes this a
+     * tie at all.
+     */
+    public function testThePerLineVatIsTheAllocatedShareAndNotARecomputation(): void
+    {
+        $resource = $this->represent($this->remainderInvoice());
+
+        self::assertSame(
+            ['0.003', '0.002'],
+            array_map(static fn($line): string => $line->vat, $resource->lines),
+            'the per-line VAT must be the ALLOCATED share; [0.002, 0.002] is what recomputing net × rate produces, '
+            . 'and it loses a millime the document owes',
+        );
+        self::assertSame('0.005', $resource->totals->vatTotal);
+    }
+
     /** A draft carries neither half of a number; an issued document carries both. */
     public function testADraftHasNoNumberAndAnIssuedDocumentHasBoth(): void
     {
@@ -177,6 +211,21 @@ final class InvoiceProviderTest extends TestCase
             'per_rate_group',
             $this->represent($this->tndInvoice())->totals->vatRoundingPoint,
         );
+
+        // **AND IT GOVERNS THE FIGURES, NOT ONLY THE LABEL.** Round 4's correctness lens hardcoded
+        // `VatRoundingPoint::PerRateGroup` for the COMPUTATION while leaving the emitted field reading the
+        // identity, and both suites stayed green — so a `per_line` document would have been served with
+        // `per_rate_group` numbers while declaring `per_line`. The docblock above says the value exists because
+        // "a client that re-computes a total to preview it needs to know which rule to apply": that makes the label
+        // a CLAIM ABOUT THE FIGURES, and asserting only the label asserts only that we can spell it.
+        //
+        // `tndInvoice()` cannot see this either — it has no allocation remainder, so both points give identical
+        // numbers. Same root cause as the recomputation mutant, and one fixture kills both.
+        $perRateGroup = $this->represent($this->remainderInvoice());
+        $perLine = $this->represent($this->remainderInvoice(), VatRoundingPoint::PerLine);
+
+        self::assertSame(['0.005', '0.031'], [$perRateGroup->totals->vatTotal, $perRateGroup->totals->total]);
+        self::assertSame(['0.004', '0.030'], [$perLine->totals->vatTotal, $perLine->totals->total]);
     }
 
     /**
@@ -333,6 +382,28 @@ final class InvoiceProviderTest extends TestCase
             ->withLine(new DocumentLine('3', Money::of('1.234', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('7', Money::of('0.567', $tnd), Rate::fromPercentage('19')))
             ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
+    }
+
+    /**
+     * The smallest invoice whose VAT allocation carries a REMAINDER, which `tndInvoice()` does not.
+     *
+     * Two TND lines of `0.013` at 19 %. Group base `0.026` → VAT `0.00494` → `0.005`. Each line alone recomputes to
+     * `0.00247` → `0.002`, so the two rounded per-line figures sum to `0.004` and a millime has to be ALLOCATED.
+     * [Verified: `per_rate_group` → `vatTotal=0.005 total=0.031 perLine=[0.003, 0.002]`; `per_line` →
+     * `vatTotal=0.004 total=0.030 perLine=[0.002, 0.002]`.]
+     *
+     * **Separate from `tndInvoice()` rather than replacing it.** That fixture is used by six other cases whose
+     * subjects are unrelated (numbers, states, string encoding, 404s), and widening it would make each of them
+     * depend on allocation arithmetic they do not care about. This one exists to be the case where the two rules
+     * DISAGREE, which is the only place either can be pinned.
+     */
+    private function remainderInvoice(): Invoice
+    {
+        $tnd = Currency::of('TND');
+
+        return Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')))
+            ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')));
     }
 
     private function represent(

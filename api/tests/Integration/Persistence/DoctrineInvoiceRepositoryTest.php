@@ -492,6 +492,30 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
             self::assertStringContainsString('different line or charge set', $refused->getMessage());
         }
 
+        // A CHANGED VAT RATE, WHICH THE COMPARISON SCALE DECIDES AND WHICH ROUND 4 FOUND SILENTLY ACCEPTED. The case
+        // above varies `quantity` and `unit_net` only, so it is satisfied at ANY comparison scale from 4 upwards —
+        // and the shipped constant was 6, chosen as "the widest of the decimal columns involved" while `vat_rate` is
+        // `NUMERIC(27,12)`. 19 % against 19.00001 % differ in the seventh decimal of the stored FRACTION
+        // (`0.190000000000` vs `0.190000100000`), so at scale 6 they compared EQUAL and this save returned success
+        // having written nothing.
+        //
+        // The rate is deliberately the ONLY thing that differs here. Varying anything else would let the quantity or
+        // unit-price comparison satisfy the assertion and leave the rate axis exactly as unpinned as it was.
+        $differentRate = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19.00001')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
+
+        try {
+            self::inTransaction(static fn() => $repository->save($identity, $differentRate));
+            self::fail(
+                'An issued document must REFUSE a changed VAT RATE. Accepting it means a rate a client can type '
+                . 'differs from the stored one by less than the comparison scale can see, so the save reports '
+                . 'success and discards the change.',
+            );
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('different line or charge set', $refused->getMessage());
+        }
+
         // A CHANGED CHARGE SET likewise — asserted separately because the two comparisons are separate calls and one
         // could be dropped without the other.
         $withACharge = $draft
