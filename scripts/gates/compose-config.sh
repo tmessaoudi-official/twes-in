@@ -365,6 +365,35 @@ for name, svc in sorted(services.items()):
             'superuser is exempt from row-level security entirely, so every tenancy assertion in this project would '
             'be vacuous against it.' % (name, runtime_role))
 
+# 1b-bis. EVERY SERVICE THAT CONNECTS AS THE RUNTIME ROLE MUST CARRY `TWES_ASSERT_REVOKED_CAPABILITIES`.
+#
+#     Round 3's R3S-4: `infra/.env` set it to 1 with a comment saying "TRUE for the containerised stack", and it was
+#     absent from the `x-api-environment` anchor, from every Dockerfile and from the entrypoint — so it was only a
+#     compose INTERPOLATION variable and never entered a container. With it unset, `api/.env`'s 0 won in
+#     `APP_ENV=prod`, and the two capability assertions whose own docblock says *"this is the only place they can run
+#     at all"* ran in no place at all.
+#
+#     Asked of the RENDERED environment per service, not of the file: a value in `.env` that never reaches a container
+#     is exactly the defect, so reading `.env` would reproduce it. And asked of the services that connect as the
+#     runtime role rather than of all of them, because that is the set the assertions are about — `database` and
+#     `valkey` have no `DATABASE_URL` and no PHP process to assert anything.
+for name, svc in sorted(services.items()):
+    env = svc.get('environment') or {}
+    if dsn_user(env.get('DATABASE_URL')) is None:
+        continue
+    flag = env.get('TWES_ASSERT_REVOKED_CAPABILITIES')
+    if flag is None:
+        problems.append(
+            '%s connects as a runtime role and does not carry TWES_ASSERT_REVOKED_CAPABILITIES in its rendered '
+            'environment. The two capability assertions it gates -- no temporary objects, no large objects -- can '
+            'run NOWHERE else, and pg_largeobject cannot carry row-level security at any privilege level. A value '
+            'set only in infra/.env is a compose interpolation variable and never reaches a container.' % name)
+    elif str(flag).strip() not in ('1', 'true', 'True'):
+        problems.append(
+            '%s carries TWES_ASSERT_REVOKED_CAPABILITIES=%r, which disables the two capability assertions in the '
+            'containerised stack -- the one deployment whose database init script performs the revocations they '
+            'check.' % (name, flag))
+
 # 1c. NO SERVICE MAY OVERRIDE THE SERVER INVOCATION. FrankenPHP takes `--worker` as a CLI FLAG -- an entire switch
 #     class no text rule in this repository had a rule for, found by a certification round and proven resident
 #     (four requests, one pid). `docker-entrypoint.sh` ends in `exec "$@"`, so a compose `command:` IS the server
@@ -674,7 +703,7 @@ for overlay in compose.override.yaml compose.prod.yaml; do
     then
         failures=$((failures + 1))
     else
-        printf '  ok   — %s: owner credential confined, scheduler pinned to 1, edge network minimal, every consumed receiver defined, capabilities dropped where required\n' "$overlay"
+        printf '  ok   — %s: owner credential confined, scheduler pinned to 1, edge network minimal, every consumed receiver defined, capabilities dropped where required, capability assertions enabled on every runtime-role service\n' "$overlay"
     fi
 done
 

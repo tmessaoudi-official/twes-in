@@ -2481,6 +2481,55 @@ PYCAP
   fi
   mv "$cc_root/prod.held" "$cc_root/infra/compose.prod.yaml"
 
+  # MUTANT F-bis -- THE CAPABILITY-ASSERTION FLAG REMOVED FROM THE ENVIRONMENT ANCHOR. Round 3's R3S-4: it was set in
+  # `infra/.env` with a comment claiming "TRUE for the containerised stack" and was absent from the anchor, from every
+  # Dockerfile and from the entrypoint -- so it was only a compose INTERPOLATION variable, never entered a container,
+  # and `api/.env`'s 0 won. The two assertions whose docblock says "this is the only place they can run at all" ran in
+  # no place at all. Asserted against the RENDERED environment, because a value in `.env` that never reaches a container
+  # is precisely the defect.
+  cp "$cc_root/infra/compose.yaml" "$cc_root/base.held"
+  python3 - "$cc_root/infra/compose.yaml" <<'PYFLAG'
+import re, sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+n = re.sub(r"\n *TWES_ASSERT_REVOKED_CAPABILITIES: '\$\{TWES_ASSERT_REVOKED_CAPABILITIES:-1\}'", "", s)
+assert n != s, 'the flag was not found in the anchor'
+p.write_text(n)
+PYFLAG
+  cc_f2="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_f2_rc=0 || cc_f2_rc=$?
+  if (( cc_f2_rc != 0 )) && printf '%s' "$cc_f2" | grep -qF 'does not carry TWES_ASSERT_REVOKED_CAPABILITIES'; then
+    printf '  ok   — compose-config catches the capability-assertion flag missing from a runtime-role service\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config missed a runtime-role service with no TWES_ASSERT_REVOKED_CAPABILITIES (rc=%s)\n' "$cc_f2_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/base.held" "$cc_root/infra/compose.yaml"
+
+  # MUTANT F-ter -- the same flag present but DISABLED, which is the likelier regression: somebody debugging a refusal
+  # flips it and the containerised stack silently stops asserting the one thing only it can assert.
+  #
+  # `infra/.env` IS WHAT IS MUTATED, not the anchor's `:-1` default. The first version of this case changed the default
+  # and SURVIVED: `.env` sets the variable, so the interpolation resolves to that value and the default is never
+  # consulted. Worth keeping as a note -- a `${VAR:-default}` mutant is inert whenever the variable is actually set,
+  # which is exactly when it matters.
+  cp "$cc_root/infra/.env" "$cc_root/env.held"
+  python3 - "$cc_root/infra/.env" <<'PYFLAG0'
+import sys, pathlib
+p = pathlib.Path(sys.argv[1]); s = p.read_text()
+n = s.replace("TWES_ASSERT_REVOKED_CAPABILITIES=1", "TWES_ASSERT_REVOKED_CAPABILITIES=0")
+assert n != s, 'the flag was not found in infra/.env'
+p.write_text(n)
+PYFLAG0
+  cc_f3="$(cd "$cc_root" && bash scripts/gates/compose-config.sh 2>&1)" && cc_f3_rc=0 || cc_f3_rc=$?
+  if (( cc_f3_rc != 0 )) && printf '%s' "$cc_f3" | grep -qF 'which disables the two capability assertions'; then
+    printf '  ok   — compose-config catches the capability-assertion flag disabled in the containerised stack\n'
+    passed=$((passed + 1))
+  else
+    printf '  FAIL — compose-config accepted TWES_ASSERT_REVOKED_CAPABILITIES=0 (rc=%s)\n' "$cc_f3_rc"
+    failed=$((failed + 1))
+  fi
+  mv "$cc_root/env.held" "$cc_root/infra/.env"
+
   # MUTANT G -- `cap_drop: [ALL]` re-granted hollowly. THE ATTACK A CERTIFICATION REVIEWER USED: adding
   # `cap_add: [SYS_ADMIN, NET_RAW, SYS_PTRACE]` to `migrate` -- the container holding the OWNER credential -- left the
   # gate reporting `capabilities dropped where required`. SYS_ADMIN there is a container-escape primitive and NET_RAW

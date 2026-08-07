@@ -141,6 +141,16 @@ services:
     # real question is whether this database has had its capabilities revoked, and the provisioned test database
     # deliberately grants TEMPORARY because the column-fidelity suite needs a scratch table.
     Twes\Infrastructure\Tenancy\Doctrine\ConnectionProvisioningGuardMiddleware:
+        # `autoconfigure: false` STRIPS EVERY AUTOCONFIGURATION, NOT JUST THE MIDDLEWARE TAG — and round 3 is where
+        # that mattered. This class became `ResetInterface` to bound its own staleness window (its
+        # `$verifiedInThisKernel` array sits in front of the pool, so no TTL governed it, and the worker runs
+        # `--time-limit=3600`), and the `kernel.reset` tag never appeared: `debug:container --tag=kernel.reset` showed
+        # zero hits with the flag on and two with it off. So the tag is declared explicitly below.
+        #
+        # **This also narrows what round 2 concluded.** That round measured `autoconfigure: false` as cosmetic for the
+        # CONNECTION SCOPING question — which is true, `MiddlewaresPass` skips a tag carrying no `connection` — and the
+        # note that came out of it read as though the flag were cosmetic in general. It is not. It is a blanket opt-out,
+        # and every interface-driven tag this class ever implements has to be written by hand from here on.
         autoconfigure: false
         arguments:
             $isolation: '@Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation'
@@ -149,6 +159,10 @@ services:
             $assertRevokedCapabilities: '%env(bool:TWES_ASSERT_REVOKED_CAPABILITIES)%'
         tags:
             - { name: 'doctrine.middleware', connection: 'default' }
+            # THE RESET TAG, BY HAND, because `autoconfigure: false` above suppressed the one Symfony would have added
+            # for `ResetInterface`. It empties this service's in-kernel short-circuit between units of work, which is
+            # what makes `$verificationTtl` above the real bound rather than a documented one.
+            - { name: 'kernel.reset', method: 'reset' }
 
     # THE REQUEST-TENANCY SEAM. Wave 1 scaffolding; Wave 7 replaces the resolver with an authenticated one and
     # DELETES the header adapter, the env variable and the gate together.

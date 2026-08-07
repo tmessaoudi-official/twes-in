@@ -341,4 +341,49 @@ final class ConnectionProvisioningGuardTest extends TestCase
             ConnectionProvisioningGuardMiddleware::cacheKeyFor($base),
         );
     }
+
+    /**
+     * **A WARM CACHE ENTRY DOES NOT LET A PINNED SESSION THROUGH — R3S-5, and round 2's fix guarded the wrong route.**
+     *
+     * Round 2 put `options` in the cache key on the stated ground that it is *"the one connection parameter that
+     * changes a SESSION-scoped setting"*. Round 3 measured that DBAL's `pdo_pgsql` driver never forwards `options` to
+     * libpq at all — `PDO\PgSQL\Driver::constructPdoDsn()` emits only `host, port, dbname, sslmode, sslrootcert,
+     * sslcert, sslkey, sslcrl, application_name, gssencmode` — so the fix was inert. The route that DOES pin is
+     * `PGOPTIONS` in the process environment, which is not a connection parameter and therefore cannot be keyed on at
+     * all. The panel then read another tenant's row inside a transaction the application believed was unbound, purely
+     * on a warm entry written by a clean process; the pool is `@cache.app`, cross-process, shared by `api`, `worker`
+     * and `scheduler` through one volume.
+     *
+     * So the key stopped being the control. The two per-session assertions now run on EVERY acquisition while the
+     * expensive catalogue ones stay cached, and this case holds that split: one clean connection warms the pool, then a
+     * second under the SAME key arrives with `PGOPTIONS` pinning a tenant and must still be refused.
+     *
+     * `putenv()` because that is the actual vector rather than a stand-in for it — and restored in a `finally`, since a
+     * leaked `PGOPTIONS` would pin every later case in the process.
+     */
+    public function testAWarmCacheEntryDoesNotLetAPinnedSessionThrough(): void
+    {
+        $pool = new ArrayAdapter();
+
+        // ONE CLEAN ACQUISITION, which writes the catalogue verification into the pool. `executeQuery` because
+        // `getConnection()` is lazy — the first query is what triggers `connect()` and therefore the guard.
+        $this->guardedConnection($pool)->executeQuery('SELECT 1');
+        self::assertNotEmpty($pool->getValues(), 'the clean acquisition must warm the pool, or this proves nothing');
+
+        $previous = getenv('PGOPTIONS');
+        putenv('PGOPTIONS=-c ' . PostgresRowLevelSecurityIsolation::TENANT_SETTING . '=0199a5b2-0000-7000-8000-0000000009fe');
+
+        try {
+            $this->guardedConnection($pool)->executeQuery('SELECT 1');
+            self::fail(
+                'A session arriving with a tenant already pinned must be refused even on a cache HIT. The pin is '
+                . 'SESSION state, so a verification written by a clean process says nothing about this one — and '
+                . 'bind() then writes a transaction-local value on top of it that a ROLLBACK TO SAVEPOINT reverts to.',
+            );
+        } catch (\Doctrine\DBAL\Exception|\RuntimeException $refused) {
+            self::assertStringContainsString('already carries', $refused->getMessage() . ($refused->getPrevious()?->getMessage() ?? ''));
+        } finally {
+            false === $previous ? putenv('PGOPTIONS') : putenv('PGOPTIONS=' . $previous);
+        }
+    }
 }

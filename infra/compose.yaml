@@ -63,6 +63,17 @@ x-api-environment: &api-environment
   DEFAULT_LOCALE: '${DEFAULT_LOCALE:-en}'
   TRUSTED_PROXIES: '${TRUSTED_PROXIES:-REMOTE_ADDR}'
   APP_RUNTIME: '${APP_RUNTIME:-Symfony\Component\Runtime\SymfonyRuntime}'
+  # THE CAPABILITY ASSERTIONS, WHICH RAN NOWHERE UNTIL ROUND 3. `infra/.env` has set this to 1 since the tier landed,
+  # with a comment saying "TRUE for the containerised stack" — but it was absent from this anchor, from every
+  # Dockerfile and from the entrypoint, so it was only a compose INTERPOLATION variable and never entered a container.
+  # With it unset, `api/.env`'s 0 won, and `assertConnectionCannotCreateTemporaryObjects()` and
+  # `assertConnectionCannotCreateLargeObjects()` — whose docblock says "this is the only place they can run at all" —
+  # ran in no place at all.
+  #
+  # It could not simply be plumbed: `infra/database/init/10-roles.sh` performed no large-object revocation, so the
+  # assertion would have refused every connection on a database provisioned exactly as we provision it. That
+  # revocation landed in the same change as this line.
+  TWES_ASSERT_REVOKED_CAPABILITIES: '${TWES_ASSERT_REVOKED_CAPABILITIES:-1}'
 
 x-api-depends: &api-depends
   database:

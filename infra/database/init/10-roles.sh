@@ -148,6 +148,33 @@ psql --username "$POSTGRES_USER" --dbname "$DB" \
 	    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"runtime_role";
 	ALTER DEFAULT PRIVILEGES FOR ROLE :"owner_role" IN SCHEMA public
 	    GRANT USAGE, SELECT ON SEQUENCES TO :"runtime_role";
+
+	-- ----------------------------------------------------------------------------------------------------------
+	-- LARGE-OBJECT WRITERS, REVOKED FROM PUBLIC. Round 3's R3S-4, and the half without which the other half is
+	-- unshippable.
+	--
+	-- `pg_largeobject` CANNOT CARRY ROW-LEVEL SECURITY at any privilege level, so a large object is data that
+	-- escapes tenancy entirely — the same class as TRUNCATE, by a different route. Every one of these six functions
+	-- ships with a NULL `proacl`, which means PUBLIC holds EXECUTE, which means the restricted runtime role holds
+	-- it. [Verified on 18.4: `lo_creat`, `lo_create`, `lo_from_bytea`, `lo_put` and `lowrite` all report a NULL acl
+	-- and `has_function_privilege('twes', …)` true on an untouched cluster.]
+	--
+	-- `assertConnectionCannotCreateLargeObjects()` has existed since Wave 0 and is composed into the
+	-- acquisition-time guard behind `TWES_ASSERT_REVOKED_CAPABILITIES`. Round 3 found that flag never reaches a
+	-- container — so the assertion ran NOWHERE — and, crucially, that plumbing it alone would have made the stack
+	-- refuse every connection, because this revocation did not exist. Both halves land together or neither works.
+	--
+	-- The list is TAKEN FROM the checker's own `LARGE_OBJECT_WRITERS` constant rather than written independently:
+	-- round 15 found `lo_creat` missing from both the constant and the documented REVOKE block, which is the
+	-- two-copies-of-one-list defect this project records against every other enumeration in it. If the constant
+	-- grows, this block is what has to grow with it, and `compose-config.sh` asserts the two agree.
+	REVOKE EXECUTE ON FUNCTION lo_creat(integer) FROM PUBLIC;
+	REVOKE EXECUTE ON FUNCTION lo_create(oid) FROM PUBLIC;
+	REVOKE EXECUTE ON FUNCTION lo_from_bytea(oid, bytea) FROM PUBLIC;
+	REVOKE EXECUTE ON FUNCTION lo_import(text) FROM PUBLIC;
+	REVOKE EXECUTE ON FUNCTION lo_import(text, oid) FROM PUBLIC;
+	REVOKE EXECUTE ON FUNCTION lo_put(oid, bigint, bytea) FROM PUBLIC;
+	REVOKE EXECUTE ON FUNCTION lowrite(integer, bytea) FROM PUBLIC;
 	SQL
 
 # --------------------------------------------------------------------------------------------------------------

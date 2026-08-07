@@ -16,6 +16,7 @@ use Doctrine\DBAL\Driver;
 use Doctrine\DBAL\Driver\Connection as DriverConnection;
 use Doctrine\DBAL\Driver\Middleware;
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Contracts\Service\ResetInterface;
 use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
 
 /**
@@ -61,8 +62,11 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  * correction is here rather than appended below the false sentence.
  *
  * **THE GAP THIS LEAVES, stated rather than left to be discovered:** provisioning that drifts *during* a process's
- * lifetime is not caught until the cached verification expires — a window bounded by `$verificationTtl` and stated in
- * `services.yaml` rather than left implicit. Two things make that acceptable and neither is "it is unlikely". First, `scripts/gates/schema-tenancy.php`
+ * lifetime is not caught until the cached verification expires — a window bounded by `$verificationTtl`, stated in
+ * `services.yaml`, and bounded there ONLY BECAUSE this class is now `ResetInterface`. Round 3 found that
+ * `$verifiedInThisKernel` sits in front of the pool and is governed by no TTL, so in the resident worker
+ * `infra/compose.yaml` actually runs (`--time-limit=3600`) the real window was 3600 s rather than 300 — and that the
+ * paragraph below reasons exclusively about PHP-FPM, which this project does not deploy. Two things make that acceptable and neither is "it is unlikely". First, `scripts/gates/schema-tenancy.php`
  * asserts the same role attributes, ownership and `TRUNCATE` against a live schema and FAILS rather than skipping, so
  * the properties are checked at deploy time by something that reads the database rather than trusting a cache.
  * Second, an attacker who can `ALTER ROLE` can also `DROP POLICY`, which no per-acquisition check would survive
@@ -74,7 +78,7 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  * exactly why `PostgresRowLevelSecurityIsolation` leaves them out of its own composite. They are also the two that
  * CANNOT move into `composer gate` for the identical reason, so this is the only place they can run at all.
  */
-final class ConnectionProvisioningGuardMiddleware implements Middleware
+final class ConnectionProvisioningGuardMiddleware implements Middleware, ResetInterface
 {
     /**
      * (role, database) pairs already verified in THIS KERNEL, in front of the cache pool.
@@ -89,6 +93,28 @@ final class ConnectionProvisioningGuardMiddleware implements Middleware
      * @var array<string, true>
      */
     private array $verifiedInThisKernel = [];
+
+    /** Re-entrancy guard for {@see self::assertNothingCarriedOverOnThisSession()} — see that method for why. */
+    private bool $checkingThisSession = false;
+
+    /**
+     * Forget this process's own short-circuit between units of work, so the TTL means what it says.
+     *
+     * **`$verifiedInThisKernel` sits IN FRONT of the pool, so it is not bounded by `$verificationTtl` at all** — and
+     * round 3 measured the consequence: the docblock reasons about PHP-FPM, which is not what this project deploys.
+     * `infra/compose.yaml` runs the worker and the scheduler with `--time-limit=3600`, so in the one resident runtime
+     * that actually exists the array is never re-asked and the real window for an `ALTER ROLE twes BYPASSRLS` to go
+     * unnoticed was up to 3600 s — twelve times the documented 300.
+     *
+     * `ResetInterface` is the ecosystem's answer and Symfony calls it between Messenger messages, so the array now
+     * empties on the same boundary `InMemoryTenantContext` and `SessionStateReleaser` reset on. The POOL is untouched:
+     * it is the thing the TTL governs, it is shared across processes on purpose, and clearing it here would throw away
+     * the ~10.8 ms this cache exists to save on every message rather than once per window.
+     */
+    public function reset(): void
+    {
+        $this->verifiedInThisKernel = [];
+    }
 
     public function __construct(
         private readonly PostgresRowLevelSecurityIsolation $isolation,
@@ -174,6 +200,39 @@ final class ConnectionProvisioningGuardMiddleware implements Middleware
     public function verifyOnce(DriverConnection $connection, array $params): void
     {
         $key = self::cacheKeyFor($params);
+        $native = $connection->getNativeConnection();
+
+        if (!$native instanceof \PDO) {
+            throw new \LogicException(\sprintf(
+                'Cannot verify tenancy provisioning: the driver\'s native connection is %s, not \\PDO. This is what '
+                . 'stops the application running as a role that can step around row-level security, so it must not '
+                . 'degrade to a no-op. Use the `pdo_pgsql` driver, which is the only one twes-in supports.',
+                get_debug_type($native),
+            ));
+        }
+
+        // **THE PER-SESSION ASSERTIONS RUN ON EVERY ACQUISITION AND ARE NEVER CACHED. This is round 3's R3S-5, and
+        // the previous shape was defeated by a mechanism the docblock named in parentheses.**
+        //
+        // Two of the checks `assertConnectionCannotBypassPolicies()` composes are properties of the SESSION rather
+        // than of the catalogue: `assertNoTenantPinnedOnTheConnection()` reads `current_setting()`, and
+        // `assertNoSessionLifetimeDataIsMaterialised()` reads `pg_my_temp_schema()` and `pg_cursors`. A cache hit
+        // returned before `getNativeConnection()` was even called, so it skipped both.
+        //
+        // Round 2 tried to close that by putting `options` in the cache key, and round 3 measured that the fix guards
+        // a route the shipped driver cannot take: DBAL's `PDO\PgSQL\Driver::constructPdoDsn()` emits only
+        // `host, port, dbname, sslmode, sslrootcert, sslcert, sslkey, sslcrl, application_name, gssencmode` — never
+        // `options`. The route that DOES pin a tenant is `PGOPTIONS` in the process environment, which is not a
+        // connection parameter at all and therefore cannot be keyed on. The panel then reproduced a pinned process
+        // reading another tenant's row inside a transaction the application believed was unbound, purely on a warm
+        // entry written by a clean one — and the pool is `@cache.app`, cross-process and shared by the `api`, `worker`
+        // and `scheduler` services through one volume.
+        //
+        // So the key is no longer the control. Splitting the work is: the CATALOGUE assertions are the expensive ones
+        // (~10.8 ms of `pg_authid`, `pg_class` and ACL reads, measured) and they really are static per (role,
+        // database), so they stay cached. The two per-session ones cost one `SELECT` each and now always run. `options`
+        // stays in the key because it is free and correct — it just is not what closes this.
+        $this->assertNothingCarriedOverOnThisSession($native);
 
         if (isset($this->verifiedInThisKernel[$key])) {
             return;
@@ -185,17 +244,6 @@ final class ConnectionProvisioningGuardMiddleware implements Middleware
             $this->verifiedInThisKernel[$key] = true;
 
             return;
-        }
-
-        $native = $connection->getNativeConnection();
-
-        if (!$native instanceof \PDO) {
-            throw new \LogicException(\sprintf(
-                'Cannot verify tenancy provisioning: the driver\'s native connection is %s, not \\PDO. This is what '
-                . 'stops the application running as a role that can step around row-level security, so it must not '
-                . 'degrade to a no-op. Use the `pdo_pgsql` driver, which is the only one twes-in supports.',
-                get_debug_type($native),
-            ));
         }
 
         // MARKED IN-KERNEL BEFORE THE CHECK, and the reason is re-entrancy rather than optimism: the assertions issue
@@ -219,6 +267,37 @@ final class ConnectionProvisioningGuardMiddleware implements Middleware
         // ONLY NOW. Reaching this line means every applicable assertion passed.
         $item->set(true)->expiresAfter($this->verificationTtl);
         $this->verifiedProvisioning->save($item);
+    }
+
+    /**
+     * The two assertions that are properties of THIS SESSION, run on every acquisition and cached never.
+     *
+     * A tenant already pinned on the connection (`PGOPTIONS=-c twes.tenant_id=…`, or an `ALTER ROLE … SET`) is
+     * SESSION-scoped, so `bind()`'s transaction-local write sits on top of it and a `ROLLBACK TO SAVEPOINT` reverts to
+     * it — the panel read another tenant's row that way. A materialised temporary object or open cursor is the same
+     * class: `pg_temp` precedes `public` in the search path, and round 11 read one tenant's rows through a temp table.
+     *
+     * Both are cheap — one `SELECT` each against no catalogue join — which is what makes running them unconditionally
+     * affordable and is why the expensive catalogue assertions remain cached.
+     *
+     * Its own re-entrancy guard, separate from `$verifiedInThisKernel`: that flag now short-circuits only the cached
+     * half, so it can no longer protect this one. The queries here run on the `\PDO` handle already in hand, so they
+     * cannot reach `connect()`, but the flag costs nothing and makes the property local rather than inferred.
+     */
+    private function assertNothingCarriedOverOnThisSession(\PDO $native): void
+    {
+        if ($this->checkingThisSession) {
+            return;
+        }
+
+        $this->checkingThisSession = true;
+
+        try {
+            PostgresRowLevelSecurityIsolation::assertNoTenantPinnedOnTheConnection($native);
+            PostgresRowLevelSecurityIsolation::assertNoSessionLifetimeDataIsMaterialised($native);
+        } finally {
+            $this->checkingThisSession = false;
+        }
     }
 
 }

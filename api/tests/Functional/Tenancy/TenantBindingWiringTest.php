@@ -20,7 +20,9 @@ use PHPUnit\Framework\Attributes\CoversNothing;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Contracts\Service\ResetInterface;
 use Twes\Infrastructure\Tenancy\Doctrine\ConnectionProvisioningGuardDriver;
+use Twes\Infrastructure\Tenancy\Doctrine\ConnectionProvisioningGuardMiddleware;
 use Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingDriver;
+use Twes\Infrastructure\Tenancy\Doctrine\SessionStateReleaser;
 use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingDriver;
 use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingMiddleware;
 use Twes\Infrastructure\Tenancy\InMemoryTenantContext;
@@ -288,6 +290,60 @@ final class TenantBindingWiringTest extends WebTestCase
                     date('c', $processStarted),
                 ),
             );
+        }
+    }
+
+    /**
+     * **THE PROVISIONING GUARD IS RESET BETWEEN UNITS OF WORK TOO, so its TTL is the real bound rather than a
+     * documented one.**
+     *
+     * `$verifiedInThisKernel` short-circuits in front of the PSR-6 pool, so no TTL governed it. The class's docblock
+     * reasoned about PHP-FPM — where the process ends with the request, so the array cannot go stale — and
+     * `infra/compose.yaml` runs the worker and the scheduler with `--time-limit=3600`. Round 3 measured the gap: in the
+     * one resident runtime this project actually deploys, an `ALTER ROLE twes BYPASSRLS` could go unnoticed for up to
+     * 3600 s against a documented window of 300, twelve times over.
+     *
+     * **And it exposed a narrower correction.** The `kernel.reset` tag did not appear when the class became
+     * `ResetInterface`, because `autoconfigure: false` on its service entry strips EVERY autoconfiguration.
+     * [Measured: `debug:container --tag=kernel.reset` → 0 hits with the flag on, 2 with it off.] Round 2 had concluded
+     * that flag was "cosmetic", which was true of the connection-scoping question it was measured against and false in
+     * general; the tag is declared by hand in `services.yaml` and the note there says so.
+     *
+     * Asserted through the container's own resetter, for the same reason the tenant-context case is: the defect would
+     * be Symfony never calling the method, which a unit test of `reset()` cannot see.
+     */
+    public function testTheProvisioningGuardIsResetBetweenUnitsOfWork(): void
+    {
+        self::bootKernel();
+        $tagged = self::getContainer()->get('services_resetter');
+        self::assertInstanceOf(ResetInterface::class, $tagged);
+
+        // THE RESETTER MUST KNOW ABOUT IT. `services_resetter` is built from the `kernel.reset` tag, so a service that
+        // is `ResetInterface` but untagged — the state `autoconfigure: false` produced — is invisible to it.
+        //
+        // `resetMethods` rather than `resettableServices`: the latter is a `RewindableGenerator` that yields only
+        // services already INSTANTIATED, so iterating it in a fresh kernel returns one entry and would have made this
+        // assertion fail against correct code. `resetMethods` is keyed by service id and is the compiled list itself.
+        // [Measured: iterating the generator gave `total=1`; `resetMethods` gave 29 keys including all three tenancy
+        // services.] The distinction is the *assert the property, not the representation* rule this project records
+        // twice — an already-instantiated service is a representation of the tag, not the tag.
+        $resetMethods = new \ReflectionProperty($tagged, 'resetMethods')->getValue($tagged);
+        self::assertIsArray($resetMethods);
+
+        self::assertArrayHasKey(
+            ConnectionProvisioningGuardMiddleware::class,
+            $resetMethods,
+            'The provisioning guard must carry `kernel.reset`, or its in-kernel short-circuit outlives every TTL and '
+            . 'the staleness window in the worker becomes --time-limit (3600s) instead of $verificationTtl (300s). '
+            . 'Note `autoconfigure: false` on its service entry suppresses the tag Symfony would add for '
+            . 'ResetInterface, so it has to be declared by hand.',
+        );
+
+        // AND ITS TWO SIBLINGS, because the three together are what make a unit-of-work boundary clean: the tenant
+        // context (the application's tenant), the session releaser (the database session), and this guard (its own
+        // verification short-circuit). A boundary that resets two of the three is the shape round 3 found.
+        foreach ([InMemoryTenantContext::class, SessionStateReleaser::class] as $sibling) {
+            self::assertArrayHasKey($sibling, $resetMethods, $sibling . ' must reset on the same boundary');
         }
     }
 
