@@ -219,6 +219,54 @@ final class InvoiceWriteProcessorTest extends TestCase
     }
 
     /**
+     * **A CORRUPT ROW IS NOT A 422 ON THE CREATE PATH — the THIRD instance of one defect, and the last.**
+     *
+     * `InvoiceProvider` had a whole-call `catch (\InvalidArgumentException)` and it became a 404. `IssueInvoiceProcessor`
+     * had the same and it became a 404. This one made it a **422 naming an internal column**, while its comment
+     * asserted *"every one of these is a caller error"*. `handle()` reaches the repository's read-back, which hydrates
+     * through `InvoiceMapper`, and every mapper refusal for corrupt or unrepresentable column data extends
+     * `\InvalidArgumentException`.
+     *
+     * **The fix could not be deleting the catch**, and this case is why the two are separated rather than merged: the
+     * conversion `self::command($data)` raises the same exception type for six genuine caller errors, which
+     * `testADomainRefusalBecomesAnUnprocessableEntity` covers. So the conversion keeps the catch and the handler is
+     * outside it, and this case is what holds that boundary — reinstate the wide `try` and it goes red while those six
+     * stay green.
+     *
+     * The payload here is VALID; the failure is in the read-back. That is the whole point: nothing the caller sent is
+     * wrong, so a 4xx would be a lie about whose fault it is.
+     */
+    public function testACorruptRowOnCreateIsOursRatherThanTheCallers(): void
+    {
+        $repository = new class implements InvoiceRepository {
+            public function save(DocumentIdentity $identity, Invoice $invoice): void
+            {
+                // Accepts the write; the damage is in what comes back.
+            }
+
+            public function find(string $id): ?PersistedInvoice
+            {
+                // What the mapper raises for a stored amount that will not fit its column.
+                throw new \InvalidArgumentException(
+                    'Amount "1234567890123456.000" has more than 15 digits before the decimal point.',
+                );
+            }
+
+            public function findForMutation(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('the create path does not lock for mutation');
+            }
+        };
+
+        $handler = new CreateInvoiceHandler($repository, new FixedIdGenerator(), new RecordingTransactionalScope());
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('more than 15 digits');
+
+        new CreateInvoiceProcessor($handler)->process(self::validInput(), new Post());
+    }
+
+    /**
      * **A CORRUPT ROW IS NOT A 404 ON THE WRITE PATH EITHER — and this is where the sweep missed.**
      *
      * `InvoiceProviderTest` has had this case since the P1 sweep; its counterpart here did not exist, and the

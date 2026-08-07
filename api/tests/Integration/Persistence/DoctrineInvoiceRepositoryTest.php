@@ -473,6 +473,43 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
             self::assertStringContainsString('Refusing to rewrite issued document', $refused->getMessage());
         }
 
+        // A CHANGED LINE SET IS REFUSED, NOT DISCARDED — and until round 3 it was discarded, silently, with `save()`
+        // returning success and issuing zero statements against either child table. Two lenses reproduced that
+        // independently. The comment on the branch claimed it *"refuses … any rewrite of the lines or charges"*, which
+        // is the same false-absolute shape as the round-2 finding it was written to close.
+        //
+        // It matters beyond wording: `Invoice::fromPersistedState()` names a half-committed child rewrite as reachable,
+        // and the repair for it is a whole re-save of the correct aggregate — which this branch accepted and did
+        // nothing about, leaving a document that could never be hydrated again.
+        $differentLine = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('999', Money::of('0.001', $tnd), Rate::fromPercentage('19')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
+
+        try {
+            self::inTransaction(static fn() => $repository->save($identity, $differentLine));
+            self::fail('An issued document must REFUSE a changed line set, not accept the save and discard it');
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('different line or charge set', $refused->getMessage());
+        }
+
+        // A CHANGED CHARGE SET likewise — asserted separately because the two comparisons are separate calls and one
+        // could be dropped without the other.
+        $withACharge = $draft
+            ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
+
+        try {
+            self::inTransaction(static fn() => $repository->save($identity, $withACharge));
+            self::fail('An issued document must REFUSE an added fixed charge');
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('different line or charge set', $refused->getMessage());
+        }
+
+        // AND AN IDENTICAL RE-SAVE STILL PASSES, which is what stops the comparison being a string comparison. The
+        // stored `quantity` comes back from `NUMERIC(21,6)` as `1.000000` against an incoming `1`, so comparing by
+        // string would refuse a correct caller — the false-failure direction this class already records committing once.
+        self::inTransaction(static fn() => $repository->save($identity, $issued));
+
         // AND THE CHILD ROWS SURVIVED EVERY REFUSAL. The `DELETE`+re-`INSERT` of lines and charges carried no
         // predicate, so a refusal that fired only on the parent would still have emptied them — asserted directly
         // rather than inferred from the exception, because the exception is what a partial write looks like too.

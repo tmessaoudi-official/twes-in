@@ -89,14 +89,38 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
             ));
         }
 
+        // **THE CONVERSION IS INSIDE THE `try` AND THE HANDLER IS NOT, and separating them is the fix for the third
+        // instance of one defect.** Round 2 removed a whole-call `catch (\InvalidArgumentException)` from
+        // `InvoiceProvider` and then from `IssueInvoiceProcessor` — writing *"a full-set miss, found by the second
+        // MAXIMAL round"* in the second one — and left this one standing. Round 3 found it.
+        //
+        // What the wide catch swallowed: `handle()` reaches the repository's read-back, which hydrates through
+        // `InvoiceMapper`, and every refusal the mapper raises for corrupt or unrepresentable column data
+        // (`InvalidMoneyAmount`, `UnknownCurrency`, `InvalidRate`) extends `\InvalidArgumentException`. So OUR fault
+        // was reported to the client as a **422 naming an internal column** — and the old comment asserted *"every one
+        // of these is a caller error"*, which was the false half.
+        //
+        // **Deleting the catch outright is NOT the fix, and measuring that is what produced this shape.** Round 3
+        // measured six legitimate 422 cases going red, because `self::command($data)` was evaluated inside the same
+        // `try`: an unknown currency, a negative unit price, a negative quantity, a too-precise quantity, a negative
+        // VAT rate and an oversized product are all genuine caller errors raised by the CONVERSION. So the conversion
+        // keeps the catch and the handler loses it.
         try {
-            $persisted = $this->handler->handle(self::command($data));
+            $command = self::command($data);
         } catch (\InvalidArgumentException|\DomainException $refused) {
             // The original is passed as `$previous` so the log keeps the class and the stack, while the client gets
             // the message. Wrapped rather than re-thrown because an `\InvalidArgumentException` reaching Symfony's
-            // exception listener untranslated is a 500, and every one of these is a caller error.
+            // exception listener untranslated is a 500 — and everything reachable HERE really is a caller error,
+            // because `command()` only ever parses what arrived on the wire.
             throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         }
+
+        // OUTSIDE THE `try`. A `\DomainException` from the aggregate is still a 422 — Symfony's own listener has no
+        // opinion, so it becomes a 500 — and that is deliberate: `Invoice::draft()` plus `withLine()` cannot refuse
+        // anything the conversion above did not already accept, so a domain refusal here would be OUR modelling error
+        // rather than the caller's. If a future transition makes one reachable on create, it wants its own arm with
+        // its own reasoning, not this one silently widening to cover it.
+        $persisted = $this->handler->handle($command);
 
         return InvoiceRepresentation::of($persisted);
     }

@@ -57,10 +57,12 @@ if (is_file($composerAutoloader)) {
      * since. So a change to service wiring is invisible to every kernel-booting test until somebody clears the
      * cache by hand, which nothing in the suite, in `composer gate` or in the Makefile does.
      *
-     * WHAT THAT COSTS, measured rather than argued. Exactly ONE test of 949 detects the absence of
-     * `TenantBindingMiddleware` — the control whose missing call site was round 1's headline P0, without which
-     * every tenant-owned read returns nothing and every write is refused. Delete its registration from
-     * `config/services.yaml`, leave the cache warm, and:
+     * WHAT THAT COSTS, measured rather than argued. Exactly ONE test detects the absence of
+     * `TenantBindingMiddleware` — the control whose missing call site was round 1's headline P0, without which every
+     * tenant-owned read returns nothing and every write is refused. **No suite total is written here: this sentence
+     * said "of 949" and was stale within the same four-commit fix series** (round 3, R3C-5), which is `CLAUDE.md`'s own
+     * rule that a citation whose numbers move with the suite states the DIRECTION, not the totals. Delete the
+     * registration from `config/services.yaml`, leave the cache warm, and:
      *
      *     $ php tools/bin/phpunit-12.phar --filter TenantBindingWiringTest
      *     OK (4 tests, 27 assertions)
@@ -98,6 +100,43 @@ if (is_file($composerAutoloader)) {
         }
 
         @rmdir($compiled);
+    }
+
+    /*
+     * A POST-CONDITION, BECAUSE THE TWO `@`s ABOVE WOULD OTHERWISE MAKE THIS FAIL SILENTLY — and failing silently
+     * restores precisely the blindness the block exists to remove.
+     *
+     * The suppressions themselves are right: this walks a tree it is deleting, so a race with a concurrent PHPUnit
+     * process or an already-gone entry is expected and is not an error. What was wrong was having no assertion
+     * afterwards. `CLAUDE.md`'s anti-bandaid gate requires a stated failure mode and physical evidence for every
+     * suppression, and round 3 filed both halves: the correctness lens showed the block reporting `EXIT=0` over a
+     * cache it could not delete, and the security lens showed the block ITSELF unpinned — neuter it and the full
+     * suite is green, so by this project's own rule the round-2 P0 was not closed.
+     *
+     * THE FAILURE MODE, stated: `api/var/cache/test` written by a different uid than the one running the suite. Both
+     * documented workflows can produce it — a host `composer gate` as root followed by a non-root run, or a
+     * `docker compose exec -u 0` followed by `make test` — and the production image `chmod -R 555 /app/var/cache`.
+     *
+     * `exit(1)` rather than an exception: this runs before PHPUnit has a test to attribute a failure to, so the only
+     * honest outcome is to refuse to run at all with a message that says what to do.
+     */
+    if (is_dir($compiled)) {
+        fwrite(STDERR, sprintf(
+            "\nCANNOT DISCARD THE COMPILED TEST CONTAINER, so this suite REFUSES TO RUN.\n\n"
+            . "  %s still exists after the clear.\n\n"
+            . "  Why that is fatal rather than untidy: phpunit.xml sets APP_DEBUG=0, so a kernel performs NO\n"
+            . "  freshness check on the compiled container. A stale one means every kernel-booting test asserts\n"
+            . "  against the PREVIOUS service wiring — and exactly one test detects the absence of the tenant\n"
+            . "  binding middleware, without which every tenant-owned read returns nothing and every write is\n"
+            . "  refused. A run over a stale container reports green over that.\n\n"
+            . "  Almost certainly an ownership mismatch: the cache was written by a different user than the one\n"
+            . "  running the suite. Fix it and re-run:\n\n"
+            . "    rm -rf %s\n\n",
+            $compiled,
+            $compiled,
+        ));
+
+        exit(1);
     }
 
     return;

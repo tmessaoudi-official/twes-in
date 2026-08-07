@@ -473,6 +473,97 @@ final class DevDatabaseProvisioningTest extends TestCase
     }
 
     /**
+     * **IT RESETS A LEFTOVER DEFAULT PRIVILEGE — R3S-1, and the panel reproduced a cross-tenant TRUNCATE through it.**
+     *
+     * `ALTER DEFAULT PRIVILEGES … GRANT` is ADDITIVE. Granting the permitted four does not remove a pre-existing
+     * `GRANT ALL ON TABLES`, so the runtime role kept `TRUNCATE` on every table the NEXT migration created — while the
+     * script printed *"cannot CREATE, TRUNCATE or own"*. Round 3 then truncated a tenant-owned table as the restricted
+     * role, non-superuser and non-`BYPASSRLS`, destroying a row the session could not see. `TRUNCATE` is never subject
+     * to row security at any privilege level, which is why it is the privilege that matters.
+     *
+     * The falsified claim was the script's own: *"an existing table and a future one end up in the same shape"* —
+     * existing came out with four privileges and future with seven. This case asserts the FUTURE half, because the
+     * existing half already had one and passed while this was broken.
+     *
+     * The table is created AFTER provisioning, by the owner, which is the only way to observe a default privilege.
+     */
+    public function testItResetsALeftoverDefaultPrivilegeRatherThanAddingToIt(): void
+    {
+        $superuser = self::superuserConnection();
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::RUNTIME_ROLE));
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::OWNER_ROLE));
+        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', self::DATABASE));
+        $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', self::DATABASE, self::OWNER_ROLE));
+
+        // THE LEFTOVER, verbatim: the "fix the permission error" edit, applied to FUTURE tables.
+        self::connectionTo(self::DATABASE, self::superuserName(), self::superuserPassword())->exec(\sprintf(
+            'ALTER DEFAULT PRIVILEGES FOR ROLE %s IN SCHEMA public GRANT ALL ON TABLES TO %s',
+            self::OWNER_ROLE,
+            self::RUNTIME_ROLE,
+        ));
+
+        self::provision();
+        self::asOwner('CREATE TABLE arrives_after (id int PRIMARY KEY)');
+
+        self::assertFalse(
+            self::tablePrivilege(self::RUNTIME_ROLE, 'arrives_after', 'TRUNCATE'),
+            'a leftover GRANT ALL default privilege must be REVOKED before the permitted four are granted: additive '
+            . 'grants mean the runtime role otherwise keeps TRUNCATE on every table the next migration creates, and '
+            . 'TRUNCATE erases every tenant\'s rows with all policies intact',
+        );
+
+        foreach (['TRIGGER', 'REFERENCES'] as $alsoForbidden) {
+            self::assertFalse(
+                self::tablePrivilege(self::RUNTIME_ROLE, 'arrives_after', $alsoForbidden),
+                $alsoForbidden . ' must be revoked with it — the reset states the PERMITTED set, so everything '
+                . 'outside it goes, which is what makes this closed by construction rather than a list',
+            );
+        }
+
+        foreach (['SELECT', 'INSERT', 'UPDATE', 'DELETE'] as $permitted) {
+            self::assertTrue(
+                self::tablePrivilege(self::RUNTIME_ROLE, 'arrives_after', $permitted),
+                $permitted . ' must survive the reset, or the application cannot serve a request',
+            );
+        }
+    }
+
+    /**
+     * **A PRIVILEGE GRANTED `TO PUBLIC` REACHES THE RUNTIME ROLE WITH NO GRANT TO IT TO FIND — R3K-14.**
+     *
+     * The existing-table reset named ONE grantee, so `GRANT TRUNCATE ON document TO PUBLIC` survived it. The script
+     * already swept `PUBLIC` on its other two axes (`REVOKE CONNECT, TEMPORARY … FROM PUBLIC` and `REVOKE CREATE ON
+     * SCHEMA public FROM PUBLIC`), so this was the inconsistent axis rather than a new idea — and the detector added
+     * for R2K-5 granted direct, which is why it passed while this was open.
+     */
+    public function testItRevokesAPrivilegeGrantedToPublicOnAnExistingTable(): void
+    {
+        $superuser = self::superuserConnection();
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::RUNTIME_ROLE));
+        $superuser->exec(\sprintf("CREATE ROLE %s LOGIN PASSWORD 'devprobe'", self::OWNER_ROLE));
+        $superuser->exec(\sprintf('DROP DATABASE IF EXISTS %s WITH (FORCE)', self::DATABASE));
+        $superuser->exec(\sprintf('CREATE DATABASE %s OWNER %s', self::DATABASE, self::OWNER_ROLE));
+
+        $inDatabase = self::connectionTo(self::DATABASE, self::superuserName(), self::superuserPassword());
+        $inDatabase->exec('CREATE TABLE public_grant_probe (id int PRIMARY KEY)');
+        $inDatabase->exec(\sprintf('ALTER TABLE public_grant_probe OWNER TO %s', self::OWNER_ROLE));
+        $inDatabase->exec('GRANT TRUNCATE ON public_grant_probe TO PUBLIC');
+
+        self::assertTrue(
+            self::tablePrivilege(self::RUNTIME_ROLE, 'public_grant_probe', 'TRUNCATE'),
+            'THE DETECTOR: a TO PUBLIC grant must reach the runtime role, or this case asserts nothing',
+        );
+
+        self::provision();
+
+        self::assertFalse(
+            self::tablePrivilege(self::RUNTIME_ROLE, 'public_grant_probe', 'TRUNCATE'),
+            'a TO PUBLIC grant must be swept too: it reaches the runtime role while appearing in no grant to it, so '
+            . 'an audit looking only at the role would report clean',
+        );
+    }
+
+    /**
      * **IT REPAIRS A `public` SCHEMA CARRYING A PRE-15 OR HAND-MODIFIED PRIVILEGE SHAPE.**
      *
      * FOUR statements in the script are DEFENSIVE (three here, one in the sibling case below) — they describe a state a default PostgreSQL 18 cluster is not in —

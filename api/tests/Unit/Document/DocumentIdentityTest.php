@@ -91,6 +91,16 @@ final class DocumentIdentityTest extends TestCase
         yield 'the urn form' => ['urn:uuid:' . self::CANONICAL];
         yield 'unhyphenated' => [str_replace('-', '', self::CANONICAL)];
 
+        // THE GROUP-LENGTH CEILINGS, which round 3 found unpinned — `{12}` → `{12,}` and `{8}` → `{8,}` each survived
+        // the whole suite. Under the first, a 37-character id is accepted, reaches `WHERE id = :id`, and PostgreSQL
+        // raises `invalid input syntax for type uuid` — a 500 where this predicate exists to produce a 404. The set
+        // above had "one digit short" and nothing LONGER than canonical, and a `'junk'` suffix does not kill a hex-only
+        // widening because the appended text is not hex.
+        yield 'last group one hex digit too long' => [self::CANONICAL . 'a'];
+        yield 'last group four hex digits too long' => [self::CANONICAL . 'ffff'];
+        yield 'first group one hex digit too long' => ['0199a5b22-0000-7000-8000-0000000004aa'];
+        yield 'a middle group too long' => ['0199a5b2-00000-7000-8000-0000000004aa'];
+
         // AND THE ORDINARY REFUSALS, so the provider is not read as covering only exotic shapes.
         yield 'empty' => [''];
         yield 'not a uuid at all' => ['NOT-A-UUID'];

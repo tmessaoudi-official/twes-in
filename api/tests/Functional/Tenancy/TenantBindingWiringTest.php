@@ -19,6 +19,7 @@ use Doctrine\Persistence\ManagerRegistry;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Contracts\Service\ResetInterface;
+use Twes\Infrastructure\Tenancy\Doctrine\ConnectionProvisioningGuardDriver;
 use Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingDriver;
 use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingDriver;
 use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingMiddleware;
@@ -118,6 +119,37 @@ final class TenantBindingWiringTest extends WebTestCase
     }
 
     /**
+     * **THE ACQUISITION-TIME PROVISIONING GUARD IS INSTALLED TOO — and its mutant survived until round 3.**
+     *
+     * `ConnectionProvisioningGuardMiddleware` is the control that refuses a connection whose role can bypass row
+     * security, owns the policed tables, or holds `TRUNCATE` on them. Its two siblings on this connection were
+     * wiring-tested from the day they landed; this one was not, so deleting its `doctrine.middleware` tag left the
+     * whole suite green — `OK (974 tests, 3621 assertions)` against a baseline of 3623, i.e. two assertions fewer and
+     * no failure. That is round 1's headline P0 shape exactly (a control that exists and is installed on nothing),
+     * aimed at the one control that would have refused the connection R3S-1's leftover default privilege armed.
+     *
+     * On `default` and NOT on `owner`, for the same reason as the others: migrations legitimately run as the owning
+     * role, which this guard exists to refuse.
+     */
+    public function testTheProvisioningGuardIsInstalledOnTheApplicationConnectionAlone(): void
+    {
+        self::assertArrayHasKey(
+            ConnectionProvisioningGuardDriver::class,
+            self::driverChainOf('default'),
+            'The default connection must be wrapped by the provisioning guard, or nothing refuses a runtime role that '
+            . 'can bypass row-level security, own the policed tables or TRUNCATE them. Check the doctrine.middleware '
+            . 'tag on ConnectionProvisioningGuardMiddleware in config/services.yaml.',
+        );
+
+        self::assertArrayNotHasKey(
+            ConnectionProvisioningGuardDriver::class,
+            self::driverChainOf('owner'),
+            'and NOT the owner connection: migrations run as the owning role, which is precisely what this guard '
+            . 'refuses, so installing it there would refuse every migration',
+        );
+    }
+
+    /**
      * **THE ISSUE OPERATION DECLARES ITS 404 AND ITS 422 IN THE EXPORTED SCHEMA.**
      *
      * Asserted against the OpenAPI factory's own output rather than against the attribute, because a generated client
@@ -201,6 +233,62 @@ final class TenantBindingWiringTest extends WebTestCase
             . 'message binds that message to the previous tenant — the one tenancy failure here that succeeds while '
             . 'being wrong',
         );
+    }
+
+    /**
+     * **THE COMPILED CONTAINER WAS BUILT DURING THIS PROCESS — which is what pins `tests/bootstrap.php`'s cache
+     * discard, and round 3 found that nothing did.**
+     *
+     * The discard is the entire remedy for round 2's headline P0: with `APP_DEBUG=0` a kernel performs no freshness
+     * check, so a stale container makes every kernel-booting test assert against the previous service wiring, and
+     * exactly one test detects the absence of the tenant binding middleware. Round 3's security lens neutered the
+     * discard — repointed `$compiled` at a path that does not exist — and the full suite stayed green
+     * (`OK (974 tests, 3623 assertions)`). So the fix existed and was enforced by prose. By this project's own rule
+     * (*a fix is not delivered until a mutant proves it load-bearing*) the P0 was not closed, and one refactor
+     * deleting fourteen lines would have silently restored the blindness.
+     *
+     * **The property asserted is the freshest one available and it is not a grep.** `CLAUDE.md` § Gotchas 2026-07-29:
+     * *a test that greps source instead of running code proves nothing* — so this does not read `bootstrap.php`. It
+     * asks the container file when it was written: if the discard ran, the first `bootKernel()` rebuilt it, so its
+     * mtime cannot precede this PHP process. A warm container carried over from an earlier run necessarily does.
+     *
+     * A cold cache satisfies it trivially and correctly — the discard is a no-op there and the container is built
+     * fresh anyway — so this asserts the OUTCOME (the container is not stale) rather than that a particular statement
+     * executed, which is what keeps it true if the discard is ever implemented some other way.
+     */
+    public function testTheCompiledContainerWasBuiltByThisProcessRatherThanCarriedOver(): void
+    {
+        self::bootKernel();
+        $container = self::getContainer();
+
+        $cacheDir = $container->getParameter('kernel.cache_dir');
+        self::assertIsString($cacheDir);
+
+        $compiled = glob($cacheDir . '/*Container.php');
+        self::assertNotFalse($compiled);
+        self::assertNotEmpty($compiled, 'the kernel must have compiled a container somewhere under ' . $cacheDir);
+
+        $processStarted = $_SERVER['REQUEST_TIME'] ?? null;
+        self::assertIsInt($processStarted, 'REQUEST_TIME is how this case knows when the process began');
+
+        foreach ($compiled as $file) {
+            $written = filemtime($file);
+            self::assertNotFalse($written);
+            self::assertGreaterThanOrEqual(
+                $processStarted,
+                $written,
+                \sprintf(
+                    '%s predates this PHP process, so it was CARRIED OVER from an earlier run rather than compiled '
+                    . 'now. With APP_DEBUG=0 nothing revalidates it, so every kernel-booting test in this suite is '
+                    . 'asserting against whatever service wiring was in place when that file was written — and one '
+                    . 'of them is the only test that detects the tenant binding middleware going missing. Check that '
+                    . "tests/bootstrap.php still discards var/cache/test.\n  written: %s\n  process: %s",
+                    basename($file),
+                    date('c', $written),
+                    date('c', $processStarted),
+                ),
+            );
+        }
     }
 
     /**

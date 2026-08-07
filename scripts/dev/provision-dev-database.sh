@@ -57,7 +57,12 @@
 #     `SET ROLE twes_owner; ALTER TABLE document DISABLE ROW LEVEL SECURITY`, which `FORCE` does not prevent;
 #   - its privileges on tables and sequences that ALREADY EXIST, because `ALTER DEFAULT PRIVILEGES` governs only
 #     objects that do not exist yet -- so a hand-issued `GRANT ALL` survived every earlier run, `TRUNCATE`
-#     included, and `TRUNCATE` is never subject to row security at any privilege level.
+#     included, and `TRUNCATE` is never subject to row security at any privilege level;
+#   - and the DEFAULT PRIVILEGES themselves, which are ADDITIVE: granting the permitted four does not remove a
+#     leftover `GRANT ALL ON TABLES`, so the runtime role kept TRUNCATE on every table the next migration created.
+#     Round 3 truncated a tenant-owned table through that, as the restricted role, and destroyed a row the session
+#     could not see. Both axes are now REVOKED before they are GRANTED, and both sweep `PUBLIC` as well as the role
+#     -- a privilege granted `TO PUBLIC` reaches the runtime role with no grant to it to find.
 #
 # The password is the one exception, and the asymmetry is deliberate: a credential is the developer's choice, an
 # attribute or a grant that defeats tenant isolation is not.
@@ -326,10 +331,18 @@ REVOKE :"OWNER_ROLE" FROM :"RUNTIME_ROLE";
 -- thought of, which is the polarity error this repository has had to correct on three separate gates. The four
 -- granted here are exactly the four the default privileges below grant, so an existing table and a future one end
 -- up in the same shape.
+--
+-- **AND `PUBLIC` AS WELL AS THE ROLE, because naming one grantee was a hole (round 3, R3K-14).** A privilege granted
+-- `TO PUBLIC` reaches the runtime role without appearing in any grant to it, so `REVOKE … FROM :"RUNTIME_ROLE"` alone
+-- left `GRANT TRUNCATE ON document TO PUBLIC` standing. The script already sweeps PUBLIC on its other two axes
+-- (`REVOKE CONNECT, TEMPORARY … FROM PUBLIC` and `REVOKE CREATE ON SCHEMA public FROM PUBLIC`), so this was the
+-- inconsistent one rather than a new idea.
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL TABLES IN SCHEMA public FROM :"RUNTIME_ROLE";
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO :"RUNTIME_ROLE";
 -- Sequences likewise: USAGE and SELECT, never UPDATE -- nothing here calls `setval`, because a document number
 -- comes from a counter ROW rather than a sequence.
+REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC;
 REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM :"RUNTIME_ROLE";
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO :"RUNTIME_ROLE";
 
@@ -344,11 +357,30 @@ GRANT  CREATE ON SCHEMA public TO :"OWNER_ROLE";
 -- deliberately NOT TRUNCATE: TRUNCATE is never subject to row security at any privilege level, so a runtime
 -- role holding it can erase every tenant's rows while every policy remains in place. `BehaviouralIsolationTest`
 -- attacks that grant on the test database; this is what stops it existing on the development one.
+--
+-- **REVOKED BEFORE GRANTED, because `ALTER DEFAULT PRIVILEGES … GRANT` is ADDITIVE and this was a reproduced
+-- cross-tenant destruction (round 3, R3S-1).** A pre-existing `ALTER DEFAULT PRIVILEGES … GRANT ALL ON TABLES` — the
+-- same "fix the permission error" edit this script's own header says it exists to repair — survived a corrective run
+-- untouched, so the runtime role kept `TRUNCATE` on every table the NEXT migration would create, while the script
+-- printed "cannot CREATE, TRUNCATE or own". The panel then truncated a tenant-owned table as the restricted role,
+-- non-superuser and non-`BYPASSRLS`, destroying a row it could not even see.
+--
+-- The falsified sentence was the one above: *"an existing table and a future one end up in the same shape"* —
+-- existing came out with four privileges and future with seven. It is true now, and `PUBLIC` is swept here too for
+-- the same reason it is above.
+ALTER DEFAULT PRIVILEGES FOR ROLE :"OWNER_ROLE" IN SCHEMA public
+    REVOKE ALL ON TABLES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE :"OWNER_ROLE" IN SCHEMA public
+    REVOKE ALL ON TABLES FROM :"RUNTIME_ROLE";
 ALTER DEFAULT PRIVILEGES FOR ROLE :"OWNER_ROLE" IN SCHEMA public
     GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO :"RUNTIME_ROLE";
 -- Sequences: USAGE and SELECT, never UPDATE. Nothing in this application calls `setval` -- a document number
 -- comes from a counter ROW precisely because a PostgreSQL SEQUENCE is not transactional -- so UPDATE would be a
 -- privilege with no caller.
+ALTER DEFAULT PRIVILEGES FOR ROLE :"OWNER_ROLE" IN SCHEMA public
+    REVOKE ALL ON SEQUENCES FROM PUBLIC;
+ALTER DEFAULT PRIVILEGES FOR ROLE :"OWNER_ROLE" IN SCHEMA public
+    REVOKE ALL ON SEQUENCES FROM :"RUNTIME_ROLE";
 ALTER DEFAULT PRIVILEGES FOR ROLE :"OWNER_ROLE" IN SCHEMA public
     GRANT USAGE, SELECT ON SEQUENCES TO :"RUNTIME_ROLE";
 SQL

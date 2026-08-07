@@ -32,9 +32,19 @@ use Twes\Domain\Document\PersistedInvoice;
  * saved instance comes back) and its POINT — that `POST` and a later `GET` agree byte-for-byte — can only be proven
  * against real columns, which is what `InvoiceLifecycleTest` is for.
  *
- * **IT ENFORCES NEITHER THE TENANT BOUNDARY NOR THE TRANSACTION REFUSAL**, for the same reason: those are the
- * adapter's guarantees and they are asserted where they live. A fake that reproduced them would let a handler test
- * pass while the real adapter's version of the rule had been deleted.
+ * **IT ENFORCES NONE OF THE ADAPTER'S THREE REFUSALS**, for the same reason: they are the adapter's guarantees and
+ * they are asserted where they live. A fake that reproduced them would let a handler test pass while the real
+ * adapter's version of the rule had been deleted. The three, and this list is CLOSED so that adding a fourth to the
+ * adapter without a line here is visible:
+ *
+ *   1. the TENANT BOUNDARY — no tenant-less path may hydrate an aggregate;
+ *   2. the TRANSACTION REFUSAL — `save()` and `findForMutation()` refuse outside one;
+ *   3. **the ISSUED-CONTENT REFUSAL** — once a document carries a number, only its state may move. Added to the
+ *      adapter by `1feb348` and extended to the child rows in round 3, and it reached neither this list nor the port
+ *      until round 3 filed that: for two commits the port promised idempotency its own adapter refused.
+ *
+ * A handler test that needs any of the three exercises the real adapter — `DoctrineInvoiceRepositoryTest` for the
+ * refusals themselves, `InvoiceLifecycleTest` for the whole write path against real columns.
  */
 final class InMemoryInvoiceRepository implements InvoiceRepository
 {

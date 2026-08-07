@@ -61,7 +61,22 @@ interface InvoiceRepository
      * IDEMPOTENT on the identity: saving twice with the same `$identity` stores the second state, it does not create
      * a second document.
      *
-     * @throws \RuntimeException if there is no active transaction, or no current tenant
+     * **AN ISSUED DOCUMENT'S CONTENT IS IMMUTABLE, AND ONLY ITS STATE MAY MOVE.** Once a document carries a number, a
+     * save may change nothing but `state` — not the number, not its rendered form, not the type, the currency, the VAT
+     * rounding point, the lines or the fixed charges. A save proposing any of those is REFUSED, not partially applied
+     * and not silently ignored.
+     *
+     * That is the byte-identical-re-download guarantee, and it belongs HERE rather than only in the Postgres adapter.
+     * This interface argues at length below that a guarantee must be expressible for an adapter that is not
+     * PostgreSQL — an event store, a test double — and round 3 found this one stated nowhere but in one adapter's
+     * implementation, so the port promised idempotency its own adapter refuses. A second adapter written to this
+     * docblock would have got it wrong, which is what a port is for.
+     *
+     * The narrow exception is `cancel()`: same number, different state, permitted. The rule is about the CONTENT, not
+     * about immutability of the row.
+     *
+     * @throws \RuntimeException if there is no active transaction, or no current tenant; or if `$invoice` proposes any
+     *                           change other than a state transition to a document that already carries a number
      */
     public function save(DocumentIdentity $identity, Invoice $invoice): void;
 

@@ -144,6 +144,62 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                 ));
             }
 
+            // **AND THE CHILD ROWS ARE COMPARED, BECAUSE IGNORING A CHANGE IS NOT REFUSING ONE.** The comment above
+            // claimed this branch *"refuses … any rewrite of the lines or charges"*. It did not: it returned success
+            // and discarded the change, which two round-3 lenses reproduced independently — a changed line set
+            // accepted, zero statements issued against either child table, and the caller told the save happened.
+            //
+            // That is worse than the wording, for a reason `Invoice::fromPersistedState()` names: a half-committed
+            // child rewrite is reachable, and the repair for it is a whole re-save of the correct aggregate — which
+            // this branch accepted and did nothing about, leaving a document that can never be hydrated again. The
+            // sibling arm three lines up throws for the analogous case with the reasoning *"a silent no-op would
+            // leave the caller believing it had issued a document"*; this arm was doing the opposite.
+            //
+            // COMPARED rather than rewritten. Rewriting them would defeat the point of the branch, which is that an
+            // issued document's content is immutable; and a caller asking to change them is asking for something no
+            // legitimate path wants, so the honest answer is a refusal. The comparison is on the ROWS the mapper
+            // produced, not on the aggregate, so it sees exactly what would have been written.
+            $storedChildren = [
+                'document_line' => $this->connection->fetchAllAssociative(
+                    'SELECT position, quantity, unit_net, vat_rate FROM document_line'
+                    . ' WHERE company_id = :company_id AND document_id = :document_id ORDER BY position',
+                    ['company_id' => $document->companyId->toRfc4122(), 'document_id' => $document->id->toRfc4122()],
+                ),
+                'document_charge' => $this->connection->fetchAllAssociative(
+                    'SELECT position, label, amount FROM document_charge'
+                    . ' WHERE company_id = :company_id AND document_id = :document_id ORDER BY position',
+                    ['company_id' => $document->companyId->toRfc4122(), 'document_id' => $document->id->toRfc4122()],
+                ),
+            ];
+
+            // NUMERICALLY, NOT BY STRING, for every amount and quantity. `NUMERIC(21,6)` returns `'1.000000'` for a
+            // stored `'1'`, so a string comparison would refuse an identical re-save — the exact class of false
+            // failure `DoctrineInvoiceRepositoryTest`'s docblock records being committed once already.
+            $incomingLines = array_map(static fn(Entity\DocumentLineRow $line): array => [
+                'position' => $line->position,
+                'quantity' => $line->quantity,
+                'unit_net' => $line->unitNet,
+                'vat_rate' => $line->vatRate,
+            ], $lines);
+            $incomingCharges = array_map(static fn(Entity\DocumentChargeRow $charge): array => [
+                'position' => $charge->position,
+                'label' => $charge->label,
+                'amount' => $charge->amount,
+            ], $charges);
+
+            if (!self::childRowsAgree($storedChildren['document_line'], $incomingLines, ['quantity', 'unit_net', 'vat_rate'])
+                || !self::childRowsAgree($storedChildren['document_charge'], $incomingCharges, ['amount'])
+            ) {
+                throw new \RuntimeException(\sprintf(
+                    'Refusing to rewrite issued document %s: it already carries document number %s, and its lines and '
+                    . 'fixed charges are part of the document a client may already hold. Only a state transition '
+                    . '(issue → cancel) may be saved over an issued row — and this save proposes a different line or '
+                    . 'charge set, which is refused rather than silently discarded.',
+                    $identity->id,
+                    (string) $storedNumber,
+                ));
+            }
+
             return;
         }
 
@@ -344,6 +400,50 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         ]);
 
         return new PersistedInvoice($identity, $invoice);
+    }
+
+    /**
+     * Do two child-row sets describe the same thing? Numerically for the decimal columns, exactly for the rest.
+     *
+     * **NUMERICALLY IS THE WHOLE POINT.** `quantity` is `NUMERIC(21,6)` and `unit_net` is `NUMERIC(19,4)`, so a stored
+     * `'1'` comes back as `'1.000000'` — the same number, a different string. A string comparison here would refuse an
+     * identical re-save, which is exactly the false failure `DoctrineInvoiceRepositoryTest`'s docblock records having
+     * been committed once already in the opposite direction.
+     *
+     * Both sides arrive ordered by `position`, and a length mismatch is a mismatch — a removed or added line changes
+     * the document as surely as an edited one.
+     *
+     * @param list<array<string, mixed>> $stored
+     * @param list<array<string, string|int>> $incoming
+     * @param list<string> $decimalColumns columns to compare with `bccomp` rather than `===`
+     */
+    private static function childRowsAgree(array $stored, array $incoming, array $decimalColumns): bool
+    {
+        if (\count($stored) !== \count($incoming)) {
+            return false;
+        }
+
+        foreach ($incoming as $index => $row) {
+            foreach ($row as $column => $value) {
+                $storedValue = $stored[$index][$column] ?? null;
+
+                if (\in_array($column, $decimalColumns, true)) {
+                    // SCALE 6, the widest of the decimal columns involved, so a comparison never truncates a digit
+                    // that distinguishes two values.
+                    if (0 !== bccomp((string) $value, (string) $storedValue, 6)) {
+                        return false;
+                    }
+
+                    continue;
+                }
+
+                if ((string) $value !== (string) $storedValue) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     /**
