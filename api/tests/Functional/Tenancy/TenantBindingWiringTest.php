@@ -1,0 +1,140 @@
+<?php
+
+/*
+ * This file is part of twes-in.
+ *
+ * (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+ *
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ */
+
+declare(strict_types=1);
+
+namespace Twes\Tests\Functional\Tenancy;
+
+use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Driver;
+use Doctrine\DBAL\Driver\Middleware\AbstractDriverMiddleware;
+use Doctrine\Persistence\ManagerRegistry;
+use PHPUnit\Framework\Attributes\CoversNothing;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingDriver;
+use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingDriver;
+use Twes\Infrastructure\Tenancy\Doctrine\TenantBindingMiddleware;
+
+/**
+ * THE CONTAINER HALF: is the binding middleware actually INSTALLED, and on which connection?
+ *
+ * `TenantBindingMiddlewareTest` proves what the middleware DOES, against a real policy and the restricted runtime
+ * role. It builds its own DBAL connection, so it is structurally blind to the question this class asks — and that
+ * blindness is exactly the shape of the defect being repaired: `bind()` behaved correctly in every test that called
+ * it and had no production call site at all. **A behaviour test and a wiring test are not substitutes for each
+ * other, and the gap between them is where this defect lived for three commits.**
+ *
+ * The second assertion is the one that is easy to get wrong. `owner` exists so migrations run with a credential that
+ * is not the application's; a migration is legitimately tenant-less and runs before any tenant exists, so binding
+ * there would guard nothing and could only fail. `config/services.yaml` therefore tags
+ * {@see TenantBindingMiddleware} with `connection: default`, because DoctrineBundle autoconfigures
+ * `Doctrine\DBAL\Driver\Middleware` with a BARE `doctrine.middleware` tag, and a bare tag really does mean EVERY
+ * connection — so removing the scoped tag installs tenant binding on the migration connection.
+ *
+ * **The neighbouring `autoconfigure: false` is NOT what does that, and writing this class is what proved it.** The
+ * first version of this docblock repeated the claim in `services.yaml` — that leaving autoconfiguration on while
+ * adding a scoped tag yields both registrations — and the mutant for it SURVIVED. `MiddlewaresPass` skips every tag
+ * with no `connection` attribute when building its map (`continue` at MiddlewaresPass.php:38-44), so the bare tag
+ * contributes nothing and the scoped one stands alone. Both the comment and this docblock were corrected in place;
+ * the flag is kept for a cosmetic reason stated there. The lesson is `CLAUDE.md`'s own: a paragraph explaining why
+ * something must be so is the highest-value thing in this repository to spend ten minutes disproving.
+ *
+ * No `#[CoversClass]`: the subject is a container configuration file rather than a class, and naming the driver here
+ * would claim coverage of behaviour this class deliberately does not exercise.
+ */
+#[CoversNothing]
+final class TenantBindingWiringTest extends WebTestCase
+{
+    /**
+     * THE `default` CONNECTION — the one every repository, handler and provider is given — is wrapped.
+     *
+     * This is the assertion that goes red if the tag is removed, which is the production state at the defective
+     * commit. Note that it does NOT connect: `getDriver()` walks the decoration chain the container built, so the
+     * wiring is observable with no database at all, which is why this belongs in `functional` rather than
+     * `integration`.
+     */
+    public function testTheApplicationConnectionIsWrappedByTheBindingDriver(): void
+    {
+        self::assertTrue(
+            self::driverChainOf('default')[TenantBindingDriver::class] ?? false,
+            'The default connection must be wrapped by TenantBindingDriver, or nothing writes twes.tenant_id and '
+            . 'every tenant-owned read returns nothing while every write is refused by row-level security. '
+            . 'Check the doctrine.middleware tag on TenantBindingMiddleware in config/services.yaml.',
+        );
+    }
+
+    /**
+     * THE `owner` CONNECTION IS NOT — the direction a bare autoconfigured tag would break silently.
+     *
+     * Migrations run on this connection, tenant-less and before any tenant row exists. A binding middleware here
+     * would open every migration transaction and then try to write a setting for a tenant that is not there; the
+     * early return makes that harmless today, which is precisely why nothing else would report it.
+     */
+    public function testTheMigrationConnectionIsNotWrapped(): void
+    {
+        $chain = self::driverChainOf('owner');
+
+        self::assertArrayNotHasKey(
+            TenantBindingDriver::class,
+            $chain,
+            'The owner connection must NOT be wrapped: it is the migration credential, tenant-less by design. '
+            . 'Seeing it here means `autoconfigure: false` was dropped from TenantBindingMiddleware — DoctrineBundle '
+            . 'then tags it for EVERY connection. Chain: ' . implode(', ', array_keys($chain)),
+        );
+    }
+
+    /**
+     * THE SAVEPOINT GUARD IS STILL THERE TOO, on `default` and only there.
+     *
+     * Included because the two middlewares are registered by adjacent stanzas in the same file and share the same
+     * two collaborators, so a copy-paste edit to one is the likeliest way to lose the other. Asserted in the class
+     * that already walks the chain rather than in a third one.
+     */
+    public function testTheSavepointGuardIsStillInstalledOnTheApplicationConnectionAlone(): void
+    {
+        self::assertArrayHasKey(SavepointTenantBindingDriver::class, self::driverChainOf('default'));
+        self::assertArrayNotHasKey(SavepointTenantBindingDriver::class, self::driverChainOf('owner'));
+    }
+
+    /**
+     * Every class in a connection's driver decoration chain, innermost last, as a set.
+     *
+     * A set rather than a list because order is DBAL's business and asserting it would pin a detail this project has
+     * no opinion on. Walked through `AbstractDriverMiddleware`'s own `$wrappedDriver`, by reflection because DBAL
+     * exposes no accessor for it — the alternative is to connect and infer the chain from behaviour, which is what
+     * `TenantBindingMiddlewareTest` does and what this class exists NOT to duplicate.
+     *
+     * @return array<class-string, true>
+     */
+    private static function driverChainOf(string $name): array
+    {
+        self::bootKernel();
+        $registry = self::getContainer()->get('doctrine');
+        self::assertInstanceOf(ManagerRegistry::class, $registry);
+
+        $connection = $registry->getConnection($name);
+        self::assertInstanceOf(Connection::class, $connection);
+
+        $chain = [];
+        $driver = $connection->getDriver();
+
+        while (true) {
+            $chain[$driver::class] = true;
+
+            if (!$driver instanceof AbstractDriverMiddleware) {
+                return $chain;
+            }
+
+            $wrapped = new \ReflectionProperty(AbstractDriverMiddleware::class, 'wrappedDriver')->getValue($driver);
+            self::assertInstanceOf(Driver::class, $wrapped);
+            $driver = $wrapped;
+        }
+    }
+}

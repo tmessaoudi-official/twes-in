@@ -35,7 +35,10 @@ irreversible act is not reachable two ways. With it came the first `Application/
 **Postgres gapless counter** and the boundary the plan named a P0: an application handler never mints a
 `DocumentNumber`, it consumes one from `DocumentNumberAllocator`. The tenancy seam and the READ path landed 2026-08-06
 (`TenantResolver` port, `RequestTenantBinder` on `kernel.request`, a development-only header adapter refused in
-production by a gate, and `GET /api/invoices/{id}` through `InvoiceProvider`). **A create response is the document
+production by a gate, and `GET /api/invoices/{id}` through `InvoiceProvider`) — **but only HALF of that seam existed
+until 2026-08-07: `RequestTenantBinder` set the in-memory context and nothing wrote `twes.tenant_id` on the
+connection, so every write was refused and every read returned nothing.** `TenantBindingMiddleware` is the missing
+call site and § Gotchas 2026-08-07 records why two reasonable fixtures made it invisible. **A create response is the document
 READ BACK inside the write transaction, not the aggregate just built** — `NUMERIC(21,6)` returns `2.000000` for a
 stored `2`, so returning the aggregate would make `POST` and a later `GET` disagree byte-for-byte on one document.
 **Every monetary and quantity field is a decimal STRING on the wire**, never a JSON number, in both directions: the
@@ -1713,6 +1716,52 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   Chromium renders the documentation page as broken image placeholders and unstyled links with no Swagger UI widget —
   a 200, a correct `<title>`, nothing usable. That is § Gotchas 2026-08-05's description, reproduced and photographed
   rather than recalled, and it is why this page needs a rendered check and not only a status code.
+
+- **2026-08-07 — THE PRIMARY TENANCY CONTROL HAD NO CALL SITE FOR THREE COMMITS, and the two fixtures that exercise
+  it are what hid that — each one supplying, by hand, exactly the thing production was missing.**
+  `PostgresRowLevelSecurityIsolation::bind()` was written in Wave 0, is named in this file, in `infra/README.md` and in
+  three plans as the mechanism that scopes every statement, and **nothing called it**: all three mentions under
+  `api/src/` were docblock prose, and `RequestTenantBinder` set only the in-memory `TenantContext`. So `twes.tenant_id`
+  was never written on a request's connection. The consequences were total rather than subtle — `POST /api/invoices`
+  answered `SQLSTATE[42501] new row violates row-level security policy`, and `GET /api/invoices/{id}` returned 404 to
+  the tenant that owned the document, because the canonical policy compares against a setting that was always NULL. It
+  failed CLOSED, which is the only reason this was an outage and not a breach. The MAXIMAL panel found it; no gate and
+  no test could.
+  - **Why no test could is the part worth keeping.** `InvoiceLifecycleTest` connects as the table OWNER, and
+    `DoctrineInvoiceRepositoryTest` sets the GUC **session-wide itself**. Each is defensible alone and each documents
+    its choice honestly. Together they supply the owner privilege and the setting — the two things whose absence was
+    the defect — so the entire tenancy lifecycle was unobservable while 937 tests were green. This is the
+    *fixture-cannot-express-the-dangerous-shape* rule (§ Gotchas 2026-07-29) with a new ending: **two fixtures can each
+    be individually reasonable and jointly blind, and the blind spot is invisible from inside either one.** The remedy
+    was a THIRD fixture inverted on both axes — `TenantBindingMiddlewareTest`, the restricted runtime role and not one
+    line that touches the setting — rather than changing the two, which have their own subjects.
+  - **The seam was forced, not chosen.** `bind()` uses `set_config(..., true)` — transaction-local — and REFUSES when
+    `inTransaction()` is false, because `SET LOCAL` outside a transaction is discarded with a warning. That single fact
+    eliminates `kernel.request` (no transaction open), connection acquisition (same, and the only way to make it stick
+    is session scope, which leaks to whoever gets the pooled connection next), `DbalTransactionalScope` (works, and is
+    forgettable by anything opening a transaction another way), and per-statement (`bind()` refuses a second bind in
+    one transaction, rightly). **A DBAL driver middleware's `beginTransaction()` is the one seam that fires exactly
+    once per real transaction** — DBAL calls the driver's method only at nesting level 1 and turns deeper ones into
+    savepoints — so the "exactly once" property `bind()` demands is DBAL's rather than something to remember.
+  - **A READ NEEDS A TRANSACTION TOO, and that is the counter-intuitive half.** `InvoiceProvider` now wraps its lookup
+    in one. It reads like ceremony; without it the query is issued unbound and a tenant's own document is invisible.
+    Any transaction-local binding makes every read transactional by construction, which is a real cost to accept
+    knowingly rather than a smell to refactor away.
+  - **A behaviour test and a wiring test are not substitutes, and the gap between them is where this lived.** `bind()`
+    behaved correctly in every test that called it. `TenantBindingMiddlewareTest` proves what the middleware does
+    against a real policy but builds its own connection, so it is blind to whether the container installs it;
+    `TenantBindingWiringTest` walks the `default` and `owner` driver chains and is blind to what it does. Both, or
+    neither is enough.
+  - **The `autoconfigure: false` beside the scoped tag was documented as load-bearing and is NOT — its mutant
+    survived.** `MiddlewaresPass` builds its per-connection map by SKIPPING every `doctrine.middleware` tag that
+    carries no `connection` attribute (`continue`, MiddlewaresPass.php:38-44), so DoctrineBundle's bare autoconfigured
+    tag contributes nothing once a scoped tag exists and the two never compete. [Verified: dropping the flag leaves
+    `owner` unwrapped; dropping the *tag* instead installs the middleware on both connections.] The original
+    observation — `debug:container` showing `…Middleware.default` AND `…owner` — was real, but it was made with NO
+    explicit tag, and the comment then extrapolated it to a case where it does not hold. Corrected in place at all
+    three sites, per this section's 2026-07-29 rule, and the flag is kept for the smaller true reason: without it
+    `debug:container --tag` lists a phantom second tag with an empty connection column, in the one command a reader
+    would use to check the scoping.
 
 ## Git & CI
 

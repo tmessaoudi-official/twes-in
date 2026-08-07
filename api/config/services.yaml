@@ -49,6 +49,10 @@ services:
             # The provisioning-guard DRIVER, for the same reason as the savepoint wrappers: the middleware constructs
             # it around a Driver that DBAL supplies, so it cannot be autowired and must not be a service.
             - '../src/Infrastructure/Tenancy/Doctrine/ConnectionProvisioningGuardDriver.php'
+            # The TENANT-BINDING wrappers, for the same reason as the savepoint trio above: the middleware constructs
+            # each one around an object DBAL supplies, so neither can be autowired and neither must be a service.
+            - '../src/Infrastructure/Tenancy/Doctrine/TenantBindingDriver.php'
+            - '../src/Infrastructure/Tenancy/Doctrine/TenantBindingConnection.php'
 
     Twes\UI\:
         resource: '../src/UI/'
@@ -60,18 +64,46 @@ services:
 
     # THE SAVEPOINT TENANT-BINDING GUARD, on the RUNTIME connection only.
     #
-    # `autoconfigure: false` is the load-bearing part. DoctrineBundle registers an autoconfiguration for
-    # `Doctrine\DBAL\Driver\Middleware` that tags every implementation with a bare `doctrine.middleware`, which
-    # means EVERY connection -- and `debug:container` confirmed it: before this entry existed the middleware
-    # appeared as both `...SavepointTenantBindingMiddleware.default` and `...owner`. Leaving autoconfiguration on
-    # while adding a scoped tag would produce both the scoped and the unscoped registration rather than replacing
-    # it.
+    # **`connection: 'default'` IS THE LOAD-BEARING PART, and this comment said `autoconfigure: false` was for two
+    # commits.** DoctrineBundle registers an autoconfiguration for `Doctrine\DBAL\Driver\Middleware` that tags every
+    # implementation with a BARE `doctrine.middleware`, and a bare tag really does mean every connection -- so with
+    # NO explicit tag this middleware lands on `owner` as well. That much of the original note was right, and it is
+    # what `debug:container` showed when it appeared as both `...SavepointTenantBindingMiddleware.default` and
+    # `...owner`.
+    #
+    # What was WRONG is the next step it took: that leaving autoconfiguration on *while adding a scoped tag* would
+    # produce both registrations. It does not. `MiddlewaresPass` builds its connection map by SKIPPING every tag with
+    # no `connection` attribute (`continue` at MiddlewaresPass.php:38-44), so the bare autoconfigured tag contributes
+    # nothing, the map holds `default` alone, and line 54 then excludes every other connection. [Verified: dropping
+    # `autoconfigure: false` leaves the owner connection unwrapped -- `TenantBindingWiringTest` stays green -- while
+    # dropping the scoped tag instead turns its owner case red.]
+    #
+    # `autoconfigure: false` is KEPT for the honest, smaller reason: without it `debug:container --tag` lists a second
+    # tag for the same service with an EMPTY connection column, which reads exactly like an unscoped registration. A
+    # phantom entry in the one command a reader would use to check this scoping is worth one line to remove.
     #
     # Scoped to `default` because `owner` exists solely so migrations have a credential that is not the
     # application's. A migration is legitimately tenant-less and runs before any tenant exists, so a tenancy guard
     # there guards nothing and would only be able to fail. The security boundary between the two connections is
     # described in doctrine.yaml.
     Twes\Infrastructure\Tenancy\Doctrine\SavepointTenantBindingMiddleware:
+        autowire: true
+        autoconfigure: false
+        tags:
+            - { name: 'doctrine.middleware', connection: 'default' }
+
+    # THE TENANT BINDING ITSELF — the call site that did not exist until 2026-08-07.
+    #
+    # `PostgresRowLevelSecurityIsolation::bind()` was written in Wave 0 and called by NOTHING; the MAXIMAL panel for
+    # the Wave 1 boundary found all three mentions of it under `src/` were docblock prose. Without this entry
+    # `twes.tenant_id` is never written, so every tenant-owned read returns nothing and every write is refused by
+    # row-level security — `POST /api/invoices` answered SQLSTATE 42501 and a tenant's own document 404'd.
+    #
+    # `connection: default` for the reason the savepoint middleware documents above -- WITHOUT it, DoctrineBundle's
+    # bare autoconfigured tag installs this on EVERY connection including `owner`, and migrations run there, are
+    # legitimately tenant-less, and must not be bound. `autoconfigure: false` is cosmetic rather than load-bearing;
+    # read that comment for the measurement, and note it corrects an earlier version of itself.
+    Twes\Infrastructure\Tenancy\Doctrine\TenantBindingMiddleware:
         autowire: true
         autoconfigure: false
         tags:

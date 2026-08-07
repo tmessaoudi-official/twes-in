@@ -15,7 +15,9 @@ namespace Twes\UI\Http\State;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Twes\Application\Shared\TransactionalScope;
 use Twes\Domain\Document\InvoiceRepository;
+use Twes\Domain\Document\PersistedInvoice;
 use Twes\UI\Http\ApiResource\InvoiceResource;
 
 /**
@@ -30,7 +32,10 @@ use Twes\UI\Http\ApiResource\InvoiceResource;
  */
 final readonly class InvoiceProvider implements ProviderInterface
 {
-    public function __construct(private InvoiceRepository $invoices) {}
+    public function __construct(
+        private InvoiceRepository $invoices,
+        private TransactionalScope $transaction,
+    ) {}
 
     /**
      * @param array<string, mixed> $uriVariables
@@ -48,7 +53,23 @@ final readonly class InvoiceProvider implements ProviderInterface
         }
 
         try {
-            $persisted = $this->invoices->find($id);
+            // **THE READ RUNS IN A TRANSACTION, and that is not ceremony — without one it returns nothing.**
+            //
+            // The tenant is bound to the database session by `TenantBindingConnection`, at `beginTransaction()`, using
+            // `set_config(..., true)` — TRANSACTION-LOCAL, because a session-scoped value survives into whoever gets a
+            // pooled connection next. So a query issued outside a transaction is issued UNBOUND, the canonical policy
+            // compares `company_id` against a NULL setting, and the row is invisible: a tenant asking for its own
+            // document gets a 404. That was the state of this endpoint until 2026-08-07 and the MAXIMAL panel is what
+            // found it.
+            //
+            // A read-only transaction costs a snapshot and no WAL, which is the price of the transaction-local
+            // binding — and the binding is what makes forgetting impossible everywhere else.
+            //
+            // NO `FetchInvoice` HANDLER, deliberately, and the asymmetry with the write path is worth stating: the
+            // write handlers exist because they own decisions (which id, which number, what commits together). A read
+            // owns none — it is a lookup and a translation — so a handler would add a layer that only forwards. If a
+            // read ever needs to coordinate two aggregates in one snapshot, that is when it earns one.
+            $persisted = $this->transaction->transactional(fn(): ?PersistedInvoice => $this->invoices->find($id));
         } catch (\InvalidArgumentException $malformed) {
             // THE REPOSITORY REFUSES AN ILL-FORMED ID BEFORE IT REACHES A QUERY, and that refusal is correct —
             // an id is a key, and two spellings of one key compare unequal. Translated to a 404 rather than a 400

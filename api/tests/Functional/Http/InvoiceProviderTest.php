@@ -29,6 +29,7 @@ use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
+use Twes\Tests\Support\RecordingTransactionalScope;
 use Twes\UI\Http\ApiResource\InvoiceResource;
 use Twes\UI\Http\State\InvoiceProvider;
 use Twes\UI\Http\State\InvoiceRepresentation;
@@ -51,6 +52,40 @@ use Twes\UI\Http\State\InvoiceRepresentation;
 final class InvoiceProviderTest extends TestCase
 {
     private const DOCUMENT = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
+
+    private RecordingTransactionalScope $scope;
+
+    protected function setUp(): void
+    {
+        $this->scope = new RecordingTransactionalScope();
+    }
+
+    /**
+     * THE LOOKUP RUNS INSIDE A TRANSACTION, and this assertion is the only thing in this class that makes it so.
+     *
+     * It reads like ceremony on a read and it is not. The tenant is bound to the database session by
+     * `TenantBindingConnection` at `beginTransaction()`, using `set_config(..., true)` — TRANSACTION-LOCAL, because a
+     * session-scoped value survives into whoever gets the pooled connection next. So a query issued with no
+     * transaction open is issued UNBOUND, the canonical policy compares `company_id` against NULL, and a tenant
+     * asking for its own document gets a 404. That was the state of this endpoint until the MAXIMAL panel found it.
+     *
+     * WHY the unbound read sees nothing is a property of the database and is proven against a real one in
+     * `TenantBindingMiddlewareTest::testTheSameFetchOutsideATransactionSeesNothing()`. What is asserted HERE is the
+     * only half a double can see — that the provider asks for a scope at all — and it is what goes red if somebody
+     * removes the wrapper as redundant. Neither case is sufficient alone: this one would pass against a scope that
+     * committed nothing, and that one would pass against a provider nobody had wired.
+     *
+     * `maxDepth` as well as `entered`, because one flat scope is the requirement: a provider that nested would look
+     * transactional here while, through DBAL, opening a SAVEPOINT whose rollback reverts the binding — the divergence
+     * `SavepointTenantBindingConnection` exists to catch.
+     */
+    public function testTheLookupRunsInsideExactlyOneTransaction(): void
+    {
+        $this->represent($this->tndInvoice());
+
+        self::assertSame(1, $this->scope->entered, 'the read opens a transaction, because the binding is local to one');
+        self::assertSame(1, $this->scope->maxDepth, 'one flat scope, not a nested one');
+    }
 
     /**
      * EVERY MONETARY AND QUANTITY FIELD IS A JSON **STRING**, NOT A JSON NUMBER. The contract decision this whole
@@ -155,7 +190,7 @@ final class InvoiceProviderTest extends TestCase
         $this->expectException(NotFoundHttpException::class);
         $this->expectExceptionMessage('No such invoice.');
 
-        new InvoiceProvider($this->repositoryReturning(null))
+        new InvoiceProvider($this->repositoryReturning(null), $this->scope)
             ->provide(new Get(), ['id' => self::DOCUMENT]);
     }
 
@@ -181,7 +216,7 @@ final class InvoiceProviderTest extends TestCase
 
         $this->expectException(NotFoundHttpException::class);
 
-        new InvoiceProvider($repository)->provide(new Get(), ['id' => 'NOT-A-UUID']);
+        new InvoiceProvider($repository, $this->scope)->provide(new Get(), ['id' => 'NOT-A-UUID']);
     }
 
     /** A non-string route value is a 404 too, not a TypeError reaching the client as a 500. */
@@ -189,7 +224,7 @@ final class InvoiceProviderTest extends TestCase
     {
         $this->expectException(NotFoundHttpException::class);
 
-        new InvoiceProvider($this->repositoryReturning(null))->provide(new Get(), ['id' => 42]);
+        new InvoiceProvider($this->repositoryReturning(null), $this->scope)->provide(new Get(), ['id' => 42]);
     }
 
     private function tndInvoice(): Invoice
@@ -210,7 +245,7 @@ final class InvoiceProviderTest extends TestCase
     ): InvoiceResource {
         $identity = new DocumentIdentity(self::DOCUMENT, DocumentType::Invoice, $point);
 
-        return new InvoiceProvider($this->repositoryReturning(new PersistedInvoice($identity, $invoice)))
+        return new InvoiceProvider($this->repositoryReturning(new PersistedInvoice($identity, $invoice)), $this->scope)
             ->provide(new Get(), ['id' => self::DOCUMENT]);
     }
 

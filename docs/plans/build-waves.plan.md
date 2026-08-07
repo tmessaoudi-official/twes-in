@@ -1078,6 +1078,29 @@ named step. ~~`scripts/dev/provision-dev-database.sh`~~
 **— LANDED 2026-08-07**, with the ownership topology the 2026-08-01 entry specified plus three defensive statements
 and a foreign-database refusal; see that entry. Everything else in this section is struck through.
 
+### Wave 1 boundary — round 1 (MAXIMAL, frozen `a49e910`): 25 findings, 5 P0, NOT clean
+
+Recorded here because it was not, for a day: the round ran, its findings drove the work, and none of it was on disk —
+`CLAUDE.md` § "Plans live in the repo" says only committed state survives, and this section's own text pointed at
+*"the round-1 findings below"* while nothing was below. The two-clean counter is at **zero**; this is round 1 of a
+MAXIMAL loop, not a closure.
+
+| # | Finding | Sev | Status |
+|---|---|---|---|
+| R1-1 | **`bind()` HAS NO PRODUCTION CALL SITE.** All three mentions under `api/src/` were docblock prose and `RequestTenantBinder` set only the in-memory context, so `twes.tenant_id` was never written: `POST /api/invoices` answered SQLSTATE 42501 and a tenant's own document 404'd. Verified independently against a live cluster | **P0** | **CLOSED 2026-08-07** — `TenantBindingMiddleware`/`Driver`/`Connection`, a DBAL driver middleware binding at `beginTransaction()`, scoped to `default`. `InvoiceProvider`'s read is now transactional, without which an unbound query sees nothing. Covered on BOTH halves — `TenantBindingMiddlewareTest` (runtime role, real policy, six cases) for behaviour and `TenantBindingWiringTest` (driver chains of `default` and `owner`) for the container — and pinned by five mutants: bind deleted, bind before the BEGIN, session-scoped `set_config`, the scoped tag removed, the provider's wrapper removed. § Gotchas 2026-08-07 records why two reasonable fixtures made it invisible, and the `autoconfigure: false` claim its own mutant refuted |
+| R1-2 | **Concurrent issue burns a number and rewrites a client's.** No row lock or version guard on the issue transition; every `FOR UPDATE` under `api/src/` is a comment | **P0** | **OPEN** — next |
+| R1-3 | `provision-dev-database.sh` reassigns the DATABASE and SCHEMA owner and never a RELATION owner | **P0** | **OPEN** |
+| R1-4 | The same script skips every attribute check for a role that already exists | **P0** | **OPEN** |
+| R1-5 | **"WAVE 1 IS COMPLETE" refuted on the wave's own `In:` line** — Client (+contacts) and Product do not exist; the tenant settings table is absent | **P0** | **CLOSED** — retracted in place above, with the mechanism |
+| R1-P1s | Three of the findings are **false comments written in the same commits**, each sitting over the defect it described; three tests assert mutants that survive; `REQUIRED_NON_EMPTY_LAYERS` is untestable; the issue operation's 404 is undeclared in OpenAPI; `CLAUDE.md`'s bare-`phpunit` block is `&&`-chained and red; `make gate` cannot reach `gate:e2e`; `amountsByRate` emits `"19.0000000000"`; corrupt money answers 404; `TWES_SCHEMA_USER` is documented backwards | P1 | **OPEN** — the sweep is planned as one change |
+
+**One process finding, and it is the important one.** My panel prompt said reviewers could *"mutate in place and
+restore immediately"*. One did, in the real tree, during the freeze — and a second lens read a half-mutated file and
+came within one step of filing a fabricated P0. That is § Gotchas 2026-07-29's *freeze means freeze* from the other
+direction: it is not enough to stop committing, the prompt must make mutation impossible. Round 2's prompt confines
+every mutation to a `git archive` copy with its own `COMPOSER_VENDOR_DIR`, per § Gotchas 2026-08-05 — a shared
+`vendor/` is build state that `git status` cannot see.
+
 **In:** Client (+ contacts) · **Product** · Invoice with line items · the **calculation kernel** (line
 totals, taxes, document totals) as **one parameterised implementation** — inclusive vs exclusive
 tax is a *flag*, never a parallel class hierarchy · invoice state machine behind a **transition guard**, no
