@@ -448,15 +448,40 @@ config-prod: ## Render the production configuration without starting anything.
 # THE SECOND AXIS THE OLD NAMING CONFLATED: SCOPE. `gate` used to mean "the API tier only" while `gate-infra` meant
 # infra — so a bare name meant "dev" in one family, "prod" in another, and "just one tier" in a third. The rule now
 # matches the environment one: **the bare name is the WHOLE thing, a suffix NARROWS it.**
+#
+# AND `gate` DID NOT KEEP THAT PROMISE FOR TWO COMMITS. It said "EVERY tier's" and invoked api, infra and make —
+# `admin/` and `mobile/` were reachable from no target at all, so the two client tiers' gates existed only as prose
+# in their own READMEs and in CLAUDE.md § "Quality gate". That is the SAME defect the ruling above closed, one level
+# up: a bare name claiming the whole and delivering a subset. Narrowing the help text instead would have been the
+# tempting fix and the wrong one — it would re-open the axis by writing the exception down.
+#
+# EACH TIER GATE FAILS RATHER THAN SKIPPING WHEN ITS TOOLCHAIN IS ABSENT, and that is deliberate rather than an
+# oversight. It matches what `gate:licences` and `gate:schema` already do inside the API tier, and CLAUDE.md
+# § Gotchas records four separate controls that silently did not run. The cost is real and is stated here rather
+# than discovered: on a machine with no Flutter, `make gate` is RED — run `make gate-api` while working on the API.
 .PHONY: gate
-gate: ## Run EVERY tier's quality gate.
+gate: ## Run EVERY tier's quality gate. Needs every tier's toolchain; use a narrow sibling otherwise.
 	@$(MAKE) --no-print-directory gate-api
+	@$(MAKE) --no-print-directory gate-admin
+	@$(MAKE) --no-print-directory gate-mobile
 	@$(MAKE) --no-print-directory gate-infra
 	@$(MAKE) --no-print-directory gate-make
 
 .PHONY: gate-api
 gate-api: ## Run the API tier's quality gate on the host.
 	cd api && COMPOSER_ALLOW_SUPERUSER=1 composer gate
+
+.PHONY: gate-admin
+gate-admin: ## Run the Angular admin tier's quality gate (lint, tests, production build).
+	cd admin && npm run lint && npm test -- --no-watch && npm run build
+
+# THE ORDER IS LOAD-BEARING AND IS NOT ALPHABETICAL: `flutter build web` must run BEFORE `flutter test`, because
+# `test/no_external_origin_test.dart` READS `build/web`. Reversed, those cases SKIP and the suite still exits 0 with
+# "All tests passed!" — a GDPR control that silently does not run. `mobile/README.md` records the same order for the
+# same reason; this recipe is the enforcement.
+.PHONY: gate-mobile
+gate-mobile: ## Run the Flutter tier's quality gate. Order matters: analyze, BUILD, then test.
+	cd mobile && flutter analyze && flutter build web --release --no-web-resources-cdn && flutter test
 
 .PHONY: gate-infra
 gate-infra: ## Validate every compose configuration renders and holds its security properties.

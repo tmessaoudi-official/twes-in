@@ -155,22 +155,6 @@ that Invoice Ninja happens to maintain is not "using upstream code" in the sense
 that invariant is about their ELv2 application source, not about independently-licensed packages they
 also publish. Record it like any other dependency and move on.
 
-## TypeScript / Angular (admin)
-
-_No dependencies yet — the admin app is not scaffolded._
-
-| Package | Version | Licence | Purpose | Verified |
-|---|---|---|---|---|
-
-## Dart / Flutter (mobile & desktop)
-
-_No dependencies yet — the client is not scaffolded._ The Flutter client is written from scratch;
-**no code from `invoiceninja/admin-portal` is used**, so its Attribution Assurance License imposes
-nothing here (developer ruling, 2026-07-30).
-
-| Package | Version | Licence | Purpose | Verified |
-|---|---|---|---|---|
-
 ## Reference material that is NOT a dependency
 
 Invoice Ninja's repositories were **studied, never vendored** — read-only clones outside the working
@@ -230,6 +214,15 @@ a runtime dependency.
 
 Scaffolded with the official generator (`flutter create --platforms=android,ios,linux,macos,windows,web`)
 on Flutter **3.44.8** / Dart **3.12.2** — the current stable channel, matching this tier's pin.
+
+**The Flutter client is written from scratch, and NO code from `invoiceninja/admin-portal` is used**, so its
+Attribution Assurance License imposes nothing here (developer ruling, 2026-07-30). That licence would have
+required, on **every launch, forever**, a prominent display of *Hillel Coren* / *Invoice Ninja* /
+*invoiceninja.com* — and the obligation follows the code rather than the quantity of it, which is why licensing
+invariant 3 forbids reusing it even "just for the transport layer". This paragraph previously sat under a
+`## Dart / Flutter (mobile & desktop)` heading that also declared *"No dependencies yet — the client is not
+scaffolded"*, above this populated table; that duplicate section and its Angular twin were deleted at round 3 and
+this sentence moved here, because a file with two sections per tier saying opposite things is worse than either.
 
 | Package | Constraint | Licence | Scope |
 |---|---|---|---|

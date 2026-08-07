@@ -135,8 +135,18 @@ $runtimeRole = getenv('TWES_SCHEMA_RUNTIME_ROLE') ?: getenv('TWES_TEST_DB_USER')
 // 2's correctness and completeness lenses found it independently.
 //
 // So the scheme is stripped and the remainder split on `;`, which is what PDO itself does, rather than guessing at the
-// separators a key may follow. `array_key_exists` rather than a truthiness test: `user=` with an empty value is a
-// declared-but-empty credential and must NOT count as carrying one.
+// separators a key may follow. **This comment said `array_key_exists` rather than a truthiness test, and the code has
+// never used it** — corrected in place per CLAUDE.md § Gotchas 2026-07-29. It was wrong about the mechanism AND about
+// the consequence: `array_key_exists` is the test that WOULD accept a declared-but-empty `user=`, and the rule wanted
+// here is the opposite one. `user=;host=…` declares a credential and supplies none, so libpq falls back to the
+// operating-system user and the connection either fails or succeeds as somebody else entirely — either way the gate
+// would have accepted a DSN carrying no usable credential while refusing to ask for TWES_SCHEMA_USER. Hence
+// `'' !== trim($value)`.
+//
+// `trim()` ON BOTH SIDES, and each half is pinned by its own meta-case. libpq tolerates whitespace around a keyword
+// and around a value, so ` user = twes_owner ` is a DSN that connects — and without the trims this gate would refuse
+// it with a message telling the reader to add a `user=` that is already there, which is the exact trap the whole
+// relaxation above exists to remove, reproduced a third time.
 $dsnCarriesUser = false;
 
 if (is_string($dsn) && str_contains($dsn, ':')) {

@@ -94,7 +94,11 @@ locked package lacks a `source` URL, `--no-dev` is no longer required, and the p
 by SHA-256 and runs with no vendor tree, not because Composer cannot fetch it. **This paragraph said the opposite
 in the present tense for a commit AFTER § "Quality gate" corrected it 520 lines below**, in a correction whose own
 text claims it was made *"here rather than below it"* — the § Gotchas 2026-07-29 shape, committed by the sweep that
-cites it. [Verified: 74 + 46 locked packages, 0 without source; `phpstan/phpstan in lock? NO`.] Everything
+cites it. [Verified: **every** locked package carries a `source` URL, in both `packages` and `packages-dev`, and
+`phpstan/phpstan` is in neither. **No total is written here, and that is a fix rather than an omission**: this
+citation said `74 + 46` while the lock held 77 + 46, and three other sites in this file said the same — a count
+written beside the thing it counts drifts, and a `[Verified]` one drifts while looking authoritative. The property
+is what matters and the totals never were; derive both with a script over `api/composer.lock`.] Everything
 installs — see § Gotchas, which corrects the *"GitHub egress is restricted"* claim this paragraph carried until
 2026-08-01. **`deptrac` is the only tool still owed.**
 Anything below describing what does not yet exist is the *target*. Read `docs/plans/build-waves.plan.md` for
@@ -641,10 +645,10 @@ this table called the tier green. They now run the pinned phars in `api/tools/bi
 always actually verified with. **The REASON this row gave for that was false when it was written and is corrected
 here rather than below it** (round 2 of the PHPStan certification): it said *"`phpstan/phpstan` forces `--no-dev`,
 so no dev binary is ever installed"*. `phpstan/phpstan` LEFT `composer.lock` on 2026-08-02 with `deptrac`, which
-is the only thing that ever dragged it in — so `--no-dev` has not been required since, every one of the 120 locked
-packages carries a `source` URL, and `vendor/bin/phpunit` and `vendor/bin/php-cs-fixer` both exist in a normal
-checkout. [Verified: a script over the lock reports `packages: 74, 0 without source; packages-dev: 46, 0 without
-source`, `phpstan/phpstan in lock? NO`; `composer install --prefer-source --dry-run` reports *"Installing
+is the only thing that ever dragged it in — so `--no-dev` has not been required since, **every** locked
+package carries a `source` URL, and `vendor/bin/phpunit` and `vendor/bin/php-cs-fixer` both exist in a normal
+checkout. [Verified: a script over the lock reports `0 without source` in both `packages` and `packages-dev` and
+`phpstan/phpstan in lock? NO`; `composer install --prefer-source --dry-run` reports *"Installing
 dependencies from lock file (including require-dev) … Nothing to install"*; `ls api/vendor/bin` lists both.] The
 phars stay anyway, and for a better reason than the false one: a pinned SHA-256 phar is reproducible and runs in a
 checkout with NO vendor tree at all, which is what makes `gate:architecture` and `gate:style` independent of a
@@ -987,12 +991,19 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     above.** `phpstan/phpstan` was the only entry in `composer.lock` with no `source` URL, so `--prefer-source`
     could not avoid the API for it. It reached the lock only as a dependency of `deptrac/deptrac`, and both left
     `require-dev` on 2026-08-02, which retired the flag with them — unnoticed for three days, so the recipe here
-    kept prescribing it. [Verified 2026-08-05: `packages: 74, 0 without source; packages-dev: 46, 0 without
-    source`; `phpstan/phpstan in lock? NO`; `composer install --prefer-source --dry-run` → *"Installing
+    kept prescribing it. [Verified: `0 without source` in BOTH `packages` and `packages-dev`, and
+    `phpstan/phpstan in lock? NO`; `composer install --prefer-source --dry-run` → *"Installing
     dependencies from lock file (including require-dev) … Nothing to install"*.] **The earlier citation here read
     `packages: 52, 0 without source; packages-dev: 54, 1 without source — phpstan/phpstan`, and it no longer
     reproduces** — kept visible rather than swapped out, because a `[Verified]` figure that has silently stopped
     being true is the artefact this file most wants a reader to distrust.
+    **And its replacement did exactly the same thing two days later.** That one read `[Verified 2026-08-05:
+    packages: 74 … packages-dev: 46 …]` and the lock now holds 77 + 46 — so the correction to a stale count went
+    stale, in the entry whose own subject is stale counts, at three further sites in this file simultaneously. The
+    TOTALS are gone from all four and the PROPERTY is stated instead, because `0 without source` is the thing every
+    one of those sentences was actually asserting and it is the only part that never moved. This is the same fix
+    § "Quality gate" applies to the role count and the gate count: **derive it, and if a citation's number moves
+    with the tree, state the direction rather than the total.**
   - **`--no-dev` omitted `autoload-dev`**, which is why `composer dump-autoload --dev` used to follow it: without
     it `Twes\Tests\` is unmapped and the suite dies with `Class "…DocumentNumberSequenceContract" not found`.
     Retired with the flag. Still worth knowing if a future constraint reintroduces `--no-dev`.
@@ -1782,10 +1793,17 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     tag contributes nothing once a scoped tag exists and the two never compete. [Verified: dropping the flag leaves
     `owner` unwrapped; dropping the *tag* instead installs the middleware on both connections.] The original
     observation — `debug:container` showing `…Middleware.default` AND `…owner` — was real, but it was made with NO
-    explicit tag, and the comment then extrapolated it to a case where it does not hold. Corrected in place at all
-    three sites, per this section's 2026-07-29 rule, and the flag is kept for the smaller true reason: without it
-    `debug:container --tag` lists a phantom second tag with an empty connection column, in the one command a reader
-    would use to check the scoping.
+    explicit tag, and the comment then extrapolated it to a case where it does not hold. The flag is kept for the
+    smaller true reason: without it `debug:container --tag` lists a phantom second tag with an empty connection
+    column, in the one command a reader would use to check the scoping.
+    **THIS SENTENCE SAID "Corrected in place at all three sites", THEN "all four", AND THERE WERE FIVE** — a fourth
+    turned up in the assertion message a developer reads under failure (round 2, R2S-4) and a fifth in
+    `build-waves.plan.md`'s own AGREED ruling for the savepoint middleware, which is the decision record the claim
+    ORIGINATED in. **So no site count is written here any more.** Derive it: `grep -rn 'autoconfigure: false'`
+    across `CLAUDE.md`, `docs/plans/`, `infra/README.md` and `api/config/`, and read each hit. The generalisable
+    part is not about this flag — **a correction that ends by counting the places it was applied invites exactly one
+    more place**, and this file has now made that mistake three times about one sentence. A sweep states what it
+    searched, not how many it found.
 
 - **2026-08-07 — A DOCUMENT NUMBER IS WRITE-ONCE, AND THE LOCK IS THE SECOND LINE RATHER THAN THE FIRST.** Recorded
   beside money-is-never-a-float and the gapless sequence because it is the same kind of decision: once documents exist

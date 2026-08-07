@@ -210,6 +210,15 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         $written = $this->connection->executeStatement(
             'INSERT INTO document (company_id, id, type, state, currency, number, number_rendered, vat_rounding_point)'
             . ' VALUES (:company_id, :id, :type, :state, :currency, :number, :number_rendered, :vat_rounding_point)'
+            // TYPE IN THE CONFLICT PREDICATE, NOT ONLY IN THE SET LIST. `load()` filters by `type` and its comment
+            // calls that *"a correctness fix rather than an optimisation … issuing one would have allocated a number
+            // from the INVOICE sequence for a document of another type"* — while this statement happily rewrote the
+            // column, so an `Invoice` saved at an id already held by another type's DRAFT converted that row to
+            // `type='invoice'` and replaced its children. Round 3 found the asymmetry (R3C-7).
+            //
+            // Unreachable today: nothing writes another type, `POST /api/invoices` mints a fresh UUIDv7, and `issue`
+            // cannot load a foreign type precisely because of `load()`'s predicate. Reachable the moment Wave 2's quote
+            // repository writes the same table — which is exactly when a silent type conversion would be least visible.
             . ' ON CONFLICT (company_id, id) DO UPDATE SET'
             . ' state = EXCLUDED.state, number = EXCLUDED.number, number_rendered = EXCLUDED.number_rendered,'
             // `type` and `vat_rounding_point` are updatable because they live on DocumentIdentity, which a caller
@@ -230,7 +239,8 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             // A `WHERE` on `DO UPDATE` rather than a CHECK or a trigger, because only this form can compare the
             // EXISTING row to the incoming one. A CHECK sees one row; a trigger would put business meaning in a
             // persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses outright.
-            . ' WHERE document.number IS NULL OR document.number = EXCLUDED.number',
+            . ' WHERE (document.number IS NULL OR document.number = EXCLUDED.number)'
+            . ' AND document.type = EXCLUDED.type',
             [
                 'company_id' => $document->companyId->toRfc4122(),
                 'id' => $document->id->toRfc4122(),

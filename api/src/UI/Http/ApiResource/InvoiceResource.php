@@ -101,12 +101,21 @@ use Twes\UI\Http\State\IssueInvoiceProcessor;
             // 200, not the `Post` default of 201: this creates nothing. It transitions a document that exists, and
             // the response is that same document at its new state.
             status: 200,
-            // EVERY ANSWER THIS OPERATION CAN GIVE IS DECLARED, because two of them were not and a generated client
+            // EVERY ANSWER A CALLER CAN ACT ON IS DECLARED, because two of them were not and a generated client
             // is written against the specification rather than against the processor. `IssueInvoiceProcessor` answers
             // 404 for a document that is absent OR belongs to another tenant (indistinguishably, which is the design
             // of row-level security) and 422 for a domain refusal — issuing a document that is not a draft, or one
             // with no lines. Neither appeared in the schema, so a client generated from it had no branch for the two
             // outcomes a caller is most likely to hit: a double-click and a stale page.
+            //
+            // **This said "EVERY ANSWER THIS OPERATION CAN GIVE" and that was one word too strong**, corrected in
+            // place per `CLAUDE.md` § Gotchas 2026-07-29. A 500 is also reachable and is deliberately absent from the
+            // list below: `CLAUDE.md` § "Translation keys" rules that our own faults — a number from the wrong
+            // sequence, a `\LogicException` of any kind — map to `error.internal` and carry their detail in the log
+            // rather than in a response. That is not an outcome a client branches on, it is the absence of one, and
+            // declaring it per-operation would invite exactly the client-side handling the ruling exists to prevent.
+            // The distinction the corrected wording draws is the one that matters: 404 and 422 are answers a caller
+            // can DO something about, and 500 is a promise that we will.
             //
             // Descriptions rather than content schemas: the 422 body is Symfony's RFC 9457 problem detail, which
             // API Platform already documents globally, and restating its shape here is a second copy that would

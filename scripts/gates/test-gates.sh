@@ -2238,13 +2238,23 @@ fi
 # position must satisfy it (the original `/(^|;)\s*user\s*=/i` could not see one immediately after the scheme colon,
 # which is a valid PDO DSN), and an EMPTY `user=` must NOT -- a declared-but-blank credential is not a credential.
 #
-# All three assert on the REFUSAL MESSAGE rather than on a bare exit code, so a crash cannot pass for a detection.
+# PLUS TWO FOR THE WHITESPACE AXIS, which round 3 found unpinned: the parse trims BOTH the key and the value, and
+# deleting either `trim()` survived all three cases above. They are separate cases because they fail in OPPOSITE
+# directions and neither can stand in for the other. `trim($key)` is what accepts ` user =someone` -- libpq tolerates
+# whitespace around a keyword, so that DSN connects, and without the trim this gate refuses it while telling the
+# reader to supply a `user=` the DSN already carries, which is the exact trap the whole relaxation exists to remove.
+# `trim($value)` is what REFUSES `user=   `: a whitespace-only value is not a credential, and without the trim it is a
+# non-empty string, so the gate would accept a DSN with no usable user and never ask for TWES_SCHEMA_USER.
+#
+# All five assert on the REFUSAL MESSAGE rather than on a bare exit code, so a crash cannot pass for a detection.
 # They need no database: the refusal being tested happens before any connection is attempted, and a DSN pointed at
 # port 1 fails afterwards with a DIFFERENT message, which is what distinguishes the two.
 for dsn_case in \
   'user-last:pgsql:host=127.0.0.1;port=1;dbname=nope;user=someone:reaches-connect' \
   'user-first:pgsql:user=someone;host=127.0.0.1;port=1;dbname=nope:reaches-connect' \
-  'user-empty:pgsql:host=127.0.0.1;port=1;dbname=nope;user=:refuses'
+  'user-empty:pgsql:host=127.0.0.1;port=1;dbname=nope;user=:refuses' \
+  'key-spaced:pgsql:host=127.0.0.1;port=1;dbname=nope; user =someone:reaches-connect' \
+  'value-blank:pgsql:host=127.0.0.1;port=1;dbname=nope;user=   :refuses'
 do
   dsn_label="${dsn_case%%:*}"
   dsn_rest="${dsn_case#*:}"
