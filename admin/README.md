@@ -18,7 +18,7 @@ ng new admin --style=scss --ssr=false --zoneless=true --routing=true --ai-config
 ng add @angular-eslint/schematics
 ```
 
-Angular CLI **22.0.9** on Node **26.5.0** (installed from nodejs.org against the published SHA-256; the
+Angular CLI **22.0.9** on Node **26.7.0** (installed from nodejs.org against the published SHA-256; the
 container's default 22.22.2 is one patch below Angular 22's `^22.22.3` floor). Three flags were choices
 rather than defaults, and each is a decision:
 
@@ -47,7 +47,7 @@ Current state: `npm run lint` clean, `npm test` 2 passing (Vitest + jsdom, no br
 checked by `scripts/gates/dependency-licences.php`, and every direct dependency is recorded in
 `THIRD-PARTY-NOTICES.md`.
 
-Pinned on landing: Angular **22.0.8**, Node **26.5.0**.
+Pinned on landing: Angular **22.1.3**, Node **26.7.0**.
 
 ## What this tier owes on arrival, as gate conditions
 

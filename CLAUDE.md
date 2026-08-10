@@ -604,7 +604,7 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 
 | Tier | Green means | State |
 |---|---|---|
-| Symfony API | `php tools/bin/phpunit-12.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
+| Symfony API | `php tools/bin/phpunit-13.phar` (all four suites), `php tools/bin/php-cs-fixer.phar check`, `composer validate` | **Runs** |
 | **Architecture fitness** | the gates in `scripts/gates/` — `ls` that directory for the tally; see § "Architecture" for the table and why two of them are separate — **plus `scripts/gates/test-gates.sh`, which tests the gates.** A gate that cannot fail is a false assurance: round 2 proved that suite was too weak and round 3 proved it again, so it was strengthened twice. It now asserts each gate's own **message** rather than only its exit code, and — because hand-picked cases pin the fixture's instances rather than the rule sets — every gate answers `--dump-rules` and the suite **generates** one case per banned function, superglobal, instantiation, layer pair, SPDX root, extension and lock section, backed by a committed baseline that fails if any rule set shrinks, and by committed minimum rule-set SIZES, because generating a case from the data means deleting an entry deletes its own case. The suite reports its own case count; none is written here | **Runs** |
 | **Licensing** | `scripts/gates/dependency-licences.php` — every dependency permissive **and present in `THIRD-PARTY-NOTICES.md`**, over `api/composer.lock` and `admin/package-lock.json`, plus **every locked pub package's own licence read out of the pub cache** (`mobile/pubspec.lock` records no licence field, so the cache is the only place they exist — a copyleft grant is vetoed even when the same file also states a permissive one, more than one match is refused as ambiguous, a non-`hosted`/non-`sdk` source is refused, and a version that is not plain semver is refused because it becomes a filesystem path), plus every **vendored font** under `mobile/assets/fonts/`, recursively: a REUSE sidecar declaring exactly one identifier, an acceptable one, **every one of the font's own `name`-table licence records corroborating it**, the licence text beside the binary *and* declared under `flutter:`→`assets:` so it ships, and — the direction that was missing — **every font path the manifest declares must have been examined**, because a forward walk says nothing about the files it never reached. A font arrives as a committed binary rather than a manifest entry, so no lock file can see it; it is not the only such asset (13 of the 37 tracked `.png`/`.ico` files are template-derived and ship too), which is why that sentence no longer says "the one" | **Runs** |
 | **Schema tenancy** | `scripts/gates/schema-tenancy.php` — every tenant-owned table in a real migrated schema RLS-enabled, `FORCE`d, canonically policed on both halves, `NOT NULL` on its tenant column, and beyond the runtime role's ownership and `TRUNCATE`; a table it cannot classify is a **failure**, not a skip. See § "Architecture" for why nothing else can see an unpoliced tenant table | **Runs** (landed 2026-08-01 with the first migration, which is what it was blocking). Needs `TWES_SCHEMA_DSN` + `TWES_SCHEMA_USER`, or falls back to the integration suite's `TWES_TEST_DSN` / `TWES_TEST_DB_SUPERUSER` pair. Its clean and violation cases are in `api/tests/Integration/Tenancy/SchemaTenancyGateTest.php` because the meta-suite has no database |
@@ -680,7 +680,7 @@ php   scripts/gates/dependency-licences.php
 php   scripts/gates/schema-tenancy.php     # needs a migrated database; see the table above for the env vars
 bash  scripts/gates/test-gates.sh          # LAST, and the gates' OWN tests -- see § Gotchas on why this one matters
 cd api
-php tools/bin/phpunit-12.phar --exclude-testsuite e2e   # bare `phpunit` here was RED by construction -- see below
+php tools/bin/phpunit-13.phar --exclude-testsuite e2e   # bare `phpunit` here was RED by construction -- see below
 php tools/bin/phpstan.phar analyse --no-progress
 php tools/bin/php-cs-fixer.phar check
 composer validate
@@ -689,7 +689,7 @@ php bin/console doctrine:schema:validate --skip-sync
 ```
 
 **Two things in that block were wrong until 2026-08-07 and both are worth knowing.** It ran a BARE
-`php tools/bin/phpunit-12.phar`, which since the `e2e` suite landed includes `ServedSurfaceTest` — and that suite
+`php tools/bin/phpunit-13.phar`, which since the `e2e` suite landed includes `ServedSurfaceTest` — and that suite
 FAILS rather than skipping when no server answers, deliberately, so the documented command was red on any machine
 without a running stack. `composer gate:test` had `--exclude-testsuite e2e` and this hand-written twin did not, which
 is the divergence a second copy of a command always eventually produces. And the steps were `&&`-CHAINED, so the
@@ -718,13 +718,13 @@ read its own status.
 
 | Tier | How | Reachable? |
 |---|---|---|
-| PHP 8.5.8, PostgreSQL 18.4 | sury.org and PGDG apt repositories | yes |
+| PHP 8.5.9, PostgreSQL 18.4 | sury.org and PGDG apt repositories | yes |
 | PHPUnit, php-cs-fixer | `bash scripts/dev/fetch-tools.sh` — official phars, pinned SHA-256 | yes (`phar.phpunit.de`, `cs.symfony.com`) |
 | PostgreSQL roles for the tenancy proof | `sudo -u postgres env TWES_TEST_DB_SUPERUSER_PASSWORD=postgres bash scripts/dev/provision-test-database.sh` | n/a |
 | **The DEV database (`twes_in`)** | `sudo -u postgres bash scripts/dev/provision-dev-database.sh` — needs no environment at all, and its defaults match `api/.env`. **Run it before the first `doctrine:migrations:migrate`**: it is what makes `twes_in` owned by `twes_owner` rather than by the runtime role, and a database owned by the runtime role hands it `CREATE` on `public` through `pg_database_owner` with no grant anywhere to find. Two roles only — never the test script's twelve, because a `BYPASSRLS` fixture has no business on a developer's own cluster. Re-runnable, and it **CORRECTS rather than only creates** — the database's owner, the runtime role's ATTRIBUTES and the owner of every RELATION it holds (`REASSIGN OWNED BY`) are all stated unconditionally, because this script's whole value on an existing cluster is repairing a wrong shape. The two P0s the MAXIMAL panel found were both in that direction: a pre-existing role was skipped outright, so a leftover SUPERUSER or `BYPASSRLS` `twes` was accepted in silence, and relation owners were never touched, leaving exactly the `doctrine_migration_versions`-owned-by-`twes` shape § Gotchas 2026-08-01 records as a P0. The one thing it never overwrites is an existing role's PASSWORD, so it cannot clobber the test fixture — a credential is the developer's choice and an attribute that defeats tenant isolation is not | n/a |
-| Node 26.5.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
+| Node 26.7.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` | yes |
 | Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` | yes (`registry.npmjs.org`) |
-| Flutter 3.44.8 | `flutter_linux_3.44.8-stable.tar.xz` from `storage.googleapis.com` | yes |
+| Flutter 3.44.9 | `flutter_linux_3.44.9-stable.tar.xz` from `storage.googleapis.com` | yes |
 | **Composer dependencies** | `composer config -g use-github-api false && composer config -g github-protocols https`, then `cd api && composer install --prefer-source` | **YES** — see § Gotchas. The plain `composer install` fails; `--prefer-source` clones instead of fetching zipballs, which is the half I got wrong until 2026-08-01. **`--no-dev` and the `composer dump-autoload --dev` that compensated for it were BOTH dropped on 2026-08-05**: they existed only for `phpstan/phpstan`, which left the lock with `deptrac` on 2026-08-02, and as written the recipe WITHHELD the `symfony/browser-kit` the functional suite needs [Verified: `--dry-run` reports "including require-dev … Nothing to install"] |
 
 Two notes that cost time to rediscover. The container's default Node is **22.22.2**, one patch below Angular

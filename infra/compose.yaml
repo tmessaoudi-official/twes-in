@@ -48,7 +48,7 @@ x-api-image: &api-image
     # `compose.override.yaml` overrides this with `target: dev`, so dev is explicit and prod is explicit, and neither
     # depends on stage ORDER in the Dockerfile ever again.
     target: prod
-  image: twes-in/api:${TWES_VERSION:-dev}
+  image: twes-in/api:${TWES_VERSION:-prod}
 
 x-api-environment: &api-environment
   APP_ENV: '${APP_ENV:-prod}'
@@ -86,7 +86,7 @@ services:
   # PostgreSQL. Tenancy is row-level security, so this is not a swappable component.
   # ------------------------------------------------------------------------------------------------------------
   database:
-    image: postgres:18-alpine
+    image: postgres:18.4-alpine3.24
     environment:
       POSTGRES_DB: '${POSTGRES_DB:-twes}'
       POSTGRES_USER: '${POSTGRES_USER:-postgres}'
@@ -141,7 +141,7 @@ services:
   # licensing invariant 8(a). Using Redis here would have needed a developer ruling; Valkey needs none.
   # ------------------------------------------------------------------------------------------------------------
   valkey:
-    image: valkey/valkey:8-alpine
+    image: valkey/valkey:9.1.1-alpine3.24
     command:
       - valkey-server
       # No RDB snapshots and no AOF. Everything here is a QUEUE and a LOCK, both of which are reconstructible:
@@ -299,7 +299,7 @@ services:
   # Apache-2.0, so it satisfies licensing invariant 8(a). No work reaches it until Wave 4 -- see infra/README.md.
   # ------------------------------------------------------------------------------------------------------------
   gotenberg:
-    image: gotenberg/gotenberg:8
+    image: gotenberg/gotenberg:8.35.0-libreoffice
     command:
       - gotenberg
       # NO NETWORK ACCESS FROM THE RENDERER. A PDF template that can fetch a URL is a server-side request forgery
@@ -371,7 +371,7 @@ services:
     # build-front` after `make build-front-dev` is a cache hit that silently serves the unminified bundle with source
     # maps — shipping our TypeScript. Distinct tags make the two artefacts distinguishable, which is the same
     # reasoning as `twes-in/api:dev-local`.
-    image: twes-in/admin-build:${NG_CONFIGURATION:-production}-${TWES_VERSION:-dev}
+    image: twes-in/admin-build:${NG_CONFIGURATION:-production}-${TWES_VERSION:-prod}
     # Copies the built bundle into the shared volume. `sh -c` with an explicit clear first, so a stale bundle from
     # a previous version cannot survive alongside the new one and be served by hash.
     command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/dist/admin/browser/. /out/']
@@ -392,7 +392,7 @@ services:
         FLUTTER_BUILD_MODE: '${FLUTTER_BUILD_MODE:-release}'
         # Must match `handle_path /app/*` in the Caddyfile.
         FLUTTER_BASE_HREF: '${FLUTTER_BASE_HREF:-/app/}'
-    image: twes-in/flutter-build:${FLUTTER_BUILD_MODE:-release}-${TWES_VERSION:-dev}
+    image: twes-in/flutter-build:${FLUTTER_BUILD_MODE:-release}-${TWES_VERSION:-prod}
     command: ['sh', '-c', 'rm -rf /out/* && cp -a /build/build/web/. /out/']
     volumes:
       - flutter-bundle:/out

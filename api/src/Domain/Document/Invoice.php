@@ -460,7 +460,7 @@ final readonly class Invoice
      *
      * **MEASURED, because "O(n) per edit" makes the AGGREGATE quadratic and the previous version of this note
      * left that to be inferred** (round 17's F6). Building a document one `withLine()` at a time, on this
-     * container, PHP 8.5.8:
+     * container, PHP 8.5.9:
      *
      *     n =  100   all edits    176.8 ms    one totals()   3.30 ms
      *     n =  250    "         1 094.4 ms      "            8.73 ms

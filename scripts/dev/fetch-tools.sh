@@ -30,7 +30,7 @@
 # and this repository's whole licensing position depends on knowing the provenance of what it runs.
 # Update a hash only alongside a deliberate version bump.
 #
-# Note the URLs. PHPUnit's is VERSION-PINNED (phpunit-12.5.33.phar), not the moving `phpunit-12.phar`:
+# Note the URLs. PHPUnit's is VERSION-PINNED (phpunit-13.3.0.phar), not the moving `phpunit-13.phar`:
 # with a moving URL, the next 12.5.x release turns a fresh clone's setup into a hard failure whose own
 # message says not to fix it by updating the hash. php-cs-fixer publishes no versioned URL on that host
 # (both `php-cs-fixer-v3.95.17.phar` and `-v3.95.18.phar` are 404s [Verified: `curl -o /dev/null -w '%{http_code}'`
@@ -57,7 +57,7 @@ readonly TOOLS_DIR="$REPO_ROOT/api/tools/bin"
 
 # name|url|sha256
 readonly -a TOOLS=(
-  "phpunit-12.phar|https://phar.phpunit.de/phpunit-12.5.33.phar|c8af6400e0cd81da027e2b4d6387733983f1f97f64fe80ae639c84b421e9cd55"
+  "phpunit-13.phar|https://phar.phpunit.de/phpunit-13.3.0.phar|d2137959d6fc96197b188fae076b361df41e026ddccfe2061917a7fea4d37e33"
   # php-cs-fixer 3.95.18. The VERSION is written here even though the URL cannot carry it, so the pin identifies
   # an artifact rather than only asserting a hash — otherwise a mismatch tells you the bytes changed and nothing
   # about what they changed to. Bumped at round 17: the pin held 3.95.17's hash while the host served 3.95.18, so
@@ -82,7 +82,7 @@ readonly -a TOOLS=(
   # The phar is served by `raw.githubusercontent.com`, which IS reachable [Verified: 200, 27798998 bytes, reports
   # `PHPStan - PHP Static Analysis Tool 2.2.6`]. So PHPStan joins PHPUnit and php-cs-fixer as a pinned phar, which
   # is the pattern this project already trusts and needs no vendor tree.
-  "phpstan.phar|https://raw.githubusercontent.com/phpstan/phpstan/2.2.6/phpstan.phar|abe4d3b38db5c4139e0135d98ea583e65185344050812651d1e9ede56d354e20"
+  "phpstan.phar|https://raw.githubusercontent.com/phpstan/phpstan/2.2.8/phpstan.phar|ab9ea72523fe453b9f4dd19f12b1e403a91efa894cd25d9b0cb3ef62b7d20bf2"
 )
 
 mkdir -p "$TOOLS_DIR"

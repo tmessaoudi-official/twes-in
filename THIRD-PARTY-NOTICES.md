@@ -87,7 +87,7 @@ allowlist. Direct requirements:
 | `twig/twig` | v3.28.0 | **BSD-3-Clause** | the template engine itself. Permissive and on the permitted list; noted in bold only because it is the one new entry that is not MIT | composer.lock |
 | `symfony/asset` | v8.1.0 | MIT | resolves `asset()` to the LOCALLY SERVED Swagger UI css/js/fonts under `public/bundles/apiplatform/`. Without it the documentation page has no stylesheet | composer.lock |
 | `symfony/yaml` | v8.1.2 | MIT | configuration | composer.lock |
-| `symfony/translation` | v8.1.1 | MIT | i18n — FR/AR/EN catalogues | composer.lock |
+| `symfony/translation` | v8.1.4 | MIT | i18n — FR/AR/EN catalogues | composer.lock |
 | `symfony/uid` | v8.1.0 | MIT | UUIDv7 generation, and the `Uuid` type on every Doctrine row entity's identifier columns. **Adopted 2026-08-05** — this row said *"adapter written by hand meanwhile — see below"*, with a "see below" pointing at nothing, in the commit that deleted the hand-written layout | composer.lock |
 | `doctrine/orm` | 3.6.7 | MIT | persistence, via a SEPARATE model in `Infrastructure/` mapped with **ATTRIBUTES**. This row said *"mapped in XML not attributes"* until 2026-08-05, four days after the 2026-08-01 ruling reversed it | composer.lock |
 | `doctrine/dbal` | 4.4.4 | MIT | database abstraction | composer.lock |
@@ -108,14 +108,14 @@ allowlist. Direct requirements:
 | `composer/semver` | 3.4.4 | MIT | version constraint parsing, pulled by API Platform | composer.lock |
 | `symfony/messenger` | v8.1.2 | MIT | the QUEUE. `CLAUDE.md` § "The Symfony ecosystem is the ONLY vocabulary" names it as the replacement for Laravel Jobs/Horizon, and `infra/compose.yaml` runs a worker on it | composer.lock |
 | `symfony/scheduler` | v8.1.2 | MIT | recurring work — recurring invoices, reminders, retention sweeps. Pinned to ONE replica in `infra/compose.prod.yaml`, because two schedulers issue every recurring invoice twice | composer.lock |
-| `symfony/lock` | v8.1.1 | MIT | the distributed lock behind that single-scheduler constraint, so it survives a future multi-host deploy rather than depending on a compose file | composer.lock |
+| `symfony/lock` | v8.1.4 | MIT | the distributed lock behind that single-scheduler constraint, so it survives a future multi-host deploy rather than depending on a compose file | composer.lock |
 | `symfony/doctrine-messenger` | v8.1.2 | MIT | the Messenger transport, added 2026-08-02. **Doctrine and not Valkey**, for three reasons given at length in `api/config/packages/messenger.yaml`: `compose.yaml` runs Valkey with persistence disabled, so it cannot be the durable failure store; `symfony/redis-messenger` requires `ext-redis` and refuses Predis; and a message dispatched inside the transaction that issues a document must commit or roll back with it | composer.lock |
 | `predis/predis` | v3.5.1 | MIT | the Valkey client, for the LOCK STORE only. It was described here as serving "the Messenger transport and the lock store" while **neither existed** — no `messenger.yaml`, no `lock.yaml`, and zero references to Predis anywhere in `api/src`. Both are now configured, and the queue deliberately does NOT use it: Valkey runs with persistence off, which is right for a lock and disqualifying for a durable queue. **VALKEY, not Redis** — Redis relicensed in 2024 to RSALv2/SSPLv1, neither of which is permissive, and SSPL specifically bites offering the software as a service, which is the commercial branch. Valkey is the Linux Foundation fork under BSD-3-Clause. The CLIENT is protocol-compatible and unaffected | composer.lock |
-| `phpunit/phpunit` | 12.5.33 | BSD-3-Clause | all four test suites | composer.lock |
+| `phpunit/phpunit` | 13.3.0 | BSD-3-Clause | all four test suites | composer.lock |
 | `friendsofphp/php-cs-fixer` | v3.95.17 | MIT | style gate | composer.lock |
 | `phpstan/phpstan` | 2.2.6 | MIT | static analysis — a pinned PHAR in `api/tools/bin/`, fetched by `scripts/dev/fetch-tools.sh`, NOT a Composer dependency. It is dist-only on Packagist, which is why; see CLAUDE.md § "Quality gate" | `scripts/dev/fetch-tools.sh` pin + phar reports `PHPStan 2.2.6` |
 | ~~`deptrac/deptrac`~~ | — | MIT | **REMOVED from `require-dev` 2026-08-02**: it requires the dist-only `phpstan/phpstan` and so blocked every other dev dependency. Owed as a phar once the release asset is located. **`qossmic/deptrac` is ABANDONED** in favour of this package | composer.lock history + packagist `abandoned` field |
-| `symfony/browser-kit` | v8.1.1 | MIT | functional suite — HTTP through the kernel | composer.lock |
+| `symfony/browser-kit` | v8.1.4 | MIT | functional suite — HTTP through the kernel | composer.lock |
 | `symfony/css-selector` | v8.1.0 | MIT | functional suite — assertions against markup | composer.lock |
 | `symfony/process` | v8.1.0 | MIT | e2e suite — booting a real server | composer.lock |
 
@@ -166,7 +166,7 @@ none of which is copyrightable expression.
 ## Angular admin (`admin/package.json`)
 
 Scaffolded with the official generator (`ng new`, Angular CLI 22.0.9) rather than by hand, so the layout
-and configuration follow Angular's own current recommendations instead of ours. Node 26.5.0.
+and configuration follow Angular's own current recommendations instead of ours. Node 26.7.0.
 
 Every direct dependency below, with the licence npm records for it in `admin/package-lock.json`. The
 **763** packages in the full locked tree across both tiers are checked by
@@ -213,7 +213,7 @@ a runtime dependency.
 ## Flutter client (`mobile/pubspec.yaml`)
 
 Scaffolded with the official generator (`flutter create --platforms=android,ios,linux,macos,windows,web`)
-on Flutter **3.44.8** / Dart **3.12.2** — the current stable channel, matching this tier's pin.
+on Flutter **3.44.9** / Dart **3.12.2** — the current stable channel, matching this tier's pin.
 
 **The Flutter client is written from scratch, and NO code from `invoiceninja/admin-portal` is used**, so its
 Attribution Assurance License imposes nothing here (developer ruling, 2026-07-30). That licence would have

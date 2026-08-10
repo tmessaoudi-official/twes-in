@@ -21,7 +21,7 @@
 # PINNED to the versions CLAUDE.md § "Quality gate" records, because Angular 22 refuses to install on the
 # container's default Node 22.22.2 -- one patch below its `^22.22.3` floor. A floating `node:lts` would reintroduce
 # that failure silently on some future rebuild.
-ARG NODE_VERSION=26.5.0
+ARG NODE_VERSION=26.7.0
 
 FROM node:${NODE_VERSION}-alpine AS build
 

@@ -65,9 +65,9 @@ copyrightable expression. The rules that keep it that way are in
 
 | Tier | Pinned |
 |---|---|
-| API | PHP **8.5.8**, Symfony **8.1.1** |
-| Admin | Angular **22.0.8**, Node **26.5.0** |
-| Client | Flutter **3.44.8**, Dart **3.12.2** — Android, iOS, Linux, Windows, macOS, Web |
+| API | PHP **8.5.9**, Symfony **8.1.4** |
+| Admin | Angular **22.1.3**, Node **26.7.0** |
+| Client | Flutter **3.44.9**, Dart **3.12.2** — Android, iOS, Linux, Windows, macOS, Web |
 | Database | PostgreSQL **18.4** |
 
 Versions are pinned exactly, not floated — a reproducible build is a precondition for trusting a money

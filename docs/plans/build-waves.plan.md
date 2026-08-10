@@ -342,7 +342,7 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 - [2026-07-29 17:10] RULED: **the Flutter client ships all six targets** — Android, iOS, Linux, Windows,
   macOS and Web (developer instruction). Consequence recorded because it is structural, not a flag: builds
   cannot be cross-compiled, so CI is a three-runner matrix and a release is six artifacts from three
-  machines. Flutter stays on **stable**, currently 3.44.8 / Dart 3.12.2 [Verified against Flutter's release
+  machines. Flutter stays on **stable**, currently 3.44.9 / Dart 3.12.2 [Verified against Flutter's release
   manifest]. Flutter Web was left open in this entry and **RESOLVED by the 17:40 ruling below: it ships, and
   twes-in offers two admin interfaces.**
 - [2026-07-29 17:40] RULED: **the profit-rate fix is BOTH parts, combined** (developer ruling). A product
@@ -670,7 +670,7 @@ spent partly because the tree changed under the reviewer.
 
 ## Wave 0 — Foundations — **LANDED (partially), 2026-07-29**
 
-Delivered and verified, **and re-verified by every certification round since** (see below): the figures rise every round, so **run the commands rather than trusting a number written here** — `php tools/bin/phpunit-12.phar` and `bash scripts/gates/test-gates.sh` each report their own; the architecture/licensing gates, each proven to fail on an injected
+Delivered and verified, **and re-verified by every certification round since** (see below): the figures rise every round, so **run the commands rather than trusting a number written here** — `php tools/bin/phpunit-13.phar` and `bash scripts/gates/test-gates.sh` each report their own; the architecture/licensing gates, each proven to fail on an injected
 violation; the tenancy invariant proven against a real PostgreSQL 18.4 server, including a test that
 removes the guard and watches every tenant leak, and one that exercises a *reused* connection.
 
@@ -987,7 +987,7 @@ by row-level security, and `deptrac`/PHPStan — of which **PHPStan landed on 20
 still absent. "Could not be installed" was a misdiagnosis in both cases; see the amended 2026-07-30 06:10
 ruling in the Decisions Log.*
 
-**In:** repo skeleton (`api/`, `admin/`, `mobile/`, `infra/`) · Symfony 8.1.1 on PHP 8.5.8 · the
+**In:** repo skeleton (`api/`, `admin/`, `mobile/`, `infra/`) · Symfony 8.1.4 on PHP 8.5.9 · the
 hexagonal layer layout · **`Money` value object** over `NUMERIC(19,4)` with explicit rounding on every
 lossy operation · **`TenantContext` + `TenantIsolationStrategy`** seam with Mode A (shared DB,
 default-on Doctrine filter) implemented · UUIDv7 IDs · RFC 9457 error shape · Doctrine Migrations ·
@@ -1871,7 +1871,7 @@ Landing the token is what earns the switch.
 ## Wave 11 — Flutter client — all six targets
 
 **In:** written from scratch, 100% ours (licensing invariant 3). **Android · iOS · Linux · Windows ·
-macOS · Web** (developer ruling, 2026-07-29). Flutter **3.44.8** / Dart **3.12.2**, the current stable.
+macOS · Web** (developer ruling, 2026-07-29). Flutter **3.44.9** / Dart **3.12.2**, the current stable.
 
 Mobile is built first, but the six-target shape is designed in from the start rather than retrofitted,
 because it changes two things structurally: **CI is a three-runner matrix** (you cannot cross-compile —
@@ -3145,7 +3145,7 @@ Landed — the independent tenancy P0 and the architectural defect that hid it:
 - **No service may override the server invocation** — an allow-list on the invocation rather than a block-list of
   flags, closing the CLI-flag class in the rendered configuration.
 
-**NOT landed, and open:** the `frankenphp adapt` oracle itself. It needs `dunglas/frankenphp:1.12.6-php8.5-alpine`,
+**NOT landed, and open:** the `frankenphp adapt` oracle itself. It needs `dunglas/frankenphp:1.12.7-php8.5.9-alpine`,
 and a pull timed out in this container [Verified: `docker pull -q` → failed at 240s], so it could not be built and
 mutant-proven here. The dialect machinery is therefore still in place and still carries the four regressions above.
 **That is a deliberate stop, not an oversight**: half-stripping the machinery while the oracle that replaces it does

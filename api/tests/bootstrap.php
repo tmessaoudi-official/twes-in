@@ -64,7 +64,7 @@ if (is_file($composerAutoloader)) {
      * rule that a citation whose numbers move with the suite states the DIRECTION, not the totals. Delete the
      * registration from `config/services.yaml`, leave the cache warm, and:
      *
-     *     $ php tools/bin/phpunit-12.phar --filter TenantBindingWiringTest
+     *     $ php tools/bin/phpunit-13.phar --filter TenantBindingWiringTest
      *     OK (4 tests, 27 assertions)
      *
      * The same tree with the cache cleared reports `Failures: 1`. [Verified: those two runs differed in nothing

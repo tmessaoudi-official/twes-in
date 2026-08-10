@@ -30,7 +30,7 @@
 # and the artifact you deploy are different builds — and for a product that renders legal documents, "it worked last
 # Tuesday" is not a defence. Digest-pinning is the next step and is noted in infra/README.md as owed, because the
 # digest has to be captured from a trusted pull rather than written by hand.
-ARG FRANKENPHP_VERSION=1.12.6-php8.5-alpine
+ARG FRANKENPHP_VERSION=1.12.7-php8.5.9-alpine
 
 # ==============================================================================================================
 # STAGE 1 — base. The PHP platform, shared by the vendor and runtime stages.
@@ -91,7 +91,7 @@ COPY infra/api/ca-certificates/ /usr/local/share/ca-certificates/
 # over HTTPS, so installing the trust store is exactly the operation that cannot run before the trust store is
 # installed -- a bootstrap deadlock whose visible error names `install-php-extensions` rather than the real cause.
 # The package already ships in the pinned base image [Verified: `update-ca-certificates` on
-# dunglas/frankenphp:1.12.6-php8.5-alpine with no `apk` at all took the trust store from 119 certificates to 271],
+# dunglas/frankenphp:1.12.7-php8.5.9-alpine with no `apk` at all took the trust store from 119 certificates to 271],
 # which is one more reason the base image is pinned to an exact patch rather than a floating tag.
 RUN rm -f /usr/local/share/ca-certificates/README.md \
     && update-ca-certificates
@@ -113,7 +113,7 @@ FROM base AS vendor
 # that is what `COMPOSER_INSTALL_FLAGS` below exists for.
 RUN apk add --no-cache git unzip
 
-COPY --from=composer/composer:2-bin /composer /usr/bin/composer
+COPY --from=composer/composer:2.10.2-bin /composer /usr/bin/composer
 
 # COMPOSER_HOME must be explicit. `composer config -g` writes to the global config and refuses without a home
 # directory, and the base image sets none for the build user -- the failure is a bare `exit 2` with no message
@@ -158,7 +158,7 @@ RUN if [ "$COMPOSER_INSTALL_FLAGS" = "--prefer-source" ]; then \
 # THE APPLICATION, AND THE AUTOLOADER, both in this stage — because Composer only exists in this stage.
 #
 # This was in the RUNTIME stage until it was found broken on a real machine: `runtime` derives from `base`, and
-# `base` has no Composer [Verified: `docker run --rm dunglas/frankenphp:1.12.6-php8.5-alpine which composer` finds
+# `base` has no Composer [Verified: `docker run --rm dunglas/frankenphp:1.12.7-php8.5.9-alpine which composer` finds
 # nothing], so the build died with `/bin/sh: composer: not found` and exit 127. The old line even ended in
 # `rm -f /usr/bin/composer`, which is the tell: it was written as though this were the vendor stage.
 #
@@ -341,7 +341,7 @@ FROM base AS dev
 # comparable log timestamps. Composer itself is HERE and deliberately NOT in the production image.
 RUN apk add --no-cache git unzip postgresql18-client tzdata
 
-COPY --from=composer/composer:2-bin /composer /usr/bin/composer
+COPY --from=composer/composer:2.10.2-bin /composer /usr/bin/composer
 
 # ==============================================================================================================
 # XDEBUG. The reason this stage exists, and the reason it must never be the production one.
@@ -481,7 +481,7 @@ USER ${TWES_UID}:${TWES_GID}
 # `APP_ENV=dev` and `APP_DEBUG=1` as the image's own default, so a container started from this image without an
 # environment is a DEV container. The production image defaults the other way. Neither can be mistaken for the
 # other by forgetting a variable, which is the failure this whole split exists to prevent.
-ENV APP_ENV=dev \
+ENV APP_ENV=prod \
     APP_DEBUG=1 \
     APP_RUNTIME="Symfony\\Component\\Runtime\\SymfonyRuntime" \
     SERVER_NAME=:80 \

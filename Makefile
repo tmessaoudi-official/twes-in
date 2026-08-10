@@ -222,12 +222,10 @@ build build-prod: check-env
 .PHONY: build-front build-front-prod
 build-front:      DCX := $(DC)
 build-front-prod: DCX := $(DC_PROD)
-build-front:      NG_CONFIGURATION := development
-build-front:      FLUTTER_BUILD_MODE := profile
-build-front-prod: NG_CONFIGURATION := production
-build-front-prod: FLUTTER_BUILD_MODE := release
-build-front build-front-prod: export NG_CONFIGURATION
-build-front build-front-prod: export FLUTTER_BUILD_MODE
+build-front:      export NG_CONFIGURATION := development
+build-front:      export FLUTTER_BUILD_MODE := profile
+build-front-prod: export NG_CONFIGURATION := production
+build-front-prod: export FLUTTER_BUILD_MODE := release
 build-front: ## Build DEVELOPMENT front-end bundles (source maps, unminified).
 build-front-prod: ## Build PRODUCTION front-end bundles (minified, no source maps).
 build-front build-front-prod: check-env
@@ -359,7 +357,7 @@ TEST_SUITES ?= unit,functional
 test: ## Run the API unit+functional suites inside the container.
 	$(DC) exec \
 		-e DATABASE_URL='postgresql://$(or $(TWES_DB_RUNTIME_ROLE),twes):$(shell grep -hE "^TWES_DB_RUNTIME_PASSWORD=" $(INFRA)/.env.local | cut -d= -f2)@database:5432/$(or $(POSTGRES_DB),twes)?serverVersion=18&charset=utf8' \
-		api php tools/bin/phpunit-12.phar $(if $(ARGS),$(ARGS),--testsuite $(TEST_SUITES))
+		api php tools/bin/phpunit-13.phar $(if $(ARGS),$(ARGS),--testsuite $(TEST_SUITES))
 
 # --------------------------------------------------------------------------------------------------------------
 # THE `e2e` SUITE, WHICH `make gate` DELIBERATELY DOES NOT REACH AND HAD NO PATH TO AT ALL.

@@ -11,7 +11,7 @@ flutter create --project-name twes_in --org com.twesin \
   --platforms=android,ios,linux,macos,windows,web mobile
 ```
 
-Flutter **3.44.8** / Dart **3.12.2** — the current stable channel, matching this file's pin. All six platform
+Flutter **3.44.9** / Dart **3.12.2** — the current stable channel, matching this file's pin. All six platform
 directories exist from the first commit, so no target is a retrofit.
 
 Three departures from what `flutter create` emitted, each deliberate:
@@ -62,8 +62,8 @@ screenshot under Playwright is usually the harness**: this container's `LANG` ma
 `navigator.language` as `en-US@posix`, which Flutter's locale parser rejects with `RangeError`, blanking the
 page with every test still green. Pass `newContext({locale: 'en-US'})`.
 
-Pinned on landing: Flutter **3.44.8**, Dart **3.12.2** — the current stable channel
-[Verified 2026-07-29 against Flutter's release manifest: `stable` is 3.44.8 / Dart 3.12.2, released
+Pinned on landing: Flutter **3.44.9**, Dart **3.12.2** — the current stable channel
+[Verified 2026-07-29 against Flutter's release manifest: `stable` is 3.44.9 / Dart 3.12.2, released
 2026-07-23]. Beta (3.47.0-0.2.pre) is deliberately not used: a billing client is the wrong place for a
 pre-release toolchain.
 

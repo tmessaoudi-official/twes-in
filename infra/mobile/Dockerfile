@@ -19,7 +19,7 @@
 
 # Pinned to the version CLAUDE.md § "Quality gate" records. Debian rather than Alpine because the Flutter SDK
 # expects glibc; a musl base fails at `flutter precache` in a way that reads like a network error.
-ARG FLUTTER_VERSION=3.44.8
+ARG FLUTTER_VERSION=3.44.9
 ARG DEBIAN_TAG=bookworm-slim
 
 FROM debian:${DEBIAN_TAG} AS build

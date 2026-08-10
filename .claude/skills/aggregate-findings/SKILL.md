@@ -57,17 +57,17 @@ disallowed-tools: AskUserQuestion
      `api/tools/bin/phpstan.phar` with `api/phpstan.neon.dist`. The parenthetical this banner used to carry —
      *"every Composer dist URL is blocked by egress policy"* — was refuted on 2026-08-01: `composer install
      --prefer-source` works, only `api.github.com` is authorization-scoped, and `deptrac` is installable and
-     merely unwired. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.5.0,
-     `flutter create` on Flutter 3.44.8 with all six platform directories) and each is green on its own
+     merely unwired. **`admin/` and `mobile/` are SCAFFOLDED** (`ng new` on Angular 22 / Node 26.7.0,
+     `flutter create` on Flutter 3.44.9 with all six platform directories) and each is green on its own
      toolchain — lint/analyze, unit tests, production build — but neither holds DOMAIN or TRANSPORT code yet — each does carry its branding seam, and Flutter its font/same-origin controls, with tests.
      The repo also holds `CLAUDE.md`, `README.md`, `VISION.md`, `LICENSE`, `LICENSING.md`,
      `THIRD-PARTY-NOTICES.md`, four plan files under `docs/plans/` (one mandatory reading before any
      application code), `docs/spec/pricing-vectors.json`, `.claude/`,
      `scripts/claude-bootstrap/`, and `.gitignore`. Run the API tier with
-     `cd api && php tools/bin/phpunit-12.phar`; the gates are plain PHP and bash and need nothing
+     `cd api && php tools/bin/phpunit-13.phar`; the gates are plain PHP and bash and need nothing
      installed. So: never hardcode a build, test
      or lint command. Read `composer.json`, `package.json` and `pubspec.yaml` for the real script names
-     (the API tier runs PINNED PHARS, `php tools/bin/{phpunit-12,phpstan,php-cs-fixer}.phar`, NOT
+     (the API tier runs PINNED PHARS, `php tools/bin/{phpunit-13,phpstan,php-cs-fixer}.phar`, NOT
      `vendor/bin/*` — `vendor/bin/phpstan` in particular can never exist, since phpstan is not a Composer
      dependency here at all;
      `npm run lint` / `npm run test` / `ng build` for Angular, `flutter analyze` / `flutter test`
