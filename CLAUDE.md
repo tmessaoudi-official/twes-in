@@ -107,35 +107,32 @@ where the build actually is.
 ## Routing
 
 Work here is handled with the **global reasoning framework** (`~/.claude/CLAUDE.md`) — the 8-phase
-workflow, the four-dimension Completion Gate, evidence grades, the anti-bandaid gate. A cloud session
-gets a fresh `~/.claude/` every time and never reads the developer's own, so the framework travels in
-this repo and is reinstalled at session start by `scripts/claude-bootstrap/install.sh` (a SessionStart
-hook). See `scripts/claude-bootstrap/README.md`. On any conflict, **this file wins**.
+workflow, the four-dimension Completion Gate, evidence grades, the anti-bandaid gate. That framework
+is the developer's own persistent install; this repo never writes it — the container-era
+`scripts/claude-bootstrap/` reinstaller was removed 2026-08-18. On any conflict, **this file wins**.
 
-Repo-native slash skills live in `.claude/skills/` and reviewer agents in `.claude/agents/`; both are
-read in place, nothing is installed. `ls .claude/skills/` is the authoritative list — a count written
-in prose drifts, so none is written here.
+The repo carries exactly TWO skills, both repo-specific by name and content (global-is-reference
+ruling, 2026-08-18 — a repo may not duplicate anything that exists in `~/.claude/`):
+`/twes-ask-human` (the question protocol with this repo's extra rules) and `/twes-lenses` (the
+mandatory review dimensions + sleuth lens K). Every other skill — `/sweep`, `/sleuth`, `/inspect`,
+`/gaps`, `/forge`, `/cross-check`, `/converge`, `/pre-commit`, `/aggregate-findings`, `/handoff`,
+`/retrospective`, `/expanding-context` — comes from the developer's global install. **Before
+running ANY of those global review skills here, load `/twes-lenses` first**: it carries the twes-in
+dimensions, lens K and the repo conventions (reports under `var/claude/`, non-blocking closes,
+project scope only) that the deleted repo-local copies used to enforce. Reviewer agents stay in
+`.claude/agents/` (read in place, nothing is installed).
 
-## Questions are plain text — `AskUserQuestion` is FORBIDDEN
+## Questions — `AskUserQuestion`, sparingly
 
-`AskUserQuestion` **times out in the cloud container**, so a question asked that way can hang the turn
-and be lost — a gate that cannot fire is worse than no gate. Every question to the developer is
-ordinary prose: context, a minimal concrete example, numbered options, the **recommended option first
-with its reason**, and a visible *"none of these / challenge the premise"* escape — then STOP and wait.
-Protocol: `.claude/skills/ask-human/SKILL.md`.
+Questions to the developer use the **`AskUserQuestion` tool**, per the global framework: options with
+the recommended one FIRST (labelled, with its reason) and a visible *"none of these / challenge the
+premise"* escape. Protocol details: `.claude/skills/twes-ask-human/SKILL.md`.
 
-Partial mechanical backing: every skill in `.claude/skills/` declares
-`disallowed-tools: AskUserQuestion`, which removes the tool from the pool while that skill is active.
-The grant clears on the next user message, so outside a skill the discipline is yours.
-
-**EVERY reply ends with ONE of exactly two markers** (developer instruction, 2026-07-30). Without one, the
-developer cannot tell a question from a pause, and both look like prose that stopped. No exceptions, including
-short replies:
-
-- `❓ QUESTION — <one line>` followed by the numbered options. **I am blocked and waiting on a decision.**
-- `⏹ NO QUESTION — <what I am waiting on, or why I stopped>`. **Nothing is being asked of the developer.**
-
-The marker is the LAST line. If a reply would end without one, it is unfinished.
+> The container-era plain-text protocol and the `❓`/`⏹` end-of-reply markers (developer instruction,
+> 2026-07-30) are **RETIRED** (2026-08-18). They existed because `AskUserQuestion` timed out in the
+> dead cloud container; on this machine it works, `askUserQuestionTimeout` is `"never"` globally,
+> and the marker's rationale (a prose question being indistinguishable from a pause) dies with the
+> prose protocol.
 
 **Do not ask about routine work.** The standing directive for this repo is *no interrupts*: announce
 the task size and the plan, then build it. Asking is reserved for the cases in
@@ -251,7 +248,7 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    to build, because there is no vendor branding to gate: contrast upstream, which put its own logo on
    generated PDFs behind a paid plan.
 
-10. **When a licensing question is genuinely unclear, STOP and ask in plain text.** Do not resolve a
+10. **When a licensing question is genuinely unclear, STOP and ask via `AskUserQuestion`.** Do not resolve a
     licence question by picking the convenient reading. This is a one-way door — Rule 18's
     `[Speculative]` grade is not good enough to build on.
 
@@ -486,9 +483,9 @@ migrated PostgreSQL database, because a schema is not readable from source. See 
 
 ## Certification ladder — governs every 3C/6C gate
 
-`advisor()` does not exist in this environment, so independent certification comes from
-**fresh-context, read-only, adversarial reviewer subagents** in `.claude/agents/` — that is the TOP
-rung here, not a fallback. Three lenses, one agent each:
+`advisor()` **is available on this machine** (verified 2026-08-18) and is the FIRST rung: call it
+per the global framework. The panel of record for gate rounds is the set of **fresh-context,
+read-only, adversarial reviewer subagents** in `.claude/agents/`. Three lenses, one agent each:
 
 | Lens | Agent |
 |---|---|
@@ -500,7 +497,7 @@ Each reviewer **reads the actual diff, code and tests itself** — never certify
 narrative — and is chartered to REFUTE, not approve. `/converge` runs the panel mechanically.
 
 **Tier: MAXIMAL by default** — all three lenses, **two consecutive fully-clean rounds**, any finding
-resets the counter, cap 5 rounds → then ask in plain text (never silently proceed). Rationale: in a
+resets the counter, cap 5 rounds → then ask via `AskUserQuestion` (never silently proceed). Rationale: in a
 billing system a wrong number is a wrong legal document and a cross-tenant read is a reportable data
 breach. Neither is caught by a passing test suite alone, and neither is confined to one subsystem.
 
@@ -518,7 +515,7 @@ was in documentation with no application code in existence. Do not cite that as 
 a *code* wave early: the reason the panel exists is that a wrong number is a wrong legal document and a
 cross-tenant read is a reportable breach, and neither is caught by a green test suite.
 
-Availability chain: reviewer subagents → (if subagents are unavailable) three distinct-lens self-passes
+Availability chain: `advisor()` → reviewer subagents → (only if both are unavailable) three distinct-lens self-passes
 **with mandatory disclosure that certification was self-graded**. Never silently skip a gate. The
 quality gate below is always the floor, never the certification.
 
@@ -1884,11 +1881,10 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   `api/.env.prod` and `infra/.env` are committed templates that the gates read on every run.
 - `.claude/hooks/**` — the repo-local `PostToolUse` hooks, on `Edit|Write`, plus their own test suite
   (`bash .claude/hooks/test-hooks-on-write.sh` — it reports its own case count; none is written here).
-  Distinct from `scripts/claude-bootstrap/hooks/`,
-  which is the **portable** bundle installed into `~/.claude/`; these are twes-in-specific and travel
-  nowhere. **That suite is NOT in `composer gate`, and saying so is the point rather than an omission**:
-  it is the third such suite here (`test-install.sh` and `hooks/test-precompact-handoff.sh` are the
-  others) and all three drive a hook against a sandboxed `HOME`/`CLAUDE_PROJECT_DIR`, so gating them
+  These are twes-in-specific and travel nowhere (the container-era portable bundle under
+  `scripts/claude-bootstrap/` was removed 2026-08-18, its `test-install.sh` and precompact suites
+  with it). **That suite is NOT in `composer gate`, and saying so is the point rather than an
+  omission**: it drives a hook against a sandboxed `HOME`/`CLAUDE_PROJECT_DIR`, so gating it
   would put a step that rewrites the environment inside the build. `shell-syntax.sh` covers the
   hooks parsing; the behaviour is covered by running the suite after any edit to a hook. That is the
   whole protocol, and it is a weaker guarantee than a gate — stated so nobody has to discover it.
@@ -1905,5 +1901,7 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
 - `.claude/skills/**` — repo-native slash skills, read in place.
 - `.claude/agents/**` — the three certification-lens reviewers.
 - `.claude/settings.local.json` is gitignored — machine-local overrides go there.
-- `scripts/claude-bootstrap/**` — the global framework, carried in-repo and installed into the
-  ephemeral `~/.claude/` at session start. See its `README.md`.
+- **`scripts/claude-bootstrap/` is GONE (removed 2026-08-18).** It existed because cloud containers
+  started with an empty `~/.claude/` each session; that environment is dead, `~/.claude/` is the
+  developer's own persistent install, and this repo never writes it. Session handoffs are the GLOBAL
+  PreCompact hook's job (`~/.claude/hooks/precompact-handoff.sh` → the developer's memory pipeline).
