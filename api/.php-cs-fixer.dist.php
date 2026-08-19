@@ -10,6 +10,19 @@
 
 declare(strict_types=1);
 
+// var/ is gitignored, and a container that ran as root before the TWES_UID fix (§ Gotchas
+// 2026-08-05) left it root-owned through the bind mount — the fixer's own cache writer then
+// @touch-fails SILENTLY and dies "No such file or directory" on a directory that exists, which the
+// write-time hook reports as a style violation in whatever file it was checking. The fixer creates
+// an ABSENT var/ itself, so this mkdir is not about the clean clone: it claims the directory for
+// the invoking user before any root process can, and fails LOUDLY where the tool would fail
+// silently, naming the actual problem.
+if (!is_dir(__DIR__ . '/var') && !mkdir(__DIR__ . '/var', 0o775, true)) {
+    throw new RuntimeException(sprintf('cannot create %s/var — check its ownership (a root-run container may own it)', __DIR__));
+} elseif (!is_writable(__DIR__ . '/var')) {
+    throw new RuntimeException(sprintf('%s/var is not writable by %s — a root-run container likely owns it; remove or chown it', __DIR__, get_current_user()));
+}
+
 $header = <<<'HEADER'
     This file is part of twes-in.
 
