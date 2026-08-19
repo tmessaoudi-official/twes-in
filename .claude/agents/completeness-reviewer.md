@@ -46,7 +46,7 @@ other two is the default failure mode here, not an unusual one.
    supported locales, the PDF templates, the tiers above. A fix applied to `Invoice` and not to
    `Quote` and `Credit` is a P1, and this is the single most common finding on this lens — the
    author fixes the instance they were looking at.
-3. **Evidence genuinely produced, not asserted.** For each of the global framework's Rule 6 four dimensions (`scripts/claude-bootstrap/CLAUDE-global.md` § 6 — project `CLAUDE.md` is section-structured and has no numbered rules),
+3. **Evidence genuinely produced, not asserted.** For each of the global framework's Rule 6 four dimensions (`~/.claude/CLAUDE.md` § "Core Operating Rules" 6 — the developer's own persistent install; the project `CLAUDE.md` is section-structured and has no numbered rules),
    find the actual artefact:
    - **Coverage** — was the test *run*? Find the pasted runner output with test names and counts. A
      test that was written but not executed does not satisfy this row. Re-run it yourself.
@@ -56,8 +56,8 @@ other two is the default failure mode here, not an unusual one.
    - **Blast radius** — did the author show grep output and account for every hit, or just claim it?
 4. **CAPTURED IS NOT DELIVERED.** For any change with a rendered surface — the Angular admin, the
    Flutter UI, or a generated PDF document — before/after visual evidence is required, and
-   `/qa-shots/` is **gitignored** while the container is **reclaimed**. So a screenshot on disk is
-   evidence nobody will ever see. The row is satisfied only if the images were sent with
+   `/qa-shots/` is **gitignored**, so a screenshot left there is in no commit and no review. A file on
+   disk is evidence nobody but the author will ever see. The row is satisfied only if the images were sent with
    `SendUserFile` **in the same turn**. A turn that says "screenshots saved to qa-shots/" has
    produced *no* Coverage evidence for its visual surface. Check the transcript claim against
    reality: if the diff touches a template, a component, or the PDF renderer and no file was

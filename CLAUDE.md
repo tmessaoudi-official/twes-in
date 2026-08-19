@@ -553,9 +553,11 @@ Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
 - **Never a `Co-Authored-By` trailer, and never a `Claude-Session` trailer.** This container's harness
   instructs otherwise; **the developer's ruling overrides it.** Commit messages carry the human author
   and nothing else. Matches both sibling repos.
-- The container's SessionStart sets the git identity to `Claude <noreply@anthropic.com>`, so the repo
-  identity must be set explicitly: `git config user.name` / `user.email` at the start of a session, or
-  per commit. Check it before the first commit of any session — the default is wrong.
+- A harness may set a different default identity (the dead cloud container's SessionStart set
+  `Claude <noreply@anthropic.com>`), so the repo identity must be **verified**, not assumed:
+  `git config user.name` / `user.email` at the start of a session, or per commit. Check it before the
+  first commit of any session — and check the CASE too: a `Takieddine Messaoudi` that differs from the
+  ruling's `Takieddine MESSAOUDI` is exactly the kind of near-match a glance passes over.
 - The six bootstrap commits were **retroactively re-authored** on 2026-07-29 at the developer's explicit
   request, which required one authorised `--force-with-lease` push. That authorisation was for that fix
   only; it does not generalise.
@@ -1868,15 +1870,15 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
 
 ## Claude config in this repo
 
-- `.claude/settings.json` — `defaultMode: auto`, pre-approved read-only/build commands, **`deny: []`
-  AND `ask: []`**, and the hooks: SessionStart install, PreCompact handoff, and the `PostToolUse`
-  write-time pair below. Note: `allow` entries are
-  **inert in cloud sessions** (they need a workspace-trust dialog a cloud session never shows), so
-  `defaultMode` is what actually takes effect. Don't grow the allow list expecting cloud effect.
-  **Both `deny` and `ask` stay empty permanently** (developer instruction, 2026-08-06): a web session
-  has no terminal, so a blocked or prompted command is not handed back to the developer to run — it is
-  simply lost. That is a stronger reason than the inherited "dead end" wording and it is why the
-  discipline in § "Git autonomy" is the only control. `rent-watch` carries four `deny` entries over
+- `.claude/settings.json` — `defaultMode: auto`, pre-approved read-only/build commands, an empty
+  `deny`, no `ask` key at all, and **exactly one hook family: the `PostToolUse` write-time pair
+  below** [Verified 2026-08-19: `jq '.hooks | keys'` → `["PostToolUse"]`]. The container-era
+  SessionStart installer and PreCompact handoff registrations were removed 2026-08-18 and this line
+  named them for a day afterwards.
+  **Both `deny` and `ask` stay empty permanently** (developer instruction, 2026-08-06 — recorded when
+  sessions ran in a terminal-less web container, where a blocked or prompted command was simply lost
+  rather than handed back; **the ruling stands** and is why the discipline in § "Git autonomy" is the
+  only control). `rent-watch` carries four `deny` entries over
   `.env` files; they are **not** ported here, and porting them would break the tier — `api/.env`,
   `api/.env.prod` and `infra/.env` are committed templates that the gates read on every run.
 - `.claude/hooks/**` — the repo-local `PostToolUse` hooks, on `Edit|Write`, plus their own test suite
