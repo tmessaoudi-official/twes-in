@@ -106,8 +106,7 @@ session. An unbound connection sees **nothing**, not everything. See
 | `infra/` | Deployment, **written from scratch** — never copied from `invoiceninja/dockerfiles`, which is GPL-2.0 (licensing invariant 7). Three Dockerfiles, three compose files, a Caddyfile, an entrypoint and a database init script; both the development and the production stack have been run end to end. Wave 12 still owes CI. |
 | `scripts/gates/` | The architecture, licensing and shell-syntax gates, plus their own test suite. `ls` it for the list — a count written in prose drifts. |
 | `docs/spec/pricing-vectors.json` | The pricing arithmetic every tier tests against, so three implementations cannot drift. |
-| `.claude/` | Repo-native Claude Code skills and reviewer agents, read in place. |
-| `scripts/claude-bootstrap/` | The reasoning framework, installed into an ephemeral `~/.claude` at session start. |
+| `.claude/` | Repo-native Claude Code skills, reviewer agents and write-time hooks, read in place. The reasoning framework itself lives in the developer's own `~/.claude/`, which this repo never writes — the `scripts/claude-bootstrap/` reinstaller that used to was removed 2026-08-18. |
 
 ## Contributing
 
