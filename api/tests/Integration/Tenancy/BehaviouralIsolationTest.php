@@ -1018,7 +1018,7 @@ final class BehaviouralIsolationTest extends TestCase
         // the policy is the only thing that can refuse it. Without that split PostgreSQL raises 23503 first and the
         // attack proves nothing while looking refused.
         $crossTenantRow = self::rowFor($relation, self::TENANT_A, 'b', parentVariant: 'a');
-        $insert = self::attempt($runtime, self::TENANT_B, self::insertSql($relation, $crossTenantRow));
+        $insert = self::attemptAsTenant($runtime, self::TENANT_B, self::insertSql($relation, $crossTenantRow));
 
         if ($insert['ok']) {
             $findings[] = \sprintf('%s: bound to tenant B, the runtime role INSERTED a row owned by tenant A.', $name);
@@ -1040,7 +1040,7 @@ final class BehaviouralIsolationTest extends TestCase
         // GOAL 3: MODIFY another tenant's row. Note the verified subtlety: this is NOT refused with an error --
         // the row is simply invisible, so the UPDATE reports zero rows affected. An assertion written to expect an
         // exception here would pass for the wrong reason on a leaking table.
-        $update = self::attempt($runtime, self::TENANT_B, \sprintf(
+        $update = self::attemptAsTenant($runtime, self::TENANT_B, \sprintf(
             'UPDATE %s SET %s = %s WHERE %s = %s',
             $table,
             $tenantColumn,
@@ -1086,7 +1086,7 @@ final class BehaviouralIsolationTest extends TestCase
         // breaking GOAL 1, so no mutant isolates it. That is defence in depth in the schema rather than a weakness
         // in the attack — and the goal is still attempted, because a schema with a widened SELECT half would leave
         // it as the only thing standing between a tenant and giving its rows away.
-        $reparent = self::attempt($runtime, self::TENANT_A, \sprintf(
+        $reparent = self::attemptAsTenant($runtime, self::TENANT_A, \sprintf(
             'UPDATE %s SET %s = %s WHERE %s = %s',
             $table,
             $tenantColumn,
@@ -1122,7 +1122,7 @@ final class BehaviouralIsolationTest extends TestCase
         }
 
         // GOAL 5: DELETE another tenant's rows. Invisible rather than refused, as with GOAL 3.
-        $delete = self::attempt($runtime, self::TENANT_B, \sprintf(
+        $delete = self::attemptAsTenant($runtime, self::TENANT_B, \sprintf(
             'DELETE FROM %s WHERE %s = %s',
             $table,
             $tenantColumn,
@@ -1159,10 +1159,10 @@ final class BehaviouralIsolationTest extends TestCase
         // refusal while the role could erase every tenant's rows with one added keyword. The CASCADE form is what
         // an attacker would actually type, and it is judged strictly: only a PRIVILEGE refusal counts, so a
         // statement that fails for any other reason is reported as unanswered rather than banked as evidence.
-        $truncate = self::attempt($runtime, self::TENANT_B, \sprintf('TRUNCATE %s', $table));
+        $truncate = self::attemptAsTenant($runtime, self::TENANT_B, \sprintf('TRUNCATE %s', $table));
 
         if (!$truncate['ok'] && '42501' !== $truncate['sqlstate']) {
-            $truncate = self::attempt($runtime, self::TENANT_B, \sprintf('TRUNCATE %s CASCADE', $table));
+            $truncate = self::attemptAsTenant($runtime, self::TENANT_B, \sprintf('TRUNCATE %s CASCADE', $table));
         }
 
         if ($truncate['ok']) {
@@ -1223,7 +1223,7 @@ final class BehaviouralIsolationTest extends TestCase
             ? [['a', 'b', self::TENANT_B], ['b', 'a', self::TENANT_A]]
             : [] as [$values, $parent, $under]) {
             $probe = self::rowFor($relation, $under, $values, parentVariant: $parent);
-            $collision = self::attempt($runtime, $under, self::insertSql($relation, $probe));
+            $collision = self::attemptAsTenant($runtime, $under, self::insertSql($relation, $probe));
             $direction = \sprintf('variant %s under tenant %s', $values, self::TENANT_A === $under ? 'A' : 'B');
 
             // BOTH collision codes. `23505` is a unique violation; an EXCLUDE constraint raises **`23P01`**, and
@@ -1299,7 +1299,7 @@ final class BehaviouralIsolationTest extends TestCase
                 }
             }
 
-            $crossReference = self::attempt($runtime, self::TENANT_B, self::insertSql($relation, $reference));
+            $crossReference = self::attemptAsTenant($runtime, self::TENANT_B, self::insertSql($relation, $reference));
 
             if ($crossReference['ok']) {
                 // The CONSTRAINT NAME, not just the columns. With one foreign key per relation the columns were
@@ -1772,7 +1772,7 @@ final class BehaviouralIsolationTest extends TestCase
      *
      * @return array{ok: bool, affected: int, sqlstate: string, message: string}
      */
-    private static function attempt(\PDO $connection, string $tenant, string $sql): array
+    private static function attemptAsTenant(\PDO $connection, string $tenant, string $sql): array
     {
         $connection->beginTransaction();
 
