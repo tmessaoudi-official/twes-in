@@ -214,12 +214,29 @@ These are not guidelines. Breaking one changes what this repository legally *is*
    for exactly that reason (invariant 3: `admin-portal`'s Attribution Assurance License). They are permitted
    only where no obligation can attach, i.e. build-time reference *data* absent from the shipped artifact
    (`caniuse-lite`, `spdx-exceptions`). If either ever appears as a **runtime** dependency the nine-identifier
-   list applies and `scripts/gates/dependency-licences.php` fails — which is why the gate keeps **three
-   separate lists** rather than one wider one, and asserts a **MAXIMUM** on each. (This sentence said "two
+   list applies and `scripts/gates/dependency-licences.php` fails — which is why the gate keeps **FOUR
+   separate lists** rather than one wider one, and asserts a **MAXIMUM** on each. (It said "three" until
+   2026-08-21 and "two" for a commit before that, each time while the paragraph beside it added one — the same
+   count-written-next-to-the-thing-it-counts defect, now on its third instance in this one sentence.) (This sentence said "two
    lists" for a commit while the paragraph four lines below it added the third; round 8 found it. A count
    written next to the thing it counts is worth re-reading whenever that thing changes.)
 
-   **A vendored FONT ASSET may carry `OFL-1.1`** (developer ruling, 2026-07-30) — a third narrow category, for
+   **A DEV-ONLY TOOLING dependency may additionally carry `MPL-2.0`** (developer ruling, 2026-08-21) — a fourth
+   narrow category, and the reason it is fourth rather than folded into the CC-BY pair is that those cover build-time
+   *data* while this covers build-time *code*. The Mozilla Public License is copyleft, but **file-level**: it reaches
+   the MPL-licensed files themselves and not the code that merely uses them, which is what separates it from
+   GPL/AGPL/LGPL and is why it can be tolerated at all. It stays **refused for anything DISTRIBUTED**, because a
+   copyleft grant of any strength cannot be relicensed to a customer buying an escape from source disclosure — the
+   test that matters here, not "is it open source". The dependency that forced the question is **`lightningcss` and
+   its eleven per-platform binaries**, the CSS transformer inside **Angular's own build chain** rather than anything
+   this project chose; it runs while compiling `admin/` and no byte of it reaches a browser. It entered
+   `admin/package-lock.json` at `f18c296` and `gate:licences` had been red ever since [Verified 2026-08-21: identical
+   failure on a pristine `HEAD` worktree carrying no local changes]. An MPL-2.0 **runtime** dependency is still a P0,
+   and so is an MPL-2.0 package anywhere in `api/` or `mobile/`, which ship what they depend on.
+
+   **A vendored FONT ASSET may carry `OFL-1.1`** (developer ruling, 2026-07-30) — now the third of four narrow
+   categories (it was "a third" when there were three; the sentence is renumbered in place rather than left to
+   contradict the paragraph above it), for
    the same reason the CC-BY pair is quarantined rather than added above. The SIL Open Font License is not
    copyleft for our purposes and imposes nothing on our code; its one real obligation is the **Reserved Font
    Name** clause, which binds only somebody who *modifies* a font and redistributes it under its original name.

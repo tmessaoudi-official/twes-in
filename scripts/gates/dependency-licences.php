@@ -66,6 +66,34 @@ const PERMISSIVE = [
 const PERMISSIVE_FOR_BUILD_TIME_DATA = ['CC-BY-4.0', 'CC-BY-3.0'];
 
 /**
+ * Additionally acceptable for a **dev-only** dependency that is TOOLING rather than reference data
+ * (developer ruling, 2026-08-21).
+ *
+ * `MPL-2.0` is the Mozilla Public License: copyleft, but **file-level** — it reaches the MPL-licensed files
+ * themselves and nothing they are merely used alongside, which is what separates it from GPL/AGPL/LGPL. It is
+ * still refused outright for anything we DISTRIBUTE, because a copyleft grant of any strength cannot be
+ * relicensed to a customer buying an escape from source disclosure, and that is the test this project applies
+ * rather than "is it open source".
+ *
+ * A FOURTH list rather than two more entries on PERMISSIVE_FOR_BUILD_TIME_DATA, for the reason that one gives
+ * about itself: the categories must not leak. The CC-BY pair is permitted for build-time *data* — a table of
+ * browser versions, a list of SPDX identifiers — where no obligation can attach because nothing is shipped.
+ * MPL-2.0 here is CODE that RUNS at build time, so widening the data list would silently permit a CC-BY code
+ * package too, which is a different question nobody has answered.
+ *
+ * The one that needs it is `lightningcss` and its eleven per-platform binaries — the CSS transformer inside
+ * **Angular's own build chain**, not a dependency this project chose. It executes while compiling
+ * `admin/` and no byte of it reaches the browser bundle. If it ever appears as a RUNTIME dependency the
+ * strict list applies and this gate fails, which is the whole point of splitting the list rather than
+ * widening one.
+ *
+ * Growth here is a LEGAL ACT, not a build fix. Adding an identifier means amending four artefacts in the same
+ * change — this list, `CLAUDE.md` § "Licensing invariants" 8(a), `LICENSING.md`, and the reviewer charter in
+ * `.claude/agents/completeness-reviewer.md` — or they disagree, which is exactly what round 6 caught.
+ */
+const PERMISSIVE_FOR_DEV_ONLY_TOOLING = ['MPL-2.0'];
+
+/**
  * Additionally acceptable for a vendored **font asset** (developer ruling, 2026-07-29).
  *
  * `OFL-1.1` — the SIL Open Font License — is the licence essentially every open font ships under, including
@@ -364,6 +392,7 @@ if (isset($argv[1]) && '--dump-rules' === $argv[1]) {
         'own_licence_manifests' => array_keys(OWN_LICENCE_MANIFESTS),
         'permissive' => PERMISSIVE,
         'build_time_data' => PERMISSIVE_FOR_BUILD_TIME_DATA,
+        'dev_only_tooling' => PERMISSIVE_FOR_DEV_ONLY_TOOLING,
         'font_assets' => PERMISSIVE_FOR_FONT_ASSETS,
         'font_directories' => array_values(FONT_ASSET_DIRECTORIES),
         'font_extensions' => FONT_EXTENSIONS,
@@ -415,11 +444,12 @@ function main(): int
                 continue;
             }
 
-            // Dev-only dependencies are never distributed, so build-time DATA licences are tolerated for
-            // them and for nothing else. See PERMISSIVE_FOR_BUILD_TIME_DATA for why that is a separate list
-            // rather than four more entries on the strict one.
+            // Dev-only dependencies are never distributed, so build-time DATA licences and dev-only TOOLING
+            // licences are tolerated for them and for nothing else. See PERMISSIVE_FOR_BUILD_TIME_DATA and
+            // PERMISSIVE_FOR_DEV_ONLY_TOOLING for why those are separate lists rather than more entries on the
+            // strict one -- the three categories must not leak into each other.
             $acceptable = $package['dev']
-                ? [...PERMISSIVE, ...PERMISSIVE_FOR_BUILD_TIME_DATA]
+                ? [...PERMISSIVE, ...PERMISSIVE_FOR_BUILD_TIME_DATA, ...PERMISSIVE_FOR_DEV_ONLY_TOOLING]
                 : PERMISSIVE;
 
             // A package offering a choice of licences is fine if ANY of them is acceptable: we may

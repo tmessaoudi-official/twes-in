@@ -47,6 +47,14 @@ obligation that could survive into a commercial sublicence. A **dev-only** depen
 **CC-BY-4.0** or **CC-BY-3.0**, and only as build-time reference data that never reaches the shipped
 artifact; those impose attribution, which is why they are quarantined rather than added to the list above.
 
+A **dev-only TOOLING** dependency may additionally carry **MPL-2.0** (developer ruling, 2026-08-21). The
+Mozilla Public License is copyleft, but **file-level**: it reaches the MPL-licensed files themselves and not
+the code that merely uses them. It remains refused for anything distributed — a copyleft grant of any
+strength cannot be relicensed to a customer buying an escape from source disclosure. A separate category from
+the CC-BY pair because that one covers build-time *data* and this covers build-time *code*; the categories do
+not leak. The dependency that needs it is `lightningcss`, the CSS transformer inside Angular's own build
+chain, which never reaches a shipped bundle.
+
 A vendored **font asset** may carry **OFL-1.1** (developer ruling, 2026-07-30). The SIL Open Font License
 imposes nothing on our code; its Reserved Font Name clause binds only somebody who modifies a font and
 redistributes it under its original name, which vendoring unmodified does not do. An OFL-1.1 *code* package is
