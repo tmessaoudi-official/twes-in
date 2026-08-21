@@ -29,7 +29,7 @@ rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. **The invoice WRITE path
 closed out on 2026-08-07** — the last thing Wave 1's *invoice core* owed, and **NOT** the last thing the wave owes:
-Client, contacts, Product and the tenant settings table are all absent, and this sentence claimed otherwise for two
+Client, contacts and Product are absent — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
 commits after `build-waves.plan.md` retracted it. `POST /api/invoices` creates a draft and
 `POST /api/invoices/{id}/issue` issues it — two single-purpose operations rather than one `issue: true` flag, so an
 irreversible act is not reachable two ways. With it came the first `Application/` code (`CreateInvoiceHandler`,
@@ -625,6 +625,10 @@ here so that landing them is **visibly owed** — do not delete a row to make th
 `gate:test`. **`gate:e2e` is NOT in that chain** and is run separately against a live stack; `gate:test` excludes the
 `e2e` suite EXPLICITLY (`--exclude-testsuite e2e`) rather than by listing the other three, so a suite added later is
 included by default rather than silently unrun. It needs `COMPOSER_ALLOW_SUPERUSER=1` to run at all as root here, and **`gate:schema` — THIRD in the chain — was for three commits the one step no documented environment made pass**, which is fixed here by writing the invocation down rather than describing it: the `TWES_TEST_DSN` fallback below names PHPUnit `<env>` entries that are invisible to a shell and point at an UNMIGRATED database, so only `TWES_SCHEMA_DSN` against a migrated database works, and the DSN must carry `user=` and `password=` itself. **`TWES_SCHEMA_USER` is the role the gate CONNECTS AS, and this sentence said the exact opposite for three commits** — `schema-tenancy.php:138` passes it straight to `new PDO($dsn, $user, …)`, while the role every ownership and `TRUNCATE` assertion is made ABOUT is `TWES_SCHEMA_RUNTIME_ROLE` (falling back to `TWES_TEST_DB_USER`, then to the literal `twes`). The invocation below worked anyway, by a coincidence worth knowing rather than relying on: for a `pgsql:` DSN, libpq takes the connection string's own `user=` in preference to PDO's third argument. [Verified: DSN `user=twes_owner` with third argument `twes` → `current_user` is `twes_owner`.] So it is written explicitly below instead. **The whole chain green, verbatim** — the local dev credentials are the throwaway ones already committed in `api/.env`, and the shape is what matters rather than the values:
+
+> **On the developer's current machine this block's first line DOES NOT APPLY** — there are no clusters, only a
+> `postgres:18` container. See § Gotchas 2026-08-21 for the invocation that works here. The rest of the block is
+> unchanged and correct either way.
 
 ```
 pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start   # two clusters share 5432; see § Gotchas
@@ -1554,7 +1558,7 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   string determines a pattern that re-renders it byte-identically, and `InvoiceMapper`'s `NumberPattern` constructor
   dependency — which certification round 21 filed as a real hazard, not a placeholder — is **gone** rather than
   merely defaulted. **An absent dependency cannot be misconfigured and a default can**, which is why this is
-  structurally stronger than getting the default right, and why the settings table Wave 1 has not built can now only
+  structurally stronger than getting the default right, and why the settings table (built 2026-08-21; this clause read *"Wave 1 has not built"* until then) can now only
   govern what NEW numbers look like.
   Three things generalise past document numbers. **(1)** When a value is persisted alongside the input that produced
   it, check whether the value determines the transformation before adding a column to record the transformation —
@@ -1856,6 +1860,60 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     The lock is pinned in BOTH directions instead (it blocks a second mutating read; a plain `find()` does not),
     because a repository that locked on every read would pass a one-directional test and serialise every
     `GET /api/invoices/{id}` behind every writer, with no visible cause.
+
+- **2026-08-21 — THIS MACHINE HAS NO POSTGRESQL SERVER, and the `pg_ctlcluster` recipe written all over this file
+  describes the DEAD CLOUD CONTAINER.** § "Quality gate" prescribes
+  `pg_ctlcluster 16 main stop && pg_ctlcluster 18 main start` and § Gotchas 2026-07-30 explains the two-clusters-on-5432
+  trap at length. Neither applies here: only the postgresql CLIENT is installed — no `initdb`, no `pg_ctl`, no
+  `/etc/postgresql`, no data directory, nothing listening on 5432. Those paragraphs are kept because they are the
+  authoritative account of the two-cluster trap and will apply again on a machine that has clusters; what is added
+  here is that **on this machine the database is a container** and both provisioning scripts have to be pointed at
+  it through libpq environment variables, because they deliberately issue no connection flags of their own:
+
+  ```
+  docker run -d --name twes-pg -e POSTGRES_PASSWORD=postgres -p 127.0.0.1:5432:5432 postgres:18
+  cd /stack/projects/twes-in
+  PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres \
+    TWES_TEST_DB_SUPERUSER_PASSWORD=postgres bash scripts/dev/provision-test-database.sh
+  PGHOST=127.0.0.1 PGPORT=5432 PGUSER=postgres PGPASSWORD=postgres \
+    bash scripts/dev/provision-dev-database.sh
+  cd api && php bin/console doctrine:migrations:migrate --no-interaction
+  ```
+
+  **BOTH scripts, every time** — `twes_in_test` and `twes_in` are different databases and provisioning only the
+  second leaves the integration suite failing with `database "twes_in_test" does not exist`, which is the
+  fail-closed behaviour working rather than a regression. The container is EPHEMERAL: `docker start twes-pg`
+  after a reboot, and re-provision if it was removed. Note the test script overwrites the cluster-global
+  `postgres` password, which is why it is only ever pointed at a throwaway.
+
+- **2026-08-21 — GOAL 7 DIAGNOSED BY ASSUMPTION FOR TWENTY-SIX ROUNDS, and the first table whose whole key is the
+  tenant column exposed it.** `BehaviouralIsolationTest`'s uniqueness probe inserts one tenant's values under the
+  other and reports a breach on a collision, with a message asserting *"some uniqueness mechanism on this relation
+  does not include `company_id`"*. That was an INFERENCE, and it was sound only while every tenant-owned table had a
+  surrogate key beside the tenant column. `company_settings` is `PRIMARY KEY (company_id)` — one row per tenant, by
+  design — so the probe row carried the attacking tenant's own key whatever else was varied, and a correct schema was
+  reported as a cross-tenant existence oracle. **The probe's own comment had already predicted the class**
+  (*"the two tenants deliberately differ in EVERY non-tenant column so the probe cannot collide with the attacking
+  tenant's own row"*) and its round-24 note prices it exactly right: *"this repository prices a false finding as
+  badly as a false clean: the next red gets dismissed."*
+  - **The fix is a CHECK, not an exemption.** The key columns are read from `pg_index` at discovery time and the
+    finding is suppressed only on positive confirmation that the firing mechanism includes the tenant column —
+    fail-closed on an unparseable message, an unknown name or an empty column list. Skipping such relations outright
+    was rejected: it would also skip a genuine tenant-omitting index sitting beside the tenant-only key.
+  - **Reshaping the schema to satisfy the probe was rejected outright**, and naming that is the point: adding a
+    surrogate `id` to `company_settings` would have turned the suite green by reintroducing two-rows-per-tenant. When
+    a security probe and a design disagree, the question is which one is wrong, and "make the test pass" is not an
+    answer to it.
+  - **The generalisable rule: a message that states WHY is a claim, and a claim in a security control needs the same
+    evidence as the control itself.** This file already records the P0 where a validator derived its expected column
+    name from the policy it was validating and therefore always agreed with itself; this is that shape inverted — a
+    check deriving its DIAGNOSIS from the failure it observed, and therefore always agreeing that the failure was the
+    one it names.
+  - **And the fix immediately reproduced this file's OTHER signature defect.** Adding `uniqueKeys` to the relation
+    shape updated one `@param` declaration of nine — exactly the `fks[].name` incident that same class's docblock
+    records, on the same array shape, in the same file. PHPStan caught it, as it caught the first one. A shape
+    declared in nine places is one shape and eight opportunities; `grep` for the whole shape before assuming the
+    edit is done.
 
 ## Git & CI
 

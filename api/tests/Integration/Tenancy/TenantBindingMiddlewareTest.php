@@ -22,11 +22,11 @@ use Twes\Application\Document\CreateInvoiceHandler;
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\PersistedInvoice;
-use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
 use Twes\Infrastructure\Persistence\Doctrine\DbalTransactionalScope;
+use Twes\Infrastructure\Persistence\Doctrine\DoctrineCompanySettingsRepository;
 use Twes\Infrastructure\Persistence\Doctrine\DoctrineInvoiceRepository;
 use Twes\Infrastructure\Persistence\Doctrine\InvoiceMapper;
 use Twes\Infrastructure\Shared\SystemClock;
@@ -328,7 +328,6 @@ final class TenantBindingMiddlewareTest extends TestCase
             $tnd,
             [new DocumentLine('2', Money::of('1.936', $tnd), Rate::fromPercentage('19'))],
             [],
-            VatRoundingPoint::PerRateGroup,
         );
     }
 
@@ -343,6 +342,12 @@ final class TenantBindingMiddlewareTest extends TestCase
             $this->repositoryOn($connection, $tenant),
             new UuidV7Generator(new SystemClock()),
             new DbalTransactionalScope($connection),
+            // THE REAL ADAPTER, not a double, and on the SAME connection — which is the whole point in this class.
+            // Creating a document now reads `company_settings` for the tenant's rounding point, so that read is one
+            // more statement the middleware's binding has to cover. A double would make this fixture blind to the
+            // very thing the file exists to prove. With no settings row the adapter answers with the documented
+            // defaults, so behaviour on the bound path is exactly what it was before the settings table landed.
+            new DoctrineCompanySettingsRepository($connection, self::contextFor($tenant)),
         );
     }
 

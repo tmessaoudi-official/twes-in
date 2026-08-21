@@ -16,8 +16,8 @@ use Twes\Application\Shared\TransactionalScope;
 use Twes\Domain\Document\DocumentNumberAllocator;
 use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\InvoiceRepository;
-use Twes\Domain\Document\NumberPattern;
 use Twes\Domain\Document\PersistedInvoice;
+use Twes\Domain\Settings\CompanySettingsRepository;
 
 /**
  * Issues a draft invoice: allocate its number from the gapless counter, freeze it, and persist both **atomically**.
@@ -52,37 +52,38 @@ use Twes\Domain\Document\PersistedInvoice;
  * goes through {@see DocumentNumberAllocator}, which is the only thing that consults the sequence and the only thing
  * that checks the counter it was handed is one a document number may legally be built from.
  *
- * ## The pattern is injected as a WIDTH, and that is a placeholder with a deliberate shape
+ * ## The pattern comes from the company's settings, and it used to come from a container parameter
  *
- * How wide a number is rendered — `0000041` versus `41` — is per-tenant configuration that Wave 1 has no settings
- * table for. So the width arrives as a constructor argument wired in `services.yaml`, which makes changing it a
- * visible one-line diff rather than an edit to this class. It governs **new numbers only**: an issued document's
- * rendered string is persisted, and re-reading it derives its own pattern from the stored string, so no later
- * setting can restate a document a client already holds (`CLAUDE.md` § Gotchas, 2026-08-06).
+ * How wide a number is rendered — `0000041` versus `41` — is per-tenant configuration, and this section used to
+ * explain why it arrived as an `int $numberWidth` wired in `services.yaml` instead: *"per-tenant configuration that
+ * Wave 1 has no settings table for"*. It has one now, so the paragraph is rewritten in place rather than annotated
+ * (`CLAUDE.md` § Gotchas 2026-07-29). The width is read from {@see CompanySettingsRepository}, which means two
+ * tenants issuing on the same deployment get their own widths — something a container parameter could not express
+ * at all, and the reason the old wiring was a placeholder rather than a design.
  *
- * **An `int` rather than a `NumberPattern` service, and the pattern is built HERE in the constructor.** A
- * `NumberPattern` in the container is a domain value object the container constructs, which `config/services.yaml`
- * refuses in its own opening comment. Building it in the constructor rather than per call means a misconfigured
- * width — 0, or above `NumberPattern::MAX_WIDTH` — fails when this service is first instantiated instead of on
- * somebody's first attempt to issue an invoice.
+ * It governs **new numbers only**: an issued document's rendered string is persisted, and re-reading it derives its
+ * own pattern from the stored string, so no later setting can restate a document a client already holds
+ * (`CLAUDE.md` § Gotchas, 2026-08-06).
+ *
+ * **THE READ HAPPENS INSIDE THE TRANSACTION, AFTER THE DOCUMENT IS FOUND, AND BOTH HALVES ARE DELIBERATE.** Inside,
+ * because the tenant binding the settings table's row-level-security policy compares against is transaction-local —
+ * outside one the query is issued unbound and the adapter refuses rather than answering with defaults. After the
+ * null check, because a request for a document that does not exist should not query settings at all. It takes no
+ * lock, so it does not participate in the document-then-counter lock ordering described above.
+ *
+ * The old wiring built the `NumberPattern` in the constructor so that a misconfigured width failed at
+ * instantiation rather than on somebody's first issue attempt. That guarantee moves to the schema, which is a
+ * better place for it: `company_settings.number_pattern_width` carries a `CHECK` between 1 and
+ * `NumberPattern::MAX_WIDTH`, so a width this class would refuse cannot be stored in the first place.
  */
 final readonly class IssueInvoiceHandler
 {
-    private NumberPattern $numberPattern;
-
-    /**
-     * @param int $numberWidth how wide to render a NEW number; see the class docblock
-     *
-     * @throws \InvalidArgumentException if the configured width is not one `NumberPattern` accepts
-     */
     public function __construct(
         private InvoiceRepository $invoices,
         private DocumentNumberAllocator $numbers,
         private TransactionalScope $transaction,
-        int $numberWidth,
-    ) {
-        $this->numberPattern = NumberPattern::padded($numberWidth);
-    }
+        private CompanySettingsRepository $settings,
+    ) {}
 
     /**
      * @return PersistedInvoice|null null when no invoice with that id is visible to the current tenant — which
@@ -122,7 +123,10 @@ final readonly class IssueInvoiceHandler
             // the gaplessness guarantee rather than tidiness — one lock order for every writer, document then
             // counter, which is also what makes a deadlock between two issues impossible rather than unlikely.
             $issued = $persisted->invoice->issue(
-                $this->numbers->allocate(DocumentType::Invoice, $this->numberPattern),
+                $this->numbers->allocate(
+                    DocumentType::Invoice,
+                    $this->settings->forCurrentTenant()->numberPattern(),
+                ),
             );
 
             $this->invoices->save($persisted->identity, $issued);

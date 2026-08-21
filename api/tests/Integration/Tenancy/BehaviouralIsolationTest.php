@@ -94,6 +94,17 @@ final class BehaviouralIsolationTest extends TestCase
         // agreement is not required — but a rendered string that disagreed with its own sequence would be a fixture
         // that looks like the corruption `InvoiceMapper::numberFrom()` refuses, and a reader would waste time on it.
         'number_rendered' => ['1', '2'],
+        // ADDED 2026-08-21 with `company_settings`, and it is the SECOND time this map has done exactly what its
+        // docblock promises: `Version20260820120000` landed, `company_settings_rounding_point_is_known` refused the
+        // type-derived `value-a`, and seven cases went RED naming the table and the constraint rather than leaving
+        // the new table unattacked. A settings table is worth attacking on its own terms and not only for symmetry:
+        // `default_vat_rounding_point` decides how much tax a document declares, so a tenant able to write another's
+        // settings changes the figures on every document that tenant has not yet issued.
+        //
+        // NOT the same key as `vat_rounding_point` above, because the column names differ — the map is keyed by
+        // NAME, deliberately, and the two columns mean different things: one is what a document WAS computed with
+        // and this one is what the NEXT document will be.
+        'default_vat_rounding_point' => ['per_line', 'per_rate_group'],
     ];
 
     /**
@@ -176,12 +187,17 @@ final class BehaviouralIsolationTest extends TestCase
         $findings = [];
         $attacked = [];
         $refusals = 0;
+        $ownKeySuppressed = [];
 
         foreach ($relations as $relation) {
             $attacked[] = self::qualify($relation);
             $report = $this->attackRelation($relation);
             $findings = [...$findings, ...$report['findings']];
             $refusals += $report['refusals'];
+
+            if ($report['ownKeyCollisions'] > 0) {
+                $ownKeySuppressed[] = self::qualify($relation);
+            }
         }
 
         self::assertSame(
@@ -205,6 +221,24 @@ final class BehaviouralIsolationTest extends TestCase
             $refusals,
             'Not one attack was REFUSED, so no evidence of isolation was produced. A suite that attempted nothing '
             . 'reports the same empty findings list as one that attempted everything and was refused.',
+        );
+
+        // THE SUPPRESSION IS PINNED BY NAME, not merely counted, and this is the assertion that keeps
+        // `collisionIsOnATenantScopedKey()` from becoming a way to make GOAL 7 quiet.
+        //
+        // It fires when a uniqueness collision is proven to be the attacking tenant's own key rather than a
+        // cross-tenant one, so exactly one relation may legitimately appear here: `company_settings`, whose
+        // entire primary key IS the tenant column. **A bug in the key map that suppressed every relation would
+        // leave the findings list empty and every other assertion in this method green** — the vacuity this file
+        // exists to refuse — and it turns this list red instead. A relation added later with a tenant-only key
+        // arrives RED here and is added deliberately, which is the same direction `COLUMN_VALUES` takes.
+        self::assertSame(
+            ['company_settings'],
+            $ownKeySuppressed,
+            'GOAL 7 suppressed a uniqueness collision on a relation where that suppression is not expected. Each '
+            . 'name here is a relation whose collision was proven to be on a key INCLUDING the tenant column; a '
+            . 'list longer than expected means the key map is answering yes too often, which would silence real '
+            . 'cross-tenant oracles.',
         );
     }
 
@@ -961,6 +995,58 @@ final class BehaviouralIsolationTest extends TestCase
     // ---------------------------------------------------------------------------------------------------------
 
     /**
+     * Did this 23505 come from a uniqueness mechanism that INCLUDES the tenant column?
+     *
+     * **THIS IS THE DIFFERENCE BETWEEN A BREACH AND A TENANT TRIPPING OVER ITS OWN ROW, and until 2026-08-21 it
+     * was asserted rather than checked.** GOAL 7's finding message claimed *"some uniqueness mechanism on this
+     * relation does not include `company_id`"* on the strength of the collision alone. That inference held while
+     * every tenant-owned table had a surrogate key beside the tenant column; `company_settings` broke it by having
+     * `PRIMARY KEY (company_id)` and nothing else — one row per tenant, on purpose — so the probe's row collided
+     * with the ATTACKING tenant's own primary key and this suite reported a cross-tenant oracle against a schema
+     * that has none.
+     *
+     * A key containing `company_id` **cannot** be violated across tenants: two rows whose `company_id` differs
+     * differ in the key. So a collision on such a key carries exactly zero information about the other tenant,
+     * which is what makes suppressing it sound rather than convenient.
+     *
+     * **FAIL-CLOSED IN EVERY OTHER CASE, and that polarity is the whole safety of this method.** It returns
+     * `false` — report the finding — when the message cannot be parsed, when the named mechanism is absent from
+     * the map, and when its key column list is empty. § Gotchas 2026-07-30 records that an exemption inside a
+     * cross-check is where drift hides, so this one fires only on POSITIVE confirmation read from `pg_index`,
+     * never on an absence of contrary evidence.
+     *
+     * **23P01 IS DELIBERATELY NOT ROUTED HERE**, and the caller checks the SQLSTATE rather than this method
+     * widening to cover it. "Includes the tenant column" implies "cannot collide across tenants" only when that
+     * column is compared with EQUALITY — and an exclusion constraint chooses its operator per column, so
+     * `EXCLUDE (company_id WITH <>, number WITH =)` includes `company_id` and collides precisely ACROSS tenants.
+     * This schema has no EXCLUDE constraint today; when the first one arrives the operator is the question to
+     * answer, and until then an exclusion collision stays an unconditional finding.
+     *
+     * The map is built at DISCOVERY time on the admin connection rather than looked up here: by the time this is
+     * called the runtime connection has just had a statement refused, and a catalogue query issued on an aborted
+     * transaction answers 25P02 rather than the truth.
+     *
+     * @param array{name: string, uniqueKeys: array<string, list<string>>} $relation
+     */
+    private static function collisionIsOnATenantScopedKey(array $relation, string $message): bool
+    {
+        // PostgreSQL renders this as: unique constraint "company_settings_pkey". The name is the INDEX's, which is
+        // what the discovery query keys the map by. Anchored on the phrase rather than on any quoted run in the
+        // message, so a DETAIL line quoting a VALUE cannot be mistaken for a mechanism name.
+        if (1 !== preg_match('/(?:unique|exclusion) constraint "([^"]+)"/', $message, $matched)) {
+            return false;
+        }
+
+        $columns = $relation['uniqueKeys'][$matched[1]] ?? [];
+
+        if ([] === $columns) {
+            return false;
+        }
+
+        return \in_array(PostgresRowLevelSecurityIsolation::TENANT_COLUMN, $columns, true);
+    }
+
+    /**
      * Every attacker goal, against one relation.
      *
      * `fks[].name` WAS MISSING FROM THIS ONE DOCBLOCK and from no other. Round 24 added the constraint name to
@@ -973,9 +1059,9 @@ final class BehaviouralIsolationTest extends TestCase
      *
      * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string,
      *              nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string,
-     *              parentColumns: list<string>}>} $relation
+     *              parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>} $relation
      *
-     * @return array{findings: list<string>, refusals: int}
+     * @return array{findings: list<string>, refusals: int, ownKeyCollisions: int}
      */
     private function attackRelation(array $relation): array
     {
@@ -985,6 +1071,7 @@ final class BehaviouralIsolationTest extends TestCase
         $name = self::qualify($relation);
         $findings = [];
         $refusals = 0;
+        $ownKeyCollisions = 0;
 
         // GOAL 1: READ another tenant's rows. The one attack every relkind gets, because a view and a
         // materialized view cannot be written to but leak just as completely.
@@ -1006,7 +1093,7 @@ final class BehaviouralIsolationTest extends TestCase
         }
 
         if (!self::acceptsWrites($relation)) {
-            return ['findings' => $findings, 'refusals' => $refusals];
+            return ['findings' => $findings, 'refusals' => $refusals, 'ownKeyCollisions' => $ownKeyCollisions];
         }
 
         $columns = array_map(static fn(array $c): string => $c['name'], $relation['columns']);
@@ -1198,7 +1285,19 @@ final class BehaviouralIsolationTest extends TestCase
         //
         // RUN IN BOTH DIRECTIONS, and round 23 proved that necessary rather than thorough. The probe re-presents
         // one tenant's column values under the other, and the two tenants deliberately differ in EVERY non-tenant
-        // column so the probe cannot collide with the attacking tenant's own row. A PARTIAL unique index's
+        // column so that the probe does not collide with the attacking tenant's own row THROUGH A KEY THAT SPANS
+        // MORE THAN THE TENANT COLUMN.
+        //
+        // **That sentence used to end "so the probe cannot collide with the attacking tenant's own row", full
+        // stop, and it became false on 2026-08-21 when `company_settings` arrived** — a relation whose entire
+        // primary key IS `company_id`, holding one row per tenant by design. Varying the other columns cannot
+        // help there: every probe row carries the attacking tenant's own key whatever else it contains, so the
+        // insert is refused by that tenant's OWN primary key and the refusal carries no information about the
+        // other tenant at all. Amended in place rather than annotated (`CLAUDE.md` § Gotchas 2026-07-29).
+        //
+        // The remedy is the `keyIncludesTenant()` check below and NOT an exemption for such relations: skipping
+        // the relation outright would also skip a genuinely tenant-omitting unique index sitting beside the
+        // tenant-only key, which is a real coverage hole. A PARTIAL unique index's
         // predicate is evaluated on exactly those differing columns — so `UNIQUE (number) WHERE state = 'issued'`
         // never sees a probe row carrying variant 'a''s `state = 'draft'`, and a reviewer reproduced the resulting
         // cross-tenant existence oracle on a schema this suite certified clean. That index is not contrived: it is
@@ -1230,12 +1329,31 @@ final class BehaviouralIsolationTest extends TestCase
             // checking only the first meant the case written to prove R22-2 closed took the fallback branch below
             // and reported "could not be attempted" about a genuinely defective schema -- the wrong-bound message
             // shape CLAUDE.md records for `document.quantity_too_large`, on the axis it was closing.
-            if (!$collision['ok'] && \in_array($collision['sqlstate'], self::COLLISION_SQLSTATES, true)) {
+            if (
+                !$collision['ok']
+                && '23505' === $collision['sqlstate']
+                && self::collisionIsOnATenantScopedKey($relation, $collision['message'])
+            ) {
+                // NOT A BREACH, AND VERIFIED RATHER THAN ASSUMED. The refusal came from a uniqueness mechanism
+                // whose key columns INCLUDE the tenant column, which was read from `pg_index` at discovery time
+                // and not inferred from the shape of the message. Such a key cannot be violated across tenants:
+                // two rows differing in `company_id` differ in the key, by definition. So the collision is the
+                // attacking tenant tripping over its OWN row, which tells it nothing about anybody else's.
+                //
+                // ITS OWN COUNTER, deliberately not folded into `$refusals`. That one means "row-level security
+                // refused the statement" — the policy doing its job — and this means "the statement never
+                // reached a cross-tenant question". Counting them together would let a bug in the key map
+                // suppress every probe on this relation while the totals still looked healthy, which is the
+                // silent-vacuity shape this file exists to refuse.
+                ++$ownKeyCollisions;
+            } elseif (!$collision['ok'] && \in_array($collision['sqlstate'], self::COLLISION_SQLSTATES, true)) {
                 $findings[] = \sprintf(
-                    '%s: a value one tenant already uses cannot be stored by the other (%s) — "%s". Some '
-                    . 'uniqueness mechanism on this relation does not include "%s", and uniqueness checks run with '
-                    . 'row-level security BYPASSED, so it is enforced across EVERY tenant. That is a cross-tenant '
-                    . "existence oracle and a denial of service on another tenant's numbering.",
+                    '%s: a value one tenant already uses cannot be stored by the other (%s) — "%s". The '
+                    . 'uniqueness mechanism that fired was CHECKED against pg_index and its key columns do not '
+                    . 'include "%s" (or it could not be identified, which is treated the same way on purpose). '
+                    . 'Uniqueness checks run with row-level security BYPASSED, so such a key is enforced across '
+                    . "EVERY tenant. That is a cross-tenant existence oracle and a denial of service on another "
+                    . "tenant's numbering.",
                     $name,
                     $direction,
                     $collision['message'],
@@ -1338,7 +1456,7 @@ final class BehaviouralIsolationTest extends TestCase
             }
         }
 
-        return ['findings' => $findings, 'refusals' => $refusals];
+        return ['findings' => $findings, 'refusals' => $refusals, 'ownKeyCollisions' => $ownKeyCollisions];
     }
 
     /**
@@ -1437,7 +1555,7 @@ final class BehaviouralIsolationTest extends TestCase
     // silently, which is the asymmetry the whole restructure rests on.
     // ---------------------------------------------------------------------------------------------------------
 
-    /** @var ?list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}> */
+    /** @var ?list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>}> */
     private static ?array $relations = null;
 
     /**
@@ -1447,7 +1565,7 @@ final class BehaviouralIsolationTest extends TestCase
      * materialized view and a foreign table can all hold tenant data, and the last three are precisely the ones a
      * catalogue check keeps getting wrong.
      *
-     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}>
+     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>}>
      */
     private static function discoverTenantRelations(\PDO $admin): array
     {
@@ -1473,7 +1591,31 @@ final class BehaviouralIsolationTest extends TestCase
             . '     JOIN pg_attribute att ON att.attrelid = con.confrelid AND att.attnum = k.attnum'
             . "   ))), '[]')"
             . '  FROM pg_constraint con JOIN pg_class pc ON pc.oid = con.confrelid'
-            . "  WHERE con.conrelid = c.oid AND con.contype = 'f') AS fks"
+            . "  WHERE con.conrelid = c.oid AND con.contype = 'f') AS fks,"
+            // EVERY UNIQUENESS MECHANISM THAT CAN RAISE 23505, keyed by the name PostgreSQL puts in the message.
+            //
+            // `pg_index` AND NOT `pg_constraint`, deliberately: a PRIMARY KEY and a UNIQUE constraint are both
+            // BACKED by an index, so this one relation covers all three shapes — and it is the only one that
+            // covers the third, a bare `CREATE UNIQUE INDEX` with no constraint row at all. That third shape is
+            // precisely the partial index round 23 reproduced an existence oracle with, so reading constraints
+            // only would have left this map blind to the case GOAL 7 exists for.
+            //
+            // `indnkeyatts` BOUNDS THE SLICE, because an `INCLUDE (...)` payload is stored in `indkey` after the
+            // key columns and is NOT part of the uniqueness. Round 22 filed exactly this against
+            // `schema-tenancy.php`; counting a payload column as a key column here would let a key that omits the
+            // tenant look like one that carries it, which is the direction that turns a real oracle into silence.
+            //
+            // An EXPRESSION column has `attnum = 0` and drops out of the join, so an index keyed only on an
+            // expression yields an empty list — which the consumer treats as "not confirmed" and therefore
+            // reports. Fail-closed by construction rather than by a branch.
+            . " (SELECT coalesce(json_agg(json_build_object('name', ic.relname, 'columns', ("
+            . '     SELECT json_agg(att.attname ORDER BY k.ord)'
+            . '     FROM unnest(ix.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)'
+            . '     JOIN pg_attribute att ON att.attrelid = ix.indrelid AND att.attnum = k.attnum'
+            . '     WHERE k.ord <= ix.indnkeyatts'
+            . "   ))), '[]')"
+            . '  FROM pg_index ix JOIN pg_class ic ON ic.oid = ix.indexrelid'
+            . '  WHERE ix.indrelid = c.oid AND ix.indisunique) AS unique_keys'
             . ' FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace'
             . " WHERE c.relkind IN ('r', 'p', 'm', 'f', 'v')"
             . "   AND n.nspname NOT IN ('pg_catalog', 'information_schema')"
@@ -1493,6 +1635,14 @@ final class BehaviouralIsolationTest extends TestCase
             $columns = json_decode((string) $row['columns'], true, 512, \JSON_THROW_ON_ERROR);
             /** @var list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}> $fks */
             $fks = json_decode((string) $row['fks'], true, 512, \JSON_THROW_ON_ERROR);
+            /** @var list<array{name: string, columns: list<string>|null}> $uniqueKeys */
+            $uniqueKeys = json_decode((string) $row['unique_keys'], true, 512, \JSON_THROW_ON_ERROR);
+
+            $keyColumns = [];
+
+            foreach ($uniqueKeys as $key) {
+                $keyColumns[$key['name']] = $key['columns'] ?? [];
+            }
 
             $relations[] = [
                 'schema' => (string) $row['schema'],
@@ -1500,6 +1650,7 @@ final class BehaviouralIsolationTest extends TestCase
                 'kind' => (string) $row['kind'],
                 'columns' => $columns,
                 'fks' => $fks,
+                'uniqueKeys' => $keyColumns,
             ];
         }
 
@@ -1513,9 +1664,9 @@ final class BehaviouralIsolationTest extends TestCase
      * only needs to be good enough that a child's parent row exists when the child is inserted. A cycle cannot
      * hang this — each relation is placed exactly once.
      *
-     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}> $relations
+     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>}> $relations
      *
-     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}>
+     * @return list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>}>
      */
     private static function parentsFirst(array $relations): array
     {
@@ -1555,7 +1706,7 @@ final class BehaviouralIsolationTest extends TestCase
     }
 
     /**
-     * @return array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}
+     * @return array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>}
      */
     private static function relationNamed(string $name, bool $refresh = false): array
     {
@@ -1582,7 +1733,7 @@ final class BehaviouralIsolationTest extends TestCase
      *
      * Idempotent, because several cases call it: an existing row is left alone rather than duplicated.
      *
-     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>}> $relations
+     * @param list<array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>}> $relations
      */
     private function seedBothTenants(array $relations): void
     {
@@ -1652,7 +1803,7 @@ final class BehaviouralIsolationTest extends TestCase
      * columns from one variant (so it does not collide with the tenant's existing row) and its parent reference
      * from the variant that tenant was actually seeded with.
      *
-     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>} $relation
+     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>} $relation
      *
      * @return array<string, string>
      */
@@ -1746,7 +1897,7 @@ final class BehaviouralIsolationTest extends TestCase
     }
 
     /**
-     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>} $relation
+     * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>} $relation
      * @param array<string, string> $row
      */
     private static function insertSql(array $relation, array $row): string

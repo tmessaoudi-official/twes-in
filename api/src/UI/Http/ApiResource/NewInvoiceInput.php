@@ -32,9 +32,10 @@ use Twes\Domain\Document\Invoice;
  * omission is a tax decision rather than a simplification: `PerRateGroup` and `PerLine` produce *numerically
  * different* tax figures, so a client choosing per request would be a client choosing how much tax a document
  * declares. It is company configuration — persisted per document precisely so a later settings change cannot restate
- * a document a client already holds — and until the settings table exists every document gets
- * {@see \Twes\Domain\Document\VatRoundingPoint::PerRateGroup}. Consequence, stated rather than discovered:
- * `PerLine` is unreachable over HTTP today.
+ * a document a client already holds — read from `company_settings` by {@see \Twes\Application\Document\CreateInvoiceHandler}.
+ * This paragraph used to end *"until the settings table exists every document gets `PerRateGroup` … `PerLine` is
+ * unreachable over HTTP today"*, which stopped being true when that table landed: a company configured for `PerLine`
+ * now gets it, on documents created through this DTO, without the DTO gaining a field.
  *
  * **IT MAY DECIDE THE CURRENCY**, because the currency is a property of the transaction and not of the seller.
  *

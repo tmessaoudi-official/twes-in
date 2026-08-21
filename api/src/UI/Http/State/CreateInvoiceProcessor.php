@@ -19,7 +19,6 @@ use Twes\Application\Document\CreateInvoice;
 use Twes\Application\Document\CreateInvoiceHandler;
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\FixedCharge;
-use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
@@ -153,15 +152,12 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
             $charges[] = new FixedCharge($charge->label, Money::of($charge->amount, $currency));
         }
 
-        return new CreateInvoice(
-            $currency,
-            $lines,
-            $charges,
-            // NOT THE CLIENT'S CHOICE — see `NewInvoiceInput`, which has no such field. `PerRateGroup` and `PerLine`
-            // produce numerically different tax figures, so a client picking per request would be a client picking
-            // how much tax a document declares. It becomes company configuration when the settings table lands, and
-            // it is persisted per document so that a later change cannot restate a document already sent.
-            VatRoundingPoint::PerRateGroup,
-        );
+        // NO ROUNDING POINT. This call used to pass `VatRoundingPoint::PerRateGroup` as a literal, under a comment
+        // ending "it becomes company configuration when the settings table lands". It landed, so the literal is
+        // gone rather than annotated (`CLAUDE.md` § Gotchas 2026-07-29) — and it is gone from the COMMAND too, not
+        // merely from this call site, because a field there would have left a CLI import or a Messenger consumer
+        // free to state what the 2026-08-07 ruling says no caller may choose. `CreateInvoiceHandler` reads it from
+        // the company's settings inside its own transaction; see {@see CreateInvoice} for the full argument.
+        return new CreateInvoice($currency, $lines, $charges);
     }
 }

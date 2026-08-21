@@ -18,6 +18,7 @@ use Twes\Domain\Document\DocumentType;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
+use Twes\Domain\Settings\CompanySettingsRepository;
 use Twes\Domain\Shared\IdGenerator;
 
 /**
@@ -52,6 +53,7 @@ final readonly class CreateInvoiceHandler
         private InvoiceRepository $invoices,
         private IdGenerator $ids,
         private TransactionalScope $transaction,
+        private CompanySettingsRepository $settings,
     ) {}
 
     /**
@@ -76,17 +78,29 @@ final readonly class CreateInvoiceHandler
             $invoice = $invoice->withFixedCharge($charge);
         }
 
-        // THE TYPE IS FIXED HERE AND IS NOT THE CALLER'S. This handler creates invoices; a quote and a credit note
-        // are different documents with different numbering sequences and, in the credit's case, a different EN 16931
-        // type code. A `DocumentType` parameter would make this one handler pretend to serve four use cases whose
-        // rules differ.
-        $identity = new DocumentIdentity(
-            $this->ids->nextIdentifier(),
-            DocumentType::Invoice,
-            $command->vatRoundingPoint,
-        );
+        return $this->transaction->transactional(function () use ($invoice): PersistedInvoice {
+            // THE IDENTITY IS BUILT INSIDE THE TRANSACTION AND THE AGGREGATE OUTSIDE IT, and the split is not
+            // arbitrary. The aggregate's refusals are caller errors that touch no rows, so building it first keeps
+            // an invalid request from opening a transaction at all — that argument is unchanged. The identity now
+            // carries the tenant's configured rounding point, and reading it requires an active transaction:
+            // the binding row-level security compares against is transaction-local, so outside one the read is
+            // issued unbound and `CompanySettingsRepository` refuses rather than answering with defaults it cannot
+            // prove are this company's.
+            //
+            // THE TYPE IS FIXED HERE AND IS NOT THE CALLER'S. This handler creates invoices; a quote and a credit
+            // note are different documents with different numbering sequences and, in the credit's case, a
+            // different EN 16931 type code. A `DocumentType` parameter would make this one handler pretend to serve
+            // four use cases whose rules differ.
+            //
+            // NOR IS THE ROUNDING POINT, and it stopped being a field on the command in the same change that added
+            // this line. It decides how much tax the document declares, so it is company configuration read here
+            // rather than something any caller — HTTP, CLI or Messenger — can state (see {@see CreateInvoice}).
+            $identity = new DocumentIdentity(
+                $this->ids->nextIdentifier(),
+                DocumentType::Invoice,
+                $this->settings->forCurrentTenant()->defaultVatRoundingPoint(),
+            );
 
-        return $this->transaction->transactional(function () use ($identity, $invoice): PersistedInvoice {
             $this->invoices->save($identity, $invoice);
 
             return $this->invoices->find($identity->id) ?? throw new \LogicException(\sprintf(

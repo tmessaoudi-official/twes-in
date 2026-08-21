@@ -25,12 +25,12 @@ use Twes\Domain\Document\DocumentNumberAllocator;
 use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\Exception\DocumentCannotBeIssued;
 use Twes\Domain\Document\FixedCharge;
-use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
 use Twes\Domain\Shared\IdGenerator;
 use Twes\Infrastructure\Persistence\Doctrine\DbalTransactionalScope;
+use Twes\Infrastructure\Persistence\Doctrine\DoctrineCompanySettingsRepository;
 use Twes\Infrastructure\Persistence\Doctrine\DoctrineInvoiceRepository;
 use Twes\Infrastructure\Persistence\Doctrine\InvoiceMapper;
 use Twes\Infrastructure\Persistence\Doctrine\PostgresDocumentNumberSequence;
@@ -195,7 +195,7 @@ final class InvoiceLifecycleTest extends TestCase
     public function testAFailedIssueLeavesNoHoleInTheSequence(): void
     {
         $empty = self::creator()->handle(
-            new CreateInvoice(Currency::of('TND'), [], [], VatRoundingPoint::PerRateGroup),
+            new CreateInvoice(Currency::of('TND'), [], []),
         );
 
         try {
@@ -348,13 +348,12 @@ final class InvoiceLifecycleTest extends TestCase
                 new DocumentLine('7', Money::of('0.567', $tnd), Rate::fromPercentage('19')),
             ],
             [new FixedCharge('stamp_duty', Money::of('0.100', $tnd))],
-            VatRoundingPoint::PerRateGroup,
         );
     }
 
     private static function creator(): CreateInvoiceHandler
     {
-        return new CreateInvoiceHandler(self::repository(), self::ids(), self::scope());
+        return new CreateInvoiceHandler(self::repository(), self::ids(), self::scope(), self::settings());
     }
 
     private static function issuer(): IssueInvoiceHandler
@@ -363,8 +362,25 @@ final class InvoiceLifecycleTest extends TestCase
             self::repository(),
             new DocumentNumberAllocator(new PostgresDocumentNumberSequence(self::connection(), self::context())),
             self::scope(),
-            7,
+            self::settings(),
         );
+    }
+
+    /**
+     * The REAL settings adapter, on the same connection as everything else in this fixture.
+     *
+     * **THIS REPLACED A LITERAL `7` AND IS BEHAVIOUR-PRESERVING, which is the only reason it belongs in this
+     * change.** The width used to be a constructor argument; it now comes from `company_settings`, and this test's
+     * tenants have no row there, so the adapter answers with {@see CompanySettings::defaults()} — width 7 and
+     * `PerRateGroup`, exactly what the two literals said. Every number this class asserts is unchanged.
+     *
+     * A double would have been easier and worse: this is the class that proves the lifecycle against a real
+     * database, so the settings read it now performs should be a real query under the same row-level-security
+     * policy as every other statement here. That the query returns nothing is the case, not an avoidance of one.
+     */
+    private static function settings(): DoctrineCompanySettingsRepository
+    {
+        return new DoctrineCompanySettingsRepository(self::connection(), self::context());
     }
 
     private static function scope(): DbalTransactionalScope

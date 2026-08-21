@@ -14,7 +14,6 @@ namespace Twes\Application\Document;
 
 use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\FixedCharge;
-use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 
 /**
@@ -33,10 +32,21 @@ use Twes\Domain\Money\Currency;
  * say — and finds out when {@see CreateInvoiceHandler} runs. That is correct, because the aggregate is where those
  * cross-field invariants live and duplicating them here would be a second copy.
  *
- * **THE ROUNDING POINT IS A FIELD RATHER THAN A HANDLER DEFAULT.** It is per-company configuration and it is
- * persisted per document, so that a company changing its setting cannot restate a document a client already holds. A
- * default hidden in the handler would be this layer quietly deciding a tax question; the caller states it, and today
- * every caller states `PerRateGroup` because there is no settings table yet.
+ * **THE ROUNDING POINT IS NOT A FIELD HERE, AND IT USED TO BE.** This paragraph argued the opposite — that a
+ * default hidden in the handler would be "this layer quietly deciding a tax question", so the caller should state
+ * it — and it ended by admitting the real reason: *"today every caller states `PerRateGroup` because there is no
+ * settings table yet"*. That table landed, so the sentence is inverted in place rather than annotated
+ * (`CLAUDE.md` § Gotchas 2026-07-29).
+ *
+ * The argument for removing it is stronger than "the placeholder expired". The ruling of 2026-08-07 is that a
+ * **client may not choose how much tax a document declares**, which is why {@see \Twes\UI\Http\ApiResource\NewInvoiceInput}
+ * has no such field. But a field on this command left every *programmatic* caller — a CLI import, a Messenger
+ * consumer, a future recurring-invoice scheduler — free to state it, so the ruling held at the HTTP boundary and
+ * nowhere else. {@see CreateInvoiceHandler} now reads it from {@see \Twes\Domain\Settings\CompanySettingsRepository},
+ * which closes that gap for every caller at once instead of one boundary at a time.
+ *
+ * It is still **persisted per document**, so a company changing its setting cannot restate a document a client
+ * already holds — that half is unchanged, and it is the byte-identical-re-download guarantee.
  */
 final readonly class CreateInvoice
 {
@@ -48,6 +58,5 @@ final readonly class CreateInvoice
         public Currency $currency,
         public array $lines,
         public array $fixedCharges,
-        public VatRoundingPoint $vatRoundingPoint,
     ) {}
 }

@@ -229,19 +229,19 @@ services:
         arguments:
             $sequence: '@Twes\Domain\Document\DocumentNumberSequence'
 
-    # HOW WIDE A NEW DOCUMENT NUMBER IS RENDERED -- `0000041` at width 7.
+    # ONE COMPANY'S DOCUMENT SETTINGS -- how wide a new number is rendered, and where VAT is rounded.
     #
-    # A placeholder with a deliberate shape: this is per-tenant configuration that Wave 1 has no settings table for,
-    # so it is wired here, where changing it is a visible one-line diff, rather than defaulted inside a handler where
-    # it would be invisible. It governs NEW numbers only -- an issued document's rendered string is persisted, and
-    # re-reading it derives its own pattern from that string, so no later change here can restate a document a client
-    # already holds (CLAUDE.md § Gotchas 2026-08-06).
+    # THIS ENTRY REPLACED A `$numberWidth: 7` PARAMETER on `IssueInvoiceHandler`, and the parameter's own comment
+    # called itself "a placeholder with a deliberate shape ... per-tenant configuration that Wave 1 has no settings
+    # table for". The table landed, so the placeholder is deleted rather than left beside its successor: a container
+    # parameter is ONE value for the whole deployment and cannot express two tenants with different widths, which is
+    # the property that made it a placeholder rather than a design.
     #
-    # AN INT, NOT A REGISTERED `NumberPattern`. A service definition with a `factory:` on the value object would work
-    # and is what this file said for one commit, and it contradicts the top comment directly: a value object in the
-    # container is precisely what "the container instantiating domain objects" means. The handler builds the pattern
-    # in its own constructor instead, so a misconfigured width still fails when the service is first used rather than
-    # on the first issue attempt.
-    Twes\Application\Document\IssueInvoiceHandler:
-        arguments:
-            $numberWidth: 7
+    # An alias like `InvoiceRepository` above and for the same reason: `Twes\Domain\` is not an autowired resource,
+    # so Symfony creates no interface-to-implementation alias on its own, and without this line every handler asking
+    # for `CompanySettingsRepository` fails to autowire with a message pointing at the CONSUMER rather than at the
+    # missing binding.
+    #
+    # The DEFAULT connection, never `owner` -- `no-owner-connection-in-application.php` refuses the latter, and this
+    # table is tenant-owned, so it is policed by row-level security like every other one.
+    Twes\Domain\Settings\CompanySettingsRepository: '@Twes\Infrastructure\Persistence\Doctrine\DoctrineCompanySettingsRepository'

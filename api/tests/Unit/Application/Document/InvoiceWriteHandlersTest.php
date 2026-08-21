@@ -26,12 +26,12 @@ use Twes\Domain\Document\Exception\DocumentCannotBeIssued;
 use Twes\Domain\Document\Exception\IllegalTransition;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Document\NumberPattern;
-use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\Rate;
 use Twes\Tests\Support\FixedIdGenerator;
+use Twes\Tests\Support\InMemoryCompanySettingsRepository;
 use Twes\Tests\Support\InMemoryDocumentNumberSequence;
 use Twes\Tests\Support\InMemoryInvoiceRepository;
 use Twes\Tests\Support\RecordingTransactionalScope;
@@ -107,7 +107,7 @@ final class InvoiceWriteHandlersTest extends TestCase
         $scope = new RecordingTransactionalScope();
         $repository = new InMemoryInvoiceRepository();
 
-        new CreateInvoiceHandler($repository, new FixedIdGenerator(), $scope)->handle(self::command());
+        new CreateInvoiceHandler($repository, new FixedIdGenerator(), $scope, new InMemoryCompanySettingsRepository())->handle(self::command());
 
         self::assertSame(1, $scope->entered, 'one scope, not zero and not two');
         self::assertSame(1, $scope->maxDepth, 'and it is flat — a nested scope is a savepoint, not a transaction');
@@ -151,11 +151,10 @@ final class InvoiceWriteHandlersTest extends TestCase
             Currency::of('TND'),
             [new DocumentLine('1', Money::of('1.00', $eur), Rate::fromPercentage('19'))],
             [],
-            VatRoundingPoint::PerRateGroup,
         );
 
         try {
-            new CreateInvoiceHandler($repository, new FixedIdGenerator(), $scope)->handle($command);
+            new CreateInvoiceHandler($repository, new FixedIdGenerator(), $scope, new InMemoryCompanySettingsRepository())->handle($command);
             self::fail('a line in another currency must be refused');
         } catch (CurrencyMismatch) {
             // Expected.
@@ -227,7 +226,7 @@ final class InvoiceWriteHandlersTest extends TestCase
         $writesBefore = $repository->saves;
 
         $scope = new RecordingTransactionalScope();
-        new IssueInvoiceHandler($repository, self::allocator(), $scope, 7)->handle(new IssueInvoice(self::FIRST_ID));
+        new IssueInvoiceHandler($repository, self::allocator(), $scope, InMemoryCompanySettingsRepository::withNumberWidth(7))->handle(new IssueInvoice(self::FIRST_ID));
 
         self::assertSame(1, $scope->entered, 'one scope for the allocation and the write together');
         self::assertSame(1, $scope->maxDepth, 'flat');
@@ -262,7 +261,7 @@ final class InvoiceWriteHandlersTest extends TestCase
             $heldWhenAllocated = \count($repository->mutatingReads);
         };
 
-        new IssueInvoiceHandler($repository, new DocumentNumberAllocator($sequence), new RecordingTransactionalScope(), 7)
+        new IssueInvoiceHandler($repository, new DocumentNumberAllocator($sequence), new RecordingTransactionalScope(), InMemoryCompanySettingsRepository::withNumberWidth(7))
             ->handle(new IssueInvoice(self::FIRST_ID));
 
         self::assertSame(
@@ -337,7 +336,7 @@ final class InvoiceWriteHandlersTest extends TestCase
     public function testAnEmptyInvoiceCannotBeIssued(): void
     {
         $repository = new InMemoryInvoiceRepository();
-        $empty = new CreateInvoice(Currency::of('TND'), [], [], VatRoundingPoint::PerRateGroup);
+        $empty = new CreateInvoice(Currency::of('TND'), [], []);
         self::creator($repository)->handle($empty);
 
         $this->expectException(DocumentCannotBeIssued::class);
@@ -360,7 +359,6 @@ final class InvoiceWriteHandlersTest extends TestCase
                 new DocumentLine('7', Money::of('0.567', $tnd), Rate::fromPercentage('19')),
             ],
             [new FixedCharge('stamp_duty', Money::of('0.100', $tnd))],
-            VatRoundingPoint::PerRateGroup,
         );
     }
 
@@ -372,6 +370,7 @@ final class InvoiceWriteHandlersTest extends TestCase
             $repository,
             $ids ?? new FixedIdGenerator(),
             new RecordingTransactionalScope(),
+            new InMemoryCompanySettingsRepository(),
         );
     }
 
@@ -383,9 +382,11 @@ final class InvoiceWriteHandlersTest extends TestCase
             $repository,
             self::allocator($sequence),
             new RecordingTransactionalScope(),
-            // 7, matching `services.yaml`. A literal rather than a reference to the wiring, because the point of the
-            // width being injected is that this class does not know what production chose.
-            7,
+            // Width 7, which is `CompanySettings::defaults()`. It used to be a literal `7` "matching
+            // `services.yaml`"; that parameter is gone, and the comment explaining it went with it. Stated
+            // explicitly rather than by calling `defaults()` so that a change to the default shows up here as a
+            // failure to explain rather than as a silently different expectation.
+            InMemoryCompanySettingsRepository::withNumberWidth(7),
         );
     }
 
@@ -400,22 +401,58 @@ final class InvoiceWriteHandlersTest extends TestCase
         $repository = new InMemoryInvoiceRepository();
         self::creator($repository)->handle(self::command());
 
-        $issued = new IssueInvoiceHandler($repository, self::allocator(), new RecordingTransactionalScope(), 3)
+        $issued = new IssueInvoiceHandler($repository, self::allocator(), new RecordingTransactionalScope(), InMemoryCompanySettingsRepository::withNumberWidth(3))
             ->handle(new IssueInvoice(self::FIRST_ID));
 
         self::assertSame('001', $issued?->invoice->number()?->number(), 'width 3 renders 001, not 0000001');
     }
 
-    /** A width the domain refuses fails when the handler is CONSTRUCTED, not on somebody's first issue attempt. */
-    public function testAnImpossibleConfiguredWidthFailsAtConstruction(): void
+    /**
+     * THE WIDTH IS READ PER CALL, NOT FROZEN WHEN THE HANDLER IS BUILT.
+     *
+     * **This replaced `testAnImpossibleConfiguredWidthFailsAtConstruction()`, and the swap is a real change in
+     * where a guarantee lives rather than a rename.** That case asserted that a width `NumberPattern` refuses blows
+     * up when the service is constructed — which was true while the width was a container parameter, and is
+     * meaningless now that it comes from a row. The guarantee moved to the schema: `company_settings
+     * .number_pattern_width` carries `CHECK (BETWEEN 1 AND NumberPattern::MAX_WIDTH)`, so an impossible width
+     * cannot be stored at all, and `ConfiguredSettingsAreHonouredTest` proves the database refuses one. That is
+     * strictly stronger — a constructor check guards one call site, a constraint guards every writer including
+     * `psql`.
+     *
+     * What is worth asserting HERE instead is the property the move created: two issues by ONE handler instance
+     * see two different widths when the settings change between them. A handler that cached the pattern — the
+     * shape the old code had — passes every other case in this class and fails this one.
+     */
+    public function testTheWidthIsResolvedOnEveryIssueRatherThanCachedOnce(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
-
-        new IssueInvoiceHandler(
-            new InMemoryInvoiceRepository(),
+        $repository = new InMemoryInvoiceRepository();
+        $settings = InMemoryCompanySettingsRepository::withNumberWidth(3);
+        $handler = new IssueInvoiceHandler(
+            $repository,
             self::allocator(),
             new RecordingTransactionalScope(),
-            NumberPattern::MAX_WIDTH + 1,
+            $settings,
+        );
+
+        // ONE generator across both drafts, because `FixedIdGenerator` counts rather than taking an id: two separate
+        // instances would each hand out `…001` and the second create would collide with the first document.
+        $ids = new FixedIdGenerator();
+        $creator = self::creator($repository, $ids);
+
+        $creator->handle(self::command());
+        $first = $handler->handle(new IssueInvoice($ids->handedOut[0]));
+
+        $settings->save($settings->forCurrentTenant()->withNumberPattern(NumberPattern::padded(6)));
+
+        $creator->handle(self::command());
+        $second = $handler->handle(new IssueInvoice($ids->handedOut[1]));
+
+        self::assertSame('001', $first?->invoice->number()?->number(), 'the first issue renders at the width then configured');
+        self::assertSame(
+            '000002',
+            $second?->invoice->number()?->number(),
+            'the second must pick up the NEW width — the same handler instance, so a cached NumberPattern would '
+            . 'render 002 here and this assertion is what forbids caching it',
         );
     }
 }

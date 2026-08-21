@@ -26,6 +26,7 @@ use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
 use Twes\Tests\Support\FixedIdGenerator;
+use Twes\Tests\Support\InMemoryCompanySettingsRepository;
 use Twes\Tests\Support\InMemoryDocumentNumberSequence;
 use Twes\Tests\Support\InMemoryInvoiceRepository;
 use Twes\Tests\Support\RecordingTransactionalScope;
@@ -258,7 +259,7 @@ final class InvoiceWriteProcessorTest extends TestCase
             }
         };
 
-        $handler = new CreateInvoiceHandler($repository, new FixedIdGenerator(), new RecordingTransactionalScope());
+        $handler = new CreateInvoiceHandler($repository, new FixedIdGenerator(), new RecordingTransactionalScope(), new InMemoryCompanySettingsRepository());
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessage('more than 15 digits');
@@ -307,7 +308,7 @@ final class InvoiceWriteProcessorTest extends TestCase
             $repository,
             new DocumentNumberAllocator(new InMemoryDocumentNumberSequence()),
             new RecordingTransactionalScope(),
-            7,
+            InMemoryCompanySettingsRepository::withNumberWidth(7),
         );
 
         $this->expectException(\InvalidArgumentException::class);
@@ -418,7 +419,7 @@ final class InvoiceWriteProcessorTest extends TestCase
 
     private static function createHandler(InMemoryInvoiceRepository $repository): CreateInvoiceHandler
     {
-        return new CreateInvoiceHandler($repository, new FixedIdGenerator(), new RecordingTransactionalScope());
+        return new CreateInvoiceHandler($repository, new FixedIdGenerator(), new RecordingTransactionalScope(), new InMemoryCompanySettingsRepository());
     }
 
     private static function issueHandler(InMemoryInvoiceRepository $repository): IssueInvoiceHandler
@@ -427,7 +428,7 @@ final class InvoiceWriteProcessorTest extends TestCase
             $repository,
             new DocumentNumberAllocator(new InMemoryDocumentNumberSequence()),
             new RecordingTransactionalScope(),
-            7,
+            InMemoryCompanySettingsRepository::withNumberWidth(7),
         );
     }
 }
