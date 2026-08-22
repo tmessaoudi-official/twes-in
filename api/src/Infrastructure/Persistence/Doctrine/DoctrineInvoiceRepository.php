@@ -19,6 +19,7 @@ use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
 use Twes\Domain\Pricing\Rate;
+use Twes\Domain\Shared\Identifier;
 use Twes\Infrastructure\Tenancy\TenantContext;
 use Twes\Infrastructure\Tenancy\TenantId;
 
@@ -373,12 +374,12 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
     {
         $tenant = $this->currentTenant('read document ' . $id);
 
-        // VALIDATED BEFORE IT REACHES A QUERY, by the type that owns the rule — `DocumentIdentity::isWellFormedId()`,
+        // VALIDATED BEFORE IT REACHES A QUERY, by the type that owns the rule — `Identifier::isWellFormed()`,
         // which is now the ONE definition of it. This method previously carried its own copy of the anchored pattern,
         // because constructing a throwaway `DocumentIdentity` purely to validate would need a type and a rounding
         // point it does not know; a public predicate on that class gives the delegation without the throwaway object.
         // The refusal itself stays here, with this message, because the port promises an `\InvalidArgumentException`.
-        if (!DocumentIdentity::isWellFormedId($id)) {
+        if (!Identifier::isWellFormed($id)) {
             throw new \InvalidArgumentException(\sprintf(
                 'A document id must be a canonical lowercase-hyphenated UUID, got "%s". Refused here rather than '
                 . 'passed to a query: an id is a key, and two spellings of one key compare unequal.',

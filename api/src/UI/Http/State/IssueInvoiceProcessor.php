@@ -18,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Twes\Application\Document\IssueInvoice;
 use Twes\Application\Document\IssueInvoiceHandler;
-use Twes\Domain\Document\DocumentIdentity;
+use Twes\Domain\Shared\Identifier;
 use Twes\UI\Http\ApiResource\InvoiceResource;
 
 /**
@@ -88,7 +88,7 @@ final readonly class IssueInvoiceProcessor implements ProcessorInterface
         // 404 RATHER THAN 400 for the malformed id, unchanged and deliberate: distinguishing "malformed" from "absent"
         // tells an unauthenticated prober that its guess had the right SHAPE, which is a small existence oracle for
         // free. Both answers are "no such document".
-        if (!DocumentIdentity::isWellFormedId($id)) {
+        if (!Identifier::isWellFormed($id)) {
             throw new NotFoundHttpException('No such invoice.');
         }
 

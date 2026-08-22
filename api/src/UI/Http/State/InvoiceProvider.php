@@ -16,9 +16,9 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Twes\Application\Shared\TransactionalScope;
-use Twes\Domain\Document\DocumentIdentity;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
+use Twes\Domain\Shared\Identifier;
 use Twes\UI\Http\ApiResource\InvoiceResource;
 
 /**
@@ -67,7 +67,7 @@ final readonly class InvoiceProvider implements ProviderInterface
         // 404 RATHER THAN 400 for the malformed id, deliberately and unchanged: distinguishing "malformed" from
         // "absent" tells an unauthenticated prober that its guess had the right SHAPE, which is a small existence
         // oracle for free. Both answers are "no such document".
-        if (!DocumentIdentity::isWellFormedId($id)) {
+        if (!Identifier::isWellFormed($id)) {
             throw new NotFoundHttpException('No such invoice.');
         }
 

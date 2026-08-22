@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace Twes\Domain\Document;
 
+use Twes\Domain\Shared\Identifier;
+
 /**
  * What identifies and configures a persisted document, as distinct from what the document IS.
  *
@@ -58,6 +60,13 @@ namespace Twes\Domain\Document;
  * `Infrastructure/` converts at the boundary — which is where `symfony/uid` belongs, and where `TenantId` already
  * keeps its own string for the same reason.
  *
+ * **THE RULE ITSELF NOW LIVES IN {@see Identifier}, AND THIS CLASS DELEGATES TO IT.** It used to be
+ * `self::isWellFormedId()` here, described as *"the ONE definition of that rule"* — which it was, until the
+ * first type outside `Domain\Document` needed the same rule. A `Client` id obeys it identically, so leaving it
+ * here offered a choice between a client importing the DOCUMENT namespace to validate itself and a fourth copy
+ * of the pattern; the rule was never document-specific, and the move says so. What stays here is what is
+ * genuinely about a document: the refusal, its message, and the argument for refusing rather than normalising.
+ *
  * `readonly` with public properties rather than accessors: there is no invariant to protect beyond the constructor
  * check, and a getter per field would be ceremony.
  */
@@ -68,7 +77,7 @@ final readonly class DocumentIdentity
         public DocumentType $type,
         public VatRoundingPoint $vatRoundingPoint,
     ) {
-        if (!self::isWellFormedId($id)) {
+        if (!Identifier::isWellFormed($id)) {
             throw new \InvalidArgumentException(\sprintf(
                 'A document id must be a canonical lowercase-hyphenated UUID, got "%s". Uppercase and the '
                 . 'braced or urn forms are refused rather than normalised: two spellings of one id compare '
@@ -78,27 +87,4 @@ final readonly class DocumentIdentity
         }
     }
 
-    /**
-     * Is `$id` a canonical document id? **The ONE definition of that rule.**
-     *
-     * A REGEX, not a library. Keeping `Domain/` dependency-free is the point of this class's string id, so the check
-     * has to be one PHP can make unaided. Anchored at both ends, because an unanchored pattern accepts an id with a
-     * payload appended — and this value reaches a WHERE clause. The `/D` modifier is load-bearing: without it PCRE's
-     * `$` also matches BEFORE a final newline, so `"…e1f0\n"` was accepted — two unequal strings for one id, which is
-     * exactly what the uppercase refusal above exists to prevent.
-     *
-     * **PUBLIC, AND EXTRACTED BECAUSE THREE COPIES OF IT HAD ACCUMULATED** — here, in
-     * `DoctrineInvoiceRepository::load()`, and about to be a fourth in `InvoiceProvider`. Three copies of one
-     * correctness rule is how the `/D` gets fixed in one of them; and the missing fourth copy was itself a defect,
-     * because it forced the provider to catch `\InvalidArgumentException` around the whole lookup in order to answer
-     * a malformed id — a catch wide enough to swallow a HYDRATION failure from corrupt column data and answer 404,
-     * making a document that demonstrably exists silently vanish from the API with nobody told to investigate.
-     *
-     * A PREDICATE rather than a second throwing factory: the two existing callers want to refuse with their own
-     * message and their own exception, and the provider wants to answer 404 without an exception at all.
-     */
-    public static function isWellFormedId(string $id): bool
-    {
-        return 1 === preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $id);
-    }
 }
