@@ -41,7 +41,10 @@ final readonly class NewContactInput
 {
     public function __construct(
         /** How a human refers to this person. Required — an unnamed contact is a row nobody can act on. */
-        #[Assert\NotBlank]
+        // `normalizer: 'trim'` for the reason `NewClientInput`'s own `NotBlank` records: without it `"   "` passes
+        // the validator and is refused by the aggregate, which the processor runs outside its `try` — a 500 on a
+        // payload the caller could have retyped.
+        #[Assert\NotBlank(normalizer: 'trim')]
         #[Assert\Length(max: Contact::MAX_NAME_LENGTH)]
         public string $name,
         /**

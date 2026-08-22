@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace Twes\Tests\Functional\Http;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Twes\Domain\Client\Client;
 use Twes\Domain\Client\Contact;
@@ -89,6 +90,58 @@ final class ClientWriteSurfaceTest extends WebTestCase
 
         self::assertSame(422, $response['status']);
         self::assertStringContainsString('name', $response['body']);
+    }
+
+    /**
+     * **A WHITESPACE-ONLY VALUE FOR A REQUIRED FIELD IS THE CALLER'S ERROR, and it answered 500 until 2026-08-22.**
+     *
+     * `Assert\NotBlank` does NOT trim by default, so `"   "` is a non-empty string and passes it. The domain
+     * trims and then refuses, and it does so inside `Client::create()` — which {@see CreateClientProcessor} runs
+     * OUTSIDE its `try`, deliberately, on the stated grounds that nothing a caller can send reaches the handler.
+     * That reasoning was sound and its premise was false for exactly this payload: the validator passed it, the
+     * aggregate refused it, and the `\InvalidArgumentException` propagated as a 500 carrying the domain's own
+     * English sentence to a client that only needed to be told to type a name. [Verified: `{"name":"   "}`
+     * returned `500` with `A client needs a name…` before `normalizer: 'trim'` was added to every `NotBlank`.]
+     *
+     * This is the shape `CLAUDE.md` § Gotchas records as *a control asserted in prose and enforced nowhere* — the
+     * two-halves rule was written in three docblocks and pinned by no case. All four required fields are checked
+     * here, not just the one that was found, because the defect was in the CONSTRAINT'S DEFAULT rather than in any
+     * one field: every `NotBlank` in the three input DTOs had it.
+     *
+     * **A DATA PROVIDER RATHER THAN A LOOP, and that is forced rather than stylistic:** `WebTestCase` refuses to
+     * boot a second kernel inside one test, so four `createClient()` calls in a `foreach` error out instead of
+     * asserting. One case per payload also names the offending field in the failure output.
+     *
+     * @param array<string, mixed> $body
+     */
+    #[DataProvider('blankRequiredFields')]
+    public function testAWhitespaceOnlyRequiredFieldIsA422RatherThanA500(string $what, array $body): void
+    {
+        self::assertSame(
+            422,
+            self::post('/api/clients', $body)['status'],
+            \sprintf('%s is retypeable, so a blank one is the caller\'s error and never ours', $what),
+        );
+    }
+
+    /**
+     * @return iterable<string, array{string, array<string, mixed>}>
+     */
+    public static function blankRequiredFields(): iterable
+    {
+        yield 'the client name' => ['the client name', ['name' => '   ']];
+
+        yield 'a contact name' => ['a contact name', ['name' => 'Acme', 'contacts' => [['name' => "\t "]]]];
+
+        yield 'the first address line' => ['the first address line', [
+            'name' => 'Acme',
+            'address' => ['line1' => '  ', 'city' => 'Paris', 'countryCode' => 'FR'],
+        ]];
+
+        yield 'the city' => ['the city', [
+            'name' => 'Acme',
+            'address' => ['line1' => '12 Rue de la Paix', 'city' => ' ', 'countryCode' => 'FR'],
+        ]];
     }
 
     /**

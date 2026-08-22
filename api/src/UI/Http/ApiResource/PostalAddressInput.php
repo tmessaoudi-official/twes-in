@@ -31,11 +31,11 @@ final readonly class PostalAddressInput
 {
     public function __construct(
         /** Street and number. Required. */
-        #[Assert\NotBlank]
+        #[Assert\NotBlank(normalizer: 'trim')]
         #[Assert\Length(max: PostalAddress::MAX_PART_LENGTH)]
         public string $line1,
         /** Town or city. Required. */
-        #[Assert\NotBlank]
+        #[Assert\NotBlank(normalizer: 'trim')]
         #[Assert\Length(max: PostalAddress::MAX_PART_LENGTH)]
         public string $city,
         /**
@@ -46,7 +46,7 @@ final readonly class PostalAddressInput
          * a country the correction would be applied to it anyway. The schema's `client_country_code_is_alpha_2`
          * says the same thing a third time, at the only level a hand-written INSERT cannot avoid.
          */
-        #[Assert\NotBlank]
+        #[Assert\NotBlank(normalizer: 'trim')]
         #[Assert\Length(exactly: 2)]
         #[Assert\Regex(pattern: '/^[A-Z]{2}$/D')]
         public string $countryCode,

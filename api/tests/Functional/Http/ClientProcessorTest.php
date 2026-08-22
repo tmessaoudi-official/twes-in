@@ -75,8 +75,12 @@ final class ClientProcessorTest extends TestCase
                 'TN1234567X',
                 new PostalAddressInput('12 Rue de la Paix', 'Paris', 'FR', 'Bâtiment C', '75002'),
                 [
-                    new NewContactInput('Amine', 'amine@example.test', '+216 71 000 000'),
-                    new NewContactInput('Yasmine'),
+                    // NOT IN ALPHABETICAL ORDER, deliberately. With `Amine` first, a sort-by-name anywhere in
+                    // `ClientRepresentation` would produce the same list and this case would not notice — the
+                    // same *a probe's reach is bounded by its fixture's value space* rule that made the missing
+                    // `ORDER BY position` invisible until the fixture stopped supplying the ordering by accident.
+                    new NewContactInput('Yasmine', 'yasmine@example.test', '+216 71 000 000'),
+                    new NewContactInput('Amine'),
                 ],
             ),
             new Post(),
@@ -94,10 +98,13 @@ final class ClientProcessorTest extends TestCase
         self::assertSame('FR', $resource->address->countryCode);
 
         self::assertCount(2, $resource->contacts);
-        self::assertSame('Amine', $resource->contacts[0]->name);
-        self::assertSame('amine@example.test', $resource->contacts[0]->email);
+        self::assertSame(
+            ['Yasmine', 'Amine'],
+            array_map(static fn($contact): string => $contact->name, $resource->contacts),
+            'the order sent is the order returned — nothing sorts this list',
+        );
+        self::assertSame('yasmine@example.test', $resource->contacts[0]->email);
         self::assertSame('+216 71 000 000', $resource->contacts[0]->phone);
-        self::assertSame('Yasmine', $resource->contacts[1]->name);
         self::assertNull($resource->contacts[1]->email, 'an absent e-mail comes back absent, not empty');
     }
 
@@ -128,6 +135,41 @@ final class ClientProcessorTest extends TestCase
             new NewClientInput('Acme', null, new PostalAddressInput('12 Rue de la Paix', 'Paris', 'fr')),
             new Post(),
         );
+    }
+
+    /**
+     * **A REPOSITORY FAILURE IS NOT REPORTED AS THE CALLER'S ERROR — the property the `try` boundary exists for,
+     * and until 2026-08-22 nothing pinned it.**
+     *
+     * {@see CreateClientProcessor} keeps `handle()` outside its `catch (\InvalidArgumentException|\DomainException)`
+     * because the invoice path learned over three rounds that a whole-call catch swallows HYDRATION failures:
+     * corrupt column data raises `\InvalidArgumentException` from deep inside a mapper, and a wide catch reports
+     * OUR broken row to the client as a 422 naming an internal column. The only handler-failure case in this class
+     * threw a `\LogicException`, which that arm never catches anyway — so the mutant *"widen the `try` around
+     * `handle()`"* left every test green and the guarantee was enforced by nothing.
+     *
+     * This is that mutant's killer: a repository whose read-back raises the exact exception type the conversion
+     * arm catches. The processor must let it through as itself, not translate it.
+     */
+    public function testARepositoryFailureIsNotReportedAsTheCallersError(): void
+    {
+        $processor = new CreateClientProcessor(
+            new CreateClientHandler(new HydrationFailingClientRepository(), $this->identifiers, $this->transaction),
+        );
+
+        try {
+            $processor->process(new NewClientInput('Acme'), new Post());
+            self::fail('the repository failure must not be swallowed');
+        } catch (UnprocessableEntityHttpException) {
+            self::fail(
+                'a repository failure was reported as a 422 — the caller is told to fix a payload that was never '
+                . 'the problem, and a corrupt stored row is hidden behind a message naming an internal column',
+            );
+        } catch (\InvalidArgumentException $ourFault) {
+            // A 500 is what `error.internal` means, and Symfony's listener produces one for an untranslated
+            // exception. What matters here is that it left this class UNWRAPPED.
+            self::assertStringContainsString('stored row', $ourFault->getMessage());
+        }
     }
 
     /**
@@ -213,5 +255,23 @@ final class ClientProcessorTest extends TestCase
     private function provider(): ClientProvider
     {
         return new ClientProvider($this->clients, $this->transaction);
+    }
+}
+
+/**
+ * A repository whose read-back raises the exception type the processor's CONVERSION arm catches.
+ *
+ * It is the shape a real hydration failure has: `InvalidMoneyAmount`, `UnknownCurrency` and `InvalidRate` all
+ * extend `\InvalidArgumentException` and are raised from deep inside a mapper when stored column data no longer
+ * parses. `CLAUDE.md` § Gotchas records that being reported to clients as a 422 naming an internal column on the
+ * invoice path, three separate times.
+ */
+final class HydrationFailingClientRepository implements \Twes\Domain\Client\ClientRepository
+{
+    public function save(Client $client): void {}
+
+    public function find(string $id): ?Client
+    {
+        throw new \InvalidArgumentException('A stored row for this client can no longer be parsed.');
     }
 }

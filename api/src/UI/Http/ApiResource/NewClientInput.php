@@ -63,7 +63,13 @@ final readonly class NewClientInput
          * It is the one field an invoice cannot be addressed without, which is why it is the only required field
          * on this DTO — everything else about a client can legitimately be filled in later.
          */
-        #[Assert\NotBlank]
+        // `normalizer: 'trim'` IS LOAD-BEARING AND NOT TIDINESS. `NotBlank` does not trim by default, so `"   "`
+        // is a non-empty string that passes it — and the domain trims and then refuses, inside `Client::create()`,
+        // which the processor runs OUTSIDE its `try`. The result was a 500 carrying the domain's English sentence
+        // to a caller who only needed to be told to type a name. [Verified 2026-08-22: `{"name":"   "}` returned
+        // 500 before this normalizer.] Every `NotBlank` in these three DTOs carries it, because the defect was in
+        // the constraint's DEFAULT rather than in any one field.
+        #[Assert\NotBlank(normalizer: 'trim')]
         #[Assert\Length(max: Client::MAX_NAME_LENGTH)]
         public string $name,
         /**
