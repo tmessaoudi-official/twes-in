@@ -203,6 +203,26 @@
         <source>client.contact_count_too_large</source>
         <target>Ce client compte déjà {max} contacts, ce qui est le maximum. Supprimez-en un avant d'en ajouter un autre.</target>
       </trans-unit>
+      <trans-unit id="51" resname="product.name_required">
+        <source>product.name_required</source>
+        <target>Un produit doit avoir un nom. C'est lui qui apparaît sur la ligne de facture que lit le client.</target>
+      </trans-unit>
+      <trans-unit id="52" resname="product.name_too_long">
+        <source>product.name_too_long</source>
+        <target>Le nom du produit comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="53" resname="product.sku_too_long">
+        <source>product.sku_too_long</source>
+        <target>La référence comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="54" resname="product.price_field_ambiguous">
+        <source>product.price_field_ambiguous</source>
+        <target>Indiquez un taux de marge ou un prix de vente, pas les deux. Ils peuvent diverger, et c'est celui que vous saisissez qui est conservé tel quel.</target>
+      </trans-unit>
+      <trans-unit id="55" resname="product.price_field_missing">
+        <source>product.price_field_missing</source>
+        <target>Indiquez un taux de marge ou un prix de vente. Un produit ayant un coût et aucun des deux n'est pas tarifé.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

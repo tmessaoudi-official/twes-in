@@ -29,7 +29,16 @@ rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. **The invoice WRITE path
 closed out on 2026-08-07** — the last thing Wave 1's *invoice core* owed, and **NOT** the last thing the wave owes:
-Product is absent, and **Client (+ contacts) is PART-LANDED as of 2026-08-22: its domain, its schema, its
+**Product LANDED 2026-08-22** — `Domain/Product/{Product,ProductRepository}`, the `product` table (tenant-owned,
+RLS-policed, and the first table whose CHECK required the isolation probe to be able to express a NULL),
+`DoctrineProductRepository`, and `POST /api/products` + `GET /api/products/{id}` with five `product.*` refusal
+keys. It is deliberately THIN: `Domain/Pricing/ProductPricing` already owned every F4 ruling — which field the
+user typed, that the typed one is never recomputed, that a cost change preserves the RATE and moves the PRICE —
+so the aggregate holds one and delegates rather than re-expressing that arithmetic. What it adds is identity, a
+name, an optional non-unique SKU and the **VAT rate**, which pricing genuinely does not carry (a foodstuff and a
+service are taxed differently inside one company). `PUT`, `DELETE` and a collection `GET` are ABSENT and argued
+on `ProductResource`: an edit endpoint has to answer what an edit does to AUTHORSHIP, which is tax-adjacent and
+has no HTTP contract yet. And **Client (+ contacts) is PART-LANDED as of 2026-08-22: its domain, its schema, its
 persistence AND its HTTP surface exist; the link from a document to a client does not** —
 `Domain/Client/{Client,Contact,PostalAddress,ClientRepository}`, the `client` and `client_contact` tables
 (tenant-owned, RLS-policed, every key including the tenant column), `DoctrineClientRepository` with its two row
@@ -914,6 +923,9 @@ cross-check that silently scopes members out is the exemption-inside-a-check sha
 | the CLIENT is full — a 51st contact, against `Client::MAX_CONTACTS` | **yes** | `client.contact_count_too_large`. Same prescription as `document.line_count_too_large`: remove one before adding another |
 | a contact id that is malformed, duplicated, or names no contact on this client | **no** | **not reachable from the wire today**, so `error.internal`. `POST /api/clients` mints every contact id server-side and there is no endpoint that accepts or removes one. The aggregate keeps all three refusals because a future importer or a `PUT` can trip them — a guard deleted because today's only caller cannot reach it is deleted for the wrong reason — and each earns a key in the change that makes it reachable |
 | a CLIENT id that is malformed or names nothing this tenant can see | n/a | `error.not_found`, at the transport. Malformed and absent are deliberately the SAME answer: distinguishing them tells a prober its guess had the right shape |
+| a PRODUCT field the user typed — a blank or overlong name, an overlong SKU | **yes** | they can retype it. `product.name_required`, `product.name_too_long`, `product.sku_too_long` |
+| a product priced by BOTH a profit rate and a net price, or by NEITHER | **yes** | **TWO keys, not one carrying a `{what}`**: `product.price_field_ambiguous` and `product.price_field_missing`. They are opposite mistakes with opposite fixes — remove a field, or add one — and a single message covering both would tell a user to do two contradictory things. This is F4 reaching the wire: a product is priced by the field the user TYPED, and which one that is cannot be inferred |
+| a product's COST, RATE or PRICE — negative, malformed, too precise, not representable | **yes**, and **the keys already exist** | `pricing.cost_negative`, `pricing.net_price_negative`, `pricing.net_price_not_representable`, `pricing.rate_invalid`, `pricing.rate_too_large`, `pricing.rate_too_precise`, `money.currency_unknown`, `money.amount_not_representable` — all from Wave 0, all reachable from `POST /api/products`, and none needing a `product.*` twin. Listed here rather than left implicit so the file→table direction of this cross-check closes; round 16 found six keys with no row at all |
 
 **The keys are LISTED above on purpose.** Round 15 found the previous version of this section promising a key for
 three case classes that had none, in the same commit that introduced the rule — so the rule was violated by the

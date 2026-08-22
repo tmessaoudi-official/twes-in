@@ -208,6 +208,26 @@
         <source>client.contact_count_too_large</source>
         <target>This client already holds {max} contacts, which is the maximum. Remove one before adding another.</target>
       </trans-unit>
+      <trans-unit id="51" resname="product.name_required">
+        <source>product.name_required</source>
+        <target>A product needs a name. It is what appears on the invoice line a client reads.</target>
+      </trans-unit>
+      <trans-unit id="52" resname="product.name_too_long">
+        <source>product.name_too_long</source>
+        <target>The product name is {count} characters; at most {max} are allowed.</target>
+      </trans-unit>
+      <trans-unit id="53" resname="product.sku_too_long">
+        <source>product.sku_too_long</source>
+        <target>The SKU is {count} characters; at most {max} are allowed.</target>
+      </trans-unit>
+      <trans-unit id="54" resname="product.price_field_ambiguous">
+        <source>product.price_field_ambiguous</source>
+        <target>Give a profit rate or a selling price, not both. They can disagree, and the one you typed is what decides which value is kept exactly.</target>
+      </trans-unit>
+      <trans-unit id="55" resname="product.price_field_missing">
+        <source>product.price_field_missing</source>
+        <target>Give a profit rate or a selling price. A product with a cost and neither is not priced.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
