@@ -45,4 +45,21 @@ enum VatRoundingPoint: string
 
     /** Round each line's VAT, then sum. Supported, and numerically different — see the class docblock. */
     case PerLine = 'per_line';
+
+    /**
+     * The length of the longest backed value, which is what a column storing one has to be wide enough for.
+     *
+     * **A LITERAL BECAUSE AN ATTRIBUTE ARGUMENT MUST BE A CONSTANT EXPRESSION, and pinned by a test because a
+     * literal beside the thing it measures is the first thing to drift** — the defect `CLAUDE.md` records
+     * against every hand-written count in this project. `VatRoundingPointTest` asserts this equals the longest
+     * `strlen($case->value)`, so adding a case with a longer name fails there rather than at an INSERT.
+     *
+     * It exists because `CompanySettingsRow` mapped `default_vat_rounding_point` as `length: 32` while
+     * `Version20260820120000` derived `varchar(14)` from these very cases — a mapping and a schema disagreeing
+     * about the same column, which `doctrine:schema:validate --skip-sync` cannot see BY DESIGN: `--skip-sync` is
+     * what stops it comparing against a database, and this project passes it deliberately because the migration
+     * adds row-level security, CHECK constraints and composite keys that no mapping expresses. So this class of
+     * mismatch has no automatic detector here, and the remedy is one source both sides read.
+     */
+    public const int MAX_BACKED_VALUE_LENGTH = 14;
 }

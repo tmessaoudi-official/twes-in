@@ -14,6 +14,7 @@ namespace Twes\Infrastructure\Persistence\Doctrine\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
+use Twes\Domain\Document\VatRoundingPoint;
 
 /**
  * One company's document settings, as a ROW.
@@ -67,7 +68,15 @@ class CompanySettingsRow
      * company changing this cannot restate a document a client already holds — the byte-identical-re-download
      * guarantee, and the reason the 2026-08-07 ruling put this on the company rather than in the request.
      */
-    #[ORM\Column(name: 'default_vat_rounding_point', type: 'string', length: 32)]
+    // THE LENGTH IS DERIVED, NOT CHOSEN. It read `length: 32` while `Version20260820120000` computed
+    // `varchar(14)` from `VatRoundingPoint::cases()` — the mapping and the schema disagreeing about one column,
+    // which `doctrine:schema:validate --skip-sync` cannot detect because `--skip-sync` is precisely what stops
+    // it looking at a database. Both sides now read the same constant.
+    #[ORM\Column(
+        name: 'default_vat_rounding_point',
+        type: 'string',
+        length: VatRoundingPoint::MAX_BACKED_VALUE_LENGTH,
+    )]
     public string $defaultVatRoundingPoint;
 
     /**
