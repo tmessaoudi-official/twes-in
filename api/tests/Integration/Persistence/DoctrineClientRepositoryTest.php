@@ -67,8 +67,7 @@ final class DoctrineClientRepositoryTest extends TestCase
      */
     protected function setUp(): void
     {
-        self::connection()->executeStatement('DELETE FROM client_contact');
-        self::connection()->executeStatement('DELETE FROM client');
+        self::emptyTheFixture();
     }
 
     /** The whole aggregate, with everything populated, survives a real round trip. */
@@ -355,6 +354,125 @@ final class DoctrineClientRepositoryTest extends TestCase
             (int) self::connection()->fetchOne('SELECT count(*) FROM client_contact'),
             'the contacts must go with their client',
         );
+    }
+
+    /**
+     * **THE FIXTURE CLEANUP ITSELF IS PROVEN TO WORK, and it is here because a `setUp()` cannot prove itself.**
+     *
+     * The first version of `emptyTheFixture()` issued `DELETE FROM client`, and it was very nearly vacuous:
+     * both tables are `FORCE ROW LEVEL SECURITY`, so the OWNER is policed too, and the canonical policy compares
+     * against `twes.tenant_id`. Before any case has bound a tenant the setting is unset, the predicate is NULL,
+     * and the DELETE matches ZERO rows; worse, after a case that leaves the session bound to TENANT_B the next
+     * `setUp()` deletes B's rows and leaves A's standing. The suite was green only because of the order the
+     * cases happen to be DECLARED in — which is exactly the order-dependent fixture `CLAUDE.md` § Gotchas
+     * 2026-08-07 records, inside the method whose docblock claimed to prevent it.
+     *
+     * Proving it needs the cleanup called from a case rather than from `setUp()`, because `setUp()` runs before
+     * the assertions and the only way to observe it from a later case is to depend on declaration order — the
+     * very thing being fixed. So the body is a named method, and this case drives it directly: leave a row owned
+     * by A behind, bind the session to B, empty, then rebind to A and look. **The rebinding is load-bearing —
+     * counting while bound to B would report 0 whether or not A's row survived**, which is how the original
+     * defect stayed invisible.
+     */
+    public function testTheFixtureIsEmptiedWhateverTenantTheSessionIsBoundTo(): void
+    {
+        $a = self::repositoryFor(self::TENANT_A);
+        self::inTransaction(static fn() => $a->save(Client::create(self::CLIENT, 'Left behind')));
+        self::repositoryFor(self::TENANT_B);
+
+        self::emptyTheFixture();
+
+        self::repositoryFor(self::TENANT_A);
+        self::assertSame(
+            0,
+            (int) self::connection()->fetchOne('SELECT count(*) FROM client'),
+            'the cleanup must empty the table whatever tenant the session was bound to when it ran',
+        );
+    }
+
+    /**
+     * Empty both tables, whatever the session is bound to.
+     *
+     * `TRUNCATE` rather than `DELETE` for the reason the case above proves: TRUNCATE is not subject to row-level
+     * security, and the owner owns these tables, so it genuinely empties them. Both tables in ONE statement,
+     * because the composite foreign key makes truncating `client` alone an error.
+     */
+    private static function emptyTheFixture(): void
+    {
+        self::connection()->executeStatement('TRUNCATE client_contact, client');
+    }
+
+    /**
+     * **`client_address_is_whole` IS PROVEN TO FIRE, rather than merely never violated.**
+     *
+     * Every other case in this class stores either a WHOLE address or NONE, because that is all the domain type
+     * can express — so the CHECK was satisfied by every row the suite writes and a polarity typo in its
+     * five-NULL-or-three-NOT-NULL expression would have been invisible with the whole suite green. That is the
+     * detector-before-the-repair standard `CLAUDE.md` § Gotchas 2026-08-07 sets for an infra change, and the
+     * 2026-07-30 rule it restates: a constraint nothing violates is indistinguishable from one that permits
+     * everything. `DoctrineClientRepository::addressFrom()`'s docblock cites this CHECK as the reason a half
+     * address cannot be stored, which until now was an unverified claim about a control.
+     *
+     * A RAW INSERT rather than the repository, deliberately: the repository cannot produce this row, and the
+     * constraint exists precisely for the writer that is not it — a migration, a `psql` session, a future
+     * importer.
+     */
+    public function testAHalfAddressIsRefusedByTheSchema(): void
+    {
+        self::repositoryFor(self::TENANT_A);
+
+        self::assertRefusedBy(
+            'client_address_is_whole',
+            'INSERT INTO client (company_id, id, name, address_line_1, address_city) VALUES (?, ?, ?, ?, ?)',
+            [self::TENANT_A, self::CLIENT, 'Half an address', '12 Rue de la Paix', 'Paris'],
+        );
+    }
+
+    /**
+     * **`client_country_code_is_alpha_2` IS PROVEN TO FIRE**, for the same reason as the case above.
+     *
+     * `PostalAddress` REFUSES a lowercase code rather than upcasing it, so no route through the domain can
+     * store `fr` — which is exactly why the schema half needs its own evidence. The column is `CHAR(2)`, so a
+     * wrong-LENGTH code is already refused by the type; what this constraint adds is the ALPHABET and the CASE,
+     * and only a direct write can demonstrate it.
+     */
+    public function testALowercaseCountryCodeIsRefusedByTheSchema(): void
+    {
+        self::repositoryFor(self::TENANT_A);
+
+        self::assertRefusedBy(
+            'client_country_code_is_alpha_2',
+            'INSERT INTO client (company_id, id, name, address_line_1, address_city, address_country_code) '
+            . 'VALUES (?, ?, ?, ?, ?, ?)',
+            [self::TENANT_A, self::CLIENT, 'Acme', '12 Rue de la Paix', 'Paris', 'fr'],
+        );
+    }
+
+    /**
+     * Assert that a statement is refused BY A NAMED CONSTRAINT, not merely that it fails.
+     *
+     * The name is asserted rather than the failure, because `CLAUDE.md` § Gotchas 2026-07-29 records a meta-gate
+     * reporting 33/33 for a gate that detected nothing: a crash and a detection are indistinguishable from an
+     * exit code alone. Here the difference is real — a typo'd column name, a row-level-security refusal and the
+     * CHECK all raise a `Doctrine\DBAL\Exception`, and only one of them is the thing being proven.
+     *
+     * @param list<string> $parameters
+     */
+    private static function assertRefusedBy(string $constraint, string $sql, array $parameters): void
+    {
+        try {
+            self::connection()->executeStatement($sql, $parameters);
+        } catch (\Doctrine\DBAL\Exception $refusal) {
+            self::assertStringContainsString(
+                $constraint,
+                $refusal->getMessage(),
+                \sprintf('the write must be refused by %s specifically, not by something else', $constraint),
+            );
+
+            return;
+        }
+
+        self::fail(\sprintf('the schema accepted a row that %s exists to refuse', $constraint));
     }
 
     /**
