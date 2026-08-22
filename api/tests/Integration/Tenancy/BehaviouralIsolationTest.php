@@ -105,6 +105,21 @@ final class BehaviouralIsolationTest extends TestCase
         // NAME, deliberately, and the two columns mean different things: one is what a document WAS computed with
         // and this one is what the NEXT document will be.
         'default_vat_rounding_point' => ['per_line', 'per_rate_group'],
+        // ADDED 2026-08-22 with `product`, and it is the THIRD time this map has done what its docblock
+        // promises — but the FIRST time a table needed a NULL, which is why `scalarFor()` now returns `?string`.
+        //
+        // `product` stores only the price field the user AUTHORED: F4 rules that the typed field is never
+        // recomputed and the other is derived for display with no authority, so the migration's
+        // `product_stores_only_the_authored_field` CHECK requires exactly one of `profit_rate` and
+        // `net_price_amount` to be present and to match `authored_by`. A synthesiser that fills every column
+        // cannot satisfy that: it is not a value this map was missing, it is a SHAPE it could not express.
+        //
+        // The two tenant variants take opposite authorship, which is free and better than symmetric: the two
+        // rows still differ in every column that can differ (the uniqueness probe's requirement), and the pair
+        // exercises BOTH branches of the CHECK rather than one twice.
+        'authored_by' => ['profit_rate', 'net_price'],
+        'profit_rate' => ['0.300000000000', null],
+        'net_price_amount' => [null, '2.0000'],
     ];
 
     /**
@@ -1805,7 +1820,7 @@ final class BehaviouralIsolationTest extends TestCase
      *
      * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>} $relation
      *
-     * @return array<string, string>
+     * @return array<string, null|string>
      */
     private static function rowFor(
         array $relation,
@@ -1845,7 +1860,7 @@ final class BehaviouralIsolationTest extends TestCase
      *
      * @param array{name: string, type: string, nullable: bool} $column
      */
-    private static function scalarFor(array $column, string $variant): string
+    private static function scalarFor(array $column, string $variant): ?string
     {
         $index = 'a' === $variant ? 0 : 1;
 
@@ -1898,7 +1913,7 @@ final class BehaviouralIsolationTest extends TestCase
 
     /**
      * @param array{schema: string, name: string, kind: string, columns: list<array{name: string, type: string, nullable: bool}>, fks: list<array{name: string, columns: list<string>, parent: string, parentColumns: list<string>}>, uniqueKeys: array<string, list<string>>} $relation
-     * @param array<string, string> $row
+     * @param array<string, null|string> $row
      */
     private static function insertSql(array $relation, array $row): string
     {
@@ -2024,8 +2039,24 @@ final class BehaviouralIsolationTest extends TestCase
         return '"' . str_replace('"', '""', $identifier) . '"';
     }
 
-    private static function literal(string $value): string
+    /**
+     * A SQL literal — or the keyword `NULL`, which is the one value that must NOT be quoted.
+     *
+     * **`?string` since 2026-08-22, when `product` became the first table whose CHECK requires a column to be
+     * ABSENT rather than merely different.** `product_stores_only_the_authored_field` demands exactly one of
+     * `profit_rate` and `net_price_amount`, so `COLUMN_VALUES` had to be able to say "no value here" — and a
+     * synthesiser that can only produce strings cannot express that shape at all. Quoting it as `'NULL'` would
+     * store the four-character string and satisfy nothing.
+     *
+     * Emitting a bare keyword into assembled SQL is safe HERE and would not be elsewhere: every value reaching
+     * this method comes from `COLUMN_VALUES` or `scalarFor()`, both of which are this fixture's own constants.
+     */
+    private static function literal(?string $value): string
     {
+        if (null === $value) {
+            return 'NULL';
+        }
+
         return "'" . str_replace("'", "''", $value) . "'";
     }
 
