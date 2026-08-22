@@ -51,6 +51,14 @@ use Twes\UI\Http\State\InvoiceRepresentation;
 #[CoversClass(InvoiceRepresentation::class)]
 final class InvoiceProviderTest extends TestCase
 {
+    /**
+     * Every invoice fixture is addressed to a client, because since 2026-08-22 `issue()`
+     * requires one — EN 16931 makes the buyer mandatory (BT-44) and an issued invoice
+     * addressed to nobody is not a document a tax authority accepts. A DRAFT may have none;
+     * these fixtures carry one because a realistic invoice does.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
     private const DOCUMENT = 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee';
 
     private RecordingTransactionalScope $scope;
@@ -249,7 +257,7 @@ final class InvoiceProviderTest extends TestCase
     {
         $tnd = Currency::of('TND');
         // ONE line, at a rate and quantity whose VAT lands exactly on half a millime.
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('0.010', $tnd), Rate::fromPercentage('5')));
 
         $resource = $this->represent($invoice);
@@ -265,7 +273,7 @@ final class InvoiceProviderTest extends TestCase
         // [measured]. Below the tie they diverge: 0.010 at 1% is 0.0001 TND, which `half_up` takes to 0.000 while
         // `up` and `ceiling` take to 0.001. Two vectors, one per side of the midpoint, is what closes all eight modes.
         $belowTheTie = $this->represent(
-            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('0.010', $tnd), Rate::fromPercentage('1'))),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('1', Money::of('0.010', $tnd), Rate::fromPercentage('1'))),
         );
 
         self::assertSame(
@@ -378,7 +386,7 @@ final class InvoiceProviderTest extends TestCase
 
         // TWO LINES AT THE SAME RATE, which is what makes the allocation case real: one line per rate group would
         // make the allocated share trivially equal to the group total and the sum assertion vacuous.
-        return Invoice::draft($tnd)
+        return Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('3', Money::of('1.234', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('7', Money::of('0.567', $tnd), Rate::fromPercentage('19')))
             ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
@@ -401,7 +409,7 @@ final class InvoiceProviderTest extends TestCase
     {
         $tnd = Currency::of('TND');
 
-        return Invoice::draft($tnd)
+        return Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')));
     }

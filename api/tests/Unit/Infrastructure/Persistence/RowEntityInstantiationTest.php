@@ -71,6 +71,17 @@ final class RowEntityInstantiationTest extends TestCase
         // accept a defaulted field that nobody had declared deliberate.
         DocumentRow::class . '::number',
         DocumentRow::class . '::numberRendered',
+        // THE CLIENT, added 2026-08-22 with the document -> client link, and this test forced the entry exactly as
+        // it forced `numberRendered`'s: the property appeared, the assertion refused a defaulted field nobody had
+        // declared deliberate, and the reason had to be written before it would pass. That is the third time this
+        // list has done its job on its own author.
+        //
+        // Deliberate for the same reason as the number pair, and it is the SAME SHAPE: a draft legitimately has
+        // none, `Invoice::issue()` requires one (EN 16931 makes the buyer mandatory, BT-44), and the requirement
+        // is therefore CONDITIONAL on another column. A required constructor parameter cannot express "present
+        // unless this is a draft", so the relationship is enforced where a relationship can be — the migration's
+        // `document_client_required_once_issued`, `Invoice::issue()`, and `Invoice::fromPersistedState()`.
+        DocumentRow::class . '::clientId',
         // NOT NULL, and the default IS the contract: 1 is the number sequence port's second guarantee, so a row
         // that has handed nothing out is at 1. This is the shape the assertion below guards against everywhere
         // else, permitted here because the value is the domain's, not a convenience.

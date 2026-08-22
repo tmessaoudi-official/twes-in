@@ -58,5 +58,17 @@ final readonly class CreateInvoice
         public Currency $currency,
         public array $lines,
         public array $fixedCharges,
+        /**
+         * The client this invoice is for — OPTIONAL at creation and required at issue.
+         *
+         * A draft may legitimately have none, for the same reason it may have no lines: deciding who an invoice
+         * is for can come after typing what is on it. `Invoice::issue()` is where the requirement bites, because
+         * EN 16931 makes the buyer mandatory (BT-44) and an issued invoice addressed to nobody is not a document
+         * a tax authority accepts.
+         *
+         * An ID rather than a `Client`: one aggregate references another by IDENTITY. Loading an invoice must
+         * not load a client, and a stale copy of a client must not travel inside a document.
+         */
+        public ?string $clientId = null,
     ) {}
 }

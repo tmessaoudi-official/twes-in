@@ -229,6 +229,14 @@
         <source>product.price_field_missing</source>
         <target>أدخل نسبة الربح أو سعر البيع. فالمنتج الذي له كلفة ولا يحمل أيًّا منهما غير مُسعَّر.</target>
       </trans-unit>
+      <trans-unit id="56" resname="document.client_required_to_issue">
+        <source>document.client_required_to_issue</source>
+        <target>لا يمكن إصدار فاتورة بدون عميل. اختر عميلًا، أو اتركها مسودة.</target>
+      </trans-unit>
+      <trans-unit id="57" resname="document.client_unknown">
+        <source>document.client_unknown</source>
+        <target>هذا العميل غير موجود. أنشئه أولًا، أو صحّح المعرّف.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

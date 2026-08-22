@@ -49,6 +49,23 @@ use Twes\Domain\Document\Invoice;
 final readonly class NewInvoiceInput
 {
     /**
+     * The shape of a canonical identifier, mirroring {@see \Twes\Domain\Shared\Identifier}'s own rule.
+     *
+     * **DUPLICATED DELIBERATELY, AND PINNED BY A TEST RATHER THAN BY CARE.** The domain's copy is `private` and
+     * belongs to `Domain/`, which this layer may depend on but may not reach into; publishing it purely to let the
+     * edge borrow it would widen a domain API for a transport's convenience. So the rule is stated twice and
+     * `NewInvoiceInputTest::testTheEdgeAndTheDomainAgreeOnWhatAnIdentifierIs()` asserts the two agree across
+     * uppercase, braced, over-long and empty spellings — a drift here would otherwise show up as a 500 where a
+     * 422 was intended, which is precisely the class of defect this project keeps finding.
+     *
+     * **NOT `#[Assert\Uuid]`.** That constraint accepts the uppercase and braced forms, and the domain refuses
+     * both rather than normalising them, on the ground that an identifier is a key and not a display value. Using
+     * it would admit spellings the aggregate then rejects — moving the refusal from a 422 naming `clientId` to a
+     * 500 raised inside the handler, outside this processor's `try`.
+     */
+    public const string CANONICAL_ID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D';
+
+    /**
      * @param list<NewInvoiceLineInput> $lines
      * @param list<NewFixedChargeInput> $fixedCharges
      *
@@ -96,5 +113,36 @@ final readonly class NewInvoiceInput
         #[Assert\Count(max: Invoice::MAX_LINES)]
         #[Assert\Valid]
         public array $fixedCharges = [],
+        /**
+         * The client this invoice is addressed to. **Optional here, and required at issue.**
+         *
+         * The asymmetry is the ruling rather than an accident of a nullable column: a DRAFT may have no client for
+         * the same reason it may have no lines — deciding who an invoice is for can come after typing what is on
+         * it — while `Invoice::issue()` demands one, because EN 16931 makes the buyer mandatory (BT-44) and an
+         * issued invoice addressed to nobody is not a document a tax authority accepts. The requirement attaches
+         * to the TRANSITION, not to the type.
+         *
+         * **AN ID, NEVER A NESTED CLIENT OBJECT.** One aggregate references another by identity. Accepting a
+         * client body here would let one request create or restate a client as a side effect of creating an
+         * invoice, which is two decisions wearing one endpoint — and it is the same argument that keeps
+         * `Client::withContact()` off this surface.
+         *
+         * Only the SHAPE is checked here. Whether the id names a client THIS TENANT can see is a question only the
+         * database can answer, and it answers it through the composite foreign key — see
+         * {@see \Twes\Domain\Document\Exception\UnknownClient}.
+         *
+         * **`NotBlank` BESIDE THE REGEX, BECAUSE THE REGEX CANNOT REFUSE AN EMPTY STRING.**
+         * `RegexValidator::validate()` opens with `if (null === $value || '' === $value) { return; }`, so `""` is
+         * SKIPPED by the pattern rather than matched against it. Absent this, `{"clientId": ""}` walked past the edge
+         * untouched, was passed through `command()` unchanged, and reached `withClient()` inside the handler — where
+         * `'' !== null` and the id is not well-formed, so the `\InvalidArgumentException` landed OUTSIDE the
+         * conversion's `catch` and the caller was told the server broke. Every other malformed spelling answered 422.
+         *
+         * `allowNull: true` because ABSENT and EMPTY are different: a draft legitimately has no client, so `null`
+         * must stay acceptable. What is refused is a field that is PRESENT and says nothing.
+         */
+        #[Assert\NotBlank(allowNull: true)]
+        #[Assert\Regex(pattern: self::CANONICAL_ID)]
+        public ?string $clientId = null,
     ) {}
 }

@@ -223,6 +223,14 @@
         <source>product.price_field_missing</source>
         <target>Indiquez un taux de marge ou un prix de vente. Un produit ayant un coût et aucun des deux n'est pas tarifé.</target>
       </trans-unit>
+      <trans-unit id="56" resname="document.client_required_to_issue">
+        <source>document.client_required_to_issue</source>
+        <target>Une facture sans client ne peut pas être émise. Choisissez un client, ou laissez-la au brouillon.</target>
+      </trans-unit>
+      <trans-unit id="57" resname="document.client_unknown">
+        <source>document.client_unknown</source>
+        <target>Ce client n’existe pas. Créez-le d’abord, ou corrigez l’identifiant.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

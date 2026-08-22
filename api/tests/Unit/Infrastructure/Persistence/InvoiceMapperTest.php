@@ -53,6 +53,14 @@ use Twes\Infrastructure\Tenancy\TenantId;
 #[CoversClass(InvoiceMapper::class)]
 final class InvoiceMapperTest extends TestCase
 {
+    /**
+     * Every invoice fixture is addressed to a client, because since 2026-08-22 `issue()`
+     * requires one — EN 16931 makes the buyer mandatory (BT-44) and an issued invoice
+     * addressed to nobody is not a document a tax authority accepts. A DRAFT may have none;
+     * these fixtures carry one because a realistic invoice does.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
     private const COMPANY = '11111111-1111-4111-8111-111111111111';
     private const DOCUMENT = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 
@@ -65,7 +73,7 @@ final class InvoiceMapperTest extends TestCase
         $eur = Currency::of('EUR');
 
         yield 'an empty TND draft' => [
-            Invoice::draft($tnd),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT),
             self::identity(),
         ];
 
@@ -73,12 +81,12 @@ final class InvoiceMapperTest extends TestCase
         // 2-decimal assumption breaks first. CLAUDE.md § Architecture calls that a bug for the default currency
         // rather than an edge case, so it leads here rather than appearing as an afterthought.
         yield 'a TND draft with a three-decimal unit price' => [
-            Invoice::draft($tnd)->withLine(new DocumentLine('2', Money::of('0.100', $tnd), Rate::fromPercentage('19'))),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('2', Money::of('0.100', $tnd), Rate::fromPercentage('19'))),
             self::identity(),
         ];
 
         yield 'multiple lines at multiple VAT rates' => [
-            Invoice::draft($eur)
+            Invoice::draft($eur)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('100.00', $eur), Rate::fromPercentage('20')))
                 ->withLine(new DocumentLine('3.5', Money::of('12.34', $eur), Rate::fromPercentage('5.5')))
                 // A ZERO rate is a real case (exempt supplies) and it is the one a falsy check would drop.
@@ -90,12 +98,12 @@ final class InvoiceMapperTest extends TestCase
         // amount finer than the currency's scale, which is the guard working), so the three-decimal default currency
         // is the only place this boundary is reachable.
         yield 'the smallest representable TND amount, one millime' => [
-            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('0.001', $tnd), Rate::fromPercentage('19'))),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('1', Money::of('0.001', $tnd), Rate::fromPercentage('19'))),
             self::identity(),
         ];
 
         yield 'fixed charges alongside lines' => [
-            Invoice::draft($tnd)
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('10.000', $tnd), Rate::fromPercentage('19')))
                 ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)))
                 ->withFixedCharge(new FixedCharge('delivery', Money::of('5.500', $tnd))),
@@ -105,7 +113,7 @@ final class InvoiceMapperTest extends TestCase
         // ISSUED: the number appears, and the state moves. Both are persisted columns and both were null/draft in
         // every case above, so without this one the mapper could ignore them entirely and stay green.
         yield 'an issued invoice, carrying its number' => [
-            Invoice::draft($tnd)
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
                 ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41)),
             self::identity(),
@@ -115,7 +123,7 @@ final class InvoiceMapperTest extends TestCase
         // once cancelled". A mapper that reconstituted a cancelled document with a null number would satisfy every
         // other case here, and would destroy the audit trail a tax authority reads.
         yield 'a cancelled invoice, which keeps its number' => [
-            Invoice::draft($tnd)
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
                 ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41))
                 ->cancel(),
@@ -123,7 +131,7 @@ final class InvoiceMapperTest extends TestCase
         ];
 
         yield 'the PerLine rounding point, which is per-document persisted configuration' => [
-            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
             self::identity(VatRoundingPoint::PerLine),
         ];
     }
@@ -241,7 +249,7 @@ final class InvoiceMapperTest extends TestCase
         // and showed the consequence -- `withoutFixedCharge(0)` removing `delivery` where the client saw
         // `stamp_duty`. The line half was pinned and the sibling collection was not, which is the full-set-coverage
         // rule in CLAUDE.md: a change applying to a CLASS of things must enumerate all of them.
-        $invoice = Invoice::draft($eur)
+        $invoice = Invoice::draft($eur)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.00', $eur), Rate::fromPercentage('20')))
             ->withLine(new DocumentLine('2', Money::of('2.00', $eur), Rate::fromPercentage('20')))
             ->withLine(new DocumentLine('3', Money::of('3.00', $eur), Rate::fromPercentage('20')))
@@ -283,7 +291,7 @@ final class InvoiceMapperTest extends TestCase
     public function testToRowsStampsTheBoundTenantAndParentOnEveryRow(): void
     {
         $tnd = Currency::of('TND');
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('2', Money::of('2.000', $tnd), Rate::fromPercentage('19')))
             ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
@@ -316,7 +324,7 @@ final class InvoiceMapperTest extends TestCase
         $tnd = Currency::of('TND');
         $mapper = new InvoiceMapper();
         $tenant = TenantId::fromString(self::COMPANY);
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
 
         [$document, $lines, $charges] = $mapper->toRows($tenant, self::identity(), $invoice);
@@ -345,7 +353,7 @@ final class InvoiceMapperTest extends TestCase
         $tnd = Currency::of('TND');
         $mapper = new InvoiceMapper();
         $tenant = TenantId::fromString(self::COMPANY);
-        $issued = Invoice::draft($tnd)
+        $issued = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41));
 
@@ -370,7 +378,7 @@ final class InvoiceMapperTest extends TestCase
         $tnd = Currency::of('TND');
         $mapper = new InvoiceMapper();
         $tenant = TenantId::fromString(self::COMPANY);
-        $invoice = Invoice::draft($tnd);
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT);
 
         try {
             $mapper->toRows(
@@ -410,7 +418,7 @@ final class InvoiceMapperTest extends TestCase
         $mapper = new InvoiceMapper();
         $tenant = TenantId::fromString(self::COMPANY);
 
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41));
 
@@ -452,7 +460,7 @@ final class InvoiceMapperTest extends TestCase
         $rows = new InvoiceMapper()->toRows(
             $tenant,
             self::identity(),
-            Invoice::draft($tnd)
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
                 ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(9), 41)),
         );
@@ -491,7 +499,7 @@ final class InvoiceMapperTest extends TestCase
         $tenant = TenantId::fromString(self::COMPANY);
         $mapper = new InvoiceMapper();
 
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(3), 12345));
 
@@ -521,7 +529,7 @@ final class InvoiceMapperTest extends TestCase
         $rows = new InvoiceMapper()->toRows(
             TenantId::fromString(self::COMPANY),
             self::identity(),
-            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
         );
 
         self::assertNull($rows[0]->number, 'the sequence');
@@ -545,7 +553,7 @@ final class InvoiceMapperTest extends TestCase
         $rows = $mapper->toRows(
             $tenant,
             self::identity(),
-            Invoice::draft($tnd)
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
                 ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41)),
         );
@@ -575,7 +583,7 @@ final class InvoiceMapperTest extends TestCase
         $rows = $mapper->toRows(
             $tenant,
             self::identity(),
-            Invoice::draft($tnd)
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
                 ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41)),
         );

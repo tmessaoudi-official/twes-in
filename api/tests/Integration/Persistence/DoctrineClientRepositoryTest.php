@@ -19,6 +19,9 @@ use PHPUnit\Framework\TestCase;
 use Twes\Domain\Client\Client;
 use Twes\Domain\Client\Contact;
 use Twes\Domain\Client\PostalAddress;
+use Twes\Domain\Document\DocumentState;
+use Twes\Domain\Document\DocumentType;
+use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Infrastructure\Persistence\Doctrine\DoctrineClientRepository;
 use Twes\Infrastructure\Tenancy\InMemoryTenantContext;
 use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
@@ -44,6 +47,7 @@ final class DoctrineClientRepositoryTest extends TestCase
     private const CLIENT = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
     private const CONTACT_A = '0199a5b2-0000-7000-8000-00000000c001';
     private const CONTACT_B = '0199a5b2-0000-7000-8000-00000000c002';
+    private const DOCUMENT = '0199a5b2-0000-7000-8000-00000000d001';
 
     private static ?Connection $connection = null;
 
@@ -391,15 +395,112 @@ final class DoctrineClientRepositoryTest extends TestCase
     }
 
     /**
-     * Empty both tables, whatever the session is bound to.
+     * **THE CLEANUP SURVIVES A DOCUMENT POINTING AT THE CLIENT — the detector for the defect, written first.**
+     *
+     * With the hand-written `TRUNCATE client_contact, client` in place this case fails with
+     * *"cannot truncate a table referenced in a foreign key constraint"*, and so does every other case in this
+     * class, because the statement is in `setUp()`. That is how the `document.client_id` foreign key announced
+     * itself: sixteen failures in a suite that has nothing to do with invoices.
+     *
+     * A RAW `INSERT` rather than the invoice repository, deliberately. What is under test is the FIXTURE, and
+     * routing it through another aggregate's repository would make this case fail whenever THAT changed — it
+     * would be a test of the invoice write path wearing a cleanup test's name. The row only has to exist and
+     * point at the client; it does not have to be an invoice anybody would recognise.
+     *
+     * A DRAFT, because `document_client_required_once_issued` permits a client on a draft and demands one on an
+     * issued document. Either state would satisfy the foreign key; the draft is the one that says nothing about
+     * the issue guard, which is not this case's subject.
+     */
+    public function testTheFixtureIsEmptiedEvenWhenADocumentReferencesTheClient(): void
+    {
+        $repository = self::repositoryFor(self::TENANT_A);
+        self::inTransaction(static fn() => $repository->save(Client::create(self::CLIENT, 'Referenced')));
+
+        self::connection()->executeStatement(
+            'INSERT INTO document (company_id, id, type, state, currency, vat_rounding_point, client_id) '
+            . 'VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+                self::TENANT_A,
+                self::DOCUMENT,
+                DocumentType::Invoice->value,
+                DocumentState::Draft->value,
+                'TND',
+                VatRoundingPoint::PerRateGroup->value,
+                self::CLIENT,
+            ],
+        );
+
+        self::emptyTheFixture();
+
+        self::assertSame(
+            0,
+            (int) self::connection()->fetchOne('SELECT count(*) FROM client'),
+            'the cleanup must empty the client table even while a document references it',
+        );
+        self::assertSame(
+            0,
+            (int) self::connection()->fetchOne('SELECT count(*) FROM document'),
+            'the referencing document goes too — that is the cost of truncating the closure, and it is stated '
+            . 'here so a reader of this class knows the document tables are emptied by its setUp()',
+        );
+    }
+
+    /**
+     * Empty the fixture, whatever the session is bound to.
      *
      * `TRUNCATE` rather than `DELETE` for the reason the case above proves: TRUNCATE is not subject to row-level
-     * security, and the owner owns these tables, so it genuinely empties them. Both tables in ONE statement,
-     * because the composite foreign key makes truncating `client` alone an error.
+     * security, and the owner owns these tables, so it genuinely empties them.
+     *
+     * **THE TABLE SET IS DERIVED FROM THE CATALOGUE RATHER THAN WRITTEN DOWN, and the written-down version was
+     * already wrong the day it was written.** PostgreSQL refuses to `TRUNCATE` a table while another table has a
+     * foreign key into it unless every referencing table is truncated in the SAME statement — so the set is the
+     * transitive closure of *references `client`*, not a pair of names. This method read
+     * `TRUNCATE client_contact, client` until `document.client_id` landed, at which point the closure grew by
+     * THREE tables: `document`, and `document_line` and `document_charge` behind it. Only the first of those
+     * three is visible from the change that caused it, which is exactly why a hand-written list loses.
+     *
+     * **`CASCADE` IS DELIBERATELY NOT USED, and avoiding it is most of the point.** On `TRUNCATE`, `CASCADE`
+     * does not mean what it means on a foreign key: it does not delete dependent ROWS, it truncates the
+     * referencing TABLES, silently and without naming them. It would compute this same closure and empty every
+     * table in it with nothing in the source saying which. The failure mode is a suite that quietly wipes a
+     * table nobody in this file has ever heard of.
      */
     private static function emptyTheFixture(): void
     {
-        self::connection()->executeStatement('TRUNCATE client_contact, client');
+        self::connection()->executeStatement(
+            'TRUNCATE ' . implode(', ', self::everythingThatReferences('client')),
+        );
+    }
+
+    /**
+     * Every table that must be truncated alongside `$table`, `$table` itself included.
+     *
+     * `UNION` rather than `UNION ALL` is load-bearing: it de-duplicates, which is what terminates the recursion
+     * on a self-referencing foreign key (`conrelid = confrelid`) instead of looping forever.
+     *
+     * The names come back through `regclass`, so PostgreSQL has already schema-qualified and quoted anything
+     * that needs it — they are safe to interpolate, and there is no other way to spell a table list in a
+     * `TRUNCATE`, which takes no parameters.
+     *
+     * @return list<string>
+     */
+    private static function everythingThatReferences(string $table): array
+    {
+        /** @var list<string> */
+        return self::connection()->fetchFirstColumn(
+            <<<'SQL'
+                WITH RECURSIVE referencing (oid) AS (
+                    SELECT to_regclass(?)::oid
+                    UNION
+                    SELECT fk.conrelid
+                    FROM pg_constraint AS fk
+                    JOIN referencing ON fk.confrelid = referencing.oid
+                    WHERE fk.contype = 'f'
+                )
+                SELECT oid::regclass::text FROM referencing ORDER BY 1
+                SQL,
+            [$table],
+        );
     }
 
     /**

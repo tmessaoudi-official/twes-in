@@ -43,6 +43,14 @@ use Twes\Domain\Shared\RoundingMode;
 #[CoversClass(Invoice::class)]
 final class InvoiceTest extends TestCase
 {
+    /**
+     * Every invoice fixture is addressed to a client, because since 2026-08-22 `issue()`
+     * requires one — EN 16931 makes the buyer mandatory (BT-44) and an issued invoice
+     * addressed to nobody is not a document a tax authority accepts. A DRAFT may have none;
+     * these fixtures carry one because a realistic invoice does.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
     private const string TENANT_TND = 'TND';
 
     // ------------------------------------------------------------------ the draft
@@ -181,6 +189,13 @@ final class InvoiceTest extends TestCase
         yield 'withoutFixedCharge' => [
             'withoutFixedCharge',
             static fn(Invoice $i): Invoice => $i->withoutFixedCharge(0),
+        ];
+        // ADDED 2026-08-22 with the document -> client link, and the inventory test below is what DEMANDED it:
+        // adding a mutator without a case here turns that test red, which is exactly the "derived from the class,
+        // not written down" design working. A guard that catches its own author is the only kind worth having.
+        yield 'withClient' => [
+            'withClient',
+            static fn(Invoice $i): Invoice => $i->withClient(self::FIXTURE_CLIENT),
         ];
     }
 
@@ -407,7 +422,7 @@ final class InvoiceTest extends TestCase
 
     private static function draft(): Invoice
     {
-        return Invoice::draft(Currency::of(self::TENANT_TND));
+        return Invoice::draft(Currency::of(self::TENANT_TND))->withClient(self::FIXTURE_CLIENT);
     }
 
     private static function draftWithOneOfEach(): Invoice

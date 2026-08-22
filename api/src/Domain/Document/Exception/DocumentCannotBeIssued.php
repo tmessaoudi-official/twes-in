@@ -22,10 +22,33 @@ namespace Twes\Domain\Document\Exception;
  * the other is how a user gets a "something went wrong" page for a form they could have fixed, and how a real
  * fault gets returned to a client as though they had caused it.
  *
- * User-facing, so its message is keyed: `document.empty_cannot_be_issued`.
+ * User-facing, so each message is keyed: `document.empty_cannot_be_issued` and
+ * `document.client_required_to_issue`.
  */
 final class DocumentCannotBeIssued extends \DomainException
 {
+    /**
+     * **A DRAFT MAY HAVE NO CLIENT; AN ISSUED INVOICE MAY NOT** (ruled 2026-08-22, and argued in
+     * `build-waves.plan.md`'s Decisions Log because the plans were silent).
+     *
+     * EN 16931 makes the buyer name (BT-44) MANDATORY on an invoice, and an invoice addressed to nobody is not
+     * a document a tax authority accepts. But a draft is something under construction: the same reasoning that
+     * lets a draft hold no LINES lets it hold no client, and forcing one at creation would mean a user cannot
+     * start typing an invoice before deciding who it is for.
+     *
+     * So the requirement attaches at the TRANSITION rather than at the type, exactly as the line requirement
+     * does — which is what makes the two guards siblings rather than a special case.
+     */
+    public static function becauseItHasNoClient(): self
+    {
+        return new self(
+            'An invoice with no client cannot be issued. EN 16931 makes the buyer mandatory (BT-44), and an '
+            . 'issued invoice addressed to nobody is not a document a tax authority accepts — while a DRAFT may '
+            . 'legitimately have none, because deciding who an invoice is for can come after typing what is on '
+            . 'it. Choose a client, or delete the draft.',
+        );
+    }
+
     public static function becauseItHasNoLines(): self
     {
         return new self(

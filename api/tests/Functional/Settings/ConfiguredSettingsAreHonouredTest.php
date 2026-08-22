@@ -70,6 +70,9 @@ final class ConfiguredSettingsAreHonouredTest extends KernelTestCase
      */
     private const int CONFIGURED_WIDTH = 9;
 
+    /** The client this tenant's invoice is addressed to — `issue()` refuses a document without one. */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c501';
+
     /**
      * The rounding point that is NOT the default, which is the only one worth configuring in this test.
      *
@@ -88,6 +91,37 @@ final class ConfiguredSettingsAreHonouredTest extends KernelTestCase
 
         $this->tenant = self::generateTenantId();
         $this->seedSettings(self::CONFIGURED_WIDTH, self::CONFIGURED_ROUNDING_POINT);
+        $this->seedClient();
+    }
+
+    /**
+     * Put a bare client row where this tenant's document can point at it.
+     *
+     * RAW SQL RATHER THAN THE CLIENT REPOSITORY, for the reason `seedSettings()` gives about its own table: a
+     * fixture built with code under test cannot fail independently of it. It also keeps this suite from going red
+     * whenever `Client` changes — the client here is a row a foreign key can point at, not a subject.
+     *
+     * The explicit transaction is the same requirement `seedSettings()` documents: the tenant binding row-level
+     * security compares against is TRANSACTION-LOCAL, written by `TenantBindingMiddleware` on `beginTransaction()`,
+     * so an INSERT outside one is refused by the table's `WITH CHECK` half.
+     */
+    private function seedClient(): void
+    {
+        $this->bindTenant();
+        $connection = $this->connection();
+        $connection->beginTransaction();
+
+        try {
+            $connection->executeStatement(
+                'INSERT INTO client (company_id, id, name) VALUES (:tenant, :id, :name)',
+                ['tenant' => $this->tenant, 'id' => self::FIXTURE_CLIENT, 'name' => 'Fixture client'],
+            );
+            $connection->commit();
+        } catch (\Throwable $failure) {
+            $connection->rollBack();
+
+            throw $failure;
+        }
     }
 
     public function testAnIssuedNumberIsRenderedAtTheConfiguredWidth(): void
@@ -102,7 +136,7 @@ final class ConfiguredSettingsAreHonouredTest extends KernelTestCase
         // finding. Going through the processor also means this case and its sibling build their draft the same
         // way, so a divergence between them can only come from the settings.
         self::getContainer()->get(CreateInvoiceProcessor::class)->process(
-            new NewInvoiceInput('TND', [new NewInvoiceLineInput('3', '1.234', '19')], []),
+            new NewInvoiceInput('TND', [new NewInvoiceLineInput('3', '1.234', '19')], [], self::FIXTURE_CLIENT),
             new Post(),
         );
 

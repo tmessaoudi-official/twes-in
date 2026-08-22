@@ -18,6 +18,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Twes\Application\Document\CreateInvoice;
 use Twes\Application\Document\CreateInvoiceHandler;
 use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\Exception\UnknownClient;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
@@ -119,7 +120,20 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
         // anything the conversion above did not already accept, so a domain refusal here would be OUR modelling error
         // rather than the caller's. If a future transition makes one reachable on create, it wants its own arm with
         // its own reasoning, not this one silently widening to cover it.
-        $persisted = $this->handler->handle($command);
+        // **ITS OWN ARM, WHICH IS WHAT THE PARAGRAPH ABOVE ASKED FOR RATHER THAN A WIDER CATCH.** `UnknownClient` is
+        // the one domain refusal reachable from `handle()` that the conversion cannot have already caught, because
+        // whether a client id names a client THIS TENANT can see is a question only the database answers — through
+        // the composite foreign key, inside the handler's transaction. Widening the `catch` above to cover it would
+        // also re-admit every `\InvalidArgumentException` the mapper raises for corrupt column data, which is the
+        // defect three rounds removed from three separate classes.
+        //
+        // Without this arm the refusal is a 500: `\DomainException` means nothing to Symfony's exception listener,
+        // so a caller who mistyped one character of a client id would be told the server broke.
+        try {
+            $persisted = $this->handler->handle($command);
+        } catch (UnknownClient $unknown) {
+            throw new UnprocessableEntityHttpException($unknown->getMessage(), $unknown);
+        }
 
         return InvoiceRepresentation::of($persisted);
     }
@@ -158,6 +172,6 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
         // merely from this call site, because a field there would have left a CLI import or a Messenger consumer
         // free to state what the 2026-08-07 ruling says no caller may choose. `CreateInvoiceHandler` reads it from
         // the company's settings inside its own transaction; see {@see CreateInvoice} for the full argument.
-        return new CreateInvoice($currency, $lines, $charges);
+        return new CreateInvoice($currency, $lines, $charges, $input->clientId);
     }
 }

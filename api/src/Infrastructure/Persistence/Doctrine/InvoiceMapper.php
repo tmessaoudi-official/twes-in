@@ -117,6 +117,10 @@ final readonly class InvoiceMapper
             $invoice->currency()->code(),
             $identity->vatRoundingPoint->value,
         );
+
+        // THE CLIENT, as an assignment for the reason `DocumentRow::$clientId` gives: it is nullable on a draft
+        // and required once issued, which is a relationship between two columns rather than a fact about one.
+        $document->clientId = null === $invoice->clientId() ? null : Uuid::fromString($invoice->clientId());
         // BOTH HALVES OF THE NUMBER, and they stay assignments because they are the nullable pair a draft has
         // neither of. The RAW SEQUENCE identifies — `NumberPattern` renders and does not identify, so a padded
         // string alone would make the column unusable for ordering and for `(company_id, type, number)` uniqueness.
@@ -292,6 +296,7 @@ final readonly class InvoiceMapper
                 // file is how the load-bearing one gets deleted by analogy.
                 $lines,
                 $charges,
+                $document->clientId?->toRfc4122(),
             ),
         ];
     }

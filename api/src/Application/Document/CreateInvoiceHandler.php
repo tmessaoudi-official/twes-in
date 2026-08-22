@@ -68,7 +68,11 @@ final readonly class CreateInvoiceHandler
         // that cannot be totalled, too many lines — is a caller error that touches no rows, so opening a transaction
         // first would mean opening and rolling back one for every invalid request. It also keeps the transaction as
         // short as the writes, which matters because `withLine()` totals the whole document on every call.
-        $invoice = Invoice::draft($command->currency);
+        // THE CLIENT IS ATTACHED THROUGH THE MUTATOR, not through `draft()`. `draft()` takes only what a
+        // document cannot exist without — its currency — and everything else arrives through a guarded
+        // transition. `withClient()` is what validates the id shape, so routing through it is what keeps that
+        // check on every path in rather than only on the one a caller happens to use.
+        $invoice = Invoice::draft($command->currency)->withClient($command->clientId);
 
         foreach ($command->lines as $line) {
             $invoice = $invoice->withLine($line);

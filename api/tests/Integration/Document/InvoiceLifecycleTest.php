@@ -24,6 +24,7 @@ use Twes\Domain\Document\DocumentLine;
 use Twes\Domain\Document\DocumentNumberAllocator;
 use Twes\Domain\Document\DocumentState;
 use Twes\Domain\Document\Exception\DocumentCannotBeIssued;
+use Twes\Domain\Document\Exception\UnknownClient;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Money;
@@ -71,6 +72,14 @@ final class InvoiceLifecycleTest extends TestCase
     private const DATABASE = 'twes_invoice_lifecycle_probe';
     private const TENANT = '0199a5b2-0000-7000-8000-0000000004aa';
 
+    /**
+     * The client every invoice in this class is addressed to.
+     *
+     * Not optional decoration: since 2026-08-22 `Invoice::issue()` refuses a document with no client, because
+     * EN 16931 makes the buyer mandatory (BT-44). Every case here issues, so every case needs one.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c401';
+
     private static ?Connection $connection = null;
 
     public static function setUpBeforeClass(): void
@@ -92,9 +101,30 @@ final class InvoiceLifecycleTest extends TestCase
         // unrepresentative — `BehaviouralIsolationTest` attacks exactly that grant.
         $connection = self::connection();
 
-        foreach (['document_line', 'document_charge', 'document', 'document_number_sequence'] as $table) {
+        // `client` IS LAST, and the order is a fact of the schema rather than a style. `document.client_id` is a
+        // foreign key with `ON DELETE RESTRICT` — deleting a client that invoices name is refused, deliberately,
+        // because erasing a client must never erase the legal documents addressed to them. So the documents go
+        // first and the client follows.
+        foreach (['document_line', 'document_charge', 'document', 'document_number_sequence', 'client'] as $table) {
             $connection->executeStatement(\sprintf('DELETE FROM %s', $table));
         }
+
+        self::seedClient();
+    }
+
+    /**
+     * Put a bare client row where this class's documents can point at it.
+     *
+     * RAW SQL RATHER THAN THE CLIENT REPOSITORY, for the reason `seedSettings()` gives about its own table: a
+     * fixture built with code under test cannot fail independently of it. It also keeps this suite from going red
+     * whenever `Client` changes — the client here is a row a foreign key can point at, not a subject.
+     */
+    private static function seedClient(): void
+    {
+        self::connection()->executeStatement(
+            'INSERT INTO client (company_id, id, name) VALUES (?, ?, ?)',
+            [self::TENANT, self::FIXTURE_CLIENT, 'Fixture client'],
+        );
     }
 
     /**
@@ -334,6 +364,37 @@ final class InvoiceLifecycleTest extends TestCase
 
     // ------------------------------------------------------------------ fixtures
 
+    /**
+     * A DOCUMENT ADDRESSED TO A CLIENT THAT DOES NOT EXIST IS REFUSED — by the foreign key, in the domain's words.
+     *
+     * **THE TRANSLATION IS THE SUBJECT, not the refusal.** PostgreSQL was always going to reject this write; what
+     * this case pins is that `DoctrineInvoiceRepository` turns DBAL's `ForeignKeyConstraintViolationException` into
+     * `UnknownClient`, so a rule stated in `Domain/` is reported in the domain's vocabulary rather than the
+     * driver's — and so the HTTP layer does not have to catch an infrastructure type to answer 422.
+     *
+     * The id is WELL FORMED, which is the whole point: a malformed one never reaches the database, because
+     * `withClient()` refuses it first and `NewInvoiceInput` refuses it before that.
+     *
+     * **NOTHING IS LEFT BEHIND.** The handler owns the transaction, so the refusal rolls the whole thing back —
+     * including the document number allocation, which is what makes a failed create leave no hole in the sequence.
+     * That property has its own case; asserting the counter here as well would be a second copy of it.
+     */
+    public function testAnInvoiceAddressedToAClientThatDoesNotExistIsRefused(): void
+    {
+        $tnd = Currency::of('TND');
+        $absent = '0199a5b2-0000-7000-8000-0000000000ff';
+
+        $this->expectException(UnknownClient::class);
+        $this->expectExceptionMessage($absent);
+
+        self::creator()->handle(new CreateInvoice(
+            $tnd,
+            [new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))],
+            [],
+            $absent,
+        ));
+    }
+
     private static function command(): CreateInvoice
     {
         $tnd = Currency::of('TND');
@@ -348,6 +409,7 @@ final class InvoiceLifecycleTest extends TestCase
                 new DocumentLine('7', Money::of('0.567', $tnd), Rate::fromPercentage('19')),
             ],
             [new FixedCharge('stamp_duty', Money::of('0.100', $tnd))],
+            self::FIXTURE_CLIENT,
         );
     }
 

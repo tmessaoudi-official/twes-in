@@ -22,6 +22,7 @@ use Twes\Application\Document\CreateInvoiceHandler;
 use Twes\Application\Document\IssueInvoiceHandler;
 use Twes\Domain\Document\DocumentIdentity;
 use Twes\Domain\Document\DocumentNumberAllocator;
+use Twes\Domain\Document\Exception\UnknownClient;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
@@ -55,6 +56,9 @@ use Twes\UI\Http\State\IssueInvoiceProcessor;
 #[CoversClass(IssueInvoiceProcessor::class)]
 final class InvoiceWriteProcessorTest extends TestCase
 {
+    /** The client the issuable fixtures are addressed to. Any well-formed id will do — nothing here resolves it. */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
     private const FIRST_ID = '0199a5b2-0000-7000-8000-000000000001';
 
     /** A well-formed payload becomes a draft resource, with the totals computed and the number absent. */
@@ -362,6 +366,64 @@ final class InvoiceWriteProcessorTest extends TestCase
     }
 
     /**
+     * THE CREATED RESOURCE CARRIES THE CLIENT IT WAS ADDRESSED TO.
+     *
+     * Small, and it is the only thing asserting the field survives the whole way out: `NewInvoiceInput` →
+     * `CreateInvoice` → `Invoice` → `InvoiceMapper` → `InvoiceRepresentation` → `InvoiceResource`. A field dropped
+     * anywhere along that chain is invisible to every other case here, because none of them looks at it.
+     */
+    public function testTheCreatedResourceCarriesTheClientItWasAddressedTo(): void
+    {
+        $created = self::create(self::validInput());
+
+        self::assertSame(self::FIXTURE_CLIENT, $created->clientId);
+    }
+
+    /**
+     * A CLIENT THAT DOES NOT EXIST IS A 422, NOT A 500 — the second refusal reachable from `handle()`.
+     *
+     * Whether a well-formed id names a client THIS TENANT can see is a question only the database answers, through
+     * the composite foreign key, inside the handler's transaction. So the shape check on the DTO cannot catch it and
+     * the conversion's `catch` never sees it. `CreateInvoiceProcessor` grows its OWN arm for `UnknownClient`, and
+     * this case is what holds it: delete that arm and a caller who mistyped one character of a client id is told the
+     * server broke.
+     *
+     * The repository raises it directly here. The TRANSLATION from DBAL's `ForeignKeyConstraintViolationException`
+     * is `DoctrineInvoiceRepository`'s job and is proven against a real foreign key in
+     * `InvoiceLifecycleTest::testAnInvoiceAddressedToAClientThatDoesNotExistIsRefused()` — neither case is
+     * sufficient alone: this one would pass against a repository that never translated, and that one would pass
+     * against a processor nobody had wired.
+     */
+    public function testAnUnknownClientIsAnUnprocessableEntity(): void
+    {
+        $repository = new class implements InvoiceRepository {
+            public function save(DocumentIdentity $identity, Invoice $invoice): void
+            {
+                throw UnknownClient::withId('0199a5b2-0000-7000-8000-0000000000ff');
+            }
+
+            public function find(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('the save above never returns, so nothing is read back');
+            }
+
+            public function findForMutation(string $id): ?PersistedInvoice
+            {
+                throw new \LogicException('the create path does not lock for mutation');
+            }
+        };
+
+        // The handler is built here rather than through `createInto()`, which is typed to the in-memory
+        // repository — the same shape the two corrupt-row cases above use for the same reason.
+        $handler = new CreateInvoiceHandler($repository, new FixedIdGenerator(), new RecordingTransactionalScope(), new InMemoryCompanySettingsRepository());
+
+        $this->expectException(UnprocessableEntityHttpException::class);
+        $this->expectExceptionMessageMatches('/No client .* exists for this company/');
+
+        new CreateInvoiceProcessor($handler)->process(self::validInput(), new Post());
+    }
+
+    /**
      * A PROCESSOR WIRED TO THE WRONG `input:` FAILS LOUDLY RATHER THAN SILENTLY.
      *
      * `ProcessorInterface::process()` takes `mixed`, so nothing in the type system connects the operation's `input:`
@@ -390,6 +452,10 @@ final class InvoiceWriteProcessorTest extends TestCase
                 new NewInvoiceLineInput('7', '0.567', '19'),
             ],
             [$charge ?? new NewFixedChargeInput('stamp_duty', '0.100')],
+            // ADDRESSED TO A CLIENT, because the cases built on this input ISSUE. `Invoice::issue()` refuses a
+            // document with no client (EN 16931 BT-44). No row has to exist: this class drives an in-memory
+            // repository, so nothing checks the foreign key — what is under test is the processor.
+            self::FIXTURE_CLIENT,
         );
     }
 

@@ -127,6 +127,21 @@ class DocumentRow
     #[ORM\Column(name: 'number_rendered', type: 'string', length: 20, nullable: true)]
     public ?string $numberRendered = null;
 
+    /**
+     * The client this document is addressed to — `null` only while it is a draft.
+     *
+     * **AN ASSIGNMENT RATHER THAN A CONSTRUCTOR PARAMETER, following this class's own rule for the number pair
+     * above**: it is a NULLABLE column whose requirement is CONDITIONAL on another column's value, and a
+     * required parameter cannot express "present unless this is a draft". The relationship is enforced where a
+     * relationship can be: `document_client_required_once_issued` in the schema, `Invoice::issue()` in the
+     * domain, and `Invoice::fromPersistedState()` on the way back.
+     *
+     * A `uuid` column rather than an association, because the mapping is a schema description and the repository
+     * writes with DBAL — and because one aggregate references another by IDENTITY, never by object.
+     */
+    #[ORM\Column(name: 'client_id', type: 'uuid', nullable: true)]
+    public ?Uuid $clientId = null;
+
     /** `VatRoundingPoint`'s backed values. Persisted PER DOCUMENT: a company changing its setting must not restate a document a client already holds. */
     #[ORM\Column(name: 'vat_rounding_point', type: 'string', length: 32)]
     public string $vatRoundingPoint;

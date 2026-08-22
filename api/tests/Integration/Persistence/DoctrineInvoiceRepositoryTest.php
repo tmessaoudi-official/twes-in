@@ -54,6 +54,13 @@ use Twes\Tests\Integration\Tenancy\MigratedProbeDatabase;
 final class DoctrineInvoiceRepositoryTest extends TestCase
 {
     use MigratedProbeDatabase;
+    /**
+     * Every invoice fixture is addressed to a client, because since 2026-08-22 `issue()`
+     * requires one — EN 16931 makes the buyer mandatory (BT-44) and an issued invoice
+     * addressed to nobody is not a document a tax authority accepts. A DRAFT may have none;
+     * these fixtures carry one because a realistic invoice does.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
 
     private const DATABASE = 'twes_invoice_repository_probe';
     private const TENANT_A = '0199a5b2-0000-7000-8000-0000000002aa';
@@ -83,7 +90,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
     public function testADraftSurvivesARoundTripThroughRealColumns(): void
     {
         $tnd = Currency::of('TND');
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('2', Money::of('1.234', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('1', Money::of('0.500', $tnd), Rate::fromPercentage('7')))
             ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
@@ -139,7 +146,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
     public function testAnIssuedDocumentKeepsBothHalvesOfItsNumber(): void
     {
         $tnd = Currency::of('TND');
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 41));
 
@@ -175,14 +182,14 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $tnd = Currency::of('TND');
         $repository = self::repositoryFor(self::TENANT_A);
 
-        $three = Invoice::draft($tnd)
+        $three = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('2', Money::of('2.000', $tnd), Rate::fromPercentage('19')))
             ->withLine(new DocumentLine('3', Money::of('3.000', $tnd), Rate::fromPercentage('19')));
         self::inTransaction(static fn() => $repository->save($identity, $three));
 
         // ONE line, at position 0 — the exact PK the previous save already used.
-        $one = Invoice::draft($tnd)
+        $one = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('9', Money::of('9.000', $tnd), Rate::fromPercentage('7')));
         self::inTransaction(static fn() => $repository->save($identity, $one));
 
@@ -214,7 +221,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $document = 'dddddddd-dddd-4ddd-8ddd-000000002001';
         $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
         $tnd = Currency::of('TND');
-        $invoice = Invoice::draft($tnd)
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
 
         $ownersRepository = self::repositoryFor(self::TENANT_A);
@@ -247,7 +254,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
 
         self::inTransaction(static fn() => $repository->save(
             self::identity(),
-            Invoice::draft(Currency::of('TND')),
+            Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT),
         ));
     }
 
@@ -280,7 +287,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('outside a transaction');
 
-        $repository->save(self::identity(), Invoice::draft(Currency::of('TND')));
+        $repository->save(self::identity(), Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT));
     }
 
     /**
@@ -331,7 +338,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $holder = self::repositoryFor(self::TENANT_A);
         self::inTransaction(static fn() => $holder->save(
             $identity,
-            Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
+            Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
         ));
 
         self::connection()->beginTransaction();
@@ -400,7 +407,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         $tnd = Currency::of('TND');
         $repository = self::repositoryFor(self::TENANT_A);
 
-        $draft = Invoice::draft($tnd)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
+        $draft = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
         // 141 AND 142 RATHER THAN 41 AND 42. `document_number_unique_per_tenant_and_type` is a real unique index and
         // 41 is already taken by another case in this class, so reusing it made the refusal arrive as a `23505` from
         // the index instead of from the guard under test — a case that appeared to pass for the wrong reason. Worth
@@ -481,7 +488,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         // It matters beyond wording: `Invoice::fromPersistedState()` names a half-committed child rewrite as reachable,
         // and the repair for it is a whole re-save of the correct aggregate — which this branch accepted and did
         // nothing about, leaving a document that could never be hydrated again.
-        $differentLine = Invoice::draft($tnd)
+        $differentLine = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('999', Money::of('0.001', $tnd), Rate::fromPercentage('19')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
 
@@ -501,7 +508,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         //
         // The rate is deliberately the ONLY thing that differs here. Varying anything else would let the quantity or
         // unit-price comparison satisfy the assertion and leave the rate axis exactly as unpinned as it was.
-        $differentRate = Invoice::draft($tnd)
+        $differentRate = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
             ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19.00001')))
             ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
 
@@ -600,7 +607,7 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
 
         self::inTransaction(static fn() => $repository->save(
             new DocumentIdentity(self::DOCUMENT, DocumentType::Quote, VatRoundingPoint::PerRateGroup),
-            Invoice::draft(Currency::of('TND')),
+            Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT),
         ));
     }
 
@@ -644,6 +651,19 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         self::connection()->executeStatement(
             \sprintf("SELECT set_config('%s', ?, false)", PostgresRowLevelSecurityIsolation::TENANT_SETTING),
             [$tenant],
+        );
+
+        // SEEDED HERE, WHERE THE BINDING JUST HAPPENED, because `document.client_id` is a foreign key into
+        // `client` and every fixture in this class addresses its invoice to `FIXTURE_CLIENT`. Both tenants get
+        // their own row: the composite key is `(company_id, id)`, so tenant B's client is a different row that
+        // happens to share an id — which is exactly the shape `testAnotherTenantsDocumentIsNotFound` needs.
+        //
+        // `ON CONFLICT ... DO NOTHING` because this method runs once per case and often twice within one, and the
+        // conflict target is NAMED rather than bare: an unqualified `DO NOTHING` would also swallow a violation of
+        // some other constraint and turn a real defect into a silent no-op.
+        self::connection()->executeStatement(
+            'INSERT INTO client (company_id, id, name) VALUES (?, ?, ?) ON CONFLICT (company_id, id) DO NOTHING',
+            [$tenant, self::FIXTURE_CLIENT, 'Fixture client'],
         );
 
         return new DoctrineInvoiceRepository(

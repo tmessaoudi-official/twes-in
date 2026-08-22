@@ -154,6 +154,16 @@ final readonly class InvoiceResource
         /** ISO 4217 alpha-3. Fixed per document; a line in another currency is refused by the domain. */
         public string $currency,
         /**
+         * The client this invoice is addressed to, or `null` on a draft that has not been given one yet.
+         *
+         * An ID rather than an embedded client, matching what the request accepts: a consumer that wants the
+         * client's name fetches `GET /api/clients/{id}`. Embedding it would put a SNAPSHOT of a living record
+         * inside a document — the opposite of the F4 money rule, where an amount is copied by value precisely
+         * because it must never move under an issued document. A client's address may legitimately be corrected,
+         * so the document names it and does not copy it.
+         */
+        public ?string $clientId,
+        /**
          * The rendered number — `0000041` — or null while the document is a draft.
          *
          * **PERSISTED, not recomputed**, so re-reading an issued document returns byte-identically the same string

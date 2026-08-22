@@ -56,6 +56,14 @@ use Twes\Domain\Shared\RoundingMode;
 #[CoversClass(\Twes\Domain\Document\VatGroup::class)]
 final class DocumentTotalsTest extends TestCase
 {
+    /**
+     * Every invoice fixture is addressed to a client, because since 2026-08-22 `issue()`
+     * requires one — EN 16931 makes the buyer mandatory (BT-44) and an issued invoice
+     * addressed to nobody is not a document a tax authority accepts. A DRAFT may have none;
+     * these fixtures carry one because a realistic invoice does.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
     private const string VECTORS = __DIR__ . '/../../../../docs/spec/pricing-vectors.json';
 
     /**
@@ -808,7 +816,7 @@ final class DocumentTotalsTest extends TestCase
     {
         $this->expectException(CurrencyMismatch::class);
 
-        Invoice::draft(Currency::of('TND'))
+        Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT)
             ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.10', Currency::of('EUR'))));
     }
 
@@ -846,7 +854,7 @@ final class DocumentTotalsTest extends TestCase
     {
         $this->expectException(\InvalidArgumentException::class);
 
-        Invoice::draft(Currency::of('TND'))->withLine(new DocumentLine(
+        Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT)->withLine(new DocumentLine(
             str_repeat('9', DocumentLine::MAX_INTEGER_DIGITS),
             Money::of('2.000', Currency::of('TND')),
             Rate::zero(),
@@ -922,18 +930,18 @@ final class DocumentTotalsTest extends TestCase
         // ONE line: the net fits and net + VAT does not. The single-line route matters because it shows the
         // defect was never about accumulation.
         yield 'one line whose net fits but whose gross does not' => [
-            static fn(): Invoice => Invoice::draft($tnd)
+            static fn(): Invoice => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::fromPercentage('19'))),
         ];
         // TWO lines, each exactly representable, summing past the bound.
         yield 'two lines each in bounds, summing out of bounds' => [
-            static fn(): Invoice => Invoice::draft($tnd)
+            static fn(): Invoice => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero()))
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero())),
         ];
         // And through the CHARGE door, which is the paired path and was equally open.
         yield 'a fixed charge pushing the total out of bounds' => [
-            static fn(): Invoice => Invoice::draft($tnd)
+            static fn(): Invoice => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero()))
                 ->withFixedCharge(new FixedCharge('stamp_duty', Money::of($huge . '.000', $tnd))),
         ];
@@ -1525,7 +1533,7 @@ final class DocumentTotalsTest extends TestCase
 
         $tnd = Currency::of('TND');
         $line = new DocumentLine('1', Money::of('0.001', $tnd), Rate::zero());
-        $invoice = Invoice::draft($tnd);
+        $invoice = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT);
 
         for ($i = 0; $i < Invoice::MAX_LINES; ++$i) {
             $invoice = $invoice->withLine($line);

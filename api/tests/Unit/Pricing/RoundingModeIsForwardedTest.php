@@ -58,6 +58,14 @@ use Twes\Domain\Shared\RoundingMode;
 final class RoundingModeIsForwardedTest extends TestCase
 {
     /**
+     * Every invoice fixture is addressed to a client, because since 2026-08-22 `issue()`
+     * requires one — EN 16931 makes the buyer mandatory (BT-44) and an issued invoice
+     * addressed to nobody is not a document a tax authority accepts. A DRAFT may have none;
+     * these fixtures carry one because a realistic invoice does.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
+    /**
      * @param callable(RoundingMode): string $compute the entry point, rendered as a canonical string
      */
     #[DataProvider('entryPointsTakingARoundingMode')]
@@ -269,7 +277,7 @@ final class RoundingModeIsForwardedTest extends TestCase
         // a real two-line document. The kernel's own forwarding was covered; the aggregate's was not, which is
         // the "guard on one of a pair of doors" shape this repo records more often than any other.
         yield 'Invoice::totals' => [
-            static fn(RoundingMode $m): string => Invoice::draft($tnd)
+            static fn(RoundingMode $m): string => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')))
                 ->withLine(new DocumentLine('1', Money::of('0.013', $tnd), Rate::fromPercentage('19')))
                 ->totals(VatRoundingPoint::PerRateGroup, $m)
@@ -456,7 +464,7 @@ final class RoundingModeIsForwardedTest extends TestCase
             InvalidMoneyAmount::class,
         ];
         yield 'Invoice::totals' => [
-            static fn(RoundingMode $m): DocumentTotals => Invoice::draft($tnd)
+            static fn(RoundingMode $m): DocumentTotals => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine('0.5', Money::of('0.003', $tnd), Rate::zero()))
                 ->totals(VatRoundingPoint::PerRateGroup, $m),
             InvalidMoneyAmount::class,

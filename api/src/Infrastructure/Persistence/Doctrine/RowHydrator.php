@@ -63,6 +63,12 @@ final readonly class RowHydrator
         $rendered = $row['number_rendered'] ?? null;
         $document->numberRendered = null === $rendered ? null : (string) $rendered;
 
+        // THE CLIENT, hydrated the same way and for the same reason: it is a nullable column set by assignment
+        // rather than through the constructor, so a row that omitted it would leave the property at its default
+        // and read as a draft with no client — the silent substitution `RowEntityInstantiationTest` refuses.
+        $client = $row['client_id'] ?? null;
+        $document->clientId = null === $client ? null : Uuid::fromString((string) $client);
+
         return $document;
     }
 

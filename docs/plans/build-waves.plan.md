@@ -10,6 +10,40 @@ document lifecycle, numbering and the `Invoice` aggregate, all under `api/src/Do
 that two of its `AGREED` rulings were superseded by Wave 0 and are annotated there in place.
 
 ## Decisions Log
+
+- [2026-08-22 09:30] AGREED: a DRAFT may have no client and an ISSUED document may not — the requirement attaches to
+  the TRANSITION, not to the type, so it is the empty-lines guard's sibling rather than a special case (EN 16931
+  makes the buyer mandatory, BT-44; a draft is under construction, and deciding who an invoice is for can come
+  after typing what is on it). Enforced in `Invoice::issue()` and, independently, by the CHECK
+  `document_client_required_once_issued`.
+- [2026-08-22 09:30] AGREED: `Invoice` holds a client ID and never a `Client` object — one aggregate references
+  another by identity. Deliberately UNLIKE the F4 money-snapshot rule, where an amount is copied BY VALUE because
+  it must never move under an issued document: a client is a living record whose address may legitimately be
+  corrected, so the document names it rather than copying it.
+- [2026-08-22 09:30] AGREED: the foreign key RESTRICTS and does not cascade — deleting a client must never delete
+  the invoices addressed to them, which would erase legal documents. `client_contact` cascades because a contact is
+  PART of a client; a document is not. This also makes "a client with invoices cannot be deleted" a fact of the
+  database rather than a rule somebody has to remember, and it is the question `ClientResource` defers by having
+  no `DELETE`.
+- [2026-08-22 09:30] AGREED: the CHECK ships `NOT VALID` — documents issued before the column existed carry no
+  client, no correct value can be invented for them (guessing writes a false statement onto a legal document) and
+  destroying an issued invoice is unthinkable. They are grandfathered; every INSERT and UPDATE from now on is
+  enforced. A later migration may `VALIDATE CONSTRAINT` once somebody decides what those rows should say — a data
+  decision, not a schema one.
+- [2026-08-22 09:30] AGREED: the client is a PREDICATE in the repository's state-only UPDATE, written
+  `IS NOT DISTINCT FROM` rather than `=` so a NULL does not silently match nothing. An issued invoice naming client
+  A that comes back naming client B is not a correction, it is a different legal document — the same reasoning the
+  number predicate beside it already encodes.
+- [2026-08-22 09:30] AGREED: a well-formed `clientId` naming no client this tenant can see is a 422, not a 500 —
+  `Domain/Document/Exception/UnknownClient`, translated out of DBAL's `ForeignKeyConstraintViolationException` by
+  `DoctrineInvoiceRepository` so a rule stated in `Domain/` is not reported in the driver's vocabulary, and given
+  its OWN catch arm in `CreateInvoiceProcessor` rather than widening the conversion's (which would re-admit the
+  corrupt-column-data leak three rounds removed from three classes). "No such client" and "that client belongs to
+  another company" are ONE indistinguishable answer: telling them apart is an existence oracle over every other
+  tenant's client ids.
+- [2026-08-22 09:30] AGREED: the edge constraint on `clientId` is a hand-written regex rather than `#[Assert\Uuid]`,
+  which accepts the uppercase and braced spellings the domain refuses. It restates `Identifier`'s private rule, and
+  the duplication is pinned by `NewInvoiceInputTest`, because a drift there is a 500 where a 422 was intended.
 - [2026-08-22 18:00] AGREED: **`Product` WRAPS `ProductPricing` and re-expresses none of F4's arithmetic.** Every rule about cost, profit rate and net price already exists and is tested: which field the user typed, that the typed one is never recomputed, that a cost change preserves the RATE and moves the PRICE, that a zero old cost has no rate to preserve. The aggregate holds a `ProductPricing` and delegates; `withPricing()` replaces the whole value object rather than offering `withCost`/`withProfitRate`/`withNetPrice` forwarders, because each of those transitions has its own authorship semantics and three delegating methods would be three more places for that behaviour to be described and eventually mis-described. What `Product` ADDS is what pricing genuinely does not carry: identity, a name, an optional SKU, and the VAT RATE — which belongs on the ITEM because a foodstuff and a service are taxed differently inside one company.
 - [2026-08-22 18:00] AGREED: **only the AUTHORED price field is stored, enforced by a CHECK rather than by discipline.** `profit_rate` and `net_price_amount` are both nullable and exactly one is present, matched to `authored_by`. Storing both is the defect F4 exists to prevent — two columns that must agree eventually do not, and the casualty is the typed one, which is the millime-deleting failure the plan records verbatim. The consequence for the transport is that `POST /api/products` REFUSES a payload carrying both rather than merging them: picking one would make the API decide an authorship question only the user can answer.
 - [2026-08-22 18:00] AGREED: **the SKU is optional and NOT unique.** Uniqueness needs an answer for what a collision returns to a caller and whether it is scoped to non-deleted rows, and inventing that rule as a side effect of creating a catalogue is how a contract acquires a shape nobody argued for. When it is added it is `UNIQUE (company_id, sku)`, tenant column first, because uniqueness checks run with row security BYPASSED and a key omitting the tenant is an existence oracle over every tenant's catalogue.

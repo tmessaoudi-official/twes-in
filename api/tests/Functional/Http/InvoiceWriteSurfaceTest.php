@@ -127,6 +127,73 @@ final class InvoiceWriteSurfaceTest extends WebTestCase
     }
 
     /**
+     * A MALFORMED `clientId` IS A 422 NAMING THE FIELD — and without the edge constraint it would be a 500.
+     *
+     * `CreateInvoiceProcessor` scopes its `catch` to the CONVERSION and leaves the handler outside it, deliberately
+     * (a wide catch there reported corrupt column data to the client as a 422 naming an internal column — three
+     * rounds removed one from three classes). `withClient()` runs inside the handler, so its
+     * `\InvalidArgumentException` is not caught, reaches Symfony's listener with no opinion attached, and becomes a
+     * 500. The constraint on the DTO is what keeps the answer a 422, and this case is what keeps the constraint.
+     */
+    public function testAMalformedClientIdIsAValidationFailure(): void
+    {
+        $response = self::post('/api/invoices', [
+            'currency' => 'TND',
+            'lines' => [['quantity' => '1', 'unitNet' => '1.00', 'vatRate' => '19']],
+            'clientId' => 'BANANA',
+        ]);
+
+        self::assertSame(422, $response['status'], 'a malformed client id is the CALLER\'s error, not a 500');
+        self::assertStringContainsString('clientId', $response['body'], 'the violation must name the field');
+    }
+
+    /**
+     * AN EMPTY-STRING `clientId` IS A 422 TOO — the one malformed spelling `#[Assert\Regex]` does NOT refuse.
+     *
+     * `RegexValidator::validate()` opens with `if (null === $value || '' === $value) { return; }`, so `""` is SKIPPED
+     * by the constraint rather than refused by it. Nothing then normalises it: `CreateInvoiceProcessor::command()`
+     * passes `$input->clientId` through unchanged, and `CreateInvoiceHandler` hands it to `withClient()`, where
+     * `'' !== null` and `Identifier::isWellFormed('')` is false — so the `\InvalidArgumentException` is raised INSIDE
+     * `handle()`, outside the conversion's `catch`, and the caller is told the server broke.
+     *
+     * That is the exact failure mode the case above exists to prevent, reached by the one input that walks past the
+     * guard. An empty string is a caller's error like any other malformed id, so it gets the same answer: a 422
+     * naming the field. `NotBlank` rather than a widened regex, because the regex's job is SHAPE and the shape rule
+     * is already correct — what was missing is that the field was allowed to be present and empty.
+     */
+    public function testAnEmptyClientIdIsAValidationFailureRatherThanA500(): void
+    {
+        $response = self::post('/api/invoices', [
+            'currency' => 'TND',
+            'lines' => [['quantity' => '1', 'unitNet' => '1.00', 'vatRate' => '19']],
+            'clientId' => '',
+        ]);
+
+        self::assertSame(422, $response['status'], 'an empty client id is the CALLER\'s error, not a 500');
+        self::assertStringContainsString('clientId', $response['body'], 'the violation must name the field');
+    }
+
+    /**
+     * AN UPPERCASE `clientId` IS REFUSED RATHER THAN NORMALISED — the case `#[Assert\Uuid]` would have ACCEPTED.
+     *
+     * This is why the constraint is a hand-written regex. The domain refuses uppercase and braced spellings on the
+     * ground that an identifier is a key and not a display value, so a constraint that accepted them would admit
+     * exactly the input the aggregate then rejects — moving the refusal from here to a 500. The two spellings of the
+     * rule are pinned against each other in `NewInvoiceInputTest`; this case pins that the rule is WIRED.
+     */
+    public function testAnUppercaseClientIdIsRefusedRatherThanNormalised(): void
+    {
+        $response = self::post('/api/invoices', [
+            'currency' => 'TND',
+            'lines' => [['quantity' => '1', 'unitNet' => '1.00', 'vatRate' => '19']],
+            'clientId' => '0199A5B2-0000-7000-8000-00000000C101',
+        ]);
+
+        self::assertSame(422, $response['status']);
+        self::assertStringContainsString('clientId', $response['body']);
+    }
+
+    /**
      * A MISSING REQUIRED FIELD IS REFUSED BY THE CONSTRUCTOR, which is why the DTOs have no defaults.
      *
      * The error names the parameter, which is a better message than a validator's "this value should not be blank" on a

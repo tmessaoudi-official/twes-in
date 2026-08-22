@@ -66,6 +66,14 @@ use Twes\Tests\Support\RecordingTransactionalScope;
 #[CoversClass(IssueInvoice::class)]
 final class InvoiceWriteHandlersTest extends TestCase
 {
+    /**
+     * Every invoice fixture that gets ISSUED is addressed to a client, because since 2026-08-22
+     * `Invoice::issue()` requires one — EN 16931 makes the buyer mandatory (BT-44). The deliberately
+     * EMPTY command below keeps NO client: its subject is the emptiness refusal, and giving it one
+     * would change which guard the case proves.
+     */
+    private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
+
     private const FIRST_ID = '0199a5b2-0000-7000-8000-000000000001';
 
     // ------------------------------------------------------------------ create
@@ -151,6 +159,7 @@ final class InvoiceWriteHandlersTest extends TestCase
             Currency::of('TND'),
             [new DocumentLine('1', Money::of('1.00', $eur), Rate::fromPercentage('19'))],
             [],
+            self::FIXTURE_CLIENT,
         );
 
         try {
@@ -359,6 +368,7 @@ final class InvoiceWriteHandlersTest extends TestCase
                 new DocumentLine('7', Money::of('0.567', $tnd), Rate::fromPercentage('19')),
             ],
             [new FixedCharge('stamp_duty', Money::of('0.100', $tnd))],
+            self::FIXTURE_CLIENT,
         );
     }
 

@@ -101,6 +101,7 @@ final readonly class InvoiceRepresentation
             id: $persisted->identity->id,
             state: $invoice->state()->value,
             currency: $invoice->currency()->code(),
+            clientId: $invoice->clientId(),
             number: $number?->number(),
             sequence: $number?->sequence(),
             lines: $lines,

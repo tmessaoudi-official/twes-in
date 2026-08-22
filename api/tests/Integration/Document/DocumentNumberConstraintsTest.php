@@ -227,9 +227,22 @@ final class DocumentNumberConstraintsTest extends TestCase
         // different every time. Session-scoped for the reason given on `owner()`.
         self::owner()->exec(\sprintf("SET twes.tenant_id = '%s'", $company));
 
+        // **A CLIENT ON EVERY ROW, INCLUDING THE DRAFTS, and it is what keeps these cases pointed at their own
+        // subject.** `document_client_required_once_issued` refuses an ISSUED row with no client, so without this
+        // the four issued cases would be refused by THAT constraint and the assertion — which names the constraint
+        // it expects — would fail against a schema that is behaving correctly. That is the fixture-refused-by-the
+        // -wrong-constraint hazard this helper's own docblock was written about, arriving from a new direction.
+        //
+        // Given to the drafts as well, deliberately: varying it would make the fixture differ between cases along
+        // an axis none of them is about.
+        $client = self::freshUuid();
+        self::owner()
+            ->prepare('INSERT INTO client (company_id, id, name) VALUES (?, ?, ?)')
+            ->execute([$company, $client, 'Fixture client']);
+
         $statement = self::owner()->prepare(
             'INSERT INTO document (company_id, id, type, state, currency, number, number_rendered, '
-            . 'vat_rounding_point) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            . 'vat_rounding_point, client_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
         );
         $statement->execute([
             $company,
@@ -240,6 +253,7 @@ final class DocumentNumberConstraintsTest extends TestCase
             $number,
             $rendered,
             'per_rate_group',
+            $client,
         ]);
 
         return [$company, $id];

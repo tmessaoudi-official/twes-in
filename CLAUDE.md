@@ -38,21 +38,33 @@ so the aggregate holds one and delegates rather than re-expressing that arithmet
 name, an optional non-unique SKU and the **VAT rate**, which pricing genuinely does not carry (a foodstuff and a
 service are taxed differently inside one company). `PUT`, `DELETE` and a collection `GET` are ABSENT and argued
 on `ProductResource`: an edit endpoint has to answer what an edit does to AUTHORSHIP, which is tax-adjacent and
-has no HTTP contract yet. And **Client (+ contacts) is PART-LANDED as of 2026-08-22: its domain, its schema, its
-persistence AND its HTTP surface exist; the link from a document to a client does not** —
+has no HTTP contract yet. And **Client (+ contacts) LANDED on 2026-08-22, link included** —
 `Domain/Client/{Client,Contact,PostalAddress,ClientRepository}`, the `client` and `client_contact` tables
 (tenant-owned, RLS-policed, every key including the tenant column), `DoctrineClientRepository` with its two row
 entities, and `POST /api/clients` + `GET /api/clients/{id}` through `CreateClientHandler`, `CreateClientProcessor`
 and `ClientProvider`, with fifteen `client.*` refusal keys in all three locales. **`PUT`, `DELETE` and a collection
 `GET` are deliberately ABSENT** and each absence is argued on `ClientResource`: an edit endpoint has to answer
 whether a caller may supply contact ids (the one thing create refuses), a delete has to answer what happens to an
-issued invoice naming the client, and a list needs pagination decided once rather than per endpoint. What the
-aggregate still owes is named rather than implied: **no link from a document to a client** — `document` has no
-`client_id` column, so an invoice still cannot say who it is addressed to, which is the half that makes the
-aggregate worth having. Deferred rather than forgotten: it touches `Invoice`, the mapper, the DTOs, the processors
-and every existing fixture, and a nullable FK with no backfill is its own decision, so it is its own change. A
-part-landed item is recorded as part-landed here, because this file's signature defect is a "still owed" line that
-is struck whole the moment any of it ships — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
+issued invoice naming the client, and a list needs pagination decided once rather than per endpoint. **The link from a document to a client closed out the same day**, and it is
+what makes the aggregate worth having: `document.client_id`, a composite foreign key
+`(company_id, client_id) -> client (company_id, id)` with `ON DELETE RESTRICT` — deleting a client must never erase
+the invoices addressed to them — and a CHECK, `document_client_required_once_issued`, encoding the ruling that a
+DRAFT may have no client while an ISSUED document may not (EN 16931 makes the buyer mandatory, BT-44). The
+requirement therefore attaches to the TRANSITION rather than to the type, which makes it the empty-lines guard's
+sibling. `Invoice` holds the client's ID and never a `Client`: one aggregate references another by identity,
+deliberately UNLIKE the F4 money rule, where an amount is copied BY VALUE because it must never move under an
+issued document — a client's address may legitimately be corrected, so the document names it and does not copy it.
+The CHECK is `NOT VALID`, which is the honest answer rather than a way to pass: documents issued before the column
+existed carry no client, no correct value can be invented for them, and destroying an issued invoice is
+unthinkable, so they are grandfathered and every INSERT and UPDATE from now on is enforced. On the wire
+`clientId` is optional on `POST /api/invoices` and echoed on the response; a MALFORMED id is a 422 naming the
+field (a hand-written regex, not `#[Assert\Uuid]`, which accepts the uppercase and braced spellings the domain
+refuses), and a WELL-FORMED id naming no client this tenant can see is also a 422 —
+`Domain/Document/Exception/UnknownClient`, translated out of DBAL's foreign-key violation by the repository so a
+rule stated in `Domain/` is not reported in the driver's vocabulary. *"No such client"* and *"that client is
+somebody else's"* are ONE indistinguishable answer, because telling them apart is an existence oracle over every
+other tenant's client ids. A part-landed item is recorded as part-landed here, because this file's signature
+defect is a "still owed" line that is struck whole the moment any of it ships — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
 commits after `build-waves.plan.md` retracted it. `POST /api/invoices` creates a draft and
 `POST /api/invoices/{id}/issue` issues it — two single-purpose operations rather than one `issue: true` flag, so an
 irreversible act is not reachable two ways. With it came the first `Application/` code (`CreateInvoiceHandler`,
@@ -898,6 +910,8 @@ locale carries the same SET; nothing checks COVERAGE, and that direction stays d
 `document.state.*` LABELS their `{state}`/`{from}`/`{to}` placeholders resolve through, which are not
 refusals of their own |
 | the CONTENT is not issuable — an empty invoice | **yes** | `document.empty_cannot_be_issued` |
+| the document has NO CLIENT and the user asked to issue it | **yes** | they can pick one, and the draft is still there. `document.client_required_to_issue` |
+| the CLIENT NAMED does not exist for this company | **yes** | they can correct the id or create the client. `document.client_unknown` — and note the same key answers *"no such client"* and *"that client belongs to somebody else"*, deliberately: a distinct message for the second is an existence oracle over another tenant's ids, which is the reason `ClientProvider` already answers 404 to both a malformed and an absent id |
 | the document is FULL — a 1001st line or fixed charge, against `Invoice::MAX_LINES` | **yes** | not a retype, but a real action and the same one `document.total_too_large` already prescribes: remove something, or split the document. `document.line_count_too_large`, `document.charge_count_too_large` — **two keys rather than one carrying a `{what}`**, because `assertRoomFor()`'s `$what` is the English words `line` and `fixed charge`, and a machine-side noun interpolated into a French or Arabic sentence is the shape the `document.state.*` rule below forbids. Worse than `{state}`, in fact: the noun is gendered and pluralised per locale (`une ligne` / `un frais`; `بند` / `رسم`), so no single sentence can host it grammatically in any language |
 | a CONFIGURATION value an administrator can fix — a number-pattern width of zero, or one wider than `NumberPattern::MAX_WIDTH` | **yes** | **TWO keys, one per bound**: `document.number_pattern_invalid` for the floor and `document.number_pattern_too_wide` for the ceiling. Admin-facing is still user-facing; the person who set it is the person who can correct it. The ceiling had no key for a round while `MAX_WIDTH` existed, so an administrator who set 25 was told the width *"must be at least 1"* — round 16's `document.quantity_too_large` defect verbatim (*"The quantity 2 is too large"* when the price was the oversized factor), recurring on the guard added at that finding's own closure. One refusal, one key: a message that names the wrong bound fails this section's own test |
 | our own fault — a number from the wrong sequence, a sequence adapter returning 0, a `\LogicException` of any kind | **no** | `error.internal`. Naming internals to a client is noise at best and an information leak at worst |

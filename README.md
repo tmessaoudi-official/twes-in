@@ -24,12 +24,13 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 > its state provider and both write processors; `api/src/Infrastructure/Persistence/` holds `DoctrineInvoiceRepository`,
 > `InvoiceMapper` and the gapless number counter; `infra/` holds three Dockerfiles, three compose files, a Caddyfile,
 > an entrypoint and a database init script, and both stacks have been run end to end.
-> **Wave 1 is NOT complete, and this line has now named the wrong reason three times.** It said Client, contacts,
-> Product and the tenant settings table did not exist; the settings table landed 2026-08-21 and Client and Product
-> both landed 2026-08-22, each with a domain, a policed table, persistence and a `POST`/`GET` surface. What the wave
-> actually still owes is ONE thing: **`document` carries no `client_id`**, so an invoice cannot yet say who it is
-> addressed to. Read `docs/plans/build-waves.plan.md` for exactly what is and is not built — and trust that file over
-> this paragraph, which is a summary and will drift again.
+> **Wave 1's `In:` line is now satisfied**, and this paragraph named the wrong reason three times on the way there:
+> it said Client, contacts, Product and the tenant settings table did not exist. The settings table landed
+> 2026-08-21; Client and Product both landed 2026-08-22, each with a domain, a policed table, persistence and a
+> `POST`/`GET` surface; and the last item — **`document.client_id`**, so an invoice can say who it is addressed to —
+> closed out the same day, with a composite foreign key that RESTRICTS rather than cascades and a CHECK requiring a
+> client at ISSUE while permitting a draft without one. Read `docs/plans/build-waves.plan.md` for exactly what is and
+> is not built — and trust that file over this paragraph, which is a summary and will drift again.
 
 ## Licence — dual
 
@@ -104,7 +105,7 @@ session. An unbound connection sees **nothing**, not everything. See
 | `docs/plans/build-waves.plan.md` | The wave-by-wave build plan and what is deliberately out of scope. |
 | `docs/plans/pricing-and-documents.plan.md` | Profit-rate pricing, delivery notes, and the generic charge model. |
 | `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
-| `api/` | The Symfony API. **Wave 0 landed** (`Domain/Money`, `Domain/Pricing`, `Infrastructure/` — tenancy, clock, ids) **plus most of Wave 1**: `Domain/Document` (the calculation kernel, lifecycle, numbering, the `Invoice` aggregate), the Symfony application, Doctrine and the first migrations, the persistence adapter, and the invoice HTTP surface — `GET /api/invoices/{id}`, `POST /api/invoices`, `POST /api/invoices/{id}/issue`. Four test suites. **Client (+ contacts) landed 2026-08-22** — domain, schema, persistence and `POST /api/clients` + `GET /api/clients/{id}` (no `PUT`, `DELETE` or collection `GET`; each absence is argued on `ClientResource`). **Product landed the same day** — domain, `product` table, persistence and `POST /api/products` + `GET /api/products/{id}`, wrapping the Wave 0 `ProductPricing` rather than re-expressing its arithmetic. **Still owed in Wave 1: the `document` → `client` link.** This row has now been stale three times in the same way — the tenant settings table, then the `/api/clients` surface, then Product. Trust `docs/plans/build-waves.plan.md`. |
+| `api/` | The Symfony API. **Wave 0 landed** (`Domain/Money`, `Domain/Pricing`, `Infrastructure/` — tenancy, clock, ids) **plus most of Wave 1**: `Domain/Document` (the calculation kernel, lifecycle, numbering, the `Invoice` aggregate), the Symfony application, Doctrine and the first migrations, the persistence adapter, and the invoice HTTP surface — `GET /api/invoices/{id}`, `POST /api/invoices`, `POST /api/invoices/{id}/issue`. Four test suites. **Client (+ contacts) landed 2026-08-22** — domain, schema, persistence and `POST /api/clients` + `GET /api/clients/{id}` (no `PUT`, `DELETE` or collection `GET`; each absence is argued on `ClientResource`). **Product landed the same day** — domain, `product` table, persistence and `POST /api/products` + `GET /api/products/{id}`, wrapping the Wave 0 `ProductPricing` rather than re-expressing its arithmetic. **The `document` → `client` link landed the same day**, closing Wave 1's `In:` line: `document.client_id`, a composite FK `(company_id, client_id) → client (company_id, id)` with `ON DELETE RESTRICT`, a `NOT VALID` CHECK requiring a client once ISSUED while permitting a draft without one, and `clientId` on the invoice request and response. This row has been stale three times in the same way — the tenant settings table, then the `/api/clients` surface, then Product. Trust `docs/plans/build-waves.plan.md`. |
 | `admin/` · `mobile/` | Angular admin (Wave 8), Flutter client (Wave 11). Scaffolded and green on their own toolchains; neither holds domain or transport code. Each README lists the tests and enforcers it owes as gate conditions. |
 | `infra/` | Deployment, **written from scratch** — never copied from `invoiceninja/dockerfiles`, which is GPL-2.0 (licensing invariant 7). Three Dockerfiles, three compose files, a Caddyfile, an entrypoint and a database init script; both the development and the production stack have been run end to end. Wave 12 still owes CI. |
 | `scripts/gates/` | The architecture, licensing and shell-syntax gates, plus their own test suite. `ls` it for the list — a count written in prose drifts. |

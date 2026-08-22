@@ -13,8 +13,10 @@ declare(strict_types=1);
 namespace Twes\Infrastructure\Persistence\Doctrine;
 
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\Exception\ForeignKeyConstraintViolationException;
 use Twes\Domain\Document\DocumentIdentity;
 use Twes\Domain\Document\DocumentType;
+use Twes\Domain\Document\Exception\UnknownClient;
 use Twes\Domain\Document\Invoice;
 use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
@@ -81,6 +83,15 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         private InvoiceMapper $mapper,
     ) {}
 
+    /**
+     * The foreign key that carries the client rule, named once so the catch below cannot drift from the migration.
+     *
+     * Matched against the driver's message because DBAL's exception does not expose a constraint name. That is a
+     * string comparison and it is the narrow kind: the alternative is catching the TYPE alone, which would label
+     * every future foreign key on `document` as a client problem.
+     */
+    private const string CLIENT_FOREIGN_KEY = 'document_is_addressed_to_a_client';
+
     public function save(DocumentIdentity $identity, Invoice $invoice): void
     {
         $tenant = $this->currentTenant('save document ' . $identity->id);
@@ -145,7 +156,17 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                 'UPDATE document SET state = :state'
                 . ' WHERE company_id = :company_id AND id = :id'
                 . ' AND number = :number AND number_rendered = :number_rendered'
-                . ' AND type = :type AND currency = :currency AND vat_rounding_point = :vat_rounding_point',
+                . ' AND type = :type AND currency = :currency AND vat_rounding_point = :vat_rounding_point'
+                // THE CLIENT IS A PREDICATE TOO, so re-pointing an ISSUED invoice at a different client is
+                // refused by the STATEMENT rather than only by `withClient()`'s mutability guard. An issued
+                // invoice naming client A that comes back naming client B is not a correction — it is a
+                // different legal document, which is the same reasoning the number predicate beside it encodes.
+                //
+                // `IS NOT DISTINCT FROM` rather than `=`, because a NULL compares to nothing under `=` and the
+                // predicate would then match no rows at all. This branch only runs for a document that already
+                // carries a number, so the client is never null here today; the null-safe form is what keeps
+                // the statement correct if that ever stops being true.
+                . ' AND client_id IS NOT DISTINCT FROM :client_id',
                 [
                     'state' => $document->state,
                     'company_id' => $document->companyId->toRfc4122(),
@@ -155,6 +176,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                     'type' => $document->type,
                     'currency' => $document->currency,
                     'vat_rounding_point' => $document->vatRoundingPoint,
+                    'client_id' => $document->clientId?->toRfc4122(),
                 ],
             );
 
@@ -233,51 +255,76 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         // names the PRIMARY KEY columns rather than a constraint name, which is what keeps this statement correct if
         // the constraint is ever renamed. `company_id` is in the key and never in the SET list: a document cannot
         // change tenant, and an UPDATE that could rewrite it would be a cross-tenant move performed by our own code.
-        $written = $this->connection->executeStatement(
-            'INSERT INTO document (company_id, id, type, state, currency, number, number_rendered, vat_rounding_point)'
-            . ' VALUES (:company_id, :id, :type, :state, :currency, :number, :number_rendered, :vat_rounding_point)'
-            // TYPE IN THE CONFLICT PREDICATE, NOT ONLY IN THE SET LIST. `load()` filters by `type` and its comment
-            // calls that *"a correctness fix rather than an optimisation … issuing one would have allocated a number
-            // from the INVOICE sequence for a document of another type"* — while this statement happily rewrote the
-            // column, so an `Invoice` saved at an id already held by another type's DRAFT converted that row to
-            // `type='invoice'` and replaced its children. Round 3 found the asymmetry (R3C-7).
-            //
-            // Unreachable today: nothing writes another type, `POST /api/invoices` mints a fresh UUIDv7, and `issue`
-            // cannot load a foreign type precisely because of `load()`'s predicate. Reachable the moment Wave 2's quote
-            // repository writes the same table — which is exactly when a silent type conversion would be least visible.
-            . ' ON CONFLICT (company_id, id) DO UPDATE SET'
-            . ' state = EXCLUDED.state, number = EXCLUDED.number, number_rendered = EXCLUDED.number_rendered,'
-            // `type` and `vat_rounding_point` are updatable because they live on DocumentIdentity, which a caller
-            // supplies on every save; `currency` because Invoice carries it. None of them SHOULD change on an
-            // issued document, and none of them can, because the aggregate refuses to mutate once issued —
-            // Invoice::issue() is the last transition that alters anything but state.
-            . ' type = EXCLUDED.type, currency = EXCLUDED.currency,'
-            . ' vat_rounding_point = EXCLUDED.vat_rounding_point'
-            // **A DOCUMENT NUMBER IS WRITE-ONCE, AND THIS IS THE RACE-SAFE HALF OF THAT.** Reaching this statement
-            // means the pre-read above saw no number, so the row is a draft or does not exist. The predicate is kept
-            // anyway, because the pre-read and this statement are two steps: a caller that did NOT take the row lock
-            // — `findForMutation()` is the port's guarantee, not something this class can compel — could have another
-            // transaction issue the document in between. Then `document.number` is set, neither arm holds, zero rows
-            // are written and the throw below fires. So the branch above is the RULE and this is the backstop
-            // against the interleaving, which is the shape R1-2 was: two concurrent issues, each acting on a read
-            // that was true when it was taken.
-            //
-            // A `WHERE` on `DO UPDATE` rather than a CHECK or a trigger, because only this form can compare the
-            // EXISTING row to the incoming one. A CHECK sees one row; a trigger would put business meaning in a
-            // persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses outright.
-            . ' WHERE (document.number IS NULL OR document.number = EXCLUDED.number)'
-            . ' AND document.type = EXCLUDED.type',
-            [
-                'company_id' => $document->companyId->toRfc4122(),
-                'id' => $document->id->toRfc4122(),
-                'type' => $document->type,
-                'state' => $document->state,
-                'currency' => $document->currency,
-                'number' => $document->number,
-                'number_rendered' => $document->numberRendered,
-                'vat_rounding_point' => $document->vatRoundingPoint,
-            ],
-        );
+        // **THE FOREIGN KEY IS WHERE `Domain/`'S CLIENT RULE IS ENFORCED, so this is where it is translated back.**
+        //
+        // `(company_id, client_id) -> client (company_id, id)` refuses a client that does not exist AND one that
+        // belongs to another company, in one indistinguishable answer -- see {@see UnknownClient} for why keeping
+        // them indistinguishable is the point. Letting DBAL's own exception escape would make the UI layer catch an
+        // infrastructure type to produce a 422, and would report a rule stated in `Domain/` in the vocabulary of the
+        // driver that happened to notice it.
+        //
+        // **THE CONSTRAINT NAME IS CHECKED AND ANYTHING ELSE IS RE-THROWN UNTOUCHED.** `document` carries exactly one
+        // foreign key today, so catching the type alone would be correct RIGHT NOW and would silently mislabel the
+        // next one somebody adds -- reporting "no such client" for a violation that had nothing to do with a client.
+        // A guard that is right by coincidence is the shape this project keeps finding; failing loudly on an
+        // unrecognised constraint is the fail-closed direction.
+        try {
+            $written = $this->connection->executeStatement(
+                'INSERT INTO document (company_id, id, type, state, currency, number, number_rendered, vat_rounding_point,'
+                . ' client_id)'
+                . ' VALUES (:company_id, :id, :type, :state, :currency, :number, :number_rendered,'
+                . ' :vat_rounding_point, :client_id)'
+                // TYPE IN THE CONFLICT PREDICATE, NOT ONLY IN THE SET LIST. `load()` filters by `type` and its comment
+                // calls that *"a correctness fix rather than an optimisation … issuing one would have allocated a number
+                // from the INVOICE sequence for a document of another type"* — while this statement happily rewrote the
+                // column, so an `Invoice` saved at an id already held by another type's DRAFT converted that row to
+                // `type='invoice'` and replaced its children. Round 3 found the asymmetry (R3C-7).
+                //
+                // Unreachable today: nothing writes another type, `POST /api/invoices` mints a fresh UUIDv7, and `issue`
+                // cannot load a foreign type precisely because of `load()`'s predicate. Reachable the moment Wave 2's quote
+                // repository writes the same table — which is exactly when a silent type conversion would be least visible.
+                . ' ON CONFLICT (company_id, id) DO UPDATE SET'
+                . ' state = EXCLUDED.state, number = EXCLUDED.number, number_rendered = EXCLUDED.number_rendered,'
+                . ' client_id = EXCLUDED.client_id,'
+                // `type` and `vat_rounding_point` are updatable because they live on DocumentIdentity, which a caller
+                // supplies on every save; `currency` because Invoice carries it. None of them SHOULD change on an
+                // issued document, and none of them can, because the aggregate refuses to mutate once issued —
+                // Invoice::issue() is the last transition that alters anything but state.
+                . ' type = EXCLUDED.type, currency = EXCLUDED.currency,'
+                . ' vat_rounding_point = EXCLUDED.vat_rounding_point'
+                // **A DOCUMENT NUMBER IS WRITE-ONCE, AND THIS IS THE RACE-SAFE HALF OF THAT.** Reaching this statement
+                // means the pre-read above saw no number, so the row is a draft or does not exist. The predicate is kept
+                // anyway, because the pre-read and this statement are two steps: a caller that did NOT take the row lock
+                // — `findForMutation()` is the port's guarantee, not something this class can compel — could have another
+                // transaction issue the document in between. Then `document.number` is set, neither arm holds, zero rows
+                // are written and the throw below fires. So the branch above is the RULE and this is the backstop
+                // against the interleaving, which is the shape R1-2 was: two concurrent issues, each acting on a read
+                // that was true when it was taken.
+                //
+                // A `WHERE` on `DO UPDATE` rather than a CHECK or a trigger, because only this form can compare the
+                // EXISTING row to the incoming one. A CHECK sees one row; a trigger would put business meaning in a
+                // persistence hook, which § "The Symfony ecosystem is the ONLY vocabulary" refuses outright.
+                . ' WHERE (document.number IS NULL OR document.number = EXCLUDED.number)'
+                . ' AND document.type = EXCLUDED.type',
+                [
+                    'company_id' => $document->companyId->toRfc4122(),
+                    'id' => $document->id->toRfc4122(),
+                    'type' => $document->type,
+                    'state' => $document->state,
+                    'currency' => $document->currency,
+                    'number' => $document->number,
+                    'number_rendered' => $document->numberRendered,
+                    'client_id' => $document->clientId?->toRfc4122(),
+                    'vat_rounding_point' => $document->vatRoundingPoint,
+                ],
+            );
+        } catch (ForeignKeyConstraintViolationException $violation) {
+            if (!str_contains($violation->getMessage(), self::CLIENT_FOREIGN_KEY)) {
+                throw $violation;
+            }
+
+            throw UnknownClient::withId((string) $document->clientId?->toRfc4122(), $violation);
+        }
 
         // ZERO ROWS WRITTEN MEANS ANOTHER TRANSACTION ISSUED THIS DOCUMENT BETWEEN THE PRE-READ AND THIS STATEMENT.
         // Nothing else can produce it: the row exists (or `ON CONFLICT` would have inserted it), the pre-read saw no
@@ -402,7 +449,7 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         // writer reaches the children only through it, and `FOR UPDATE` on the child queries would take locks that
         // change nothing while enlarging what a reader can wait behind.
         $documentRow = $this->connection->fetchAssociative(
-            'SELECT company_id, id, type, state, currency, number, number_rendered, vat_rounding_point'
+            'SELECT company_id, id, type, state, currency, number, number_rendered, vat_rounding_point, client_id'
             . ' FROM document WHERE company_id = :company_id AND id = :id AND type = :type'
             . ($lockRow ? ' FOR UPDATE' : ''),
             ['company_id' => $tenant->toString(), 'id' => $id, 'type' => DocumentType::Invoice->value],

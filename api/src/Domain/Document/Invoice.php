@@ -19,6 +19,7 @@ use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
 use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
+use Twes\Domain\Shared\Identifier;
 use Twes\Domain\Shared\RoundingMode;
 
 /**
@@ -88,6 +89,7 @@ final readonly class Invoice
         private ?DocumentNumber $number,
         private array $lines,
         private array $fixedCharges,
+        private ?string $clientId,
     ) {}
 
     /**
@@ -100,7 +102,7 @@ final readonly class Invoice
      */
     public static function draft(Currency $currency): self
     {
-        return new self($currency, DocumentState::Draft, null, [], []);
+        return new self($currency, DocumentState::Draft, null, [], [], null);
     }
 
     /**
@@ -153,6 +155,7 @@ final readonly class Invoice
         ?DocumentNumber $number,
         array $lines,
         array $fixedCharges,
+        ?string $clientId,
     ): self {
         // The one invariant still worth asserting here, because it is a PERSISTENCE bug rather than a domain one and
         // it is silent: a document in a numbered state with no number, or a draft carrying one, means the mapper
@@ -170,6 +173,18 @@ final readonly class Invoice
                 'An %s document must carry its number — it is allocated at issue and kept forever afterwards, '
                 . 'including once cancelled. A null here means the column was lost, which destroys the audit '
                 . 'trail a tax authority reads.',
+                $state->value,
+            ));
+        }
+
+        // AND AN ISSUED DOCUMENT MUST SAY WHO IT IS ADDRESSED TO. The same reasoning as the number guards above:
+        // `issue()` refuses to create one without a client, so a row that comes back without one means the
+        // mapper dropped the column or the row predates the rule. Failing at the boundary is what stops it
+        // surfacing later as an invoice addressed to nobody on a PDF a tax authority reads.
+        if (DocumentState::Draft !== $state && null === $clientId) {
+            throw new \LogicException(\sprintf(
+                'An %s invoice must carry its client — EN 16931 makes the buyer mandatory (BT-44), and `issue()` '
+                . 'refuses a draft without one, so a null here means the column was lost rather than never set.',
                 $state->value,
             ));
         }
@@ -193,12 +208,27 @@ final readonly class Invoice
             ));
         }
 
-        return new self($currency, $state, $number, $lines, $fixedCharges);
+        return new self($currency, $state, $number, $lines, $fixedCharges, $clientId);
     }
 
     public function currency(): Currency
     {
         return $this->currency;
+    }
+
+    /**
+     * The client this document is addressed to, or `null` while it is still a draft.
+     *
+     * **AN ID RATHER THAN A `Client`, and that is DDD rather than laziness.** One aggregate references another
+     * by IDENTITY, never by object: holding a `Client` would make loading an invoice load a client, make the
+     * two a single consistency boundary, and let a stale copy of a client travel inside a document. The F4
+     * snapshot rule is the same instinct applied to money — a line carries a `Money` by value and no product id
+     * — and the difference is deliberate: a PRICE must never change under an issued document, while the client
+     * a document names is a living record whose address may legitimately be corrected.
+     */
+    public function clientId(): ?string
+    {
+        return $this->clientId;
     }
 
     public function state(): DocumentState
@@ -257,6 +287,7 @@ final readonly class Invoice
             $this->number,
             [...$this->lines, $line],
             $this->fixedCharges,
+            $this->clientId,
         ), 'line');
     }
 
@@ -274,6 +305,7 @@ final readonly class Invoice
             $this->number,
             self::removeAt($this->lines, $position, 'line'),
             $this->fixedCharges,
+            $this->clientId,
         );
     }
 
@@ -300,6 +332,7 @@ final readonly class Invoice
             $this->number,
             $this->lines,
             [...$this->fixedCharges, $charge],
+            $this->clientId,
         ), 'fixed charge');
     }
 
@@ -317,6 +350,48 @@ final readonly class Invoice
             $this->number,
             $this->lines,
             self::removeAt($this->fixedCharges, $position, 'fixed charge'),
+            $this->clientId,
+        );
+    }
+
+    /**
+     * Address this document to a client, or clear it.
+     *
+     * **A MUTATION LIKE ANY OTHER, so it is refused once the document is no longer mutable.** An issued invoice
+     * naming client A cannot be re-pointed at client B: that is not a correction, it is a different legal
+     * document, and this project's answer to a wrong issued document is cancel-and-reissue rather than an edit.
+     * `assertMutable()` enforces that, exactly as it does for lines and charges.
+     *
+     * **NULL IS ACCEPTED, and clearing is a real operation rather than an oversight.** A user who picked the
+     * wrong client on a draft must be able to unpick it without deleting the draft. {@see self::issue()} is
+     * where the requirement bites.
+     *
+     * @throws \InvalidArgumentException if the id is not a canonical UUID
+     * @throws Exception\DocumentIsNotMutable if this document is no longer a draft
+     */
+    public function withClient(?string $clientId): self
+    {
+        $this->assertMutable('withClient');
+
+        // VALIDATED BY THE TYPE THAT OWNS THE RULE, not by a second regex. `Identifier` is the one canonical
+        // spelling of "is this a well-formed id" in this codebase, extracted precisely so a third copy of that
+        // pattern could not drift from the other two.
+        if (null !== $clientId && !Identifier::isWellFormed($clientId)) {
+            throw new \InvalidArgumentException(\sprintf(
+                'A client id must be a canonical lowercase-hyphenated UUID, got "%s". Refused here rather than '
+                . 'passed to the database, where the foreign key would raise a type error instead of naming the '
+                . 'field a caller can fix.',
+                $clientId,
+            ));
+        }
+
+        return new self(
+            $this->currency,
+            $this->state,
+            $this->number,
+            $this->lines,
+            $this->fixedCharges,
+            $clientId,
         );
     }
 
@@ -361,7 +436,19 @@ final readonly class Invoice
             throw DocumentCannotBeIssued::becauseItHasNoLines();
         }
 
-        return new self($this->currency, $state, $number, $this->lines, $this->fixedCharges);
+        // AND AN INVOICE MUST SAY WHO IT IS ADDRESSED TO. Ruled 2026-08-22 and DERIVED in the same sense the
+        // emptiness check above is derived — the plans were silent, so the argument is recorded in
+        // `build-waves.plan.md`'s Decisions Log rather than inherited from a column's nullability.
+        //
+        // EN 16931 makes the buyer mandatory (BT-44). A DRAFT may have none, for the same reason it may have no
+        // lines: deciding who an invoice is for can legitimately come after typing what is on it. The
+        // requirement therefore attaches at the TRANSITION, which is what makes this guard the line guard's
+        // sibling rather than a special case — and why neither belongs on the constructor.
+        if (null === $this->clientId) {
+            throw DocumentCannotBeIssued::becauseItHasNoClient();
+        }
+
+        return new self($this->currency, $state, $number, $this->lines, $this->fixedCharges, $this->clientId);
     }
 
     /**
@@ -382,6 +469,7 @@ final readonly class Invoice
             $this->number,
             $this->lines,
             $this->fixedCharges,
+            $this->clientId,
         );
     }
 

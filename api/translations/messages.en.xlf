@@ -228,6 +228,14 @@
         <source>product.price_field_missing</source>
         <target>Give a profit rate or a selling price. A product with a cost and neither is not priced.</target>
       </trans-unit>
+      <trans-unit id="56" resname="document.client_required_to_issue">
+        <source>document.client_required_to_issue</source>
+        <target>An invoice with no client cannot be issued. Choose a client, or leave it as a draft.</target>
+      </trans-unit>
+      <trans-unit id="57" resname="document.client_unknown">
+        <source>document.client_unknown</source>
+        <target>That client does not exist. Create the client first, or correct the id.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>
