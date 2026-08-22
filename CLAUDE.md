@@ -29,7 +29,16 @@ rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. **The invoice WRITE path
 closed out on 2026-08-07** — the last thing Wave 1's *invoice core* owed, and **NOT** the last thing the wave owes:
-Client, contacts and Product are absent — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
+Product is absent, and **Client (+ contacts) is PART-LANDED as of 2026-08-22: its domain, its schema and its
+persistence exist and its HTTP SURFACE does not** — `Domain/Client/{Client,Contact,PostalAddress,ClientRepository}`,
+the `client` and `client_contact` tables (tenant-owned, RLS-policed, every key including the tenant column), and
+`DoctrineClientRepository` with its two row entities. What it still owes is named rather than implied: **no
+`/api/clients` endpoint of any kind**, and **no link from a document to a client** — `document` has no `client_id`
+column, so an invoice still cannot say who it is addressed to, which is the half that makes the aggregate worth
+having. Both are deliberately deferred rather than forgotten: the endpoint is the next commit, and the link touches
+`Invoice`, the mapper, the DTOs, the processors and every existing fixture, so it is its own change. A part-landed
+item is recorded as part-landed here, because this file's signature defect is a "still owed" line that is struck
+whole the moment any of it ships — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
 commits after `build-waves.plan.md` retracted it. `POST /api/invoices` creates a draft and
 `POST /api/invoices/{id}/issue` issues it — two single-purpose operations rather than one `issue: true` flag, so an
 irreversible act is not reachable two ways. With it came the first `Application/` code (`CreateInvoiceHandler`,
