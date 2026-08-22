@@ -257,3 +257,15 @@ services:
     # `client` and `client_contact` are tenant-owned, so they are policed by row-level security like every other
     # tenant table.
     Twes\Domain\Client\ClientRepository: '@Twes\Infrastructure\Persistence\Doctrine\DoctrineClientRepository'
+
+    # THE PRODUCT REPOSITORY PORT -> its Doctrine adapter.
+    #
+    # The same explicit alias every domain port here needs, and for the same reason: `Twes\Domain\` is
+    # deliberately NOT an autowired resource (see the comment at the top of this file), so Symfony creates no
+    # interface-to-implementation alias on its own. Without this line the failure is a message about an
+    # unresolvable ARGUMENT, which points at the consumer rather than at the missing binding.
+    #
+    # The DEFAULT connection, never `owner` -- `no-owner-connection-in-application.php` refuses the latter, and
+    # `product` is tenant-owned: a catalogue with costs in it is a company's margin structure, so it is policed
+    # by row-level security like every other tenant table.
+    Twes\Domain\Product\ProductRepository: '@Twes\Infrastructure\Persistence\Doctrine\DoctrineProductRepository'
