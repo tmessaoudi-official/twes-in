@@ -143,6 +143,66 @@
         <source>document.charge_count_too_large</source>
         <target>Ce document contient déjà {max} frais, ce qui est le maximum. Supprimez un frais, ou scindez-le en deux documents.</target>
       </trans-unit>
+      <trans-unit id="36" resname="client.name_required">
+        <source>client.name_required</source>
+        <target>Un client doit avoir un nom. C'est à ce nom qu'une facture est adressée.</target>
+      </trans-unit>
+      <trans-unit id="37" resname="client.name_too_long">
+        <source>client.name_too_long</source>
+        <target>Le nom du client comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="38" resname="client.tax_identifier_too_long">
+        <source>client.tax_identifier_too_long</source>
+        <target>Le numéro d'identification fiscale comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="39" resname="client.address_line_1_required">
+        <source>client.address_line_1_required</source>
+        <target>L'adresse doit comporter une première ligne — la rue et le numéro.</target>
+      </trans-unit>
+      <trans-unit id="40" resname="client.address_line_1_too_long">
+        <source>client.address_line_1_too_long</source>
+        <target>La première ligne d'adresse comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="41" resname="client.address_line_2_too_long">
+        <source>client.address_line_2_too_long</source>
+        <target>La deuxième ligne d'adresse comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="42" resname="client.address_postcode_too_long">
+        <source>client.address_postcode_too_long</source>
+        <target>Le code postal comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="43" resname="client.address_city_required">
+        <source>client.address_city_required</source>
+        <target>L'adresse doit comporter une ville.</target>
+      </trans-unit>
+      <trans-unit id="44" resname="client.address_city_too_long">
+        <source>client.address_city_too_long</source>
+        <target>La ville comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="45" resname="client.country_code_invalid">
+        <source>client.country_code_invalid</source>
+        <target>« {code} » n'est pas un code pays. Deux lettres majuscules sont attendues, par exemple TN ou FR.</target>
+      </trans-unit>
+      <trans-unit id="46" resname="client.contact_name_required">
+        <source>client.contact_name_required</source>
+        <target>Un contact doit avoir un nom. Sans nom, il n'y a rien à choisir dans une liste.</target>
+      </trans-unit>
+      <trans-unit id="47" resname="client.contact_name_too_long">
+        <source>client.contact_name_too_long</source>
+        <target>Le nom du contact comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="48" resname="client.contact_email_invalid">
+        <source>client.contact_email_invalid</source>
+        <target>« {email} » n'est pas une adresse e-mail valide.</target>
+      </trans-unit>
+      <trans-unit id="49" resname="client.contact_phone_too_long">
+        <source>client.contact_phone_too_long</source>
+        <target>Le numéro de téléphone comporte {count} caractères ; {max} au maximum sont autorisés.</target>
+      </trans-unit>
+      <trans-unit id="50" resname="client.contact_count_too_large">
+        <source>client.contact_count_too_large</source>
+        <target>Ce client compte déjà {max} contacts, ce qui est le maximum. Supprimez-en un avant d'en ajouter un autre.</target>
+      </trans-unit>
     </body>
   </file>
 </xliff>

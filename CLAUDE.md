@@ -29,16 +29,21 @@ rule that no tenant-less path may hydrate an aggregate. Wave 1's document kernel
 aggregate are under `api/src/Domain/Document/`, framework-free. **Persistence is no longer blocked** — the
 twenty-round claim that it was, and why that diagnosis was wrong in kind, is in § Gotchas. **The invoice WRITE path
 closed out on 2026-08-07** — the last thing Wave 1's *invoice core* owed, and **NOT** the last thing the wave owes:
-Product is absent, and **Client (+ contacts) is PART-LANDED as of 2026-08-22: its domain, its schema and its
-persistence exist and its HTTP SURFACE does not** — `Domain/Client/{Client,Contact,PostalAddress,ClientRepository}`,
-the `client` and `client_contact` tables (tenant-owned, RLS-policed, every key including the tenant column), and
-`DoctrineClientRepository` with its two row entities. What it still owes is named rather than implied: **no
-`/api/clients` endpoint of any kind**, and **no link from a document to a client** — `document` has no `client_id`
-column, so an invoice still cannot say who it is addressed to, which is the half that makes the aggregate worth
-having. Both are deliberately deferred rather than forgotten: the endpoint is the next commit, and the link touches
-`Invoice`, the mapper, the DTOs, the processors and every existing fixture, so it is its own change. A part-landed
-item is recorded as part-landed here, because this file's signature defect is a "still owed" line that is struck
-whole the moment any of it ships — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
+Product is absent, and **Client (+ contacts) is PART-LANDED as of 2026-08-22: its domain, its schema, its
+persistence AND its HTTP surface exist; the link from a document to a client does not** —
+`Domain/Client/{Client,Contact,PostalAddress,ClientRepository}`, the `client` and `client_contact` tables
+(tenant-owned, RLS-policed, every key including the tenant column), `DoctrineClientRepository` with its two row
+entities, and `POST /api/clients` + `GET /api/clients/{id}` through `CreateClientHandler`, `CreateClientProcessor`
+and `ClientProvider`, with fifteen `client.*` refusal keys in all three locales. **`PUT`, `DELETE` and a collection
+`GET` are deliberately ABSENT** and each absence is argued on `ClientResource`: an edit endpoint has to answer
+whether a caller may supply contact ids (the one thing create refuses), a delete has to answer what happens to an
+issued invoice naming the client, and a list needs pagination decided once rather than per endpoint. What the
+aggregate still owes is named rather than implied: **no link from a document to a client** — `document` has no
+`client_id` column, so an invoice still cannot say who it is addressed to, which is the half that makes the
+aggregate worth having. Deferred rather than forgotten: it touches `Invoice`, the mapper, the DTOs, the processors
+and every existing fixture, and a nullable FK with no backfill is its own decision, so it is its own change. A
+part-landed item is recorded as part-landed here, because this file's signature defect is a "still owed" line that
+is struck whole the moment any of it ships — **the tenant settings table LANDED 2026-08-21** (`company_settings`, `CompanySettings` and its port, the Doctrine adapter, `PUT`/`GET /api/settings`, retiring `services.yaml`'s `$numberWidth: 7` and `CreateInvoiceProcessor`'s `PerRateGroup` literal), and it is struck from this list in the same change that delivered it rather than left beside its own delivery. This sentence claimed otherwise for two
 commits after `build-waves.plan.md` retracted it. `POST /api/invoices` creates a draft and
 `POST /api/invoices/{id}/issue` issues it — two single-purpose operations rather than one `issue: true` flag, so an
 irreversible act is not reachable two ways. With it came the first `Application/` code (`CreateInvoiceHandler`,
@@ -903,6 +908,13 @@ transport. Three of these four are now reachable answers of the live transport: 
 cross-check that silently scopes members out is the exemption-inside-a-check shape § Gotchas records |
 | a currency mismatch **while pricing a product** | **yes** | `money.currency_mismatch`, which has existed since Wave 0. Round 15 found the single coarse row above claiming this got no key while the key was there, translated, in all three locales — the row was right about documents and wrong about pricing, where a user really can type a cost and a price in two currencies |
 
+| a CLIENT field the user typed — a blank or overlong name, an overlong tax identifier | **yes** | they can retype it. `client.name_required`, `client.name_too_long`, `client.tax_identifier_too_long`. The tax identifier's FORMAT is deliberately unchecked (every jurisdiction spells one differently), so length is the only refusal there is |
+| an ADDRESS part — a missing or overlong line, postcode or city, or a country code that is not alpha-2 | **yes** | `client.address_line_1_required`, `client.address_line_1_too_long`, `client.address_line_2_too_long`, `client.address_postcode_too_long`, `client.address_city_required`, `client.address_city_too_long`, `client.country_code_invalid`. **ONE KEY PER PART rather than one carrying a `{what}`**, for the reason `document.line_count_too_large` is two keys: the domain's `$what` is the English words *first line*, *postcode*, *town or city*, and those are gendered and pluralised differently in French and Arabic (`la ligne` / `le code postal` / `la ville`), so no single sentence can host them grammatically |
+| a CONTACT's own fields — a blank or overlong name, a malformed e-mail, an overlong telephone number | **yes** | `client.contact_name_required`, `client.contact_name_too_long`, `client.contact_email_invalid`, `client.contact_phone_too_long`. The name and the phone share ONE domain message with a `%s`, and they get TWO keys here for the same grammatical reason as the address parts. The phone's format is deliberately unvalidated — international numbering is not a shape this product is willing to be wrong about |
+| the CLIENT is full — a 51st contact, against `Client::MAX_CONTACTS` | **yes** | `client.contact_count_too_large`. Same prescription as `document.line_count_too_large`: remove one before adding another |
+| a contact id that is malformed, duplicated, or names no contact on this client | **no** | **not reachable from the wire today**, so `error.internal`. `POST /api/clients` mints every contact id server-side and there is no endpoint that accepts or removes one. The aggregate keeps all three refusals because a future importer or a `PUT` can trip them — a guard deleted because today's only caller cannot reach it is deleted for the wrong reason — and each earns a key in the change that makes it reachable |
+| a CLIENT id that is malformed or names nothing this tenant can see | n/a | `error.not_found`, at the transport. Malformed and absent are deliberately the SAME answer: distinguishing them tells a prober its guess had the right shape |
+
 **The keys are LISTED above on purpose.** Round 15 found the previous version of this section promising a key for
 three case classes that had none, in the same commit that introduced the rule — so the rule was violated by the
 artefact stating it. Naming them makes the two sides checkable by `grep -o 'resname="[^"]*"'` against this table,
@@ -914,6 +926,8 @@ The test of it: **would a competent user, reading only this message, know what t
 **NOTHING READS THIS CATALOGUE, AND A TRANSPORT NOW EXISTS — so this is no longer an honest placeholder and is recorded as owed.** Round 16 stated the gap and said *"acceptable only while no transport exists: the moment one does, resolving these keys is part of it, and a key nothing resolves is then the declared-but-unconsulted shape § Gotchas records"*. That moment arrived on 2026-08-07 with `POST /api/invoices`, and the condition was not met. Deleting every key would still leave the suite green, because `locale-key-parity.php` checks that the three locales carry the same SET and never that a key is used.
 
 **Why it was not done in the same change, stated rather than glossed:** a dozen distinct keyed refusals all raise a bare `\InvalidArgumentException` whose only payload is an English sentence, so nothing at the transport can tell `document.quantity_too_precise` from `document.total_too_large`. Resolving these keys therefore needs a TYPED EXCEPTION PER REFUSAL in `Domain/` first — carrying its key and its placeholders — which is a larger deliverable than the endpoint that revealed it, and one that touches every guard in the document kernel. **What the write path does today instead:** the input DTOs' validator catches the SHAPE errors and Symfony translates its own constraint messages into all three locales, and a domain refusal that survives that becomes a 422 carrying the domain's English message. So a French or Arabic caller gets a translated message for the common case and an English one for the rest — better than a raw key, worse than the rule in this section, and the gap is here rather than in a commit message.
+
+**The fifteen `client.*` keys added on 2026-08-22 are in exactly that state, and were added anyway** — worth justifying rather than glossing, because nothing resolves them and `locale-key-parity.php` would stay green if all fifteen were deleted. The alternative is worse: the rule at the top of this section says a user-fixable refusal gets a key, and a surface shipping fifteen new refusals with none would make that rule something the next author reads and does not follow. Adding them does not pay the debt down — it makes the debt's SIZE visible, and the typed-exception-per-refusal deliverable now covers `Domain/Client/` as well as `Domain/Document/`. The client write path behaves exactly as the invoice one described above: the validator on `NewClientInput`, `NewContactInput` and `PostalAddressInput` mirrors every domain bound, so the common refusals are Symfony's own constraint messages — translated into all three locales, and naming the field by path (`contacts[1].email`) — and only a refusal slipping past them arrives as the domain's English sentence.
 
 **A placeholder carrying an ENUM takes a translated LABEL, never the backed value** (round 15). Backing
 `DocumentState` fixed `{state}`, `{from}` and `{to}` to the wire values, which is right for the wire and wrong for
