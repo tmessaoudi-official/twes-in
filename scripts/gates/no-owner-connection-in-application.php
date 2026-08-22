@@ -33,9 +33,17 @@ declare(strict_types=1);
  *
  * WHY A GATE, and not the two alternatives considered:
  *
- *   - **Stripping the autowiring alias** would close `#[Target('owner')]` at container-compile time, which is
- *     mechanically stronger for that one vector — and leaves `$doctrine->getConnection('owner')` wide open, since
- *     the connection must stay in the registry for the migrations bundle to resolve it by name. Half a fix.
+ *   - **Stripping the autowiring alias** closes the attribute at container-compile time, which is mechanically
+ *     stronger for that vector — and leaves `$doctrine->getConnection('owner')` wide open, since the connection
+ *     must stay in the registry for the migrations bundle to resolve it by name. Half a fix, ON ITS OWN.
+ *     **THAT RULING WAS REVERSED ON 2026-08-22 AND THIS PARAGRAPH IS AMENDED IN PLACE RATHER THAN LEFT TO
+ *     CONTRADICT WHAT SHIPPED.** Round 22's R22-6 showed the OTHER half is not optional either: DoctrineBundle
+ *     also registers an alias keyed on the connection's NAME, so a plain constructor parameter reaches the
+ *     privileged role with none of the spellings below — and no text gate can close a name-based DI mechanism.
+ *     `Twes\Infrastructure\Persistence\Doctrine\RefusePrivilegedConnectionAliasesPass` now strips the aliases,
+ *     and the two are DELIBERATE COMPLEMENTARY LAYERS rather than rivals: the pass owns everything resolved
+ *     through an alias, this gate owns `getConnection('owner')` and the raw service-id string, which no
+ *     container pass can see. Neither is "the" fix. Read them as one control with two halves.
  *   - **Accepting and documenting it** is the shape `CLAUDE.md` § Gotchas now records five separate times: a
  *     control asserted in prose and enforced nowhere. The `.env` comment claiming "Migrations use a different
  *     role" while nothing implemented it is the most recent instance, and it is what created this connection pair.
