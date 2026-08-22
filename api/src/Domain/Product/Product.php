@@ -106,6 +106,26 @@ final readonly class Product
             ));
         }
 
+        // A NEGATIVE VAT RATE IS REFUSED HERE, AT THE USE SITE, exactly as {@see DocumentLine} refuses one.
+        //
+        // `Rate` permits negatives and is right to: it also serves as the PROFIT rate, where selling below cost
+        // is a real commercial decision that F4 explicitly refuses to clamp. But no jurisdiction has a negative
+        // VAT rate, and the same type serving two roles is why the constraint belongs at each use site rather
+        // than inside `Rate` — a rate is a dimensionless number, and what a VAT rate may be is a property of the
+        // things that carry one.
+        //
+        // **WITHOUT THIS, A PRODUCT AT `-19%` IS STORABLE AND UNUSABLE.** `DocumentLine`'s guard means every
+        // line ever created from such a product is refused, so the defect would surface at INVOICE time, on a
+        // catalogue entry that saved cleanly weeks earlier — a landmine rather than an error.
+        if ($vatRate->isNegative()) {
+            throw new \InvalidArgumentException(\sprintf(
+                'VAT rate %s%% is negative. No jurisdiction has a negative VAT rate, and a product carrying one '
+                . 'could never be put on a line — `DocumentLine` refuses it — so it is refused here rather than '
+                . 'stored to fail later.',
+                $vatRate->percentage(),
+            ));
+        }
+
         $this->id = $id;
         $this->name = self::validatedName($name);
         $this->sku = self::validatedSku($sku);

@@ -171,6 +171,50 @@ final class ProductWriteSurfaceTest extends WebTestCase
     }
 
     /**
+     * **A CALLER-FIXABLE PRICING REFUSAL IS A 422, NOT A 500 — and nothing pinned it until now.**
+     *
+     * `CreateProductProcessor` catches `\InvalidArgumentException|\DomainException` around the conversion, and
+     * whether the pricing exceptions extend one of those was INFERRED from the invoice path rather than checked
+     * for these classes. That is the whitespace-500 lesson one door over: a retypeable payload that 500s because
+     * a typed exception sits outside the catch. [Verified: `InvalidCost` and `InvalidRate` both extend
+     * `\InvalidArgumentException`.] This case is what keeps that true when somebody reparents one.
+     *
+     * It needs no database: the conversion throws before the handler opens a transaction.
+     */
+    public function testANegativeCostIsTheCallersErrorRatherThanOurs(): void
+    {
+        $response = self::post('/api/products', [
+            'name' => 'Café moulu', 'currency' => 'TND', 'cost' => '-100.000', 'vatRate' => '19',
+            'profitRate' => '30',
+        ]);
+
+        self::assertSame(
+            422,
+            $response['status'],
+            'a negative cost is retypeable, so it is the caller\'s error — a 500 here would report our fault',
+        );
+    }
+
+    /**
+     * **A NEGATIVE VAT RATE IS REFUSED AT THE EDGE, naming the field.**
+     *
+     * The domain refuses it too, because `DocumentLine` does and a product carrying one could never be put on a
+     * line. Mirroring it here is what makes the answer a 422 naming `vatRate` rather than a domain message about
+     * a rate — and it is the asymmetry worth pinning, since `profitRate` on the same DTO may legitimately be
+     * negative.
+     */
+    public function testANegativeVatRateIsRefusedWhileANegativeProfitRateIsNot(): void
+    {
+        $response = self::post('/api/products', [
+            'name' => 'Café moulu', 'currency' => 'TND', 'cost' => '100.000', 'vatRate' => '-19',
+            'profitRate' => '30',
+        ]);
+
+        self::assertSame(422, $response['status']);
+        self::assertStringContainsString('vatRate', $response['body']);
+    }
+
+    /**
      * THE TWO ROUTES AND THEIR METHODS, pinned because each one is a breaking change to move.
      *
      * `PUT`, `PATCH` and `DELETE` must NOT exist, and their absence is argued on {@see ProductResource}: an edit

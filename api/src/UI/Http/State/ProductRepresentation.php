@@ -24,17 +24,25 @@ use Twes\UI\Http\ApiResource\ProductResource;
  * resource, and the day they disagree is the day `POST /api/products` and a later `GET` of the same product
  * describe it differently with nothing failing.
  *
- * ## The rounding modes here are the whole subtlety
+ * ## The rounding mode, and a correction to what this docblock used to claim
  *
- * **The AUTHORED figure is read with `Unnecessary`; the DERIVED one is read with `HalfUp`.** Asking for the
- * field the product was authored with is a lookup and cannot round, so `Unnecessary` is both correct and a
- * tripwire — if it ever throws, something upstream asked for a value the aggregate did not author. Asking for
- * the OTHER field is a genuine derivation (`net = cost × (1 + rate)`, or `rate = (net − cost) ÷ cost`) and can
- * legitimately be inexact: a third of a dinar does not terminate.
+ * **BOTH figures are read with `HalfUp`.** This paragraph previously said the AUTHORED one was read with
+ * `Unnecessary` "as a tripwire", and the commit that introduced this class (`4a12b8b`) repeated that sentence in
+ * its message. **Neither was true of the code below**, which has never branched on `authoredBy()` — the repo's
+ * signature defect, prose describing a control that was not installed, caught by the 6C round on the same day.
  *
- * **`HalfUp` for display is safe precisely because it is NOT stored.** F4's warning is that a typed price must
- * never be rebuilt from a rounded rate; that hazard belongs to the WRITE path, and this class only reads.
- * `DoctrineProductRepository` persists the authored value with `Unnecessary` for exactly that reason.
+ * **The docblock is what was wrong, not the code, and adding the branch would be worse.** On the AUTHORED side
+ * the call is a LOOKUP: `ProductPricing` returns the value it was constructed with and rounds nothing, so
+ * `HalfUp` and `Unnecessary` are the same function there. A branch selecting between them could not change any
+ * output, which makes it a guard whose mutation no test could ever notice — and this project refuses exactly
+ * that. On the DERIVED side the call is a genuine derivation (`net = cost × (1 + rate)`, or
+ * `rate = (net − cost) ÷ cost`) which can legitimately be inexact, since a third of a dinar does not terminate,
+ * so `Unnecessary` there would throw on correct input.
+ *
+ * **The real tripwire is on the WRITE path and it exists.** F4's warning is that a typed price must never be
+ * REBUILT from a rounded rate; that hazard belongs to persistence, and `DoctrineProductRepository::save()` reads
+ * the authored field with `Unnecessary` for exactly that reason. Rounding for DISPLAY is safe because nothing
+ * here is stored.
  */
 final class ProductRepresentation
 {

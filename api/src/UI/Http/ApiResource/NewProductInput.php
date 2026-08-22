@@ -59,6 +59,9 @@ final readonly class NewProductInput
      */
     private const string DECIMAL = '/^-?\d+(\.\d+)?$/D';
 
+    /** The same shape with the sign removed, for the one field on this DTO that may not be negative. */
+    private const string NON_NEGATIVE_DECIMAL = '/^\d+(\.\d+)?$/D';
+
     public function __construct(
         /** What appears on the invoice line a client reads. Required. */
         #[Assert\NotBlank(normalizer: 'trim')]
@@ -81,7 +84,11 @@ final readonly class NewProductInput
          * company, which is exactly why the rate is on the item.
          */
         #[Assert\NotBlank]
-        #[Assert\Regex(pattern: self::DECIMAL)]
+        // NON-NEGATIVE, unlike every other decimal on this DTO. No jurisdiction has a negative VAT rate, and
+        // `Product` refuses one at the use site because `DocumentLine` does -- so a product carrying `-19` could
+        // never be put on a line. Mirrored here so the refusal is a 422 naming `vatRate` rather than a domain
+        // message about a rate, which is the same edge-mirrors-the-domain rule the rest of this DTO follows.
+        #[Assert\Regex(pattern: self::NON_NEGATIVE_DECIMAL)]
         public string $vatRate,
         /** The stock-keeping unit. Optional, and deliberately not unique. */
         #[Assert\Length(max: Product::MAX_SKU_LENGTH)]

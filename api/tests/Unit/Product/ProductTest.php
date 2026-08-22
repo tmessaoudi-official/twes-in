@@ -76,6 +76,41 @@ final class ProductTest extends TestCase
         );
     }
 
+    /**
+     * **A NEGATIVE VAT RATE IS REFUSED, and without this a product is storable and UNUSABLE.**
+     *
+     * `Rate` permits negatives and is right to — it also serves as the PROFIT rate, where F4 rules that selling
+     * below cost is real and must not be clamped. The same type serving two roles is why the constraint belongs
+     * at each USE SITE, which is the argument {@see \Twes\Domain\Document\DocumentLine} already makes for its
+     * own VAT rate. `Product` was the SECOND use site and had no guard for one commit: a product at `-19%` saved
+     * cleanly, and every line ever created from it would have been refused by `DocumentLine` — the defect
+     * surfacing at invoice time, weeks later, on a catalogue entry that looked fine.
+     */
+    public function testANegativeVatRateIsRefused(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/No jurisdiction has a negative VAT rate/');
+
+        Product::create(self::ID, 'Café moulu', self::pricing(), Rate::fromPercentage('-19'));
+    }
+
+    /** A ZERO VAT rate is legitimate — exempt and zero-rated supplies are real — so only NEGATIVE is refused. */
+    public function testAZeroVatRateIsAccepted(): void
+    {
+        $product = Product::create(self::ID, 'Livre', self::pricing(), Rate::zero());
+
+        self::assertTrue($product->vatRate()->isZero());
+    }
+
+    /** The guard holds on the mutator too, not only on creation. */
+    public function testANegativeVatRateIsRefusedByTheMutatorAsWell(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessageMatches('/No jurisdiction has a negative VAT rate/');
+
+        self::product()->withVatRate(Rate::fromPercentage('-1'));
+    }
+
     public function testTheNameIsTrimmed(): void
     {
         self::assertSame('Café moulu', self::product('  Café moulu  ')->name());

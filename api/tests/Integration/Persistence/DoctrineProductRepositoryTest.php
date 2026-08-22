@@ -344,6 +344,63 @@ final class DoctrineProductRepositoryTest extends TestCase
     }
 
     /**
+     * **`product_vat_rate_is_not_negative` IS PROVEN TO FIRE, and it is the THIRD statement of one rule.**
+     *
+     * `Product` refuses a negative VAT rate at the use site (because `DocumentLine` does, so a product carrying
+     * one could never be put on a line), `NewProductInput` mirrors that at the edge so the answer is a 422, and
+     * this is the level a hand-written `INSERT` cannot avoid. No route through the domain can produce the row
+     * below, which is exactly what would have made the constraint vacuous-by-construction.
+     *
+     * **A NEGATIVE `profit_rate` IS DELIBERATELY NOT REFUSED**, and the asymmetry is asserted rather than
+     * assumed: F4 rules that selling below cost is real, so that column is where a negative rate legitimately
+     * lives. A CHECK covering both would be a schema quietly overruling a product decision.
+     */
+    public function testANegativeVatRateIsRefusedByTheSchemaWhileANegativeProfitRateIsNot(): void
+    {
+        self::repositoryFor(self::TENANT_A);
+
+        self::assertRefusedBy(
+            'product_vat_rate_is_not_negative',
+            'INSERT INTO product (company_id, id, name, currency, cost_amount, authored_by, profit_rate, '
+            . 'vat_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                self::TENANT_A,
+                self::PRODUCT,
+                'Café moulu',
+                'TND',
+                '100.0000',
+                PricedBy::ProfitRate->value,
+                '0.3',
+                '-0.19',
+            ],
+            'a negative VAT rate',
+        );
+
+        // THE OTHER HALF, in the same case so the two cannot drift apart: a clearance product priced BELOW cost
+        // stores a negative profit rate and the schema accepts it.
+        self::connection()->executeStatement(
+            'INSERT INTO product (company_id, id, name, currency, cost_amount, authored_by, profit_rate, '
+            . 'vat_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                self::TENANT_A,
+                '11111111-1111-4111-8111-111111111111',
+                'Clearance item',
+                'TND',
+                '100.0000',
+                PricedBy::ProfitRate->value,
+                '-0.2',
+                '0.19',
+            ],
+        );
+
+        self::assertSame(
+            1,
+            (int) self::connection()->fetchOne('SELECT count(*) FROM product WHERE profit_rate < 0'),
+            'a negative PROFIT rate is legitimate — F4 refuses to clamp a loss-leader',
+        );
+    }
+
+    /**
      * Assert that a statement is refused BY A NAMED CONSTRAINT, not merely that it fails.
      *
      * The name is asserted rather than the failure, because `CLAUDE.md` § Gotchas 2026-07-29 records a meta-gate
