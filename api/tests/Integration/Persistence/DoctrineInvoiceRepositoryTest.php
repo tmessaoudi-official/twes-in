@@ -547,6 +547,84 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         self::assertCount(1, $reload()->invoice->lines(), 'the issued document still has its line');
     }
 
+    /**
+     * A save proposing FEWER child rows than are stored is refused — the direction every other case above misses.
+     *
+     * **THE COUNT GUARD IS THE ONLY THING THAT DETECTS THIS, AND UNTIL NOW NOTHING PINNED IT.** Round 4 filed it
+     * (R4C-5) and the mutant confirmed it: replacing `childRowsAgree()`'s `\count($stored) !== \count($incoming)`
+     * with `if (false)` left the whole integration suite green at `OK (286 tests, 1140 assertions)`.
+     *
+     * The reason it survives is structural rather than a missing assertion. `childRowsAgree()` iterates
+     * `$incoming`, so a SHORTER incoming set compares only its own rows — every one of which matches — and returns
+     * `true`. The `?? null` on `$stored[$index][$column]` covers the opposite direction (a column present on the
+     * incoming row and absent from the stored one) and says nothing about a row that is simply not proposed.
+     *
+     * What that costs is round 3's triple-hit defect coming back through the other door: `save()` returns success,
+     * the state-only branch touches neither child table, and the removed line stays in the database. A caller that
+     * deleted a line from an issued document would be told it had worked. *"Ignoring a change is not refusing
+     * one"* is exactly what that branch exists to eliminate, and it eliminated it in one direction only.
+     *
+     * Both child tables get their own arm, because the two `childRowsAgree()` calls are separate and either
+     * `\count()` could be dropped alone. The stored document therefore carries TWO lines and ONE charge, so that
+     * "fewer" is expressible on each — with one line and no charges there is no shorter non-empty set to propose.
+     */
+    public function testASaveProposingFewerChildRowsThanAreStoredIsRefused(): void
+    {
+        $document = 'dddddddd-dddd-4ddd-8ddd-000000002003';
+        $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
+        $tnd = Currency::of('TND');
+        $repository = self::repositoryFor(self::TENANT_A);
+
+        $twoLinesAndACharge = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->withLine(new DocumentLine('2', Money::of('2.000', $tnd), Rate::fromPercentage('19')))
+            ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
+
+        // 143, not 141: `document_number_unique_per_tenant_and_type` is a real index and a reused sequence makes the
+        // refusal arrive as a 23505 from the index rather than from the guard under test — a case that would appear
+        // to pass for the wrong reason, which this class already records happening once.
+        $issued = $twoLinesAndACharge->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 143));
+        self::inTransaction(static fn() => $repository->save($identity, $issued));
+
+        // ONE LINE FEWER, the charge unchanged. The surviving line is byte-identical to the stored first line, so the
+        // per-row comparison cannot be what refuses this — only the count can.
+        $oneLineFewer = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 143));
+
+        try {
+            self::inTransaction(static fn() => $repository->save($identity, $oneLineFewer));
+            self::fail(
+                'An issued document must REFUSE a save proposing FEWER lines than are stored. Accepting it means '
+                . 'the removed line stays in the database while the caller is told the save succeeded.',
+            );
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('different line or charge set', $refused->getMessage());
+        }
+
+        // AND THE CHARGE SET IN THE SAME DIRECTION, asserted separately: the two comparisons are separate calls, so
+        // one `\count()` could be dropped while the other still refused, and a single arm would not notice.
+        $noCharge = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->withLine(new DocumentLine('2', Money::of('2.000', $tnd), Rate::fromPercentage('19')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 143));
+
+        try {
+            self::inTransaction(static fn() => $repository->save($identity, $noCharge));
+            self::fail('An issued document must REFUSE a save proposing FEWER fixed charges than are stored');
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('different line or charge set', $refused->getMessage());
+        }
+
+        // AND NOTHING WAS REMOVED BY EITHER REFUSAL. Asserted directly rather than inferred from the exception: the
+        // child rows are `DELETE`d and re-`INSERT`ed on the write path with no predicate of their own, so a refusal
+        // firing in the wrong place would empty them, and that looks identical to a partial write from outside.
+        $reloaded = $repository->find($document) ?? self::fail('the document must still be readable back');
+        self::assertCount(2, $reloaded->invoice->lines(), 'both stored lines survived the refusals');
+        self::assertCount(1, $reloaded->invoice->fixedCharges(), 'the stored fixed charge survived the refusals');
+    }
+
     /** An ill-formed id is refused before it reaches a query, by the same rule `DocumentIdentity` enforces. */
     public function testAnIllFormedIdIsRefusedBeforeItReachesAQuery(): void
     {
@@ -609,6 +687,69 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
             new DocumentIdentity(self::DOCUMENT, DocumentType::Quote, VatRoundingPoint::PerRateGroup),
             Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT),
         ));
+    }
+
+    /**
+     * A row of ANOTHER TYPE occupying this identity is refused, and the refusal says what is actually wrong.
+     *
+     * **THIS IS THE FALSE ABSOLUTE ROUND 4 FILED (R4C-7).** The zero-rows-written guard's comment read *"ZERO ROWS
+     * WRITTEN MEANS ANOTHER TRANSACTION ISSUED THIS DOCUMENT BETWEEN THE PRE-READ AND THIS STATEMENT. Nothing else
+     * can produce it"* — and it was contradicted by R3C-7's own `AND document.type = EXCLUDED.type` clause,
+     * fourteen lines above it in the same statement, whose comment explicitly describes that predicate failing.
+     *
+     * The interleaving is this. The pre-read is `SELECT number FROM document WHERE company_id = :company_id AND
+     * id = :id` — **no `type` predicate**. So for a DRAFT of another type at the same key it returns a NULL number,
+     * the state-only branch is not taken, `ON CONFLICT` finds the row, the number arm of the predicate holds
+     * (`number IS NULL`) and the TYPE arm fails. Zero rows, and the thrown message said *"it already carries a
+     * different document number"* about a row carrying **no number at all** — and prescribed `findForMutation()`,
+     * which cannot help, because there is no concurrency here and nothing to re-read.
+     *
+     * Not reachable from today's transport, which mints an identity per document. It is reachable the moment
+     * Wave 2's quote repository writes the same table, which is the wave this is filed against.
+     *
+     * The row is INSERTed directly rather than through a quote repository, because there is no quote repository
+     * yet — that is the point of the finding — and a fixture that needed one would defer the case to the wave that
+     * introduces the bug it describes.
+     */
+    public function testARowOfAnotherTypeAtThisIdentityIsRefusedWithAnAccurateMessage(): void
+    {
+        $document = 'dddddddd-dddd-4ddd-8ddd-000000002004';
+        $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
+        $repository = self::repositoryFor(self::TENANT_A);
+
+        // A QUOTE DRAFT, WITH NO NUMBER, at the identity the invoice save is about to use.
+        self::connection()->executeStatement(
+            'INSERT INTO document (company_id, id, type, state, currency, vat_rounding_point)'
+            . ' VALUES (:company_id, :id, :type, :state, :currency, :point)',
+            [
+                'company_id' => self::TENANT_A,
+                'id' => $document,
+                'type' => 'quote',
+                'state' => 'draft',
+                'currency' => 'TND',
+                'point' => 'per_rate_group',
+            ],
+        );
+
+        try {
+            self::inTransaction(static fn() => $repository->save(
+                $identity,
+                Invoice::draft(Currency::of('TND'))->withClient(self::FIXTURE_CLIENT),
+            ));
+            self::fail('A row of another type occupying this identity must be refused');
+        } catch (\RuntimeException $refused) {
+            // THE MESSAGE MUST NAME THE TYPE COLLISION, which is what is actually wrong.
+            self::assertStringContainsString('quote', $refused->getMessage());
+
+            // AND MUST NOT CLAIM A NUMBER THIS ROW DOES NOT HAVE. This is the assertion that fails before the fix:
+            // a message about a "different document number" is false about a NULL number, and it sends whoever
+            // reads it to `findForMutation()` for a race that is not happening.
+            self::assertStringNotContainsString(
+                'already carries a different document number',
+                $refused->getMessage(),
+                'the row carries NO number, so a message about a different one is false and misdirects the reader',
+            );
+        }
     }
 
     private static function identity(): DocumentIdentity

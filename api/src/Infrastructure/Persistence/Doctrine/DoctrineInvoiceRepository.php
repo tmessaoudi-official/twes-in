@@ -326,18 +326,62 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             throw UnknownClient::withId((string) $document->clientId?->toRfc4122(), $violation);
         }
 
-        // ZERO ROWS WRITTEN MEANS ANOTHER TRANSACTION ISSUED THIS DOCUMENT BETWEEN THE PRE-READ AND THIS STATEMENT.
-        // Nothing else can produce it: the row exists (or `ON CONFLICT` would have inserted it), the pre-read saw no
-        // number, and the predicate only fails once one is present. Throwing rather than returning quietly is what
-        // makes the guard a guard — a silent no-op would leave the caller believing it had issued a document, commit
-        // the number it allocated, and produce exactly the hole this exists to prevent.
+        // ZERO ROWS WRITTEN MEANS THE `WHERE` ON `DO UPDATE` REFUSED THE EXISTING ROW — AND THERE ARE **TWO** WAYS
+        // FOR THAT TO HAPPEN, one per arm of the predicate. Throwing rather than returning quietly is what makes the
+        // guard a guard: a silent no-op would leave the caller believing it had issued a document, commit the number
+        // it allocated, and produce exactly the hole this exists to prevent.
+        //
+        // THIS COMMENT READ *"Nothing else can produce it"* UNTIL 2026-08-23, naming the number arm alone — a false
+        // absolute contradicted by the `AND document.type = EXCLUDED.type` clause fourteen lines above it in the same
+        // statement, whose own comment describes that predicate failing. Round 4 filed it (R4C-7), and the cost was
+        // not the wording: the pre-read is `SELECT number ... WHERE company_id AND id` with **no `type` predicate**,
+        // so a DRAFT of another type at this key yields a NULL number, falls through to here, fails the TYPE arm, and
+        // was reported as *"it already carries a different document number"* about a row carrying no number at all —
+        // prescribing `findForMutation()` for a race that is not happening. Reproduced against the live schema.
+        //
+        // So the cause is ESTABLISHED rather than assumed, by re-reading the row. That read is on the error path
+        // only, it is one indexed lookup on the primary key, and the alternative — inferring the cause from which
+        // arm we believe fired — is precisely the derivation-that-agrees-with-itself shape § Gotchas 2026-07-31
+        // records as a P0. A guard that names the wrong cause is worse than one that names none: it sends the
+        // reader to a remedy that cannot work.
         if (0 === $written) {
+            /** @var array{type: string, number: int|null}|false $existing */
+            $existing = $this->connection->fetchAssociative(
+                'SELECT type, number FROM document WHERE company_id = :company_id AND id = :id',
+                ['company_id' => $document->companyId->toRfc4122(), 'id' => $document->id->toRfc4122()],
+            );
+
+            // THE ROW VANISHED BETWEEN THE UPSERT AND THIS READ, or row security hides it. Neither is a state this
+            // class can describe honestly, so it says so rather than picking whichever of the two arms sounds
+            // likelier — the same discipline as naming the cause at all.
+            if (false === $existing) {
+                throw new \RuntimeException(\sprintf(
+                    'Refusing to save document %s: the upsert wrote no row, and the row it conflicted with is no '
+                    . 'longer readable from this transaction. Nothing can be asserted about why, so nothing is.',
+                    $identity->id,
+                ));
+            }
+
+            if ($existing['type'] !== $document->type) {
+                throw new \RuntimeException(\sprintf(
+                    'Refusing to save %s document %s: that identity is already occupied by a %s. A document\'s type '
+                    . 'is part of its identity — the two share a primary key and a per-type number sequence, so '
+                    . 'writing one over the other would file this document\'s number in the other type\'s series and '
+                    . 'leave a hole in its own. This is not a concurrency problem and findForMutation() will not '
+                    . 'help: pick a fresh identity.',
+                    $document->type,
+                    $identity->id,
+                    $existing['type'],
+                ));
+            }
+
             throw new \RuntimeException(\sprintf(
-                'Refusing to renumber document %s: it already carries a different document number. A number is '
+                'Refusing to renumber document %s: it already carries document number %s. A number is '
                 . 'write-once — a client holding invoice N must never find it renumbered — so this is either a stale '
                 . 'read of a document another transaction has since issued (load it with findForMutation() before '
                 . 'allocating) or an attempt to rewrite a legal document\'s identity.',
                 $identity->id,
+                (string) ($existing['number'] ?? 'none'),
             ));
         }
 
