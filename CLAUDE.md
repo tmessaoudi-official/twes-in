@@ -1981,6 +1981,23 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     declared in nine places is one shape and eight opportunities; `grep` for the whole shape before assuming the
     edit is done.
 
+- **2026-08-23 — A DENIED COMPOUND COMMAND LEAVES ITS HEREDOC UNWRITTEN, AND `git commit -F` DOES NOT FAIL ON A
+  STALE PATH.** A `cat > /tmp/msg2.txt <<EOF … EOF && git add … && git commit -F /tmp/msg2.txt && git push` was
+  refused by the safety classifier as one unit, so the message file was never created. Re-running just the
+  `git add` + `git commit -F /tmp/msg2.txt` then committed the correct FILES under a completely unrelated message —
+  `docs(serve): rule S3.3d's shape … (DEC-455.10)`, left in `/tmp` by a **phorj** session. `/tmp` is shared across
+  every project on this machine, `-F` takes any readable file, and a commit that succeeds prints no warning. It was
+  caught only because `git log --oneline -3` was in the same command and the subject did not match what had just
+  been written; one `git push` later it would have been published history. Three practices follow, and the third is
+  the general one: write a message file with a **session-scoped name** (`/tmp/twes-msg2-<date>.txt`, never
+  `msg2.txt`); `head -1` the file in the SAME command as the commit, so the subject is visible beside the result;
+  and treat **every artefact a denied command was supposed to produce as absent**, because a refusal aborts the
+  whole compound — the parts that "already ran" did not. Same family as § Gotchas 2026-08-01's `test | tail &&
+  git commit`, inverted: there a verdict was produced and never consulted, here an input was never produced and was
+  consulted anyway. Note the classifier refuses the compound rather than `git commit` itself — the same commit as
+  a plain `git add <paths>` then `git commit -F <file>` was accepted, and only the trailing `&& git push` re-triggered
+  it, so a refusal is not evidence that autonomous committing is disallowed here (§ "Git autonomy" authorises it).
+
 ## Git & CI
 
 - Single developer, **single branch `master`**, commits direct, no PR review gate. See

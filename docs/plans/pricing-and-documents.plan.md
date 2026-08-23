@@ -10,6 +10,11 @@ F1, F2, F3 and the charge model are not. Read `build-waves.plan.md` for exactly 
 
 ## Decisions Log
 
+- [2026-08-23 10:30] AGREED, recorded as a POINTER rather than a restatement so the two files cannot drift:
+  **line discounts reduce the VAT base; document-level discounts are allocated pro-rata by base; inclusive tax
+  extracts per rate group, reusing `VatRoundingPoint`.** The worked numbers, the rejected readings and the reasons
+  are in `build-waves.plan.md` § Decisions Log at this same timestamp. **One sub-question is OPEN**: which figure
+  absorbs a half-grid tie when extracting inclusive tax — moot at Tunisia's 19/7/13, live at France's 20 %.
 - [2026-07-29 14:30] RULED **default currency TND, multi-currency from the start.**
 - [2026-07-29 14:30] FOUND — **the most consequential fact in this spec.** TND is one of only seven
   ISO-4217 currencies with **three** decimal places: 1 dinar = 1000 millimes, so `0.100 TND` is 100
