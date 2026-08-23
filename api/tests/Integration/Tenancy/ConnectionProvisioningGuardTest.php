@@ -259,6 +259,75 @@ final class ConnectionProvisioningGuardTest extends TestCase
     }
 
     /**
+     * A WARM IN-KERNEL ENTRY DOES NOT LET A PINNED SESSION THROUGH EITHER — the short-circuit the pool case misses.
+     *
+     * **R4S-3.** Round 3 moved the two per-session assertions in FRONT of both short-circuits, and
+     * `testAWarmCacheEntryDoesNotLetAPinnedSessionThrough()` pins that against the POOL. It cannot pin it against
+     * the other one: `guardedConnection()` builds a NEW `ConnectionProvisioningGuardMiddleware` on every call, so
+     * `$verifiedInThisKernel` is empty every time and that branch is never crossed. Round 4 measured the
+     * consequence — moving the per-session assertions below the in-kernel guard survived the whole suite, while
+     * moving them below the pool hit was killed by exactly one test.
+     *
+     * It is the more dangerous of the two, because `$verifiedInThisKernel` sits IN FRONT of the pool and is
+     * governed by no TTL (R3S-7); in the resident worker and scheduler this project deploys, the window is the
+     * process's life rather than `$verificationTtl`.
+     *
+     * So this case shares ONE middleware across two acquisitions, which is what a resident process does. The first
+     * is clean and marks the key verified in-kernel; the second arrives with `PGOPTIONS` pinning a tenant and must
+     * still be refused.
+     *
+     * `putenv()` because that is the actual vector rather than a stand-in — `PDO\PgSQL\Driver::constructPdoDsn()`
+     * never forwards `options`, so the process environment is the only route that pins — and restored in a
+     * `finally`, since a leaked `PGOPTIONS` would pin every later case in the process.
+     */
+    public function testAWarmInKernelEntryDoesNotLetAPinnedSessionThrough(): void
+    {
+        [$user, $password] = self::credentials('TWES_TEST_DB_USER', 'TWES_TEST_DB_PASSWORD');
+
+        // ONE middleware instance, reused — the whole point. Two `guardedConnection()` calls would build two, and
+        // the in-kernel array would be empty on both.
+        $middleware = new ConnectionProvisioningGuardMiddleware(
+            new PostgresRowLevelSecurityIsolation(),
+            new ArrayAdapter(),
+            verificationTtl: 300,
+            assertRevokedCapabilities: false,
+        );
+
+        $configuration = new Configuration();
+        $configuration->setMiddlewares([$middleware]);
+
+        $connect = static fn(): Connection => DriverManager::getConnection([
+            ...self::connectionParameters(),
+            'user' => $user,
+            'password' => $password,
+        ], $configuration);
+
+        // A CLEAN ACQUISITION, which marks the key verified in-kernel. `executeQuery` because `getConnection()` is
+        // lazy: the first query is what triggers `connect()` and therefore the guard.
+        $connect()->executeQuery('SELECT 1');
+
+        $previous = getenv('PGOPTIONS');
+        putenv('PGOPTIONS=-c ' . PostgresRowLevelSecurityIsolation::TENANT_SETTING . '=0199a5b2-0000-7000-8000-0000000009fd');
+
+        try {
+            $connect()->executeQuery('SELECT 1');
+            self::fail(
+                'A session arriving with a tenant already pinned must be refused even when THIS PROCESS has '
+                . 'already verified the same (role, database). The pin is SESSION state and the in-kernel flag '
+                . 'says nothing about it — and that flag has no TTL, so in a resident worker the window is the '
+                . 'life of the process.',
+            );
+        } catch (\Doctrine\DBAL\Exception|\RuntimeException $refused) {
+            self::assertStringContainsString(
+                'already carries',
+                $refused->getMessage() . ($refused->getPrevious()?->getMessage() ?? ''),
+            );
+        } finally {
+            false === $previous ? putenv('PGOPTIONS') : putenv('PGOPTIONS=' . $previous);
+        }
+    }
+
+    /**
      * A DBAL connection with the provisioning guard installed.
      *
      * `assertRevokedCapabilities` is FALSE, matching `api/.env`: the provisioned test database deliberately grants

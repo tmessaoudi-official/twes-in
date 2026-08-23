@@ -22,6 +22,7 @@ use Twes\Domain\Product\Product;
 use Twes\Domain\Product\ProductRepository;
 use Twes\Domain\Shared\Identifier;
 use Twes\Domain\Shared\RoundingMode;
+use Twes\Infrastructure\Tenancy\Exception\NoTenantBound;
 use Twes\Infrastructure\Tenancy\TenantContext;
 
 /**
@@ -253,18 +254,19 @@ final readonly class DoctrineProductRepository implements ProductRepository
     }
 
     /**
-     * @throws \RuntimeException if no tenant is bound
+     * @throws NoTenantBound if no tenant is bound — Wave 1's boundary rule, typed so the transport can
+     *                       answer a 401 instead of the untyped 500 it gave until 2026-08-23 (round 4, R4S-5)
      */
     private function currentTenant(string $attempted): string
     {
         if (!$this->tenantContext->hasTenant()) {
-            throw new \RuntimeException(\sprintf(
-                'Refusing to %s with no tenant bound. This is the boundary rule `CLAUDE.md` § Gotchas '
+            throw NoTenantBound::whileAttempting(
+                $attempted,
+                'This is the boundary rule `CLAUDE.md` § Gotchas '
                 . '2026-07-31 states: no tenant-less path may hydrate a domain aggregate. Under row-level '
                 . 'security an unbound read sees nothing, which is indistinguishable from a tenant that has no '
                 . 'such product — so answering it would turn a tenancy refusal into a silently wrong answer.',
-                $attempted,
-            ));
+            );
         }
 
         return $this->tenantContext->tenantId()->toString();

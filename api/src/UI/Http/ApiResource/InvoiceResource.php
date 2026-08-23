@@ -117,6 +117,23 @@ use Twes\UI\Http\State\IssueInvoiceProcessor;
             // The distinction the corrected wording draws is the one that matters: 404 and 422 are answers a caller
             // can DO something about, and 500 is a promise that we will.
             //
+            // **A 401 IS ALSO REACHABLE SINCE 2026-08-23, AND IS ALSO DELIBERATELY ABSENT — a SECOND carve-out, and
+            // the weaker of the two, so it is written down rather than left for a reader to infer from the first.**
+            // A tenant-less request now raises `NoTenantBound`, which `api_platform.exception_to_status` maps to 401
+            // instead of the untyped 500 it gave until then (round 4, R4S-5 · R4K-11). By this comment's own test
+            // that IS an answer a caller can act on — "authenticate and try again" is an instruction — so the claim
+            // above would be false if this paragraph did not exist.
+            //
+            // It is left undeclared because it is not this OPERATION's answer: it is reachable on every operation on
+            // every resource, it belongs to a request-level concern, and Wave 7 replaces the whole resolver with real
+            // authentication. Declaring it per-operation now would mean writing the same response into every
+            // operation in the tree and revisiting all of them in that wave. **Wave 7 owes this declaration**, at the
+            // level auth actually lives at, and that is the honest statement rather than "every answer is declared".
+            //
+            // Note this carve-out is genuinely weaker than the 500's: the 500's absence is ARGUED from a ruling that
+            // clients must not branch on our faults, while this one is deferred work with a named destination. The
+            // two should not be read as the same kind of decision.
+            //
             // Descriptions rather than content schemas: the 422 body is Symfony's RFC 9457 problem detail, which
             // API Platform already documents globally, and restating its shape here is a second copy that would
             // drift. What was missing is that these statuses EXIST.

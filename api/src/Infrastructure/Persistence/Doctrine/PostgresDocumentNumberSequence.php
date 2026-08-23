@@ -15,6 +15,7 @@ namespace Twes\Infrastructure\Persistence\Doctrine;
 use Doctrine\DBAL\Connection;
 use Twes\Domain\Document\DocumentNumberSequence;
 use Twes\Domain\Document\DocumentType;
+use Twes\Infrastructure\Tenancy\Exception\NoTenantBound;
 use Twes\Infrastructure\Tenancy\TenantContext;
 
 /**
@@ -79,8 +80,15 @@ final readonly class PostgresDocumentNumberSequence implements DocumentNumberSeq
     ) {}
 
     /**
-     * @throws \RuntimeException if no tenant is bound, if called outside a transaction, or if the counter row
-     *                           cannot be read back after being ensured
+     * TWO tags, because only ONE of the three conditions is the tenancy one. A scripted rewrite briefly merged
+     * them, claiming `NoTenantBound` for "called outside a transaction" and "counter row cannot be read back"
+     * as well — both of which still raise a plain `\RuntimeException`, and neither of which is an authorization
+     * refusal. php-cs-fixer's realignment is what made the run-on sentence visible.
+     *
+     * @throws NoTenantBound if no tenant is bound — Wave 1's boundary rule, typed so the transport answers a
+     *                       401 instead of the untyped 500 it gave until 2026-08-23 (round 4, R4S-5)
+     * @throws \RuntimeException if called outside a transaction, or if the counter row cannot be read back after
+     *                           being ensured
      */
     public function allocateNext(DocumentType $type): int
     {
@@ -88,13 +96,13 @@ final readonly class PostgresDocumentNumberSequence implements DocumentNumberSeq
         // learn what a tenant is, which is also what keeps the database-per-tenant mode expressible. It is still
         // needed HERE, because under the `column` strategy the counter row is identified by it.
         if (!$this->tenantContext->hasTenant()) {
-            throw new \RuntimeException(\sprintf(
-                'Refusing to allocate a %s number with no tenant bound. A document number is per (tenant, type), so '
+            throw NoTenantBound::whileAttempting(
+                \sprintf('allocate a %s number', $type->value),
+                'A document number is per (tenant, type), so '
                 . 'a tenant-less allocation has no counter to advance — and under row-level security the query '
                 . 'would silently see no row, which is indistinguishable from a tenant that has issued nothing. '
                 . 'That is how a document gets number 1 twice.',
-                $type->value,
-            ));
+            );
         }
 
         if (!$this->connection->isTransactionActive()) {

@@ -32,6 +32,24 @@ api_platform:
     # 4.3 has no `routes` option. Front-ends are served from the same origin by the same FrankenPHP process, which
     # is what keeps `mobile/web/`'s same-origin controls intact -- a cross-origin API would undo them.
 
+    # EVERY REFUSAL THAT IS NOT A SERVER FAULT GETS A STATUS, and the tenancy one is the first entry because it
+    # was answering the wrong one. `NoTenantBound` is Wave 1's boundary rule -- no tenant-less path may reach
+    # tenant data -- raised from five repositories. Until 2026-08-23 all five raised a bare `\RuntimeException`,
+    # so an authorization-shaped refusal arrived as an untyped **500** (round 4, R4S-5 / R4K-11).
+    #
+    # No data ever leaked: the refusal is fail-closed and always was. What was wrong was the REPORT, in two ways
+    # that both cost more than they look. A 500 tells a caller to retry something they must instead authenticate
+    # for; and it makes a tenancy control firing indistinguishable, in logs and in monitoring, from any other
+    # crash -- so the single signal that would show this boundary working was buried in noise.
+    #
+    # **401 rather than 403**, and this is the choice a reader is most likely to want to revisit. The request has
+    # not proved WHO it is: today the only resolver is the development-only header one, and Wave 7 replaces it
+    # with real authentication. 401 is "authenticate and try again", which is exactly the instruction. 403 would
+    # say "we know who you are and you may not", which is a claim this code cannot make -- there is no identity to
+    # deny. Recorded here rather than in a commit message so Wave 7 can revisit it deliberately.
+    exception_to_status:
+        Twes\Infrastructure\Tenancy\Exception\NoTenantBound: 401
+
     defaults:
         # STATELESS. There is no session (see framework.yaml), and a stateless API is what lets FrankenPHP run in
         # worker mode without a request leaking state into the next one.

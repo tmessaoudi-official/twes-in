@@ -82,12 +82,42 @@ final readonly class SavepointTenantBindingMiddleware implements Middleware
      * savepoint, and one without it ends the transaction. `ROLLBACK PREPARED 'txid'` is two-phase commit and has
      * no `TO` clause, so it is excluded without the rule needing to know what it is.
      *
-     * ANCHORED to the start of the statement, so a query that merely mentions the words in a string literal is
-     * not mistaken for one — the false-positive direction that makes a guard usable.
+     * **NOT ANCHORED, since 2026-08-23 — and the anchor was the last enumeration left in this method** (round 4,
+     * R4S-4). It read `/^\s*ROLLBACK.../` on the stated ground that anchoring keeps a query which merely mentions
+     * the words in a string literal from being mistaken for one. That is a real concern and it was answered in
+     * the wrong direction: `\s*` enumerates the ONE thing allowed to precede the keyword, so anything else
+     * evades it. Measured — three of these are missed by the anchored form:
+     *
+     *     /* retry *\/ ROLLBACK TO SAVEPOINT sp1      a leading block comment
+     *     -- retry\nROLLBACK TO SAVEPOINT sp1         a leading line comment
+     *     SELECT 1; ROLLBACK TO SAVEPOINT sp1         a preceding statement
+     *
+     * **OVER-FIRING IS SAFE HERE, WHICH IS WHY THE POLARITY CAN BE INVERTED AT ALL, and it was checked rather
+     * than assumed.** {@see PostgresRowLevelSecurityIsolation::assertStillBoundTo()} is a pure no-op on an intact
+     * binding: it returns quietly when the context holds a tenant and the GUC matches, AND when the context holds
+     * none and the GUC is empty. It throws only on genuine divergence. So the cost of a spurious match is one
+     * `current_setting()` read; the cost of a missed one is a connection silently scoped to a previous tenant.
+     * Where those costs are that asymmetric, a guard belongs on the over-firing side — the same inversion
+     * `scripts/gates/worker-mode-blocked.sh` needed three defeats to learn.
+     *
+     * Comments are STRIPPED rather than tolerated, so the common shapes do not even reach the match. A string
+     * literal containing the words still can, and that is accepted: it costs a no-op.
+     *
+     * The grammar half is unchanged and is still the point. A `ROLLBACK` with a `TO` clause returns to a
+     * savepoint; one without it ends the transaction and must NOT be re-checked, because a full rollback
+     * legitimately discards the binding on every rolled-back request and re-checking there would throw on
+     * entirely correct code — § Gotchas 2026-08-06. `ROLLBACK PREPARED 'txid'` has no `TO` clause and is excluded
+     * without the rule needing to know what it is.
      */
     public static function revertsToASavepoint(string $sql): bool
     {
-        return 1 === preg_match('/^\s*ROLLBACK\b(?:\s+(?:TRANSACTION|WORK))?\s+TO\b/i', $sql);
+        $stripped = preg_replace(
+            ['~/\*.*?\*/~s', '~--[^\n]*~', "~'[^']*'~s"],
+            ' ',
+            $sql,
+        ) ?? $sql;
+
+        return 1 === preg_match('/\bROLLBACK\b(?:\s+(?:TRANSACTION|WORK))?\s+TO\b/i', $stripped);
     }
 
     public function wrap(Driver $driver): Driver

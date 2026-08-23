@@ -49,6 +49,15 @@ final class SavepointRollbackRecognitionTest extends TestCase
         yield 'irregular whitespace' => ["ROLLBACK\n  TO\tSAVEPOINT   sp5"];
         yield 'leading whitespace, as a heredoc produces' => ['   ROLLBACK TO SAVEPOINT sp6'];
         yield 'a trailing semicolon' => ['ROLLBACK TO SAVEPOINT sp7;'];
+
+        // THE THREE THE ANCHOR MISSED (round 4, R4S-4). The predicate began `/^\s*ROLLBACK`, which enumerates the
+        // ONE thing permitted before the keyword — whitespace — so anything else walked past a control whose
+        // failure mode is a connection silently scoped to a previous tenant. Each of these was measured MISSED
+        // before the anchor was removed.
+        yield 'a leading BLOCK comment, which the anchor missed' => ['/* retry */ ROLLBACK TO SAVEPOINT sp1'];
+        yield 'a leading LINE comment, which the anchor missed' => ["-- retry\nROLLBACK TO SAVEPOINT sp1"];
+        yield 'a PRECEDING statement, which the anchor missed' => ['SELECT 1; ROLLBACK TO SAVEPOINT sp1'];
+        yield 'a comment BETWEEN the keywords' => ['ROLLBACK /* why */ TO SAVEPOINT sp1'];
     }
 
     #[DataProvider('savepointRollbacks')]
@@ -91,6 +100,13 @@ final class SavepointRollbackRecognitionTest extends TestCase
         yield 'an ordinary query' => ['SELECT 1'];
         // The word appears, but not as the statement's verb. Anchoring to the start is what excludes it.
         yield 'a query merely MENTIONING the words' => ["SELECT 'ROLLBACK TO SAVEPOINT' AS label"];
+
+        // THE CASE ABOVE IS WHY STRING LITERALS ARE STRIPPED AND NOT MERELY TOLERATED. Removing the anchor to
+        // close the three evasions would have broken it, and "over-firing is safe here" is a reason to tolerate a
+        // false positive rather than to introduce one deliberately. These two hold the same line from the other
+        // side: a savepoint rollback that exists ONLY inside a comment reverts nothing, so it must stay quiet.
+        yield 'the words inside a COMMENT only' => ["-- ROLLBACK TO SAVEPOINT sp1\nSELECT 1"];
+        yield 'the words inside a BLOCK comment only' => ['/* ROLLBACK TO SAVEPOINT sp1 */ SELECT 1'];
         yield 'an empty string' => [''];
     }
 

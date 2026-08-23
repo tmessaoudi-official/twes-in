@@ -947,7 +947,7 @@ row at all, three of them in this class |
 cell read *"does not exist yet"* until the panel found it saying so twelve lines above the paragraph announcing the
 transport. Three of these four are now reachable answers of the live transport: `error.not_found` from
 `IssueInvoiceProcessor` and `InvoiceProvider`, `error.tenant_required` from the boundary refusal, and
-`error.validation_failed` from the validator. None of them RESOLVES its key yet — see the paragraph below. Listed because a
+`error.validation_failed` from the validator. None of them RESOLVES its key yet — see the paragraph below. **`error.tenant_required` is the one that came closest, and the distinction is worth keeping**: since 2026-08-23 the boundary refusal is a TYPED `Twes\Infrastructure\Tenancy\Exception\NoTenantBound` carrying that key as a constant, mapped by `api_platform.exception_to_status` to a **401** — it answered an untyped **500** until then, across all five repositories (round 4, R4S-5 · R4K-11). So the STATUS is now right and the KEY is still unresolved: the exception carries it for the eventual resolver and nothing reads it, exactly as this paragraph says of every other key. Carrying is not resolving, and this sentence would be false if it were. Listed because a
 cross-check that silently scopes members out is the exemption-inside-a-check shape § Gotchas records |
 | a currency mismatch **while pricing a product** | **yes** | `money.currency_mismatch`, which has existed since Wave 0. Round 15 found the single coarse row above claiming this got no key while the key was there, translated, in all three locales — the row was right about documents and wrong about pricing, where a user really can type a cost and a price in two currencies |
 

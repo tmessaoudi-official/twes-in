@@ -17,6 +17,7 @@ use Twes\Domain\Document\NumberPattern;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Settings\CompanySettings;
 use Twes\Domain\Settings\CompanySettingsRepository;
+use Twes\Infrastructure\Tenancy\Exception\NoTenantBound;
 use Twes\Infrastructure\Tenancy\TenantContext;
 
 /**
@@ -175,18 +176,19 @@ final readonly class DoctrineCompanySettingsRepository implements CompanySetting
     }
 
     /**
-     * @throws \RuntimeException if no tenant is bound
+     * @throws NoTenantBound if no tenant is bound — Wave 1's boundary rule, typed so the transport can
+     *                       answer a 401 instead of the untyped 500 it gave until 2026-08-23 (round 4, R4S-5)
      */
     private function currentTenant(string $attempted): string
     {
         if (!$this->tenantContext->hasTenant()) {
-            throw new \RuntimeException(\sprintf(
-                'Refusing to %s with no tenant bound. Settings are per company, so a tenant-less read has no row '
+            throw NoTenantBound::whileAttempting(
+                $attempted,
+                'Settings are per company, so a tenant-less read has no row '
                 . 'to find — and under row-level security it would see nothing, which is indistinguishable from a '
                 . 'company that has configured nothing. Answering that with defaults would turn a tenancy refusal '
                 . 'into a silently wrong answer, which is the failure this refusal exists to prevent.',
-                $attempted,
-            ));
+            );
         }
 
         return $this->tenantContext->tenantId()->toString();

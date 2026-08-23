@@ -22,6 +22,7 @@ use Twes\Domain\Document\InvoiceRepository;
 use Twes\Domain\Document\PersistedInvoice;
 use Twes\Domain\Pricing\Rate;
 use Twes\Domain\Shared\Identifier;
+use Twes\Infrastructure\Tenancy\Exception\NoTenantBound;
 use Twes\Infrastructure\Tenancy\TenantContext;
 use Twes\Infrastructure\Tenancy\TenantId;
 
@@ -578,19 +579,20 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
      * tenant-less operations exist (installation, a global health check, a cross-tenant migration) and their authors
      * need to know this is not the tool for them rather than that something is broken.
      *
-     * @throws \RuntimeException if no tenant is bound
+     * @throws NoTenantBound if no tenant is bound — Wave 1's boundary rule, typed so the transport can
+     *                       answer a 401 instead of the untyped 500 it gave until 2026-08-23 (round 4, R4S-5)
      */
     private function currentTenant(string $attempted): TenantId
     {
         if (!$this->tenantContext->hasTenant()) {
-            throw new \RuntimeException(\sprintf(
-                'Refusing to %s with no tenant bound. An aggregate may only be loaded or stored inside a tenant '
+            throw NoTenantBound::whileAttempting(
+                $attempted,
+                'An aggregate may only be loaded or stored inside a tenant '
                 . '(Wave 1 boundary rule): a tenant-less read returns nothing under row-level security, which is '
                 . 'indistinguishable from "there is nothing" and is how a cross-tenant report gets written as though '
                 . 'it worked. Genuinely cross-tenant work — installation, a health check, a migration — does not go '
                 . 'through this repository.',
-                $attempted,
-            ));
+            );
         }
 
         return $this->tenantContext->tenantId();
