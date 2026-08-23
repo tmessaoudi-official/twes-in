@@ -139,8 +139,10 @@ rm -f "$NO_SPDX"
 # THIS CASE IS ALSO THE ONE THAT PINS THE THROWAWAY-INDEX BLOCK, and that is why the fixture is
 # deliberately left UNTRACKED: `no-orphaned-docblocks.php` enumerates `git ls-files` WITHOUT
 # `--others`, so without `GIT_INDEX_FILE` it inspects zero new files and this assertion sees
-# exit 0. [Verified: replacing the `export GIT_INDEX_FILE` line with a no-op turns 27 passed
-# into 26 passed, 1 failed, and this is the case that flips.] Do not "fix" a future failure
+# exit 0. [Verified 2026-08-23: replacing the `export GIT_INDEX_FILE` line with a no-op costs
+# exactly one pass and produces exactly one failure, and this is the case that flips. The
+# DIRECTION is stated and the TOTALS are not — they were written here as 27 -> 26 and the suite
+# reports 28, in a file whose own subject is that this suite reports its own count.] Do not "fix" a future failure
 # here by staging the fixture — staging it would make the assertion pass for the wrong reason
 # and retire the only coverage that block has.
 ORPHAN="$REPO/api/src/ZZTestOrphan.php"

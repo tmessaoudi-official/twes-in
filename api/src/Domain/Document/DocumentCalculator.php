@@ -301,9 +301,24 @@ final readonly class DocumentCalculator
             ));
         }
 
-        // Order by remainder DESC, then by position ASC. `uasort` is stable in PHP 8, but the position tie-break is
+        // Order by remainder DESC, then by position ASC. `usort` is stable in PHP 8, but the position tie-break is
         // written explicitly rather than relied upon: "stable sort" is an implementation guarantee and this is a
         // tax figure.
+        //
+        // THE FUNCTION NAME IN THIS COMMENT WAS `uasort` UNTIL 2026-08-23, and the call has always been `usort` —
+        // which matters more than a typo usually would, because the sentence's whole job is to justify a tax figure
+        // by appealing to a named function's documented behaviour, and a reader checking that appeal would have
+        // read the wrong manual page. It does NOT change the answer here, and that was MEASURED rather than
+        // reasoned: `uasort` preserves keys, but `array_slice()` reindexes numerically by default, so the sliced
+        // VALUES are identical either way. [Verified 2026-08-23 on this comparator: `usort` gives `[1,2,0,3]` and
+        // `uasort` `{1:1,2:2,0:0,3:3}`, and both slice to `[1,2]`.] Stated that way round on purpose — the first
+        // draft of this correction asserted the two WOULD diverge, which was a plausible mechanism nobody had run.
+        //
+        // AND THE TIE-BREAK IS AN EQUIVALENT MUTANT TODAY, recorded rather than left for the next reviewer to
+        // rediscover: deleting `?: $a <=> $b` leaves both suites green, because `$lineIndexes` arrives in
+        // ascending position order and PHP 8's sort is stable — exactly as the sentence above says. It is kept
+        // anyway, and the reason is the sentence's own: an equivalence that rests on the INPUT's order plus an
+        // implementation guarantee is one caller away from being false, and the cost of the clause is nothing.
         $order = $lineIndexes;
         usort($order, static fn(int $a, int $b): int
             => Decimal::compare($remainders[$b], $remainders[$a]) ?: $a <=> $b);

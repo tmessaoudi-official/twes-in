@@ -883,9 +883,19 @@ worst outcome available.
 **Four test suites, deliberately separate** (`api/phpunit.xml`): `unit` (pure domain, no kernel, no
 database), `integration` (real PostgreSQL — the tenancy policy, column fidelity), `functional` (HTTP
 through the kernel) and `e2e` (a really-booted server). **`functional` HOLDS CODE since 2026-08-06** — this sentence
-said both were empty for a commit after it did — and note that only some of it boots a kernel: the two processor
-classes drive the state providers and processors directly, because their subject is the translation between the wire
-and the domain, while `InvoiceWriteSurfaceTest` and `HttpSurfaceTest` need the real serializer, validator and router.
+said both were empty for a commit after it did — and note that only some of it boots a kernel. It holds **three
+KINDS** of class, and the kinds are what to remember, because the membership moves with every endpoint:
+
+- **`*ProcessorTest` / `*ProviderTest`** drive the state providers and processors DIRECTLY, because their subject is
+  the translation between the wire and the domain, not the routing that reaches it.
+- **`*SurfaceTest`** needs the real serializer, validator and router, because its subject is the answer a caller gets.
+- **`*WiringTest`** asserts what the CONTAINER did — and this third kind is the one the previous version of this
+  sentence omitted while partitioning the suite into the first two. `TenantBindingWiringTest` is the omitted member,
+  and § Gotchas 2026-08-07 is emphatic about why it cannot be dropped: a behaviour test and a wiring test are not
+  substitutes, the primary tenancy control had no call site for three commits, and *"Both, or neither is enough"*.
+
+`find api/tests/Functional -name '*Test.php'` is the membership; no count is written here, because the one that was
+(*"four of six classes"*) was stale by seven the day it was filed.
 **`e2e` HOLDS CODE since 2026-08-07** — `ServedSurfaceTest`, which asks a really-running FrankenPHP/Caddy what it
 actually sent: the two disjoint CSP policies, the narrow `/bundles/*` file server, the catch-all's 404, the site-wide
 security headers surviving every handler, and no repeated field. None of that is visible through the kernel, because
@@ -1605,8 +1615,15 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
 
   | enumeration | gates | sees a new untracked file? |
   |---|---|---|
-  | `ls-files --cached --others --exclude-standard` | `spdx-headers.sh`, `shell-syntax.sh` | **yes** |
+  | `ls-files --cached --others --exclude-standard` | `spdx-headers.sh`, `shell-syntax.sh`, `no-forgeable-tenancy-in-production.sh` | **yes** |
   | `ls-files` (cached only) | `no-orphaned-docblocks.php`, `no-owner-connection-in-application.php`, `worker-mode-blocked.sh`, `compose-config.sh` | **no** |
+
+  **DERIVE THAT PARTITION RATHER THAN TRUSTING IT** — `grep -n 'ls-files' scripts/gates/*.sh scripts/gates/*.php`,
+  and read which invocations carry `--others`. The row above named TWO gates for a year of commits while three
+  qualified: `no-forgeable-tenancy-in-production.sh` landed 2026-08-05 and this table was written 2026-08-06, so it
+  was stale on the day it was authored. That is this file's hand-written-enumeration defect landing on the very
+  paragraph whose subject is a rule with a silent exception — which is why the command is now written down beside
+  the answer, and why no COUNT appears in the row.
 
   Found by writing the `PostToolUse` hooks: the hook's own test suite reported the SPDX gate catching a brand-new file
   and `no-orphaned-docblocks.php` reporting clean on the same file, with a textbook stranded doc comment in it — the
@@ -1619,9 +1636,12 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   harmless. Two alternatives were rejected: `git add --intent-to-add` on the real index (a hook must leave no state —
   the developer would find a path staged that they never staged), and teaching the four gates `--others` (four gates
   changed to serve a hook, and in `worker-mode-blocked.sh` it would widen a security control's scope for an unrelated
-  reason). Pinned by a mutant: replacing the `export GIT_INDEX_FILE` line with a no-op turns `27 passed` into
-  `26 passed, 1 failed`, and the case that flips is the orphaned-docblock one, whose fixture is left deliberately
-  UNTRACKED for that reason. **The generalisable part is not about git:** two implementations of one documented rule
+  reason). Pinned by a mutant: replacing the `export GIT_INDEX_FILE` line with a no-op turns the hook suite's own
+  tally into **exactly one fewer pass and one failure**, and the case that flips is the orphaned-docblock one, whose
+  fixture is left deliberately UNTRACKED for that reason. [Verified 2026-08-23 — the DIRECTION is stated and the
+  totals are not, because the totals were written as `27`/`26, 1 failed` and the suite reports 28: § "Claude config"
+  says of that very suite *"it reports its own case count; none is written here"*, and this citation wrote one four
+  lines from the rule forbidding it. Re-measure with `bash .claude/hooks/test-hooks-on-write.sh`.] **The generalisable part is not about git:** two implementations of one documented rule
   is one rule and one silent exception, and the exception is invisible precisely because the rule is written down.
 
 - **2026-08-06 — A RENDERED VALUE CAN DETERMINE ITS OWN FORMATTER, which turned a persisted-configuration problem into
@@ -2025,7 +2045,12 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
   below** [Verified 2026-08-19: `jq '.hooks | keys'` → `["PostToolUse"]`]. The container-era
   SessionStart installer and PreCompact handoff registrations were removed 2026-08-18 and this line
   named them for a day afterwards.
-  **Both `deny` and `ask` stay empty permanently** (developer instruction, 2026-08-06 — recorded when
+  **Neither tier ever gates a command — `deny` is present and EMPTY, `ask` is ABSENT ALTOGETHER**, and the
+  distinction is worth keeping because the sentence here read *"both stay empty"*, which describes an `ask` key that
+  is not there. Behaviourally identical (absent ≡ empty), and the two spellings are what a reader compares when
+  checking the claim. [Verified 2026-08-23: `jq '.permissions | {has_deny: has("deny"), has_ask: has("ask"), deny}'`
+  → `has_deny: true`, `has_ask: false`, `deny: []`.] **Both stay that way permanently** (developer instruction,
+  2026-08-06 — recorded when
   sessions ran in a terminal-less web container, where a blocked or prompted command was simply lost
   rather than handed back; **the ruling stands** and is why the discipline in § "Git autonomy" is the
   only control). `rent-watch` carries four `deny` entries over
