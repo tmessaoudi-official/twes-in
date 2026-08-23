@@ -29,15 +29,18 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
   where `PerRateGroup` was ruled 2026-07-30. This is what keeps inclusive-vs-exclusive ONE implementation
   parameterised rather than two class hierarchies, which is the invariant `CLAUDE.md` states about upstream's four
   parallel sum classes.
-- [2026-08-23 10:30] **OPEN, and deliberately not resolved by inference: WHICH FIGURE ABSORBS A HALF-GRID TIE when
-  extracting inclusive tax.** The developer selected BOTH readings in one multi-select and they are mutually
-  exclusive, so neither is recorded as agreed -- picking the convenient one is exactly what `CLAUDE.md` invariant 10
-  forbids for a one-way door. The axis is MOOT at Tunisia's rates (denominators 119/107/113 admit no exact
-  half-millime) and LIVE at France's 20 %, which Wave 5 covers: 0.111 TND inclusive has an exact net of 0.0925000,
-  giving either net 0.093 / VAT 0.018 (round the NET, VAT takes the remainder) or net 0.092 / VAT 0.019 (round the
-  VAT, net takes the remainder). Same total; different figures on the invoice. **An earlier statement in this
-  session that the two readings "never diverge for a single line" was FALSE** -- it held only at Tunisian rates --
-  and is corrected here rather than left standing.
+- [2026-08-23 11:15] AGREED: **when extracting INCLUSIVE tax, the NET is rounded half-up and the VAT absorbs the
+  residue.** Worked at the only place the two readings diverge — an exact half-grid tie: 0.111 TND inclusive of
+  France's 20 % has an exact net of 0.0925000, which becomes **net 0.093, VAT 0.018**; the rejected reading rounds
+  the VAT instead and gives net 0.092, VAT 0.019. Same total either way, different figures on the invoice. Reason:
+  it mirrors the exclusive path, where the net is the AUTHORED figure and VAT is derived from it — so one direction
+  of derivation exists in the codebase rather than two facing opposite ways. **This ruling was held open for one
+  commit rather than inferred**: both readings were selected at once in a multi-select, they are mutually exclusive,
+  and `CLAUDE.md` invariant 10 forbids resolving a one-way door by picking the convenient reading. The axis is MOOT
+  at Tunisia's rates — denominators 119/107/113 admit no exact half-millime — and LIVE only at France's 20 %, so
+  nothing before Wave 5 can reach it; it is ruled now anyway, because a rule decided under no time pressure is the
+  one this domain wants. **A statement earlier that day that the two readings "never diverge for a single line" was
+  FALSE**, true only at Tunisian rates, and is corrected here rather than left standing.
 - [2026-08-23 10:30] AGREED: **the runtime role's table privileges come from an IDEMPOTENT GRANT STEP shipping with
   `infra/`, run by the entrypoint after migrate**, granting SELECT/INSERT/UPDATE/DELETE on tenant tables and never
   TRUNCATE or ownership; `schema-tenancy.php` then ASSERTS the grants exist. Reason: it keeps the migration ignorant
@@ -2718,7 +2721,7 @@ RENDERED string beside the sequence (belt-and-braces, costs a column, makes re-d
 pattern per document in a settings snapshot; or rule that rendering is presentational and re-rendering is acceptable.
 Unfixable-later, like the gapless sequence and money-is-never-a-float. Belongs to whichever wave writes the settings
 table.
-## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; three were open again and **ONE REMAINS OPEN, 2026-08-23**
+## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; three were open again and **ALL THREE ARE NOW RULED, 2026-08-23. NOTHING IN THIS TABLE IS OPEN.**
 
 This section listed five open decisions; every one has since been settled and the rulings live in
 `pricing-and-documents.plan.md` § Decisions Log. Kept as a record rather than deleted, with the outcomes:
@@ -2739,10 +2742,10 @@ point here, and this table is the one place either of them resolves to.
 | Open, and BLOCKED rather than owed | What the developer has to supply | Destination |
 |---|---|---|
 | ~~**Discounts**~~ **RULED 2026-08-23** | Both worked examples supplied. A **LINE** discount REDUCES the VAT base (150.000 gross, 10 % -> net 135.000, VAT 25.650, total 160.650; the rejected reading costs 2.850 TND more tax on one line) — EN 16931 BT-136 reduces BT-131, which feeds BT-116. A **DOCUMENT-level** discount is allocated **pro-rata by base** (VAT 22.100 against 20.300 for highest-rate-first), reusing the largest-remainder mechanism already ruled for per-line VAT rather than adding a second allocation rule. See § Decisions Log, 2026-08-23 10:30. | **Wave 2**, unblocked |
-| **Inclusive-vs-exclusive tax** — **AXIS 1 RULED 2026-08-23, AXIS 2 STILL OPEN** | It turned out to be TWO questions, not one. **Axis 1, the extraction point: RULED** — extraction happens **per rate group**, reusing `VatRoundingPoint` rather than adding a parameter, which is what keeps inclusive-vs-exclusive ONE parameterised implementation. [Verified: lines 22.531 + 113.678 at 19 % give per-line VAT 21.747 and per-group 21.748 — one millime.] **Axis 2, which figure absorbs a half-grid tie: OPEN.** Both readings were selected at once and they are mutually exclusive, so neither is recorded — invariant 10 forbids resolving a one-way door by picking the convenient reading. MOOT at Tunisia's rates (denominators 119/107/113 admit no exact half-millime) and LIVE at France's 20 %, which Wave 5 covers: 0.111 TND inclusive has an exact net of 0.0925000, giving either net 0.093 / VAT 0.018 or net 0.092 / VAT 0.019. **This is now the ONLY row in this table awaiting the developer.** | **Wave 2** for axis 1; axis 2 may defer to **Wave 5** with France, since it cannot arise at a Tunisian rate |
+| ~~**Inclusive-vs-exclusive tax**~~ **BOTH AXES RULED 2026-08-23** | It turned out to be TWO questions. **Axis 1, the extraction point:** **per rate group**, reusing `VatRoundingPoint` rather than adding a parameter, which is what keeps inclusive-vs-exclusive ONE parameterised implementation. [Verified: lines 22.531 + 113.678 at 19 % give per-line VAT 21.747 and per-group 21.748 — one millime.] **Axis 2, which figure absorbs a half-grid tie:** the **NET is rounded half-up and the VAT absorbs the residue** — 0.111 TND inclusive of France's 20 % has an exact net of 0.0925000 and becomes net 0.093 / VAT 0.018, mirroring the exclusive path where the net is the authored figure. Held open for one commit rather than inferred, because both readings were selected at once. See § Decisions Log, 2026-08-23 10:30 and 11:15. | **Wave 2** for axis 1; axis 2 binds from **Wave 5**, being unreachable at a Tunisian rate |
 | ~~**Who GRANTS the runtime role its privileges**~~ **RULED 2026-08-23** | An **idempotent grant step shipping with `infra/`**, run by the entrypoint after migrate, granting SELECT/INSERT/UPDATE/DELETE on tenant tables and never TRUNCATE or ownership; `schema-tenancy.php` then ASSERTS the grants exist. It keeps the migration ignorant of the runtime role's NAME — deployment configuration, which is why this needed a ruling rather than a fix — while making a freshly migrated environment serve a request with no manual step. Rejected: a migration parameter (one that knows a deployment's role names stops being replayable without it) and provisioning-owns-it-forever (least code, most operator burden). See § Decisions Log, 2026-08-23 10:30. | **Wave 12**, and the gate assertion may land earlier |
 
-**Why the first two WERE blocked and not merely owed:** inventing money numbers is the one thing this domain must not do, and neither was specified by any fixture in `docs/spec/pricing-vectors.json`. Both were supplied as worked examples on 2026-08-23 and the fixtures land with Wave 2; **what survives is axis 2 of the inclusive question alone**, which is a tie-breaking rule rather than a missing example — and the one row above still marked open. **The third row is a different kind of open** — it is a deployment topology decision, not an arithmetic one, so it is owed a ruling rather than a worked example, and nothing about it blocks Wave 2. Until they land, `VatRoundingPoint`
+**Why the first two WERE blocked and not merely owed:** inventing money numbers is the one thing this domain must not do, and neither was specified by any fixture in `docs/spec/pricing-vectors.json`. Both were supplied as worked examples on 2026-08-23 and the fixtures land with Wave 2; Axis 2 of the inclusive question — a tie-breaking rule rather than a missing example — was ruled a little later the same day, so **no row in this table is open**. Keep the table rather than deleting it: it is the record of what was blocked and why, and the next blocked decision belongs in it. **The third row is a different kind of open** — it is a deployment topology decision, not an arithmetic one, so it is owed a ruling rather than a worked example, and nothing about it blocks Wave 2. Until they land, `VatRoundingPoint`
 is the only parameterisation the calculation kernel carries, and it is genuinely one implementation rather than
 two — which is the invariant Wave 1's scope line was really about, and it is unweakened by the deferral. If the
 worked examples arrive before Wave 2 opens they can land in Wave 1; an unscheduled item is how the previous
