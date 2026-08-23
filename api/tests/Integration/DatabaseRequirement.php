@@ -31,7 +31,16 @@ namespace Twes\Tests\Integration;
  * meta-gate reporting 33/33 for a gate that detected nothing, a permission nothing consulted): **a control
  * that silently does not run is worse than one that is openly owed.** So: fail, and say what to do about it.
  *
- * **THERE IS NO LEGITIMATE SKIP IN THIS SUITE, and this paragraph said the opposite until round 16.** It
+ * **THERE IS NO LEGITIMATE SKIP IN THIS SUITE — and since 2026-08-23 that is ENFORCED rather than asserted.**
+ * `NoLegitimateSkipTest` scans every tracked file in this suite and fails on a call. It exists because the
+ * claim below was FALSE for eight rounds while being written here in capitals: round 15 applied the ruling to
+ * `superuserConnection()` and nowhere else, leaving eight guards in `TenantIsolationTest` that skipped — seven
+ * on a missing env var, one on an unreachable database. Measured rather than inferred: stripping
+ * `TWES_TEST_DB_PROBE_OWNER_ROLE` from the configuration produced `OK, but some tests were skipped!` and exit
+ * 0 with three mutant-killing security cases silent. A sentence in capitals is not a control, and this file
+ * is the one place that should never have needed telling.
+ *
+ * **The rest of this paragraph said the opposite until round 16.** It
  * read that `TWES_TEST_DB_SUPERUSER` is "documented as optional" and that "the two cases needing it"
  * skip when it is absent. Both halves were wrong: round 15 made the credential REQUIRED and
  * `superuserConnection()` now calls `self::fail()`, and MANY test methods call it — four of them the only

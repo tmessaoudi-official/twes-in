@@ -861,7 +861,16 @@ has been written as "one", "nine" and "eleven" in three successive rounds and wa
 are the *only* evidence that a security fix is load-bearing — the `'SET'`-versus-`'MEMBER'` mutant,
 the `pg_roles`-versus-`regrole` mutant, and round 15's rule and event-trigger carriers. So a missing or wrong
 superuser credential now **fails** rather than skipping, for the identical reason the next sentence gives about
-an unreachable database. [Verified: removing the two `<env>` entries turns a green integration run into
+an unreachable database. **And since 2026-08-23 so does EVERY other variable in this list, and an unreachable
+database with an untouched ACL** — round 15 made this correction for `superuserConnection()` alone and left
+eight guards in `TenantIsolationTest` still skipping, seven on a missing role name and one on a database it
+could not open. That is the not-the-full-set-of-sites shape, and it meant a CI provisioned with the superuser
+pair but without `TWES_TEST_DB_PROBE_OWNER_ROLE` reported green while four mutant-killing security cases went
+unexercised [Verified 2026-08-23: stripping that one entry gave `Tests: 3, Skipped: 3` and
+`OK, but some tests were skipped!`; it now gives `Failures: 3`]. It is no longer a rule to remember —
+`api/tests/Integration/NoLegitimateSkipTest.php` scans every tracked file in the suite and fails on a call,
+because `DatabaseRequirement` had asserted this invariant in capitals for eight rounds while it was false.
+[Verified: removing the two `<env>` entries turns a green integration run into
 `Failures: 26`, where it previously reported `OK, but some tests were skipped!`. **No absolute test count is
 written here** — the earlier version of this citation said `OK (98 tests)` / `Failures: 14`, which was accurate
 when written and was invalidated by two later commits of the same diff, so round 16 filed it as a false

@@ -71,9 +71,11 @@ final class TenantIsolationTest extends TestCase
 
     protected function tearDown(): void
     {
-        // Guarded because PHPUnit runs tearDown even when setUp called markTestSkipped, and an
-        // unguarded dereference turns nine intended skips into nine type errors that name the wrong
-        // file — hiding the one message an operator needs ("no PostgreSQL server reachable").
+        // Guarded because PHPUnit runs tearDown even when setUp did not complete, and an unguarded
+        // dereference turns the intended message into a type error that names the wrong file — hiding the
+        // one line an operator needs ("no PostgreSQL server reachable"). The guard was written for a setUp
+        // that SKIPPED; it is still load-bearing now that setUp FAILS instead, for the same reason and not
+        // the one originally written down.
         if (isset($this->owner)) {
             $this->owner->exec('DROP TABLE IF EXISTS ' . self::TABLE);
             $this->owner->exec('DROP TABLE IF EXISTS ' . self::SECOND_TABLE);
@@ -415,7 +417,12 @@ final class TenantIsolationTest extends TestCase
         $runtimeRole = getenv('TWES_TEST_DB_USER');
 
         if (!\is_string($runtimeRole)) {
-            self::markTestSkipped('TWES_TEST_DB_USER must be set.');
+            self::fail(
+                'TWES_TEST_DB_USER must be set. Without it this case cannot arrive with `current_user` '
+                . 'already switched, so the `session_user` half of the SET ROLE predicate goes unproven — and '
+                . 'that is the load-bearing half: round 5 recorded its mutants as equivalent and a reviewer '
+                . 'refuted it. Run scripts/dev/provision-test-database.sh; the name is in api/phpunit.xml.',
+            );
         }
 
         $switched = self::connectAs(
@@ -506,7 +513,12 @@ final class TenantIsolationTest extends TestCase
         $runtimeRole = getenv('TWES_TEST_DB_USER');
 
         if (!\is_string($probeOwner) || !\is_string($runtimeRole)) {
-            self::markTestSkipped('TWES_TEST_DB_PROBE_OWNER_ROLE and TWES_TEST_DB_USER must be set.');
+            self::fail(
+                'TWES_TEST_DB_PROBE_OWNER_ROLE and TWES_TEST_DB_USER must be set. Without them the '
+                . 'ownership-reachable-by-SET-ROLE refusal is never exercised, and that was a P0: a grant '
+                . "made `WITH INHERIT FALSE` is invisible to pg_has_role(…, 'USAGE') while one SET ROLE "
+                . 'reaches it. Run scripts/dev/provision-test-database.sh; both names are in api/phpunit.xml.',
+            );
         }
 
         $owned = self::TABLE . '_owned_elsewhere';
@@ -584,11 +596,18 @@ final class TenantIsolationTest extends TestCase
         $runtimeRole = getenv('TWES_TEST_DB_USER');
 
         if (!\is_string($runtimeRole)) {
-            self::markTestSkipped('TWES_TEST_DB_USER must be set.');
+            self::fail(
+                'TWES_TEST_DB_USER must be set. Without it no predefined role can be granted to the runtime '
+                . 'role, so the pg_execute_server_program and pg_write_server_files escalations — each of '
+                . 'which reaches a superuser connection while every attribute reads false — go unexercised. '
+                . 'Run scripts/dev/provision-test-database.sh; the name is in api/phpunit.xml.',
+            );
         }
 
-        // GRANTed by a superuser, which the owner is not — so this needs its own connection. Skipped rather
-        // than failed when unavailable: the pure-predicate coverage below still applies.
+        // GRANTed by a superuser, which the owner is not — so this needs its own connection. That helper
+        // FAILS rather than skipping when the credential is absent (round 15); this comment said the
+        // opposite, and "the pure-predicate coverage below still applies" was the reasoning that made a
+        // silent green look acceptable.
         $granter = self::superuserConnection();
 
 
@@ -961,7 +980,12 @@ final class TenantIsolationTest extends TestCase
         $truncator = getenv('TWES_TEST_DB_TRUNCATOR_ROLE');
 
         if (!\is_string($truncator)) {
-            self::markTestSkipped('TWES_TEST_DB_TRUNCATOR_ROLE must be set.');
+            self::fail(
+                'TWES_TEST_DB_TRUNCATOR_ROLE must be set. Without it the TRUNCATE-reachable-by-SET-ROLE '
+                . 'refusal is never exercised — the P0 where has_table_privilege() answers "no" while one '
+                . 'SET ROLE reaches the privilege, and a TRUNCATE on a policed table destroys every tenant '
+                . 'at once. Run scripts/dev/provision-test-database.sh; the name is in api/phpunit.xml.',
+            );
         }
 
         $this->owner->exec('GRANT TRUNCATE ON ' . self::TABLE . ' TO ' . $truncator);
@@ -1146,7 +1170,13 @@ final class TenantIsolationTest extends TestCase
         $runtimeRole = getenv('TWES_TEST_DB_USER');
 
         if (!\is_string($probeOwner) || !\is_string($truncator) || !\is_string($runtimeRole)) {
-            self::markTestSkipped('The probe-owner, truncator and runtime role names must all be set.');
+            self::fail(
+                'TWES_TEST_DB_PROBE_OWNER_ROLE, TWES_TEST_DB_TRUNCATOR_ROLE and TWES_TEST_DB_USER must all '
+                . 'be set. Without them the `session_user` halves of the ownership and TRUNCATE predicates go '
+                . 'unproven, and those are precisely the halves round 5 recorded as equivalent mutants and a '
+                . 'reviewer refuted. Run scripts/dev/provision-test-database.sh; all three are in '
+                . 'api/phpunit.xml.',
+            );
         }
 
         $owned = self::TABLE . '_session_user_probe';
@@ -1574,7 +1604,8 @@ final class TenantIsolationTest extends TestCase
      * to the runtime role, which is exactly what makes the call an escalation rather than a convenience.
      *
      * No superuser is needed to arrange this, unlike the exempt-owner case above: the owning connection the
-     * suite already has is the dangerous owner. So this case runs on every machine, where that one skips.
+     * suite already has is the dangerous owner. So this case runs on every machine, where that one FAILS
+     * without the credential — it read "where that one skips" until the whole suite stopped skipping.
      *
      * It also pins the second half of the same fix — a function's DEFAULT ACL grants `EXECUTE` to **PUBLIC**,
      * so no grant is issued here at all. Replacing `has_function_privilege` with an ACL walk that read a NULL
@@ -1642,7 +1673,12 @@ final class TenantIsolationTest extends TestCase
         $runtimeRole = getenv('TWES_TEST_DB_USER');
 
         if (!\is_string($probeRole) || !\is_string($runtimeRole)) {
-            self::markTestSkipped('No non-inheriting probe role configured.');
+            self::fail(
+                'TWES_TEST_DB_PROBE_OWNER_ROLE and TWES_TEST_DB_USER must be set. Without them no view '
+                . 'readable only through a `WITH INHERIT FALSE` grant is built, so the round-11 defect this '
+                . 'pins — a leaking view excluded from the result set, verdict read clean — goes unpinned. '
+                . 'Run scripts/dev/provision-test-database.sh; both names are in api/phpunit.xml.',
+            );
         }
 
         $this->owner->exec('DROP VIEW IF EXISTS ' . $view);
@@ -2674,7 +2710,13 @@ final class TenantIsolationTest extends TestCase
         $host = getenv('TWES_TEST_DB_HOST') ?: '127.0.0.1';
 
         if (!\is_string($user) || !\is_string($password)) {
-            self::markTestSkipped('No runtime credentials configured.');
+            self::fail(
+                'TWES_TEST_DB_USER and TWES_TEST_DB_PASSWORD must be set. Without them the NULL-datacl arm '
+                . 'of the TEMPORARY guard is never exercised, and that arm is the DANGEROUS default: a mutant '
+                . 'reading a NULL datacl as "no grants" certifies every untouched database as safe, and it '
+                . 'passed the whole suite before this case existed. Run '
+                . 'scripts/dev/provision-test-database.sh; both are in api/phpunit.xml.',
+            );
         }
 
         try {
@@ -2685,10 +2727,21 @@ final class TenantIsolationTest extends TestCase
                 [\PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION],
             );
         } catch (\PDOException $exception) {
-            self::markTestSkipped(
-                'No database with an untouched ACL is reachable, so the NULL-datacl arm cannot be exercised '
-                . 'here: ' . $exception->getMessage(),
-            );
+            // FAIL, NEVER SKIP — the only guard in this file whose subject is a REACHABLE DATABASE rather
+            // than a missing variable, and it fails for the same reason: this arm is the dangerous default,
+            // and a mutant flipping it passed the whole suite before this case existed. So the message says
+            // what it would TAKE rather than declaring the arm uncoverable here (CLAUDE.md § Gotchas
+            // 2026-07-30: never record a coverage gap as an impossibility).
+            self::fail(\sprintf(
+                "No database with an untouched ACL was reachable at %s, so the NULL-datacl arm did NOT run:\n"
+                . "  %s\n\n"
+                . 'What it takes: any reachable database whose `datacl` is NULL, which means one no GRANT or '
+                . 'REVOKE has ever touched. The stock `postgres` database is one on a default cluster, and '
+                . 'PUBLIC retains CONNECT on it — which is why the runtime role can open it at all. Set '
+                . 'TWES_TEST_DB_HOST if the cluster is not on 127.0.0.1.',
+                $host,
+                trim(explode("\n", $exception->getMessage())[0]),
+            ));
         }
 
         // The precondition: this database's ACL really is NULL, or the case proves nothing beyond the one above.
@@ -2733,7 +2786,7 @@ final class TenantIsolationTest extends TestCase
      * **The threat actor is a superuser or somebody holding `GRANT SET ON PARAMETER`, NOT the runtime role.**
      * `twes_owner` cannot create one — `permission denied to set parameter "twes.tenant_id"`, and
      * `has_parameter_privilege('twes_owner', 'twes.tenant_id', 'SET')` is false. That is why this needs a
-     * superuser connection to arrange and skips without one. It is still worth detecting for exactly the reason
+     * superuser connection to arrange and FAILS without one. It is still worth detecting for exactly the reason
      * the leaking-view case is: once such a function exists, any role holding EXECUTE calls it forever, so it is
      * a persistent delegated bypass rather than a one-off act by a privileged role.
      */
@@ -4294,7 +4347,8 @@ final class TenantIsolationTest extends TestCase
      * A connection as one of the four provisioned roles.
      *
      * Parameterised by env var name rather than taking credentials, so a test naming a role it needs gets
-     * the same skip message as everything else when the database is not provisioned — see
+     * the same FAILURE message as everything else when the database is not provisioned — it read "skip
+     * message" from round 15, when this helper stopped skipping, until the whole suite followed it — see
      * scripts/dev/provision-test-database.sh, and CLAUDE.md § "Quality gate" for the variables.
      */
     private static function connectAs(string $userVariable, string $passwordVariable, string $extraDsn = ''): \PDO
