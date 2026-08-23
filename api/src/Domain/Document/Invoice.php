@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace Twes\Domain\Document;
 
 use Twes\Domain\Document\Exception\DocumentCannotBeIssued;
+use Twes\Domain\Document\Exception\DocumentCannotBeTotalled;
 use Twes\Domain\Document\Exception\DocumentIsNotMutable;
 use Twes\Domain\Document\Exception\NumberTypeMismatch;
 use Twes\Domain\Money\Currency;
@@ -571,14 +572,12 @@ final readonly class Invoice
         try {
             $document->totals(VatRoundingPoint::PerRateGroup, RoundingMode::Up);
         } catch (InvalidMoneyAmount $overflow) {
-            throw new \InvalidArgumentException(\sprintf(
-                'Adding that %s would make this document impossible to total: %s. Every figure is individually '
-                . 'in bounds — a sum of representable amounts can be unrepresentable — and refusing it here is '
-                . 'what stops the document being ISSUED, its number consumed permanently from a gapless legal '
-                . 'sequence, and its totals raising forever afterwards including once cancelled.',
-                $what,
-                $overflow->getMessage(),
-            ), 0, $overflow);
+            // TYPED, and the message is unchanged. A bare `\InvalidArgumentException` here is indistinguishable at
+            // the transport from the one `InvoiceMapper` raises for a corrupt column — so `CreateInvoiceProcessor`
+            // could not catch this without re-admitting that, and the caller got a 500 (round 4, R4C-2).
+            // `DocumentCannotBeTotalled` EXTENDS `\InvalidArgumentException`, so every `@throws` tag on the three
+            // mutators that reach here stays true and no existing `catch` changes behaviour.
+            throw DocumentCannotBeTotalled::afterAdding($what, $overflow);
         }
 
         return $document;

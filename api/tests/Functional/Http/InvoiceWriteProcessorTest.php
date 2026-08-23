@@ -161,6 +161,31 @@ final class InvoiceWriteProcessorTest extends TestCase
             static fn(): NewInvoiceInput => self::validInput(charge: new NewFixedChargeInput('rebate', '-1.000')),
             'is negative',
         ];
+        // **THE FOUR CASES BELOW ARE REFUSED BY THE AGGREGATE, NOT BY THE CONVERSION, and that is the whole point
+        // of them.** Every case above is raised while `command()` parses the wire, INSIDE the processor's `try`.
+        // These four are raised inside `handle()`, where R4C-2 measured a **500**: each line is individually
+        // representable and only their SUM is not, so no per-line check can see it, and `Invoice::withLine()` throws
+        // a bare `\InvalidArgumentException` that Symfony's listener has no opinion about. A caller who typed two
+        // large-but-legal amounts was told the server broke.
+        yield 'two individually-representable lines whose SUM cannot be represented' => [
+            static fn(): NewInvoiceInput => new NewInvoiceInput('TND', [
+                new NewInvoiceLineInput('1', '900000000000000', '19'),
+                new NewInvoiceLineInput('1', '900000000000000', '19'),
+            ], [], self::FIXTURE_CLIENT),
+            'impossible to total',
+        ];
+        yield 'a line whose VAT pushes the total past what an amount can hold' => [
+            static fn(): NewInvoiceInput => new NewInvoiceInput('TND', [
+                new NewInvoiceLineInput('1', '999999999999999', '19'),
+            ], [], self::FIXTURE_CLIENT),
+            'impossible to total',
+        ];
+        yield 'a fixed charge that makes the document impossible to total' => [
+            static fn(): NewInvoiceInput => new NewInvoiceInput('TND', [
+                new NewInvoiceLineInput('1', '900000000000000', '0'),
+            ], [new NewFixedChargeInput('stamp_duty', '900000000000000')], self::FIXTURE_CLIENT),
+            'impossible to total',
+        ];
         yield 'a fixed-charge label that is only whitespace' => [
             static fn(): NewInvoiceInput => self::validInput(charge: new NewFixedChargeInput('   ', '1.000')),
             'stable label',

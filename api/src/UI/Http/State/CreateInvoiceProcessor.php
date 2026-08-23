@@ -18,6 +18,7 @@ use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 use Twes\Application\Document\CreateInvoice;
 use Twes\Application\Document\CreateInvoiceHandler;
 use Twes\Domain\Document\DocumentLine;
+use Twes\Domain\Document\Exception\DocumentCannotBeTotalled;
 use Twes\Domain\Document\Exception\UnknownClient;
 use Twes\Domain\Document\FixedCharge;
 use Twes\Domain\Money\Currency;
@@ -129,10 +130,27 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
         //
         // Without this arm the refusal is a 500: `\DomainException` means nothing to Symfony's exception listener,
         // so a caller who mistyped one character of a client id would be told the server broke.
+        //
+        // **AND `DocumentCannotBeTotalled`, WHICH IS THE SECOND SUCH ARM AND WAS FOUND THE SAME WAY.** The
+        // paragraph above ends *"`Invoice::draft()` plus `withLine()` cannot refuse anything the conversion above
+        // did not already accept"*, and round 4 measured that false (R4C-2): the conversion checks each LINE, and
+        // the document TOTAL is not a line. Two amounts of `900000000000000` are each representable and their sum
+        // is not, so the refusal is raised by the aggregate inside `handle()` and answered **500** — a caller told
+        // the server broke for typing two large-but-legal numbers. The same reasoning as the arm above applies
+        // unchanged: widening the conversion's `catch` to cover it would re-admit every `\InvalidArgumentException`
+        // the mapper raises for corrupt column data, which is OUR fault and must stay a 500. So it gets its own
+        // arm, and `DocumentCannotBeTotalled` exists to make it distinguishable from the mapper's.
+        //
+        // `assertRoomFor()` — the other refusal `Invoice` raises from inside `handle()` — deliberately has NO arm:
+        // `NewInvoiceInput` carries `#[Assert\Count(max: Invoice::MAX_LINES)]` on both collections, so the
+        // validator answers 422 before the aggregate is built and the guard is unreachable from this transport.
+        // It is kept in the aggregate regardless, because a guard deleted because today's only caller cannot reach
+        // it is deleted for the wrong reason — and an importer or a `PUT` will reach it. It earns its arm and its
+        // key in the change that makes it reachable, not before.
         try {
             $persisted = $this->handler->handle($command);
-        } catch (UnknownClient $unknown) {
-            throw new UnprocessableEntityHttpException($unknown->getMessage(), $unknown);
+        } catch (UnknownClient|DocumentCannotBeTotalled $refused) {
+            throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         }
 
         return InvoiceRepresentation::of($persisted);
