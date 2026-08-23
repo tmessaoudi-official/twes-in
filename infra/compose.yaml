@@ -74,6 +74,21 @@ x-api-environment: &api-environment
   # assertion would have refused every connection on a database provisioned exactly as we provision it. That
   # revocation landed in the same change as this line.
   TWES_ASSERT_REVOKED_CAPABILITIES: '${TWES_ASSERT_REVOKED_CAPABILITIES:-1}'
+  # THE FORGEABLE-TENANCY KNOB, WIRED 2026-08-23 (round 4, R4S-1) — and it was `R3S-4`'s exact shape, on the line
+  # immediately below the one R3S-4 fixed, in the same file. `infra/.env` has carried `TWES_TRUST_TENANT_HEADER=0`
+  # since the tier landed, with a comment calling it one of "three independent controls"; it was absent from this
+  # anchor, from every Dockerfile and from the entrypoint, so it was a compose INTERPOLATION variable that never
+  # entered a container and `api/.env`'s `0` decided by accident. Three of three was two of three.
+  #
+  # **A LITERAL `0`, NOT `${TWES_TRUST_TENANT_HEADER:-0}`, and that is deliberate on two counts.** The obvious
+  # spelling — matching the line above — is REFUSED by `scripts/gates/no-forgeable-tenancy-in-production.sh`
+  # [Verified 2026-08-23: `violations=1`], because that gate's polarity rewrite requires an assignment to carry the
+  # single permitted value rather than merely avoid `1`, and a value assembled from two files is exactly what it
+  # exists to close. And the refusal is right: an interpolation here would make `infra/.env` AUTHORITATIVE, so an
+  # operator editing the deployment's own dotenv would silently switch on a header that lets any caller act as any
+  # tenant. There is no legitimate deployment where this varies before Wave 7 writes authentication, so it does not
+  # interpolate. Deleted in Wave 7 with the resolver.
+  TWES_TRUST_TENANT_HEADER: '0'
 
 x-api-depends: &api-depends
   database:

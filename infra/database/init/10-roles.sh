@@ -168,6 +168,12 @@ psql --username "$POSTGRES_USER" --dbname "$DB" \
 	-- round 15 found `lo_creat` missing from both the constant and the documented REVOKE block, which is the
 	-- two-copies-of-one-list defect this project records against every other enumeration in it. If the constant
 	-- grows, this block is what has to grow with it, and `compose-config.sh` asserts the two agree.
+	--
+	-- THAT LAST CLAUSE WAS FALSE UNTIL 2026-08-23 (round 4, R4S-2): nothing anywhere compared them, so a
+	-- seventh entry in the constant left every gate green and would then have refused EVERY connection
+	-- acquisition in api, worker and scheduler -- a total outage caused by editing a security list. The
+	-- check now exists, compares BY FUNCTION NAME (this block names lo_import twice, once per signature),
+	-- runs in BOTH directions, and sits ABOVE that gate's `docker compose` probe so it never skips.
 	REVOKE EXECUTE ON FUNCTION lo_creat(integer) FROM PUBLIC;
 	REVOKE EXECUTE ON FUNCTION lo_create(oid) FROM PUBLIC;
 	REVOKE EXECUTE ON FUNCTION lo_from_bytea(oid, bytea) FROM PUBLIC;

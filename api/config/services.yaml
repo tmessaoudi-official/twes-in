@@ -168,9 +168,14 @@ services:
     # DELETES the header adapter, the env variable and the gate together.
     #
     # `HeaderTenantResolver` trusts a caller-supplied header, so it is NOT authentication and is disabled in every
-    # committed configuration. Three independent controls, because one would not be enough: it refuses loudly when
-    # not permitted, `TWES_TRUST_TENANT_HEADER` is 0 in api/.env AND infra/.env, and
-    # `scripts/gates/no-forgeable-tenancy-in-production.sh` refuses any other value in a tracked file.
+    # committed configuration. SEVERAL independent controls, because one would not be enough: it refuses loudly
+    # when not permitted, `TWES_TRUST_TENANT_HEADER` is 0 in api/.env AND infra/.env AND -- since 2026-08-23 --
+    # as a literal in compose.yaml's `x-api-environment` anchor,
+    # `scripts/gates/no-forgeable-tenancy-in-production.sh` refuses any other value in a tracked file, and
+    # `scripts/gates/compose-config.sh` refuses one in the RENDERED configuration.
+    #
+    # This said "Three independent controls" while the infra/.env one was INERT -- referenced by no compose file,
+    # so it never entered a container (round 4, R4S-1). No count is written here now; grep the knob's name.
     Twes\UI\Http\Tenancy\HeaderTenantResolver:
         arguments:
             $permitted: '%env(bool:TWES_TRUST_TENANT_HEADER)%'

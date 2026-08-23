@@ -21,7 +21,12 @@
 #   - the database and the document renderer are not on the externally-reachable network;
 #   - the internal network has no route out;
 #   - every Messenger receiver a service consumes is a transport the application actually defines;
-#   - in PRODUCTION ONLY, every service drops ALL Linux capabilities.
+#   - in PRODUCTION ONLY, every service drops ALL Linux capabilities;
+#   - no service renders `TWES_TRUST_TENANT_HEADER` as anything but `0` -- the composition half of a control
+#     whose text half is `no-forgeable-tenancy-in-production.sh`, which reads FILES and therefore cannot see
+#     an overlay, a YAML anchor or an `env_file:` pointing at an IGNORED file. [Verified 2026-08-23: a
+#     gitignored `.env.*.local` referenced by `env_file:` leaves the text gate reporting OK with 0
+#     violations while this catches it on two services.]
 #
 # NO COUNT IS WRITTEN HERE, deliberately: this list said "the four assertions below" while there were five, and then
 # six. A number written beside the thing it counts is the first thing to drift, and CLAUDE.md records that shape
@@ -32,9 +37,14 @@
 # one statement from every tenant's data; and two schedulers issue every recurring invoice twice, which in a
 # billing product means charging a customer twice.
 #
-# It needs `docker compose` but NOT a running daemon — `config` is a pure rendering operation. Where the binary is
-# absent it SKIPS with a message rather than failing, which is the one place this repository tolerates a skip: a
-# machine without Docker can still run every other gate. The skip message does NOT claim CI covers it -- it said so
+# The RENDERED half needs `docker compose` but NOT a running daemon — `config` is a pure rendering operation.
+# Where the binary is absent THAT HALF skips with a message rather than failing, which is the one place this
+# repository tolerates a skip: a machine without Docker can still run every other gate.
+#
+# **NOT THE WHOLE GATE, since 2026-08-23.** The large-object cross-check below runs BEFORE the probe and therefore
+# never skips — it is a text comparison between `LARGE_OBJECT_WRITERS` and `10-roles.sh`, and neither side needs a
+# daemon. Stated here because the old sentence said the gate skips, full stop, and a reader scoping the Docker-less
+# case would have concluded that list went unchecked. The skip message does NOT claim CI covers it -- it said so
 # for two commits and there is no `.github/` in this repository, so the honest statement is that the rendered half
 # is unchecked until someone runs it with Docker. Naming a CI that does not exist is how a gap stops being owed.
 # ==============================================================================================================
@@ -149,8 +159,61 @@ if [[ "${1:-}" == '--dump-rules' ]]; then
     exit 0
 fi
 
+# ==============================================================================================================
+# THE LARGE-OBJECT REVOCATION AGREES WITH THE CHECKER THAT ENFORCES IT — and this is deliberately ABOVE the
+# `docker compose` probe, so it runs on every machine.
+#
+# `infra/database/init/10-roles.sh` REVOKEs EXECUTE on the large-object writers, and its own comment says the list
+# is "TAKEN FROM the checker's own `LARGE_OBJECT_WRITERS` constant ... If the constant grows, this block is what
+# has to grow with it, and `compose-config.sh` asserts the two agree." **NOTHING DID** (round 4, R4S-2): the only
+# match for the constant's name anywhere under `scripts/` was prose in an unrelated message. So a seventh entry
+# added to the constant left every gate and the whole suite green — and then refused EVERY connection acquisition
+# in `api`, `worker` and `scheduler`, because `assertConnectionCannotCreateLargeObjects()` checks what the constant
+# names while the database grants what the script revoked. A total outage on the next edit to a security list.
+#
+# WHY THIS FILE. The claim names it, and implementing the check where the claim already points is a whole closure
+# where amending the pointer would be half of one. It sits before the probe because a text comparison needs no
+# daemon: `10-roles.sh` is executed by no test and read by no other gate, unlike its dev twin, so if this skipped
+# without Docker the list would be unchecked on exactly the machines that cannot run the stack anyway.
+#
+# BY FUNCTION NAME, deduplicated, because the REVOKE block carries `lo_import` TWICE — once per signature
+# (`lo_import(text)` and `lo_import(text, oid)`) — and a set comparison on raw lines would report a phantom
+# difference forever. BOTH DIRECTIONS: a name revoked but not checked is a capability the guard cannot see, and a
+# name checked but not revoked is the outage above. Unreadable-or-empty on either side is a FAILURE, never a pass:
+# an unverifiable list has not been cleared.
+readonly ISOLATION_PHP="$REPO_ROOT/api/src/Infrastructure/Tenancy/PostgresRowLevelSecurityIsolation.php"
+readonly ROLES_SH="$REPO_ROOT/infra/database/init/10-roles.sh"
+
+lo_checked="$(sed -n '/LARGE_OBJECT_WRITERS = \[/,/\];/p' "$ISOLATION_PHP" 2>/dev/null \
+    | grep -oE "'(lo_[a-z_]+|lowrite)'" | tr -d "'" | sort -u)"
+lo_revoked="$(grep -oE 'REVOKE EXECUTE ON FUNCTION (lo_[a-z_]+|lowrite)' "$ROLES_SH" 2>/dev/null \
+    | awk '{print $5}' | sort -u)"
+
+if [[ -z "$lo_checked" || -z "$lo_revoked" ]]; then
+    printf 'compose-config: FAIL — could not read the large-object list from one side, so the agreement between\n' >&2
+    printf '  `LARGE_OBJECT_WRITERS` and 10-roles.sh REVOKE block is UNVERIFIED. checked=[%s] revoked=[%s]\n' \
+        "$(printf '%s' "$lo_checked" | tr '\n' ' ')" "$(printf '%s' "$lo_revoked" | tr '\n' ' ')" >&2
+    exit 1
+fi
+
+if [[ "$lo_checked" != "$lo_revoked" ]]; then
+    printf 'compose-config: FAIL — the large-object writers CHECKED and REVOKED disagree.\n' >&2
+    printf '  only in LARGE_OBJECT_WRITERS (checked, never revoked -- every connection acquisition will be\n' >&2
+    printf '  refused once TWES_ASSERT_REVOKED_CAPABILITIES is on): %s\n' \
+        "$(comm -23 <(printf '%s\n' "$lo_checked") <(printf '%s\n' "$lo_revoked") | tr '\n' ' ')" >&2
+    printf '  only in 10-roles.sh (revoked, never checked -- the guard cannot see this capability): %s\n' \
+        "$(comm -13 <(printf '%s\n' "$lo_checked") <(printf '%s\n' "$lo_revoked") | tr '\n' ' ')" >&2
+    printf '  `pg_largeobject` cannot carry row-level security at any privilege level, so a large object is data\n' >&2
+    printf '  that escapes tenancy entirely -- the TRUNCATE class by another route. Keep the two lists identical.\n' >&2
+    exit 1
+fi
+
+printf 'compose-config: OK — %s large-object writer(s) are both checked and revoked.\n' \
+    "$(printf '%s\n' "$lo_checked" | wc -l)"
+
 if ! docker compose version >/dev/null 2>&1; then
-    echo "compose-config: SKIPPED — \`docker compose\` is not available on this machine."
+    echo "compose-config: SKIPPED (rendered half only) — \`docker compose\` is not available on this machine."
+    echo "  The large-object cross-check above DID run: it needs no daemon and never skips."
     echo "  Every other gate still runs, INCLUDING scripts/gates/worker-mode-blocked.sh, which covers the"
     echo "  worker-mode routes that need no daemon. What is NOT covered here is the RENDERED configuration:"
     echo "  an overlay, a YAML anchor, an \`env_file:\`, a value assembled from two files. Nothing else sees those."
@@ -450,6 +513,30 @@ if not (cfg.get('networks', {}).get('internal', {}) or {}).get('internal'):
     problems.append(
         'the `internal` network is not marked `internal: true`, so a compromised worker or the document renderer '
         'would have a route to the outside world.')
+
+# 8. THE FORGEABLE-TENANCY KNOB IS `0` IN EVERY SERVICE THAT CARRIES IT, IN THE RENDERED CONFIGURATION.
+#    Added 2026-08-23 (round 4, R4S-1). `HeaderTenantResolver` trusts an `X-Tenant-Id` header verified by nothing,
+#    so a service where this is on lets any caller act as any tenant whose id they can produce -- a cross-tenant
+#    read of every client's invoices.
+#
+#    WHY HERE AS WELL AS IN THE TEXT GATE, which is the same both-directions argument the worker-mode pair makes:
+#    `no-forgeable-tenancy-in-production.sh` reads every tracked FILE and cannot see COMPOSITION. An overlay, a
+#    YAML anchor, an `env_file:` or a value assembled from two files is invisible to it and visible here. The text
+#    gate is what made the interpolated spelling impossible in the first place; this is what would catch an
+#    overlay re-declaring the variable with a different value, which no text sweep can rule out.
+#
+#    ABSENT IS ACCEPTED, PRESENT-AND-NOT-`0` IS NOT. A service that never declares it inherits `api/.env`'s `0`
+#    from inside the image, which is the fail-safe this repository already relies on; asserting presence would
+#    instead demand the variable on `database`, `valkey` and `gotenberg`, which have no application in them.
+for name, service in sorted(services.items()):
+    declared = (service.get('environment') or {}).get('TWES_TRUST_TENANT_HEADER')
+
+    if declared is not None and str(declared).strip() != '0':
+        problems.append(
+            'service `%s` renders TWES_TRUST_TENANT_HEADER as %r, and the only permitted value is 0. That knob '
+            'makes an unverified `X-Tenant-Id` header authoritative, so any caller can act as any tenant whose id '
+            'they can produce. It exists only so Wave 1\'s HTTP surface could be exercised before Wave 7 writes '
+            'authentication, and it is deleted with the resolver in that wave.' % (name, declared))
 
 # 6. IN PRODUCTION, EVERY SERVICE DROPS ALL LINUX CAPABILITIES.
 #    PROD ONLY, and the scoping is the point rather than an exemption: the dev overlay deliberately does NOT harden,
