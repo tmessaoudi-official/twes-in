@@ -1419,8 +1419,8 @@ which this domain exists not to do. **Destination: WAVE 2**, whose stated theme 
 machinery — discounts and an inclusive-tax flag are exactly that, and Wave 2 is also where the negative-tie
 vector already waits. Named because round 15 pointed out this paragraph criticised the superseded record for
 naming no destination wave and then named none itself; if the worked examples arrive sooner they can land in
-Wave 1, but an unscheduled item is how the previous record went stale. **They need worked examples from the
-developer, and both are now rows in § "Awaiting the developer"** — this paragraph stated the requirement with no
+Wave 1, but an unscheduled item is how the previous record went stale. ~~**They need worked examples from the
+developer**~~ **— SUPPLIED AND RULED 2026-08-23; both are rows in § "Awaiting the developer", now struck there** — this paragraph stated the requirement with no
 pointer to any register until round 17, so the register was reachable from Wave 2's paragraph and not from this
 one, which is the section a Wave 1 session actually reads. What is needed: for discounts, whether a
 line discount reduces the VAT base and how a document-level discount is allocated across rate groups; for
@@ -2702,7 +2702,7 @@ that nothing had ever caught. A probe over synthesised values can never cover a 
 synthesise — that is a property of the technique, not a bug to fix.
 
 
-## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; **TWO ITEMS ARE OPEN**
+## Awaiting the developer (1 of 2 — this one holds ONLY the rendered-number decision, which is RULED AND BUILT) — **NOTHING HERE IS OPEN**
 
 **3. ~~THE RENDERED DOCUMENT NUMBER IS NOT REPRODUCIBLE FROM ITS ROW~~ — RULED 2026-08-01 18:00, and **BUILT
 2026-08-06**: the rendered string is PERSISTED alongside the sequence.** See the Decisions Log for what landed. Kept
@@ -2721,7 +2721,7 @@ RENDERED string beside the sequence (belt-and-braces, costs a column, makes re-d
 pattern per document in a settings snapshot; or rule that rendering is presentational and re-rendering is acceptable.
 Unfixable-later, like the gapless sequence and money-is-never-a-float. Belongs to whichever wave writes the settings
 table.
-## Awaiting the developer — the ORIGINAL FIVE ARE ALL RULED, 2026-07-29; three were open again and **ALL THREE ARE NOW RULED, 2026-08-23. NOTHING IN THIS TABLE IS OPEN.**
+## Awaiting the developer (2 of 2 — the ORIGINAL FIVE, ruled 2026-07-29, plus the three that reopened) — **ALL RULED 2026-08-23. NOTHING HERE IS OPEN.**
 
 This section listed five open decisions; every one has since been settled and the rulings live in
 `pricing-and-documents.plan.md` § Decisions Log. Kept as a record rather than deleted, with the outcomes:
@@ -2729,7 +2729,7 @@ profit-rate formula → **markup on cost**, VAT on the profit-inclusive net; inv
 only**; delivery notes → **their own persistent, independently numbered documents**; multi-currency →
 **in from the start, default TND**; VAT rounding → **once per rate group on the summed base**.
 
-**THREE ITEMS ARE AWAITING THE DEVELOPER AGAIN, and this paragraph denied it until round 17.** (Two were the money-arithmetic pair; the third, added 2026-08-01, is the runtime role's privileges — and note round 23 caught the heading above being updated to THREE while this sentence still said TWO, which is this file's own rule about a correction that leaves the false statement in place.) It read *"Nothing
+**THREE ITEMS WERE AWAITING THE DEVELOPER AGAIN, and ALL THREE WERE RULED ON 2026-08-23 — nothing in the table below is open.** This sentence read *"THREE ITEMS ARE AWAITING"* for one commit after the heading above it was updated to say they were ruled, which is R24-17 (*"two `## Awaiting the developer` headings 17 lines apart disagree about the count"*) reintroduced by the very change that closed the rows — the count in the heading was edited and the count in the prose beneath it was not. Kept as a sentence rather than deleted because the history is the point: **it also denied the items were open at all until round 17**, (Two were the money-arithmetic pair; the third, added 2026-08-01, is the runtime role's privileges — and note round 23 caught the heading above being updated to THREE while this sentence still said TWO, which is this file's own rule about a correction that leaves the false statement in place.) It read *"Nothing
 here is awaiting the developer. The open items are in the owed table under Wave 0."* — while **§ Wave 2 cited this
 very section** for two items that are ruled neither here nor in that owed table, and **§ Wave 1 stated the same
 requirement with no pointer at all**, so the register was reachable from one side only. Derive it rather than trust
