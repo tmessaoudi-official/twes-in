@@ -29,8 +29,9 @@ Then:
 | URL | What |
 |---|---|
 | `http://localhost:8080/api` | the API Platform entrypoint |
-| `http://localhost:8080/api/docs.jsonopenapi` | the OpenAPI document. **NOT `/api/docs`**, which returns 404 to a browser: `api_platform.yaml` deliberately ships no HTML documentation UI, because SwaggerUI and ReDoc fetch remote assets and that is a privacy question this project has already ruled on for the Flutter build |
-| `http://localhost:8080/api/currencies` | the one implemented resource |
+| `http://localhost:8080/api/docs.jsonopenapi` | the OpenAPI document, as JSON |
+| `http://localhost:8080/api` in a BROWSER | **the Swagger UI documentation page.** This row said `/api/docs` *"returns 404 to a browser"* and that the project *"deliberately ships no HTML documentation UI"*; both halves have been false since 2026-08-05, when `enable_swagger_ui: true` and `html` in `docs_formats` landed together with a dedicated `@apiDocs` Caddy matcher and an `e2e` case on the path. The privacy reasoning it gave was also wrong about which UI does what: Swagger UI's assets are LOCAL (`public/bundles/apiplatform/`), and it is ReDoc that reaches for `cdn.redoc.ly` — which our own `img-src 'self' data:` blocks. One URL, two answers by `Accept`: `text/html` gets the page, `application/ld+json` gets the API |
+| `http://localhost:8080/api/currencies` | one of FIVE resources. This row called it *"the one implemented resource"*, which was true when written and outlived four more: `/api/currencies` (`GET`, `GET` collection), `/api/invoices` (`POST`, `GET`, plus `POST /api/invoices/{id}/issue`), `/api/clients` (`POST`, `GET`), `/api/products` (`POST`, `GET`) and `/api/settings` (`GET`, `PUT`). Derive the live set from `api/src/UI/Http/ApiResource/` or from the OpenAPI document rather than from this table — a count written beside the thing it counts is the drift this repository records against itself repeatedly |
 | `http://localhost:8080/health` | liveness — touches nothing |
 | `http://localhost:8080/health/ready` | readiness — database, schema, tenant binding |
 | `http://localhost:8080/admin/` | the Angular admin (after `make build-front`) |
