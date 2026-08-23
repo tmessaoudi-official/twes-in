@@ -139,6 +139,30 @@ case "$rel" in
     ;;
 esac
 
+# The forgeable-tenancy sweep. ROUTED SINCE 2026-08-23 (round 4, R4K-4) — before that it was in
+# `gate:architecture` and reachable from this hook for NO file type, while also being absent from the
+# "deliberately not here" list above, so no decision was recorded in either direction. It is a SECURITY
+# gate: `HeaderTenantResolver` trusts an `X-Tenant-Id` header verified by nothing, so a deployment where
+# `TWES_TRUST_TENANT_HEADER` is not `0` lets any caller act as any tenant whose id they can produce.
+#
+# THE CONFIG SURFACE, NOT EVERY WRITE, and the reason is a measurement rather than the usual bias. This
+# hook's own note above says "over-routing costs milliseconds" and prefers to run a gate when in doubt;
+# that premise does not hold here — this one is **5.2s, 6.4s, 11.6s** over three runs [measured
+# 2026-08-23], the most expensive gate in the set. Routing it on `*.php`, the commonest write there is,
+# would put five to eleven seconds on every edit to buy a check of a knob that appears in no PHP file
+# except a docblock, which this gate's own first version false-positived on.
+#
+# So: dotenv, compose and YAML (`api/config/services.yaml` is where the knob is WIRED —
+# `$permitted: '%env(bool:TWES_TRUST_TENANT_HEADER)%'`), Dockerfiles, the entrypoint shell, and tracked
+# JSON. That covers every file in the tree that carries the knob today. `composer gate` still runs it
+# over EVERYTHING tracked, so a `.php` assignment is caught before it can be committed — which is the
+# same trade the note above describes: under-routing defers a finding, it does not lose one.
+case "$rel" in
+  *.env|*.env.*|*compose*.y*ml|*.yaml|*.yml|*Dockerfile*|*.sh|*.json)
+    gates+=("no-forgeable-tenancy:bash scripts/gates/no-forgeable-tenancy-in-production.sh")
+    ;;
+esac
+
 ((${#gates[@]})) || exit 0
 
 # A FILE CLAUDE HAS JUST CREATED IS UNTRACKED, AND HALF THE GATES CANNOT SEE IT.

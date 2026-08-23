@@ -33,6 +33,23 @@ set -euo pipefail
 
 cd "$(dirname "${BASH_SOURCE[0]}")/../.."
 
+# THE DISCOVERY RULE, INTROSPECTABLE. Added 2026-08-23 (round 4, R4K-5): `CLAUDE.md` claims "every gate answers
+# `--dump-rules`" and this was one of two that did not. Worse than not answering, it treated the flag as an
+# ordinary run and printed its usual OK line, so a consumer could not tell "this gate has no rules to dump" from
+# "this gate ignored your flag and did its whole job". `test-gates.sh` now asserts the universal by DERIVING the
+# gate list from `git ls-files`, rather than reading the flag from a hand-picked set of names.
+#
+# What there is to dump here is the DISCOVERY rule -- which files this gate considers a shell script -- because
+# that is the only thing it decides. The check itself is `bash -n`, which owns no rules of ours.
+if [ "${1:-}" = "--dump-rules" ]; then
+    printf 'tracked_glob %s\n' '*.sh'
+    printf 'enumeration %s\n' 'git ls-files --cached --others --exclude-standard'
+    printf 'shebang_pattern %s\n' '^#!.*\(ba\)\?sh'
+    printf 'shebang_scope %s\n' ':!*.sh'
+    printf 'check %s\n' 'bash -n'
+    exit 0
+fi
+
 checked=0
 failed=0
 

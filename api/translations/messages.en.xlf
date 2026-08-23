@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+    This file is part of twes-in.
+
+    (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+
+    SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<!--
   English source catalogue. Keys are stable identifiers (resname); the text is what changes.
   Every locale under this directory must carry exactly this key set — scripts/gates/locale-key-parity.php
   fails the build otherwise, because a missing key is printed verbatim onto a customer's invoice rather

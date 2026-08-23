@@ -2010,6 +2010,31 @@ over this section is the only trustworthy tally. Do not delete this heading.)*
     declared in nine places is one shape and eight opportunities; `grep` for the whole shape before assuming the
     edit is done.
 
+- **2026-08-23 — `git restore` IS THE WRONG WAY TO UNDO A MUTANT, AND IT SILENTLY REVERTS THE FIX WITH IT.** The
+  mutation discipline this repository runs on is *apply a mutant → run → restore*, and the obvious restore is
+  `git restore <file>`. It restores the file to **HEAD**, not to the state before the mutant — so on a file that
+  also carries the UNCOMMITTED fix you are testing, it throws that away too, without a word. It happened **three
+  times in one session**, and each failure looked different:
+  - On `DocumentCalculator.php` it made the NEXT mutant vacuous. The restore removed the fix, the following
+    `python … s.replace(old, new)` found no anchor and changed nothing, and the run that followed was the
+    *unfixed baseline* reported as a killed mutant. A mutant that does not apply proves nothing — the same class
+    as a `sed` that exits non-zero, which also happened here, and as § Gotchas 2026-07-31's *the test is not
+    arriving*.
+  - On `Invoice.php` it reached the COMMIT. The comment fix was reverted mid-mutant-loop, `git add` staged four
+    files instead of five, and the commit landed the pinning test while leaving the false rationale it was written
+    against still in the tree. Caught only because `git status --porcelain` was printed in the same command as the
+    commit and the file was visibly absent.
+  - On `messages.fr.xlf` it made the gate go red immediately, which is the *harmless* version and the only one
+    that announced itself.
+
+  **Three practices, and the third is the general one.** Back the file up first (`cp -a "$F" /tmp/…`) and restore
+  from THAT, so "restore" means "before the mutant" rather than "at HEAD". Make the mutant script ASSERT its
+  anchor is present before writing — a `replace()` that silently matches nothing is indistinguishable from a
+  mutant that survived. And **print `git status --porcelain` in the same command as `git add`/`git commit`**, so
+  the staged set is visible beside the result: this is § Gotchas 2026-08-23's `head -1` rule for the message file,
+  applied to the file list. `git restore` is safe only on a file with no uncommitted work of its own, which
+  during a fix is exactly the file you are not testing.
+
 - **2026-08-23 — A DENIED COMPOUND COMMAND LEAVES ITS HEREDOC UNWRITTEN, AND `git commit -F` DOES NOT FAIL ON A
   STALE PATH.** A `cat > /tmp/msg2.txt <<EOF … EOF && git add … && git commit -F /tmp/msg2.txt && git push` was
   refused by the safety classifier as one unit, so the message file was never created. Re-running just the

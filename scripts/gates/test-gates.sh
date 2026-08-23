@@ -3335,6 +3335,59 @@ else
   failed=$((failed + 1))
 fi
 
+# EVERY GATE ANSWERS `--dump-rules`, ASSERTED AS A UNIVERSAL AND DERIVED FROM `gates_on_disk`.
+#
+# `CLAUDE.md` states this as a property of all of them. It was FALSE for two of fourteen until 2026-08-23 (round 4,
+# R4K-5), and this suite could not see it: it reads the flag from eight gates BY NAME, up at the GENERATED-CASES
+# block, so a gate nobody had named was never asked. That is the hand-picked-versus-derived split those very cases
+# exist to argue against, recurring one level up in the file that argues it.
+#
+# The two holdouts did not merely stay silent. `shell-syntax.sh` and `locale-key-parity.php` treated the flag as an
+# ordinary run and printed their usual verdicts, so `--dump-rules` and no flag produced byte-identical output and a
+# consumer could not tell "this gate has no rules" from "this gate ignored your flag and did its whole job".
+#
+# So the assertion is on the BEHAVIOUR, not on the presence of a string: the dump must exit 0, emit something, and
+# DIFFER from the gate's ordinary output. That last clause is the one that catches the shape actually found — a
+# grep for `dump-rules` in the source would have passed a gate that parses the flag and ignores it.
+#
+# `compose-config.sh` and `schema-tenancy.php` are asked like everything else; both answer without their external
+# service, which is deliberate on their part and is re-checked here rather than assumed.
+dump_failures=""
+for gate in $gates_on_disk; do
+  case "$gate" in
+    *.php) dump_cmd=(php "$REPO_ROOT/scripts/gates/$gate") ;;
+    *)     dump_cmd=(bash "$REPO_ROOT/scripts/gates/$gate") ;;
+  esac
+
+  dump_out="$(cd "$REPO_ROOT" && "${dump_cmd[@]}" --dump-rules 2>/dev/null)" || {
+    dump_failures="$dump_failures $gate(exit)"
+    continue
+  }
+
+  if [[ -z "$dump_out" ]]; then
+    dump_failures="$dump_failures $gate(empty)"
+    continue
+  fi
+
+  # DID IT RENDER A VERDICT? That is the observable difference between dumping rules and doing the job. Every
+  # gate here ends a real run by printing `<name>: OK — …`, `<name>: FAIL — …` or a `counts — …` line; a dump
+  # that carries one of those did not dump, it RAN. Both holdouts were caught by exactly this.
+  if printf '%s\n' "$dump_out" | grep -qE '^(counts —|[a-z0-9-]+: (OK|FAIL|owed)( |—))'; then
+    dump_failures="$dump_failures $gate(ignored-the-flag)"
+  fi
+done
+
+if [[ -z "$dump_failures" ]]; then
+  printf '  ok   — every gate answers --dump-rules with rule data rather than a verdict (%s gates)\n' \
+    "$(printf '%s' "$gates_on_disk" | wc -w)"
+  passed=$((passed + 1))
+else
+  printf '  FAIL — --dump-rules is not universal:%s\n' "$dump_failures"
+  printf '         CLAUDE.md states every gate answers it. `ignored-the-flag` means the gate emitted its ordinary\n'
+  printf '         verdict under the flag, so a consumer cannot tell that from a gate that has no rules.\n'
+  failed=$((failed + 1))
+fi
+
 # a) every gate on disk has a clean-fixture case in THIS suite
 #
 # A gate may declare its clean case ELSEWHERE, and the redirect is VERIFIED rather than trusted. One gate needs a

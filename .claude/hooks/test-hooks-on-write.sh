@@ -280,15 +280,55 @@ else
   ok "every check is an invocation of a real gate (this hook owns no rules)"
 fi
 
-# The expensive gates must stay out. Named individually rather than by a size check, because
-# the reason each is excluded is different and a reader needs to see which one broke.
-for forbidden in test-gates.sh schema-tenancy.php compose-config.sh; do
+# THE ROUTED SET, CHECKED IN BOTH DIRECTIONS — and it was one-directional until 2026-08-23 (round 4,
+# R4K-4). It asserted only that three named gates stay OUT, and never that a gate which is NOT excluded
+# is IN. So `no-forgeable-tenancy-in-production.sh` — a SECURITY gate — was routed for no file type at
+# all, was absent from the hook's own "deliberately not here" list, and nothing here could notice
+# either. A gate is easier to add than to finish adding, which is exactly what the missing direction
+# stopped anybody seeing.
+#
+# THE EXCLUSION SET IS DECIDED ONCE, into a variable both directions read. § Gotchas 2026-07-29 is
+# explicit about this after the handoff hook guarded one of its two write paths: two lists that must
+# agree are one list and one silent exception. Adding a gate to `EXCLUDED_FROM_WRITE_PATH` now has to
+# be a deliberate edit here, which is a visible diff, rather than the absence of a thought.
+#
+# The membership comes from `git ls-files`, never `ls` — a parallel certification round places reviewer
+# worktrees inside the working tree (§ Gotchas 2026-07-31), and `lib/` holds libraries rather than gates.
+EXCLUDED_FROM_WRITE_PATH=(
+  test-gates.sh        # 48s, and it is the gates' own suite rather than a gate
+  schema-tenancy.php   # needs a migrated PostgreSQL database
+  compose-config.sh    # needs `docker compose`
+  shell-syntax.sh      # redundant here: lint-on-write.sh already runs `bash -n` on the one file written
+)
+
+for forbidden in "${EXCLUDED_FROM_WRITE_PATH[@]}"; do
   if grep -qE "^[^#]*$forbidden" "$GATES"; then
-    bad "gates-on-write.sh runs $forbidden — too slow or needs an external service"
+    bad "gates-on-write.sh runs $forbidden — too slow, needs an external service, or is redundant here"
   else
     ok "$forbidden stays out of the write path"
   fi
 done
+
+# AND THE OTHER DIRECTION: every gate that is NOT excluded must actually be invoked somewhere.
+while IFS= read -r gate_path; do
+  gate_name="$(basename "$gate_path")"
+
+  skip=''
+  for forbidden in "${EXCLUDED_FROM_WRITE_PATH[@]}"; do
+    [[ "$gate_name" == "$forbidden" ]] && skip=1 && break
+  done
+  [[ -n "$skip" ]] && continue
+
+  if grep -qE "^[^#]*scripts/gates/$gate_name" "$GATES"; then
+    ok "$gate_name is routed by the write path"
+  else
+    bad "$gate_name is in scripts/gates/ but gates-on-write.sh never runs it, and it is not in
+     EXCLUDED_FROM_WRITE_PATH — so no decision is recorded either way. Route it, or exclude it
+     deliberately with the reason beside it."
+  fi
+done < <(cd "$REPO" && git ls-files -- scripts/gates \
+  | grep -E '\.(sh|php)$' \
+  | grep -v '^scripts/gates/lib/')
 
 echo
 echo "$PASS passed, $FAIL failed"

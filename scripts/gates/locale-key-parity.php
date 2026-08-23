@@ -26,6 +26,25 @@ exit(main());
 
 function main(): int
 {
+    // THE RULES, INTROSPECTABLE. Added 2026-08-23 (round 4, R4K-5): `CLAUDE.md` claims "every gate answers
+    // `--dump-rules`" and this was one of two that did not — and it did not merely stay silent, it ran the whole
+    // gate and printed its ordinary verdict, so `--dump-rules` and no flag at all produced byte-identical output.
+    // A consumer could not distinguish "no rules to dump" from "your flag was ignored". `test-gates.sh` now
+    // asserts the universal by DERIVING the gate list from `git ls-files` instead of naming eight of them.
+    //
+    // Dumped BEFORE the `owed` notices, unlike the run path, because a dump is data for a consumer rather than a
+    // report for a human — mixing the two is what made the flag indistinguishable from a run in the first place.
+    if (in_array('--dump-rules', array_slice($_SERVER['argv'] ?? [], 1), true)) {
+        fwrite(\STDOUT, 'translations api/translations' . "\n");
+        fwrite(\STDOUT, 'required_locales ' . implode(' ', REQUIRED_LOCALES) . "\n");
+
+        foreach (OWED as $tier => $note) {
+            fwrite(\STDOUT, 'owed ' . $tier . ' => ' . $note . "\n");
+        }
+
+        return 0;
+    }
+
     foreach (OWED as $tier => $note) {
         fwrite(\STDOUT, 'locale-key-parity: owed — ' . $tier . ': ' . $note . "\n");
     }

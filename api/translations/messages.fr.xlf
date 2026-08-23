@@ -1,4 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+    This file is part of twes-in.
+
+    (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+
+    SPDX-License-Identifier: AGPL-3.0-or-later
+-->
 <!-- French. France is a first-wave jurisdiction, so this catalogue is shipped, not a placeholder. -->
 <xliff xmlns="urn:oasis:names:tc:xliff:document:1.2" version="1.2">
   <file source-language="en" target-language="fr" datatype="plaintext" original="twes-in">

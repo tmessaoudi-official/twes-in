@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
+    This file is part of twes-in.
+
+    (c) Takieddine MESSAOUDI <takieddine.messaoudi.official@gmail.com>
+
+    SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+<!--
   Arabic. Tunisia is a first-wave jurisdiction and TND is the default currency, so this is a shipped
   catalogue. Arabic is also why RTL is in scope from Wave 0: it reaches the Angular admin, the Flutter
   client AND the generated PDF documents, and bidirectional text with Arabic glyph shaping inside a

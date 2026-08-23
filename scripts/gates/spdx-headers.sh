@@ -25,6 +25,11 @@ readonly -a SEARCH_ROOTS=(
   "api/bin"
   "api/public"
   "api/migrations"
+  # The translation catalogues, added 2026-08-23 (round 4, R4K-6). They were under NO root and `xlf` was in no
+  # extension list, so three authored source files carried no identifier and the coverage check below could not
+  # report them -- while TWO dead `xlf` special cases in this file made it look like a considered exclusion. Both
+  # are deleted; the reason they were dead is that `xlf` was never in EXTENSIONS, so neither filter could fire.
+  "api/translations"
   "admin/src"
   "mobile/lib"
   "mobile/test"
@@ -112,7 +117,7 @@ readonly HEADER_WINDOW=40
 # configuration files under `infra/api/conf.d*/` among them — and NONE of them was ever checked, so the convention
 # was upheld by memory rather than by this gate. The trigger was adding a sixth (`conf.d-dev/60-xdebug.ini`) and
 # noticing the reported count did not move. [Verified: `139 file(s)` both before and after the new file was staged.]
-readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini neon
+readonly -a EXTENSIONS=(php ts dart sh xml sql yaml yml html scss css js ini neon xlf
     # `py` added 2026-08-06 with the first tracked Python file (`scripts/gates/lib/worker-oracle.py`). The gate
     # reported the SAME COUNT after that file was staged, which is the tell § Gotchas 2026-08-05 records for `ini`:
     # an unenforced convention is not a convention, and the cheapest way to learn what a gate is not looking at is
@@ -167,9 +172,6 @@ for root in "${SEARCH_ROOTS[@]}"; do
     # `vendor/` and `node_modules/` exclusions, since neither is tracked.
   done < <(git -C "$REPO_ROOT" ls-files -z --cached --others --exclude-standard -- "$root" \
     | while IFS= read -r -d '' candidate; do
-        case "$candidate" in
-          *.xlf) continue ;;
-        esac
         for extension in "${EXTENSIONS[@]}"; do
           if [[ "$candidate" == *".${extension}" ]]; then
             printf '%s\0' "$REPO_ROOT/$candidate"
@@ -223,8 +225,7 @@ if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     | grep -E "\.(${extension_pattern})$" \
     | grep -Ev "^(${root_pattern})/" \
     | grep -Ev "^(${file_pattern})$" \
-    | grep -Ev "^(${excluded_pattern})/" \
-    | grep -v '\.xlf$' || true)
+    | grep -Ev "^(${excluded_pattern})/" || true)
 
   if (( ${#uncovered[@]} > 0 )); then
     printf 'spdx-headers: FAIL — %d file(s) with an in-scope extension are under NO search root, so this gate never looked at them:\n' \
