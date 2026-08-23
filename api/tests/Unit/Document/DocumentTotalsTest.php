@@ -24,6 +24,7 @@ use Twes\Domain\Document\VatGroup;
 use Twes\Domain\Document\VatRoundingPoint;
 use Twes\Domain\Money\Currency;
 use Twes\Domain\Money\Exception\CurrencyMismatch;
+use Twes\Domain\Money\Exception\InvalidMoneyAmount;
 use Twes\Domain\Money\Money;
 use Twes\Domain\Pricing\PriceCalculator;
 use Twes\Domain\Pricing\Rate;
@@ -1672,4 +1673,64 @@ final class DocumentTotalsTest extends TestCase
         ), 'the extra millime goes to the earliest line on a tie, exactly as for positive amounts');
     }
 
+    /**
+     * `PerRateGroup` with `RoundingMode::Unnecessary` totals a document whose GROUP VAT is exactly representable.
+     *
+     * **ROUND 4 FILED THIS (R4C-6) AND IT IS A REAL REFUSAL OF A CORRECT DOCUMENT.** Two TND lines of `0.001` at
+     * 50 % have a group base of `0.002` and a group VAT of `0.001` — exact in a three-decimal currency, nothing to
+     * round. It was refused anyway, with `Result "0.000500000000000" does not fit TND (3 decimal place(s)) and
+     * RoundingMode::Unnecessary forbids rounding it`.
+     *
+     * The `0.0005` is each line's own `net x rate`, and under `PerRateGroup` **that figure is discarded**: the
+     * per-line shares come from `allocate()`, which divides the already-rounded group VAT by largest remainder.
+     * So the document was refused because a value it never uses could not be represented.
+     *
+     * The comment on the computation defended doing it unconditionally — *"branching here means the two arms
+     * exercise different code and the cheap one rots"* — which is a reasonable instinct about code health and the
+     * wrong trade against a wrong answer. It also does not apply: both rounding points are driven by the shared
+     * vectors, so neither arm is at risk of going unexercised.
+     *
+     * Not reachable from today's transport, which passes `HalfUp`. `totals()` is public and its signature
+     * documents the mode as the caller's, which is what makes this the aggregate's contract rather than an
+     * internal detail.
+     */
+    public function testPerRateGroupWithUnnecessaryRoundingTotalsAnExactlyRepresentableGroupVat(): void
+    {
+        $tnd = Currency::of('TND');
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('0.001', $tnd), Rate::fromPercentage('50')))
+            ->withLine(new DocumentLine('1', Money::of('0.001', $tnd), Rate::fromPercentage('50')));
+
+        $totals = $invoice->totals(VatRoundingPoint::PerRateGroup, RoundingMode::Unnecessary);
+
+        self::assertSame('0.002', $totals->subtotalNet()->amount());
+        self::assertSame('0.001', $totals->vatTotal()->amount(), 'the group VAT is exact: 0.002 x 50% = 0.001');
+        self::assertSame('0.003', $totals->total()->amount());
+
+        // AND THE ALLOCATION STILL SUMS EXACTLY TO THE GROUP VAT, which is the invariant the whole allocator
+        // exists for. One line gets the millime, the other gets nothing, earliest-line-on-a-tie.
+        $shares = array_map(static fn(Money $m): string => $m->amount(), $totals->vatByLine());
+        self::assertSame(['0.001', '0.000'], $shares);
+    }
+
+    /**
+     * And `PerLine` with `Unnecessary` STILL refuses the same document — because there the figure is the answer.
+     *
+     * The companion to the case above, and the reason the fix is a branch rather than a softer rounding mode.
+     * Under `PerLine` each line's own VAT IS its share and IS what the group total is summed from, so `0.0005` in
+     * a three-decimal currency is a figure the document genuinely cannot state. Refusing is correct, and a fix
+     * that made this pass would have been the bandaid.
+     */
+    public function testPerLineWithUnnecessaryRoundingStillRefusesAnUnrepresentableLineVat(): void
+    {
+        $tnd = Currency::of('TND');
+        $invoice = Invoice::draft($tnd)
+            ->withLine(new DocumentLine('1', Money::of('0.001', $tnd), Rate::fromPercentage('50')))
+            ->withLine(new DocumentLine('1', Money::of('0.001', $tnd), Rate::fromPercentage('50')));
+
+        $this->expectException(InvalidMoneyAmount::class);
+        $this->expectExceptionMessage('forbids rounding it');
+
+        $invoice->totals(VatRoundingPoint::PerLine, RoundingMode::Unnecessary);
+    }
 }

@@ -273,9 +273,26 @@ final readonly class Invoice
     {
         $this->assertMutable('withLine');
 
-        // Refused HERE and not left to the calculator, so a draft can never hold a line it cannot total. The
-        // calculator would catch it eventually; catching it at the edit means the error names the line the
-        // user just added rather than surfacing later against a document that looks finished.
+        // Refused HERE and not left to the calculator, so a draft can never hold a line it cannot total.
+        //
+        // **THE REASON THIS COMMENT USED TO GIVE WAS FALSE, AND BACKWARDS** (round 4, R4C-8). It read *"the
+        // calculator would catch it eventually; catching it at the edit means the error names the line the user just
+        // added rather than surfacing later against a document that looks finished"*. There is no "eventually":
+        // `self::totallable()` runs at the bottom of this very method, so the calculator catches it in THIS call —
+        // and its message is the better of the two, because it is the one that names the line. [Verified 2026-08-23
+        // with the guard neutered: `Cannot combine TND with EUR (document line 0). …` against this guard's
+        // `Cannot combine TND with EUR. …`.] Six mismatch shapes — first line, later line, zero-amount line, a
+        // charge on an empty document, a zero-amount charge, a charge after a good line — are all still refused
+        // without it.
+        //
+        // So it is DEFENCE IN DEPTH and is kept as that rather than deleted, for one reason worth stating:
+        // `totallable()` landed on 2026-08-23 for an unrelated finding (R4C-2, the document-total overflow), and
+        // before it these guards were the whole rule. Deleting them would make an invariant that predates it depend
+        // on it, with nothing anywhere asserting that every mutator must end in a total. A guard is not redundant
+        // because one recent call path happens to cover it.
+        //
+        // Pinned by `testTheEditTimeCurrencyGuardRefusesBeforeTheCalculatorDoes`, which asserts the message WITHOUT
+        // a `(document …)` locator — the only thing that distinguishes this refusal from the calculator's.
         if (!$this->currency->equals($line->unitNet()->currency())) {
             throw CurrencyMismatch::between($this->currency, $line->unitNet()->currency());
         }
@@ -321,6 +338,10 @@ final readonly class Invoice
     {
         $this->assertMutable('withFixedCharge');
 
+        // Defence in depth, exactly as on `withLine()` above — see that guard for the measurement, for why the
+        // calculator's message is the better one, and for why these are kept rather than deleted. Pinned
+        // SEPARATELY, because two guards are two mutants and one can be dropped while the other still refuses:
+        // the first version of that test guessed a per-arm discriminator and this one survived it.
         if (!$this->currency->equals($charge->amount()->currency())) {
             throw CurrencyMismatch::between($this->currency, $charge->amount()->currency());
         }

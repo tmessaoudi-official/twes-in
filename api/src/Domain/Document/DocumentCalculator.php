@@ -110,15 +110,33 @@ final readonly class DocumentCalculator
             $linesInGroup[$key][] = \count($lineNets) - 1;
             $bases[$key] = isset($bases[$key]) ? $bases[$key]->plus($net) : $net;
 
-            // Computed on every path, not only when PerLine is asked for. The alternative — branching here —
-            // means the two arms exercise different code and the cheap one rots; this way the only difference
-            // between the modes is WHICH already-computed figure is summed, which is the smallest honest
-            // difference the parameter can have.
-            $lineVat = $prices->vat($net, $line->vatRate(), $mode);
-            $perLineVat[$key] = isset($perLineVat[$key]) ? $perLineVat[$key]->plus($lineVat) : $lineVat;
-            // KEPT PER LINE as well as summed per group, because under PerLine this figure IS the line's
-            // share and must not be re-derived by allocation — see the `PerLine` arm below.
-            $lineVatByIndex[] = $lineVat;
+            // **UNDER `PerLine` ONLY, because under `PerRateGroup` BOTH of these are DEAD — and computing them
+            // anyway REFUSED CORRECT DOCUMENTS** (round 4, R4C-6).
+            //
+            // This ran unconditionally, defended by: *"Computed on every path, not only when PerLine is asked
+            // for. The alternative — branching here — means the two arms exercise different code and the cheap
+            // one rots."* That is a fair instinct about code health, traded against a wrong answer, and the
+            // premise is false anyway: both rounding points are driven by the shared cross-tier vectors, so
+            // neither arm is at risk of going unexercised. Grep this file for `sharesAsRounded` and
+            // `allocate` — each is reached from exactly one arm of the `match` below and both are covered.
+            //
+            // What it cost: `$mode` is the CALLER's, and `Money` refuses under `RoundingMode::Unnecessary`
+            // rather than rounding. Two TND lines of `0.001` at 50 % have a group VAT of `0.001`, exact in a
+            // three-decimal currency — but each line's own `net × rate` is `0.0005`, which is not. So the
+            // document was refused for a figure `PerRateGroup` DISCARDS: its shares come from `allocate()`,
+            // which divides the already-rounded group VAT by largest remainder and never consults these.
+            //
+            // Note what is deliberately NOT done: softening the mode for this one computation. That would make
+            // the arithmetic depend on a value nobody asked for, and it would also make the `PerLine` refusal
+            // — which is CORRECT, since there the figure IS the answer — disappear with it.
+            if (VatRoundingPoint::PerLine === $vatRoundingPoint) {
+                $lineVat = $prices->vat($net, $line->vatRate(), $mode);
+                $perLineVat[$key] = isset($perLineVat[$key]) ? $perLineVat[$key]->plus($lineVat) : $lineVat;
+                // KEPT PER LINE as well as summed per group, because under PerLine this figure IS the line's
+                // share and must not be re-derived by allocation — see the `PerLine` arm below. Appended for
+                // EVERY line on this path, which is what keeps its positional indexes aligned with `$lineNets`.
+                $lineVatByIndex[] = $lineVat;
+            }
         }
 
         $vatByRate = [];

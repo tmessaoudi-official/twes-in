@@ -407,6 +407,56 @@ final class InvoiceTest extends TestCase
         );
     }
 
+    /**
+     * The EDIT-TIME currency guards refuse before the calculator does — which the case above cannot see.
+     *
+     * **BOTH GUARDS WERE DELETABLE WITH THE WHOLE UNIT SUITE GREEN** (round 4, R4C-8), and the case above is why:
+     * `withLine()` ends in `self::totallable()`, so the calculator raises the same class from the same call and
+     * `expectException()` is satisfied either way. Measured before this was written — neutering both guards left
+     * `OK (805 tests, 2721 assertions)`.
+     *
+     * What distinguishes the two is the MESSAGE, and the calculator's is the better one: it appends a LOCATOR —
+     * `(document line 0)`, `(document charge 0)`. The edit-time refusal has none, because at the moment it fires
+     * the line or charge is the argument rather than a position in a document. So `(document ` is the
+     * discriminator, and it is the SAME string for both arms rather than one guess per arm.
+     *
+     * **THAT MATTERS, because the first version of this case guessed per arm and half of it was vacuous.** The
+     * charge arm asserted the message did not contain `'fixed charge'`; the calculator says `document charge`, so
+     * the assertion held whichever refusal arrived and the charge mutant SURVIVED a case written to kill it. Caught
+     * by mutating the two guards SEPARATELY — the combined mutant kills on the line arm and would have hidden it.
+     * Two guards are two mutants, and a discriminator has to be measured, not assumed.
+     */
+    public function testTheEditTimeCurrencyGuardRefusesBeforeTheCalculatorDoes(): void
+    {
+        $eur = Currency::of('EUR');
+
+        try {
+            self::draft()->withLine(new DocumentLine('1', Money::of('1.00', $eur), Rate::zero()));
+            self::fail('a line in another currency must be refused at the edit');
+        } catch (\Twes\Domain\Money\Exception\CurrencyMismatch $refused) {
+            self::assertStringNotContainsString(
+                '(document ',
+                $refused->getMessage(),
+                'this must be the EDIT-TIME refusal, not the calculator\'s — the calculator appends a locator '
+                . '"(document line N)", and if that is the message arriving here then withLine()\'s own guard has '
+                . 'stopped firing and only totallable() is refusing',
+            );
+        }
+
+        try {
+            self::draft()->withFixedCharge(new FixedCharge('stamp_duty', Money::of('1.00', $eur)));
+            self::fail('a fixed charge in another currency must be refused at the edit');
+        } catch (\Twes\Domain\Money\Exception\CurrencyMismatch $refused) {
+            self::assertStringNotContainsString(
+                '(document ',
+                $refused->getMessage(),
+                'this must be the EDIT-TIME refusal, not the calculator\'s — which says "(document charge N)". '
+                . 'Asserting on "fixed charge" here was VACUOUS: the calculator never uses that wording, so the '
+                . 'assertion held whichever refusal arrived and this mutant survived',
+            );
+        }
+    }
+
     public function testAnEmptyDraftKnowsItsCurrencyBeforeAnyLineExists(): void
     {
         // The currency is the DOCUMENT's, fixed at creation — not inferred from the first line. An invoice
