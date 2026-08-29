@@ -143,41 +143,61 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         // path below, correctly. A re-save of the same state matches on every column and moves nothing — and skips a
         // pointless `DELETE`+`INSERT` of identical children, which is a small bonus rather than the point. `cancel()`
         // changes `state` and leaves the number alone, which is exactly what this permits and what a guard phrased as
-        // *"an issued row is immutable"* would have broken. What it refuses is a renumber, a re-rendering, a currency
-        // change, a type change, a rounding-point change, and any rewrite of the lines or charges.
+        // *"an issued row is immutable"* would have broken. What it refuses is a change to any column in the
+        // `$immutable` map below — which is the list, rather than a prose copy of it that can go stale, and it did:
+        // this sentence enumerated five columns while the statement carried six from 2026-08-22 onwards.
         $storedNumber = $this->connection->fetchOne(
             'SELECT number FROM document WHERE company_id = :company_id AND id = :id',
             ['company_id' => $document->companyId->toRfc4122(), 'id' => $document->id->toRfc4122()],
         );
 
         if (null !== $storedNumber && false !== $storedNumber) {
+            // **THE IMMUTABLE COLUMNS ARE NAMED ONCE, AND BOTH THE PREDICATE AND THE REFUSAL ARE DERIVED FROM THAT
+            // ONE MAP.** Adding a byte-determining column to a document means adding one entry here, and it then
+            // joins the `WHERE` and the message together or neither — a seventh column cannot become enforced
+            // while the refusal still describes six.
+            //
+            // Written this way because the enumerating version had already gone stale. `client_id` joined the
+            // predicate list with the document→client link (2026-08-22) and the message was not updated, so a
+            // caller refused for re-addressing an issued invoice was told to inspect *"the number, its rendered
+            // form, the type, the currency or the VAT rounding point"* — five columns, all of them identical to
+            // what was stored. That is the hand-written-list-beside-the-thing-it-counts defect `CLAUDE.md` records
+            // against nearly every enumeration in this project, and `8cbf16c` fixed one instance of it in this
+            // same file. Round 5's R5C-2, re-derived 2026-08-29 after the finding's own text was lost.
+            //
+            // `IS NOT DISTINCT FROM` for every column rather than `=`, because a NULL compares to nothing under `=`
+            // and such a predicate would match no rows at all. `client_id` is the one that is nullable today; using
+            // the null-safe form uniformly is what keeps the statement correct when the next nullable column
+            // arrives, and it is equivalent to `=` for a non-null value. No index concern — `company_id` and `id`
+            // are the primary key, so these filter the one row that lookup already found.
+            $immutable = [
+                'number' => $document->number,
+                'number_rendered' => $document->numberRendered,
+                'type' => $document->type,
+                'currency' => $document->currency,
+                'vat_rounding_point' => $document->vatRoundingPoint,
+                // THE CLIENT IS A PREDICATE TOO, so re-pointing an ISSUED invoice at a different client is refused
+                // by the STATEMENT rather than only by `withClient()`'s mutability guard. An issued invoice naming
+                // client A that comes back naming client B is not a correction — it is a different legal document,
+                // and EN 16931 makes the buyer mandatory (BT-44), which `document_client_required_once_issued`
+                // encodes in the schema. Same reasoning as the number predicate beside it.
+                'client_id' => $document->clientId?->toRfc4122(),
+            ];
+
             // STATE ONLY. Every other column is a predicate rather than an assignment, so a caller that changed one
             // gets a refusal instead of a silent partial write — the difference between a control and a convention.
             $moved = $this->connection->executeStatement(
                 'UPDATE document SET state = :state'
                 . ' WHERE company_id = :company_id AND id = :id'
-                . ' AND number = :number AND number_rendered = :number_rendered'
-                . ' AND type = :type AND currency = :currency AND vat_rounding_point = :vat_rounding_point'
-                // THE CLIENT IS A PREDICATE TOO, so re-pointing an ISSUED invoice at a different client is
-                // refused by the STATEMENT rather than only by `withClient()`'s mutability guard. An issued
-                // invoice naming client A that comes back naming client B is not a correction — it is a
-                // different legal document, which is the same reasoning the number predicate beside it encodes.
-                //
-                // `IS NOT DISTINCT FROM` rather than `=`, because a NULL compares to nothing under `=` and the
-                // predicate would then match no rows at all. This branch only runs for a document that already
-                // carries a number, so the client is never null here today; the null-safe form is what keeps
-                // the statement correct if that ever stops being true.
-                . ' AND client_id IS NOT DISTINCT FROM :client_id',
+                . implode('', array_map(
+                    static fn(string $column): string => \sprintf(' AND %s IS NOT DISTINCT FROM :%s', $column, $column),
+                    array_keys($immutable),
+                )),
                 [
                     'state' => $document->state,
                     'company_id' => $document->companyId->toRfc4122(),
                     'id' => $document->id->toRfc4122(),
-                    'number' => $document->number,
-                    'number_rendered' => $document->numberRendered,
-                    'type' => $document->type,
-                    'currency' => $document->currency,
-                    'vat_rounding_point' => $document->vatRoundingPoint,
-                    'client_id' => $document->clientId?->toRfc4122(),
+                    ...$immutable,
                 ],
             );
 
@@ -185,11 +205,11 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
                 throw new \RuntimeException(\sprintf(
                     'Refusing to rewrite issued document %s: it already carries document number %s, and an issued '
                     . 'document is immutable apart from its state. Something in this save differs from what is '
-                    . 'stored — the number, its rendered form, the type, the currency or the VAT rounding point — and '
-                    . 'a client may already hold the document as it was rendered. Only a state transition (issue → '
-                    . 'cancel) may be saved over an issued row.',
+                    . 'stored — one of %s — and a client may already hold the document as it was rendered. Only a '
+                    . 'state transition (issue → cancel) may be saved over an issued row.',
                     $identity->id,
                     (string) $storedNumber,
+                    implode(', ', array_keys($immutable)),
                 ));
             }
 

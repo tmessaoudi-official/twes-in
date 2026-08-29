@@ -62,6 +62,18 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
      */
     private const FIXTURE_CLIENT = '0199a5b2-0000-7000-8000-00000000c101';
 
+    /**
+     * A SECOND client, so that "re-pointed at a different client" is a shape this fixture can express at all.
+     *
+     * Round 5's R5C-2 was re-derived to this: `client_id` joined the state-only branch's predicate list on
+     * 2026-08-22 and nothing pinned it. [Verified 2026-08-29: deleting `AND client_id IS NOT DISTINCT FROM
+     * :client_id` left the WHOLE suite green — `OK, Tests: 1239, Assertions: 4262`.] A fixture addressing every
+     * invoice to one client cannot distinguish a predicate that holds from one that is not there, which is the
+     * *a fixture that cannot express the dangerous shape cannot detect it* rule this file already applies to
+     * tenants.
+     */
+    private const OTHER_CLIENT = '0199a5b2-0000-7000-8000-00000000c102';
+
     private const DATABASE = 'twes_invoice_repository_probe';
     private const TENANT_A = '0199a5b2-0000-7000-8000-0000000002aa';
     private const TENANT_B = '0199a5b2-0000-7000-8000-0000000002bb';
@@ -480,6 +492,47 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
             self::assertStringContainsString('Refusing to rewrite issued document', $refused->getMessage());
         }
 
+        // A RE-POINTED CLIENT IS REFUSED — round 5's R5C-2, re-derived 2026-08-29 after the finding's own filed text
+        // was lost with the session that wrote it.
+        //
+        // `client_id` became a predicate on this branch when the document→client link landed (2026-08-22), and
+        // NOTHING PINNED IT: deleting `AND client_id IS NOT DISTINCT FROM :client_id` left all 1239 tests green.
+        // Without the predicate the UPDATE matches, sets `state`, and returns 1 — so the save reports SUCCESS and
+        // the client change is silently discarded, which is round 3's *"ignoring a change is not refusing one"*
+        // recurring on a column added after that lesson.
+        //
+        // It matters as much as the rounding-point arm above: an issued invoice naming client A that comes back
+        // naming client B is not a correction, it is a different legal document. EN 16931 makes the buyer
+        // mandatory (BT-44), and `document_client_required_once_issued` encodes that in the schema — so the buyer
+        // is part of what a client already holds, exactly like the number and the currency.
+        //
+        // Built through a fresh DRAFT rather than `$issued->withClient(...)`, because `withClient()` calls
+        // `assertMutable()` and an issued aggregate refuses it at the domain. That refusal is the FIRST line and
+        // this predicate is the second; the path that reaches the second is the one `fromPersistedState()` opens,
+        // which is the same path every other arm in this case uses.
+        $reAddressed = Invoice::draft($tnd)->withClient(self::OTHER_CLIENT)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')))
+            ->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 141));
+
+        try {
+            self::inTransaction(static fn() => $repository->save($identity, $reAddressed));
+            self::fail(
+                'An issued document must REFUSE being re-addressed to a different client, not accept the save and '
+                . 'discard the change. The buyer is part of the document a client already holds.',
+            );
+        } catch (\RuntimeException $refused) {
+            self::assertStringContainsString('Refusing to rewrite issued document', $refused->getMessage());
+
+            // AND THE MESSAGE MUST NAME THE CLIENT. The refusal used to enumerate five causes — the number, its
+            // rendered form, the type, the currency and the VAT rounding point — while the statement carried SIX
+            // predicates, so a caller refused for THIS reason was told to inspect five columns that were all
+            // identical. That is the hand-written-list-beside-the-thing-it-counts defect `CLAUDE.md` records
+            // against nearly every enumeration in this project, and `8cbf16c` already fixed one instance of it in
+            // this very file. The list is now DERIVED from the predicate map, so this assertion also fails if a
+            // future column joins the predicates without joining the message.
+            self::assertStringContainsString('client_id', $refused->getMessage(), 'the refusal must name the column that actually differs');
+        }
+
         // A CHANGED LINE SET IS REFUSED, NOT DISCARDED — and until round 3 it was discarded, silently, with `save()`
         // returning success and issuing zero statements against either child table. Two lenses reproduced that
         // independently. The comment on the branch claimed it *"refuses … any rewrite of the lines or charges"*, which
@@ -805,6 +858,13 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         self::connection()->executeStatement(
             'INSERT INTO client (company_id, id, name) VALUES (?, ?, ?) ON CONFLICT (company_id, id) DO NOTHING',
             [$tenant, self::FIXTURE_CLIENT, 'Fixture client'],
+        );
+
+        // AND THE SECOND CLIENT, for the same reason and in the same place — see {@see self::OTHER_CLIENT}. It is
+        // seeded for BOTH tenants like the first, so nothing here depends on which tenant a case runs as.
+        self::connection()->executeStatement(
+            'INSERT INTO client (company_id, id, name) VALUES (?, ?, ?) ON CONFLICT (company_id, id) DO NOTHING',
+            [$tenant, self::OTHER_CLIENT, 'Another fixture client'],
         );
 
         return new DoctrineInvoiceRepository(

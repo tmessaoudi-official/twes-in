@@ -11,6 +11,20 @@ that two of its `AGREED` rulings were superseded by Wave 0 and are annotated the
 
 ## Decisions Log
 
+- [2026-08-29 00:30] AGREED: **round 5's seven findings all close (or are explicitly ruled deferred) BEFORE Wave 1
+  re-freezes, and the cap for rounds 6-7 is re-ruled AFTER they land, not now.** Round 5 reached the cap without the
+  two-consecutive-clean counter ever leaving zero (25, 24, 29, 25, 7 findings), and the 2026-08-23 09:00 extension to
+  six rounds is spent: its own text limits round 6 to CONFIRMING a clean round 5, and round 5 has seven findings, so
+  a round 6 after fixes would be a fresh round rather than a confirmation. Rejected on merit: closing Wave 1 now on
+  the zero-P0 record, because that is the bundle-integration precedent this plan forbids citing for a code wave AND
+  because two of round 5's three lenses were lost mid-round, so its P0-free result is weaker evidence than rounds 3
+  and 4's; fixing only the two P1s, because R5T-1 is a coverage gap on the one adapter whose miss is SILENT
+  (`defaults()` rather than a 404) on the field deciding how much tax a document declares, and it costs one test
+  class mirroring two that already exist; and re-running the lost lenses before deciding, because R5C-1 and R5K-3
+  need fixing under every outcome, so a fresh round reads a better tree after the fixes than before them.
+  **R5C-2 is re-derived FIRST**, since its filed argument did not survive its session and only the file, the branch
+  and the severity remain — it may turn out to be nothing, and that is cheaper to learn early than last.
+
 - [2026-08-23 10:30] AGREED: **a LINE discount REDUCES the VAT base.** Worked: qty 10 x 15.000 TND = 150.000 gross,
   10 % line discount -> net 135.000, VAT 19 % = **25.650**, document total **160.650**. The rejected reading charges
   VAT on the undiscounted 150.000 (VAT 28.500, total 163.500) -- 2.850 TND more tax on ONE line. Reason: EN 16931
@@ -1836,7 +1850,7 @@ that lens resumed. The round's verdict was decided independently of it.
 | ID | Lens | Sev | One line |
 |---|---|---|---|
 | R5C-1 | correctness | **P1** | `Invoice::totallable()` probes with a hardcoded `(PerRateGroup, Up)` while the rounding point a document is actually totalled with comes from company settings and may be `PerLine`, which sums line-wise rounded-up figures and is therefore ≥. The guard UNDER-estimates: a document it admits can still overflow `Money`'s bound under the tenant's real setting. Remedy recorded from the lost note: probe with `(PerLine, Up)`, the maximal configuration, confirmed over 2146×14 cases. **Direction check owed** — `e2b971d` closed R4C-6, where a CORRECT document was REFUSED, and this remedy moves the probe stricter |
-| R5C-2 | correctness | P2 | `DoctrineInvoiceRepository::save()`, the state-only `UPDATE` branch taken when the stored row already carries a number. **The specific defect filed is NOT recovered** — only the file, the branch and the severity survive |
+| R5C-2 | correctness | P2 | `DoctrineInvoiceRepository::save()`, the state-only `UPDATE` branch. **The filed text did not survive its session; RE-DERIVED 2026-08-29 and CLOSED.** `client_id` joined that branch's predicate list with the document→client link (2026-08-22) and NOTHING PINNED IT [Verified: deleting `AND client_id IS NOT DISTINCT FROM :client_id` left the whole suite green — `OK, Tests: 1239, Assertions: 4262`]. Without it the UPDATE matches, sets `state` and returns 1, so the save reports SUCCESS and discards the client change — round 3's *"ignoring a change is not refusing one"* recurring on a column added after that lesson. **And the refusal named the wrong cause**, enumerating five columns while the statement carried six, so a caller refused for re-addressing an issued invoice was told to inspect five that were all identical — the defect `8cbf16c` already fixed once in this same file. **CLOSED by removing the enumeration rather than extending it:** one `$immutable` map now supplies BOTH the `WHERE` and the message's column list, so a seventh column joins both or neither, and the stale prose list in the branch comment is corrected in place. Pinned by a case that fails for the stated reason before the fix and by a mutant dropping `client_id` from the map, which turns it red. `OTHER_CLIENT` was added to the fixture because one addressed to a single client cannot express the shape at all |
 | R5K-3 | completeness | **P1** | `docs/spec/pricing-vectors.json`, the cross-tier arithmetic SSOT, actively names the shipped `PerLine` answer `..._which_is_WRONG`, and no case declares its rounding point. Dormant until Wave 8/11, then a wrong tax figure no test in this tier can see |
 | R5K-6 | completeness | P2 | `Product::…` refuses a negative VAT rate with no translation key and no row in § "Translation keys"; `DocumentLine`'s identical refusal has `document.vat_rate_invalid` |
 | R5K-5 | completeness | P3 | `ConnectionProvisioningGuardMiddleware.php:41` — the docblock says "three" and its own enumeration two words later, its inline comment and its code all say two |
