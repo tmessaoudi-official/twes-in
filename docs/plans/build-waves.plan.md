@@ -1817,6 +1817,80 @@ security bypassed, so a single-column FK lets one tenant delete another's rows.
 `sum(round(x))` on the same fixture); no illegal transition is reachable; a paid invoice cannot be
 edited.
 
+### Wave 1 boundary — round 5 (MAXIMAL, frozen `d449e3e`): 7 findings, 0 P0, NOT clean
+
+Recorded per R2K-8 — and **this is the round where R2K-8's own failure mode happened twice.** Two of the three lens
+agents lost their session mid-round. The correctness lens's filed text is **GONE**: it never reached disk, and what
+survives is a one-line session-memory note. The tenancy agent wrote its report incrementally, died at 23:29 partway
+through its clean-axis record, and dangled a reference to a "C8" it never reached. Only the completeness lens
+returned whole, and it did so because it wrote to disk *before* returning.
+
+**The remainder of the tenancy lens was completed INLINE by the main session on 2026-08-29, not by a third agent
+dispatch, and it is disclosed as self-graded in its own report header.** Grounds, since this is a deviation from
+MAXIMAL: agent dispatch is what killed both lost lenses, so a third dispatch repeats the failure the developer had
+just named; `CLAUDE.md` § "Certification ladder"'s availability chain permits a disclosed self-graded pass when
+subagents are unavailable in practice; and the objection that normally makes self-grading unacceptable — a false
+CLEAN ending the panel — **is structurally impossible this round**, because five findings were already filed before
+that lens resumed. The round's verdict was decided independently of it.
+
+| ID | Lens | Sev | One line |
+|---|---|---|---|
+| R5C-1 | correctness | **P1** | `Invoice::totallable()` probes with a hardcoded `(PerRateGroup, Up)` while the rounding point a document is actually totalled with comes from company settings and may be `PerLine`, which sums line-wise rounded-up figures and is therefore ≥. The guard UNDER-estimates: a document it admits can still overflow `Money`'s bound under the tenant's real setting. Remedy recorded from the lost note: probe with `(PerLine, Up)`, the maximal configuration, confirmed over 2146×14 cases. **Direction check owed** — `e2b971d` closed R4C-6, where a CORRECT document was REFUSED, and this remedy moves the probe stricter |
+| R5C-2 | correctness | P2 | `DoctrineInvoiceRepository::save()`, the state-only `UPDATE` branch taken when the stored row already carries a number. **The specific defect filed is NOT recovered** — only the file, the branch and the severity survive |
+| R5K-3 | completeness | **P1** | `docs/spec/pricing-vectors.json`, the cross-tier arithmetic SSOT, actively names the shipped `PerLine` answer `..._which_is_WRONG`, and no case declares its rounding point. Dormant until Wave 8/11, then a wrong tax figure no test in this tier can see |
+| R5K-6 | completeness | P2 | `Product::…` refuses a negative VAT rate with no translation key and no row in § "Translation keys"; `DocumentLine`'s identical refusal has `document.vat_rate_invalid` |
+| R5K-5 | completeness | P3 | `ConnectionProvisioningGuardMiddleware.php:41` — the docblock says "three" and its own enumeration two words later, its inline comment and its code all say two |
+| R5T-1 | tenancy | P2 | `company_settings` is the ONLY tenant-owned table in the delta with no two-tenant case. There is no `DoctrineCompanySettingsRepositoryTest`, and every test that touches the adapter uses one freshly generated tenant with no rival row. Its two siblings each carry an explicit *"another tenant's row is indistinguishable from absent"* case. It matters more here than anywhere: `forCurrentTenant()` answers `defaults()` for an absent row, so a miss is SILENT rather than a 404, and what it returns is `default_vat_rounding_point` — which decides how much tax a document declares |
+| R5T-2 | tenancy | P3 | `ClientProcessorTest:215`'s docblock names *"another tenant's"* as one of "all three ways a lookup can fail" and the loop exercises two shapes of absence plus a case-spelling; the class runs on an in-memory repository where a second tenant cannot exist. Proven at `DoctrineClientRepositoryTest:271` instead. `ProductProcessorTest` inherits the correction |
+
+**2 P1, 3 P2, 2 P3. Zero P0 for the third round running** — no cross-tenant breach and no wrong-number defect was
+reproduced. Both tenancy findings are coverage claims outrunning coverage, on the layer where a future change would
+be caught rather than on the layer that refuses today.
+
+**THE SCOPE THE PREVIOUS ROUNDS DID NOT HAVE, and it is the most important line in this record.** The brief described
+the delta as six closure commits. **It is 93** [Verified: `git rev-list --count 626fc33..d449e3e` → 93], 180 files,
++17091/−8813. Rounds 1–4 all froze on 2026-08-07; `Client`, `Contact`, `Product`, `CompanySettings` and the
+document→client link landed 2026-08-21/22. **Round 5 is the FIRST panel exposure of ~17k inserted lines, four of
+whose new tables are tenant-owned** — which is why the tenancy lens mattered more this round than a six-commit
+summary suggests, and why losing it mid-write was worse than losing any other.
+
+**The negative record, because silence is not coverage.** All four new tenant-owned tables are RLS-enabled, FORCEd
+and owned by `twes_owner`; every policy is canonical on BOTH halves with the `NULLIF` fail-closed spelling; every
+unique key leads with `company_id` and every composite FK pairs the tenant column ORDINALLY (read with `indnkeyatts`,
+so an `INCLUDE` payload is not miscounted); zero partial-unique and zero EXCLUDE constraints exist, so those oracle
+shapes are absent rather than unchecked; the runtime role owns nothing, holds no `TRUNCATE`, and is clean on all
+five `pg_roles` attributes. `BehaviouralIsolationTest` swept all eight tenant tables through its eight attack goals
+with coverage-by-NAME, anti-vacuity and the GOAL 7 suppression pinned to exactly `['company_settings']` — the
+2026-08-21 gotcha's own remedy running against the table that produced it. Executable evidence: `integration`
+**OK (289 tests, 1147 assertions)**; `gate:schema` **`counts — tables=10 tenant_owned=8 violations=0`**. Every read
+path added in the delta is inside a transaction, and the settings adapter refuses on its own account rather than
+trusting its callers. Both non-RLS relations carry no tenant column, `messenger_messages` holds 0 rows, and no
+dispatch site exists anywhere in `api/src` or `api/config`. The completeness lens cleared locale parity 57/57/57,
+the § "Translation keys" table ↔ XLF cross-check in BOTH directions (the direction round 16 filed against — it now
+closes), all ten `PostgresRowLevelSecurityIsolation` guards wired, `NoTenantBound` at all five repositories, both
+retired hardwires genuinely gone, cross-tier reach moot, and the MPL-2.0 ruling reaching every artefact carrying a
+licence list.
+
+**Standing note for whichever wave wires Messenger, recorded here so that wave inherits it rather than
+rediscovering it:** a tenant-scoped command puts tenant data in `messenger_messages.body`, a table with no policy
+and no tenant column, and `schema-tenancy.php` classifies by COLUMN — so the gate would stay green over a
+tenant-data store nothing polices. Not a finding against `d449e3e`; nothing dispatches today.
+
+**THE CAP IS REACHED.** The two-consecutive-clean counter stays at **ZERO** — it has never left zero across five
+rounds (25, 24, 29, 25, 7 findings). The 2026-08-23 09:00 extension to six rounds existed *solely to confirm a
+clean round*, and its own text says any finding in round 5 spends it without using it. Round 5 has seven. So round 6
+cannot discharge MAXIMAL either, and `CLAUDE.md` § "Certification ladder" requires the escalation to go to the
+developer via `AskUserQuestion` rather than the loop continuing or the wave closing quietly.
+
+**Read the finding counts as a trend, not as a grade.** 7 findings against a 93-commit delta, after 25 against a
+six-commit one, is the panel finding less on far more code — but two of the three lenses were lost mid-round, so
+this round's number is a floor and not a measurement, and it must not be cited as evidence of convergence.
+
+**UNCERTIFIED-BY-EXECUTION for this round:** the correctness lens's argument (its text is lost; R5C-1's remedy is
+recorded from a session note and R5C-2's defect is not recovered at all), and the adversarial half of the tenancy
+lens (self-graded — C5 and C6 were executed and their tallies pasted, C7, C8 and both findings were read).
+
+
 ## Wave 2 — Quotes, credits & the shared document machinery
 
 **WAVE 2 OWES THE NEGATIVE-TIE VECTOR** (developer ruling 2026-07-30, recorded here at round 13, which found
