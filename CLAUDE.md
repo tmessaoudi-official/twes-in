@@ -230,6 +230,9 @@ i can't run it myself!"* A denied command is an unrecoverable dead end. The ruli
 
 - **Per-task 3C/6C gates: ONE `advisor()` call, never a panel** (developer ruling, 2026-08-19). This
   supersedes the older "MAXIMAL by default". `advisor()` is available on this machine.
+  *(The ruling is the developer's; **writing it into this file** was the executing model's call on
+  2026-09-01 and is **pending their ratification** — `docs/SPEC.md` § 10 carries the provenance and
+  the one-line revert. Until they rule, follow it: it is their newer instruction either way.)*
 - **The refuting between gates comes from executable evidence**: failing test FIRST, confirmed
   failing **for the stated reason**, then implement, then a **sabotage/mutation check** proving the
   suite would NOTICE the guarantee breaking. **Sabotage the INVARIANT, not the diff.** Where a mutant

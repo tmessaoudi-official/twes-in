@@ -37,6 +37,12 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 
 ## The table
 
+> **If you regenerate this table, redact any permitted-licence identifier from the `entry`
+> column.** The generator truncates each entry to 130 characters, and one of them quotes the closed list —
+> which makes this file a licence SURFACE and turns `test-gates.sh`'s inventory case red. It did, at the
+> consolidation commit, invisibly: the inventory enumerates from `git ls-files` **cached only**, so while
+> this file was still untracked the case passed on a file it could not see.
+
 | # | file | archived line | original line | date | verb | entry | disposition | anchor / reason |
 |---|---|---|---|---|---|---|---|---|
 | 1 | `build-waves.plan.md` | 16 | 14 | 2026-08-29 | AGREED | **round 5's seven findings all close (or are explicitly ruled deferred) BEFORE Wave 1 | `carried` |  |
@@ -213,7 +219,7 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 172 | `reimplementation-strategy.plan.md` | 23 | 21 | 2026-07-29 | AGREED | **GraphQL deferred, not refused.** The problem GraphQL solves is *many clients | `carried` | GraphQL deferred, not refused |
 | 173 | `reimplementation-strategy.plan.md` | 32 | 30 | 2026-07-29 | AGREED | **a transport-agnostic gateway interface in BOTH clients, mandatory from the | `carried` | a transport-agnostic gateway interface in BOTH clients |
 | 174 | `reimplementation-strategy.plan.md` | 37 | 35 | 2026-07-29 | AGREED | **Flutter Web stays**, and the justification is recorded correctly as *one | `carried` | the Web build is a SECOND admin interface |
-| 175 | `reimplementation-strategy.plan.md` | 42 | 40 | 2026-07-29 | AGREED | the permissive set for anything **distributed** is exactly nine identifiers — MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0B | `carried-as-pointer` | Do not restate the permitted-licence identifiers in this file |
+| 175 | `reimplementation-strategy.plan.md` | 42 | 40 | 2026-07-29 | AGREED | the permissive set for anything **distributed** is exactly nine identifiers — [REDACTED HERE: see `LICENSING.md`. SPEC § 0 rule 7 applies to this table too — quoting the list would make it a licence surface, which is exactly what `test-gates.sh`'s inventory case caught] | `carried-as-pointer` | Do not restate the permitted-licence identifiers in this file |
 | 176 | `reimplementation-strategy.plan.md` | 44 | 42 | 2026-07-29 | AGREED | the four upstream repos are **studied, never forked into this tree**. Clones live at `/tmp/xxx/**` and `.gitignore` blocks `/refer | `process-rule` | Reference clones live outside the repo, read-only |
 | 177 | `reimplementation-strategy.plan.md` | 45 | 43 | 2026-07-29 | FOUND | the four repos carry **three different licences**, not one. `invoiceninja` (API) and `ui` (React) are **Elastic License 2.0**; `ad | `process-rule` | the four upstream repos carry three different licences |
 | 178 | `reimplementation-strategy.plan.md` | 46 | 44 | 2026-07-29 | FOUND | ELv2 permits derivative works, modification and distribution. Its three limitations are (1) no providing the software to third par | `process-rule` | ELv2 forbids circumventing licence-key functionality |

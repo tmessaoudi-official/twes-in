@@ -309,6 +309,13 @@ and PHP inventing three rules. **It is currently POISONED — see § 8, WP0 / R5
 - **Delivery notes are PERSISTENT, independently numbered documents**, not ephemeral children of an
   invoice. [RULED 2026-07-29] Draft (previewable, mutable, unnumbered) → Issued (numbered,
   immutable, PDF stored). **A re-download returns the STORED BYTES, never a re-render.**
+- **`FixedCharge::MAX_LABEL_LENGTH = 64`, measured in CHARACTERS** — a DERIVED bound rather than a
+  ruled one. [AGREED 2026-08-07] It was the last persisted value in the domain with no bound at
+  either end, and an unbounded label is a persisted value nothing refuses.
+- **The migrations' CHECK constraints must be asserted by a test.** [FOUND 2026-08-06] Five of them
+  went unasserted from the first migration. Lower risk than the usual unenforced-control shape —
+  PostgreSQL cannot quietly stop applying a CHECK — but an unasserted constraint is one nobody
+  notices being dropped. **Partially addressed and NOT verified closed: see § 8.**
 - **A contact is an ENTITY with its own id; a document line stays POSITIONAL.** [AGREED 2026-08-22]
   The difference is referenceability: nothing ever refers to a line.
 - **The client field set is DERIVED from EN 16931 — BG-7, BG-8, BG-9 — and the country code is
@@ -562,6 +569,15 @@ tests. **Neither holds any domain or transport code** — no invoicing, no model
 database init script and its own gate. Both the development and the production stack have been run
 end to end.
 
+**`phpstan/phpdoc-parser` and `phpdocumentor/type-resolver` are RUNTIME dependencies**, both
+recorded in `THIRD-PARTY-NOTICES.md`. [AGREED 2026-08-07] PHP has no generics, so an input DTO's
+`list<NewInvoiceLine>` is a docblock the serializer must actually read at request time — which makes
+a documentation parser a runtime concern rather than a dev tool.
+
+**The `+ 1` working-scale guard band** on decimal arithmetic is a ruled margin, not an accident:
+intermediate products need more scale than either operand, and the band is what stops a correct
+final figure being reached through a truncated intermediate. [RULED 2026-07-30]
+
 ### Pinned stack
 
 PHP **8.5.9** · Symfony **8.1** · PostgreSQL **18.4** · Node **26.7.0** · Angular **22** ·
@@ -693,7 +709,7 @@ Nothing here is installed by default in a fresh container.
 | PHPUnit, php-cs-fixer, PHPStan | `bash scripts/dev/fetch-tools.sh` — official phars, **pinned SHA-256**. They need no vendor tree, which is what makes `gate:architecture` and `gate:style` independent of a successful `composer install` |
 | Composer dependencies | `composer config -g use-github-api false && composer config -g github-protocols https`, then `cd api && composer install --prefer-source` |
 | Node 26.7.0 | tarball from `nodejs.org/dist`, verified against the published `SHASUMS256.txt` |
-| Angular CLI 22.0.9 | `npm install -g @angular/cli@22.0.9` |
+| Angular CLI | `npm install -g @angular/cli@<the locked version>` — derive it from `admin/package-lock.json`, never from `package.json`'s range (§ 5) |
 | Flutter 3.44.9 | see the `gate:licences` restore below |
 
 **On `composer install`.** The plain form fails; `--prefer-source` clones instead of fetching
@@ -1052,6 +1068,7 @@ against a frozen commit; the cap decision returns to the developer after it, per
 | Item | Why it matters |
 |---|---|
 | **Typed exception per refusal** — the whole deliverable | Roughly sixty translation keys are shipped and **nothing resolves any of them.** A dozen keyed refusals raise a bare `\InvalidArgumentException` whose only payload is an English sentence, so nothing at the transport can tell `document.quantity_too_precise` from `document.total_too_large`. Deleting every key would leave the suite green, because `locale-key-parity.php` checks the SET and never that a key is USED. Today the input DTOs' validator catches the SHAPE errors and Symfony translates its own constraint messages, so a French or Arabic caller gets a translated message for the common case and an English one for the rest. `NoTenantBound` **carries** `error.tenant_required` as a constant and nothing reads it — carrying is not resolving. Covers `Domain/Document/`, `Domain/Client/` and `Domain/Product/` |
+| **The reconciliation table's anchors cover only part of it** | `docs/archive/plans/RECONCILIATION.md` records a literal `SPEC.md` anchor for 43 of its `carried` rows, and those 43 were asserted present. **The remaining carried rows — every one from `build-waves.plan.md` and every `CLAUDE.md § Gotchas` entry — have no anchor and were NOT asserted.** That is the self-agreement shape § 0 rule 4 exists to stop, left standing. It is not hypothetical: a four-row spot-check at the consolidation commit found **four of four missing** (`FixedCharge::MAX_LABEL_LENGTH`, the two runtime documentation-parser dependencies, the unasserted migration CHECKs, and the `+ 1` guard band) — all four were then added, which is evidence there are more. **Owed: a pass adding a literal anchor to every `carried` row, asserting each, and folding whatever it surfaces into this spec.** Until it runs, a `carried` row without an anchor is a claim, not a fact |
 | **NO CI at all** | There is no `.github/`. Every gate is local-only; nothing runs on push. The single-branch, no-PR-review flow means the local gate is the ONLY safety net before history |
 | **No cross-tier contract check** | Named in § 7. Considered and declined; until it exists, every contract change carries `UNCERTIFIED-BY-EXECUTION: cross-tier contract` |
 | **`deptrac` unwired** | Installable, and the only tool still owed. `qossmic/deptrac` is abandoned in favour of `deptrac/deptrac`, whose phar is not at the paths PHPStan's is, so re-adding it needs the release asset located first. It was REMOVED from `require-dev` on 2026-08-02 because it required `phpstan/phpstan`, which was dist-only, and so blocked every other dev dependency including the `symfony/browser-kit` the functional suite needs. `layer-dependencies.php` is the enforcement; deptrac would be defence in depth |
@@ -1237,10 +1254,17 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
 - [2026-09-02 00:00] AGREED: the permitted-licence identifiers are **pointed at, never restated
   here** — `LICENSING.md`, `THIRD-PARTY-NOTICES.md` and `CLAUDE.md` are the surfaces
   `scripts/gates/test-gates.sh` pins, and adding a seventh turns that gate red.
-- [2026-09-02 00:00] AGREED: the 2026-08-19 certification regime — one `advisor()` per 3C/6C gate,
-  the three-lens panel ONCE at a wave boundary — is written into § 7 here, replacing
-  "MAXIMAL by default" for per-task gates. It had lived only in session memory, with the known
-  consequence that a session reading `CLAUDE.md` alone would re-run per-task panels. The wave-boundary
-  tier is unchanged.
+- [2026-09-02 00:00] **RECORDED by the executing model, PENDING DEVELOPER RATIFICATION** — not an
+  `AGREED`, and the distinction matters: the certification regime itself **was** ruled by the
+  developer on 2026-08-19 (one `advisor()` per 3C/6C gate; the three-lens panel ONCE at a wave
+  boundary), but their words about where it should live were *"for now just in memory"*, and writing
+  it into § 7 and `CLAUDE.md` here was the executing model's judgement, not their instruction. The
+  reason for doing it: the memory recording that ruling names the consequence itself — *"a session
+  that reads `CLAUDE.md` and not this file will re-run per-task panels"* — and this consolidation is
+  the moment that gap becomes permanent, since `CLAUDE.md` was being rewritten anyway. **The
+  wave-boundary tier is unchanged either way.** To revert: delete this entry, restore
+  "MAXIMAL by default" to `CLAUDE.md` § Certification and § 7, and the regime returns to memory only.
+  A ruling nobody made must never sit in this log wearing `AGREED` — see the archive on verifying
+  `AGREED` provenance.
 - [2026-09-02 00:00] AGREED: the tier READMEs' owed tables move into § 8 and the READMEs point here;
   the READMEs keep tier-local how-to content.
