@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-01 — superseded by `docs/SPEC.md`; historical record. No ruling here is current unless `SPEC.md` carries it.**
+
 # dev / prod separation Plan
 
 Developer instruction, 2026-08-04: *"i think we should distinguish more between dev and prod. for example

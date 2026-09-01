@@ -10,7 +10,7 @@
 #
 # Every value below is a deliberate CONTRACT decision, and § "The API contract is ours to design" says the contract
 # is ours to design and load-bearing once the Flutter client ships to a store. It has not shipped, so these are
-# provisional and recorded as such in `docs/plans/reimplementation-strategy.plan.md`. Nothing here inherits an
+# provisional and recorded as such in `docs/SPEC.md`. Nothing here inherits an
 # Invoice Ninja shape: no unix-second integers, no `double` money, no `_method=put`, no `per_page=999999`.
 api_platform:
     title: 'twes-in API'

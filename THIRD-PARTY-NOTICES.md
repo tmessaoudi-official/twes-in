@@ -11,7 +11,7 @@ in the same change.
 
 **Permitted for anything distributed:** MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, 0BSD, MIT-0,
 CC0-1.0, BlueOak-1.0.0. That is the whole list, and it is stated in the same closed, ordered form in
-`CLAUDE.md` invariant 8(a), `LICENSING.md`, `README.md`, `docs/plans/reimplementation-strategy.plan.md` and
+`CLAUDE.md` invariant 8(a), `LICENSING.md`, `README.md`, `docs/archive/plans/reimplementation-strategy.plan.md` and
 `.claude/agents/completeness-reviewer.md`; `scripts/gates/test-gates.sh` fails if any of those six drifts from
 the others or from the gate, **and** asserts that the set of documents stating the rule has not grown — a
 hand-listed cross-check cannot notice a seventh surface appearing, which is how the fifth and sixth were each
@@ -139,7 +139,7 @@ instead, which keeps `Domain/` at literally zero Composer dependencies — enfor
 and chose not to" is more useful to a future reader than silence.
 
 **This file is the SSOT for anticipated dependencies.** `CLAUDE.md` invariant 6 and
-`docs/plans/reimplementation-strategy.plan.md` also name candidate libraries; where they differ, this
+`docs/archive/plans/reimplementation-strategy.plan.md` also name candidate libraries; where they differ, this
 list governs, and neither of them is a licence record.
 
 Anticipated, licences to be confirmed **at the moment each is added**: `symfony/*` (MIT),

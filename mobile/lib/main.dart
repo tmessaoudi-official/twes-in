@@ -65,7 +65,7 @@ class PlaceholderScreen extends StatelessWidget {
             children: <Widget>[
               Text(
                 'Flutter client — scaffolded, not yet built.\n'
-                'See docs/plans/build-waves.plan.md, Wave 11.',
+                'See docs/SPEC.md, Wave 11.',
                 textAlign: TextAlign.center,
               ),
               SizedBox(height: 24),

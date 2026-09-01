@@ -93,7 +93,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * **This narrows {@see self::policySqlFor()}'s contract, deliberately.** That method still takes a
      * `$tenantColumn` — tests need it to EMIT a non-canonical policy and prove detection fires — but a policy
-     * naming anything other than this constant is now a violation. `docs/plans/build-waves.plan.md` § Wave 1
+     * naming anything other than this constant is now a violation. `docs/SPEC.md` § Wave 1
      * already rules that every tenant-owned table carries `company_id` with `PRIMARY KEY (company_id, id)`, so
      * the flexibility was never a product requirement; it was the hole.
      */
@@ -700,7 +700,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * somebody disables, which is strictly worse than a documented scope. The requirement belongs to the
      * cluster: `REVOKE CONNECT ON DATABASE … FROM PUBLIC` for every database, which
      * scripts/dev/provision-test-database.sh already does for the one it creates. Owed to `infra/` in Wave 12
-     * for the rest, and recorded in docs/plans/build-waves.plan.md so it is not rediscovered as a finding.
+     * for the rest, and recorded in docs/SPEC.md so it is not rediscovered as a finding.
      *
      * @return int the number of policed tables inspected
      *
@@ -2567,7 +2567,7 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *    could equally bind itself to any tenant directly, so it buys them nothing; the honest statement
      *    is that this guard raises the cost of the fourth bypass rather than closing it. Closing it needs
      *    a re-check when the connection is *released*, which needs a connection lifecycle this wave has
-     *    no ORM to hook — recorded as owed in docs/plans/build-waves.plan.md (R4-3).
+     *    no ORM to hook — recorded as owed in docs/SPEC.md (R4-3).
      *
      * `''` and NULL are both "no tenant", exactly as above.
      *

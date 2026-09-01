@@ -15,7 +15,7 @@
 # prod should be very optimized and closed and secure"*. So dev optimises the DEVELOPER'S LOOP and prod optimises
 # THE REQUEST, and where the two want different things they get different artefacts rather than one artefact with a
 # flag — because a shared artefact is how a dev convenience reaches production. See
-# `docs/plans/dev-prod-separation.plan.md`.
+# `docs/SPEC.md`.
 # ==============================================================================================================
 
 # --------------------------------------------------------------------------------------------------------------

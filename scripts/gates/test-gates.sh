@@ -50,8 +50,8 @@ fresh_fixture() {
   cp "$REPO_ROOT"/CLAUDE.md "$REPO_ROOT"/LICENSING.md "$REPO_ROOT"/README.md "$WORK/repo/"
   # The sixth rule-stating surface, found by round 8. A plan file, but CLAUDE.md § "Plans live in the repo"
   # makes it a read-before-you-code document, and its Decisions Log stated the licence rule.
-  mkdir -p "$WORK/repo/docs/plans"
-  cp "$REPO_ROOT"/docs/plans/reimplementation-strategy.plan.md "$WORK/repo/docs/plans/"
+  mkdir -p "$WORK/repo/docs/archive/plans"
+  cp "$REPO_ROOT"/docs/archive/plans/reimplementation-strategy.plan.md "$WORK/repo/docs/archive/plans/"
   mkdir -p "$WORK/repo/.claude/agents"
   cp "$REPO_ROOT"/.claude/agents/completeness-reviewer.md "$WORK/repo/.claude/agents/"
   # The Angular tier's manifest AND lock. Omitting either would make every npm-licence assertion below
@@ -1595,13 +1595,13 @@ echo "== the licensing rule must be stated the same way everywhere it is stated 
 # missed the two that also state the rule — README.md, which frames itself as the pre-dependency read, and
 # THIRD-PARTY-NOTICES.md, which CLAUDE.md 8(a) names as where a licence must be recorded. Both were left on the
 # superseded five-identifier list, so round 6's own finding reproduced verbatim in two more files.
-# SIX surfaces now, not five. Round 8 found the sixth — docs/plans/reimplementation-strategy.plan.md, whose
+# SIX surfaces now, not five. Round 8 found the sixth — docs/archive/plans/reimplementation-strategy.plan.md (moved there 2026-09-01), whose
 # Decisions Log entry stated the rule as two categories "and nothing else" while the gate enforced three, in a
 # file CLAUDE.md § "Plans live in the repo" tells sessions to read BEFORE writing application code. Counting
 # the covered documents is not enough on its own, which is why the inventory case below exists too: a check
 # over a hand-listed set cannot notice a seventh surface appearing.
 for document in CLAUDE.md LICENSING.md README.md THIRD-PARTY-NOTICES.md \
-                docs/plans/reimplementation-strategy.plan.md \
+                docs/archive/plans/reimplementation-strategy.plan.md \
                 .claude/agents/completeness-reviewer.md; do
   fresh_fixture
   missing=()
@@ -1674,8 +1674,8 @@ expected_licence_surfaces="CLAUDE.md
 LICENSING.md
 README.md
 THIRD-PARTY-NOTICES.md
-docs/plans/build-waves.plan.md
-docs/plans/reimplementation-strategy.plan.md
+docs/archive/plans/build-waves.plan.md
+docs/archive/plans/reimplementation-strategy.plan.md
 .claude/agents/completeness-reviewer.md"
 
 # Enumerated from `git ls-files`, NOT `grep -r`. A recursive walk reads whatever happens to be sitting in the

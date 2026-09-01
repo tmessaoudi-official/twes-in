@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-01 — superseded by `docs/SPEC.md`; historical record. No ruling here is current unless `SPEC.md` carries it.**
+
 # Claude bundle integration Plan
 
 Bring the developer's Claude Code setup into this repo in the form that works in a **cloud

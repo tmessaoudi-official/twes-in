@@ -4,33 +4,11 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 **Flutter** client for **all six targets** — Android, iOS, Linux, Windows, macOS and Web — over
 **PostgreSQL**. Flutter Web means twes-in ships **two admin interfaces**, Flutter and Angular.
 
-> **Status: early.** Wave 0 has landed but is **not yet certified** — the `Money` value object, the
-> profit-rate arithmetic, the multi-tenant isolation seam, and the architecture/licensing gates, under `api/`.
-> **Wave 1's pure domain has landed too**: the document calculation kernel (line nets, VAT grouped by rate,
-> fixed charges, totals), the generic Draft→Issued→Cancelled lifecycle, per-type numbering, and the `Invoice`
-> aggregate — all framework-free, which is why they could land first.
-> **The Symfony application, Doctrine and the first migration have now landed too** (2026-08-01): `api/src/Kernel.php`,
-> `api/bin/console`, `api/config/**`, the attribute-mapped persistence model, `api/migrations/`, and
-> `scripts/gates/schema-tenancy.php`, which asserts every tenant-owned table in a real migrated schema is
-> row-level-security-enabled, forced, canonically policed and out of the runtime role's reach. This paragraph said
-> they were "blocked on GitHub egress" until then; that diagnosis was wrong — see `CLAUDE.md` § Gotchas.
-> **`admin/` and `mobile/` are scaffolded**, each with its own official generator (`ng new`,
-> `flutter create`), each green on its own toolchain, and each carrying the branding seam and — for Flutter —
-> the font/same-origin controls its own invariants demanded, with tests. Neither holds **domain or transport**
-> code yet: no invoicing, no models, no API client.
-> **The API's HTTP surface, its Doctrine repository and the `infra/` tier have ALL landed since**, and this paragraph
-> denied each of them for several commits while the paragraph three lines above announced Doctrine — two contradictory
-> statements in one file, which the second certification round filed as a P0. `api/src/UI/` holds the invoice resource,
-> its state provider and both write processors; `api/src/Infrastructure/Persistence/` holds `DoctrineInvoiceRepository`,
-> `InvoiceMapper` and the gapless number counter; `infra/` holds three Dockerfiles, three compose files, a Caddyfile,
-> an entrypoint and a database init script, and both stacks have been run end to end.
-> **Wave 1's `In:` line is now satisfied**, and this paragraph named the wrong reason three times on the way there:
-> it said Client, contacts, Product and the tenant settings table did not exist. The settings table landed
-> 2026-08-21; Client and Product both landed 2026-08-22, each with a domain, a policed table, persistence and a
-> `POST`/`GET` surface; and the last item — **`document.client_id`**, so an invoice can say who it is addressed to —
-> closed out the same day, with a composite foreign key that RESTRICTS rather than cascades and a CHECK requiring a
-> client at ISSUE while permitting a draft without one. Read `docs/plans/build-waves.plan.md` for exactly what is and
-> is not built — and trust that file over this paragraph, which is a summary and will drift again.
+> **Status: early — Wave 0 landed, Wave 1's scope delivered and NOT yet certified.**
+> **[`docs/SPEC.md`](docs/SPEC.md) is the single source of truth** for what exists, what is ruled
+> and what is still owed — § 5 is the verified current state, § 8 the one open register. This line
+> is deliberately short: the paragraph it replaces was twenty-four lines of correction-appended-to-
+> correction that denied three tiers which had already landed.
 
 ## Licence — dual
 
@@ -75,7 +53,7 @@ copyrightable expression. The rules that keep it that way are in
 | Database | PostgreSQL **18.4** |
 
 Versions are pinned exactly, not floated — a reproducible build is a precondition for trusting a money
-calculation. See `docs/plans/reimplementation-strategy.plan.md` § "Pinned stack".
+calculation. See `docs/SPEC.md` § "Pinned stack".
 
 ## Architecture
 
@@ -102,10 +80,10 @@ session. An unbound connection sees **nothing**, not everything. See
 | `CLAUDE.md` | The rules for how code is delivered here — quality gates, licensing invariants, architecture. |
 | `VISION.md` | Direction that is explicitly **not** a commitment. |
 | `LICENSING.md` · `THIRD-PARTY-NOTICES.md` | The dual licence and every dependency's licence. |
-| `docs/plans/build-waves.plan.md` | The wave-by-wave build plan and what is deliberately out of scope. |
-| `docs/plans/pricing-and-documents.plan.md` | Profit-rate pricing, delivery notes, and the generic charge model. |
-| `docs/plans/*.plan.md` | Plans, each with its own dated `## Decisions Log`. |
-| `api/` | The Symfony API. **Wave 0 landed** (`Domain/Money`, `Domain/Pricing`, `Infrastructure/` — tenancy, clock, ids) **plus most of Wave 1**: `Domain/Document` (the calculation kernel, lifecycle, numbering, the `Invoice` aggregate), the Symfony application, Doctrine and the first migrations, the persistence adapter, and the invoice HTTP surface — `GET /api/invoices/{id}`, `POST /api/invoices`, `POST /api/invoices/{id}/issue`. Four test suites. **Client (+ contacts) landed 2026-08-22** — domain, schema, persistence and `POST /api/clients` + `GET /api/clients/{id}` (no `PUT`, `DELETE` or collection `GET`; each absence is argued on `ClientResource`). **Product landed the same day** — domain, `product` table, persistence and `POST /api/products` + `GET /api/products/{id}`, wrapping the Wave 0 `ProductPricing` rather than re-expressing its arithmetic. **The `document` → `client` link landed the same day**, closing Wave 1's `In:` line: `document.client_id`, a composite FK `(company_id, client_id) → client (company_id, id)` with `ON DELETE RESTRICT`, a `NOT VALID` CHECK requiring a client once ISSUED while permitting a draft without one, and `clientId` on the invoice request and response. This row has been stale three times in the same way — the tenant settings table, then the `/api/clients` surface, then Product. Trust `docs/plans/build-waves.plan.md`. |
+| `docs/SPEC.md` | The wave-by-wave build plan and what is deliberately out of scope. |
+| `docs/SPEC.md` | Profit-rate pricing, delivery notes, and the generic charge model. |
+| `docs/SPEC.md` | Plans, each with its own dated `## Decisions Log`. |
+| `api/` | The Symfony API. **Wave 0 landed** (`Domain/Money`, `Domain/Pricing`, `Infrastructure/` — tenancy, clock, ids) **plus most of Wave 1**: `Domain/Document` (the calculation kernel, lifecycle, numbering, the `Invoice` aggregate), the Symfony application, Doctrine and the first migrations, the persistence adapter, and the invoice HTTP surface — `GET /api/invoices/{id}`, `POST /api/invoices`, `POST /api/invoices/{id}/issue`. Four test suites. **Client (+ contacts) landed 2026-08-22** — domain, schema, persistence and `POST /api/clients` + `GET /api/clients/{id}` (no `PUT`, `DELETE` or collection `GET`; each absence is argued on `ClientResource`). **Product landed the same day** — domain, `product` table, persistence and `POST /api/products` + `GET /api/products/{id}`, wrapping the Wave 0 `ProductPricing` rather than re-expressing its arithmetic. **The `document` → `client` link landed the same day**, closing Wave 1's `In:` line: `document.client_id`, a composite FK `(company_id, client_id) → client (company_id, id)` with `ON DELETE RESTRICT`, a `NOT VALID` CHECK requiring a client once ISSUED while permitting a draft without one, and `clientId` on the invoice request and response. This row has been stale three times in the same way — the tenant settings table, then the `/api/clients` surface, then Product. Trust `docs/SPEC.md`. |
 | `admin/` · `mobile/` | Angular admin (Wave 8), Flutter client (Wave 11). Scaffolded and green on their own toolchains; neither holds domain or transport code. Each README lists the tests and enforcers it owes as gate conditions. |
 | `infra/` | Deployment, **written from scratch** — never copied from `invoiceninja/dockerfiles`, which is GPL-2.0 (licensing invariant 7). Three Dockerfiles, three compose files, a Caddyfile, an entrypoint and a database init script; both the development and the production stack have been run end to end. Wave 12 still owes CI. |
 | `scripts/gates/` | The architecture, licensing and shell-syntax gates, plus their own test suite. `ls` it for the list — a count written in prose drifts. |

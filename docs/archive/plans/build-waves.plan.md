@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-01 — superseded by `docs/SPEC.md`; historical record. No ruling here is current unless `SPEC.md` carries it.**
+
 # Build waves Plan
 
 The full build, sliced into waves, with a **certification review by the three lenses at every wave

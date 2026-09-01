@@ -20,7 +20,7 @@
   "cases": [
     {
       "id": "tnd-baseline",
-      "why": "The worked example from docs/plans/pricing-and-documents.plan.md. The trap it guards: VAT is 24.700, not 19.000 -- the base is the net of 130, never the cost of 100.",
+      "why": "The worked example from docs/SPEC.md. The trap it guards: VAT is 24.700, not 19.000 -- the base is the net of 130, never the cost of 100.",
       "currency": "TND",
       "cost": "100.000",
       "profit_rate": "30",

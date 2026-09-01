@@ -29,7 +29,7 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  *
  * ## Only the AUTHORED price field is stored, and a CHECK enforces which one
  *
- * F4's ruling (`docs/plans/pricing-and-documents.plan.md`): the typed field is stored exactly as entered and is
+ * F4's ruling (`docs/SPEC.md`): the typed field is stored exactly as entered and is
  * **never recomputed**; the other is derived for display, with no authority. So `profit_rate` and
  * `net_price_amount` are both nullable and exactly ONE is present, matched to `authored_by`.
  *

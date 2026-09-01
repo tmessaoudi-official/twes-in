@@ -2,14 +2,14 @@
 
 > This file holds direction that is **not** a commitment. Nothing here constrains current work, and
 > nothing here may be cited as a reason to defer a decision or to design around an unknown. The rules
-> that bind are in `CLAUDE.md`; the plan that binds is in `docs/plans/`.
+> that bind are in `CLAUDE.md`; the plan that binds is in `docs/SPEC.md`.
 
 ## What twes-in is for
 
 An invoicing and billing platform that is **both** the author's own internal invoicing **and** a
 product sold to others — a Symfony REST API, an Angular admin client, and a Flutter client for mobile
 with native desktop support — which is **ruled in scope for Wave 11, not "later"**: all six Flutter
-targets ship (Android, iOS, Linux, Windows, macOS, Web). See `docs/plans/build-waves.plan.md`.
+targets ship (Android, iOS, Linux, Windows, macOS, Web). See `docs/SPEC.md`.
 
 Licensed **AGPL-3.0-or-later plus a commercial licence** (`LICENSING.md`): open source, and sellable by
 the author. Everything in it is ours — a clean-room reimplementation inspired by Invoice Ninja's
@@ -63,7 +63,7 @@ be a configuration change and not a code change — which is why hostname, produ
 and e-mail identity are configuration from day one.
 
 **Scope beyond the first release.** The first release is deliberately narrow (see
-`docs/plans/reimplementation-strategy.plan.md`). Additional payment gateways, more e-invoicing
+`docs/SPEC.md`). Additional payment gateways, more e-invoicing
 standards and tax jurisdictions, bank feeds, and richer reporting are all wanted eventually. Upstream
 reached ~344k lines of backend code over twelve years; matching that is roughly 25–40 person-years, so
 growth here is chosen one item at a time, with each addition earning its place.

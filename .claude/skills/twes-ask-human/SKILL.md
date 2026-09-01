@@ -8,8 +8,11 @@ user-invocable: true
 ---
 
 <!-- ═══════════════════════════════════════════════════════════════════════════════════
-  RE-INVERTED 2026-08-18 (de-containerization ruling, recorded in /stack's
-  docs/plans/decontainerization.plan.md § Decisions Log). The 2026-07-27 ruling banned
+  RE-INVERTED 2026-08-18 (de-containerization ruling). The plan file this used to cite --
+  /stack's docs/plans/decontainerization.plan.md -- DOES NOT EXIST; the reference was already
+  dangling before twes-in's own plans were archived, and it is corrected here rather than
+  repointed, because inventing a path is worse than naming the gap. The ruling itself stands and
+  is recorded in twes-in's CLAUDE.md section "Questions". The 2026-07-27 ruling banned
   `AskUserQuestion` because it silently failed in the Claude Code CLOUD CONTAINER. That
   environment is dead. On the developer's own machine the tool WORKS —
   `askUserQuestionTimeout` is `"never"` globally and the global ask-human-question-guard

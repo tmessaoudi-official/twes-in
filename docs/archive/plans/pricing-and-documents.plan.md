@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-01 — superseded by `docs/SPEC.md`; historical record. No ruling here is current unless `SPEC.md` carries it.**
+
 # Pricing & documents Spec
 
 Detailed spec for the developer's feature additions (F1–F4 in `build-waves.plan.md`). Written from the

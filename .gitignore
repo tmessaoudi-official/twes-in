@@ -28,7 +28,7 @@
 # references. This project is a clean-room reimplementation: upstream code must never
 # enter this tree, because Invoice Ninja's backend and web UI are Elastic-License-2.0
 # and copying them in would make this repo a derivative work. See
-# docs/plans/reimplementation-strategy.plan.md § Licensing.
+# docs/SPEC.md § Licensing.
 /reference/
 /upstream/
 /vendor-reference/

@@ -117,7 +117,7 @@ name is the whole thing, a suffix narrows it** — so `gate` now runs every tier
 
 Developer ruling, 2026-08-04: *"dev should be an easy env to debug and test and prod should be very optimized and
 closed and secure"*. Those pull in opposite directions, so where they disagree they get separate builds. Design and
-rulings: `docs/plans/dev-prod-separation.plan.md`.
+rulings: `docs/SPEC.md`.
 
 | | dev (`make up`) | prod (`make up-prod`) |
 |---|---|---|
@@ -180,7 +180,12 @@ The **topology** is an idea and free to reuse: php-fpm + nginx + Postgres + Redi
 scheduler + headless Chrome for PDF rendering. The **files** are not. `CLAUDE.md` § "Licensing
 invariants", item 7.
 
-## What this tier owes on arrival
+## What a deployment must guarantee — the operational catalogue
+
+**This is tier-local operational content and it lives HERE, not in the spec**: it tells whoever
+deploys this stack what the database and the edge must be configured to do. `docs/SPEC.md` § 8 —
+the ONE open register — tracks which of these are still OWED and points back at this table rather
+than restating it, so each fact has exactly one home.
 
 | Owed | Why |
 |---|---|

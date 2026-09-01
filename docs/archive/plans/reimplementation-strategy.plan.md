@@ -1,3 +1,5 @@
+> **ARCHIVED 2026-09-01 — superseded by `docs/SPEC.md`; historical record. No ruling here is current unless `SPEC.md` carries it.**
+
 # Reimplementation strategy Plan
 
 How twes-in relates to Invoice Ninja: what may be reused, what must be rebuilt, what the licences

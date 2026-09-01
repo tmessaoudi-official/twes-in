@@ -33,7 +33,7 @@
 // user data turns every browser rendering it into a request storm against our own origin.
 //
 // Not exploitable before Wave 11, because nothing renders user data yet. Recorded as owed in
-// docs/plans/build-waves.plan.md and mobile/README.md so it is not closed-and-forgotten.
+// docs/SPEC.md and mobile/README.md so it is not closed-and-forgotten.
 //
 // THE REMEDY IS RULED (2026-07-30) and lands with infra/ in Wave 12: any GET under this prefix returns 200 with
 // the already-vendored NotoSansArabic-Regular.ttf rather than 404. Measured on this exact build: 713 requests

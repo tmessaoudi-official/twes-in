@@ -23,7 +23,7 @@ namespace Twes\Infrastructure\Tenancy;
  *     {@see PostgresRowLevelSecurityIsolation}.
  *   - **database** — one database per tenant, isolation by virtue of the connection. Not yet
  *     implemented; the seam exists so that adding it is an adapter rather than a rewrite. What it will
- *     cost is recorded in docs/plans/reimplementation-strategy.plan.md: migrations run per tenant,
+ *     cost is recorded in docs/SPEC.md: migrations run per tenant,
  *     provisioning becomes a workflow, and cross-tenant reporting needs fan-out.
  *
  * The parameter is a PDO connection because Wave 0 has no ORM yet. When Doctrine lands this becomes

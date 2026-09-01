@@ -65,7 +65,7 @@ other two is the default failure mode here, not an unusual one.
 5. **Stale references.** Grep for every symbol, route, env var, config key, file path, CLI command
    and doc heading the change renamed or removed. Account for each hit. Include: fixtures, seed data,
    translation keys, `api/.env` and `infra/.env` (both COMMITTED — there is no `.env.example`, that is a Laravel/Node convention; secrets live in the gitignored `.env.local`), docker-compose, CI workflow steps, the OpenAPI spec, and
-   `docs/plans/*.plan.md`. A dangling path in a doc is a P2; a dangling env var in
+   `docs/SPEC.md` and `docs/archive/plans/**`. A dangling path in a doc is a P2; a dangling env var in
    docker-compose is a P1 because it breaks a fresh checkout.
 6. **Migrations and fixtures move together.** A new non-nullable column needs a migration, an updated
    fixture/factory, and an updated seed — otherwise the test suite passes on the author's machine
@@ -147,10 +147,13 @@ other two is the default failure mode here, not an unusual one.
    in this file, `grep` for the thing it names — the row you are reading was factually wrong for the length of
    one commit.
 
-11. **The plan file and the decision record.** CLAUDE.md requires plans at `docs/plans/<topic>.plan.md`
-   with a `## Decisions Log`. If this change resolved a design decision, is it recorded there, in the
-   same change? An unrecorded ruling will be re-litigated by the next session — that is the cost, and
-   it is why this row is on the gate.
+11. **The decision record.** Since 2026-09-01 there is no `docs/plans/`: `docs/SPEC.md` § 10 is the ONE
+   live Decisions Log, and the five historical plans are archived VERBATIM under
+   `docs/archive/plans/` with every dated ruling dispositioned in `docs/archive/plans/RECONCILIATION.md`.
+   If this change resolved a design decision, is it recorded in § 10, in the same change? And if it
+   restated a ruling, does the spec still describe the code **as it is** rather than as intended?
+   An unrecorded ruling will be re-litigated by the next session — that is the cost, and it is why
+   this row is on the gate.
 12. **Scope honesty.** Does the change do *less* than its message claims, or more? A commit titled
    `fix: rounding on invoice totals` that also refactors the repository layer has an undisclosed
    blast radius. Equally: a `TODO`, a stub, a `throw new \LogicException('not implemented')`, or a

@@ -272,7 +272,7 @@ final readonly class DocumentCalculator
         // OVERSHOOTS a group VAT of `-0.005` and the shortfall goes negative — the invariant this method exists
         // to hold, broken, and silently absorbed by a `max(0, …)` clamp that used to sit below. Unreachable
         // today because `DocumentLine` refuses a negative quantity, unit price and rate, but Wave 2's credit
-        // note is scoped in `docs/plans/build-waves.plan.md` § "Wave 2 — Quotes, credits & the shared document
+        // note is scoped in `docs/SPEC.md` § "Wave 2 — Quotes, credits & the shared document
         // machinery" — cited THERE rather than "in this very file", which round 18 pointed out was true only of
         // the sentence asserting it — and a clamp with no stated failure mode is what CLAUDE.md's
         // anti-bandaid gate forbids. `Floor` makes the algorithm correct for either sign instead of guarding
