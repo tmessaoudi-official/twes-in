@@ -38,7 +38,12 @@ archive records the round that found it.
    Claude must read it, and `scripts/gates/test-gates.sh` asserts an exact inventory of the
    documents that state it. Adding the list here silently adds a seventh surface and turns that
    gate red. Point at those files.
-8. **§ 10 is the ONE live Decisions Log.** Per-plan logs are gone. A ruling made anywhere lands
+8. **A multi-commit deliverable is recorded as PART-LANDED between its commits, never struck whole
+   the moment any of it ships.** [AGREED 2026-08-22] This is the defect the archived record catches
+   itself committing repeatedly: a "still owed" line struck at the first commit of three, or a
+   heading claiming completion 45 lines above its own retraction. Strike an item in the change that
+   delivers it, not beside it.
+9. **§ 10 is the ONE live Decisions Log.** Per-plan logs are gone. A ruling made anywhere lands
    there in the same change, dated, one sentence.
 
 ---
@@ -1140,7 +1145,15 @@ against a frozen commit; the cap decision returns to the developer after it, per
   `grep` reports no match, and that is **indistinguishable from a genuine missing reference**. That
   suppression is the anti-bandaid shape: an error nobody diagnosed, silenced. **Owed: drop the
   `2>/dev/null` and fail loudly on an unreadable candidate**, the same call `schema-tenancy.php`
-  already makes for a table it cannot classify. This matters more than one flaky case — this
+  already makes for a table it cannot classify.
+  **And the same check carries a SECOND, deterministic defect found while investigating the first.**
+  Its regex is `(source|require|include|php|bash)[^\n]*${lib}`, but in a POSIX ERE bracket expression
+  `\` and `n` are LITERAL — so `[^\n]` means *"any character except a backslash or the letter n"*,
+  not *"any character except a newline"*. Any reference whose text between the verb and the basename
+  contains an `n` therefore fails to match. [Verified 2026-09-02: `echo 'source lib/n/caddy-configs.sh'
+  | grep -qE '(source)[^\n]*caddy-configs\.sh'` → **no match**, while the same line with `x` for `n`
+  matches.] It passes today only because none of the three real reference paths contains an `n`
+  between the two. `[^[:space:]]` or `.` is the fix. This matters more than one flaky case — this
   repository prices a false finding as badly as a false clean, because *the next red gets
   dismissed*, and a red that cannot be told from a read error is exactly that.
 - **R28-9** is closed as a CHECK and open as WIRING; the wiring half is a Wave 10 question.

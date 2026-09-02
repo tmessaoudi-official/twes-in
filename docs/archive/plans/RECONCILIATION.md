@@ -9,7 +9,8 @@ silently.
 (no entry without a disposition, no disposition without an entry).
 
 **All 178 `carried` rows carry a LITERAL anchor string from `docs/SPEC.md`, and all
-178 were asserted present.** Re-run the assertion rather than trusting this sentence.
+178 were asserted present.** Re-run the assertion rather than trusting this sentence: **`bash scripts/dev/assert-reconciliation-anchors.sh`**,
+which is on disk precisely because this line used to point at a check that lived in a throwaway command.
 
 It is not decoration. It caught, in three passes: 25 anchors written as summaries rather than
 quotations; **ten rulings that had not in fact been carried** — `FixedCharge::MAX_LABEL_LENGTH`,
@@ -49,6 +50,10 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 
 ## The table
 
+> **An anchor must not contain a `|`.** The column separator is a pipe, so one is escaped to `\|` and the
+> 95-character truncation can then split the escape, leaving a trailing backslash that resolves to nothing.
+> Choose a literal from the spec's PROSE, never from one of its table rows.
+>
 > **If you regenerate this table, redact any permitted-licence identifier from the `entry` column.**
 > The generator truncates each entry to 130 characters, and one of them quotes the closed list — which
 > makes this file a licence SURFACE and turns `test-gates.sh`'s inventory case red. It did, at the
@@ -77,37 +82,37 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 18 | `build-waves.plan.md` | 113 | 111 | 2026-08-22 | AGREED | **the SKU is optional and NOT unique.** Uniqueness needs an answer for what a collision returns to a caller and whether it is scop | `carried` | and whether it is scoped to non-deleted |
 | 19 | `build-waves.plan.md` | 114 | 112 | 2026-08-22 | AGREED | **`BehaviouralIsolationTest`'s row synthesiser may return `null`.** `product` is the first table whose CHECK requires a column to  | `carried` | BehaviouralIsolationTest |
 | 20 | `build-waves.plan.md` | 115 | 113 | 2026-08-22 | AGREED | **the client surface ships `POST` and `GET` only, and each missing verb is argued rather than deferred by default.** No `PUT`, bec | `carried` | full replacement must first answer whether a caller may supply |
-| 21 | `build-waves.plan.md` | 116 | 114 | 2026-08-22 | AGREED | **contact ids are minted server-side, so the aggregate's duplicate-contact and contact-not-found refusals are unreachable from the | `carried` | in the change that makes |
+| 21 | `build-waves.plan.md` | 116 | 114 | 2026-08-22 | AGREED | **contact ids are minted server-side, so the aggregate's duplicate-contact and contact-not-found refusals are unreachable from the | `carried` | ids are minted server-side |
 | 22 | `build-waves.plan.md` | 117 | 115 | 2026-08-22 | AGREED | **the fifteen `client.*` keys land WITH the surface even though nothing resolves them.** They pay nothing down — `locale-key-parit | `carried` | gendered and pluralised differently in French and |
-| 23 | `build-waves.plan.md` | 118 | 116 | 2026-08-22 | AGREED | **Client (+ contacts) lands in THREE commits, and is recorded as PART-LANDED between them rather than struck whole.** Domain, then | `carried` | InvoiceMapper |
+| 23 | `build-waves.plan.md` | 118 | 116 | 2026-08-22 | AGREED | **Client (+ contacts) lands in THREE commits, and is recorded as PART-LANDED between them rather than struck whole.** Domain, then | `carried` | recorded as PART-LANDED between its commits |
 | 24 | `build-waves.plan.md` | 119 | 117 | 2026-08-22 | AGREED | **a contact is an ENTITY with its own id; a document line stays POSITIONAL.** The two are deliberately different and the reason is | `carried` | ENTITY with its own id; a document line stays POSITIONAL. |
 | 25 | `build-waves.plan.md` | 120 | 118 | 2026-08-22 | AGREED | **the client field set is DERIVED from EN 16931 — BG-7, BG-8, BG-9 — and the country code is validated by SHAPE only.** Licensing  | `carried` | — BG-7, BG-8, BG-9 — and the country code is validated by SHAPE only. |
 | 26 | `build-waves.plan.md` | 121 | 119 | 2026-08-21 | AGREED | **the tenant settings table LANDED, and `vatRoundingPoint` is no longer a field on `CreateInvoice` at all.** The 2026-08-07 ruling | `carried` | much tax a document declares |
-| 27 | `build-waves.plan.md` | 122 | 120 | 2026-08-21 | AGREED | **the settings READ requires an active transaction, and that is the control rather than ceremony.** An unbound session and a tenan | `carried` | services.yaml |
+| 27 | `build-waves.plan.md` | 122 | 120 | 2026-08-21 | AGREED | **the settings READ requires an active transaction, and that is the control rather than ceremony.** An unbound session and a tenan | `carried` | A READ needs a transaction too |
 | 28 | `build-waves.plan.md` | 123 | 121 | 2026-08-21 | AGREED | **`BehaviouralIsolationTest`'s GOAL 7 now CHECKS what it previously ASSERTED.** Its finding message claimed *"some uniqueness mech | `carried` | every tenant-owned table had a surrogate key beside the tenant |
 | 29 | `build-waves.plan.md` | 124 | 122 | 2026-08-07 | AGREED | **the `e2e` suite FAILS without a live stack and is therefore NOT in `composer gate`.** Skipping is the shape this project refuses | `carried` | require a built image and |
 | 30 | `build-waves.plan.md` | 125 | 123 | 2026-08-07 | AGREED | **a header the edge owns is set with Caddy's `>` deferred prefix, on every field, even though one suffices.** A `header` block wit | `carried` | deferred operation is applied as a unit, |
 | 31 | `build-waves.plan.md` | 126 | 124 | 2026-08-07 | AGREED | **the dev provisioner refuses on WHOSE objects a database holds, not WHETHER it holds any.** `provision-test-database.sh`'s "refus | `carried` | provision-test-database.sh |
-| 32 | `build-waves.plan.md` | 127 | 125 | 2026-08-07 | AGREED | **the gapless counter is ONE atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING`, not `SELECT … FOR UPDATE`.** The three-statement | `carried` | SELECT … FOR UPDATE |
+| 32 | `build-waves.plan.md` | 127 | 125 | 2026-08-07 | AGREED | **the gapless counter is ONE atomic `INSERT … ON CONFLICT DO UPDATE … RETURNING`, not `SELECT … FOR UPDATE`.** The three-statement | `carried` | only because of a lock nothing could observe |
 | 33 | `build-waves.plan.md` | 128 | 126 | 2026-08-07 | AGREED | **`POST /api/invoices` creates a DRAFT and `POST /api/invoices/{id}/issue` issues it** — two single-purpose operations rather than | `carried` | POST /api/invoices/{id}/issue |
 | 34 | `build-waves.plan.md` | 129 | 127 | 2026-08-07 | AGREED | **a write response is the document READ BACK inside the write transaction**, never the aggregate just built. `NUMERIC(21,6)` retur | `carried` | write response is the document READ BACK inside the write |
 | 35 | `build-waves.plan.md` | 130 | 128 | 2026-08-07 | AGREED | **a client may not choose `vatRoundingPoint`.** `PerRateGroup` and `PerLine` produce numerically different tax figures, so a per-r | `carried` | per-request choice would be a client choosing how much tax a document declares. It |
 | 36 | `build-waves.plan.md` | 131 | 129 | 2026-08-07 | AGREED | **`FixedCharge::MAX_LABEL_LENGTH = 64`, measured in CHARACTERS**, a derived bound rather than a ruled one. It was the last persist | `carried` | was the last persisted value in the domain with no bound at either end |
 | 37 | `build-waves.plan.md` | 132 | 130 | 2026-08-07 | AGREED | **`phpstan/phpdoc-parser` and `phpdocumentor/type-resolver` are RUNTIME dependencies** (both MIT, recorded in `THIRD-PARTY-NOTICES | `carried` | `phpstan/phpdoc-parser` and `phpdocumentor/type-resolver` are RUNTIME dependencies |
-| 38 | `build-waves.plan.md` | 133 | 131 | 2026-08-07 | AGREED | **the operation collects denormalization errors**, so a JSON number where a decimal string belongs is a 422 naming `lines[0].unitN | `carried` | lines[0].unitNet |
+| 38 | `build-waves.plan.md` | 133 | 131 | 2026-08-07 | AGREED | **the operation collects denormalization errors**, so a JSON number where a decimal string belongs is a 422 naming `lines[0].unitN | `carried` | a JSON number is answered with a 422 naming |
 | 39 | `build-waves.plan.md` | 134 | 132 | 2026-08-06 | AGREED | no gate re-implements a parser its real consumer already has. DSN users come from DBAL's own DsnParser, JSON from json_decode (and | `carried` | own resolver, never a second parser beside it |
 | 40 | `build-waves.plan.md` | 135 | 133 | 2026-08-06 | AGREED | the worker ORACLE is live — `frankenphp adapt` on the rendered configuration, asserting zero workers, with three distinct verdicts | `carried` | workers, with three distinct verdicts |
-| 41 | `build-waves.plan.md` | 136 | 134 | 2026-08-06 | AGREED | the worker-mode control STOPS text-scanning. A `frankenphp adapt` ORACLE on the rendered configuration replaces detection (it asks | `carried` | frankenphp adapt |
+| 41 | `build-waves.plan.md` | 136 | 134 | 2026-08-06 | AGREED | the worker-mode control STOPS text-scanning. A `frankenphp adapt` ORACLE on the rendered configuration replaces detection (it asks | `carried` | A `frankenphp adapt` **ORACLE** |
 | 42 | `build-waves.plan.md` | 137 | 135 | 2026-08-06 | AGREED | the Caddy-config and seam derivation lives ONCE, in `scripts/gates/lib/caddy-configs.sh`, sourced by both worker-mode gates — a ne | `carried` | Caddy-config and seam derivation lives |
 | 43 | `build-waves.plan.md` | 138 | 136 | 2026-08-06 | AGREED | the worker-mode value axis is REBUILT rather than patched — the analysis moves to `scripts/gates/lib/worker-mode-analyse.php`, doe | `carried` | value analysis is a real parser |
-| 44 | `build-waves.plan.md` | 139 | 137 | 2026-08-05 | AGREED | `extra.runtime` in any `composer.json` must be ABSENT or hold nothing but `class` equal to the permitted runtime — an allow-list o | `carried` | symfony/runtime |
+| 44 | `build-waves.plan.md` | 139 | 137 | 2026-08-05 | AGREED | `extra.runtime` in any `composer.json` must be ABSENT or hold nothing but `class` equal to the permitted runtime — an allow-list o | `carried` | BAKES into the generated bootstrap |
 | 45 | `build-waves.plan.md` | 140 | 138 | 2026-08-05 | AGREED | the worker-mode control INVERTS its three polarities rather than extending its lists — scope by exclusion, seam set derived from t | `carried` | deleting them would invent a project-specific spelling of a conventional |
 | 46 | `build-waves.plan.md` | 142 | 140 | 2026-08-06 | AGREED | **a gate must enumerate the SURFACE, not the spellings — and not the locations | `carried` | a gate must enumerate the SURFACE, not the spellings — |
-| 47 | `build-waves.plan.md` | 151 | 149 | 2026-08-06 | AGREED | **a security check that needs a daemon belongs in a gate that does not.** | `carried` | compose-config.sh |
+| 47 | `build-waves.plan.md` | 151 | 149 | 2026-08-06 | AGREED | **a security check that needs a daemon belongs in a gate that does not.** | `carried` | Needs nothing installed, so it can never skip |
 | 48 | `build-waves.plan.md` | 155 | 153 | 2026-08-06 | AGREED | **a gate that names the DANGEROUS values is a gate that can be incomplete; name the | `carried` | enumerate the SURFACE, not the spellings |
 | 49 | `build-waves.plan.md` | 163 | 161 | 2026-08-06 | AGREED | **a mutation harness must fail when its own mutation fails.** Two of round 27's new | `process-rule` |  |
 | 50 | `build-waves.plan.md` | 169 | 167 | 2026-08-05 | RULED | **a UUIDv7 identifier is an ORDERING artefact and never a secret; `symfony/uid` is | `carried` | failed to ascend on about half of all consecutive same-millisecond |
-| 51 | `build-waves.plan.md` | 196 | 194 | 2026-08-05 | RULED | **`symfony/uid` is adopted for identifier generation; the hand-written UUIDv7 layout is | `carried` | composer.json |
+| 51 | `build-waves.plan.md` | 196 | 194 | 2026-08-05 | RULED | **`symfony/uid` is adopted for identifier generation; the hand-written UUIDv7 layout is | `carried` | `symfony/uid` is KEPT |
 | 52 | `build-waves.plan.md` | 212 | 210 | 2026-08-05 | AGREED | **the Material Icons Apache-2.0 grant is verified, and the 2026-07-30 ruling STANDS | `process-rule` |  |
 | 53 | `build-waves.plan.md` | 221 | 219 | 2026-08-05 | AGREED | **PHPStan is CONFIGURED AND WIRED at level 6, and every one of its findings is fixed | `carried` | CONFIGURED AND WIRED at level 6 |
 | 54 | `build-waves.plan.md` | 233 | 231 | 2026-08-05 | AGREED | **the commit message for `d75003a` says "49 findings" and the reproducible figure is | `process-rule` |  |
@@ -116,7 +121,7 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 57 | `build-waves.plan.md` | 305 | 303 | 2026-08-01 | AGREED | **quantity representation is NOT stable across a save/reload; only its VALUE is.** | `carried` | representation is NOT stable across a save/reload; only its VALUE |
 | 58 | `build-waves.plan.md` | 322 | 320 | 2026-08-07 | AGREED | **money crosses the HTTP boundary as a DECIMAL STRING, never a JSON number**, and the same for quantities and rates. JSON has one  | `carried` | crosses the HTTP boundary as a DECIMAL STRING, never a |
 | 59 | `build-waves.plan.md` | 323 | 321 | 2026-08-07 | AGREED | **the server computes totals and the clients display them.** All three clients could compute from the lines; they must not. The ca | `carried` | three clients could compute from the lines; they must not. |
-| 60 | `build-waves.plan.md` | 324 | 322 | 2026-08-07 | AGREED | **the read resource declares no `Delete`, `Put`, `Patch`, `Post` or `GetCollection`, and each omission has its own reason.** No de | `carried` | GetCollection |
+| 60 | `build-waves.plan.md` | 324 | 322 | 2026-08-07 | AGREED | **the read resource declares no `Delete`, `Put`, `Patch`, `Post` or `GetCollection`, and each omission has its own reason.** No de | `carried` | Every omitted verb is ARGUED, never deferred by default |
 | 61 | `build-waves.plan.md` | 325 | 323 | 2026-08-07 | RECORDED | **an ill-formed id answers 404, not 400, deliberately.** Distinguishing "malformed" from "absent" tells an unauthenticated prober  | `carried` | ill-formed id answers 404, not 400, deliberately. |
 | 62 | `build-waves.plan.md` | 327 | 325 | 2026-08-07 | AGREED | **request-time tenancy is a PORT with a development-only adapter that a GATE refuses in production**, not a header the application | `carried` | TWES_TRUST_TENANT_HEADER |
 | 63 | `build-waves.plan.md` | 328 | 326 | 2026-08-07 | AGREED | **a tenant-less request CLEARS the context rather than leaving it alone**, and this is the most important line in the seam. `InMem | `carried` | tenant-less request CLEARS the context rather than |
@@ -127,7 +132,7 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 68 | `build-waves.plan.md` | 334 | 332 | 2026-08-06 | AGREED | **a failed verification is cached in NEITHER direction.** Not as success — one bad start-up would disable the guard for the whole  | `carried` | the fix for a wrongly-provisioned database is to fix the |
 | 69 | `build-waves.plan.md` | 335 | 333 | 2026-08-06 | RECORDED | three fixture defects found while testing this, each a real thing to know. `twes_in_test` has NO row-level security enabled, so th | `process-rule` |  |
 | 70 | `build-waves.plan.md` | 337 | 335 | 2026-08-06 | AGREED | **the release half of the connection lifecycle is `SessionStateReleaser`, a `ResetInterface` service — and "when a connection is R | `carried` | and "when a connection is RETURNED" had to be reinterpreted |
-| 71 | `build-waves.plan.md` | 338 | 336 | 2026-08-06 | MEASURED | , AND IT RAISES A DECISION THIS LIST PREDATES: **the ACQUIRE-time obligations cost ~10.8 ms per connection.** `assertConnectionCan | `carried` | completeness-reviewer |
+| 71 | `build-waves.plan.md` | 338 | 336 | 2026-08-06 | MEASURED | , AND IT RAISES A DECISION THIS LIST PREDATES: **the ACQUIRE-time obligations cost ~10.8 ms per connection.** `assertConnectionCan | `carried` | ONCE PER (ROLE, DATABASE) PER TTL WINDOW |
 | 72 | `build-waves.plan.md` | 340 | 338 | 2026-08-06 | AGREED | **the `InvoiceRepository` PORT TAKES NO TENANT, correcting a ruling that was not buildable.** `DocumentIdentity`'s docblock said * | `carried` | parameter is satisfied by whatever tenant id the caller happens to hold, including the |
 | 73 | `build-waves.plan.md` | 341 | 339 | 2026-08-06 | AGREED | **`save()` writes with DBAL, not through the UnitOfWork, and that is a measurement rather than a preference.** Whole-rewrite of th | `carried` | writes with DBAL, not through |
 | 74 | `build-waves.plan.md` | 342 | 340 | 2026-08-06 | AGREED | **`save()` REFUSES outside an active transaction rather than opening one.** A document number is gapless, so allocating one and pe | `carried` | `save()` REFUSES outside an active transaction rather than opening one. |
@@ -149,20 +154,20 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 90 | `build-waves.plan.md` | 414 | 412 | 2026-08-01 | AGREED | , **AND SUPERSEDED 2026-08-06 — API Platform IS INSTALLED AND IS THE HTTP SURFACE.** | `superseded` | API Platform IS installed and IS the HTTP surface |
 | 91 | `build-waves.plan.md` | 425 | 423 | 2026-07-29 | AGREED | build in **waves**, each independently reviewable, each ending in a | `carried` | each independently reviewable, each ending in a |
 | 92 | `build-waves.plan.md` | 428 | 426 | 2026-07-29 | AGREED | the wave list below is the **baseline**, not the final scope. The | `carried` | baseline, not the final scope |
-| 93 | `build-waves.plan.md` | 431 | 429 | 2026-07-29 | AGREED | **Wave 0 exists and is not optional.** The seams decided in it — money | `carried` | are the ones that cannot |
-| 94 | `build-waves.plan.md` | 434 | 432 | 2026-07-29 | RULED | **tests and code-quality enforcers in every tier, not just the API** | `carried` | infra/README.md |
+| 93 | `build-waves.plan.md` | 431 | 429 | 2026-07-29 | AGREED | **Wave 0 exists and is not optional.** The seams decided in it — money | `carried` | Wave 0 was never optional |
+| 94 | `build-waves.plan.md` | 434 | 432 | 2026-07-29 | RULED | **tests and code-quality enforcers in every tier, not just the API** | `carried` | each is green on its own toolchain |
 | 95 | `build-waves.plan.md` | 439 | 437 | 2026-07-29 | RULED | **the domain layer has zero Composer dependencies.** Arithmetic is `bcmath`, | `carried` | tested across all eight modes including negative |
 | 96 | `build-waves.plan.md` | 445 | 443 | 2026-07-29 | RULED | **tenant isolation is PostgreSQL row-level security**, superseding the | `carried` | isolation is PostgreSQL row-level security, |
 | 97 | `build-waves.plan.md` | 450 | 448 | 2026-07-29 | FOUND | **`qossmic/deptrac` is abandoned** in favour of `deptrac/deptrac` | `carried` | `qossmic/deptrac` is abandoned |
 | 98 | `build-waves.plan.md` | 453 | 451 | 2026-07-29 | RULED | **the Flutter client ships all six targets** — Android, iOS, Linux, Windows, | `carried` | six targets — Android, iOS, Linux, Windows, macOS and Web |
-| 99 | `build-waves.plan.md` | 459 | 457 | 2026-07-29 | RULED | **the profit-rate fix is BOTH parts, combined** (developer ruling). A product | `carried` | and the typed field is |
+| 99 | `build-waves.plan.md` | 459 | 457 | 2026-07-29 | RULED | **the profit-rate fix is BOTH parts, combined** (developer ruling). A product | `carried` | the typed field is **never recomputed** |
 | 100 | `build-waves.plan.md` | 466 | 464 | 2026-07-29 | RULED | **Flutter Web ships — twes-in offers two admin interfaces**, Flutter and | `carried` | second admin interface |
 | 101 | `build-waves.plan.md` | 470 | 468 | 2026-07-29 | AGREED | certification tier per wave is **MAXIMAL** for any wave touching money, | `carried` | Wave boundaries get MAXIMAL |
 | 102 | `build-waves.plan.md` | 473 | 471 | 2026-07-31 | RECORDED | , because round 13 found none of it in any Decisions Log — Wave 1's pure domain | `carried` | `DocumentState` is a CLOSED set |
 | 103 | `build-waves.plan.md` | 488 | 486 | 2026-07-30 | RULED | **R8-16's remedy is an INFRA rule, not app code — any GET under the | `carried` | font either contains a codepoint or it |
 | 104 | `build-waves.plan.md` | 498 | 496 | 2026-07-30 | RECORDED | **vendoring Flutter's whole Noto fallback set is rejected on evidence**, so no | `carried` | version-hashed paths that break on every Flutter |
 | 105 | `build-waves.plan.md` | 502 | 500 | 2026-07-30 | RECORDED | **R8-16 is WEB-ONLY.** `fontFallbackBaseUrl` appears in the compiled web engine | `carried` | appears in the compiled web engine and |
-| 106 | `build-waves.plan.md` | 506 | 504 | 2026-07-30 | RULED | **the Flutter transitive-licence check is DELIVERED, by walking the pub cache.** | `carried` | flutter pub get |
+| 106 | `build-waves.plan.md` | 506 | 504 | 2026-07-30 | RULED | **the Flutter transitive-licence check is DELIVERED, by walking the pub cache.** | `carried` | every locked pub package read out of the pub cache |
 | 107 | `build-waves.plan.md` | 513 | 511 | 2026-07-30 | CORRECTION | found by measurement: `THIRD-PARTY-NOTICES.md` claimed the transitive set was | `carried` | THIRD-PARTY-NOTICES.md |
 | 108 | `build-waves.plan.md` | 517 | 515 | 2026-07-30 | RECORDED | **R2-12's premise was FALSE and the defect reproduces today in nine lines.** | `process-rule` |  |
 | 109 | `build-waves.plan.md` | 531 | 529 | 2026-07-30 | RECORDED | **R2-13's three named evasions were still live seven rounds after being | `process-rule` |  |
@@ -210,7 +215,7 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 151 | `dev-prod-separation.plan.md` | 23 | 21 | 2026-08-04 | AGREED | dev and prod get SEPARATE Dockerfile TARGETS (`dev`, `runtime`) sharing one `base` | `carried` | a shared `base` stage with `dev` and `runtime` targets |
 | 152 | `dev-prod-separation.plan.md` | 26 | 24 | 2026-08-04 | AGREED | **`api/vendor` is BIND-MOUNTED from the host in dev, not held in a named volume** — | `carried` | `api/vendor` is BIND-MOUNTED from the host in dev |
 | 153 | `dev-prod-separation.plan.md` | 33 | 31 | 2026-08-04 | AGREED | dev keeps a **named volume for `api/var`** only. Cache and logs are the one thing | `carried` | Dev keeps a named volume |
-| 154 | `dev-prod-separation.plan.md` | 36 | 34 | 2026-08-04 | AGREED | Xdebug ships in the `dev` target ONLY, in `xdebug.mode=off` by default and armed | `carried` | Xdebug \| present, `xdebug.mode=off` until `make debug-on` \| absent from the image entirely |
+| 154 | `dev-prod-separation.plan.md` | 36 | 34 | 2026-08-04 | AGREED | Xdebug ships in the `dev` target ONLY, in `xdebug.mode=off` by default and armed | `carried` | The thing that forced it was Xdebug |
 | 155 | `dev-prod-separation.plan.md` | 39 | 37 | 2026-08-04 | AGREED | the front-end tiers take a BUILD ARGUMENT for their configuration | `carried` | The front-end tiers take a BUILD ARGUMENT for their configuration |
 | 156 | `dev-prod-separation.plan.md` | 43 | 41 | 2026-08-04 | AGREED | `--no-web-resources-cdn` stays on the Flutter build in BOTH modes. It is a GDPR | `carried` | `--no-web-resources-cdn` stays on the Flutter build in BOTH modes |
 | 157 | `dev-prod-separation.plan.md` | 47 | 45 | 2026-08-05 | AGREED | production drops ALL Linux capabilities on EVERY service, adding back only what each | `carried` | Production drops ALL Linux capabilities on EVERY service |
