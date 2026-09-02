@@ -59,7 +59,7 @@ final class PricingVectorsTest extends TestCase
         // which VAT is rounded — which is the one rounding decision the spec actually rules.
         $pinsRoundingOrder = array_filter(
             $vectors['document_totals'],
-            static fn(array $case): bool => isset($case['vat_if_rounded_per_line_which_is_WRONG']),
+            static fn(array $case): bool => isset($case['vat_if_per_line']) || isset($case['vat_if_per_rate_group']),
         );
         self::assertNotEmpty($pinsRoundingOrder, 'No case distinguishes per-line from per-document VAT rounding.');
         // TEN, not eleven: the negative-tie case was REMOVED by developer ruling (2026-07-30), not lost.
@@ -299,7 +299,8 @@ final class PricingVectorsTest extends TestCase
         string $expectedVat,
         array $fixedCharges,
         string $expectedTotal,
-        ?string $wrongPerLineVat,
+        ?string $divergentVat,
+        string $vatRoundingPoint,
     ): void {
         // DELEGATED TO THE KERNEL. This method used to open-code the whole composition — line net, subtotal,
         // base grouped by rate, one vat() per group, the divergence arm, gross plus charges — which made it a
@@ -343,7 +344,11 @@ final class PricingVectorsTest extends TestCase
         $totals = new DocumentCalculator()->calculate(
             $documentLines,
             $charges,
-            VatRoundingPoint::PerRateGroup,
+            // THE CASE'S DECLARED POINT (round 5, R5K-3). This was the literal `VatRoundingPoint::PerRateGroup`
+            // while the fixture declared no point at all -- so this tier and the cross-tier SSOT agreed by
+            // coincidence. `DocumentTotalsTest` had the identical defect; fixing one and not the other is the
+            // not-the-full-set-of-sites shape, and the suite caught it here.
+            'per_line' === $vatRoundingPoint ? VatRoundingPoint::PerLine : VatRoundingPoint::PerRateGroup,
             RoundingMode::HalfUp,
             $currencyObject,
         );
@@ -414,16 +419,16 @@ final class PricingVectorsTest extends TestCase
         // Where the fixture supplies it, prove the naive order gives a DIFFERENT answer — otherwise the case
         // above would pass under either order and pin nothing. Through the kernel's own PerLine arm, so this
         // no longer re-implements it either.
-        if (null !== $wrongPerLineVat) {
+        if (null !== $divergentVat) {
             $perLine = new DocumentCalculator()->calculate(
                 $documentLines,
                 $charges,
-                VatRoundingPoint::PerLine,
+                'per_line' === $vatRoundingPoint ? VatRoundingPoint::PerRateGroup : VatRoundingPoint::PerLine,
                 RoundingMode::HalfUp,
                 $currencyObject,
             );
 
-            self::assertSame($wrongPerLineVat, $perLine->vatTotal()->amount(), "per-line VAT, case {$id}");
+            self::assertSame($divergentVat, $perLine->vatTotal()->amount(), "divergent-point VAT, case {$id}");
             self::assertNotSame(
                 $expectedVat,
                 $perLine->vatTotal()->amount(),
@@ -451,7 +456,8 @@ final class PricingVectorsTest extends TestCase
                 $case['vat'],
                 $case['fixed_charges'],
                 $case['expected']['total'],
-                $case['vat_if_rounded_per_line_which_is_WRONG'] ?? null,
+                $case['vat_if_per_line'] ?? $case['vat_if_per_rate_group'] ?? null,
+                $case['vat_rounding_point'],
             ];
         }
     }

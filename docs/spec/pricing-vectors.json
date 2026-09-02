@@ -244,6 +244,7 @@
       "id": "consolidated-invoice-with-tunisian-stamp-duty",
       "why": "The worked delivery-note consolidation from the spec, end to end. The stamp duty of 0.100 TND is a fixed document-scope charge, not a VAT rate and not a special case in code -- and it is unrepresentable in a two-decimal currency.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "10",
@@ -278,6 +279,7 @@
       "id": "vat-rounding-order-diverges",
       "why": "THE case that pins the rounding ORDER rather than the formula. Rounding VAT once on the summed base gives 0.005; rounding per line and summing gives 0.004. The shipped consolidated-invoice case cannot tell these apart because all its lines share one rate, so a tier that rounds per line passed it with a wrong document total. This one fails.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "1",
@@ -293,7 +295,8 @@
       "subtotal_net": "0.026",
       "vat_rate": "19",
       "vat": "0.005",
-      "vat_if_rounded_per_line_which_is_WRONG": "0.004",
+      "vat_if_per_line": "0.004",
+      "vat_if_per_line_why": "NOT a wrong answer -- it is this document's VAT under the OTHER ruled rounding point, which a tenant setting selects. This column was named `..._which_is_WRONG` until round 5 (R5K-3), so the cross-tier arithmetic SSOT asserted that a setting the domain implements produces a wrong figure. What it really pins is that the two points DIVERGE on these lines, which is what makes this case able to tell a tier that rounds at the wrong point from one that does not.",
       "fixed_charges": [],
       "expected": {
         "total": "0.031"
@@ -303,6 +306,7 @@
       "id": "multi-rate-vat-breakdown-with-stamp-duty",
       "why": "Lines at different VAT rates, which is the normal Tunisian and French case and which the single-rate cases could not exercise at all. Each rate group is summed first, then rounded once. Also pins that a fixed document charge is NOT part of any VAT base.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "3",
@@ -357,6 +361,7 @@
       "id": "fractional-quantity-pins-line-net-rounding",
       "why": "THE case that pins the line-net rounding ORDER, and it was absent: every other document line has an EXACT product (10 x 12.000, 1 x 0.013, 3 x 10.000 ...) and no quantity was fractional, so nothing distinguished sum-of-ROUNDED-line-nets from rounded-once-on-the-exact-sum. A mutant computing the subtotal as round(sum(exact)) passed the whole suite. Here 0.5 x 0.003 = 0.0015 exactly, a tie at the millime, so each line rounds to 0.002 and the subtotal is 0.004 -- while rounding the exact sum (0.003) once gives 0.003. Rounding per line is CORRECT and required: DocumentLine rounds each line because the line net is printed on the document and summed into the printed subtotal, and printed lines that do not add up to the printed subtotal are an EN 16931 validation failure rather than a cosmetic complaint. Fractional quantities are also the ordinary case for services -- 2.5 hours, 0.750 kg -- so this is the default shape rather than an edge case.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "0.5",
@@ -382,6 +387,7 @@
       "id": "zero-decimal-currency-document",
       "why": "A WHOLE DOCUMENT in a zero-decimal currency, and it was absent: every document_totals case was TND, so a kernel hardcoding TND's three decimals passed all of them. Round 14 proved it -- substituting the literal 3 for the currency's own scale survived the entire suite. JPY has scale 0, so 334 x 10% = 33.4 must round to 33, not to 33.400.",
       "currency": "JPY",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "1",
@@ -406,6 +412,7 @@
       "id": "two-decimal-currency-document-with-a-vat-tie",
       "why": "The ordinary two-decimal case, with a rounding decision so it is not merely exact arithmetic in a different scale. 59.98 x 20% = 11.996, which rounds HALF-UP to 12.00 at EUR's scale. A kernel that assumed three decimals would carry 11.996 into the total and produce 71.976, which is not a payable amount in euros.",
       "currency": "EUR",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "3",
@@ -430,6 +437,7 @@
       "id": "four-decimal-currency-document",
       "why": "The OTHER side of the same hazard: a kernel capped at three decimals truncates here rather than growing. CLF has scale 4, and 1.2346 x 19% = 0.234574 rounds to 0.2346 -- a figure a three-decimal assumption cannot even represent. Three decimals is TND's DEFAULT, never the maximum a tier may assume, which is the argument the `cases` section already makes and this section did not.",
       "currency": "CLF",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "1",
@@ -454,6 +462,7 @@
       "id": "per-line-vat-allocation-equal-remainders",
       "why": "The base case for per-line VAT, and the one that shows why it must be ALLOCATED: the group VAT is 0.005 while each line's own rounded VAT is 0.002, so recomputing per line gives a column summing to 0.004 under a total of 0.005. Equal remainders, so this pins the TIE-BREAK (earliest line) and nothing else.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "1",
@@ -486,6 +495,7 @@
       "id": "per-line-vat-allocation-unequal-remainders",
       "why": "Unequal remainders, so this pins the DIRECTION of the comparison: 0.013 floors away 0.00047 and 0.021 floors away 0.00099, so the second line has the stronger claim to the odd millime. With equal remainders a reversed comparison is invisible.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "1",
@@ -514,6 +524,7 @@
       "id": "per-line-vat-allocation-floors-before-distributing",
       "why": "Three lines whose per-line rounding OVERSHOOTS: each exact share is 0.00152, which rounds to 0.002 and sums to 0.006 against a group VAT of 0.005. Pins that shares are FLOORED before the remainder is handed out -- rounding to nearest would exceed the group figure, and taking a unit back requires picking a victim.",
       "currency": "TND",
+      "vat_rounding_point": "per_rate_group",
       "lines": [
         {
           "quantity": "1",
@@ -547,6 +558,33 @@
       "fixed_charges": [],
       "expected": {
         "total": "0.029"
+      }
+    },
+    {
+      "id": "vat-rounding-order-diverges-per-line",
+      "why": "THE SAME LINES under the OTHER ruled rounding point, added at round 5 (R5K-3). `per_rate_group` rounds the summed base once and gives 0.005; `per_line` rounds each line and sums, giving 0.004. Both are correct -- for their own setting -- and a tier that implements only one of them passes half of this fixture while declaring the wrong tax for every tenant on the other. Before this case existed, every `document_totals` vector was computed under `per_rate_group` and none of them said so, so a tier had nothing to tell it which arithmetic it was being measured against.",
+      "currency": "TND",
+      "vat_rounding_point": "per_line",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        }
+      ],
+      "subtotal_net": "0.026",
+      "vat_rate": "19",
+      "vat": "0.004",
+      "vat_if_per_rate_group": "0.005",
+      "vat_if_per_rate_group_why": "The companion figure, for the same reason its mirror carries one: these lines are chosen precisely because the two points diverge on them.",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.030"
       }
     }
   ],

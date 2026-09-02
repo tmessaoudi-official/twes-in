@@ -47,7 +47,7 @@ use Twes\Domain\Shared\RoundingMode;
  * that VAT is grouped by rate and rounded **once per rate group on the summed base**, because that is what
  * an EN 16931 / Peppol validator recomputes — so a payload built any other way needs reconciliation. The
  * fixture pins both arms: the `vat-rounding-order-diverges` case carries the correct `vat` **and** the
- * `vat_if_rounded_per_line_which_is_WRONG` value, so the non-default mode is asserted against a committed
+ * `vat_if_per_line` value, so the non-default point is asserted against a committed
  * number too rather than against something this test invented.
  */
 #[CoversClass(DocumentCalculator::class)]
@@ -85,7 +85,7 @@ final class DocumentTotalsTest extends TestCase
         // assertion fire — the guard catching its own author is the argument for having it.
         $pinsOrder = array_filter(
             $cases,
-            static fn(array $case): bool => isset($case[0]['vat_if_rounded_per_line_which_is_WRONG']),
+            static fn(array $case): bool => isset($case[0]['vat_if_per_line']),
         );
         self::assertNotEmpty($pinsOrder, 'No case distinguishes per-rate-group from per-line VAT rounding.');
 
@@ -112,6 +112,35 @@ final class DocumentTotalsTest extends TestCase
             'No case pins the LINE-NET rounding order. One line with a fractional quantity whose product is a '
             . 'tie is enough, and fractional quantities are the ordinary case for services.',
         );
+
+        // EVERY CASE DECLARES ITS VAT ROUNDING POINT (round 5, R5K-3).
+        //
+        // The fixture computed every expected figure under `per_rate_group` and said so NOWHERE. That is the
+        // one thing a cross-tier arithmetic SSOT may not leave implicit: `PerRateGroup` and `PerLine` are BOTH
+        // ruled settings that a tenant selects, they produce numerically different tax on the same lines, and a
+        // tier reading these vectors had nothing to tell it which one it was being measured against. It would
+        // have implemented whichever it guessed and passed.
+        //
+        // Worse, the divergence column was named `vat_if_rounded_per_line_which_is_WRONG`, so the SSOT actively
+        // asserted that the other ruled setting produces a wrong answer. It does not — it produces that
+        // setting's answer.
+        foreach ($cases as $id => [$case]) {
+            self::assertArrayHasKey(
+                'vat_rounding_point',
+                $case,
+                \sprintf(
+                    'document_totals case "%s" does not declare vat_rounding_point. Both points are ruled '
+                    . 'settings producing different tax on the same lines, so an expected figure without one '
+                    . 'names no arithmetic at all.',
+                    $id,
+                ),
+            );
+            self::assertContains(
+                $case['vat_rounding_point'],
+                ['per_rate_group', 'per_line'],
+                \sprintf('document_totals case "%s" declares an unknown vat_rounding_point.', $id),
+            );
+        }
 
         // AND EVERY INPUT RATE IS IN HUMAN FORM — the mirror of `PricingVectorsTest`'s assertion that every
         // EXPECTED rate is canonical, which existed while this direction did not. `conventions.rates` rules that
@@ -154,7 +183,7 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCases')]
     public function testTheDocumentTotalMatchesTheSharedVectors(array $case): void
     {
-        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $totals = self::calculate($case, self::declaredPoint($case));
 
         self::assertSame(
             $case['subtotal_net'],
@@ -180,7 +209,7 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCases')]
     public function testEveryLineNetMatchesTheSharedVectors(array $case): void
     {
-        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $totals = self::calculate($case, self::declaredPoint($case));
         $lineNets = array_map(
             static fn(Money $net): string => $net->amount(),
             $totals->lineNets(),
@@ -205,7 +234,7 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCasesWithARateBreakdown')]
     public function testTheVatBreakdownByRateMatchesTheSharedVectors(array $case): void
     {
-        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $totals = self::calculate($case, self::declaredPoint($case));
         $actual = [];
 
         foreach ($totals->vatByRate() as $group) {
@@ -247,7 +276,7 @@ final class DocumentTotalsTest extends TestCase
 
         self::assertSame($case['vat'], $perGroup->vatTotal()->amount(), 'the DEFAULT is per rate group');
         self::assertSame(
-            $case['vat_if_rounded_per_line_which_is_WRONG'],
+            $case['vat_if_per_line'],
             $perLine->vatTotal()->amount(),
             'per-line rounding must produce the fixture\'s divergent value, or the parameter does nothing',
         );
@@ -440,7 +469,7 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCasesThatPinTheLineNetRoundingOrder')]
     public function testTheSubtotalIsTheSumOfRoundedLineNets(array $case): void
     {
-        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $totals = self::calculate($case, self::declaredPoint($case));
 
         self::assertSame($case['subtotal_net'], $totals->subtotalNet()->amount());
         self::assertNotSame(
@@ -619,6 +648,30 @@ final class DocumentTotalsTest extends TestCase
     // ------------------------------------------------------------------ fixture plumbing
 
     /**
+     * **THE CASE'S OWN DECLARED ROUNDING POINT (round 5, R5K-3).**
+     *
+     * Every call site here used to pass `VatRoundingPoint::PerRateGroup` as a literal while the fixture declared
+     * no point at all, so the tier and the SSOT agreed by coincidence rather than by contract. Reading it from
+     * the case is what makes a `per_line` vector assertable at all -- and what stops a future case being added
+     * under one point and silently measured under the other.
+     *
+     * @param array<string, mixed> $case
+     */
+    private static function declaredPoint(array $case): VatRoundingPoint
+    {
+        return match ($case['vat_rounding_point']) {
+            'per_line' => VatRoundingPoint::PerLine,
+            'per_rate_group' => VatRoundingPoint::PerRateGroup,
+            // A case declaring something else fails the fixture-integrity assertion above; this arm exists so a
+            // typo cannot fall through to a silent default, which is how the implicit `PerRateGroup` arose.
+            default => throw new \LogicException(\sprintf(
+                'document_totals case "%s" declares an unknown vat_rounding_point.',
+                (string) ($case['id'] ?? '?'),
+            )),
+        };
+    }
+
+    /**
      * @param array<string, mixed> $case
      */
     private static function calculate(array $case, VatRoundingPoint $point): object
@@ -685,7 +738,7 @@ final class DocumentTotalsTest extends TestCase
     {
         return array_filter(
             self::documentCases(),
-            static fn(array $case): bool => isset($case[0]['vat_if_rounded_per_line_which_is_WRONG']),
+            static fn(array $case): bool => isset($case[0]['vat_if_per_line']),
         );
     }
     /**
@@ -1450,7 +1503,8 @@ final class DocumentTotalsTest extends TestCase
      *
      * Round 17's P2-8. `vat_by_line_if_recomputed_which_is_WRONG` was consulted by nothing: it was described in a
      * docblock and read by no assertion, so deleting it left the whole suite green and a wrong number in it was
-     * undetectable — while the older sibling `vat_if_rounded_per_line_which_is_WRONG` beside it WAS load-bearing,
+     * undetectable — while the older sibling beside it (`vat_if_per_line`, named
+     * `vat_if_rounded_per_line_which_is_WRONG` until round 5) WAS load-bearing,
      * which is what makes this a gap rather than a property of such fields. CLAUDE.md § Gotchas records the shape:
      * *"a permission that nothing consults permits everything"*, and *"introspection describes a rule, it does not
      * apply one"* — a docblock even less so.

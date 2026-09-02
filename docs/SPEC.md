@@ -244,7 +244,14 @@ Each of these is **unfixable once data exists**, which is why they are rulings a
   configuration, never a special case in code.
 
 `docs/spec/pricing-vectors.json` is the cross-tier arithmetic fixture that stops Angular, Flutter
-and PHP inventing three rules. **It is currently POISONED — see § 8, WP0 / R5K-3.**
+and PHP inventing three rules. **Every `document_totals` case DECLARES its `vat_rounding_point`**
+(`per_rate_group` or `per_line`) and the expected figures belong to that point — closed 2026-09-02,
+R5K-3. It did not, until then: every vector was computed under `per_rate_group` and none of them
+said so, while the divergence column was named `..._which_is_WRONG`, so the cross-tier SSOT asserted
+that a ruled setting produces a wrong answer. **Both points are correct for their own setting**, and
+the fixture now carries a case under each. Consumers must read the declared point rather than
+assuming one — the API tier's `DocumentTotalsTest::declaredPoint()` is the reference, and hard-coding
+a point is pinned as a mutant.
 
 ### Pricing and products
 
@@ -1076,7 +1083,7 @@ code, and the code is the authority.**
 | # | Sev | Where | The defect, verified at `5dfebf1` |
 |---|---|---|---|
 | **R5C-1** | **P1** | `api/src/Domain/Document/Invoice.php` — `totallable()`, the probe at the end of the method; justification at `:565-566` | The guard probes `totals(VatRoundingPoint::PerRateGroup, RoundingMode::Up)` and its docblock justifies the choice with *"`PerLine` cannot exceed it: rounding each line up and summing is bounded by rounding the summed base up."* **That bound is inverted** — `ceil(a) + ceil(b) ≥ ceil(a+b)` — so `PerLine` DOMINATES and the guard UNDER-estimates. A document can pass `totallable()` and then fail at issue time. Reaches money |
-| **R5K-3** | **P1** | `docs/spec/pricing-vectors.json` — `:296`, `:373`, `:476`, `:542` | The cross-tier arithmetic SSOT names the shipped `PerLine` answer `..._which_is_WRONG`, and **no case declares its rounding point at all**. Dormant until Waves 8/11 and then a wrong tax figure no test in this tier can see |
+| ~~**R5K-3**~~ | ~~P1~~ | `docs/spec/pricing-vectors.json` | **CLOSED 2026-09-02.** Every case now declares `vat_rounding_point`; the mislabelled column is `vat_if_per_line` with its reason; a companion `per_line` case was added so the SSOT covers both ruled settings; and the API tier reads the declared point instead of hard-coding one. **All ten pre-existing cases were independently recomputed from the ruled arithmetic before anything changed — zero mismatches**, so the numbers were right and only the framing was wrong. Three mutants pin it |
 | **R5K-6** | P2 | `api/src/Domain/Product/Product.php:120-127` | `Product` refuses a negative VAT rate with a bare `\InvalidArgumentException` — no translation key, no row in § 4's table — while `DocumentLine`'s identical refusal has `document.vat_rate_invalid` |
 | **R5T-1** | P2 | `api/src/Infrastructure/Persistence/Doctrine/DoctrineCompanySettingsRepository.php` | The only tenant-owned table in the delta with **no two-tenant case**. Every test touching it uses one freshly generated tenant with no rival row — and this is the one adapter whose miss is **SILENT** (`defaults()` rather than a 404) **on the field that decides how much tax a document declares** |
 | **R5K-5** | P3 | `api/src/Infrastructure/.../ConnectionProvisioningGuardMiddleware.php:41` | The docblock says "three" while its own enumeration two words later, its inline comment and its code all say two |
@@ -1087,12 +1094,13 @@ code, and the code is the authority.**
 - **R5C-1** — probe **`PerLine, Up`**, the maximal configuration (confirmed over 2146×14 cases).
   **MUST also add the R4C-6 direction case: a correct document is still not refused.** A guard
   tightened without that case is how a valid invoice becomes unissuable.
-- **R5K-3** — rename the `*_WRONG` columns to declared-rounding-point cases and make **every case
-  declare its rounding point**. **The expected values are AUTHORED FROM THE RULED ARITHMETIC**
-  (largest remainder, ties earliest, declared rounding point, `Floor`) and independently
-  hand-verified for a sample. **NEVER dumped from the shipped implementation** — that would make PHP
-  the SSOT and pin its bugs into Angular and Flutter, which is the self-agreement shape § 0 rule 4
-  exists to stop. The implementation may produce candidates; the ruling confirms them.
+- ~~**R5K-3**~~ — **DONE 2026-09-02.** The expected values were **authored from the ruled arithmetic**
+  and never dumped from the implementation — an independent exact-decimal recomputation of all ten
+  existing cases agreed with every declared figure, which is what established that the numbers were
+  already right and the defect was purely the missing declaration and the `_WRONG` label. The three
+  remaining `_WRONG` columns are KEPT: they name genuine mistakes under the case's declared point (a
+  subtotal rounded once, a per-line column recomputed instead of allocated, shares rounded to nearest
+  instead of floored), not a rival ruled setting.
 - **R5K-6** — add `product.vat_rate_invalid` in all three locales, plus its row in § 4.
 - **R5T-1** — a two-tenant case against the **real** `DoctrineCompanySettingsRepository`, including
   the silent-miss direction.
