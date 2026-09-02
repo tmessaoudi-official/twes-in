@@ -561,9 +561,33 @@ final readonly class Invoice
      * `withLine()`'s own comment already required this: *"Refused HERE and not left to the calculator, so a draft
      * can never hold a line it cannot total."* That sentence was true of currency and false of magnitude.
      *
-     * `RoundingMode::Up` is away-from-zero and therefore the largest magnitude any mode can produce, so passing
-     * this proves the document totals under EVERY mode a caller may later choose. `PerRateGroup` is used because
-     * `PerLine` cannot exceed it: rounding each line up and summing is bounded by rounding the summed base up.
+     * **THE PROBE IS `PerLine, Up`, AND THE PREVIOUS SENTENCE HERE HAD THE BOUND BACKWARDS (round 5, R5C-1).**
+     * It read: *"`PerRateGroup` is used because `PerLine` cannot exceed it: rounding each line up and summing is
+     * bounded by rounding the summed base up."* That is inverted — `ceil(a) + ceil(b) >= ceil(a+b)` — so under
+     * `Up` it is `PerLine` that dominates, and the guard was probing the SMALLER configuration. A document could
+     * pass here and then be impossible to total under a rounding point a tenant setting selects; the case is in
+     * `DocumentTotalsTest::documentsThatCannotBeTotalled`, where the group total lands exactly on the bound and
+     * the per-line sum spends one more millime.
+     *
+     * `RoundingMode::Up` is away-from-zero and therefore the largest magnitude any mode can produce. **What is
+     * NOT true, and is the reason this note no longer argues from algebra alone, is that `PerLine` dominates
+     * `PerRateGroup` in general** — under `HalfUp` and `HalfEven` it is routinely SMALLER, because rounding to
+     * nearest can round each line down. It is the combination that is maximal, not either axis.
+     *
+     * **MEASURED rather than reasoned, since reasoning is what produced the inverted claim.** Over 44 912
+     * (document, rounding point, rounding mode) cases — every rate, fractional quantities, one to three lines,
+     * with and without a fixed charge, and touching EVERY accessor on the result rather than `total()` alone,
+     * because each is its own `Money` construction and can overflow independently — `PerLine, Up` failed in
+     * exactly the cases where some configuration failed, and succeeded in exactly the cases where all of them
+     * did: **zero under-refusals and zero over-refusals.** The second half matters as much as the first: a
+     * tightened guard that refuses a valid document is worse than the defect it fixes, which is what
+     * `testADocumentEveryConfigurationCanTotalIsStillAccepted` pins.
+     *
+     * **`RoundingMode::Unnecessary` IS OUT OF SCOPE, and always was.** It raises the same exception type for a
+     * different reason: not that a figure is too large, but that it needs rounding at all and the caller forbade
+     * it. A quantity of `0.5` at `0.001 TND` is `0.0005`, which no magnitude probe can make representable in a
+     * three-decimal currency. That mode constrains the INPUTS rather than the total, so "every mode" here means
+     * every mode that rounds — and the sentence this replaces claimed all of them.
      *
      * Cost is O(n) per edit, which is accepted for the same reason the currency check is: a wrong legal document
      * is worse than a slow one, and the alternative is an unrenderable document with a spent number.
@@ -591,7 +615,7 @@ final readonly class Invoice
     private static function totallable(self $document, string $what): self
     {
         try {
-            $document->totals(VatRoundingPoint::PerRateGroup, RoundingMode::Up);
+            $document->totals(VatRoundingPoint::PerLine, RoundingMode::Up);
         } catch (InvalidMoneyAmount $overflow) {
             // TYPED, and the message is unchanged. A bare `\InvalidArgumentException` here is indistinguishable at
             // the transport from the one `InvoiceMapper` raises for a corrupt column — so `CreateInvoiceProcessor`

@@ -940,12 +940,87 @@ final class DocumentTotalsTest extends TestCase
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero()))
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero())),
         ];
+        // ROUND 5, R5C-1 -- THE PROBE ITSELF WAS THE SMALLER CONFIGURATION, so the guard under-estimated.
+        //
+        // `totallable()` probed `PerRateGroup, Up` and justified it with *"`PerLine` cannot exceed it: rounding
+        // each line up and summing is bounded by rounding the summed base up."* That bound is INVERTED --
+        // `ceil(a) + ceil(b) >= ceil(a+b)` -- so under `Up` it is `PerLine` that dominates, and a document could
+        // pass the guard and then be impossible to total under a rounding point a tenant setting may select.
+        //
+        // These two lines are that document, solved rather than guessed: the group total lands EXACTLY on the
+        // 15-integer-digit bound and the per-line sum spends one more millime. The window is a single quantum
+        // wide, which is why no incidental case had ever hit it.
+        //
+        //   PerRateGroup/Up ->  999999999999999.999   (representable, so the old guard passed)
+        //   PerLine     /Up -> 1000000000000000.000   (16 integer digits -- refused by `Money`)
+        //
+        // The consequence is the one this whole test class exists for: such a draft could be ISSUED, spending a
+        // number permanently from a gapless legal sequence, and then never rendered under that setting.
+        yield 'lines the group rounding tolerates and the per-line rounding does not' => [
+            static fn(): Invoice => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
+                ->withLine(new DocumentLine('1', Money::of('947867298578199.012', $tnd), Rate::fromPercentage('5.5')))
+                ->withLine(new DocumentLine('1', Money::of('0.039', $tnd), Rate::fromPercentage('5.5'))),
+        ];
         // And through the CHARGE door, which is the paired path and was equally open.
         yield 'a fixed charge pushing the total out of bounds' => [
             static fn(): Invoice => Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
                 ->withLine(new DocumentLine($huge, Money::of('1.000', $tnd), Rate::zero()))
                 ->withFixedCharge(new FixedCharge('stamp_duty', Money::of($huge . '.000', $tnd))),
         ];
+    }
+
+    /**
+     * **THE OTHER DIRECTION, WHICH A TIGHTENED GUARD IS EXACTLY HOW YOU BREAK (R4C-6).**
+     *
+     * R5C-1 moved the probe from `PerRateGroup, Up` to `PerLine, Up`, which refuses strictly MORE documents. A
+     * guard tightened without this case is how a perfectly valid invoice becomes unissuable — and that failure
+     * is worse than the one being fixed, because it stops legitimate work rather than deferring an error.
+     *
+     * So: a document that every rounding point and every rounding mode can total must still be ACCEPTED, and
+     * every figure on the result must be reachable. `Unnecessary` is excluded deliberately and the reason is in
+     * `totallable()`'s docblock — it constrains the INPUTS rather than the magnitude, so no magnitude probe can
+     * ever satisfy it.
+     */
+    public function testADocumentEveryConfigurationCanTotalIsStillAccepted(): void
+    {
+        $tnd = Currency::of('TND');
+
+        // Ordinary, and deliberately awkward: three lines, a fractional quantity, two different rates and a
+        // fixed charge, so the accepted path covers the same doors the refused one does.
+        $document = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
+            ->withLine(new DocumentLine('3', Money::of('12.345', $tnd), Rate::fromPercentage('19')))
+            ->withLine(new DocumentLine('0.5', Money::of('7.777', $tnd), Rate::fromPercentage('7')))
+            ->withLine(new DocumentLine('11', Money::of('0.123', $tnd), Rate::fromPercentage('19')))
+            ->withFixedCharge(new FixedCharge('stamp_duty', Money::of('0.100', $tnd)));
+
+        $configurations = 0;
+        foreach (VatRoundingPoint::cases() as $point) {
+            foreach (RoundingMode::cases() as $mode) {
+                if (RoundingMode::Unnecessary === $mode) {
+                    continue;
+                }
+
+                $totals = $document->totals($point, $mode);
+
+                // EVERY accessor, not just `total()`. Each is its own `Money` construction and can overflow
+                // independently, so a probe validated against the total alone would not have proven this.
+                self::assertNotEmpty($totals->lineNets());
+                self::assertNotEmpty($totals->vatByLine());
+                self::assertNotEmpty($totals->vatByRate());
+                // Asserted rather than merely CALLED: a bare accessor call is a statement with no effect, which
+                // PHPStan refuses -- rightly, since a reader cannot tell "this must not throw" from a leftover.
+                // Every figure is a `Money` in the document's own currency, which is the property being claimed.
+                self::assertSame($tnd, $totals->subtotalNet()->currency());
+                self::assertSame($tnd, $totals->vatTotal()->currency());
+                self::assertSame($tnd, $totals->fixedChargesTotal()->currency());
+                self::assertSame($tnd, $totals->total()->currency());
+
+                ++$configurations;
+            }
+        }
+
+        // ANTI-VACUITY: a loop that ran zero times would assert nothing while looking thorough.
+        self::assertGreaterThan(0, $configurations);
     }
 
     /**
