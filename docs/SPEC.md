@@ -288,8 +288,18 @@ and PHP inventing three rules. **It is currently POISONED — see § 8, WP0 / R5
   stateless. The derivation is CHECKED with one `!==`, not trusted. What is not recovered is the
   authored width for a sequence that outran its padding — and it does not matter, because every
   width from 1 to 5 renders `12345` identically. [AGREED 2026-08-06]
+- **An "enum" column is `VARCHAR(32)` + `CHECK`, never a native PostgreSQL enum type.** [AGREED
+  2026-08-01] `doctrine_migrations.transactional` is true, and PostgreSQL refuses to add an enum
+  value and use it in the same transaction — so a native type would force every future
+  `DocumentType` addition (Wave 2's Quote and Credit among them) into a two-migration dance.
 - **State transitions go through a guard, never a direct assignment.** A status written by
   assignment is how illegal transitions enter a billing system.
+- **`DocumentState` is a CLOSED set — Draft, Issued, Cancelled.** [RECORDED 2026-07-31] One of five
+  Wave 1 domain decisions that existed only in a commit message until a certification round found
+  none of them in any Decisions Log — which is the reason this spec has a single log at § 10, and
+  the reason a ruling must land in the same change as the code. The others: discounts and
+  inclusive-vs-exclusive tax were DEFERRED **to Wave 2** with a named destination, because no fixture
+  specified them and inventing money numbers is the one thing this domain must not do.
 - **`Invoice::issue()`'s two failure causes get distinct exception types.** [AGREED 2026-07-31]
 - **A DRAFT may have no client; an ISSUED document may not.** [AGREED 2026-08-22] EN 16931 makes
   the buyer mandatory (BT-44), so the requirement attaches to the TRANSITION rather than to the
@@ -383,6 +393,13 @@ and PHP inventing three rules. **It is currently POISONED — see § 8, WP0 / R5
   **a failed verification is cached in NEITHER direction** — not as success (one bad start-up would
   disable the guard for the window), not as failure (the fix for a wrongly-provisioned database is
   to fix the database).
+- **The release half of the connection lifecycle is `SessionStateReleaser`, a `ResetInterface`
+  service — and "when a connection is RETURNED" had to be reinterpreted, because THERE IS NO POOL.**
+  [AGREED 2026-08-06] PHP-FPM is shared-nothing: a connection is not handed back to a pool at the end
+  of a request, the whole process context goes away. So the release obligation attaches to Symfony's
+  own reset of stateful services between requests, which is the nearest real equivalent, rather than
+  to a pool event that does not exist here. Same shared-nothing fact that makes an in-process cache
+  amortise across nothing (§ 7's evidence table and `CLAUDE.md` § Gotchas).
 - **The runtime role's table privileges come from an IDEMPOTENT GRANT STEP shipping with the
   migrations.** [AGREED 2026-08-23]
 - **`assertStillBoundTo()` lives on the `TenantIsolationStrategy` PORT**, not only on the Postgres
@@ -418,6 +435,12 @@ and PHP inventing three rules. **It is currently POISONED — see § 8, WP0 / R5
   GDPR control — it stops the engine fetching fonts from `fonts.gstatic.com` — not an optimisation.
   Two tests assert the built bundle reaches no external origin. A dev bundle that phones home is
   still phoning home.
+- **Vendoring Flutter's WHOLE Noto fallback set is REJECTED on evidence**, recorded so no future
+  session re-explores it. [RECORDED 2026-07-30] The web engine compiles in **143 distinct Noto
+  families**, the CJK ones at **100–124 subset shards each** (`notosanskr` 124, `notosansjp` 124,
+  `notosanshk` 109, `notosanstc` 105, `notosanssc` 101), at version-hashed paths that break on every
+  Flutter upgrade. Bundling Arabic — a first-class locale — and serving a substitute under the prefix
+  for everything else is the shape that survives an upgrade; see § 8's `infra/` row.
 - **Any GET under the Flutter web build's `fontFallbackBaseUrl` prefix is an INFRA rule, not app
   code.** [RULED 2026-07-30] Web-only: `fontFallbackBaseUrl` appears in the compiled web engine and
   nowhere else.
@@ -457,6 +480,10 @@ Rulings in force:
   `lines[0].unitNet`, which needs `COLLECT_DENORMALIZATION_ERRORS` on the operation (without it the
   answer is an opaque 400). Assert the ENCODED PAYLOAD, not the PHP type — the type declaration is
   the enforcement, so asserting it again is a dead assertion PHPStan refuses.
+- **The edge constraint on a `clientId` is a HAND-WRITTEN REGEX, not `#[Assert\Uuid]`.** [AGREED
+  2026-08-22] Symfony's constraint accepts the uppercase and braced spellings the domain refuses, so
+  the validator would pass an id the aggregate then rejects — a 422 naming the wrong thing, or a 500.
+  The edge must refuse exactly what the domain refuses.
 - **The server computes totals and the clients display them.** [AGREED 2026-08-07] All three clients
   could compute from the lines; they must not.
 - **A write response is the document READ BACK inside the write transaction**, never the aggregate
@@ -935,6 +962,14 @@ VIOLATION, never a skip**: an unverifiable credential has not been cleared.
 > and not the locations.** An inclusion list is fail-OPEN for every file nobody thought of. And where
 > the real consumer can be asked, ask it rather than modelling it.
 
+**PHPStan is CONFIGURED AND WIRED at level 6, and every finding was fixed rather than baselined.**
+[AGREED 2026-08-05] `api/phpstan.neon.dist` covers `src/` and `tests/` with `checkUninitializedProperties`,
+`treatPhpDocTypesAsCertain` and `reportUnmatchedIgnoredErrors` on — stricter than the level on the
+three axes this project has already ruled on. Level 6 rather than max because levels 7–9 are
+dominated by mixed-type findings. `gate:static` runs the **pinned phar** in `api/tools/bin/`, not
+`vendor/bin/phpstan`, which can never exist here because PHPStan is not a Composer dependency. Only
+two `ignoreErrors` entries exist and each carries its reason in the file.
+
 ### Running the gate
 
 **`composer gate` chains** `gate:licences`, `gate:architecture`, `gate:schema`, `gate:static`,
@@ -1068,7 +1103,7 @@ against a frozen commit; the cap decision returns to the developer after it, per
 | Item | Why it matters |
 |---|---|
 | **Typed exception per refusal** — the whole deliverable | Roughly sixty translation keys are shipped and **nothing resolves any of them.** A dozen keyed refusals raise a bare `\InvalidArgumentException` whose only payload is an English sentence, so nothing at the transport can tell `document.quantity_too_precise` from `document.total_too_large`. Deleting every key would leave the suite green, because `locale-key-parity.php` checks the SET and never that a key is USED. Today the input DTOs' validator catches the SHAPE errors and Symfony translates its own constraint messages, so a French or Arabic caller gets a translated message for the common case and an English one for the rest. `NoTenantBound` **carries** `error.tenant_required` as a constant and nothing reads it — carrying is not resolving. Covers `Domain/Document/`, `Domain/Client/` and `Domain/Product/` |
-| **The reconciliation table's anchors cover only part of it** | `docs/archive/plans/RECONCILIATION.md` records a literal `SPEC.md` anchor for 43 of its `carried` rows, and those 43 were asserted present. **The remaining carried rows — every one from `build-waves.plan.md` and every `CLAUDE.md § Gotchas` entry — have no anchor and were NOT asserted.** That is the self-agreement shape § 0 rule 4 exists to stop, left standing. It is not hypothetical: a four-row spot-check at the consolidation commit found **four of four missing** (`FixedCharge::MAX_LABEL_LENGTH`, the two runtime documentation-parser dependencies, the unasserted migration CHECKs, and the `+ 1` guard band) — all four were then added, which is evidence there are more. **Owed: a pass adding a literal anchor to every `carried` row, asserting each, and folding whatever it surfaces into this spec.** Until it runs, a `carried` row without an anchor is a claim, not a fact |
+| ~~**The reconciliation table's anchors cover only part of it**~~ **CLOSED 2026-09-02** | Kept here rather than deleted, because what it cost is the point. All 178 `carried` rows now carry a literal `docs/SPEC.md` anchor and all 178 were asserted present — but the gap was real while it stood: **ten rulings had not in fact been carried**, and they were found only because something checked. A `carried` row without an anchor is a claim, not a fact; if this table is ever extended, extend the assertion with it |
 | **NO CI at all** | There is no `.github/`. Every gate is local-only; nothing runs on push. The single-branch, no-PR-review flow means the local gate is the ONLY safety net before history |
 | **No cross-tier contract check** | Named in § 7. Considered and declined; until it exists, every contract change carries `UNCERTIFIED-BY-EXECUTION: cross-tier contract` |
 | **`deptrac` unwired** | Installable, and the only tool still owed. `qossmic/deptrac` is abandoned in favour of `deptrac/deptrac`, whose phar is not at the paths PHPStan's is, so re-adding it needs the release asset located first. It was REMOVED from `require-dev` on 2026-08-02 because it required `phpstan/phpstan`, which was dist-only, and so blocked every other dev dependency including the `symfony/browser-kit` the functional suite needs. `layer-dependencies.php` is the enforcement; deptrac would be defence in depth |
@@ -1095,6 +1130,19 @@ against a frozen commit; the cap decision returns to the developer after it, per
   tracked Python; and the skip message states a false fact and prescribes an impossible remedy —
   with the image present and the daemon down it says the image *"is not present locally"* and tells
   you to `docker pull`.
+- **`test-gates.sh`'s library-reachability check can produce a FALSE RED, and its own `2>/dev/null`
+  is why.** Observed once on 2026-09-02: the case reported *"a library under scripts/gates/lib is
+  reached by nothing ( caddy-configs.sh)"* and the suite exited 1. **It did not reproduce** — a
+  re-run on the byte-identical tree gave `500 passed, 0 failed`, and reproducing the check's own
+  loop by hand found **three** referencing files (`compose-config.sh`, `worker-mode-blocked.sh` and
+  `test-gates.sh` itself). [Inferred, not Verified — the cause was not captured:] the check runs
+  `sed -E … "$candidate" 2>/dev/null | grep -qE …`, so a transient read failure yields empty input,
+  `grep` reports no match, and that is **indistinguishable from a genuine missing reference**. That
+  suppression is the anti-bandaid shape: an error nobody diagnosed, silenced. **Owed: drop the
+  `2>/dev/null` and fail loudly on an unreadable candidate**, the same call `schema-tenancy.php`
+  already makes for a table it cannot classify. This matters more than one flaky case — this
+  repository prices a false finding as badly as a false clean, because *the next red gets
+  dismissed*, and a red that cannot be told from a read error is exactly that.
 - **R28-9** is closed as a CHECK and open as WIRING; the wiring half is a Wave 10 question.
 - **R4-18**: the empty-string gap is deliberately left open.
 
