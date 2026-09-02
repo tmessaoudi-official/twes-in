@@ -10,9 +10,11 @@
 # `docs/archive/plans/RECONCILIATION.md` is the safety artefact for archiving the five plan files: it
 # claims that every dated ruling in them was either carried into `docs/SPEC.md`, superseded, turned
 # into a process rule, or deliberately dropped. A disposition table written by the same author as the
-# spec agrees with itself unless something checks it -- and when something finally did, it found TEN
-# rulings marked `carried` that had never been carried, in a table that reported 276 of 276
-# dispositioned.
+# spec agrees with itself unless something checks it -- and when something finally did, it found a
+# whole handful of rulings marked `carried` that had never been carried, in a table that reported
+# 276 of 276 dispositioned. NO NUMERAL IS WRITTEN HERE: this comment said "TEN" and the same commit
+# then found an eleventh, which is the count-beside-the-thing-it-counts defect landing inside the fix
+# for a different one. `RECONCILIATION.md`'s header enumerates them; the list is the count.
 #
 # So each `carried` row records a LITERAL substring of `docs/SPEC.md` in its anchor column, and this
 # script is what re-checks them. It was written because the table's own header said "re-run the

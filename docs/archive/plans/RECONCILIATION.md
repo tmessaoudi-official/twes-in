@@ -13,11 +13,15 @@ silently.
 which is on disk precisely because this line used to point at a check that lived in a throwaway command.
 
 It is not decoration. It caught, in three passes: 25 anchors written as summaries rather than
-quotations; **ten rulings that had not in fact been carried** — `FixedCharge::MAX_LABEL_LENGTH`,
+quotations; **rulings that had not in fact been carried** — the list IS the count, because a numeral
+written beside the thing it counts is this project's most-recorded defect and the first version of
+this very sentence said "ten" while the commit adding it found an eleventh:
+`FixedCharge::MAX_LABEL_LENGTH`,
 the two runtime documentation-parser dependencies, the unasserted migration CHECK constraints, the
 `+ 1` working-scale guard band, `SessionStateReleaser` and the no-pool reinterpretation, the
 rejection of vendoring Flutter's whole Noto set, the hand-written `clientId` regex, PHPStan's
-level-6 configuration, `VARCHAR(32)`-not-native-enum, and `DocumentState` as a closed set; and one
+level-6 configuration, `VARCHAR(32)`-not-native-enum, `DocumentState` as a closed set, and the
+PART-LANDED recording rule; and one
 wrong Angular version taken from a `package.json` range floor. **A disposition table written by the
 author of the spec agrees with itself unless something checks it.**
 
