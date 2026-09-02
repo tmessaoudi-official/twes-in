@@ -25,8 +25,9 @@ use Twes\Domain\Shared\Identifier;
  *
  * Every rule about cost, profit rate and net price already lives in {@see ProductPricing} — which field the user
  * typed, that the typed one is never recomputed, that a cost change preserves the RATE and moves the PRICE, and
- * that a zero old cost has no rate to preserve. Those are the F4 rulings in
- * `docs/SPEC.md`, and they were built and tested in Wave 0. This aggregate holds a
+ * that a zero old cost has no rate to preserve. Those are ruled in `docs/SPEC.md` § 3 under *"Profit rate is
+ * bidirectional, last-edited-wins"* -- the archived plans called them F4, a label the spec does not carry, so
+ * the substance is cited rather than the tag. They were built and tested in Wave 0. This aggregate holds a
  * `ProductPricing` and delegates; it does not re-express one line of that arithmetic.
  *
  * **A SECOND IMPLEMENTATION OF THOSE RULES HERE WOULD BE THE DEFECT, not the convenience.** `CLAUDE.md`

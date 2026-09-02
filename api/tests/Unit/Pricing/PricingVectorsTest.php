@@ -279,10 +279,13 @@ final class PricingVectorsTest extends TestCase
     /**
      * Document totals end to end: line totals, VAT grouped by rate, and fixed charges.
      *
-     * Two things this pins that the formula alone does not. **The rounding ORDER** — VAT is rounded once
-     * per rate group on the summed base, not per line and then summed; the two differ by a millime on
-     * some inputs and a case in the fixture is built so they diverge. And **that a fixed document charge
-     * is not part of any VAT base** — Tunisia's stamp duty is added after VAT, not taxed.
+     * Two things this pins that the formula alone does not. **The rounding ORDER** — which is a per-case
+     * SETTING, not a single behaviour: every case declares `vat_rounding_point`, and this method runs it under
+     * the point it declares. The two orders differ by a millime on some inputs, and the fixture carries a
+     * diverging pair — one case per point — so neither is pinned only by the other's absence. This docblock
+     * asserted `per_rate_group` as *the* behaviour until round 6, which is what R5K-3 was about and what the
+     * `PerRateGroup` literal in this very method had encoded. And **that a fixed document charge is not part
+     * of any VAT base** — Tunisia's stamp duty is added after VAT, not taxed.
      *
      * @param list<array<string, string>> $lines
      * @param list<array<string, string>> $fixedCharges
@@ -348,7 +351,7 @@ final class PricingVectorsTest extends TestCase
             // while the fixture declared no point at all -- so this tier and the cross-tier SSOT agreed by
             // coincidence. `DocumentTotalsTest` had the identical defect; fixing one and not the other is the
             // not-the-full-set-of-sites shape, and the suite caught it here.
-            'per_line' === $vatRoundingPoint ? VatRoundingPoint::PerLine : VatRoundingPoint::PerRateGroup,
+            self::declaredPoint($vatRoundingPoint, $id),
             RoundingMode::HalfUp,
             $currencyObject,
         );
@@ -423,7 +426,7 @@ final class PricingVectorsTest extends TestCase
             $perLine = new DocumentCalculator()->calculate(
                 $documentLines,
                 $charges,
-                'per_line' === $vatRoundingPoint ? VatRoundingPoint::PerRateGroup : VatRoundingPoint::PerLine,
+                self::theOtherPoint(self::declaredPoint($vatRoundingPoint, $id)),
                 RoundingMode::HalfUp,
                 $currencyObject,
             );
@@ -440,7 +443,7 @@ final class PricingVectorsTest extends TestCase
     /**
      * @return iterable<string, array{
      *     string, string, list<array<string, string>>, string, ?string, list<array<string, string>>,
-     *     string, list<array<string, string>>, string, ?string
+     *     string, list<array<string, string>>, string, ?string, string
      * }>
      */
     public static function documentTotalCases(): iterable
@@ -548,6 +551,49 @@ final class PricingVectorsTest extends TestCase
                 $case['expected_after'],
             ];
         }
+    }
+
+    /**
+     * **THE CASE'S DECLARED POINT, MATCHED STRICTLY — the sibling shape, which this consumer did not have.**
+     *
+     * Round 6 (C-P3-2). The R5K-3 fix reached both consumers of `vat_rounding_point`, but only one of them
+     * strictly: `DocumentTotalsTest::declaredPoint()` throws on an unrecognised value, and this file used
+     * `'per_line' === $v ? PerLine : PerRateGroup`, under which a typo, a renamed value or a missing key
+     * silently becomes `PerRateGroup` — reinstating, by the back door, exactly the implicit default the whole
+     * finding was about.
+     *
+     * It was masked rather than live: `DocumentTotalsTest`'s fixture-integrity loop asserts the key exists and
+     * is one of the two on every `document_totals` case, so a bad value fails there first. That protection is
+     * cross-file and was undocumented at this site — narrow or delete that loop and this consumer goes silent
+     * again, which is the fixture-pair blindness this project has already recorded once. Two consumers of one
+     * declaration should refuse a bad declaration in the same way, and neither should depend on the other for it.
+     */
+    private static function declaredPoint(string $vatRoundingPoint, string $id): VatRoundingPoint
+    {
+        return match ($vatRoundingPoint) {
+            'per_line' => VatRoundingPoint::PerLine,
+            'per_rate_group' => VatRoundingPoint::PerRateGroup,
+            default => throw new \LogicException(\sprintf(
+                'document_totals case "%s" declares an unknown vat_rounding_point "%s".',
+                $id,
+                $vatRoundingPoint,
+            )),
+        };
+    }
+
+    /**
+     * The point the case does NOT declare, for the divergence arm.
+     *
+     * A `match` on the enum rather than a ternary, so that adding a third `VatRoundingPoint` is a compile-time
+     * problem here rather than a silent re-pairing of the two that already exist — the same reason
+     * `declaredPoint()` above refuses an unknown string instead of defaulting.
+     */
+    private static function theOtherPoint(VatRoundingPoint $declared): VatRoundingPoint
+    {
+        return match ($declared) {
+            VatRoundingPoint::PerLine => VatRoundingPoint::PerRateGroup,
+            VatRoundingPoint::PerRateGroup => VatRoundingPoint::PerLine,
+        };
     }
 
     /** @return array<string, mixed> */

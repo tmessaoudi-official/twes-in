@@ -255,6 +255,14 @@ a point is pinned as a mutant.
 
 ### Pricing and products
 
+**The worked example, which `docs/spec/pricing-vectors.json` names as its own provenance.** Cost
+`100.000` TND at a profit rate of `30`% gives a net price of `130.000`, and 19% VAT on that is
+**`24.700` — not `19.000`. The VAT base is the NET, never the cost.** That is the whole trap the
+`tnd-baseline` vector guards, and getting it wrong overcharges or undercharges every line of every
+invoice by the margin. Restored here in round 6 (completeness P2-5): the fixture's `why` cited
+`docs/SPEC.md` for it while the example had been left behind in the archived plans, so the cross-tier
+single source of truth pointed at a file that did not contain the example it was quoting.
+
 - **A profit rate is pure arithmetic; a NEGATIVE SELLING PRICE is refused at the aggregate.**
   [RULED 2026-07-30] Three parts: `Rate` keeps no bound at −100% (a rate is a dimensionless number
   and `Rate` is the wrong place to encode what a *document* may contain); `ProductPricing` REFUSES
@@ -400,11 +408,27 @@ a point is pinned as a mutant.
   the fact that `bind()` uses `SET LOCAL` semantics and refuses outside a transaction. **A READ
   needs a transaction too**: without one the query is issued unbound and a tenant's own document is
   invisible.
-- **The acquire-time provisioning guards run ONCE PER (ROLE, DATABASE) PER TTL WINDOW**, not per
-  acquisition [RULED 2026-08-06, developer, against a measurement of ~10.8 ms per connection], and
-  **a failed verification is cached in NEITHER direction** — not as success (one bad start-up would
+- **The acquire-time provisioning guard is SPLIT, and only the CATALOGUE half is cached.** The
+  catalogue assertions (`pg_authid`, `pg_class`, ACL reads — ~10.8 ms per connection, measured) run
+  once per (role, database) per TTL window [RULED 2026-08-06, developer]. The two **per-SESSION**
+  assertions — `assertNoTenantPinnedOnTheConnection()` reading `current_setting()`, and
+  `assertNoSessionLifetimeDataIsMaterialised()` reading `pg_my_temp_schema()` and `pg_cursors` — run
+  on **every acquisition and are never cached**, ahead of the cache short-circuit. **A genuinely
+  per-session check must never be added inside the cached block.**
+
+  That split is round 3's R3S-5 and it is the control itself, not an optimisation detail: while the
+  whole guard was cached, a cache hit returned before `getNativeConnection()` was even called and
+  skipped both session checks, and the panel reproduced a `PGOPTIONS`-pinned process reading another
+  tenant's row inside a transaction the application believed was unbound — on a warm entry written by
+  a clean process, through a `@cache.app` pool shared across `api`, `worker` and `scheduler`. Keying
+  on `options` does not help: DBAL's `PDO\PgSQL\Driver` never emits it, and `PGOPTIONS` is process
+  environment rather than a connection parameter. **§ 3 described the pre-round-3 shape until round 6
+  (tenancy P2)** — this section replaced five plan files, § 0 rule 6 makes it the description of the
+  code as it is, and the standing warning above lived only in a docblock the spec is meant to supersede.
+
+  **A failed verification is cached in NEITHER direction** — not as success (one bad start-up would
   disable the guard for the window), not as failure (the fix for a wrongly-provisioned database is
-  to fix the database).
+  to fix the database, and a cached failure keeps rejecting one that was just repaired).
 - **The release half of the connection lifecycle is `SessionStateReleaser`, a `ResetInterface`
   service — and "when a connection is RETURNED" had to be reinterpreted, because THERE IS NO POOL.**
   [AGREED 2026-08-06] PHP-FPM is shared-nothing: a connection is not handed back to a pool at the end
@@ -554,7 +578,13 @@ grep. **Nothing RESOLVES any of these keys today — see § 8.**
 
 ## 5. Current state — verified baseline
 
-**Baseline commit: `5dfebf1`.** Everything below was checked against the tree, not recalled.
+**Baseline commit: `3aea5db`.** Everything below was checked against the tree, not recalled.
+
+This said `5dfebf1` while its own first Wave row described four LATER commits, so a reader could not tell
+which half of § 5 had been checked and which was being recalled — in the one section whose entire value is
+that it was checked (round 6, completeness P2-3). Re-baselined to the round-5 freeze; the round-6 fixes on
+top of it are described as a delta rather than pinned to a hash, because a section cannot name the commit
+that is still being written.
 
 ### Waves
 
@@ -577,8 +607,10 @@ grep. **Nothing RESOLVES any of these keys today — see § 8.**
   middleware, the savepoint middleware, the connection-lifecycle guards), `Scheduler`, `Shared`
   (clock, UUIDv7 generator).
 - **`UI/Http`** — API Platform resources, state providers and processors.
-- **Migrations** — eight, in `api/migrations/` (`ls` for the list; the first is
-  `Version20260801120000`).
+- **Migrations** — in `api/migrations/`; `ls` for the list, and the first is `Version20260801120000`. No
+  count is written here: the previous one was correct on the day it was written and sat immediately beside
+  its own derivation, which is the shape § 0 rule 1 forbids precisely because the next migration falsifies
+  it silently.
 - **Four PHPUnit suites** — `unit` (pure domain, no kernel, no database), `integration` (real
   PostgreSQL), `functional` (through the kernel), `e2e` (a really-booted server). All four hold
   code.
@@ -1073,7 +1105,7 @@ change touching the contract carries `UNCERTIFIED-BY-EXECUTION: cross-tier contr
 Every owed item in this project lives here. The tier READMEs' owed tables were folded in; they now
 point here. **Do not delete a row to make the table look green.**
 
-### Work Package 0 — Wave 1's six open round-5 findings
+### Work Package 0 — Wave 1's round-5 findings
 
 **Standing ruling [AGREED 2026-08-29]: all seven of round 5's findings close (or are explicitly
 ruled deferred) BEFORE Wave 1 re-freezes.** **ALL SEVEN ARE NOW CLOSED** — R5C-2 in `5dfebf1`, the
@@ -1089,10 +1121,10 @@ code, and the code is the authority.**
 
 | # | Sev | Where | The defect, verified at `5dfebf1` |
 |---|---|---|---|
-| ~~**R5C-1**~~ | ~~P1~~ | `api/src/Domain/Document/Invoice.php` — `totallable()` | **CLOSED 2026-09-02.** The guard probed `PerRateGroup, Up` on an INVERTED bound (`ceil(a) + ceil(b) ≥ ceil(a+b)`), so it measured the smaller configuration and a document could pass it and then be impossible to total. Reproduced first, solved rather than guessed — the window is one quantum wide. Now probes `PerLine, Up`, verified maximal over 44 912 cases touching every accessor, with **zero under-refusals and zero over-refusals**. Pinned in both directions and mutant-checked |
+| ~~**R5C-1**~~ | ~~P1~~ | `api/src/Domain/Document/Invoice.php` — `totallable()` | **CLOSED 2026-09-02.** The guard probed `PerRateGroup, Up` on an INVERTED bound (`ceil(a) + ceil(b) ≥ ceil(a+b)`), so it measured the smaller configuration and a document could pass it and then be impossible to total. Reproduced first, solved rather than guessed — the window is one quantum wide. Now probes `PerLine, Up`, verified maximal by **`php scripts/dev/assert-totallable-probe-is-maximal.php`** — ~23 150 documents x 14 configurations, ~324 100 evaluations, exit 1 naming any breach. **Round 6 (correctness F3) found the original evidence was a one-off sweep of 44 912 cases that existed in no file**: the number was quoted here and in the docblock and no clone could reproduce it, which is the `[Verified against live roles]` shape under a money guard's load-bearing numerical claim. The script is pinned by its own sabotage — reverting `totallable()` to `PerRateGroup` makes it exit 1 with two under-refusals, naming the same document `DocumentTotalsTest` pins |
 | ~~**R5K-3**~~ | ~~P1~~ | `docs/spec/pricing-vectors.json` | **CLOSED 2026-09-02.** Every case now declares `vat_rounding_point`; the mislabelled column is `vat_if_per_line` with its reason; a companion `per_line` case was added so the SSOT covers both ruled settings; and the API tier reads the declared point instead of hard-coding one. **All ten pre-existing cases were independently recomputed from the ruled arithmetic before anything changed — zero mismatches**, so the numbers were right and only the framing was wrong. Three mutants pin it |
 | ~~**R5K-6**~~ | ~~P2~~ | `api/src/Domain/Product/Product.php` | **CLOSED 2026-09-02.** `product.vat_rate_invalid` in all three locales, with its own § 4 row. Its own key rather than reusing the document one, because the consequence differs: a bad product rate stores cleanly and detonates at invoice time |
-| ~~**R5T-1**~~ | ~~P2~~ | `api/src/Infrastructure/Persistence/Doctrine/DoctrineCompanySettingsRepository.php` | **CLOSED 2026-09-02.** `DoctrineCompanySettingsRepositoryTest` — four cases, two bound connections, a real migrated schema. It also corrected its own first docblock: dropping `FORCE` left every assertion GREEN, because the adapter's query carries its own tenant predicate, so **two independent mechanisms** deliver the guarantee. Pinned accordingly — a combined mutant for the adapter half, and a case reading the table with no predicate at all for the policy half |
+| ~~**R5T-1**~~ | ~~P2~~ | `api/src/Infrastructure/Persistence/Doctrine/DoctrineCompanySettingsRepository.php` | **CLOSED 2026-09-02.** `DoctrineCompanySettingsRepositoryTest` — four cases, two bound connections, a real migrated schema. **Two independent mechanisms deliver the guarantee and EACH IS PINNED ON ITS OWN** — the FORCE-only mutant kills `testThePolicyAloneScopesTheTableWithNoHelpFromTheQuery`, the predicate-only mutant kills two other cases [Verified 2026-09-02]. **This row asserted the OPPOSITE for a round** — that dropping `FORCE` left every assertion green and only a COMBINED mutant pinned anything — copied verbatim from a test docblock that had measured the survival against an earlier draft, before the case that closes it existed, and never re-ran it. Round 6 (tenancy P2) refuted it. Kept rather than deleted: a recorded mutant result that does not reproduce is the artefact this project most wants distrusted, and it had reached the register. **Re-run a mutant after changing the file it was measured against.** Round 6 also found `requireTransaction()` pinned by nothing on this adapter and added the two refusal cases its four siblings already had |
 | ~~**R5K-5**~~ | ~~P3~~ | `ConnectionProvisioningGuardMiddleware` | **CLOSED 2026-09-02.** The count is removed rather than corrected, per § 0 rule 1 — the enumeration is the count |
 | ~~**R5T-2**~~ | ~~P3~~ | `api/tests/Functional/Http/ClientProcessorTest.php` | **CLOSED 2026-09-02.** The docblock described two things the loop does not do — "another tenant's", which the in-memory fixture cannot express, and "an id that is not a string at all", where the third case is an UPPERCASE spelling. Corrected to what it exercises, pointing at `DoctrineClientRepositoryTest::testAnotherTenantsClientIsNotFound`. **`ProductProcessorTest` needed no correction** — its docblock claims no enumeration, which the plan assumed it did |
 
@@ -1113,12 +1145,21 @@ code, and the code is the authority.**
   remaining `_WRONG` columns are KEPT: they name genuine mistakes under the case's declared point (a
   subtotal rounded once, a per-line column recomputed instead of allocated, shares rounded to nearest
   instead of floored), not a rival ruled setting.
-- **R5K-6** — add `product.vat_rate_invalid` in all three locales, plus its row in § 4.
-- **R5T-1** — a two-tenant case against the **real** `DoctrineCompanySettingsRepository`, including
-  the silent-miss direction.
-- **R5K-5** — remove the count per § 0 rule 1.
-- **R5T-2** — correct the docblock to what the fixture can express, pointing at
-  `DoctrineClientRepositoryTest:271`; apply the same fix to `ProductProcessorTest`.
+- ~~**R5K-6**~~ — **DONE 2026-09-02.** `product.vat_rate_invalid` in all three locales (unit 58, `{rate}`
+  placeholder shared with `document.vat_rate_invalid`), plus its § 4 row; locale-key parity green.
+- ~~**R5T-1**~~ — **DONE 2026-09-02.** `DoctrineCompanySettingsRepositoryTest`, four cases against the real
+  adapter on a migrated probe database, including the silent-miss direction. Round 6 added two more — see the
+  row above, which also corrects what this closure originally claimed about the `FORCE` mutant.
+- ~~**R5K-5**~~ — **DONE 2026-09-02.** The count removed from `ConnectionProvisioningGuardMiddleware`.
+- ~~**R5T-2**~~ — **DONE 2026-09-02.** `ClientProcessorTest`'s docblock corrected to what an in-memory
+  fixture can express, citing `DoctrineClientRepositoryTest::testAnotherTenantsClientIsNotFound` **by name**
+  rather than by a line number that had already drifted. **`ProductProcessorTest` needed NO correction** —
+  this bullet used to instruct one, contradicting its own table row in the same section, because the plan
+  assumed a docblock enumeration that file does not make.
+
+*(These four read as outstanding work for a commit while the table above recorded them CLOSED, and the last
+contradicted its own row outright — round 6, completeness P2-2. § 0 rule 2: a superseded instruction is
+corrected in place, never left standing beside its own retraction.)*
 
 **Each code fix carries a mutant that proves it load-bearing.** Then ONE re-certification round
 against a frozen commit; the cap decision returns to the developer after it, per the standing ruling.
@@ -1128,7 +1169,7 @@ against a frozen commit; the cap decision returns to the developer after it, per
 | Item | Why it matters |
 |---|---|
 | **Typed exception per refusal** — the whole deliverable | Roughly sixty translation keys are shipped and **nothing resolves any of them.** A dozen keyed refusals raise a bare `\InvalidArgumentException` whose only payload is an English sentence, so nothing at the transport can tell `document.quantity_too_precise` from `document.total_too_large`. Deleting every key would leave the suite green, because `locale-key-parity.php` checks the SET and never that a key is USED. Today the input DTOs' validator catches the SHAPE errors and Symfony translates its own constraint messages, so a French or Arabic caller gets a translated message for the common case and an English one for the rest. `NoTenantBound` **carries** `error.tenant_required` as a constant and nothing reads it — carrying is not resolving. Covers `Domain/Document/`, `Domain/Client/` and `Domain/Product/` |
-| ~~**The reconciliation table's anchors cover only part of it**~~ **CLOSED 2026-09-02** | Kept here rather than deleted, because what it cost is the point. All 178 `carried` rows now carry a literal `docs/SPEC.md` anchor and all 178 were asserted present — but the gap was real while it stood: **ten rulings had not in fact been carried**, and they were found only because something checked. A `carried` row without an anchor is a claim, not a fact; if this table is ever extended, extend the assertion with it |
+| ~~**The reconciliation table's anchors cover only part of it**~~ **CLOSED 2026-09-02** | Kept here rather than deleted, because what it cost is the point. Every `carried` row now carries a literal `docs/SPEC.md` anchor and every one was asserted present — but the gap was real while it stood: **rulings had not in fact been carried**, and they were found only because something checked. No numeral appears here any more: this cell said "178" against a derived tally of 177 and "ten" against a list the same commit extended to eleven, which is § 0 rule 1 landing on the artefact whose whole subject is that defect (round 6, completeness P2-1). The 178 came from the script counting the one `carried-as-pointer` row, whose anchor cell held a REASON rather than an anchor — so it was asserting spec-presence for the row defined by its ABSENCE from the spec, and its own guard branch for that disposition was dead code. Both fixed; the script now reports 177. A `carried` row without an anchor is a claim, not a fact; if this table is ever extended, extend the assertion with it |
 | **NO CI at all** | There is no `.github/`. Every gate is local-only; nothing runs on push. The single-branch, no-PR-review flow means the local gate is the ONLY safety net before history |
 | **No cross-tier contract check** | Named in § 7. Considered and declined; until it exists, every contract change carries `UNCERTIFIED-BY-EXECUTION: cross-tier contract` |
 | **`deptrac` unwired** | Installable, and the only tool still owed. `qossmic/deptrac` is abandoned in favour of `deptrac/deptrac`, whose phar is not at the paths PHPStan's is, so re-adding it needs the release asset located first. It was REMOVED from `require-dev` on 2026-08-02 because it required `phpstan/phpstan`, which was dist-only, and so blocked every other dev dependency including the `symfony/browser-kit` the functional suite needs. `layer-dependencies.php` is the enforcement; deptrac would be defence in depth |
@@ -1136,6 +1177,7 @@ against a frozen commit; the cap decision returns to the developer after it, per
 | **`messenger_messages`** | A standing hazard for whichever wave wires Messenger: no policy, no tenant column, and the schema gate classifies by column, so it stays green while holding whatever a message payload holds |
 | **`gate:licences` environment-blocked** | § 6 carries the restore. `UNCERTIFIED-BY-EXECUTION` until it lands |
 | **Round 5 is itself UNCERTIFIED-BY-EXECUTION** | The correctness lens's filed text was permanently lost and the tenancy lens was half self-graded |
+| **Most migration CHECK constraints are named by no test** | [FOUND 2026-08-06, LOST FROM THIS REGISTER, RESTORED 2026-09-02] § 3 rules that the migrations' CHECK constraints must be asserted by a test and ends *"see § 8"* — and § 8 had no row, so the pointer dangled and the owed half was invisible in the file that calls itself the ONE open register (round 6, completeness P1-1). **DERIVE the set, never trust a hand-list:** `git grep -hoE "ADD CONSTRAINT [a-z_]+" -- api/migrations | sed 's/ADD CONSTRAINT //' | sort -u` gives the constraints; cross-check each against `git grep -l <name> -- api/tests`. On 2026-09-02 that was **32 constraints, 15 of them named by no test at all** — far more than the five the archived plan listed, and the two existing hand-lists disagree with each other (the plan names `document_number_sequence_type_is_known`; `DocumentNumberConstraintsTest`'s docblock names `document_number_is_positive` instead, which that file covers). **"Named" is a PROXY, not coverage**, and it errs in both directions: a behavioural case can exercise a constraint it never names, and a docblock can name one it does not assert. Risk stays lower than the usual unenforced-control shape — PostgreSQL cannot quietly stop applying a constraint, so one can only be lost by a future migration dropping it — but a `diff`-generated migration is exactly how that happens, with every test green |
 
 ### Gate residue, named rather than implied
 
@@ -1156,11 +1198,20 @@ against a frozen commit; the cap decision returns to the developer after it, per
   with the image present and the daemon down it says the image *"is not present locally"* and tells
   you to `docker pull`.
 - **`test-gates.sh`'s library-reachability check can produce a FALSE RED, and its own `2>/dev/null`
-  is why.** Observed once on 2026-09-02: the case reported *"a library under scripts/gates/lib is
+  is why.** Observed TWICE on 2026-09-02, on two different libraries. The first: the case reported *"a library under scripts/gates/lib is
   reached by nothing ( caddy-configs.sh)"* and the suite exited 1. **It did not reproduce** — a
   re-run on the byte-identical tree gave `500 passed, 0 failed`, and reproducing the check's own
   loop by hand found **three** referencing files (`compose-config.sh`, `worker-mode-blocked.sh` and
-  `test-gates.sh` itself). [Inferred, not Verified — the cause was not captured:] the check runs
+  `test-gates.sh` itself).
+  **SEEN A SECOND TIME the same day, on a DIFFERENT library** — *"reached by nothing
+  ( worker-mode-run.php)"*, `499 passed, 1 failed`, again `500 passed, 0 failed` on an unchanged
+  re-run. That second sighting matters twice over. It shows the fault is not about
+  `caddy-configs.sh`, so a fix aimed at that one reference would have been aimed at nothing. And
+  running the check's exact `sed … | grep -qE` pipeline by hand against
+  `scripts/gates/worker-mode-blocked.sh:244` **MATCHED**, which rules the `[^\n]` defect below OUT
+  as the cause of these reds: no `n` falls between the verb and the basename on that line. So the
+  two defects recorded here are genuinely independent — one intermittent and still undiagnosed, one
+  deterministic and currently harmless — and neither is evidence about the other. [Inferred, not Verified — the cause was not captured:] the check runs
   `sed -E … "$candidate" 2>/dev/null | grep -qE …`, so a transient read failure yields empty input,
   `grep` reports no match, and that is **indistinguishable from a genuine missing reference**. That
   suppression is the anti-bandaid shape: an error nobody diagnosed, silenced. **Owed: drop the
@@ -1351,3 +1402,20 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
   `AGREED` provenance; this one waited for the word.
 - [2026-09-02 00:00] AGREED: the tier READMEs' owed tables move into § 8 and the READMEs point here;
   the READMEs keep tier-local how-to content.
+- [2026-09-02] AGREED: Wave 1's round 6 (MAXIMAL, all three lenses, frozen `3aea5db`) closed NOT
+  clean with 15 findings (0 P0, 2 P1, 10 P2, 3 P3); the developer ruled **all 15 close**, certified
+  by `advisor()` 6C plus executable evidence rather than a round 7.
+- [2026-09-02] RECORDED: round 6's characteristic finding was **the record being wrong about the
+  code, not the code being wrong** — 11 of the 15. Three were false or unreproducible MEASUREMENTS:
+  a mutant recorded as surviving that is killed, a predicate recorded as pinned by a test that never
+  reaches it, and a 44 912-case sweep that existed in no file. Each is now either corrected in place
+  with the measured result, or replaced by a command
+  (`scripts/dev/assert-totallable-probe-is-maximal.php`). **Re-run a mutant after changing the file
+  it was measured against: adding a test can retire a survival, and the stale result then reads as a
+  finding.**
+- [2026-09-02] RECORDED: a lens can confirm a false claim. The correctness lens read the same
+  `FORCE` docblock the tenancy lens refuted and concluded *"the class is honest about its coverage.
+  No finding"* — it had run a DIFFERENT mutant (dropping the adapter's predicate, which the policy
+  alone still covers) and read the green as agreement. Two lenses plus a direct re-measurement
+  settled it. **A panel's clean verdict on one point is not evidence when another lens contradicts
+  it; re-measure rather than counting votes.**

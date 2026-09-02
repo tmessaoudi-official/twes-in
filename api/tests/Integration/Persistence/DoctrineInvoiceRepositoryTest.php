@@ -805,6 +805,174 @@ final class DoctrineInvoiceRepositoryTest extends TestCase
         }
     }
 
+    /**
+     * **THE CONCURRENT RENUMBER — the case the write-once predicate actually exists for, and which nothing
+     * reached until round 6.**
+     *
+     * The correctness lens (F1) deleted `(document.number IS NULL OR document.number = EXCLUDED.number)` from
+     * `DoctrineInvoiceRepository:328` and the entire 293-case integration suite stayed green — including
+     * `testADocumentNumberCannotBeRewrittenOnceAssigned`, which THREE places in this codebase named as pinning
+     * it. That test cannot reach the statement: by the time it attempts a rewrite the stored row already carries
+     * a number, so `save()`'s pre-read sends it down the state-only `UPDATE` branch at `:190`. Its three mutants
+     * pin the PRE-READ branch. `CLAUDE.md` § Gotchas 2026-07-31 states the rule this is an instance of: *when a
+     * mutant survives a test written to kill it, the test is not weak — it is not arriving.*
+     *
+     * The predicate guards a stale read: the victim's `save()` sees no number, decides to upsert, and by the time
+     * the upsert runs another transaction has issued and committed the document with a DIFFERENT number. Without
+     * the predicate the row is silently renumbered and the winner's number is orphaned — a client holding invoice
+     * N finds it is now invoice M, which is the R1-2 hole.
+     *
+     * **`InvoiceLifecycleTest` says reaching this "would take a second PHP process". That is true of the row
+     * LOCK and false of this,** and the difference is worth stating because it is the reason the gap survived
+     * five rounds: a lock is a relationship between two live sessions, so observing one genuinely needs
+     * simultaneity. This needs only ORDERING — the rival runs to completion and commits while the victim is
+     * suspended inside a callback. {@see InterceptingConnection} is the seam, at DBAL's supported `wrapperClass`
+     * extension point; no production class gains a test-only method.
+     *
+     * READ COMMITTED is what makes it observable: the victim's transaction opened before the rival committed,
+     * and each statement takes a fresh snapshot, so the upsert sees the rival's number even though the pre-read
+     * did not. Under REPEATABLE READ it would be a serialisation failure instead — a different, also-correct
+     * refusal, and the reason this case asserts the message rather than merely that something was thrown.
+     */
+    public function testANumberCommittedByARivalBetweenTheReadAndTheWriteIsNotOverwritten(): void
+    {
+        $document = 'dddddddd-dddd-4ddd-8ddd-00000000200f';
+        $identity = new DocumentIdentity($document, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);
+        $tnd = Currency::of('TND');
+
+        $intercepting = self::interceptingConnection();
+        $repository = new DoctrineInvoiceRepository(
+            $intercepting,
+            InMemoryTenantContext::forTenant(TenantId::fromString(self::TENANT_A)),
+            new InvoiceMapper(),
+        );
+
+        $draft = Invoice::draft($tnd)->withClient(self::FIXTURE_CLIENT)
+            ->withLine(new DocumentLine('1', Money::of('1.000', $tnd), Rate::fromPercentage('19')));
+
+        // The document exists and carries NO number, which is what sends the save below down the upsert branch.
+        $intercepting->beginTransaction();
+        $repository->save($identity, $draft);
+        $intercepting->commit();
+
+        // THE RIVAL: issues and commits number 151 while the victim is suspended inside its own pre-read. A plain
+        // statement rather than the repository, because the point is a committed row, not a second exercise of
+        // the adapter — and `number_rendered` travels with it because `document_number_halves_are_paired`
+        // requires the two to be absent or present together.
+        $intercepting->interceptOnce(
+            'SELECT number FROM document',
+            static function () use ($document): void {
+                $rival = self::secondConnection();
+                $rival->executeStatement(
+                    'UPDATE document SET number = 151, number_rendered = :rendered, state = :state'
+                    . ' WHERE company_id = :company_id AND id = :id',
+                    [
+                        'rendered' => '0000151',
+                        'state' => DocumentState::Issued->value,
+                        'company_id' => self::TENANT_A,
+                        'id' => $document,
+                    ],
+                );
+                $rival->close();
+            },
+        );
+
+        $issued = $draft->issue(new DocumentNumber(DocumentType::Invoice, NumberPattern::padded(7), 152));
+
+        $intercepting->beginTransaction();
+
+        // THE REFUSAL IS CAPTURED AND ASSERTED OUTSIDE THE CATCH, not asserted inside it with a `self::fail()` in
+        // the try. PHPUnit's `AssertionFailedError` extends `\RuntimeException`, so a `fail()` there is swallowed
+        // by this very catch and re-reported against its own message — which is what the first draft did, and the
+        // mutant run showed it: the failure read *"Failed asserting that 'the loser of a concurrent issue must
+        // not be allowed…' contains 'Refusing to renumber document'"*, naming the wrong cause entirely. Same
+        // family as this file's rule that a crash and a detection are indistinguishable unless the message is
+        // asserted.
+        $refused = null;
+
+        try {
+            $repository->save($identity, $issued);
+        } catch (\RuntimeException $exception) {
+            $refused = $exception;
+        } finally {
+            $intercepting->rollBack();
+        }
+
+        self::assertNotNull(
+            $refused,
+            'the loser of a concurrent issue must not be allowed to renumber the winner\'s document',
+        );
+        self::assertStringContainsString(
+            'Refusing to renumber document',
+            $refused->getMessage(),
+            'the refusal must come from the write-once predicate, not from the unique index or a crash',
+        );
+        self::assertStringContainsString(
+            '151',
+            $refused->getMessage(),
+            'and it must name the number the document actually carries, so the reader can see who won',
+        );
+
+        // ANTI-VACUITY, and it is not decorative: if the marker never matched — a reworded pre-read, a different
+        // fetch method — the rival would never run, the save would simply succeed, and this case would fail with
+        // `self::fail()` rather than reporting that the interception missed. Asserting it names the real cause.
+        self::assertTrue(
+            $intercepting->hasFired(),
+            'the interception never fired, so this case proved nothing about the predicate — check that '
+            . 'DoctrineInvoiceRepository still reads back the number with a query containing the marker',
+        );
+
+        // AND THE WINNER'S NUMBER SURVIVED. The refusal above is only worth having if the row is intact after it.
+        //
+        // Read through the INTERCEPTING connection, not the shared one. The shared connection carries whatever
+        // tenant the previously-run case bound to it, so under row-level security this read came back with no row
+        // at all and the assertion failed against `null` — a fixture fault that reads exactly like the winner's
+        // number having been lost. The latch has already fired, so no interception can run during this read.
+        $after = $intercepting->fetchAssociative(
+            'SELECT number FROM document WHERE company_id = :company_id AND id = :id',
+            ['company_id' => self::TENANT_A, 'id' => $document],
+        );
+        self::assertIsArray($after, 'the document must still be readable after the refusal');
+        self::assertSame(151, (int) $after['number'], 'the winner\'s number must still be on the row');
+    }
+
+    /**
+     * The victim's connection, wrapped so a case can run a rival between `save()`'s read and its write.
+     *
+     * Not memoised: the latch in {@see InterceptingConnection} fires once, and a shared instance would carry a
+     * spent latch into the next case that asked for one.
+     */
+    private static function interceptingConnection(): InterceptingConnection
+    {
+        try {
+            $connection = DriverManager::getConnection([
+                'driver' => 'pdo_pgsql',
+                'host' => self::host(),
+                'port' => (int) self::port(),
+                'dbname' => self::DATABASE,
+                'user' => self::ownerRole(),
+                'password' => self::ownerPassword(),
+                'wrapperClass' => InterceptingConnection::class,
+            ]);
+        } catch (\Doctrine\DBAL\Exception $exception) {
+            self::fail('Could not open the intercepting probe connection: ' . $exception->getMessage());
+        }
+
+        // No `instanceof` assertion here: DBAL's `getConnection()` is generic over `wrapperClass`, so PHPStan
+        // already narrows the return type to `InterceptingConnection` and reports the check as provably true —
+        // the half-hollow-assertion class this project's static configuration exists to catch.
+        $connection->executeStatement(
+            \sprintf("SELECT set_config('%s', ?, false)", PostgresRowLevelSecurityIsolation::TENANT_SETTING),
+            [self::TENANT_A],
+        );
+        $connection->executeStatement(
+            'INSERT INTO client (company_id, id, name) VALUES (?, ?, ?) ON CONFLICT (company_id, id) DO NOTHING',
+            [self::TENANT_A, self::FIXTURE_CLIENT, 'Fixture client'],
+        );
+
+        return $connection;
+    }
+
     private static function identity(): DocumentIdentity
     {
         return new DocumentIdentity(self::DOCUMENT, DocumentType::Invoice, VatRoundingPoint::PerRateGroup);

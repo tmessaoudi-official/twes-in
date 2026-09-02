@@ -62,7 +62,8 @@ done
 # leading row number so the vocabulary table, the tally and the prose are not read as data.
 #
 # Three normalisations, each for a reason the table's own generator creates:
-#   - `\|` is an escaped pipe, restored before comparison;
+#   - `\|` is a markdown-escaped pipe, restored BEFORE the split rather than after: it is not a column
+#     separator, and unescaping it afterwards fixes the anchor while leaving every column shifted;
 #   - the anchor is truncated to 95 characters, which is harmless because a PREFIX of a present
 #     string is itself present;
 #   - whitespace is collapsed on BOTH sides, because the spec hard-wraps and an anchor spanning a
@@ -76,16 +77,22 @@ normalised_spec = re.sub(r'\s+', ' ', spec)
 
 checked = 0
 missing = []
+# `\|` IS A MARKDOWN-ESCAPED PIPE, NOT A COLUMN SEPARATOR, and `str.split('|')` does not know that. One row's
+# entry text quotes `test \| tail && git commit`, so it split into 12 fields instead of 11 and every column from
+# the entry rightwards was read one place late: its DISPOSITION cell resolved to entry prose. That row is
+# `process-rule`, so it was skipped either way and nothing went wrong -- a silent misparse waiting for the first
+# `carried` row to quote a pipe. Found by round 6's completeness lens, in the `awk` it used to derive the tally.
+ESCAPED_PIPE = '\x00'
 for line in table.splitlines():
     if not re.match(r'^\|\s*\d+\s*\|', line):
         continue
-    columns = line.split('|')
+    columns = [c.replace(ESCAPED_PIPE, '|') for c in line.replace('\\|', ESCAPED_PIPE).split('|')]
     if len(columns) < 10:
         continue
     disposition = columns[8].strip().strip('`')
     if not disposition.startswith('carried'):
         continue
-    anchor = re.sub(r'\s+', ' ', columns[9].replace('\\|', '|')).strip()
+    anchor = re.sub(r'\s+', ' ', columns[9]).strip()
     # `carried-as-pointer` rows deliberately have no anchor: the ruling is in force and is NOT
     # restated in the spec, which is the point of that disposition.
     if not anchor:

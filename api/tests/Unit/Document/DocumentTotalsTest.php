@@ -1457,21 +1457,53 @@ final class DocumentTotalsTest extends TestCase
      */
     public function testTheFixtureStillPinsEveryPropertyOfTheAllocation(): void
     {
-        self::assertGreaterThanOrEqual(
-            3,
-            \count(self::documentCasesWithAPerLineVatColumn()),
-            'One case per allocator property: the earliest-line tie-break, the largest-remainder direction, and '
-            . 'flooring before distributing. Deleting one leaves a property pinned by nothing.',
-        );
-
+        // **EACH ALLOCATOR PROPERTY IS PINNED BY NAME. A COUNT FLOOR CANNOT NOTICE A MISSING *PROPERTY*** —
+        // it only notices a missing case, and any case will do. This assertion was `assertGreaterThanOrEqual(3,
+        // count(...))` until round 6 found it toothless: the same delta that closed R5K-3 added `vat_by_line` to
+        // `vat-rounding-order-diverges` and to the new `vat-rounding-order-diverges-per-line`, taking the
+        // population from four to six while the floor stayed at three. A guard that had tolerated ONE deletion
+        // silently began tolerating THREE, and deleting `per-line-vat-allocation-unequal-remainders` — the only
+        // vector in the file whose two lines have unequal remainders, and therefore the only one that can tell
+        // largest-remainder from smallest-remainder — left the whole unit suite green.
+        //
+        // What that costs is not a PHP regression: `testTheRemainderGoesToTheLineWithTheLargestClaim` hard-codes
+        // the same two lines. It costs the OTHER TIERS, which is the entire reason this file exists — a client
+        // implementing smallest-remainder would pass every committed vector while printing a different per-line
+        // VAT column than the API on the same legal document.
+        //
+        // The two `_WRONG` fields below were already pinned by name, for exactly this argument, in the change
+        // that added them. It was not extended to the cases carrying the properties.
         $cases = self::documentCases();
+
+        self::assertArrayHasKey(
+            'per-line-vat-allocation-unequal-remainders',
+            $cases,
+            'THE DIRECTION of the comparison. The only case whose lines have unequal remainders (0.013 floors '
+            . 'away 0.00047, 0.021 floors away 0.00099), so it is the only one where reversing the comparator '
+            . 'changes an answer. Every other vat_by_line case is a tie, distributes zero units, or is per_line '
+            . 'and allocates nothing at all — so without this case a smallest-remainder tier passes them all.',
+        );
+        self::assertArrayHasKey(
+            'per-line-vat-allocation-equal-remainders',
+            $cases,
+            'THE TIE-BREAK. Equal remainders, so the odd unit is decided by document order alone — the property '
+            . 'the ksort() in the allocator exists to make deterministic.',
+        );
+        self::assertArrayHasKey(
+            'per-line-vat-allocation-floors-before-distributing',
+            $cases,
+            'FLOORING BEFORE DISTRIBUTING. Without it nothing exercises a shortfall large enough for the '
+            . 'floor-then-distribute order to differ from rounding each share, which is the step that makes the '
+            . 'column sum to the group VAT rather than exceed it.',
+        );
 
         // **THE INTERLEAVED CASE'S OWN `vat_by_line`, asserted by NAME — the whole closure of the document-order
         // finding rested on it and nothing held it there** (round 18's CP-P1). It is the only multi-rate case
         // carrying the column, so deleting that one field makes `ksort($vatByLine)` deletable again with the suite
-        // green; the count assertion above cannot see it, because there are four such cases and it requires three.
-        // The same change that added this field pinned the two `_WRONG` fields by name for exactly this reason and
-        // did not extend the treatment to the field it was adding.
+        // green. No count is written here: this comment used to justify itself with "there are four such cases and
+        // it requires three", which was true when written, false by the next commit, and is the reason the floor
+        // above is gone — see the argument there. The same change that added this field pinned the two `_WRONG`
+        // fields by name for exactly this reason and did not extend the treatment to the field it was adding.
         self::assertArrayHasKey(
             'vat_by_line',
             $cases['multi-rate-vat-breakdown-with-stamp-duty'][0],

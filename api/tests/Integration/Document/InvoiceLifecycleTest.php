@@ -292,8 +292,18 @@ final class InvoiceLifecycleTest extends TestCase
      *
      * **It is not needed for the hole, and that is the design answer rather than a consolation.** The hole is closed
      * STRUCTURALLY by `save()`'s write-once number predicate — a stale-read issue that reaches `save()` with a fresh
-     * number is refused by the statement itself, whatever read produced it — and that is pinned by three mutants in
-     * `DoctrineInvoiceRepositoryTest::testADocumentNumberCannotBeRewrittenOnceAssigned()`. The row lock is pinned in
+     * number is refused by the statement itself, whatever read produced it — and that is pinned by
+     * `DoctrineInvoiceRepositoryTest::testANumberCommittedByARivalBetweenTheReadAndTheWriteIsNotOverwritten()`,
+     * which drives a rival to commit between the victim's pre-read and its upsert through a DBAL `wrapperClass`.
+     *
+     * **This sentence named the WRONG test for five rounds** (round 6, correctness F1). It cited
+     * `testADocumentNumberCannotBeRewrittenOnceAssigned()` and "three mutants", and deleting the predicate left
+     * that test — and the whole 293-case integration suite — green: it never reaches the statement, because by the
+     * time it attempts a rewrite the stored row already carries a number and `save()`'s pre-read sends it down the
+     * state-only `UPDATE` branch. Its three mutants pin the PRE-READ branch. So the paragraph above leaned on a
+     * structural closure that nothing held, which is the *"a control asserted in prose and enforced nowhere"*
+     * shape — arriving through a citation rather than through an absence, and therefore invisible to a reader
+     * who checked that the named test existed. The row lock is pinned in
      * both directions by `testLoadingForMutationBlocksAConcurrentWriterWhileAPlainReadDoesNot()`, and the handler's
      * use of it, in the right order relative to the allocation, by
      * `InvoiceWriteHandlersTest::testIssuingTakesTheDocumentForMutationBeforeItAllocatesANumber()`. What THIS case

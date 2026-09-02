@@ -8,8 +8,12 @@ silently.
 **276 entries, 276 dispositioned, 0 unmapped** — asserted in both directions
 (no entry without a disposition, no disposition without an entry).
 
-**All 178 `carried` rows carry a LITERAL anchor string from `docs/SPEC.md`, and all
-178 were asserted present.** Re-run the assertion rather than trusting this sentence: **`bash scripts/dev/assert-reconciliation-anchors.sh`**,
+**Every `carried` row carries a LITERAL anchor string from `docs/SPEC.md`, and every one was asserted
+present.** No count is written here — the Tally below is derived, and round 6 found this sentence
+claiming 178 against a tally of 177, twice, plus twice more in `docs/SPEC.md` § 8. The 178 came from
+the script, which counts `disposition.startswith('carried')` and so included the one
+`carried-as-pointer` row; that row's anchor cell is now empty, which is what its disposition means and
+what makes the script's own `carried-as-pointer` branch live rather than dead code. Re-run the assertion rather than trusting this sentence: **`bash scripts/dev/assert-reconciliation-anchors.sh`**,
 which is on disk precisely because this line used to point at a check that lived in a throwaway command.
 
 It is not decoration. It caught, in three passes: 25 anchors written as summaries rather than
@@ -131,12 +135,12 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 63 | `build-waves.plan.md` | 328 | 326 | 2026-08-07 | AGREED | **a tenant-less request CLEARS the context rather than leaving it alone**, and this is the most important line in the seam. `InMem | `carried` | tenant-less request CLEARS the context rather than |
 | 64 | `build-waves.plan.md` | 329 | 327 | 2026-08-07 | FOUND | **`TenantId::fromString()` NORMALISES a non-canonical id and `DocumentIdentity` REFUSES one**, and the asymmetry is correct in bot | `carried` | `TenantId::fromString()` NORMALISES a non-canonical id and `DocumentIdentity` REFUSES one |
 | 65 | `build-waves.plan.md` | 330 | 328 | 2026-08-07 | RECORDED | **the new gate's first version reported its own subject's PHP docblock as configuration**, and its second missed a `//` comment wh | `process-rule` |  |
-| 66 | `build-waves.plan.md` | 332 | 330 | 2026-08-06 | RULED | (developer, against a measurement): **the acquire-time provisioning guards run ONCE PER (ROLE, DATABASE) PER TTL WINDOW, not per a | `carried` | acquire-time provisioning guards run ONCE PER (ROLE, DATABASE) PER TTL |
+| 66 | `build-waves.plan.md` | 332 | 330 | 2026-08-06 | RULED | (developer, against a measurement): **the acquire-time provisioning guards run ONCE PER (ROLE, DATABASE) PER TTL WINDOW, not per a | `carried` | run once per (role, database) per TTL window |
 | 67 | `build-waves.plan.md` | 333 | 331 | 2026-08-06 | FOUND | , and it invalidated the first implementation: **an in-process cache amortises across NOTHING under PHP-FPM.** PHP is shared-nothi | `carried` | amortise across nothing |
 | 68 | `build-waves.plan.md` | 334 | 332 | 2026-08-06 | AGREED | **a failed verification is cached in NEITHER direction.** Not as success — one bad start-up would disable the guard for the whole  | `carried` | the fix for a wrongly-provisioned database is to fix the |
 | 69 | `build-waves.plan.md` | 335 | 333 | 2026-08-06 | RECORDED | three fixture defects found while testing this, each a real thing to know. `twes_in_test` has NO row-level security enabled, so th | `process-rule` |  |
 | 70 | `build-waves.plan.md` | 337 | 335 | 2026-08-06 | AGREED | **the release half of the connection lifecycle is `SessionStateReleaser`, a `ResetInterface` service — and "when a connection is R | `carried` | and "when a connection is RETURNED" had to be reinterpreted |
-| 71 | `build-waves.plan.md` | 338 | 336 | 2026-08-06 | MEASURED | , AND IT RAISES A DECISION THIS LIST PREDATES: **the ACQUIRE-time obligations cost ~10.8 ms per connection.** `assertConnectionCan | `carried` | ONCE PER (ROLE, DATABASE) PER TTL WINDOW |
+| 71 | `build-waves.plan.md` | 338 | 336 | 2026-08-06 | MEASURED | , AND IT RAISES A DECISION THIS LIST PREDATES: **the ACQUIRE-time obligations cost ~10.8 ms per connection.** `assertConnectionCan | `carried` | ~10.8 ms per connection, measured |
 | 72 | `build-waves.plan.md` | 340 | 338 | 2026-08-06 | AGREED | **the `InvoiceRepository` PORT TAKES NO TENANT, correcting a ruling that was not buildable.** `DocumentIdentity`'s docblock said * | `carried` | parameter is satisfied by whatever tenant id the caller happens to hold, including the |
 | 73 | `build-waves.plan.md` | 341 | 339 | 2026-08-06 | AGREED | **`save()` writes with DBAL, not through the UnitOfWork, and that is a measurement rather than a preference.** Whole-rewrite of th | `carried` | writes with DBAL, not through |
 | 74 | `build-waves.plan.md` | 342 | 340 | 2026-08-06 | AGREED | **`save()` REFUSES outside an active transaction rather than opening one.** A document number is gapless, so allocating one and pe | `carried` | `save()` REFUSES outside an active transaction rather than opening one. |
@@ -240,7 +244,7 @@ same commit as this move, so its numbers no longer resolve; the date and the hea
 | 172 | `reimplementation-strategy.plan.md` | 23 | 21 | 2026-07-29 | AGREED | **GraphQL deferred, not refused.** The problem GraphQL solves is *many clients | `carried` | GraphQL deferred, not refused |
 | 173 | `reimplementation-strategy.plan.md` | 32 | 30 | 2026-07-29 | AGREED | **a transport-agnostic gateway interface in BOTH clients, mandatory from the | `carried` | A transport-agnostic gateway interface in BOTH clients |
 | 174 | `reimplementation-strategy.plan.md` | 37 | 35 | 2026-07-29 | AGREED | **Flutter Web stays**, and the justification is recorded correctly as *one | `carried` | the Web build is a SECOND admin interface |
-| 175 | `reimplementation-strategy.plan.md` | 42 | 40 | 2026-07-29 | AGREED | the permissive set for anything **distributed** is exactly nine identifiers — [REDACTED: see `LICENSING.md`] | `carried-as-pointer` | Do not restate the permitted-licence identifiers in this file |
+| 175 | `reimplementation-strategy.plan.md` | 42 | 40 | 2026-07-29 | AGREED | the permissive set for anything **distributed** is exactly nine identifiers — [REDACTED: see `LICENSING.md`] — (Do not restate the permitted-licence identifiers in this file) | `carried-as-pointer` |  |
 | 176 | `reimplementation-strategy.plan.md` | 44 | 42 | 2026-07-29 | AGREED | the four upstream repos are **studied, never forked into this tree**. Clones live at `/tmp/xxx/**` and `.gitignore` blocks `/refer | `process-rule` | Reference clones live outside the repo, read-only |
 | 177 | `reimplementation-strategy.plan.md` | 45 | 43 | 2026-07-29 | FOUND | the four repos carry **three different licences**, not one. `invoiceninja` (API) and `ui` (React) are **Elastic License 2.0**; `ad | `process-rule` | the four upstream repos carry three different licences |
 | 178 | `reimplementation-strategy.plan.md` | 46 | 44 | 2026-07-29 | FOUND | ELv2 permits derivative works, modification and distribution. Its three limitations are (1) no providing the software to third par | `process-rule` | ELv2 forbids circumventing licence-key functionality |

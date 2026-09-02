@@ -574,14 +574,36 @@ final readonly class Invoice
      * `PerRateGroup` in general** — under `HalfUp` and `HalfEven` it is routinely SMALLER, because rounding to
      * nearest can round each line down. It is the combination that is maximal, not either axis.
      *
-     * **MEASURED rather than reasoned, since reasoning is what produced the inverted claim.** Over 44 912
-     * (document, rounding point, rounding mode) cases — every rate, fractional quantities, one to three lines,
-     * with and without a fixed charge, and touching EVERY accessor on the result rather than `total()` alone,
-     * because each is its own `Money` construction and can overflow independently — `PerLine, Up` failed in
-     * exactly the cases where some configuration failed, and succeeded in exactly the cases where all of them
-     * did: **zero under-refusals and zero over-refusals.** The second half matters as much as the first: a
-     * tightened guard that refuses a valid document is worse than the defect it fixes, which is what
-     * `testADocumentEveryConfigurationCanTotalIsStillAccepted` pins.
+     * **AND THE ALGEBRA HAS AN UNSTATED PRECONDITION THAT WAVE 2 BREAKS.** `ceil(a) + ceil(b) >= ceil(a+b)`
+     * holds for same-sign terms; with a negative line it does not, and the dominance argument above has to be
+     * re-derived rather than re-quoted. `DocumentLine` refuses negatives today, so this is unreachable — but
+     * `DocumentCalculator::allocate()` argues `Floor`-not-`Down` in the same file precisely BECAUSE the credit
+     * note brings negatives, and nothing said so here. When Wave 2 lands, re-run the sweep first: it is the
+     * cheapest way to find out whether the probe is still the worst case.
+     *
+     * **MEASURED rather than reasoned, since reasoning is what produced the inverted claim — and the
+     * measurement is a COMMAND rather than a number:**
+     *
+     *     php scripts/dev/assert-totallable-probe-is-maximal.php
+     *
+     * ~23 150 documents x 14 in-scope configurations = ~324 100 evaluations, ~3 minutes, exit 1 naming every
+     * document that breaks the property. It touches EVERY accessor on the result rather than `total()` alone,
+     * because each is its own `Money` construction and can overflow independently, and it catches `\Throwable`
+     * rather than `InvalidMoneyAmount` so that a `\LogicException` from `allocate()` on the `PerRateGroup` path
+     * — the shape this probe structurally cannot see — would be caught rather than missed.
+     *
+     * Until round 6 this paragraph quoted a one-off sweep of 44 912 cases that existed in no file and no clone
+     * could reproduce: `CLAUDE.md` § Gotchas 2026-07-29's `[Verified against live roles]` shape, sitting under
+     * the load-bearing numerical claim of a money guard. The script is pinned by its own sabotage — reverting
+     * the line below to `PerRateGroup` makes it exit 1 with two under-refusals, naming the same document
+     * `DocumentTotalsTest::documentsThatCannotBeTotalled` pins [Verified 2026-09-02].
+     *
+     * **The OVER-refusal direction is very nearly a TAUTOLOGY, and saying so is more honest than claiming it as
+     * a result:** `(PerLine, Up)` is itself one of the 14 enumerated configurations, so it cannot refuse a
+     * document every configuration can total. It is checked anyway, because the day this probes something
+     * outside the set — a synthesised bound, a cheaper approximation — the tautology stops holding and that is
+     * the line which notices. What genuinely pins the direction is
+     * `testADocumentEveryConfigurationCanTotalIsStillAccepted`.
      *
      * **`RoundingMode::Unnecessary` IS OUT OF SCOPE, and always was.** It raises the same exception type for a
      * different reason: not that a figure is too large, but that it needs rounding at all and the caller forbade

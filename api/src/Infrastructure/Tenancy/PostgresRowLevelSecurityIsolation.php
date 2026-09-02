@@ -93,9 +93,16 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *
      * **This narrows {@see self::policySqlFor()}'s contract, deliberately.** That method still takes a
      * `$tenantColumn` — tests need it to EMIT a non-canonical policy and prove detection fires — but a policy
-     * naming anything other than this constant is now a violation. `docs/SPEC.md` § Wave 1
-     * already rules that every tenant-owned table carries `company_id` with `PRIMARY KEY (company_id, id)`, so
-     * the flexibility was never a product requirement; it was the hole.
+     * naming anything other than this constant is now a violation: every tenant-owned table carries
+     * `company_id`, so the flexibility was never a product requirement; it was the hole.
+     *
+     * **THE CITATION HERE USED TO SAY MORE THAN THAT, AND WHAT IT SAID WAS FALSE.** It read *"`docs/SPEC.md`
+     * § Wave 1 already rules that every tenant-owned table carries `company_id` with
+     * `PRIMARY KEY (company_id, id)`"* -- a section that does not exist, asserting a rule the spec REFUTES:
+     * § 7 records `company_settings` as `PRIMARY KEY (company_id)` BY DESIGN, and that *"reshaping the schema
+     * to satisfy the probe was rejected outright"*. The tenant COLUMN is the invariant; the surrogate key
+     * beside it is not. Round 6 (completeness P2-5) found it among seven citations mechanically repointed at
+     * `docs/SPEC.md` when the plans were archived, none checked against the destination.
      */
     public const string TENANT_COLUMN = 'company_id';
 
@@ -700,7 +707,9 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      * somebody disables, which is strictly worse than a documented scope. The requirement belongs to the
      * cluster: `REVOKE CONNECT ON DATABASE … FROM PUBLIC` for every database, which
      * scripts/dev/provision-test-database.sh already does for the one it creates. Owed to `infra/` in Wave 12
-     * for the rest, and recorded in docs/SPEC.md so it is not rediscovered as a finding.
+     * for the rest, and recorded in `infra/README.md` -- which is where `docs/SPEC.md` § 8 delegates the
+     * operational catalogue rather than restating it (the citation said `docs/SPEC.md`, which carries no
+     * `REVOKE` at all; round 6, completeness P2-5) so it is not rediscovered as a finding.
      *
      * @return int the number of policed tables inspected
      *
@@ -2567,7 +2576,8 @@ final readonly class PostgresRowLevelSecurityIsolation implements TenantIsolatio
      *    could equally bind itself to any tenant directly, so it buys them nothing; the honest statement
      *    is that this guard raises the cost of the fourth bypass rather than closing it. Closing it needs
      *    a re-check when the connection is *released*, which needs a connection lifecycle this wave has
-     *    no ORM to hook — recorded as owed in docs/SPEC.md (R4-3).
+     *    no ORM to hook — recorded as owed in `docs/archive/plans/build-waves.plan.md` as R4-3,
+     *    where it is marked CLOSED -- so the citation was already stale before the archiving move repointed it.
      *
      * `''` and NULL are both "no tenant", exactly as above.
      *

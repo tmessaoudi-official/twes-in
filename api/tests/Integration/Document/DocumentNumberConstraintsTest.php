@@ -20,12 +20,23 @@ use Twes\Tests\Integration\Tenancy\MigratedProbeDatabase;
 /**
  * THE `document` NUMBER CONSTRAINTS, exercised against a REAL migrated schema.
  *
- * **Why this file exists at all: the migrations' CHECK constraints were asserted by nothing.** `document_type_is_known`,
- * `document_state_is_known`, `document_vat_rounding_point_is_known`, `document_number_is_positive` and
- * `document_number_sequence_starts_at_one` all shipped with `Version20260801120000` and no test named any of them. The
- * risk is lower than the usual unenforced-control shape recorded in `CLAUDE.md` § Gotchas — PostgreSQL cannot quietly
- * stop applying a constraint, so it can only be lost by a future migration dropping it — but "lower" is not "absent",
- * and a constraint nobody asserts is one a later `diff`-generated migration can drop while every test stays green.
+ * **Why this file exists at all: the migrations' CHECK constraints were asserted by nothing.** They shipped with
+ * `Version20260801120000` and no test named any of them. The risk is lower than the usual unenforced-control shape
+ * recorded in `CLAUDE.md` § Gotchas — PostgreSQL cannot quietly stop applying a constraint, so it can only be lost by a
+ * future migration dropping it — but "lower" is not "absent", and a constraint nobody asserts is one a later
+ * `diff`-generated migration can drop while every test stays green.
+ *
+ * **NO LIST OF NAMES IS WRITTEN HERE ANY MORE, and the reason is that the one that was here had drifted from the one
+ * in the plan that filed the finding** — this docblock named `document_number_is_positive` (which this file DOES cover)
+ * where the plan named `document_number_sequence_type_is_known` (which nothing covers), so two enumerations of "the
+ * uncovered constraints" disagreed and neither was right (round 6, completeness P1-1). Derive it:
+ *
+ *     git grep -hoE 'ADD CONSTRAINT [a-z_]+' -- api/migrations | sed 's/ADD CONSTRAINT //' | sort -u
+ *
+ * then cross-check each name against `git grep -l <name> -- api/tests`. On 2026-09-02 that was 32 constraints with 15
+ * named by nothing — the standing gap is tracked in `docs/SPEC.md` § 8, and it is much larger than either hand-list
+ * suggested. What THIS file covers is the number constraints specifically, listed by the assertions below rather than
+ * by a sentence that can go stale independently of them.
  *
  * It is written now because `Version20260806180000` adds two constraints whose whole purpose is to be load-bearing:
  * the number's two halves must be absent or present TOGETHER, and the rendered string must be digits. Those are
