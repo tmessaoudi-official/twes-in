@@ -583,15 +583,17 @@ grep. **Nothing RESOLVES any of these keys today — see § 8.**
 This said `5dfebf1` while its own first Wave row described four LATER commits, so a reader could not tell
 which half of § 5 had been checked and which was being recalled — in the one section whose entire value is
 that it was checked (round 6, completeness P2-3). Re-baselined to the round-5 freeze; the round-6 fixes on
-top of it are described as a delta rather than pinned to a hash, because a section cannot name the commit
-that is still being written.
+top of it are described as a delta rather than re-pinning every claim below, which would assert a re-check
+of the whole section that nobody has done. Those fixes landed in `f812f36`. This paragraph said they could
+not be named *"because a section cannot name the commit that is still being written"* — true while it was
+being written, false the moment it landed, so it is amended here rather than annotated beneath (§ 0 rule 2).
 
 ### Waves
 
 | Wave | State |
 |---|---|
 | **Wave 0** — seams | **LANDED**, not separately certified. Money, pricing, tenancy strategy, clock, identifiers, the architecture gates |
-| **Wave 1** — the document kernel | **SCOPE DELIVERED, ALL ROUND-5 FINDINGS CLOSED, NOT YET CERTIFIED.** Round 5 closed NOT CLEAN (7 findings, 0 P0) and the cap was reached; R5C-2 was fixed in `5dfebf1` and the other six on 2026-09-02 (`c170503`…`76f51ba`), each mutant-pinned. **What remains is the certification round, not code** — see § 9 |
+| **Wave 1** — the document kernel | **SCOPE DELIVERED, ALL ROUND-5 AND ROUND-6 FINDINGS CLOSED, NOT CERTIFIED.** Round 5 closed NOT CLEAN (7 findings, 0 P0) and the cap was reached; R5C-2 was fixed in `5dfebf1` and the other six on 2026-09-02 (`c170503`…`76f51ba`). Round 6 — MAXIMAL, all three lenses, frozen `3aea5db` — then closed NOT CLEAN too (15 findings, 0 P0, 2 P1) and the developer ruled all fifteen close under `advisor()` 6C rather than a round 7: `f812f36`. Every closure is mutant-pinned. **Two consecutive clean rounds have never been reached, so the wave stays uncertified and no further round is scheduled** — see § 9. This cell said *"what remains is the certification round"* for the commit in which that round ran |
 | **Waves 2–12** | not started — § 9 |
 
 ### What exists in `api/`
@@ -1227,6 +1229,39 @@ against a frozen commit; the cap decision returns to the developer after it, per
   between the two. `[^[:space:]]` or `.` is the fix. This matters more than one flaky case — this
   repository prices a false finding as badly as a false clean, because *the next red gets
   dismissed*, and a red that cannot be told from a read error is exactly that.
+- **THE SAME FALSE-RED SHAPE HAS NOW APPEARED IN A SECOND, INDEPENDENT CHECK — `assert_gate`'s output
+  assertion — AND THE `2>/dev/null` EXPLANATION ABOVE CANNOT COVER IT.** On 2026-09-02 a full run
+  reported `498 passed, 2 failed`: `fires on die` claimed *"the output never said \"die is ambient\""*
+  and `scans *.ini` claimed *"the output never said \"unlicensed.ini\""*. **In BOTH, the harness's own
+  FAIL branch then printed a capture containing the marker verbatim** — `… Sneaky.php:13 — die is
+  ambient. a domain rule throws …` and `MISSING SPDX header: api/src/unlicensed.ini`. Both gates
+  detected correctly; the assertion about the detection is what failed. An unchanged re-run passed
+  both at the same positions (`fires on die` and `scans *.ini`), so it is intermittent exactly as the
+  library-reachability sightings were. **This one has NO `2>/dev/null`** — `assert_gate` captures with
+  `2>&1` and prints the same `$output` variable it greps — so the recorded suppression hypothesis is
+  not transferable, and the two entries must not be collapsed into one.
+  **What has been RULED OUT, so the next investigator does not re-spend it:** the gate failing to
+  detect (the marker is in the harness's own displayed capture); a SIGPIPE/`pipefail` interaction
+  turning a successful match into a non-zero pipeline (**0 of 5 000** replications of the exact
+  construct, under load, with the marker both first and last in a 500 KB stream — `set -uo pipefail`
+  is on, but bash's builtin `printf` does not report EPIPE here); a byte or locale mismatch (the
+  message template is `'%s:%d — %s is ambient. %s.'`, ASCII spaces and a valid UTF-8 em dash, and
+  `LANG` is `en_US.UTF-8` with no `LC_ALL`/`GREP_OPTIONS`/`PATH` manipulation in the harness); `grep`
+  shadowed by a function or alias (none defined; `grep` is `/bin/grep`); fork or descriptor
+  exhaustion (no `Resource temporarily unavailable` anywhere in the run); and a truncated capture
+  differing from the displayed text (the FAIL branch prints the same variable it grepped).
+  **What that leaves, and it is the reason this entry exists rather than a third bullet under the
+  one above:** across all four sightings the common component is not the data, the capture or the
+  suppression — it is **`grep` returning 1 on input that contains the pattern**. The library check
+  greps, `assert_gate` greps, and in every case a by-hand replay of the same pattern against the same
+  text MATCHES. That is a hypothesis, not a finding — [Inferred: four sightings, two mechanisms, one
+  shared component; no failing invocation has been captured in the act] — and capturing one requires
+  instrumenting `assert_gate` IN PLACE, not in a copy: a copy relocated to `var/claude/` was tried and
+  is NOT a faithful harness (`REPO_ROOT` derives from `BASH_SOURCE`, and the relocated run lost
+  fixture files mid-run, failing a different and larger set of cases). **Owed: instrument
+  `assert_gate` in place to dump `od -c` of both operands plus an immediate re-grep on the failing
+  invocation, and run until it fires.** Until then, treat a lone red in either check as unproven in
+  BOTH directions — re-run before believing it, and re-run before dismissing it.
 - **R28-9** is closed as a CHECK and open as WIRING; the wiring half is a Wave 10 question.
 - **R4-18**: the empty-string gap is deliberately left open.
 
@@ -1303,13 +1338,16 @@ lifecycle, numbering, the `Invoice` aggregate; the tenant-owned schema with RLS;
 repositories; the savepoint guard, the boundary rule and the connection lifecycle; the invoice HTTP
 surface (read and write); the `e2e` suite; the tenant settings table; Client (+ contacts), Product,
 and the `document` → `client` link. **Nothing in the wave's SCOPE is owed.** What separates it from
-COMPLETE is the certification tier: five boundary rounds have run and none reached two consecutive
+COMPLETE is the certification tier: SIX boundary rounds have run and none reached two consecutive
 clean rounds. **WP0 is closed — the outstanding balance is the ROUND, not the code.** All seven
 round-5 findings were closed on 2026-09-02, each with a mutant; § 8 records what each one turned out
-to be. **The wave is still NOT certified**: it re-freezes for a re-certification round, that round is
-**round 6 — the cap the 2026-08-23 ruling extended to** — so even a clean round cannot satisfy the
-two-consecutive-clean requirement inside the cap, and the cap decision returns to the developer after
-it, exactly as ruled. Do not open Wave 2 on the strength of this paragraph.
+to be. It then re-froze at `3aea5db` for **round 6 — the cap the 2026-08-23 ruling extended to** —
+which ran MAXIMAL on all three lenses and closed NOT clean: 15 findings, 0 P0, 2 P1, eleven of them
+the record being wrong rather than the code. The cap decision returned to the developer exactly as
+ruled, and was answered on 2026-09-02: **close all fifteen, certified by `advisor()` 6C plus
+executable evidence rather than a round 7** (`f812f36`, § 10). **So the wave is still NOT certified,
+two consecutive clean rounds were never reached, and no further round is scheduled** — whether one
+runs is a developer decision nobody has made. Do not open Wave 2 on the strength of this paragraph.
 
 **Wave 2 — Quotes, credits & the shared document machinery.** Quote · Credit · quote → invoice
 conversion · the shared document abstraction · **discounts and inclusive-vs-exclusive tax**, which

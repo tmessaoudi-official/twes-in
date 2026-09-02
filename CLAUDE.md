@@ -694,6 +694,27 @@ section — `grep -c '^- \*\*20' CLAUDE.md` is the only trustworthy tally.*
   consulted anyway. Note the classifier refuses the compound rather than `git commit` itself — the same commit as
   a plain `git add <paths>` then `git commit -F <file>` was accepted, and only the trailing `&& git push` re-triggered
   it, so a refusal is not evidence that autonomous committing is disallowed here (§ "Git autonomy" authorises it).
+- **2026-09-02 — `self::fail()` IS AN EXCEPTION, AND `catch (\RuntimeException)` SWALLOWS IT.** PHPUnit's
+  `AssertionFailedError` extends `RuntimeException`, so the standard mutant-verification shape — *do the thing,
+  `self::fail()` if it did not throw, `catch (\RuntimeException $e)` and assert on the message* — catches its own
+  failure and then asserts against **that** message rather than the code's. The case still went red under the
+  mutant, **naming the wrong cause**, which is worse than a false green: a red reads as a killed mutant and its
+  message is then read as evidence about the code. Fixed by capturing the exception inside the `try` and asserting
+  entirely OUTSIDE the `catch`, so no assertion ever runs inside the guarded block. Two generalisations, each
+  already in this file in a different dress: **assert on the MESSAGE and check it is about the right thing** — the
+  `test-gates.sh` entry above is the same defect one level down, where a crash and a detection were
+  indistinguishable, and here a detection and a *test bug* were — and a `catch` whose class is broader than what
+  you expect will eventually catch the framework rather than the subject.
+- **2026-09-02 — A STATUS LINE IS A SEPARATE SURFACE FROM A DECISIONS LOG, and closing a round updates both.**
+  The fix pass for round 6 corrected eleven record defects, added a § 10 ruling and wrote a full closure into the
+  commit message — and left **two** status surfaces (`docs/SPEC.md` § 5's Wave row and § 9's Wave 1 paragraph)
+  still saying *"what remains is the certification round"* and *"the cap decision returns to the developer after
+  it"*, both written before the round they describe had run. A reader landing on either concludes a round is owed
+  that has already run and been dispositioned. It is the append-instead-of-amend defect committed by the pass
+  whose subject was that defect — the third time this project has caught it — and the mechanism is always the
+  same: **a ruling is recorded where rulings live, and the places that state the CURRENT STATE are not searched.**
+  The cheap habit: after any ruling that changes a phase, `git grep -n -i "<wave or milestone name>"` and read
+  every hit for TENSE, not for content. Found by `advisor()` at the 6C gate, not by the pass itself.
 
 ---
 
