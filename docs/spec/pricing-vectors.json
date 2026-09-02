@@ -297,6 +297,11 @@
       "vat": "0.005",
       "vat_if_per_line": "0.004",
       "vat_if_per_line_why": "NOT a wrong answer -- it is this document's VAT under the OTHER ruled rounding point, which a tenant setting selects. This column was named `..._which_is_WRONG` until round 5 (R5K-3), so the cross-tier arithmetic SSOT asserted that a setting the domain implements produces a wrong figure. What it really pins is that the two points DIVERGE on these lines, which is what makes this case able to tell a tier that rounds at the wrong point from one that does not.",
+      "vat_by_line": [
+        "0.003",
+        "0.002"
+      ],
+      "vat_by_line_why": "The ALLOCATED column for the same lines under `per_rate_group`: floor each line's exact share, then hand the shortfall out one smallest-unit at a time to the largest floored-away remainder, ties to the earliest line. It sums EXACTLY to `vat`, which is the invariant a tax authority reads. Its mirror case shows what the same lines produce under `per_line`.",
       "fixed_charges": [],
       "expected": {
         "total": "0.031"
@@ -582,6 +587,11 @@
       "vat": "0.004",
       "vat_if_per_rate_group": "0.005",
       "vat_if_per_rate_group_why": "The companion figure, for the same reason its mirror carries one: these lines are chosen precisely because the two points diverge on them.",
+      "vat_by_line": [
+        "0.002",
+        "0.002"
+      ],
+      "vat_by_line_why": "UNDER `per_line` THE COLUMN IS NOT ALLOCATED -- it IS the rounded per-line figures, and it sums to `vat` by construction rather than by largest-remainder distribution. That is the whole difference between the two points on the column a customer actually reads, and it had no vector at all until round 5 (R5K-3): every `vat_by_line` in this file was an allocation under `per_rate_group`, so a tier could implement allocation alone and pin nothing about the other ruled setting.",
       "fixed_charges": [],
       "expected": {
         "total": "0.030"

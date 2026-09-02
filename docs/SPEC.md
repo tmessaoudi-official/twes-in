@@ -1082,7 +1082,7 @@ code, and the code is the authority.**
 
 | # | Sev | Where | The defect, verified at `5dfebf1` |
 |---|---|---|---|
-| **R5C-1** | **P1** | `api/src/Domain/Document/Invoice.php` — `totallable()`, the probe at the end of the method; justification at `:565-566` | The guard probes `totals(VatRoundingPoint::PerRateGroup, RoundingMode::Up)` and its docblock justifies the choice with *"`PerLine` cannot exceed it: rounding each line up and summing is bounded by rounding the summed base up."* **That bound is inverted** — `ceil(a) + ceil(b) ≥ ceil(a+b)` — so `PerLine` DOMINATES and the guard UNDER-estimates. A document can pass `totallable()` and then fail at issue time. Reaches money |
+| ~~**R5C-1**~~ | ~~P1~~ | `api/src/Domain/Document/Invoice.php` — `totallable()` | **CLOSED 2026-09-02.** The guard probed `PerRateGroup, Up` on an INVERTED bound (`ceil(a) + ceil(b) ≥ ceil(a+b)`), so it measured the smaller configuration and a document could pass it and then be impossible to total. Reproduced first, solved rather than guessed — the window is one quantum wide. Now probes `PerLine, Up`, verified maximal over 44 912 cases touching every accessor, with **zero under-refusals and zero over-refusals**. Pinned in both directions and mutant-checked |
 | ~~**R5K-3**~~ | ~~P1~~ | `docs/spec/pricing-vectors.json` | **CLOSED 2026-09-02.** Every case now declares `vat_rounding_point`; the mislabelled column is `vat_if_per_line` with its reason; a companion `per_line` case was added so the SSOT covers both ruled settings; and the API tier reads the declared point instead of hard-coding one. **All ten pre-existing cases were independently recomputed from the ruled arithmetic before anything changed — zero mismatches**, so the numbers were right and only the framing was wrong. Three mutants pin it |
 | **R5K-6** | P2 | `api/src/Domain/Product/Product.php:120-127` | `Product` refuses a negative VAT rate with a bare `\InvalidArgumentException` — no translation key, no row in § 4's table — while `DocumentLine`'s identical refusal has `document.vat_rate_invalid` |
 | **R5T-1** | P2 | `api/src/Infrastructure/Persistence/Doctrine/DoctrineCompanySettingsRepository.php` | The only tenant-owned table in the delta with **no two-tenant case**. Every test touching it uses one freshly generated tenant with no rival row — and this is the one adapter whose miss is **SILENT** (`defaults()` rather than a 404) **on the field that decides how much tax a document declares** |
@@ -1091,9 +1091,14 @@ code, and the code is the authority.**
 
 **Remedies, and the two P1s reach money — follow them exactly.**
 
-- **R5C-1** — probe **`PerLine, Up`**, the maximal configuration (confirmed over 2146×14 cases).
-  **MUST also add the R4C-6 direction case: a correct document is still not refused.** A guard
-  tightened without that case is how a valid invoice becomes unissuable.
+- ~~**R5C-1**~~ — **DONE 2026-09-02**, with two corrections the fix itself turned up. **`PerLine` does
+  NOT dominate `PerRateGroup` in general** — under `HalfUp` and `HalfEven` it is routinely smaller, so
+  replacing one algebraic claim with another would have repeated the defect; it is the COMBINATION
+  that is maximal. And **`RoundingMode::Unnecessary` was never in scope**, independently of this bug:
+  it raises the same exception type for a different reason — not that a figure is too large, but that
+  it needs rounding at all and the caller forbade it — so no magnitude probe can ever satisfy it, and
+  the old docblock's *"EVERY mode a caller may later choose"* was false for one of the eight. The
+  R4C-6 direction case landed with it.
 - ~~**R5K-3**~~ — **DONE 2026-09-02.** The expected values were **authored from the ruled arithmetic**
   and never dumped from the implementation — an independent exact-decimal recomputation of all ten
   existing cases agreed with every declared figure, which is what established that the numbers were

@@ -1428,7 +1428,7 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCasesWithAPerLineVatColumn')]
     public function testThePerLineVatColumnMatchesTheSharedVectors(array $case): void
     {
-        $totals = self::calculate($case, VatRoundingPoint::PerRateGroup);
+        $totals = self::calculate($case, self::declaredPoint($case));
 
         self::assertSame(
             $case['vat_by_line'],
@@ -1520,6 +1520,12 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCasesWhoseRecomputedColumnIsShort')]
     public function testRecomputingThePerLineColumnProducesTheFixturesShortColumn(array $case): void
     {
+        // ALLOCATION IS A `per_rate_group` PROPERTY ONLY (SPEC § 3): under `per_line` the column IS the
+        // rounded per-line figures and there is no shortfall to distribute. Asserted rather than assumed,
+        // because the sibling test above was measuring a `per_line` case under this literal and produced the
+        // allocated column instead of the per-line one -- silently, until a `per_line` vector existed.
+        self::assertSame('per_rate_group', $case['vat_rounding_point'], 'allocation case ' . $case['id']);
+
         $allocated = self::calculate($case, VatRoundingPoint::PerRateGroup);
         $recomputed = self::calculate($case, VatRoundingPoint::PerLine);
         $wrong = $case['vat_by_line_if_recomputed_which_is_WRONG'];
@@ -1574,6 +1580,12 @@ final class DocumentTotalsTest extends TestCase
     #[DataProvider('documentCasesWhoseRoundedToNearestColumnIsOver')]
     public function testRoundingTheSharesToNearestProducesTheFixturesOverColumn(array $case): void
     {
+        // ALLOCATION IS A `per_rate_group` PROPERTY ONLY (SPEC § 3): under `per_line` the column IS the
+        // rounded per-line figures and there is no shortfall to distribute. Asserted rather than assumed,
+        // because the sibling test above was measuring a `per_line` case under this literal and produced the
+        // allocated column instead of the per-line one -- silently, until a `per_line` vector existed.
+        self::assertSame('per_rate_group', $case['vat_rounding_point'], 'allocation case ' . $case['id']);
+
         $allocated = self::calculate($case, VatRoundingPoint::PerRateGroup);
         $toNearest = self::calculate($case, VatRoundingPoint::PerLine);
         $wrong = $case['vat_by_line_if_rounded_to_nearest_which_is_WRONG'];
