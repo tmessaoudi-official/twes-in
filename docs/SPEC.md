@@ -531,6 +531,7 @@ else maps to `error.internal` and carries its detail in the log, not in a respon
 | the CLIENT NAMED does not exist for this company | **yes** | they can correct the id. Note the SAME key answers *"no such client"* and *"that client is somebody else's"*, deliberately — a distinct message for the second is an existence oracle over another tenant's ids |
 | the document or client is FULL — a 1001st line, a 51st contact | **yes** | a real action, and the same prescription as an oversized total: remove something, or split |
 | a CONFIGURATION value an administrator can fix — a number-pattern width | **yes** | admin-facing is still user-facing. **One refusal, one key**: a floor and a ceiling are two keys, because a message naming the wrong bound fails this section's own test |
+| a PRODUCT carrying a NEGATIVE VAT rate | **yes** | `product.vat_rate_invalid`, added 2026-09-02 (R5K-6). The administrator typed it and can retype it. It is the sibling of `document.vat_rate_invalid` and shares its `{rate}` placeholder, but earns its OWN key rather than reusing that one: the consequence differs and the message says so — a product at a negative rate stores cleanly and then makes every line ever built from it refuse, so the defect surfaces at INVOICE time on a catalogue entry saved weeks earlier. Like every other key here, **nothing resolves it yet** |
 | a PRODUCT priced by BOTH a profit rate and a net price, or by NEITHER | **yes** | **two keys, not one** — opposite mistakes with opposite fixes; one message covering both tells a user to do two contradictory things |
 | our own fault — a number from the wrong sequence, a `\LogicException` of any kind | **no** | `error.internal`. Naming internals is noise at best and an information leak at worst |
 | a currency mismatch INSIDE a document | **no** | the API fixes the currency per document, so a mismatch reaching `DocumentCalculator` means our own layer built the request wrong |
@@ -1075,7 +1076,13 @@ point here. **Do not delete a row to make the table look green.**
 ### Work Package 0 — Wave 1's six open round-5 findings
 
 **Standing ruling [AGREED 2026-08-29]: all seven of round 5's findings close (or are explicitly
-ruled deferred) BEFORE Wave 1 re-freezes.** R5C-2 was fixed in `5dfebf1`; six remain. The full
+ruled deferred) BEFORE Wave 1 re-freezes.** **ALL SEVEN ARE NOW CLOSED** — R5C-2 in `5dfebf1`, the
+other six on 2026-09-02. Every row below is struck, each with a mutant, and **four of the six turned
+up something the finding had not named**: the inverted bound was accompanied by `Unnecessary` never
+having been in scope; the fixture's numbers proved already correct so only its framing was wrong; the
+per-line column had no `per_line` vector at all; and the settings table turned out to be protected by
+two independent mechanisms rather than the one its docblock claimed. **The wave may now re-freeze for
+the re-certification round; the cap decision returns to the developer after it.** The full
 filed text is in `var/claude/w1r5-findings.md` (gitignored). **Round 5's own record notes that the
 correctness lens's filed text was LOST mid-round — R5C-1's description is a reconstruction from the
 code, and the code is the authority.**
@@ -1084,10 +1091,10 @@ code, and the code is the authority.**
 |---|---|---|---|
 | ~~**R5C-1**~~ | ~~P1~~ | `api/src/Domain/Document/Invoice.php` — `totallable()` | **CLOSED 2026-09-02.** The guard probed `PerRateGroup, Up` on an INVERTED bound (`ceil(a) + ceil(b) ≥ ceil(a+b)`), so it measured the smaller configuration and a document could pass it and then be impossible to total. Reproduced first, solved rather than guessed — the window is one quantum wide. Now probes `PerLine, Up`, verified maximal over 44 912 cases touching every accessor, with **zero under-refusals and zero over-refusals**. Pinned in both directions and mutant-checked |
 | ~~**R5K-3**~~ | ~~P1~~ | `docs/spec/pricing-vectors.json` | **CLOSED 2026-09-02.** Every case now declares `vat_rounding_point`; the mislabelled column is `vat_if_per_line` with its reason; a companion `per_line` case was added so the SSOT covers both ruled settings; and the API tier reads the declared point instead of hard-coding one. **All ten pre-existing cases were independently recomputed from the ruled arithmetic before anything changed — zero mismatches**, so the numbers were right and only the framing was wrong. Three mutants pin it |
-| **R5K-6** | P2 | `api/src/Domain/Product/Product.php:120-127` | `Product` refuses a negative VAT rate with a bare `\InvalidArgumentException` — no translation key, no row in § 4's table — while `DocumentLine`'s identical refusal has `document.vat_rate_invalid` |
-| **R5T-1** | P2 | `api/src/Infrastructure/Persistence/Doctrine/DoctrineCompanySettingsRepository.php` | The only tenant-owned table in the delta with **no two-tenant case**. Every test touching it uses one freshly generated tenant with no rival row — and this is the one adapter whose miss is **SILENT** (`defaults()` rather than a 404) **on the field that decides how much tax a document declares** |
-| **R5K-5** | P3 | `api/src/Infrastructure/.../ConnectionProvisioningGuardMiddleware.php:41` | The docblock says "three" while its own enumeration two words later, its inline comment and its code all say two |
-| **R5T-2** | P3 | `api/tests/Functional/.../ClientProcessorTest.php:216-223` | The docblock names "another tenant's" as one of "all three ways" a lookup can fail, but the class runs on an in-memory repository where a second tenant cannot exist. Proven at `DoctrineClientRepositoryTest:271` instead. `ProductProcessorTest` inherits the same correction |
+| ~~**R5K-6**~~ | ~~P2~~ | `api/src/Domain/Product/Product.php` | **CLOSED 2026-09-02.** `product.vat_rate_invalid` in all three locales, with its own § 4 row. Its own key rather than reusing the document one, because the consequence differs: a bad product rate stores cleanly and detonates at invoice time |
+| ~~**R5T-1**~~ | ~~P2~~ | `api/src/Infrastructure/Persistence/Doctrine/DoctrineCompanySettingsRepository.php` | **CLOSED 2026-09-02.** `DoctrineCompanySettingsRepositoryTest` — four cases, two bound connections, a real migrated schema. It also corrected its own first docblock: dropping `FORCE` left every assertion GREEN, because the adapter's query carries its own tenant predicate, so **two independent mechanisms** deliver the guarantee. Pinned accordingly — a combined mutant for the adapter half, and a case reading the table with no predicate at all for the policy half |
+| ~~**R5K-5**~~ | ~~P3~~ | `ConnectionProvisioningGuardMiddleware` | **CLOSED 2026-09-02.** The count is removed rather than corrected, per § 0 rule 1 — the enumeration is the count |
+| ~~**R5T-2**~~ | ~~P3~~ | `api/tests/Functional/Http/ClientProcessorTest.php` | **CLOSED 2026-09-02.** The docblock described two things the loop does not do — "another tenant's", which the in-memory fixture cannot express, and "an id that is not a string at all", where the third case is an UPPERCASE spelling. Corrected to what it exercises, pointing at `DoctrineClientRepositoryTest::testAnotherTenantsClientIsNotFound`. **`ProductProcessorTest` needed no correction** — its docblock claims no enumeration, which the plan assumed it did |
 
 **Remedies, and the two P1s reach money — follow them exactly.**
 

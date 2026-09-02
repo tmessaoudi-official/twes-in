@@ -230,6 +230,10 @@
         <source>product.price_field_missing</source>
         <target>Indiquez un taux de marge ou un prix de vente. Un produit ayant un coût et aucun des deux n'est pas tarifé.</target>
       </trans-unit>
+      <trans-unit id="58" resname="product.vat_rate_invalid">
+        <source>product.vat_rate_invalid</source>
+        <target>Le taux de TVA {rate} % n'est pas valide sur un produit. Un taux de TVA n'est jamais négatif, et un produit qui en porte un ne pourrait jamais figurer sur une ligne.</target>
+      </trans-unit>
       <trans-unit id="56" resname="document.client_required_to_issue">
         <source>document.client_required_to_issue</source>
         <target>Une facture sans client ne peut pas être émise. Choisissez un client, ou laissez-la au brouillon.</target>

@@ -235,6 +235,10 @@
         <source>product.price_field_missing</source>
         <target>Give a profit rate or a selling price. A product with a cost and neither is not priced.</target>
       </trans-unit>
+      <trans-unit id="58" resname="product.vat_rate_invalid">
+        <source>product.vat_rate_invalid</source>
+        <target>The VAT rate {rate}% is not valid on a product. A VAT rate is never negative, and a product carrying one could never be put on a line.</target>
+      </trans-unit>
       <trans-unit id="56" resname="document.client_required_to_issue">
         <source>document.client_required_to_issue</source>
         <target>An invoice with no client cannot be issued. Choose a client, or leave it as a draft.</target>

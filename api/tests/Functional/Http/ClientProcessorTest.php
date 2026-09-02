@@ -214,12 +214,21 @@ final class ClientProcessorTest extends TestCase
     }
 
     /**
-     * **ALL THREE WAYS A LOOKUP CAN FAIL GIVE THE SAME ANSWER**, and that sameness is the security property.
+     * **EVERY SHAPE OF MISS THIS FIXTURE CAN EXPRESS GIVES THE SAME ANSWER**, and that sameness is the security
+     * property. Distinguishing "malformed" from "absent" tells a prober its guess had the right SHAPE.
      *
-     * A well-formed id nobody owns, an id of the wrong shape, and an id that is not a string at all: 404 in every
-     * case. Distinguishing "malformed" from "absent" would tell a prober its guess had the right SHAPE, and
-     * distinguishing "absent" from "another tenant's" would confirm a client's existence to somebody not entitled
-     * to know it — which is what row-level security exists to prevent, not merely tolerate.
+     * The three exercised here are a well-formed id nobody owns, an id of the wrong shape, and an UPPERCASE
+     * spelling of a real id — the last mattering because `TenantId::fromString()` normalises a non-canonical id
+     * while `DocumentIdentity` refuses one, so a client id must not quietly match in a spelling the domain does
+     * not accept.
+     *
+     * **WHAT THIS CASE DOES NOT PROVE, corrected at round 5 (R5T-2): "another tenant's".** This docblock claimed
+     * it, and claimed the third shape was "an id that is not a string at all" — neither describes the loop below.
+     * The class runs on an IN-MEMORY repository, where a second tenant cannot exist at all, so no assertion here
+     * could ever have covered the cross-tenant direction. It is proven against a real policed schema instead, in
+     * `DoctrineClientRepositoryTest::testAnotherTenantsClientIsNotFound`, where two bound connections make the
+     * shape expressible. A fixture that cannot express a dangerous shape cannot detect it — and a docblock that
+     * says otherwise is worse than silence, because it retires the question.
      */
     public function testEveryWayOfNotFindingAClientIsTheSame404(): void
     {

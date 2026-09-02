@@ -236,6 +236,10 @@
         <source>product.price_field_missing</source>
         <target>أدخل نسبة الربح أو سعر البيع. فالمنتج الذي له كلفة ولا يحمل أيًّا منهما غير مُسعَّر.</target>
       </trans-unit>
+      <trans-unit id="58" resname="product.vat_rate_invalid">
+        <source>product.vat_rate_invalid</source>
+        <target>نسبة الضريبة {rate}% غير صالحة على المنتج. لا تكون نسبة الضريبة سالبة أبداً، ولا يمكن إدراج منتج يحملها في أي بند.</target>
+      </trans-unit>
       <trans-unit id="56" resname="document.client_required_to_issue">
         <source>document.client_required_to_issue</source>
         <target>لا يمكن إصدار فاتورة بدون عميل. اختر عميلًا، أو اتركها مسودة.</target>

@@ -38,9 +38,12 @@ use Twes\Infrastructure\Tenancy\PostgresRowLevelSecurityIsolation;
  * acquisition re-verifies a constant.
  *
  * **THIS DOCBLOCK SAID *EVERY* PROPERTY WAS, AND THAT WAS FALSE.** Round 2's security lens found that
- * `assertConnectionCannotBypassPolicies()` composes three assertions that are per-SESSION rather than catalogue:
- * `assertNoTenantPinnedOnTheConnection()` reads `current_setting()`, and `assertNoSessionLifetimeDataIsMaterialised()`
- * reads `pg_my_temp_schema()` and `pg_cursors`. So the sentence justifying the cache was wrong about the very
+ * `assertConnectionCannotBypassPolicies()` composes assertions that are per-SESSION rather than catalogue --
+ * NO NUMBER IS WRITTEN HERE, and that is round 5's R5K-5: this sentence said "three" while the enumeration two
+ * words later named two, its own inline comment said two, and the code said two. A count beside the thing it
+ * counts is this project's most-recorded defect; the list IS the count. They are
+ * `assertNoTenantPinnedOnTheConnection()`, which reads `current_setting()`, and
+ * `assertNoSessionLifetimeDataIsMaterialised()`, which reads `pg_my_temp_schema()` and `pg_cursors`. So the sentence justifying the cache was wrong about the very
  * assertions inside it — and the previous version went on to claim the pin was "NOT checkable here at all", which the
  * code disproves by checking it.
  *
