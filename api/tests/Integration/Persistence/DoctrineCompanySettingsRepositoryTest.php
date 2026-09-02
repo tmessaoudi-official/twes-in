@@ -82,8 +82,18 @@ final class DoctrineCompanySettingsRepositoryTest extends TestCase
     }
 
     /**
-     * EVERY CASE STARTS FROM AN EMPTY TABLE. `CLAUDE.md` § Gotchas records two order-dependent cases that shared
-     * one row with no `setUp()`; the cheapest way not to repeat that is to begin from a known state.
+     * EVERY CASE STARTS FROM A TABLE WITH NOTHING IN IT FOR THE TENANT IT IS ABOUT TO USE — which is a weaker
+     * claim than "an empty table", and the difference is worth stating rather than glossing.
+     *
+     * `company_settings` is `FORCE ROW LEVEL SECURITY`, so this `DELETE` is policed like every other statement:
+     * it removes what the CURRENTLY BOUND tenant can see, and what is bound here is whatever the previous case's
+     * last `repositoryFor()` left. [Verified with a temporary probe: at the start of every case the bound tenant
+     * sees zero rows.] Order-independence does not rest on the delete alone — `company_id` is the PRIMARY KEY, so
+     * a tenant has at most one row and `save()` upserts over it.
+     *
+     * `CLAUDE.md` § Gotchas records two order-dependent cases that shared one row with no `setUp()`. The cheapest
+     * way not to repeat that is to begin from a known state; the cheapest way to be WRONG about it is to describe
+     * a stronger state than the statement actually produces.
      */
     protected function setUp(): void
     {

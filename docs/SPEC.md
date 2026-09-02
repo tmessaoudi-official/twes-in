@@ -561,7 +561,7 @@ grep. **Nothing RESOLVES any of these keys today — see § 8.**
 | Wave | State |
 |---|---|
 | **Wave 0** — seams | **LANDED**, not separately certified. Money, pricing, tenancy strategy, clock, identifiers, the architecture gates |
-| **Wave 1** — the document kernel | **SCOPE DELIVERED, NOT CERTIFIED.** Round 5 closed **NOT CLEAN** (7 findings, 0 P0), the cap was reached, and **6 of the 7 remain open** — R5C-2 was fixed in `5dfebf1`. See § 8 WP0 |
+| **Wave 1** — the document kernel | **SCOPE DELIVERED, ALL ROUND-5 FINDINGS CLOSED, NOT YET CERTIFIED.** Round 5 closed NOT CLEAN (7 findings, 0 P0) and the cap was reached; R5C-2 was fixed in `5dfebf1` and the other six on 2026-09-02 (`c170503`…`76f51ba`), each mutant-pinned. **What remains is the certification round, not code** — see § 9 |
 | **Waves 2–12** | not started — § 9 |
 
 ### What exists in `api/`
@@ -1253,8 +1253,12 @@ repositories; the savepoint guard, the boundary rule and the connection lifecycl
 surface (read and write); the `e2e` suite; the tenant settings table; Client (+ contacts), Product,
 and the `document` → `client` link. **Nothing in the wave's SCOPE is owed.** What separates it from
 COMPLETE is the certification tier: five boundary rounds have run and none reached two consecutive
-clean rounds. **§ 8 WP0 is the outstanding balance.** Do not open Wave 2 on the strength of this
-paragraph — read § 8.
+clean rounds. **WP0 is closed — the outstanding balance is the ROUND, not the code.** All seven
+round-5 findings were closed on 2026-09-02, each with a mutant; § 8 records what each one turned out
+to be. **The wave is still NOT certified**: it re-freezes for a re-certification round, that round is
+**round 6 — the cap the 2026-08-23 ruling extended to** — so even a clean round cannot satisfy the
+two-consecutive-clean requirement inside the cap, and the cap decision returns to the developer after
+it, exactly as ruled. Do not open Wave 2 on the strength of this paragraph.
 
 **Wave 2 — Quotes, credits & the shared document machinery.** Quote · Credit · quote → invoice
 conversion · the shared document abstraction · **discounts and inclusive-vs-exclusive tax**, which
