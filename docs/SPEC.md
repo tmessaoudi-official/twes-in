@@ -1254,17 +1254,15 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
 - [2026-09-02 00:00] AGREED: the permitted-licence identifiers are **pointed at, never restated
   here** — `LICENSING.md`, `THIRD-PARTY-NOTICES.md` and `CLAUDE.md` are the surfaces
   `scripts/gates/test-gates.sh` pins, and adding a seventh turns that gate red.
-- [2026-09-02 00:00] **RECORDED by the executing model, PENDING DEVELOPER RATIFICATION** — not an
-  `AGREED`, and the distinction matters: the certification regime itself **was** ruled by the
-  developer on 2026-08-19 (one `advisor()` per 3C/6C gate; the three-lens panel ONCE at a wave
-  boundary), but their words about where it should live were *"for now just in memory"*, and writing
-  it into § 7 and `CLAUDE.md` here was the executing model's judgement, not their instruction. The
-  reason for doing it: the memory recording that ruling names the consequence itself — *"a session
-  that reads `CLAUDE.md` and not this file will re-run per-task panels"* — and this consolidation is
-  the moment that gap becomes permanent, since `CLAUDE.md` was being rewritten anyway. **The
-  wave-boundary tier is unchanged either way.** To revert: delete this entry, restore
-  "MAXIMAL by default" to `CLAUDE.md` § Certification and § 7, and the regime returns to memory only.
-  A ruling nobody made must never sit in this log wearing `AGREED` — see the archive on verifying
-  `AGREED` provenance.
+- [2026-09-02 00:00] AGREED: the 2026-08-19 certification regime — one `advisor()` per 3C/6C gate,
+  the three-lens panel ONCE at a wave boundary — **lives in this file (§ 7) and in `CLAUDE.md`**,
+  replacing "MAXIMAL by default" for per-task gates. The wave-boundary tier is unchanged. Provenance,
+  because it matters: the regime was ruled 2026-08-19 and its placement was *"for now just in
+  memory"*; moving it into the repo was proposed by the executing model on 2026-09-01, recorded as
+  **pending** rather than as a ruling nobody had made, and **ratified by the developer on
+  2026-09-02** on the reasoning that the memory note itself named memory-only placement as the thing
+  that makes a session re-run per-task panels, while `CLAUDE.md` is the file that always loads. An
+  unratified entry must never sit in this log wearing `AGREED` — see the archive on verifying
+  `AGREED` provenance; this one waited for the word.
 - [2026-09-02 00:00] AGREED: the tier READMEs' owed tables move into § 8 and the READMEs point here;
   the READMEs keep tier-local how-to content.
