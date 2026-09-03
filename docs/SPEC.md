@@ -1459,7 +1459,7 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
   it; re-measure rather than counting votes.**
 
 - [2026-09-03] AGREED: a **machine-maintained status block lives in this file as § 11**, written by
-  `bin/project-state.sh --splice-block` and read by `/progress`. Recorded with its dissent, because
+  `~/.claude/bin/project-state.sh --splice-block` and read by `/progress`. Recorded with its dissent, because
   the reasoning matters more than the outcome: the executing model **recommended against it** and
   offered a handoff-only save instead, on the grounds that § 11's markers put generated content into
   the file § 0 governs by hand; the developer chose the block anyway. What decided it is that the
@@ -1477,9 +1477,17 @@ not**: the table between the two markers is rewritten wholesale by `bash ~/.clau
 --splice-block`, and anything typed between them is lost on the next write. Edit the sections BELOW the
 closing marker by hand; edit the table by re-running `/progress --save`.
 
+**The collector does not discover this file on its own** — its search paths are `docs/plans/` and
+`~/.claude/projects/<slug>/plans/`, and this file is in neither. It is located through a per-session
+pointer written by `bash ~/.claude/bin/project-state.sh --set-active-plan docs/SPEC.md`. **So a
+`/progress` run that reports a zero denominator means that pointer is gone, not that the work is** —
+re-run that command rather than concluding § 11 is broken.
+
 It exists because the collector that answers *"where does this project stand"* had nothing to count
-here — `docs/plans/` ceases to exist by ruling, so it reported a zero denominator for a project that
-is roughly an eighth built. `Size` is S/M/L, worth 1/3/8 points. `State` is one of `todo`, `doing`,
+here — `docs/plans/` ceases to exist by ruling, so it reported a zero denominator no matter
+what had actually landed. **No percentage is written in this prose** — the table below computes it,
+and a figure typed beside a table that derives the same figure is § 0 rule 1 waiting to happen.
+`Size` is S/M/L, worth 1/3/8 points. `State` is one of `todo`, `doing`,
 `done`, `certified`, `blocked`, `deferred`. **`done` and `certified` are not synonyms here and the
 distinction is the one this project keeps paying for**: `done` means the scope landed, `certified`
 means a test record proves it, and Wave 1 is the standing example of the gap.
