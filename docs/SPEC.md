@@ -1457,3 +1457,84 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
   alone still covers) and read the green as agreement. Two lenses plus a direct re-measurement
   settled it. **A panel's clean verdict on one point is not evidence when another lens contradicts
   it; re-measure rather than counting votes.**
+
+- [2026-09-03] AGREED: a **machine-maintained status block lives in this file as § 11**, written by
+  `bin/project-state.sh --splice-block` and read by `/progress`. Recorded with its dissent, because
+  the reasoning matters more than the outcome: the executing model **recommended against it** and
+  offered a handoff-only save instead, on the grounds that § 11's markers put generated content into
+  the file § 0 governs by hand; the developer chose the block anyway. What decided it is that the
+  collector answering *"where does this project stand"* had **nothing to count** — `docs/plans/`
+  ceases to exist by the 2026-09-02 ruling, so every figure it produced was zero for a project
+  roughly an eighth built, and a status surface that reports zero is worse than none. The
+  containment is that the generated region is **exactly** what lies between the two markers, stated
+  in § 11's own preamble, and that the register sections beneath the closing marker stay hand-written
+  under § 0. **If those two ever blur, this ruling is the thing to revisit.**
+
+## 11. Status — machine-maintained, and the only part of this file that is
+
+Every other section of this spec is written and amended by hand under § 0's rules. **This one is
+not**: the table between the two markers is rewritten wholesale by `bash ~/.claude/bin/project-state.sh
+--splice-block`, and anything typed between them is lost on the next write. Edit the sections BELOW the
+closing marker by hand; edit the table by re-running `/progress --save`.
+
+It exists because the collector that answers *"where does this project stand"* had nothing to count
+here — `docs/plans/` ceases to exist by ruling, so it reported a zero denominator for a project that
+is roughly an eighth built. `Size` is S/M/L, worth 1/3/8 points. `State` is one of `todo`, `doing`,
+`done`, `certified`, `blocked`, `deferred`. **`done` and `certified` are not synonyms here and the
+distinction is the one this project keeps paying for**: `done` means the scope landed, `certified`
+means a test record proves it, and Wave 1 is the standing example of the gap.
+
+`Evidence` holds a short sha, a `test:<date>` record reference, or `-`. **A `-` means the row is
+CLAIMED, not verified** — Wave 0 carries one because "LANDED, not separately certified" (§ 5) names
+no commit, and inventing a plausible sha to fill the cell is the exact defect § 0 rule 1 exists to
+prevent.
+
+<!-- progress-block v1 -->
+| # | Step | Size | State | Evidence | Files |
+|---|------|------|-------|----------|-------|
+| 1 | Wave 0 — seams: money, pricing, tenancy strategy, clock, identifiers, the architecture gates | L | done | - | api/src/Domain/**, scripts/gates/** |
+| 2 | Wave 1 — document kernel: lifecycle, numbering, `Invoice`, the RLS schema, Doctrine repositories, savepoint guard, invoice HTTP surface, `e2e` suite, settings, Client, Product | L | done | f812f36 | api/src/**, api/migrations/** |
+| 3 | Wave 1 CERTIFICATION — six rounds run, two consecutive clean rounds never reached | M | blocked | - | docs/SPEC.md |
+| 4 | Wave 2 — Quote, Credit, the shared document abstraction, discounts and inclusive-vs-exclusive tax | L | todo | - | api/src/Domain/Document/** |
+| 5 | Wave 3 — Payments: partial, overpayment, credit application, refunds, split across invoices | L | todo | - | api/src/Domain/** |
+| 6 | Wave 4 — PDF documents; a re-download returns the stored bytes, never a re-render | L | todo | - | api/src/** |
+| 7 | Wave 5 — Tax and e-invoicing, France AND Tunisia together | L | todo | - | api/src/Domain/** |
+| 8 | Wave 6 — Recurring billing, the scheduler, DST, month-end, idempotency | L | todo | - | api/src/Infrastructure/Scheduler/** |
+| 9 | Wave 7 — Auth, permissions, the OpenAPI document as contract SSOT; the forgeable-header path is DELETED here | L | todo | - | api/src/UI/Http/** |
+| 10 | Wave 8 — Angular admin over the Wave 7 contract; 9 gate conditions in § 8 | L | todo | - | admin/** |
+| 11 | Wave 9 — Payment gateways: Stripe, SEPA, webhooks with signature verification | L | todo | - | api/src/** |
+| 12 | Wave 10 — Client portal, treated as hostile surface; both worker-mode gates deleted here | L | todo | - | api/src/UI/Http/** |
+| 13 | Wave 11 — Flutter client, all six targets; 10 gate conditions in § 8 | L | todo | - | mobile/** |
+| 14 | Wave 12 — Infra and CI; three runners, six targets, not cross-compilable | L | todo | - | .github/**, infra/** |
+| 15 | Typed exception per refusal — 58 keys shipped in three locales, nothing resolves any of them | L | todo | - | api/src/Domain/**, api/translations/** |
+| 16 | 15 of 32 migration CHECK constraints are named by no test | M | todo | - | api/migrations/**, api/tests/** |
+| 17 | `test-gates.sh` — two independent intermittent false reds, plus the deterministic bracket defect | M | todo | - | scripts/gates/test-gates.sh |
+| 18 | `deptrac` unwired — the only tool still owed; needs the release asset located | S | todo | - | api/composer.json |
+| 19 | `infra/` owed — fonts 404 under the Noto prefix, Angular notices, `.wasm` MIME asserted | M | todo | - | infra/** |
+| 20 | `readTenantSetting()` throws fail-open on a non-string and nothing pins it | S | todo | - | api/src/Infrastructure/Tenancy/** |
+<!-- /progress-block -->
+
+### Blocked
+- Step 3 — Wave 1's certification is blocked on a ruling, not on work. Every other wave downstream of it is blocked transitively, because § 9 says in terms: do not open Wave 2 on the strength of that paragraph.
+
+### Needs input
+- Wave 1: schedule round 7, or declare the wave certified-as-is and record why the two-consecutive-clean rule is waived here, or open Wave 2 under a written exception. Any of the three is legitimate; leaving it unanswered is the only option that costs something.
+- Whether the reporting VIEW/MATVIEW discovery of R24-3 should follow `pg_depend` to a relation's source — a design decision, not a mechanical fix.
+
+### Needs research
+- The two `test-gates.sh` intermittent false reds are undiagnosed and independent of one another; the recorded `2>/dev/null` suppression hypothesis explains the first sighting and provably cannot cover the second, which has no such suppression.
+- FrankenPHP worker mode has three preconditions and one of them is upstream: a Symfony 8 release of `runtime/frankenphp-symfony`.
+
+### Fragile
+- `readTenantSetting()` throws on a non-string deliberately. Simplifying it to a null-coalesce is FAIL-OPEN — it turns a read failure into "not bound", which certifies a connection scoped to another tenant as unbound. Nothing pins it.
+- Five gates enumerate by filesystem walk rather than `git ls-files`, and are safe only because their roots are narrow. The exception is unstated, so copying the idiom into a repo-rooted gate reintroduces the worktree defect.
+- `Invoice::` per-line totalling must not be used by a bulk path; the fence is a comment and nothing enforces it.
+- `.claude/hooks/gates-on-write.sh` documents two gates as using `--others` where three do; `CLAUDE.md`'s copy of that same table was corrected and the hook's was not.
+
+### Known issues
+- 58 translation keys ship in three locales and nothing resolves any of them: there is no `TranslatorInterface` injection and no `->trans(` call anywhere under `api/src`. French and Arabic callers get English for every refusal the validator does not catch.
+- There is no CI at all. The local gate is the only safety net before history, on a single branch with no PR review.
+- `gate:licences` is environment-blocked and carries `UNCERTIFIED-BY-EXECUTION`.
+- `messenger_messages` has no tenant column and no policy while the Doctrine transport is already wired.
+- `make gate` and its five siblings are the only whole-repo quality entry point and are named by no governed document; `CLAUDE.md`'s pointer at "the gate table in §§ 6-7" for the client tiers resolves to nothing.
+- § 5 cites `.nvmrc` as a version pin and that file does not exist in the tree; the real pin is `infra/admin/Dockerfile`.
