@@ -1533,7 +1533,7 @@ prevent.
 |---|------|------|-------|----------|-------|
 | 1 | Wave 0 — seams: money, pricing, tenancy strategy, clock, identifiers, the architecture gates | L | done | - | api/src/Domain/**, scripts/gates/** |
 | 2 | Wave 1 — document kernel: lifecycle, numbering, `Invoice`, the RLS schema, Doctrine repositories, savepoint guard, invoice HTTP surface, `e2e` suite, settings, Client, Product | L | done | f812f36 | api/src/**, api/migrations/** |
-| 3 | Wave 1 CERTIFICATION — closed by ruling: certified-as-is under the waiver recorded in § 10 | M | done | - | docs/SPEC.md |
+| 3 | Wave 1 CERTIFICATION — closed by ruling: certified-as-is under the waiver recorded in § 10 | M | done | f8abe47 | docs/SPEC.md |
 | 4 | Wave 2 — Quote, Credit, the shared document abstraction, discounts and inclusive-vs-exclusive tax | L | todo | - | api/src/Domain/Document/** |
 | 5 | Wave 3 — Payments: partial, overpayment, credit application, refunds, split across invoices | L | todo | - | api/src/Domain/** |
 | 6 | Wave 4 — PDF documents; a re-download returns the stored bytes, never a re-render | L | todo | - | api/src/** |
