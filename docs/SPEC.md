@@ -593,7 +593,7 @@ being written, false the moment it landed, so it is amended here rather than ann
 | Wave | State |
 |---|---|
 | **Wave 0** — seams | **LANDED**, not separately certified. Money, pricing, tenancy strategy, clock, identifiers, the architecture gates |
-| **Wave 1** — the document kernel | **SCOPE DELIVERED, ALL ROUND-5 AND ROUND-6 FINDINGS CLOSED, NOT CERTIFIED.** Round 5 closed NOT CLEAN (7 findings, 0 P0) and the cap was reached; R5C-2 was fixed in `5dfebf1` and the other six on 2026-09-02 (`c170503`…`76f51ba`). Round 6 — MAXIMAL, all three lenses, frozen `3aea5db` — then closed NOT CLEAN too (15 findings, 0 P0, 2 P1) and the developer ruled all fifteen close under `advisor()` 6C rather than a round 7: `f812f36`. Every closure is mutant-pinned. **Two consecutive clean rounds have never been reached, so the wave stays uncertified and no further round is scheduled** — see § 9. This cell said *"what remains is the certification round"* for the commit in which that round ran |
+| **Wave 1** — the document kernel | **SCOPE DELIVERED, ALL ROUND-5 AND ROUND-6 FINDINGS CLOSED, CERTIFIED-AS-IS UNDER A RECORDED WAIVER.** Round 5 closed NOT CLEAN (7 findings, 0 P0) and the cap was reached; R5C-2 was fixed in `5dfebf1` and the other six on 2026-09-02 (`c170503`…`76f51ba`). Round 6 — MAXIMAL, all three lenses, frozen `3aea5db` — then closed NOT CLEAN too (15 findings, 0 P0, 2 P1) and the developer ruled all fifteen close under `advisor()` 6C rather than a round 7: `f812f36`. Every closure is mutant-pinned. **Two consecutive clean rounds were never reached; on 2026-09-03 the developer WAIVED that requirement for this wave and no other, rather than schedule a round 7** — the waiver, its reasoning and what it does not cover are in § 9, recorded in § 10. This cell said *"what remains is the certification round"* for the commit in which that round ran |
 | **Waves 2–12** | not started — § 9 |
 
 ### What exists in `api/`
@@ -1115,8 +1115,9 @@ other six on 2026-09-02. Every row below is struck, each with a mutant, and **fo
 up something the finding had not named**: the inverted bound was accompanied by `Unnecessary` never
 having been in scope; the fixture's numbers proved already correct so only its framing was wrong; the
 per-line column had no `per_line` vector at all; and the settings table turned out to be protected by
-two independent mechanisms rather than the one its docblock claimed. **The wave may now re-freeze for
-the re-certification round; the cap decision returns to the developer after it.** The full
+two independent mechanisms rather than the one its docblock claimed. **The cap decision was returned
+to the developer and answered on 2026-09-03: the wave did NOT re-freeze for a round 7 — it is
+certified-as-is under the waiver recorded in § 10, whose limits § 9 states.** The full
 filed text is in `var/claude/w1r5-findings.md` (gitignored). **Round 5's own record notes that the
 correctness lens's filed text was LOST mid-round — R5C-1's description is a reconstruction from the
 code, and the code is the authority.**
@@ -1163,8 +1164,9 @@ code, and the code is the authority.**
 contradicted its own row outright — round 6, completeness P2-2. § 0 rule 2: a superseded instruction is
 corrected in place, never left standing beside its own retraction.)*
 
-**Each code fix carries a mutant that proves it load-bearing.** Then ONE re-certification round
-against a frozen commit; the cap decision returns to the developer after it, per the standing ruling.
+**Each code fix carries a mutant that proves it load-bearing.** The re-certification round the
+standing ruling anticipated was never run: the cap decision was answered on 2026-09-03 by waiving the
+two-consecutive-clean requirement for this wave (§ 9, § 10), not by freezing for a round 7.
 
 ### Systemic
 
@@ -1333,21 +1335,34 @@ be re-cut, but a wave is not done until its gate is green and the panel converge
 the architecture gates. Not separately certified. Wave 0 was never optional: the seams decided in it
 are the ones that cannot be changed later.
 
-**Wave 1 — Client & the invoice core.** **SCOPE DELIVERED, NOT CERTIFIED.** The document kernel,
-lifecycle, numbering, the `Invoice` aggregate; the tenant-owned schema with RLS; the Doctrine
-repositories; the savepoint guard, the boundary rule and the connection lifecycle; the invoice HTTP
-surface (read and write); the `e2e` suite; the tenant settings table; Client (+ contacts), Product,
-and the `document` → `client` link. **Nothing in the wave's SCOPE is owed.** What separates it from
-COMPLETE is the certification tier: SIX boundary rounds have run and none reached two consecutive
-clean rounds. **WP0 is closed — the outstanding balance is the ROUND, not the code.** All seven
-round-5 findings were closed on 2026-09-02, each with a mutant; § 8 records what each one turned out
-to be. It then re-froze at `3aea5db` for **round 6 — the cap the 2026-08-23 ruling extended to** —
-which ran MAXIMAL on all three lenses and closed NOT clean: 15 findings, 0 P0, 2 P1, eleven of them
-the record being wrong rather than the code. The cap decision returned to the developer exactly as
-ruled, and was answered on 2026-09-02: **close all fifteen, certified by `advisor()` 6C plus
-executable evidence rather than a round 7** (`f812f36`, § 10). **So the wave is still NOT certified,
-two consecutive clean rounds were never reached, and no further round is scheduled** — whether one
-runs is a developer decision nobody has made. Do not open Wave 2 on the strength of this paragraph.
+**Wave 1 — Client & the invoice core.** **SCOPE DELIVERED, CERTIFIED-AS-IS UNDER A RECORDED WAIVER
+(2026-09-03, § 10).** The document kernel, lifecycle, numbering, the `Invoice` aggregate; the
+tenant-owned schema with RLS; the Doctrine repositories; the savepoint guard, the boundary rule and
+the connection lifecycle; the invoice HTTP surface (read and write); the `e2e` suite; the tenant
+settings table; Client (+ contacts), Product, and the `document` → `client` link. **Nothing in the
+wave's SCOPE was owed.** What separated it from COMPLETE was the certification tier: SIX boundary
+rounds ran and none reached two consecutive clean rounds. **WP0 closed — the outstanding balance was
+the ROUND, not the code.** All seven round-5 findings were closed on 2026-09-02, each with a mutant;
+§ 8 records what each one turned out to be. It then re-froze at `3aea5db` for **round 6 — the cap the
+2026-08-23 ruling extended to** — which ran MAXIMAL on all three lenses and closed NOT clean: 15
+findings, 0 P0, 2 P1, eleven of them the record being wrong rather than the code. The cap decision
+returned to the developer exactly as ruled, and was answered on 2026-09-02: **close all fifteen,
+certified by `advisor()` 6C plus executable evidence rather than a round 7** (`f812f36`, § 10).
+
+**The two-consecutive-clean requirement was then WAIVED on 2026-09-03, for this wave and no other**
+(§ 10). A waiver has to answer § 7's own rationale for the rule — *a wrong number is a wrong legal
+document and a cross-tenant read is a reportable breach, and neither is caught by a green test suite*
+— rather than merely cite finding counts, and this is the answer on which it was granted: across
+rounds 5 and 6 the three lenses filed **not one P0**; every closure is pinned by a mutant that was
+re-run; and round 6's characteristic finding was the RECORD being wrong rather than the code, so a
+seventh round against a tree whose last commits are documentation would most likely audit the record
+a third time rather than the money or the tenancy. **What the waiver does NOT do is make the rounds
+clean.** Round 5 is itself a named `UNCERTIFIED-BY-EXECUTION` (§ 8): its correctness lens's filed text
+was permanently lost and its tenancy lens was half self-graded. So Wave 1 is certified on a record
+with a known hole in it — that is the price of the waiver, stated here rather than left for a reader
+to discover, and it is why the waiver is scope-limited. **Wave 2 may now be opened.** Every later wave
+boundary gets the full MAXIMAL tier — all three lenses, two consecutive fully-clean rounds — unless
+separately waived, and this paragraph is not a precedent for waiving one.
 
 **Wave 2 — Quotes, credits & the shared document machinery.** Quote · Credit · quote → invoice
 conversion · the shared document abstraction · **discounts and inclusive-vs-exclusive tax**, which
@@ -1469,6 +1484,22 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
   containment is that the generated region is **exactly** what lies between the two markers, stated
   in § 11's own preamble, and that the register sections beneath the closing marker stay hand-written
   under § 0. **If those two ever blur, this ruling is the thing to revisit.**
+- [2026-09-03] AGREED: Wave 1 is **CERTIFIED-AS-IS under a recorded waiver**. Two consecutive fully
+  clean rounds were never reached, and rather than schedule a round 7 the developer waived that
+  requirement **for this wave and no other**. The reasoning is § 9's, and it answers § 7's rationale
+  for the rule rather than citing finding counts at it: across rounds 5 and 6 the three lenses filed
+  **not one P0**, every closure is pinned by a mutant that was re-run, and round 6's characteristic
+  finding was the record being wrong rather than the code — so a seventh round against a tree whose
+  last commits are documentation would most likely audit the record a third time rather than the money
+  or the tenancy. **The waiver does not make the rounds clean.** Round 5 remains a named
+  `UNCERTIFIED-BY-EXECUTION` in § 8 — its correctness lens's filed text was lost and its tenancy lens
+  was half self-graded — so this certification rests on a record with a known hole in it, and saying
+  so is part of the ruling rather than a caveat on it.
+- [2026-09-03] AGREED: **Wave 2 may be opened.** § 9's standing prohibition — *do not open Wave 2 on
+  the strength of that paragraph* — is lifted by the waiver above, and is struck from § 9 rather than
+  left standing beside it (§ 0 rule 2). The lift is scope-limited in the same breath: every later wave
+  boundary gets the full MAXIMAL tier, all three lenses and two consecutive fully-clean rounds, unless
+  separately waived.
 
 ## 11. Status — machine-maintained, and the only part of this file that is
 
@@ -1502,7 +1533,7 @@ prevent.
 |---|------|------|-------|----------|-------|
 | 1 | Wave 0 — seams: money, pricing, tenancy strategy, clock, identifiers, the architecture gates | L | done | - | api/src/Domain/**, scripts/gates/** |
 | 2 | Wave 1 — document kernel: lifecycle, numbering, `Invoice`, the RLS schema, Doctrine repositories, savepoint guard, invoice HTTP surface, `e2e` suite, settings, Client, Product | L | done | f812f36 | api/src/**, api/migrations/** |
-| 3 | Wave 1 CERTIFICATION — six rounds run, two consecutive clean rounds never reached | M | blocked | - | docs/SPEC.md |
+| 3 | Wave 1 CERTIFICATION — closed by ruling: certified-as-is under the waiver recorded in § 10 | M | done | - | docs/SPEC.md |
 | 4 | Wave 2 — Quote, Credit, the shared document abstraction, discounts and inclusive-vs-exclusive tax | L | todo | - | api/src/Domain/Document/** |
 | 5 | Wave 3 — Payments: partial, overpayment, credit application, refunds, split across invoices | L | todo | - | api/src/Domain/** |
 | 6 | Wave 4 — PDF documents; a re-download returns the stored bytes, never a re-render | L | todo | - | api/src/** |
@@ -1523,10 +1554,10 @@ prevent.
 <!-- /progress-block -->
 
 ### Blocked
-- Step 3 — Wave 1's certification is blocked on a ruling, not on work. Every other wave downstream of it is blocked transitively, because § 9 says in terms: do not open Wave 2 on the strength of that paragraph.
+
+*(Nothing. Step 3 stood here until 2026-09-03, blocked on a ruling rather than on work; the waiver in § 10 answered it and unblocked every wave that was blocked transitively behind it.)*
 
 ### Needs input
-- Wave 1: schedule round 7, or declare the wave certified-as-is and record why the two-consecutive-clean rule is waived here, or open Wave 2 under a written exception. Any of the three is legitimate; leaving it unanswered is the only option that costs something.
 - Whether the reporting VIEW/MATVIEW discovery of R24-3 should follow `pg_depend` to a relation's source — a design decision, not a mechanical fix.
 
 ### Needs research

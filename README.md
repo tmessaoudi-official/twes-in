@@ -4,7 +4,8 @@ An invoicing and billing platform — **Symfony** REST API, **Angular** admin we
 **Flutter** client for **all six targets** — Android, iOS, Linux, Windows, macOS and Web — over
 **PostgreSQL**. Flutter Web means twes-in ships **two admin interfaces**, Flutter and Angular.
 
-> **Status: early — Wave 0 landed, Wave 1's scope delivered and NOT yet certified.**
+> **Status: early — Wave 0 landed; Wave 1's scope delivered and certified-as-is under a recorded
+> waiver (`docs/SPEC.md` § 9 and § 10).**
 > **[`docs/SPEC.md`](docs/SPEC.md) is the single source of truth** for what exists, what is ruled
 > and what is still owed — § 5 is the verified current state, § 8 the one open register. This line
 > is deliberately short: the paragraph it replaces was twenty-four lines of correction-appended-to-
