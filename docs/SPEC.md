@@ -1481,9 +1481,13 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
   collector answering *"where does this project stand"* had **nothing to count** — `docs/plans/`
   ceases to exist by the 2026-09-02 ruling, so every figure it produced was zero for a project
   roughly an eighth built, and a status surface that reports zero is worse than none. The
-  containment is that the generated region is **exactly** what lies between the two markers, stated
+  containment is that the generated regions are **exactly** what lies between their markers, stated
   in § 11's own preamble, and that the register sections beneath the closing marker stay hand-written
-  under § 0. **If those two ever blur, this ruling is the thing to revisit.**
+  under § 0. **If those two ever blur, this ruling is the thing to revisit.** *(Amended 2026-09-04:
+  this said "the generated region" singular, and § 11's heading said it was "the only part of this
+  file that is" machine-maintained. `/goal-brief --save` added a SECOND generated region — the
+  `## Goal` block at the end of the file — so both statements were false the moment it landed. § 0
+  rule 2: corrected in place rather than left standing beside their own retraction.)*
 - [2026-09-03] AGREED: Wave 1 is **CERTIFIED-AS-IS under a recorded waiver**. Two consecutive fully
   clean rounds were never reached, and rather than schedule a round 7 the developer waived that
   requirement **for this wave and no other**. The reasoning is § 9's, and it answers § 7's rationale
@@ -1500,8 +1504,20 @@ and every one of them is dispositioned in `docs/archive/plans/RECONCILIATION.md`
   left standing beside it (§ 0 rule 2). The lift is scope-limited in the same breath: every later wave
   boundary gets the full MAXIMAL tier, all three lenses and two consecutive fully-clean rounds, unless
   separately waived.
+- [2026-09-04] AGREED: the standing goal is **every open row of § 11**, not the next wave — the
+  developer's words were *"Not just a wave ! i want all theat is still todo !!"*. Recorded as the
+  `## Goal` block at the end of this file.
+- [2026-09-04] AGREED: **every wave boundary gets the full MAXIMAL tier** — all three lenses, two
+  consecutive fully-clean rounds. Offered the cheaper *scope + ONE round then waive* shape, which
+  Wave 1 set as precedent, the developer declined it. Wave 1's waiver stays scope-limited to Wave 1
+  and is not a template; a waiver is therefore NOT an alternative route to closing any later wave.
+- [2026-09-04] AGREED: the goal's scope is a **moving target** — it is met at any moment when no row
+  is open, and any later finding re-opens it. Chosen over freezing the scope at the rows existing that
+  day, with the caveat visible that a single new row re-opens the goal indefinitely. Two consequences:
+  `deferred` does not close a row, and work found later is added as a row rather than argued out of
+  scope.
 
-## 11. Status — machine-maintained, and the only part of this file that is
+## 11. Status — machine-maintained, as is the `## Goal` block at the end of this file
 
 Every other section of this spec is written and amended by hand under § 0's rules. **This one is
 not**: the table between the two markers is rewritten wholesale by `bash ~/.claude/bin/project-state.sh
@@ -1555,6 +1571,8 @@ prevent.
 | 22 | `docs/spec/pricing-vectors.json` carries 0 discount and 0 inclusive-tax cases of 33 — Wave 2's ruled arithmetic has no machine-readable vectors [deep sweep, raw/critical-path.md] | M | todo | - | docs/spec/pricing-vectors.json |
 | 23 | `make migrate` / `migrate-prod` — the owning-role migration path — is named by no governed document [deep sweep, raw/undocumented.md] | S | todo | - | Makefile, docs/SPEC.md |
 | 24 | `CLAUDE.md:295` orders `apply-pending-settings.sh` preserved; it was deleted in `b1d2069` and the same file says the directory is gone [deep sweep, raw/undocumented.md] | S | todo | - | CLAUDE.md |
+| 25 | `gate:licences` restored to green — § 6's recipe (`fvm install 3.44.9`, `flutter pub get --enforce-lockfile`); exits 1 today on `lightningcss` MPL-2.0 [found by /goal-brief] | S | todo | - | mobile/pubspec.lock, THIRD-PARTY-NOTICES.md |
+| 26 | `.claude/progress.json` adapter with a `test_cmd` — the collector emits the path by convention and no file exists, so no test record can be written and no row can reach `certified` [found by /goal-brief] | S | todo | - | .claude/progress.json |
 <!-- /progress-block -->
 
 ### Blocked
@@ -1581,3 +1599,67 @@ prevent.
 - `messenger_messages` has no tenant column and no policy while the Doctrine transport is already wired.
 - `make gate` and its five siblings are the only whole-repo quality entry point and are named by no governed document; `CLAUDE.md`'s pointer at "the gate table in §§ 6-7" for the client tiers resolves to nothing.
 - § 5 cites `.nvmrc` as a version pin and that file does not exist in the tree; the real pin is `infra/admin/Dockerfile`.
+
+## Goal
+<!-- goal-block -->
+**Close every open row of § 11's status block** — every row whose `State` is not `done` or
+`certified` — with each wave boundary certified by a full MAXIMAL round, until no open row remains.
+
+**In scope.** Every open row, whatever its number: the remaining waves; and the standing residue —
+the typed-exception deliverable, the migration CHECK constraints named by no test, `test-gates.sh`'s
+intermittent false reds, `deptrac`, what `infra/` owes, `readTenantSetting()`'s fail-open throw, the
+`gates-on-write.sh` cleanup trap, `pricing-vectors.json`'s missing discount and inclusive-tax cases,
+and the two record defects — **and every row added later.** A MAXIMAL certification round at each
+wave boundary: three lenses, two consecutive fully-clean rounds, freeze first.
+
+Two enabling items belong to this goal because two of its done-when conditions are otherwise
+unreachable, and both were found while briefing it — they have rows of their own, and this paragraph
+points at them rather than standing in for them: **restoring `gate:licences` to green** (§ 6 carries
+the recipe; it exits 1 today) and **creating the `.claude/progress.json` adapter**. The collector
+emits that path by convention rather than by discovery — absence is silent, not a warning — so no
+adapter has ever existed here, `test_cmd` is empty, `--record-test` has nothing to run, and **no row
+can reach `certified`** until one is written.
+
+**Out of scope.** Anything not represented as a row: the way to bring work in is to add a row, not to
+widen this goal. Upstream Invoice Ninja code, under licensing invariants 1-3. Branches and pull
+requests. `docs/archive/**`, which is verbatim history. Cheapening § 7's certification tier.
+
+**Done when** — the first three by command, the fourth from the collector, the fifth by reading:
+
+1. `bash ~/.claude/bin/project-state.sh` reports `steps_total - steps_done - steps_certified` equal to
+   zero, and `steps_blocked` zero. **`deferred` does not close a row for this goal** — deferring to
+   escape would defeat the ruling that every open row is in scope.
+2. `make gate` exits 0.
+3. `git rev-list --count origin/master..master` prints 0, `git status --porcelain` is empty, and
+   `bash scripts/dev/assert-reconciliation-anchors.sh` exits 0.
+4. `tests.latest` records a PASS whose commit is HEAD or an ancestor of it.
+5. § 10 records, for **every** wave boundary, two consecutive fully-clean rounds. **A waiver is not an
+   alternative here** — that path was offered on 2026-09-04 and declined in favour of full MAXIMAL.
+
+**Constraints.** The licensing invariants bind every dependency decision, and a genuinely unclear
+licence question STOPS and asks. `master` only; plain `git push`, never `-u`; the fixed commit
+identity, and never a `Co-Authored-By` or `Claude-Session` trailer. Never commit red, and never chain
+a verification step onto `git commit` through a pipe or `&&`. TDD first — money arithmetic, tax rules
+and state transitions get their failing test before the code every time — and a sabotage check must
+prove the suite would NOTICE the guarantee breaking. Per-task 3C/6C gates take ONE `advisor()` call,
+never a panel; panels belong to wave boundaries. Reviewer subagents are spawned UNNAMED, write their
+findings to `var/claude/` and return one line. `UNCERTIFIED-BY-EXECUTION` is disclosed by name
+wherever a surface cannot be certified by execution. § 0's two rules bind this block as they bind the
+rest of the file.
+
+**The risk, stated rather than hidden.** Wave 1 never reached two consecutive fully-clean rounds in
+six attempts, and every remaining wave boundary now requires it. § 7's cap — five rounds, then ask —
+is the escape, and it should be expected to fire. If it does, the answer is a NEW ruling recorded in
+§ 10, not a waiver this goal granted in advance.
+
+**Ambiguities resolved.**
+
+| Question | Ruling | Who ruled |
+|---|---|---|
+| One wave, or all remaining work? | Every open row — *"Not just a wave ! i want all theat is still todo !!"* | developer, 2026-09-04 |
+| Stop at scope-delivered, or at certified? | Full MAXIMAL round at every wave boundary | developer, 2026-09-04 |
+| Is the scope frozen, or does it move? | Moving — a later finding re-opens the goal | developer, 2026-09-04 |
+| Does `deferred` close a row? | No | *Inferred* from the three rulings above |
+| Does Wave 2 owe the negative-tie vector? | Yes | § 8, "Wave 2 obligations already ruled" |
+| Is Wave 1's certification in scope? | No — closed by waiver 2026-09-03 | § 10 |
+<!-- /goal-block -->
