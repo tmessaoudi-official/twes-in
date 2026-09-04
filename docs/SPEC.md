@@ -1551,6 +1551,10 @@ prevent.
 | 18 | `deptrac` unwired — the only tool still owed; needs the release asset located | S | todo | - | api/composer.json |
 | 19 | `infra/` owed — fonts 404 under the Noto prefix, Angular notices, `.wasm` MIME asserted | M | todo | - | infra/** |
 | 20 | `readTenantSetting()` throws fail-open on a non-string and nothing pins it | S | todo | - | api/src/Infrastructure/Tenancy/** |
+| 21 | `.claude/hooks/gates-on-write.sh:216` cleanup trap keys `rm -f` on `GIT_INDEX_FILE`, not on `$scratch_index` — an inherited value makes it delete the caller's real `.git/index` [deep sweep, raw/fragile.md] | S | todo | - | .claude/hooks/gates-on-write.sh |
+| 22 | `docs/spec/pricing-vectors.json` carries 0 discount and 0 inclusive-tax cases of 33 — Wave 2's ruled arithmetic has no machine-readable vectors [deep sweep, raw/critical-path.md] | M | todo | - | docs/spec/pricing-vectors.json |
+| 23 | `make migrate` / `migrate-prod` — the owning-role migration path — is named by no governed document [deep sweep, raw/undocumented.md] | S | todo | - | Makefile, docs/SPEC.md |
+| 24 | `CLAUDE.md:295` orders `apply-pending-settings.sh` preserved; it was deleted in `b1d2069` and the same file says the directory is gone [deep sweep, raw/undocumented.md] | S | todo | - | CLAUDE.md |
 <!-- /progress-block -->
 
 ### Blocked
