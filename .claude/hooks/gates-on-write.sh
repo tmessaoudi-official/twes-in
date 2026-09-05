@@ -213,7 +213,16 @@ if git rev-parse --verify -q HEAD >/dev/null 2>&1; then
     [[ -n "$scratch_index" ]] && export GIT_INDEX_FILE="$scratch_index"
   fi
 fi
-cleanup() { [[ -n "${GIT_INDEX_FILE:-}" ]] && rm -f "$GIT_INDEX_FILE"; }
+# KEYED ON `$scratch_index`, NEVER ON `GIT_INDEX_FILE` — the variable this hook OWNS rather than the one it
+# may have INHERITED. Until 2026-09-05 this read `rm -f "$GIT_INDEX_FILE"`, and two paths above leave
+# `scratch_index` empty or unset while `GIT_INDEX_FILE` is whatever the caller's environment carried: a
+# repository with no commit skips the whole block, and a failed `git add` discards the scratch index. In
+# both, the `export` never runs, so an inherited `GIT_INDEX_FILE` — a caller mid-way through its own
+# `git read-tree`, or a `.git/index` pointed at explicitly — survived into cleanup and was DELETED. That is
+# the caller's real index, destroyed by a hook whose whole contract is to leave no state behind. Pinned by
+# `test-hooks-on-write.sh`, which runs the hook under an inherited `GIT_INDEX_FILE` in a commit-less
+# sandbox and asserts the file is still there afterwards.
+cleanup() { [[ -n "${scratch_index:-}" ]] && rm -f "$scratch_index"; }
 trap cleanup EXIT
 
 failed=0

@@ -268,6 +268,45 @@ else
   bad "a failed --dump-rules skipped the SPDX gate (exit $got; stderr: $(head -c 200 "$TMP/err"))"
 fi
 
+# ── 6b. AN INHERITED `GIT_INDEX_FILE` SURVIVES THE HOOK ────────────────────────
+# The cleanup trap keyed `rm -f` on `GIT_INDEX_FILE` — the variable the hook may INHERIT — rather
+# than on `scratch_index`, the one it owns. In a repository with no commit the throwaway-index
+# block is skipped entirely, so nothing is exported, and an inherited value (a caller mid-way
+# through its own `git read-tree`, or a `.git/index` named explicitly) reached cleanup and was
+# deleted: the caller's real index, destroyed by a hook whose contract is to leave no state
+# behind. Row 21 of `docs/SPEC.md` § 11, from the 2026-09-04 fragile-code sweep.
+#
+# EXECUTED in a commit-less sandbox with a real file as the inherited index. Two assertions, and
+# the second is the one that matters: the hook ran to completion (so the trap fired), and the
+# file is still there. [Verified 2026-09-05: with the trap reverted to `rm -f "$GIT_INDEX_FILE"`
+# this case fails and every other case passes, so it is the only coverage the fix has.]
+INHERIT="$TMP/inherit"
+mkdir -p "$INHERIT/scripts/gates" "$INHERIT/api/src"
+git -C "$INHERIT" init -q
+for stub in layer-dependencies.php no-ambient-calls-in-domain.php no-orphaned-docblocks.php \
+            no-owner-connection-in-application.php; do
+  printf '<?php exit(0);\n' > "$INHERIT/scripts/gates/$stub"
+done
+printf '#!/usr/bin/env bash\nexit 0\n' > "$INHERIT/scripts/gates/no-orm-attributes-in-domain.sh"
+printf '#!/usr/bin/env bash\n[[ "${1:-}" == "--dump-rules" ]] && { echo "extensions php"; exit 0; }\nexit 0\n' \
+  > "$INHERIT/scripts/gates/spdx-headers.sh"
+printf '<?php\n' > "$INHERIT/api/src/Whatever.php"
+VICTIM="$TMP/callers-real-index"
+printf 'the caller owns this file\n' > "$VICTIM"
+inherit_run() {
+  jq -n --arg p "$INHERIT/api/src/Whatever.php" '{tool_input: {file_path: $p}}' \
+    | GIT_INDEX_FILE="$VICTIM" CLAUDE_PROJECT_DIR="$INHERIT" bash "$GATES" >"$TMP/out" 2>"$TMP/err"
+  printf '%s' $?
+}
+got="$(inherit_run)"
+if [[ "$got" != "0" ]]; then
+  bad "commit-less sandbox: hook did not run clean (exit $got; stderr: $(head -c 200 "$TMP/err"))"
+elif [[ ! -f "$VICTIM" ]]; then
+  bad "an INHERITED GIT_INDEX_FILE was deleted by the cleanup trap — the caller's real index is gone"
+else
+  ok "an inherited GIT_INDEX_FILE survives the hook (cleanup keys on the scratch index it owns)"
+fi
+
 # ── 7. The hook owns no rules — pinned, because this is the design ─────────────
 # Every check must be an invocation of a script under scripts/gates/. If a future edit
 # inlines a grep-based rule here, that is a second rule set and this assertion says so.
