@@ -1580,13 +1580,13 @@ prevent.
 | 17 | `test-gates.sh` — two independent intermittent false reds, plus the deterministic bracket defect | M | todo | - | scripts/gates/test-gates.sh |
 | 18 | `deptrac` unwired — the only tool still owed; needs the release asset located | S | todo | - | api/composer.json |
 | 19 | `infra/` owed — fonts 404 under the Noto prefix, Angular notices, `.wasm` MIME asserted | M | todo | - | infra/** |
-| 20 | `readTenantSetting()` throws fail-open on a non-string and nothing pins it | S | todo | - | api/src/Infrastructure/Tenancy/** |
-| 21 | `.claude/hooks/gates-on-write.sh:216` cleanup trap keys `rm -f` on `GIT_INDEX_FILE`, not on `$scratch_index` — an inherited value makes it delete the caller's real `.git/index` [deep sweep, raw/fragile.md] | S | todo | - | .claude/hooks/gates-on-write.sh |
+| 20 | `readTenantSetting()` throws fail-open on a non-string — pinned 2026-09-05 by a `PDOStatement` whose fetch fails, both callers, mutant-checked | S | done | 6018a06 | api/tests/Integration/Tenancy/** |
+| 21 | `.claude/hooks/gates-on-write.sh:216` cleanup trap keys `rm -f` on `GIT_INDEX_FILE`, not on `$scratch_index` — an inherited value makes it delete the caller's real `.git/index` [deep sweep, raw/fragile.md] | S | done | 5cd80d3 | .claude/hooks/** |
 | 22 | `docs/spec/pricing-vectors.json` carries 0 discount and 0 inclusive-tax cases of 33 — Wave 2's ruled arithmetic has no machine-readable vectors [deep sweep, raw/critical-path.md] | M | todo | - | docs/spec/pricing-vectors.json |
-| 23 | `make migrate` / `migrate-prod` — the owning-role migration path — is named by no governed document [deep sweep, raw/undocumented.md] | S | todo | - | Makefile, docs/SPEC.md |
-| 24 | `CLAUDE.md:295` orders `apply-pending-settings.sh` preserved; it was deleted in `b1d2069` and the same file says the directory is gone [deep sweep, raw/undocumented.md] | S | todo | - | CLAUDE.md |
-| 25 | `gate:licences` restored to green — § 6's recipe (`fvm install 3.44.9`, `flutter pub get --enforce-lockfile`); exits 1 today on `lightningcss` MPL-2.0 [found by /goal-brief] | S | todo | - | mobile/pubspec.lock, THIRD-PARTY-NOTICES.md |
-| 26 | `.claude/progress.json` adapter with a `test_cmd` — the collector emits the path by convention and no file exists, so no test record can be written and no row can reach `certified` [found by /goal-brief] | S | todo | - | .claude/progress.json |
+| 23 | `make migrate` / `migrate-prod` — the owning-role migration path — named in § 6 since 2026-09-05 [deep sweep, raw/undocumented.md] | S | done | 6018a06 | docs/SPEC.md |
+| 24 | `CLAUDE.md`'s 2026-07-29 entry ordered `apply-pending-settings.sh` preserved after `b1d2069` deleted it — corrected in place 2026-09-05 [deep sweep, raw/undocumented.md] | S | done | 6018a06 | CLAUDE.md |
+| 25 | `gate:licences` restored to green 2026-09-05 by running § 6's recipe (`fvm install 3.44.9`, `pub get --enforce-lockfile`); the block was the pub cache, never `lightningcss` [found by /goal-brief] | S | done | 6018a06 | docs/SPEC.md |
+| 26 | `.claude/progress.json` adapter with `test_cmd` = the API tier's `composer gate:test`, created 2026-09-05 so a test record can be written and a row can reach `certified` [found by /goal-brief] | S | done | 6018a06 | .claude/progress.json |
 <!-- /progress-block -->
 
 ### Blocked
