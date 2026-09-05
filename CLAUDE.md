@@ -294,9 +294,12 @@ section — `grep -c '^- \*\*20' CLAUDE.md` is the only trustworthy tally.*
   the file as classifier-blocked for Claude, and ships a `settings.json.pending` +
   `apply-pending-settings.sh` relay to work around it. Here the direct `Write` **succeeded**
   [Verified: `Write` to `.claude/settings.json` returned success, file present in `git status`]. The
-  relay script is kept anyway — the block is environment-dependent and may reappear, and the script is
-  inert when there is no pending file. Do not delete it, and do not assume the block is gone
-  permanently.
+  relay script was kept for a while against the block reappearing, then **deleted with the whole
+  container-era bootstrap in `b1d2069` (2026-08-18)** — see § "Claude config" below, which records that
+  directory as gone. This entry ordered it preserved for eighteen days after that commit removed it
+  (row 24 of `docs/SPEC.md` § 11, corrected in place 2026-09-05 under § 0 rule 2). What survives of the
+  lesson: the block is environment-dependent, so do not assume it is gone permanently — if it returns,
+  the route is a hand-off script the developer runs, not a relay file in the tree.
 - **2026-07-29 — NEVER commit while a certification panel is reading. Freeze means freeze.** Round 5 of
   the bundle certification was told the artefact was frozen at `653e211`; a commit landed mid-round and
   it rewrote **exactly** the files the reviewer had been assigned. The reviewer caught it, but only after

@@ -2069,6 +2069,58 @@ final class TenantIsolationTest extends TestCase
     }
 
     /**
+     * **A FAILED READ OF THE SETTING IS REFUSED, NEVER READ AS "UNBOUND" — and nothing pinned that until
+     * 2026-09-05** (§ 11 row 20, the `readTenantSetting()` entry of the Fragile register).
+     *
+     * `readTenantSetting()` throws on a non-string deliberately: round 10 found `''` being returned for a
+     * failed fetch, which turned "the read failed" into "not bound", so the tenant-less branch of
+     * `assertStillBoundTo()` CERTIFIED a connection genuinely scoped to tenant A as unbound — the exact
+     * cross-tenant state that branch exists to detect. The throw was the fix, and it was deletable: simplify
+     * it to a null-coalesce and every case stayed green, because no test ever made the driver return
+     * `false`. The same nine-line substitution that drove `bind()`'s read-back branch above drives this one.
+     *
+     * Both branches, because the guard is one method with two callers and a mutant on the method would be
+     * caught by either — the second assertion is what makes the tenant-less branch's FAIL-OPEN shape the
+     * thing under test rather than an incidental exception. The exception is CAPTURED and asserted outside
+     * the `try`: `self::fail()` is itself a `RuntimeException` (CLAUDE.md § Gotchas 2026-09-02), so an
+     * assertion inside a `catch (\RuntimeException)` would catch its own failure and name the wrong cause.
+     */
+    public function testAFailedSettingReadIsRefusedRatherThanReadAsUnbound(): void
+    {
+        $unreadable = self::connect();
+        $unreadable->setAttribute(\PDO::ATTR_STATEMENT_CLASS, [UnreadableStatement::class]);
+        $isolation = new PostgresRowLevelSecurityIsolation();
+
+        $fromTenantless = null;
+        $fromBound = null;
+
+        try {
+            $isolation->assertStillBoundTo($unreadable, InMemoryTenantContext::empty());
+        } catch (\RuntimeException $exception) {
+            $fromTenantless = $exception;
+        }
+
+        try {
+            $isolation->assertStillBoundTo($unreadable, InMemoryTenantContext::forTenant(
+                TenantId::fromString(self::TENANT_A),
+            ));
+        } catch (\RuntimeException $exception) {
+            $fromBound = $exception;
+        }
+
+        self::assertNotNull(
+            $fromTenantless,
+            'The tenant-less branch RETURNED on a failed read. That is the fail-open shape: a connection still '
+            . 'scoped to a tenant was certified as unbound because the driver could not say.',
+        );
+        self::assertStringContainsString('the driver returned bool', $fromTenantless->getMessage());
+        self::assertStringContainsString('unverifiable binding', $fromTenantless->getMessage());
+
+        self::assertNotNull($fromBound, 'The bound branch must refuse a failed read too, not compare against it.');
+        self::assertStringContainsString('the driver returned bool', $fromBound->getMessage());
+    }
+
+    /**
      * `ENABLE` + `FORCE` + a policy that isolates nothing is refused, live.
      *
      * Both flags satisfied and a policy present named exactly what a migration would name it — and
@@ -4501,5 +4553,23 @@ final class LyingStatement extends \PDOStatement
 
         // First read: the pre-write check. Report "no tenant" so bind() proceeds to write.
         return 1 === self::$reads ? '' : self::WRONG_VALUE;
+    }
+}
+
+/**
+ * A `PDOStatement` whose `fetchColumn()` FAILS — `false`, as PDO reports a fetch that returned no row.
+ *
+ * Drives `readTenantSetting()`'s non-string refusal on a real connection, for the same reason
+ * {@see LyingStatement} exists: the branch was recorded as pinned by nothing, and a guard nothing exercises is
+ * the shape this project has paid for most often. Fails on EVERY read, because the method under test reads
+ * exactly once per call and the two callers are asserted separately.
+ */
+final class UnreadableStatement extends \PDOStatement
+{
+    protected function __construct() {}
+
+    public function fetchColumn(int $column = 0): mixed
+    {
+        return false;
     }
 }

@@ -1,0 +1,24 @@
+{
+  "_comment": "Adapter for ~/.claude/bin/project-state.sh — what /progress, /next and /goal-brief read. Every path is relative and inside the repo, as the collector requires. Added 2026-09-05 (docs/SPEC.md § 11 row 26): the collector emits this path by CONVENTION rather than by discovery, so its absence was silent — test_cmd was empty, --record-test had nothing to run, and no row could ever reach `certified`.",
+
+  "_test_cmd": "The API tier's test step, exactly as `composer gate` chains it: unit, integration and functional, EXCLUDING e2e, which FAILS rather than skipping without a running server. It needs the local PostgreSQL that docs/SPEC.md § 6 provisions — the integration suite fails loudly without it, which is the intended direction. Not the whole `composer gate`: gate:licences has been red on a missing pub cache (row 25), and a `certified` marker that needs every tier's toolchain is one nobody would produce. The client tiers' gates (make gate-admin, make gate-mobile) are wave-boundary evidence, not a per-step certification.",
+  "test_cmd": "cd api && composer gate:test",
+
+  "_requires": "Named so a missing prerequisite is reported rather than discovered as a failing run. The phars under api/tools/bin are gitignored and fetched by scripts/dev/fetch-tools.sh.",
+  "requires": ["php", "composer", "psql", "git", "jq"],
+
+  "_registers": "Blocked / Needs input / Needs research / Fragile / Known issues live under the progress block in docs/SPEC.md § 11, which the collector already reads through the active plan, so nothing is listed twice here.",
+
+  "_cursor_files": "The files a session needs first. CLAUDE.md is the rule set for HOW work is delivered, docs/SPEC.md is the ONE source of truth for the product, the record and the roadmap, and LICENSING.md must be read before any dependency is added.",
+  "cursor_files": [
+    "CLAUDE.md",
+    "docs/SPEC.md",
+    "LICENSING.md"
+  ],
+
+  "_exclude": "Verbatim history and the gitignored scratch tree. The archive changing would be a defect, not activity.",
+  "exclude": [
+    "docs/archive",
+    "var"
+  ]
+}

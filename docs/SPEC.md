@@ -766,10 +766,13 @@ gets `'self'`. That CSP is a **privacy control**, not defence in depth: ReDoc fe
   clusters, and it does not apply here. The database is a container — see § 6.
 - **`composer gate` needs `COMPOSER_PROCESS_TIMEOUT=0`** here; two steps individually exceed
   Composer's 300 s default and are killed, which reads as a gate red and is not one.
-- **`gate:licences` is currently ENVIRONMENT-BLOCKED** — the pub cache is missing locked packages,
-  and FVM has 3.41.9 (Dart too old for `sdk: ^3.12.2`) and 3.47.1 (`--enforce-lockfile` reports
-  "Would change 4 dependencies"); the lock was authored with ~3.44.9, which is not installed. The
-  restore is in § 6, and the version decision is stated there rather than left open.
+- **`gate:licences` was ENVIRONMENT-BLOCKED until 2026-09-05** — the pub cache was missing locked
+  packages, and FVM had 3.41.9 (Dart too old for `sdk: ^3.12.2`) and 3.47.1 (`--enforce-lockfile`
+  reports "Would change 4 dependencies"); the lock was authored with ~3.44.9. The § 6 restore was run
+  on 2026-09-05 (`fvm install 3.44.9`, then `pub get --enforce-lockfile` under it: "Got dependencies!",
+  lock unchanged) and the gate reports `OK — 699 package(s), 24 pub package(s) and 5 vendored font(s)`.
+  Re-run the restore if the pub cache at `/stack/tools/pub-cache` is ever cleared — the block is a
+  property of the machine, not of the tree.
 
 ---
 
@@ -812,6 +815,14 @@ cd api && php bin/console doctrine:migrations:migrate --no-interaction
 the second leaves the integration suite failing with `database "twes_in_test" does not exist`, which
 is the fail-closed behaviour working rather than a regression. The container is EPHEMERAL:
 `docker start twes-pg` after a reboot, and re-provision if it was removed.
+
+**Inside the stack, migrations are `make migrate` (dev) and `make migrate-prod` (production).** Both
+run the one-shot `migrate` compose service — the ONLY container holding `DATABASE_URL_OWNER`, so the
+owning role never reaches a long-running service (see `infra/README.md` § the owner-role row, and
+§ 7's `no-owner-connection-in-application.php`). The `bin/console` line above is the HOST path against
+the container database and uses the same owner connection through `api/.env`. Until 2026-09-05 neither
+target was named by this file (§ 11 row 23): the only path a tenant's schema can legitimately change
+through was documented in a tier README and nowhere the spec points.
 
 **`TWES_TEST_DB_SUPERUSER_PASSWORD` is not optional and the script REFUSES without it.** It sets a
 password on the cluster's pre-existing superuser, and `pg_authid` is a **shared** catalogue — that
@@ -872,7 +883,10 @@ cd mobile && flutter pub get --enforce-lockfile
 **Install 3.44.9 and verify the lock reproduces.** Upgrading the SDK instead (3.47.1 reports "Would
 change 4 dependencies") is a **licensing-adjacent decision**, never an environment fix: four changed
 dependencies means licence re-verification and `THIRD-PARTY-NOTICES.md` churn under the recording
-obligation. Until this is done, `gate:licences` is a named `UNCERTIFIED-BY-EXECUTION`.
+obligation. **Done 2026-09-05** (§ 11 row 25): 3.44.9 installed, the lock reproduced byte-for-byte under
+`--enforce-lockfile`, and `gate:licences` exits 0. While it was undone the gate was a named
+`UNCERTIFIED-BY-EXECUTION`; it no longer is, and § 7's sentence saying the chain "dies at step 1" was
+re-tensed in the same change.
 
 ### Traps that cost time here
 
@@ -1043,8 +1057,8 @@ done
 ```
 
 **Run the steps individually and read each exit**, never the chain — a Composer script chain stops
-at the first failure, and with `gate:licences` environment-blocked here the chain dies at step 1
-reaching nothing.
+at the first failure — while `gate:licences` was environment-blocked here (until 2026-09-05) the chain
+died at step 1 reaching nothing, and the same shape recurs the day any earlier step goes red.
 
 **`TWES_SCHEMA_USER` is the role the gate CONNECTS AS; `TWES_SCHEMA_RUNTIME_ROLE` is the role every
 ownership and `TRUNCATE` assertion is made ABOUT.** Getting those backwards is the mistake the
@@ -1587,7 +1601,7 @@ prevent.
 - FrankenPHP worker mode has three preconditions and one of them is upstream: a Symfony 8 release of `runtime/frankenphp-symfony`.
 
 ### Fragile
-- `readTenantSetting()` throws on a non-string deliberately. Simplifying it to a null-coalesce is FAIL-OPEN — it turns a read failure into "not bound", which certifies a connection scoped to another tenant as unbound. Nothing pins it.
+- `readTenantSetting()` throws on a non-string deliberately. Simplifying it to a null-coalesce is FAIL-OPEN — it turns a read failure into "not bound", which certifies a connection scoped to another tenant as unbound. Pinned since 2026-09-05 by `TenantIsolationTest::testAFailedSettingReadIsRefusedRatherThanReadAsUnbound` (a `PDOStatement` whose fetch returns `false`, both callers asserted; the null-coalesce mutant fails it naming the fail-open shape). Kept in this register because the SHAPE is still fragile: a reader who does not know why it throws will still be tempted to simplify it.
 - Five gates enumerate by filesystem walk rather than `git ls-files`, and are safe only because their roots are narrow. The exception is unstated, so copying the idiom into a repo-rooted gate reintroduces the worktree defect.
 - `Invoice::` per-line totalling must not be used by a bulk path; the fence is a comment and nothing enforces it.
 - `.claude/hooks/gates-on-write.sh` documents two gates as using `--others` where three do; `CLAUDE.md`'s copy of that same table was corrected and the hook's was not.
@@ -1595,7 +1609,6 @@ prevent.
 ### Known issues
 - 58 translation keys ship in three locales and nothing resolves any of them: there is no `TranslatorInterface` injection and no `->trans(` call anywhere under `api/src`. French and Arabic callers get English for every refusal the validator does not catch.
 - There is no CI at all. The local gate is the only safety net before history, on a single branch with no PR review.
-- `gate:licences` is environment-blocked and carries `UNCERTIFIED-BY-EXECUTION`.
 - `messenger_messages` has no tenant column and no policy while the Doctrine transport is already wired.
 - `make gate` and its five siblings are the only whole-repo quality entry point and are named by no governed document; `CLAUDE.md`'s pointer at "the gate table in §§ 6-7" for the client tiers resolves to nothing.
 - § 5 cites `.nvmrc` as a version pin and that file does not exist in the tree; the real pin is `infra/admin/Dockerfile`.
@@ -1615,9 +1628,10 @@ wave boundary: three lenses, two consecutive fully-clean rounds, freeze first.
 Two enabling items belong to this goal because two of its done-when conditions are otherwise
 unreachable, and both were found while briefing it — they have rows of their own, and this paragraph
 points at them rather than standing in for them: **restoring `gate:licences` to green** (§ 6 carries
-the recipe; it exits 1 today) and **creating the `.claude/progress.json` adapter**. The collector
+the recipe; it exited 1 until 2026-09-05, when the restore was run) and **creating the
+`.claude/progress.json` adapter** (created 2026-09-05). The collector
 emits that path by convention rather than by discovery — absence is silent, not a warning — so no
-adapter has ever existed here, `test_cmd` is empty, `--record-test` has nothing to run, and **no row
+adapter existed here before that day, `test_cmd` was empty, `--record-test` had nothing to run, and **no row
 can reach `certified`** until one is written.
 
 **Out of scope.** Anything not represented as a row: the way to bring work in is to add a row, not to
