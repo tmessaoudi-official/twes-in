@@ -1,0 +1,14 @@
+.git
+var
+docs
+scripts
+.github
+.claude
+**/node_modules
+**/vendor
+**/var
+**/dist
+**/.angular
+**/e2e
+**/test-results
+**/playwright-report

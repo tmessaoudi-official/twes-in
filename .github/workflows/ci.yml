@@ -1,0 +1,105 @@
+# twes-in CI. Four jobs, each with the reason it exists; "done" in docs/SPEC.md § 5 means all four are green.
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # WHY: one copyleft or unlicensed package in a lock file kills the commercial licence, and nothing else
+  # checks it. Also runs the gates' own tests, so a gate that stopped detecting cannot stay green.
+  licences:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          coverage: none
+      - run: bash scripts/gates/tests/dependency-licences.test.sh
+      - run: bash scripts/gates/tests/spdx-headers.test.sh
+      - run: php scripts/gates/dependency-licences.php
+      - run: bash scripts/gates/spdx-headers.sh
+
+  # WHY: the API tier's gate — code style, PHPStan at level max, PHPUnit against a REAL PostgreSQL 18,
+  # because money and tenancy bugs live in SQL and a mocked database cannot show them.
+  api:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18.6-trixie
+        env:
+          POSTGRES_DB: twes_test
+          POSTGRES_USER: twes
+          POSTGRES_PASSWORD: twes
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U twes -d twes_test"
+          --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      DATABASE_URL: "postgresql://twes:twes@127.0.0.1:5433/twes?serverVersion=18&charset=utf8"
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo_pgsql, intl, zip, opcache
+          coverage: none
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer
+          key: composer-${{ hashFiles('api/composer.lock') }}
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: composer gate
+
+  # WHY: lint, formatting, the component tests, and the production build the web image is made from.
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run gate
+
+  # WHY: the parts passing says nothing about the whole. This boots the compose stack (nginx → FrankenPHP →
+  # PostgreSQL) from the committed Dockerfiles and drives a real browser through it.
+  e2e:
+    runs-on: ubuntu-latest
+    needs: [licences, api, web]
+    steps:
+      - uses: actions/checkout@v5
+      - run: docker compose up -d --build --wait
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci --no-audit --no-fund
+        working-directory: web
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npx playwright test
+        working-directory: web
+      - if: failure()
+        run: docker compose logs --no-color
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: web/playwright-report
+          retention-days: 7

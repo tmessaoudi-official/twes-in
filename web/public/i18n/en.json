@@ -1,0 +1,10 @@
+{
+  "app": { "name": "twes-in", "tagline": "Invoicing for small companies" },
+  "health": {
+    "api": "API",
+    "ok": "operational",
+    "degraded": "degraded",
+    "unreachable": "unreachable",
+    "checking": "checking…"
+  }
+}

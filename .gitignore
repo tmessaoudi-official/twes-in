@@ -1,0 +1,32 @@
+# Editors / OS
+/.idea
+/.vscode
+.DS_Store
+
+# Claude Code local state, and transient review output (reports, handoffs) — never committed
+/.claude/settings.local.json
+/.claude/worktrees
+/var
+
+# Reference clones of upstream products never enter this tree (LICENSING.md, CLAUDE.md invariant 1)
+/reference/
+/upstream/
+/vendor-reference/
+
+# Machine-local environment overrides
+.env.local
+.env.*.local
+
+# Playwright output
+/web/test-results/
+/web/playwright-report/
+
+# Secrets: a credential file this list misses is one `git add -A` from being published
+*.pem
+*.p12
+*.pfx
+*.key
+*.jks
+*.keystore
+.npmrc
+service-account*.json

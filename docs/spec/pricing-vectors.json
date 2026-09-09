@@ -1,0 +1,1298 @@
+{
+  "version": 1,
+  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift — producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file ONCE THAT TIER HAS PRICING CODE is a completeness-reviewer P0. The qualifier is a correction, not a loophole: the unqualified sentence declared a P0 against admin/ and mobile/ from the day this file was written, while the build plan rules their consumers to Wave 8 and Wave 11 respectively -- so the fixture contradicted the plan and one of them had to be wrong. Today TWO API-tier suites consume it: PricingVectorsTest (the reference implementation of this file's shape) and DocumentTotalsTest (the document kernel). Both now route their arithmetic through DocumentCalculator -- round 13 found PricingVectorsTest open-coding a SECOND implementation of the composition that grouped on the RAW rate string rather than the canonical percentage, so \"19\" and \"19.0\" gave two groups and 0.004 where the kernel gives one and 0.005. One formula, two answers, same fixture. The obligation attaches the moment a tier computes a price.",
+  "rules": {
+    "net_from_cost": "net = cost * (1 + profit_rate)",
+    "rate_from_net": "profit_rate = (net - cost) / cost, undefined when cost is zero",
+    "vat_from_net": "vat = net * vat_rate  -- the VAT base is ALWAYS the net, never the cost",
+    "gross": "gross = net + vat",
+    "vat_rounding": "VAT is grouped by rate and rounded ONCE per rate group on the summed base -- not per line and then summed. The two orders differ by a millime on some inputs, and the document_totals cases below include one where they diverge specifically so a tier that gets this wrong cannot pass.",
+    "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE — and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate."
+  },
+  "conventions": {
+    "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
+    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact. **This applies to EXPECTED OUTPUT ONLY, and the previous wording said \"as well as to input\", which round 16 found false.** INPUT rates are written the way a human types them -- `19`, `30`, `33.3333` -- deliberately, because a fixture whose inputs are pre-canonicalised cannot prove a tier canonicalises them, and `Rate::fromPercentage()` accepting `19` is part of what these vectors test. **WHICH FIELDS ARE INPUTS IS DERIVED, AND NEVER COUNTED HERE** (round 17's P3-2: the previous wording said \"all 22 input rate values in this file\" and no criterion reproduces 22 -- not the number of such values, not the distinct ones, not the lines matching either field name). The criterion is the consumers' own: a rate value is an INPUT exactly where a consumer passes it to `Rate::fromPercentage()` as an argument, rather than normalising it through the same call in order to COMPARE against it. That is `cases[].profit_rate`, `cases[].vat_rate`, `edit_directions[].profit_rate`, `document_totals[].vat_rate`, `document_totals[].lines[].vat_rate` and `authored_field[].profit_rate`; everything under `expected`, `expected_after` and `vat_by_rate[].rate` is an OUTPUT. **And this convention was FALSE ON THE DAY IT WAS WRITTEN** (round 17's P2-5): the three `per-line-vat-allocation-*` cases already carried `19.0000000000` in `document_totals[].vat_rate` -- an input path, and the only pre-canonicalised inputs in the file -- landing one commit BEFORE the sentence forbidding them, so the file contradicted its own rule from the moment it stated it. They are now `19`, and no expected value moves, because `Rate::fromPercentage()` canonicalises both spellings to the identical rate. The canonical-string PARSE stays exercised regardless, since both consumers put `vat_by_rate[].rate` through `Rate::fromPercentage()` before comparing. It is the EXPECTED side that must be canonical, for the reason round 15 gave: `vat_by_rate[].rate` was written as `19`, so an Angular tier emitting `19` and a Flutter tier emitting `19.0000000000` for the required per-rate VAT table both passed the cross-tier contract. Both consumers normalise the declared value before comparing, so nothing pinned a RENDERING until the fixture-shape assertion added at round 15.",
+    "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties. The negative tie LANDED WITH WAVE 2 (2026-09-05), in `document_totals` under `document_type: credit` -- `credit-note-negative-tie-rounds-away-from-zero` pins Math.round(-0.5) === -0 and Dart's half-away-from-zero directly, and `credit-note-allocation-floors-negative-shares` pins that the per-line allocator FLOORS rather than truncating toward zero. It was owed from 2026-07-30: one case was added at round 11 and REMOVED at round 12 by developer ruling, because the only way to reach a negative tie from a PRODUCT is a profit rate below -100%, which derives a negative selling price -- refused by ProductPricing, since a negative gross on a document line is a CREDIT NOTE rather than a sale. So the tie lives where a negative amount is the legitimate shape: a credit's figures are negative, and the sign is the DOCUMENT's, not a line's.",
+    "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error.",
+    "owed_document_vectors": "OWED, recorded rather than dropped -- the same treatment as the negative-tie gap above. Two document scenarios have NO case here and were disclosed only in a test docblock until round 14, which is not where Wave 8's Angular implementer or Wave 11's Flutter one will look: (1) an EMPTY document, so nothing pins whether a TND invoice with no lines renders 0.000, 0.00 or 0 -- the kernel is correct and the RENDERING is unspecified, which is a cross-tier disagreement waiting to happen; (2) a FIXED CHARGE in a currency other than the document's, which is now refused by DocumentCalculator and by Invoice::withFixedCharge() but has no vector, so the two client tiers have nothing to validate against. Both are Wave 8/11 obligations; a tier that invents its own answer is what these vectors exist to prevent.",
+    "per_line_vat": "PER-LINE VAT IS ALLOCATED, NEVER RECOMPUTED (developer ruling, 2026-07-31: a per-line VAT figure is required). Under per_rate_group the group's VAT is rounded ONCE on the summed base, so `line_net x rate` rounded per line does not add up to it. The rule is LARGEST REMAINDER with ties to the EARLIEST line: floor each line's exact share to the currency's scale, then hand the shortfall out one smallest-unit at a time to the lines with the largest floored-away remainder. Flooring first is load-bearing -- rounding to nearest lets the shares EXCEED the group figure, and there is then no way to take a unit back from a line without picking a victim. **The invariant every tier must satisfy: the per-line column sums EXACTLY to vat. A line column that does not add up to the total printed beneath it is a document a tax authority reads as arithmetically wrong.** Largest-remainder rather than 'put the difference on the last line' because the latter makes DOCUMENT ORDER significant to a tax figure, so re-ordering two lines would change which line is taxed what -- while the total stays right, so no reviewer would see it.",
+    "tax_basis": "EVERY document_totals case DECLARES `tax_basis`: `exclusive` (the authored line figures are net of VAT, `unit_net` / `line_net`) or `inclusive` (they are what the customer pays, `unit_gross` / `line_gross`, and the kernel EXTRACTS the net). Ruled 2026-08-23: inclusive tax extracts PER RATE GROUP, reusing `vat_rounding_point` rather than adding a second axis -- the group's net is gross / (1 + rate) rounded ONCE on the summed gross, and the VAT is the residue; under `per_line` each line extracts on its own. On the half-grid tie the NET is the figure rounded half-up and the VAT absorbs the residue (0.111 TND at 20 % -> 0.093 / 0.018). Both settings are a TENANT setting read server-side, like the rounding point; a client may choose neither. A tier that hard-codes one of them fails half of these vectors -- that is deliberate.",
+    "discounts": "A LINE discount is a RATE (`discount_rate`, written as a user types it) and REDUCES THE VAT BASE: the allowance `line_discount` is the rounded amount printed beside the line, and `line_net` is the amount minus it (ruled 2026-08-23; EN 16931 BT-136 reduces BT-131, which feeds BT-116). A DOCUMENT discount is an AMOUNT (`document_discount`) and is allocated PRO-RATA BY BASE across rate groups by the same largest-remainder rule as per-line VAT, ties to the earliest group (ruled 2026-08-23); `vat_by_rate[].document_discount` is each group's share and `vat_by_rate[].base` is the base AFTER it. Under `per_line` each group's share is split again across its lines by the same rule (`document_discount_by_line`), so every line's VAT is rounded on a DISCOUNTED net and the per-line column still sums exactly to the total. `net_after_document_discount` is EN 16931's BT-109. Under `inclusive` tax both discounts apply to GROSS figures before extraction. Fixed charges are outside every base and untouched by every discount.",
+    "credit_sign": "EVERY document_totals case DECLARES `document_type` (`invoice` or `credit`). On a `credit` every INPUT is authored exactly as on an invoice -- positive quantities, prices, rates, discounts and charges -- and every COMPUTED figure is NEGATIVE: line amounts, discounts, nets, bases, VAT, charges and the total. The sign is a property of the document type (EN 16931 type code 381), not of a line: `DocumentLine` refuses a negative quantity or unit price on every type, so an invoice and a credit note are the same arithmetic with the sign applied once at the entry to the kernel, and a negative tie or a negative allocation share reaches the same rounding and flooring code the positive cases pin."
+  },
+  "cases": [
+    {
+      "id": "tnd-baseline",
+      "why": "The worked example from docs/SPEC.md. The trap it guards: VAT is 24.700, not 19.000 -- the base is the net of 130, never the cost of 100.",
+      "currency": "TND",
+      "cost": "100.000",
+      "profit_rate": "30",
+      "vat_rate": "19",
+      "expected": {
+        "net": "130.000",
+        "vat": "24.700",
+        "gross": "154.700"
+      }
+    },
+    {
+      "id": "eur-two-decimals",
+      "why": "The same arithmetic in a two-decimal currency, so a tier cannot pass by hardcoding three.",
+      "currency": "EUR",
+      "cost": "100.00",
+      "profit_rate": "30",
+      "vat_rate": "20",
+      "expected": {
+        "net": "130.00",
+        "vat": "26.00",
+        "gross": "156.00"
+      }
+    },
+    {
+      "id": "jpy-zero-decimals",
+      "why": "A currency with no minor unit at all. An implementation that formats to 2 or 3 decimals fails here.",
+      "currency": "JPY",
+      "cost": "1000",
+      "profit_rate": "30",
+      "vat_rate": "10",
+      "expected": {
+        "net": "1300",
+        "vat": "130",
+        "gross": "1430"
+      }
+    },
+    {
+      "id": "tnd-repeating-decimal",
+      "why": "A profit rate whose product does not terminate at the currency scale. 100 * 1.333333 = 133.3333 rounds to 133.333, and the VAT is then computed on the ROUNDED net -- pinning the order of operations, not just the formula.",
+      "currency": "TND",
+      "cost": "100.000",
+      "profit_rate": "33.3333",
+      "vat_rate": "19",
+      "expected": {
+        "net": "133.333",
+        "vat": "25.333",
+        "gross": "158.666"
+      }
+    },
+    {
+      "id": "tnd-exact-rounding-tie",
+      "why": "THE most valuable vector in this file. 0.010 * 0.05 = 0.0005 is an exact tie one digit below TND's scale, so it is decided purely by the rounding mode. half_up gives 0.001; truncation and half_even both give 0.000.",
+      "currency": "TND",
+      "cost": "0.010",
+      "profit_rate": "0",
+      "vat_rate": "5",
+      "expected": {
+        "net": "0.010",
+        "vat": "0.001",
+        "gross": "0.011"
+      }
+    },
+    {
+      "id": "tnd-zero-cost",
+      "why": "A free line. Everything is zero and nothing divides by zero -- this direction is safe; the reverse direction is not (see edit_directions).",
+      "currency": "TND",
+      "cost": "0.000",
+      "profit_rate": "30",
+      "vat_rate": "19",
+      "expected": {
+        "net": "0.000",
+        "vat": "0.000",
+        "gross": "0.000"
+      }
+    },
+    {
+      "id": "tnd-negative-profit-rate",
+      "why": "Selling below cost is real -- clearance, a loss leader. A negative rate must compute, never be clamped to zero.",
+      "currency": "TND",
+      "cost": "100.000",
+      "profit_rate": "-20",
+      "vat_rate": "19",
+      "expected": {
+        "net": "80.000",
+        "vat": "15.200",
+        "gross": "95.200"
+      }
+    },
+    {
+      "id": "tnd-zero-vat-exempt",
+      "why": "A zero-rated line. Distinct in law from an exempt one, and both must produce 0.000 VAT rather than a null.",
+      "currency": "TND",
+      "cost": "100.000",
+      "profit_rate": "30",
+      "vat_rate": "0",
+      "expected": {
+        "net": "130.000",
+        "vat": "0.000",
+        "gross": "130.000"
+      }
+    },
+    {
+      "id": "tnd-millime-precision",
+      "why": "An amount whose third decimal is significant. Any tier that rounds to 2 decimals loses a millime here and the invoice total stops matching the sum of its lines.",
+      "currency": "TND",
+      "cost": "12.345",
+      "profit_rate": "30",
+      "vat_rate": "19",
+      "expected": {
+        "net": "16.049",
+        "vat": "3.049",
+        "gross": "19.098"
+      }
+    },
+    {
+      "id": "clf-four-decimals",
+      "why": "A FOUR-decimal currency, which no case carried. The set ran 0 (JPY), 2 (EUR) and 3 (TND), so an implementation hardcoding 'at most three' -- the natural over-correction to TND's three -- passed everything. CLF is the Chilean unidad de fomento and is in Currency's own table. The net is also a positive tie at the fourth decimal: 1.2345 x 1.3 = 1.60485 exactly, so half_up gives 1.6049 and a truncating implementation gives 1.6048.",
+      "currency": "CLF",
+      "cost": "1.2345",
+      "profit_rate": "30",
+      "vat_rate": "19",
+      "expected": {
+        "net": "1.6049",
+        "vat": "0.3049",
+        "gross": "1.9098"
+      }
+    }
+  ],
+  "edit_directions": [
+    {
+      "id": "edit-profit-rate-recomputes-net",
+      "why": "The default direction. Editing the rate moves the price.",
+      "edited_field": "profit_rate",
+      "currency": "TND",
+      "cost": "100.000",
+      "profit_rate": "30",
+      "expected": {
+        "net_price": "130.000"
+      }
+    },
+    {
+      "id": "edit-net-recomputes-rate",
+      "why": "Typing a price backs out the rate, so the displayed rate can never lie about the price.",
+      "edited_field": "net_price",
+      "currency": "TND",
+      "cost": "100.000",
+      "net_price": "140.000",
+      "expected": {
+        "profit_rate": "40.0000000000"
+      }
+    },
+    {
+      "id": "edit-net-lower-recomputes-rate",
+      "why": "The sequence from the spec: after typing 140 the user types a rate of 25, and the price follows.",
+      "edited_field": "net_price",
+      "currency": "TND",
+      "cost": "100.000",
+      "net_price": "125.000",
+      "expected": {
+        "profit_rate": "25.0000000000"
+      }
+    },
+    {
+      "id": "edit-cost-preserves-rate",
+      "why": "RULED 2026-07-29: a cost rise moves the PRICE and preserves the RATE. Holding the price instead would let the rate silently absorb the increase and erode the margin -- the exact failure this ordering prevents.",
+      "edited_field": "cost",
+      "currency": "TND",
+      "cost": "110.000",
+      "profit_rate": "30",
+      "expected": {
+        "net_price": "143.000"
+      }
+    },
+    {
+      "id": "edit-net-below-cost-gives-negative-rate",
+      "why": "Surfaced visibly rather than clamped.",
+      "edited_field": "net_price",
+      "currency": "TND",
+      "cost": "100.000",
+      "net_price": "80.000",
+      "expected": {
+        "profit_rate": "-20.0000000000"
+      }
+    },
+    {
+      "id": "edit-net-equal-to-cost-gives-zero-rate",
+      "why": "Selling at cost. A legitimate 0%, distinct from undefined.",
+      "edited_field": "net_price",
+      "currency": "TND",
+      "cost": "100.000",
+      "net_price": "100.000",
+      "expected": {
+        "profit_rate": "0.0000000000"
+      }
+    },
+    {
+      "id": "edit-net-with-zero-cost-leaves-rate-undefined",
+      "why": "Division by zero. The rate field shows empty -- never 0, which would claim the product is sold at cost, and never an error, which would block a legitimate edit.",
+      "edited_field": "net_price",
+      "currency": "TND",
+      "cost": "0.000",
+      "net_price": "50.000",
+      "expected": {
+        "profit_rate": null
+      }
+    },
+    {
+      "id": "edit-net-produces-repeating-rate",
+      "why": "Pins the RATE's own rounding, which is separate from the amount's. 7/3 does not terminate, so at 12 fraction decimals it is 2.333333333333 and the percentage string is 233.3333333333. This is the case that proves the rate has its own scale and its own rounding, independent of any currency.",
+      "edited_field": "net_price",
+      "currency": "TND",
+      "cost": "3.000",
+      "net_price": "10.000",
+      "expected": {
+        "profit_rate": "233.3333333333"
+      }
+    }
+  ],
+  "document_totals": [
+    {
+      "id": "consolidated-invoice-with-tunisian-stamp-duty",
+      "why": "The worked delivery-note consolidation from the spec, end to end. The stamp duty of 0.100 TND is a fixed document-scope charge, not a VAT rate and not a special case in code -- and it is unrepresentable in a two-decimal currency.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "12.000",
+          "line_net": "120.000"
+        },
+        {
+          "quantity": "5",
+          "unit_net": "12.500",
+          "line_net": "62.500"
+        },
+        {
+          "quantity": "2",
+          "unit_net": "85.000",
+          "line_net": "170.000"
+        }
+      ],
+      "subtotal_net": "352.500",
+      "vat_rate": "19",
+      "vat": "66.975",
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "419.575"
+      }
+    },
+    {
+      "id": "vat-rounding-order-diverges",
+      "why": "THE case that pins the rounding ORDER rather than the formula. Rounding VAT once on the summed base gives 0.005; rounding per line and summing gives 0.004. The shipped consolidated-invoice case cannot tell these apart because all its lines share one rate, so a tier that rounds per line passed it with a wrong document total. This one fails.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        }
+      ],
+      "subtotal_net": "0.026",
+      "vat_rate": "19",
+      "vat": "0.005",
+      "vat_if_per_line": "0.004",
+      "vat_if_per_line_why": "NOT a wrong answer -- it is this document's VAT under the OTHER ruled rounding point, which a tenant setting selects. This column was named `..._which_is_WRONG` until round 5 (R5K-3), so the cross-tier arithmetic SSOT asserted that a setting the domain implements produces a wrong figure. What it really pins is that the two points DIVERGE on these lines, which is what makes this case able to tell a tier that rounds at the wrong point from one that does not.",
+      "vat_by_line": [
+        "0.003",
+        "0.002"
+      ],
+      "vat_by_line_why": "The ALLOCATED column for the same lines under `per_rate_group`: floor each line's exact share, then hand the shortfall out one smallest-unit at a time to the largest floored-away remainder, ties to the earliest line. It sums EXACTLY to `vat`, which is the invariant a tax authority reads. Its mirror case shows what the same lines produce under `per_line`.",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.031"
+      }
+    },
+    {
+      "id": "multi-rate-vat-breakdown-with-stamp-duty",
+      "why": "Lines at different VAT rates, which is the normal Tunisian and French case and which the single-rate cases could not exercise at all. Each rate group is summed first, then rounded once. Also pins that a fixed document charge is NOT part of any VAT base.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit_net": "10.000",
+          "line_net": "30.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "2",
+          "unit_net": "7.500",
+          "line_net": "15.000",
+          "vat_rate": "7"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.333",
+          "line_net": "1.333",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "46.333",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "31.333",
+          "vat": "5.953"
+        },
+        {
+          "rate": "7.0000000000",
+          "base": "15.000",
+          "vat": "1.050"
+        }
+      ],
+      "vat": "7.003",
+      "vat_by_line_why": "THE INTERLEAVED CASE, and the only one that pins DOCUMENT-ORDER correspondence. Its rates run 19, 7, 19, so the rate groups are visited in an order that is not the line order: a tier that returns shares in group order rather than line order produces 5.700, 0.253, 1.050 -- a column that still sums to the same total while telling line 2 it owes line 3's tax. The three single-rate allocation cases cannot detect that, and round 17 found the guard against it deletable with the whole suite green.",
+      "vat_by_line": [
+        "5.700",
+        "1.050",
+        "0.253"
+      ],
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "53.436"
+      }
+    },
+    {
+      "id": "fractional-quantity-pins-line-net-rounding",
+      "why": "THE case that pins the line-net rounding ORDER, and it was absent: every other document line has an EXACT product (10 x 12.000, 1 x 0.013, 3 x 10.000 ...) and no quantity was fractional, so nothing distinguished sum-of-ROUNDED-line-nets from rounded-once-on-the-exact-sum. A mutant computing the subtotal as round(sum(exact)) passed the whole suite. Here 0.5 x 0.003 = 0.0015 exactly, a tie at the millime, so each line rounds to 0.002 and the subtotal is 0.004 -- while rounding the exact sum (0.003) once gives 0.003. Rounding per line is CORRECT and required: DocumentLine rounds each line because the line net is printed on the document and summed into the printed subtotal, and printed lines that do not add up to the printed subtotal are an EN 16931 validation failure rather than a cosmetic complaint. Fractional quantities are also the ordinary case for services -- 2.5 hours, 0.750 kg -- so this is the default shape rather than an edge case.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "0.5",
+          "unit_net": "0.003",
+          "line_net": "0.002"
+        },
+        {
+          "quantity": "0.5",
+          "unit_net": "0.003",
+          "line_net": "0.002"
+        }
+      ],
+      "subtotal_net": "0.004",
+      "subtotal_if_rounded_once_which_is_WRONG": "0.003",
+      "vat_rate": "19",
+      "vat": "0.001",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.005"
+      }
+    },
+    {
+      "id": "zero-decimal-currency-document",
+      "why": "A WHOLE DOCUMENT in a zero-decimal currency, and it was absent: every document_totals case was TND, so a kernel hardcoding TND's three decimals passed all of them. Round 14 proved it -- substituting the literal 3 for the currency's own scale survived the entire suite. JPY has scale 0, so 334 x 10% = 33.4 must round to 33, not to 33.400.",
+      "currency": "JPY",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "333",
+          "line_net": "333"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1",
+          "line_net": "1"
+        }
+      ],
+      "subtotal_net": "334",
+      "vat_rate": "10",
+      "vat": "33",
+      "fixed_charges": [],
+      "expected": {
+        "total": "367"
+      }
+    },
+    {
+      "id": "two-decimal-currency-document-with-a-vat-tie",
+      "why": "The ordinary two-decimal case, with a rounding decision so it is not merely exact arithmetic in a different scale. 59.98 x 20% = 11.996, which rounds HALF-UP to 12.00 at EUR's scale. A kernel that assumed three decimals would carry 11.996 into the total and produce 71.976, which is not a payable amount in euros.",
+      "currency": "EUR",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit_net": "19.99",
+          "line_net": "59.97"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.01",
+          "line_net": "0.01"
+        }
+      ],
+      "subtotal_net": "59.98",
+      "vat_rate": "20",
+      "vat": "12.00",
+      "fixed_charges": [],
+      "expected": {
+        "total": "71.98"
+      }
+    },
+    {
+      "id": "four-decimal-currency-document",
+      "why": "The OTHER side of the same hazard: a kernel capped at three decimals truncates here rather than growing. CLF has scale 4, and 1.2346 x 19% = 0.234574 rounds to 0.2346 -- a figure a three-decimal assumption cannot even represent. Three decimals is TND's DEFAULT, never the maximum a tier may assume, which is the argument the `cases` section already makes and this section did not.",
+      "currency": "CLF",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "1.2345",
+          "line_net": "1.2345"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.0001",
+          "line_net": "0.0001"
+        }
+      ],
+      "subtotal_net": "1.2346",
+      "vat_rate": "19",
+      "vat": "0.2346",
+      "fixed_charges": [],
+      "expected": {
+        "total": "1.4692"
+      }
+    },
+    {
+      "id": "per-line-vat-allocation-equal-remainders",
+      "why": "The base case for per-line VAT, and the one that shows why it must be ALLOCATED: the group VAT is 0.005 while each line's own rounded VAT is 0.002, so recomputing per line gives a column summing to 0.004 under a total of 0.005. Equal remainders, so this pins the TIE-BREAK (earliest line) and nothing else.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        }
+      ],
+      "subtotal_net": "0.026",
+      "vat_rate": "19",
+      "vat": "0.005",
+      "vat_by_line": [
+        "0.003",
+        "0.002"
+      ],
+      "vat_by_line_if_recomputed_which_is_WRONG": [
+        "0.002",
+        "0.002"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.031"
+      }
+    },
+    {
+      "id": "per-line-vat-allocation-unequal-remainders",
+      "why": "Unequal remainders, so this pins the DIRECTION of the comparison: 0.013 floors away 0.00047 and 0.021 floors away 0.00099, so the second line has the stronger claim to the odd millime. With equal remainders a reversed comparison is invisible.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.021",
+          "line_net": "0.021"
+        }
+      ],
+      "subtotal_net": "0.034",
+      "vat_rate": "19",
+      "vat": "0.006",
+      "vat_by_line": [
+        "0.002",
+        "0.004"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.040"
+      }
+    },
+    {
+      "id": "per-line-vat-allocation-floors-before-distributing",
+      "why": "Three lines whose per-line rounding OVERSHOOTS: each exact share is 0.00152, which rounds to 0.002 and sums to 0.006 against a group VAT of 0.005. Pins that shares are FLOORED before the remainder is handed out -- rounding to nearest would exceed the group figure, and taking a unit back requires picking a victim.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.008",
+          "line_net": "0.008"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.008",
+          "line_net": "0.008"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.008",
+          "line_net": "0.008"
+        }
+      ],
+      "subtotal_net": "0.024",
+      "vat_rate": "19",
+      "vat": "0.005",
+      "vat_by_line": [
+        "0.002",
+        "0.002",
+        "0.001"
+      ],
+      "vat_by_line_if_rounded_to_nearest_which_is_WRONG": [
+        "0.002",
+        "0.002",
+        "0.002"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.029"
+      }
+    },
+    {
+      "id": "vat-rounding-order-diverges-per-line",
+      "why": "THE SAME LINES under the OTHER ruled rounding point, added at round 5 (R5K-3). `per_rate_group` rounds the summed base once and gives 0.005; `per_line` rounds each line and sums, giving 0.004. Both are correct -- for their own setting -- and a tier that implements only one of them passes half of this fixture while declaring the wrong tax for every tenant on the other. Before this case existed, every `document_totals` vector was computed under `per_rate_group` and none of them said so, so a tier had nothing to tell it which arithmetic it was being measured against.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_line",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "0.013"
+        }
+      ],
+      "subtotal_net": "0.026",
+      "vat_rate": "19",
+      "vat": "0.004",
+      "vat_if_per_rate_group": "0.005",
+      "vat_if_per_rate_group_why": "The companion figure, for the same reason its mirror carries one: these lines are chosen precisely because the two points diverge on them.",
+      "vat_by_line": [
+        "0.002",
+        "0.002"
+      ],
+      "vat_by_line_why": "UNDER `per_line` THE COLUMN IS NOT ALLOCATED -- it IS the rounded per-line figures, and it sums to `vat` by construction rather than by largest-remainder distribution. That is the whole difference between the two points on the column a customer actually reads, and it had no vector at all until round 5 (R5K-3): every `vat_by_line` in this file was an allocation under `per_rate_group`, so a tier could implement allocation alone and pin nothing about the other ruled setting.",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.030"
+      }
+    },
+    {
+      "id": "line-discount-reduces-the-vat-base",
+      "why": "THE DEVELOPER'S OWN WORKED FIGURE (ruled 2026-08-23 10:30, § 3 'Tax, discounts and rounding'): qty 10 x 15.000 TND = 150.000, a 10 % LINE discount -> line net 135.000, VAT at 19 % = 25.650, total 160.650. The rejected reading charges VAT on the undiscounted 150.000 and remits 2.850 TND more tax on ONE line -- tax on money never invoiced. EN 16931 models it this way: BT-136 (the line allowance) reduces BT-131 (the line net amount), and BT-131 is what feeds the VAT category base BT-116. The line discount is a RATE, written the way a user types it (`10`), and `line_discount` is the rounded allowance amount that is PRINTED beside the line -- it is subtracted, never re-derived, so the printed column adds up.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "15.000",
+          "discount_rate": "10",
+          "line_discount": "15.000",
+          "line_net": "135.000",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "135.000",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "135.000",
+          "vat": "25.650"
+        }
+      ],
+      "vat": "25.650",
+      "vat_by_line": [
+        "25.650"
+      ],
+      "vat_if_charged_on_the_undiscounted_amount_which_is_WRONG": "28.500",
+      "fixed_charges": [],
+      "expected": {
+        "total": "160.650"
+      }
+    },
+    {
+      "id": "line-discount-under-per-line-rounding",
+      "why": "A line discount is applied BEFORE the rounding point sees the line, under both points -- this is the per_line twin, and it carries fractional products so the ORDER shows: 3 x 0.133 = 0.399, 15 % of it is 0.05985 -> 0.060 (the allowance is rounded on its own, because it is printed), net 0.339; 1 x 0.010 at 50 % -> allowance 0.005, net 0.005. Per-line VAT is then rounded on each DISCOUNTED net: 0.06441 -> 0.064 and 0.00095 -> 0.001. A tier that discounts the unit price before multiplying, or that keeps the allowance exact and rounds only the net, produces different millimes here.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_line",
+      "lines": [
+        {
+          "quantity": "3",
+          "unit_net": "0.133",
+          "discount_rate": "15",
+          "line_discount": "0.060",
+          "line_net": "0.339",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.010",
+          "discount_rate": "50",
+          "line_discount": "0.005",
+          "line_net": "0.005",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "0.344",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "0.344",
+          "vat": "0.065"
+        }
+      ],
+      "vat": "0.065",
+      "vat_by_line": [
+        "0.064",
+        "0.001"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.409"
+      }
+    },
+    {
+      "id": "document-discount-allocated-pro-rata-by-base",
+      "why": "THE DEVELOPER'S OWN WORKED FIGURE (ruled 2026-08-23 10:30): line 1 100.000 at 19 %, line 2 100.000 at 7 %, a DOCUMENT discount of 30.000 -> 15.000 off each rate group, VAT 16.150 + 5.950 = 22.100, grand total 192.100. The rejected reading consumes the discount against the highest rate first (VAT 20.300, total 190.300 -- 1.800 TND less VAT). The allocation REUSES the largest-remainder mechanism already ruled for per-line VAT rather than introducing a second rule, so the codebase carries ONE. A document discount is an AMOUNT, not a rate: it is what a user types in the discount box at the bottom of the document. `vat_by_rate[].document_discount` is each group's share and `vat_by_rate[].base` is the base AFTER it; `net_after_document_discount` is EN 16931's BT-109, the taxable amount.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "100.000",
+          "line_net": "100.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "100.000",
+          "line_net": "100.000",
+          "vat_rate": "7"
+        }
+      ],
+      "subtotal_net": "200.000",
+      "document_discount": "30.000",
+      "document_discount_by_line": [
+        "15.000",
+        "15.000"
+      ],
+      "net_after_document_discount": "170.000",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "85.000",
+          "document_discount": "15.000",
+          "vat": "16.150"
+        },
+        {
+          "rate": "7.0000000000",
+          "base": "85.000",
+          "document_discount": "15.000",
+          "vat": "5.950"
+        }
+      ],
+      "vat": "22.100",
+      "vat_by_line": [
+        "16.150",
+        "5.950"
+      ],
+      "vat_if_consumed_against_the_highest_rate_first_which_is_WRONG": "20.300",
+      "fixed_charges": [],
+      "expected": {
+        "total": "192.100"
+      }
+    },
+    {
+      "id": "document-discount-allocation-with-a-remainder",
+      "why": "Pro-rata by base leaves a millime nobody owns, and the rule for it is the SAME largest-remainder rule as per-line VAT: bases 10.000 and 20.000 against a 0.100 discount give exact shares 0.0333.. and 0.0666.., floored to 0.033 and 0.066, and the unallocated millime goes to the group with the larger floored-away remainder (0.0006 > 0.0003) -> 0.033 / 0.067. Floors first, so the shares can never EXCEED the discount. The stamp duty is untouched by any discount: a fixed charge is neither a VAT base nor a discountable amount, so it is added after everything else.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.000",
+          "line_net": "10.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "2",
+          "unit_net": "10.000",
+          "line_net": "20.000",
+          "vat_rate": "7"
+        }
+      ],
+      "subtotal_net": "30.000",
+      "document_discount": "0.100",
+      "document_discount_by_line": [
+        "0.033",
+        "0.067"
+      ],
+      "net_after_document_discount": "29.900",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "9.967",
+          "document_discount": "0.033",
+          "vat": "1.894"
+        },
+        {
+          "rate": "7.0000000000",
+          "base": "19.933",
+          "document_discount": "0.067",
+          "vat": "1.395"
+        }
+      ],
+      "vat": "3.289",
+      "vat_by_line": [
+        "1.894",
+        "1.395"
+      ],
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "33.289"
+      }
+    },
+    {
+      "id": "document-discount-reaches-the-lines-under-per-line-rounding",
+      "why": "Under per_line the VAT is rounded per LINE, so a document discount that stopped at the rate group would leave every line's VAT computed on an undiscounted net and the per-line column would no longer sum to a VAT total computed on the discounted base. So the allocation is TWO-LEVEL and both levels are the one ruled mechanism: the discount is split across rate groups pro-rata by base (ruled), then each group's share is split across its own lines pro-rata by line net, ties to the earliest line. 0.100 against bases 30.000 (19 %) and 5.000 (7 %) -> 0.086 / 0.014; the 0.086 then splits across lines of 10.000 and 20.000 -> 0.029 / 0.057. Each line's VAT is rounded on ITS discounted net: (10.000 - 0.029) x 19 % = 1.89449 -> 1.894. `document_discount_by_line` is that per-line share; the printed `line_net` stays the line's own figure, because the discount is a document-level line on the document, not an edit to what the customer ordered.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_line",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.000",
+          "line_net": "10.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "20.000",
+          "line_net": "20.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "5.000",
+          "line_net": "5.000",
+          "vat_rate": "7"
+        }
+      ],
+      "subtotal_net": "35.000",
+      "document_discount": "0.100",
+      "document_discount_by_line": [
+        "0.029",
+        "0.057",
+        "0.014"
+      ],
+      "net_after_document_discount": "34.900",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "29.914",
+          "document_discount": "0.086",
+          "vat": "5.683"
+        },
+        {
+          "rate": "7.0000000000",
+          "base": "4.986",
+          "document_discount": "0.014",
+          "vat": "0.349"
+        }
+      ],
+      "vat": "6.032",
+      "vat_by_line": [
+        "1.894",
+        "3.789",
+        "0.349"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "40.932"
+      }
+    },
+    {
+      "id": "inclusive-tax-extracts-per-rate-group",
+      "why": "THE DEVELOPER'S OWN VERIFIED DIVERGENCE (ruled 2026-08-23 10:30): tax-INCLUSIVE lines of 22.531 and 113.678 TND at 19 % give per-rate-group VAT 21.748 and per-line VAT 21.747 -- one millime, on the SAME axis `VatRoundingPoint` already parameterises for exclusive tax. That is what keeps inclusive-versus-exclusive ONE implementation with a parameter rather than two class hierarchies. Under `inclusive` the authored figures are `unit_gross` / `line_gross` (what the customer pays), and the kernel EXTRACTS: the group's net is gross / (1 + rate) rounded once on the summed gross (136.209 / 1.19 = 114.4613.. -> 114.461), and the VAT is what remains (21.748) -- the NET is the rounded figure and the VAT absorbs the residue, mirroring the exclusive path where the net is the authored figure. Per-line VAT is then ALLOCATED from the group VAT exactly as under exclusive tax (largest remainder on the exact shares gross x rate / (1 + rate)); `line_net` is each line's gross minus its VAT share, so the printed columns add up in both directions. The total EQUALS the gross subtotal: inclusive means the customer's figure does not move.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "22.531",
+          "line_gross": "22.531",
+          "line_net": "18.933",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_gross": "113.678",
+          "line_gross": "113.678",
+          "line_net": "95.528",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "114.461",
+      "subtotal_gross": "136.209",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "114.461",
+          "vat": "21.748"
+        }
+      ],
+      "vat": "21.748",
+      "vat_by_line": [
+        "3.598",
+        "18.150"
+      ],
+      "vat_if_per_line": "21.747",
+      "fixed_charges": [],
+      "expected": {
+        "total": "136.209"
+      }
+    },
+    {
+      "id": "inclusive-tax-extracts-per-line",
+      "why": "The per_line twin of the case above, from the same ruling: each line's net is extracted and rounded on its own (22.531 / 1.19 = 18.9336.. -> 18.934; 113.678 / 1.19 = 95.5277.. -> 95.528), each line's VAT is its gross minus that net (3.597 and 18.150), and the group VAT is their SUM -- 21.747, a millime under the per-rate-group figure. Both are correct for their own setting, which a tenant selects; a tier reading these vectors must read `vat_rounding_point` rather than assume one, exactly as for exclusive tax.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_line",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "22.531",
+          "line_gross": "22.531",
+          "line_net": "18.934",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_gross": "113.678",
+          "line_gross": "113.678",
+          "line_net": "95.528",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "114.462",
+      "subtotal_gross": "136.209",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "114.462",
+          "vat": "21.747"
+        }
+      ],
+      "vat": "21.747",
+      "vat_by_line": [
+        "3.597",
+        "18.150"
+      ],
+      "vat_if_per_rate_group": "21.748",
+      "fixed_charges": [],
+      "expected": {
+        "total": "136.209"
+      }
+    },
+    {
+      "id": "inclusive-tax-half-grid-tie-rounds-the-net",
+      "why": "THE HALF-GRID TIE, ruled 2026-08-23 11:15: 0.111 TND inclusive of 20 % is a net of exactly 0.0925, which sits on the half-grid of a three-decimal currency. The NET is rounded half-up (0.093) and the VAT absorbs the residue (0.018). Rounding the VAT first instead gives 0.0185 -> 0.019 and a net of 0.092 -- a different declared tax on the same customer figure. The rate is 20 % because no Tunisian rate reaches a tie on this grid; the case binds from Wave 5 (France) and is pinned now so no tier has to guess when it does. A JavaScript or Dart tier that rounds the VAT, or that extracts with floating point (0.111 / 1.2 is 0.09249999... in IEEE-754 and rounds DOWN to 0.092), produces the wrong figure here.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "0.111",
+          "line_gross": "0.111",
+          "line_net": "0.093",
+          "vat_rate": "20"
+        }
+      ],
+      "subtotal_net": "0.093",
+      "subtotal_gross": "0.111",
+      "vat_by_rate": [
+        {
+          "rate": "20.0000000000",
+          "base": "0.093",
+          "vat": "0.018"
+        }
+      ],
+      "vat": "0.018",
+      "vat_by_line": [
+        "0.018"
+      ],
+      "net_if_the_vat_were_rounded_first_which_is_WRONG": "0.092",
+      "vat_if_the_vat_were_rounded_first_which_is_WRONG": "0.019",
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.111"
+      }
+    },
+    {
+      "id": "inclusive-tax-with-a-line-discount-and-two-rates",
+      "why": "The combination: inclusive tax, a 10 % line discount, two rate groups and a stamp duty. The line discount applies to the GROSS before extraction (150.000 - 15.000 = 135.000 gross at 19 % -> net 113.445, VAT 21.555), the 7 % group extracts on its own summed gross (53.500 -> 50.000 / 3.500), and the stamp duty is added last, outside every base and untouched by every discount. The total is the discounted gross subtotal plus the charge -- 188.500 + 0.100 -- because under inclusive tax the customer's figure is the authored one. A tier that discounts the extracted NET instead of the gross gets a different VAT here.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "150.000",
+          "discount_rate": "10",
+          "line_discount": "15.000",
+          "line_gross": "135.000",
+          "line_net": "113.445",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "2",
+          "unit_gross": "26.750",
+          "line_gross": "53.500",
+          "line_net": "50.000",
+          "vat_rate": "7"
+        }
+      ],
+      "subtotal_net": "163.445",
+      "subtotal_gross": "188.500",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "113.445",
+          "vat": "21.555"
+        },
+        {
+          "rate": "7.0000000000",
+          "base": "50.000",
+          "vat": "3.500"
+        }
+      ],
+      "vat": "25.055",
+      "vat_by_line": [
+        "21.555",
+        "3.500"
+      ],
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "188.600"
+      }
+    },
+    {
+      "id": "inclusive-tax-two-decimal-currency-document-discount",
+      "why": "A DOCUMENT discount under INCLUSIVE tax in a two-decimal currency: the 5.00 EUR discount is allocated pro-rata by GROSS base (119.99 / 10.50 -> exact 4.5977.. / 0.4023.., floors 4.59 / 0.40, the cent to the larger remainder -> 4.60 / 0.40), each group then extracts on its discounted gross (115.39 / 1.20 = 96.158.. -> 96.16, VAT 19.23; 10.10 / 1.055 = 9.5734.. -> 9.57, VAT 0.53), and the total is the gross subtotal minus the discount: 125.49. Under inclusive tax the document discount reduces what the customer PAYS, so it is applied to gross figures, never to the extracted net -- a tier that allocates by net and then extracts arrives at a different cent.",
+      "currency": "EUR",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "119.99",
+          "line_gross": "119.99",
+          "line_net": "96.16",
+          "vat_rate": "20"
+        },
+        {
+          "quantity": "1",
+          "unit_gross": "10.50",
+          "line_gross": "10.50",
+          "line_net": "9.57",
+          "vat_rate": "5.5"
+        }
+      ],
+      "subtotal_net": "105.73",
+      "subtotal_gross": "130.49",
+      "document_discount": "5.00",
+      "document_discount_by_line": [
+        "4.60",
+        "0.40"
+      ],
+      "net_after_document_discount": "105.73",
+      "vat_by_rate": [
+        {
+          "rate": "20.0000000000",
+          "base": "96.16",
+          "document_discount": "4.60",
+          "vat": "19.23"
+        },
+        {
+          "rate": "5.5000000000",
+          "base": "9.57",
+          "document_discount": "0.40",
+          "vat": "0.53"
+        }
+      ],
+      "vat": "19.76",
+      "vat_by_line": [
+        "19.23",
+        "0.53"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "125.49"
+      }
+    },
+    {
+      "id": "credit-note-negative-tie-rounds-away-from-zero",
+      "why": "THE NEGATIVE-TIE VECTOR WAVE 2 OWED (developer ruling 2026-07-30; § 8 'Wave 2 obligations already ruled'), and the reason a credit note is where it lives: a CREDIT's figures are NEGATIVE -- the lines are authored positive, exactly as on an invoice, and the document's type carries the sign into every computed figure, so the sign flows through the same kernel rather than through a second one. One line of 0.001 TND at 50 % gives a base of -0.001 and an exact VAT of -0.0005: a tie, on the negative side. Half-up is AWAY FROM ZERO, so the VAT is -0.001 and the total -0.002. JavaScript's Math.round(-0.5) is -0 and Dart's num.round() is half-away-from-zero on the value but not after a floating-point extraction, so a tier built on either produces 0.000 here and passes every positive case in this file. This is the cross-tier discriminator `conventions.rounding` names, and it was absent from the file for a year.",
+      "currency": "TND",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.001",
+          "line_net": "-0.001",
+          "vat_rate": "50"
+        }
+      ],
+      "subtotal_net": "-0.001",
+      "vat_by_rate": [
+        {
+          "rate": "50.0000000000",
+          "base": "-0.001",
+          "vat": "-0.001"
+        }
+      ],
+      "vat": "-0.001",
+      "vat_by_line": [
+        "-0.001"
+      ],
+      "vat_if_rounded_toward_zero_which_is_WRONG": "0.000",
+      "fixed_charges": [],
+      "expected": {
+        "total": "-0.002"
+      }
+    },
+    {
+      "id": "credit-note-allocation-floors-negative-shares",
+      "why": "The allocator's FLOOR is load-bearing on a credit, and this is the case § 3 names ('truncation toward zero is not a floor for a negative amount, and Wave 2's credit note reaches that path'). Two lines of 0.013 TND at 19 % on a CREDIT: base -0.026, group VAT -0.00494 -> -0.005. Each line's exact share is -0.00247; FLOOR gives -0.003 each (sum -0.006), the shortfall is +0.001, and the millime goes to the line with the larger floored-away remainder -- a tie (0.00053 each), so the EARLIEST line: -0.002 / -0.003, summing exactly to -0.005. Truncation toward zero gives -0.002 each, a sum of -0.004 that OVERSHOOTS the group VAT with no unit left to take back -- the broken invariant a `max(0, ...)` clamp used to hide. Same ruled mechanism as the positive allocation cases, on the other side of zero.",
+      "currency": "TND",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "-0.013",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "0.013",
+          "line_net": "-0.013",
+          "vat_rate": "19"
+        }
+      ],
+      "subtotal_net": "-0.026",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "-0.026",
+          "vat": "-0.005"
+        }
+      ],
+      "vat": "-0.005",
+      "vat_by_line": [
+        "-0.002",
+        "-0.003"
+      ],
+      "vat_by_line_if_truncated_toward_zero_which_is_WRONG": [
+        "-0.002",
+        "-0.002"
+      ],
+      "fixed_charges": [],
+      "expected": {
+        "total": "-0.031"
+      }
+    },
+    {
+      "id": "credit-note-with-stamp-duty-refunded",
+      "why": "An ordinary credit note: two rate groups and a refunded stamp duty, every figure negative and every rule the invoice cases pin applied unchanged -- grouping by canonical rate, one rounding per group, the charge outside every base. The lines are authored POSITIVE (2 x 85.000, 1 x 12.500), because a credit note is the mirror of an invoice rather than an invoice with negative lines: EN 16931 gives it its own type code (381), and `DocumentLine` refuses a negative quantity or price on every document type for that reason. The sign belongs to the document.",
+      "currency": "TND",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [
+        {
+          "quantity": "2",
+          "unit_net": "85.000",
+          "line_net": "-170.000",
+          "vat_rate": "19"
+        },
+        {
+          "quantity": "1",
+          "unit_net": "12.500",
+          "line_net": "-12.500",
+          "vat_rate": "7"
+        }
+      ],
+      "subtotal_net": "-182.500",
+      "vat_by_rate": [
+        {
+          "rate": "19.0000000000",
+          "base": "-170.000",
+          "vat": "-32.300"
+        },
+        {
+          "rate": "7.0000000000",
+          "base": "-12.500",
+          "vat": "-0.875"
+        }
+      ],
+      "vat": "-33.175",
+      "vat_by_line": [
+        "-32.300",
+        "-0.875"
+      ],
+      "fixed_charges": [
+        {
+          "label": "stamp_duty",
+          "amount": "0.100"
+        }
+      ],
+      "expected": {
+        "total": "-215.775"
+      }
+    }
+  ],
+  "schema": "No JSON Schema yet — owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",
+  "authored_field": [
+    {
+      "id": "authored-net-survives-a-cost-change",
+      "why": "THE case that motivated storing the authored field. One millime of profit on a 10,000 TND product. With a 6-decimal rate this displayed 0.0000% and the millime vanished on the next cost change. The typed price is never rebuilt from a derived rate, and 12 decimals hold the implied rate exactly, so it survives.",
+      "currency": "TND",
+      "authored_by": "net_price",
+      "cost": "10000.000",
+      "net_price": "10000.001",
+      "expected": {
+        "profit_rate": "0.0000100000"
+      },
+      "then_cost_becomes": "10001.000",
+      "expected_after": {
+        "net_price": "10001.001",
+        "authored_by": "profit_rate"
+      }
+    },
+    {
+      "id": "authored-net-large-amount-survives-a-cost-change",
+      "why": "The same defect at scale: 0.500 TND of profit on a million. A 6-decimal rate produced 1100001.100 where the exact answer is 1100000.550 — 0.550 TND out, against the customer.",
+      "currency": "TND",
+      "authored_by": "net_price",
+      "cost": "1000000.000",
+      "net_price": "1000000.500",
+      "expected": {
+        "profit_rate": "0.0000500000"
+      },
+      "then_cost_becomes": "1100000.000",
+      "expected_after": {
+        "net_price": "1100000.550",
+        "authored_by": "profit_rate"
+      }
+    },
+    {
+      "id": "authored-rate-is-exact-and-preserved",
+      "why": "The ruled default direction. A typed rate is exact, and a cost change preserves it while the price moves — never the reverse, which would let the rate silently absorb a cost rise and erode the margin.",
+      "currency": "TND",
+      "authored_by": "profit_rate",
+      "cost": "100.000",
+      "profit_rate": "30",
+      "expected": {
+        "net_price": "130.000"
+      },
+      "then_cost_becomes": "110.000",
+      "expected_after": {
+        "net_price": "143.000",
+        "profit_rate": "30.0000000000",
+        "authored_by": "profit_rate"
+      }
+    },
+    {
+      "id": "authored-net-with-zero-cost-keeps-the-typed-price",
+      "why": "With a zero cost the rate is undefined, so there is nothing to preserve. The typed price is kept unchanged rather than invented from a rate that does not exist.",
+      "currency": "TND",
+      "authored_by": "net_price",
+      "cost": "0.000",
+      "net_price": "50.000",
+      "expected": {
+        "profit_rate": null
+      },
+      "then_cost_becomes": "10.000",
+      "expected_after": {
+        "net_price": "50.000",
+        "authored_by": "net_price"
+      }
+    }
+  ]
+}

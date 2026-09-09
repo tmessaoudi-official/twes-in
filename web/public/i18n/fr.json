@@ -1,0 +1,10 @@
+{
+  "app": { "name": "twes-in", "tagline": "Facturation pour petites entreprises" },
+  "health": {
+    "api": "API",
+    "ok": "opérationnelle",
+    "degraded": "dégradée",
+    "unreachable": "injoignable",
+    "checking": "vérification…"
+  }
+}
