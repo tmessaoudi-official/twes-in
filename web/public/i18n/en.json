@@ -56,7 +56,6 @@
     "role": "Role",
     "actions": "Actions",
     "add": "Add",
-    "added": "The member was added.",
     "remove": "Remove",
     "none": "No members.",
     "errors": {
@@ -67,9 +66,27 @@
       "invalid": "Invalid request.",
       "network": "The server could not be reached."
     },
-    "no_company": "Choose a company first."
+    "no_company": "Choose a company first.",
+    "joined": "The member was added.",
+    "invited": "The invitation was sent by email."
   },
   "company": {
     "choose": "Choose a company"
+  },
+  "invitation": {
+    "title": "Join a company",
+    "offer": "You are invited to join {{company}} as {{role}}.",
+    "display_name": "Your name",
+    "display_name_required": "Your name is required.",
+    "password": "Choose a password",
+    "password_hint": "At least 12 characters.",
+    "password_too_short": "The password must be at least 12 characters.",
+    "submit": "Create my account",
+    "errors": {
+      "not_usable": "That link is no longer valid. Ask for a new invitation.",
+      "password_refused": "That password has appeared in a data breach. Choose another one.",
+      "invalid": "Invalid request.",
+      "network": "The server could not be reached."
+    }
   }
 }

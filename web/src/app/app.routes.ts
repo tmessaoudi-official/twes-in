@@ -20,5 +20,11 @@ export const routes: Routes = [
     canActivate: [authGuard],
     loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
   },
+  {
+    // Opened from a mail client, with no session: deliberately outside both guards.
+    path: 'invitations/:token',
+    loadComponent: () =>
+      import('./invitation/accept-invitation-page').then((m) => m.AcceptInvitationPage),
+  },
   { path: '**', redirectTo: '' },
 ];

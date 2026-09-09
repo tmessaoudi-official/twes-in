@@ -3,7 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { Member, WorkingCompany } from '../api/types.gen';
+import type { MemberMemberRead, WorkingCompanyWorkingCompanyRead } from '../api/types.gen';
 import type { CompanyError, CompanyOption, MemberRole, MemberRow } from './company-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -21,7 +21,9 @@ export class CompanyApi {
   /** Every company the session's user belongs to. */
   async companies(): Promise<CompanyOption[]> {
     return this.guard(async () => {
-      const rows = await firstValueFrom(this.http.get<WorkingCompany[]>('/api/me/companies'));
+      const rows = await firstValueFrom(
+        this.http.get<WorkingCompanyWorkingCompanyRead[]>('/api/me/companies'),
+      );
       return rows.map(toOption);
     });
   }
@@ -30,7 +32,9 @@ export class CompanyApi {
   async switchTo(companyId: string): Promise<CompanyOption> {
     return this.guard(async () =>
       toOption(
-        await firstValueFrom(this.http.post<WorkingCompany>('/api/me/company', { companyId })),
+        await firstValueFrom(
+          this.http.post<WorkingCompanyWorkingCompanyRead>('/api/me/company', { companyId }),
+        ),
       ),
     );
   }
@@ -38,7 +42,9 @@ export class CompanyApi {
   async members(companyId: string): Promise<MemberRow[]> {
     return this.guard(async () => {
       const rows = await firstValueFrom(
-        this.http.get<Member[]>(`/api/companies/${encodeURIComponent(companyId)}/members`),
+        this.http.get<MemberMemberRead[]>(
+          `/api/companies/${encodeURIComponent(companyId)}/members`,
+        ),
       );
       return rows.map(toRow);
     });
@@ -48,23 +54,27 @@ export class CompanyApi {
     return this.guard(async () =>
       toRow(
         await firstValueFrom(
-          this.http.post<Member>(`/api/companies/${encodeURIComponent(companyId)}/members`, {
-            email,
-            role,
-          }),
+          this.http.post<MemberMemberRead>(
+            `/api/companies/${encodeURIComponent(companyId)}/members`,
+            {
+              email,
+              role,
+            },
+          ),
         ),
       ),
     );
   }
 
-  async removeMember(companyId: string, userId: string): Promise<void> {
-    await this.guard(async () => {
+  async removeMember(companyId: string, userId: string): Promise<boolean> {
+    return this.guard(async () => {
       await firstValueFrom(
         this.http.delete(
           `/api/companies/${encodeURIComponent(companyId)}/members/${encodeURIComponent(userId)}`,
         ),
       );
-      return null;
+
+      return true;
     });
   }
 
@@ -77,7 +87,7 @@ export class CompanyApi {
   }
 }
 
-function toOption(row: WorkingCompany): CompanyOption {
+function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {
   return {
     id: row.companyId ?? '',
     name: row.name ?? '',
@@ -86,13 +96,14 @@ function toOption(row: WorkingCompany): CompanyOption {
   };
 }
 
-function toRow(row: Member): MemberRow {
+function toRow(row: MemberMemberRead): MemberRow {
   return {
     userId: row.userId ?? '',
     email: row.email ?? '',
     displayName: row.displayName ?? '',
     role: row.role ?? '',
     joinedAt: row.joinedAt ?? '',
+    status: row.status ?? 'joined',
   };
 }
 

@@ -93,20 +93,13 @@ test('the switcher moves the session to another company, and it survives a reloa
   }
 });
 
-test('the members page lists the company members and refuses an unknown address', async ({
-  page,
-}) => {
+test('the members page lists the company members', async ({ page }) => {
   await signIn(page);
 
   await page.getByTestId('members-link').click();
   await expect(page).toHaveURL(/\/members$/);
   await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('Operator');
-
-  await page.getByTestId('member-email').fill('nobody@twes.local');
-  await page.getByTestId('member-add').click();
-
-  // No account holds that address yet: the invitation flow is the answer, and it is not built yet.
-  await expect(page.getByTestId('members-error')).toContainText('Aucun compte');
+  await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('propriétaire');
 });
 
 async function userIdOf(page: Page): Promise<string> {

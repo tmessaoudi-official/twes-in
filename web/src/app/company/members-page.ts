@@ -44,7 +44,7 @@ export class MembersPage implements OnInit {
   protected readonly rows = this.members.members;
   protected readonly busy = this.members.busy;
   protected readonly error = this.members.error;
-  protected readonly added = signal(false);
+  protected readonly outcome = signal<'joined' | 'invited' | null>(null);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
 
@@ -69,11 +69,12 @@ export class MembersPage implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    this.added.set(false);
+    this.outcome.set(null);
     const { email, role } = this.form.getRawValue();
-    if (await this.members.add(companyId, email, role)) {
+    const row = await this.members.add(companyId, email, role);
+    if (row !== null) {
       this.form.reset({ email: '', role: 'member' });
-      this.added.set(true);
+      this.outcome.set(row.status);
     }
   }
 

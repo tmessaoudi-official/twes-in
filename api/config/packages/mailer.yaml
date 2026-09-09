@@ -1,3 +1,9 @@
 framework:
     mailer:
         dsn: '%env(MAILER_DSN)%'
+
+when@test:
+    framework:
+        mailer:
+            # Nothing leaves the machine during a test; the messages are collected and asserted on instead.
+            dsn: 'null://null'

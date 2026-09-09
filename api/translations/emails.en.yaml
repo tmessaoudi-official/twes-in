@@ -1,0 +1,8 @@
+invitation:
+    subject: 'Join %company% on %product%'
+    heading: 'You are invited to join %company%'
+    invited_by: '%name% invited you.'
+    role: 'Your role will be: %role%.'
+    call_to_action: 'Accept the invitation'
+    expires: 'This link expires on %date%.'
+    ignore: "If you were not expecting this invitation, ignore this message."

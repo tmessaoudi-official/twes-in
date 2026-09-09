@@ -17,8 +17,8 @@
       {{ 'members.errors.' + code | translate }}
     </p>
   }
-  @if (added()) {
-    <p role="status" data-testid="members-added">{{ 'members.added' | translate }}</p>
+  @if (outcome(); as outcome) {
+    <p role="status" data-testid="members-added">{{ 'members.' + outcome | translate }}</p>
   }
 
   <table class="w-full text-left" data-testid="members-table">

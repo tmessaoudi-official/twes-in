@@ -11,6 +11,7 @@ const owner: MemberRow = {
   displayName: 'Owner',
   role: 'owner',
   joinedAt: '2026-09-09T10:00:00+00:00',
+  status: 'joined',
 };
 
 describe('MembersFacade', () => {
@@ -44,7 +45,7 @@ describe('MembersFacade', () => {
 
     const added = await facade.add('c1', 'joiner@example.test', 'member');
 
-    expect(added).toBe(true);
+    expect(added).toEqual(owner);
     expect(api.addMember).toHaveBeenCalledWith('c1', 'joiner@example.test', 'member');
     expect(facade.members()).toEqual([owner]);
   });
@@ -54,7 +55,7 @@ describe('MembersFacade', () => {
 
     const added = await facade.add('c1', 'stranger@example.test', 'member');
 
-    expect(added).toBe(false);
+    expect(added).toBeNull();
     expect(facade.error()).toBe('unknown_user');
   });
 
@@ -64,6 +65,15 @@ describe('MembersFacade', () => {
     await facade.add('c1', 'joiner@example.test', 'member');
 
     expect(api.members).not.toHaveBeenCalled();
+  });
+
+  it('reports that an address with no account was invited instead of added', async () => {
+    api.addMember.mockResolvedValue({ ...owner, status: 'invited' });
+    api.members.mockResolvedValue([owner]);
+
+    const added = await facade.add('c1', 'stranger@example.test', 'member');
+
+    expect(added?.status).toBe('invited');
   });
 
   it('reports the last owner refusal', async () => {

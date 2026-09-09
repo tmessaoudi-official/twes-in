@@ -18,6 +18,8 @@ export interface MemberRow {
   readonly displayName: string;
   readonly role: string;
   readonly joinedAt: string;
+  /** Whether that address became a member, or was sent an invitation because it has no account yet. */
+  readonly status: 'joined' | 'invited';
 }
 
 /**

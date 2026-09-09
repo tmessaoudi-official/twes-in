@@ -13,6 +13,16 @@ parameters:
     # Account lockout: after this many consecutive failures the account is locked for this long.
     app.auth.lock_after_failures: 5
     app.auth.lock_duration: 'PT15M'
+    # Invitations: how long a mailed link works, and the page it points at. The URL is built from the same
+    # origin the SPA is served from, because the link is opened from a mail client with no session.
+    app.invitation.valid_for: 'P7D'
+    app.invitation.accept_url: '%env(DEFAULT_URI)%/invitations/{token}'
+    # Mail the API sends itself.
+    app.mail.sender: '%env(MAILER_SENDER)%'
+    app.product_name: 'twes-in'
+    # The breached-password check reaches Have I Been Pwned over the network. Off in tests, which must never
+    # depend on an external service (docs/SPEC.md § 7, 2026-09-09).
+    app.password.breach_check_enabled: true
 
 services:
     # default configuration for services in *this* file
@@ -33,8 +43,23 @@ services:
         arguments:
             $lockAfterFailures: '%app.auth.lock_after_failures%'
             $lockDuration: '%app.auth.lock_duration%'
+    App\Tenancy\Application\Invitation\InviteToCompany:
+        arguments:
+            $acceptUrlTemplate: '%app.invitation.accept_url%'
+            $validFor: '%app.invitation.valid_for%'
+    App\Tenancy\Infrastructure\Mail\SymfonyInvitationMailer:
+        arguments:
+            $sender: '%app.mail.sender%'
+            $productName: '%app.product_name%'
+    App\Identity\Infrastructure\Password\HibpBreachedPasswordCheck:
+        arguments:
+            $enabled: '%app.password.breach_check_enabled%'
 
 when@test:
+    parameters:
+        # No test reaches the network: the check answers "not breached" and the use case is exercised through
+        # its port with a fake that returns each of the three answers.
+        app.password.breach_check_enabled: false
     services:
         # FrameworkBundle hardcodes MOCKSESSID for the mock file session storage; the functional tests assert the
         # cookie the browser will actually see, name included, so the test factory carries the real name.

@@ -29,24 +29,28 @@ export class MembersFacade {
     }
   }
 
-  async add(companyId: string, email: string, role: MemberRole): Promise<boolean> {
+  /**
+   * Returns the row the API answered with, or null when it refused. The row says whether that address
+   * became a member or was sent an invitation, which is the only thing the page needs to know afterwards.
+   */
+  async add(companyId: string, email: string, role: MemberRole): Promise<MemberRow | null> {
     return this.mutate(companyId, () => this.api.addMember(companyId, email, role));
   }
 
   async remove(companyId: string, userId: string): Promise<boolean> {
-    return this.mutate(companyId, () => this.api.removeMember(companyId, userId));
+    return (await this.mutate(companyId, () => this.api.removeMember(companyId, userId))) !== null;
   }
 
-  private async mutate(companyId: string, call: () => Promise<unknown>): Promise<boolean> {
+  private async mutate<T>(companyId: string, call: () => Promise<T>): Promise<T | null> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
-      await call();
+      const result = await call();
       this.membersSignal.set(await this.api.members(companyId));
-      return true;
+      return result;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
-      return false;
+      return null;
     } finally {
       this.busySignal.set(false);
     }

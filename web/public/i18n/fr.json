@@ -56,7 +56,6 @@
     "role": "Rôle",
     "actions": "Actions",
     "add": "Ajouter",
-    "added": "Le membre a été ajouté.",
     "remove": "Retirer",
     "none": "Aucun membre.",
     "errors": {
@@ -67,9 +66,27 @@
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur."
     },
-    "no_company": "Choisissez d'abord une entreprise."
+    "no_company": "Choisissez d'abord une entreprise.",
+    "joined": "Le membre a été ajouté.",
+    "invited": "L'invitation a été envoyée par e-mail."
   },
   "company": {
     "choose": "Choisir une entreprise"
+  },
+  "invitation": {
+    "title": "Rejoindre une entreprise",
+    "offer": "Vous êtes invité à rejoindre {{company}} en tant que {{role}}.",
+    "display_name": "Votre nom",
+    "display_name_required": "Votre nom est obligatoire.",
+    "password": "Choisissez un mot de passe",
+    "password_hint": "Au moins 12 caractères.",
+    "password_too_short": "Le mot de passe doit faire au moins 12 caractères.",
+    "submit": "Créer mon compte",
+    "errors": {
+      "not_usable": "Ce lien n'est plus valable. Demandez une nouvelle invitation.",
+      "password_refused": "Ce mot de passe a été vu dans une fuite de données. Choisissez-en un autre.",
+      "invalid": "Demande invalide.",
+      "network": "Impossible de joindre le serveur."
+    }
   }
 }

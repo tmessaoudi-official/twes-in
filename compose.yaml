@@ -27,6 +27,7 @@ services:
       APP_ENV: dev
       DATABASE_URL: "postgresql://twes:${POSTGRES_PASSWORD:-twes}@postgres:5432/twes?serverVersion=18&charset=utf8"
       MAILER_DSN: smtp://mailpit:1025
+      MAILER_SENDER: no-reply@twes.local
       DEFAULT_URI: "http://localhost:${WEB_PORT:-8090}"
     depends_on:
       postgres:

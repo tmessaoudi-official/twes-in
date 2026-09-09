@@ -2,7 +2,7 @@
 
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
-import { provideRouter } from '@angular/router';
+import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
@@ -11,7 +11,8 @@ import { csrfInterceptor } from './auth/csrf-interceptor';
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideRouter(routes),
+    // Route parameters arrive as component inputs; the invitation token is bound this way.
+    provideRouter(routes, withComponentInputBinding()),
     // The API uses Symfony stateless CSRF (header only), not the cookie Angular built-in XSRF support echoes.
     provideHttpClient(withInterceptors([csrfInterceptor]), withNoXsrfProtection()),
     // French first (Tunisia, France); English second. Files live in public/i18n/<lang>.json.

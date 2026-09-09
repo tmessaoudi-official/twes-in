@@ -45,6 +45,7 @@ const owner: MemberRow = {
   displayName: 'Owner',
   role: 'owner',
   joinedAt: '2026-09-09T10:00:00+00:00',
+  status: 'joined',
 };
 
 describe('MembersPage', () => {
@@ -71,7 +72,7 @@ describe('MembersPage', () => {
     rows.set([owner]);
     error.set(null);
     members.load.mockReset().mockResolvedValue(undefined);
-    members.add.mockReset().mockResolvedValue(true);
+    members.add.mockReset().mockResolvedValue(owner);
     members.remove.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
 

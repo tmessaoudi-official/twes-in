@@ -1,0 +1,9 @@
+# Subjects and body strings of the mail the API sends. The SPA's own strings live in web/public/i18n.
+invitation:
+    subject: 'Rejoignez %company% sur %product%'
+    heading: 'Vous êtes invité à rejoindre %company%'
+    invited_by: '%name% vous a invité.'
+    role: 'Votre rôle sera : %role%.'
+    call_to_action: 'Accepter l''invitation'
+    expires: 'Ce lien expire le %date%.'
+    ignore: "Si vous n'attendiez pas cette invitation, ignorez ce message."

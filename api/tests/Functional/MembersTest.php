@@ -51,13 +51,29 @@ final class MembersTest extends ApiTestCase
         self::assertSame(Role::MEMBER, $body['role']);
     }
 
-    public function testAnAddressWithNoAccountIsNotAMemberYet(): void
+    public function testAnAddressWithNoAccountIsInvitedInstead(): void
     {
         $this->adminSignedIn();
 
         $this->postJson($this->path(), ['email' => 'stranger@twes.local', 'role' => Role::MEMBER]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $body = $this->json();
+        self::assertSame('invited', $body['status']);
+        self::assertNull($body['userId']);
+        self::assertEmailCount(1);
+    }
+
+    public function testSomeoneWhoAlreadyHasAnAccountJoinsWithNoMail(): void
+    {
+        $this->adminSignedIn();
+        $this->createUser('joiner@twes.local', 'password-1234');
+
+        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame('joined', $this->json()['status']);
+        self::assertEmailCount(0);
     }
 
     public function testAMalformedAddressIsRefused(): void
@@ -195,14 +211,15 @@ final class MembersTest extends ApiTestCase
         $this->adminSignedIn();
 
         // A browser sends "Accept: */*". With jsonld first in error_formats and jsonld not enabled, that
-        // negotiated an unsupported format and every refusal became a 500.
+        // negotiated an unsupported format and every refusal became a 500. An invented role is the refusal
+        // used here because an unknown address is no longer one: it becomes an invitation.
         $this->client->request(
             'POST',
             $this->path(),
             [],
             [],
             ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => '*/*', 'HTTP_CSRF_TOKEN' => '0123456789abcdef0123456789abcdef'],
-            json_encode(['email' => 'stranger@twes.local', 'role' => 'member'], \JSON_THROW_ON_ERROR),
+            json_encode(['email' => 'joiner@twes.local', 'role' => 'emperor'], \JSON_THROW_ON_ERROR),
         );
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);

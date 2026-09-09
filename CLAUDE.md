@@ -87,9 +87,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
   CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature (`auth`,
-  `company`, `hello`, `health`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
+  `company`, `hello`, `health`, `invitation`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
+- `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail. Everything a
+  person reads in the SPA lives in `web/public/i18n/` instead, with the parity test.
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.

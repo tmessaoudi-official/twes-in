@@ -11,19 +11,22 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
-use App\Tenancy\Application\Company\AddMember;
-use App\Tenancy\Application\Company\AddMemberRequest;
 use App\Tenancy\Application\Company\AlreadyAMember;
-use App\Tenancy\Application\Company\MemberView;
 use App\Tenancy\Application\Company\UnknownRole;
-use App\Tenancy\Application\Company\UserNotFound;
+use App\Tenancy\Application\Invitation\InviteRequest;
+use App\Tenancy\Application\Invitation\InviteToCompany;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
-/** @implements ProcessorInterface<MemberResource, MemberResource> */
-final readonly class AddMemberProcessor implements ProcessorInterface
+/**
+ * One endpoint for "put this address in this company". Whether that is a membership or a mailed invitation
+ * is decided by whether the address already has an account, and the caller never has to know which.
+ *
+ * @implements ProcessorInterface<MemberResource, MemberResource>
+ */
+final readonly class InviteMemberProcessor implements ProcessorInterface
 {
-    public function __construct(private AddMember $addMember, private CompanyGuard $guard)
+    public function __construct(private InviteToCompany $invite, private CompanyGuard $guard)
     {
     }
 
@@ -32,23 +35,22 @@ final readonly class AddMemberProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), 'user.write');
 
         try {
-            $membership = $this->addMember->handle(
-                new AddMemberRequest($company->getId(), $data->email, $data->role),
+            $outcome = $this->invite->handle(
+                new InviteRequest($company->getId(), $data->email, $data->role),
                 $this->guard->account()->getId(),
             );
         } catch (AlreadyAMember $already) {
             throw new ConflictHttpException($already->getMessage(), $already);
-        } catch (UserNotFound|UnknownRole $refused) {
-            // No user with that address yet: an invitation is the answer, and it lands in the second half of G1b.
+        } catch (UnknownRole $refused) {
             throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
         }
 
-        return MemberResource::of(new MemberView(
-            $membership->getUser()->getId()->toRfc4122(),
-            $membership->getUser()->getEmail()->value,
-            $membership->getUser()->getDisplayName(),
-            $membership->getRole()->getName(),
-            $membership->getCreatedAt()->format(\DATE_ATOM),
-        ));
+        $resource = new MemberResource();
+        $resource->userId = $outcome->userId;
+        $resource->email = $outcome->email;
+        $resource->role = $outcome->roleName;
+        $resource->status = $outcome->joined ? MemberResource::JOINED : MemberResource::INVITED;
+
+        return $resource;
     }
 }

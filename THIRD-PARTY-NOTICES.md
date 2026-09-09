@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 82 runtime, 51 dev
+## api (Composer) — 85 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -99,6 +99,8 @@ not compiled into what we distribute, and are not listed here.
 | symfony/finder | 8.1.5 | MIT | runtime |
 | symfony/flex | 2.11.0 | MIT | runtime |
 | symfony/framework-bundle | 8.1.6 | MIT | runtime |
+| symfony/http-client | 8.1.6 | MIT | runtime |
+| symfony/http-client-contracts | 3.7.3 | MIT | runtime |
 | symfony/http-foundation | 8.1.6 | MIT | runtime |
 | symfony/http-kernel | 8.1.6 | MIT | runtime |
 | symfony/intl | 8.1.5 | MIT | runtime |
@@ -131,6 +133,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/service-contracts | 3.7.3 | MIT | runtime |
 | symfony/stopwatch | 8.1.0 | MIT | runtime |
 | symfony/string | 8.1.2 | MIT | runtime |
+| symfony/translation | 8.1.5 | MIT | runtime |
 | symfony/translation-contracts | 3.7.1 | MIT | runtime |
 | symfony/twig-bridge | 8.1.5 | MIT | runtime |
 | symfony/twig-bundle | 8.1.2 | MIT | runtime |

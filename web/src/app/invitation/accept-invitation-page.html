@@ -1,0 +1,62 @@
+<main class="mx-auto flex max-w-md flex-col gap-6 p-8">
+  <h1 class="text-2xl font-semibold" data-testid="invitation-title">
+    {{ 'invitation.title' | translate }}
+  </h1>
+
+  @if (offer(); as offer) {
+    <p data-testid="invitation-offer">
+      {{
+        'invitation.offer'
+          | translate: { company: offer.companyName, role: 'roles.' + offer.roleName | translate }
+      }}
+    </p>
+    <p class="text-sm opacity-70" data-testid="invitation-email">{{ offer.email }}</p>
+
+    <mat-card>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+          <mat-form-field>
+            <mat-label>{{ 'invitation.display_name' | translate }}</mat-label>
+            <input matInput formControlName="displayName" data-testid="invitation-name" />
+            @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+              <mat-error data-testid="invitation-name-error">
+                {{ 'invitation.display_name_required' | translate }}
+              </mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field>
+            <mat-label>{{ 'invitation.password' | translate }}</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="new-password"
+              data-testid="invitation-password"
+            />
+            <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <mat-error data-testid="invitation-password-error">
+                {{ 'invitation.password_too_short' | translate }}
+              </mat-error>
+            }
+          </mat-form-field>
+
+          <button mat-flat-button type="submit" [disabled]="busy()" data-testid="invitation-submit">
+            {{ 'invitation.submit' | translate }}
+          </button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  } @else if (!busy()) {
+    <p role="alert" data-testid="invitation-error">
+      {{ 'invitation.errors.' + (error() ?? 'not_usable') | translate }}
+    </p>
+  }
+
+  @if (offer() && error()) {
+    <p role="alert" data-testid="invitation-form-error" class="text-red-700">
+      {{ 'invitation.errors.' + error() | translate }}
+    </p>
+  }
+</main>
