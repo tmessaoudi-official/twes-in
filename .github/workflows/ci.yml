@@ -95,6 +95,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci --no-audit --no-fund
         working-directory: web
+      # WHY: --with-deps runs apt-get update over every source on the runner, and the preinstalled Google Chrome
+      # source answered "Hash Sum mismatch" twice in a row on 2026-09-09 (run 34384052255 and its re-run),
+      # failing the job before a test ran. Playwright brings its own Chromium; that source is never needed here.
+      - run: sudo rm -f /etc/apt/sources.list.d/google-chrome*.list /etc/apt/sources.list.d/google-chrome*.sources
       - run: npx playwright install --with-deps chromium
         working-directory: web
       - run: npx playwright test
