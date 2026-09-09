@@ -44,6 +44,38 @@ final class SeedPlatformTest extends TestCase
         $this->seed = new SeedPlatform($this->roles, $this->users, $this->companies, $this->memberships, $hasher, new MockClock('2026-09-09 12:00:00'));
     }
 
+    public function testARoleWhosePermissionsChangedIsBroughtUpToDate(): void
+    {
+        // A database seeded by an earlier release carries an older permission set; the next release adds one.
+        $this->roles->save(new Role(Role::ADMIN, ['company.read'], null, new \DateTimeImmutable()));
+
+        $created = $this->seed->seed($this->request(password: 'secret'));
+
+        self::assertSame(SeedPlatform::BUILT_IN_ROLES[Role::ADMIN], $this->roles->builtIn(Role::ADMIN)?->getPermissions());
+        self::assertContains('role admin updated', $created);
+    }
+
+    public function testARoleThatAlreadyMatchesIsLeftAlone(): void
+    {
+        $this->seed->seed($this->request(password: 'secret'));
+
+        $created = $this->seed->seed($this->request(password: 'secret'));
+
+        self::assertSame([], $created);
+        self::assertCount(3, $this->roles->roles);
+    }
+
+    public function testACustomCompanyRoleWithABuiltInNameIsNotTouched(): void
+    {
+        $company = new \App\Tenancy\Domain\Company('Other', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $custom = new Role(Role::ADMIN, ['company.read'], $company, new \DateTimeImmutable());
+        $this->roles->save($custom);
+
+        $this->seed->seed($this->request(password: 'secret'));
+
+        self::assertSame(['company.read'], $custom->getPermissions());
+    }
+
     public function testItCreatesTheRolesTheOperatorTheCompanyAndTheOwnership(): void
     {
         $created = $this->seed->seed($this->request(password: 'secret'));

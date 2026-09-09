@@ -4,7 +4,10 @@ import { defineConfig } from '@playwright/test';
 // Runs against the compose stack (web on WEB_PORT, which proxies /api to the API container).
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  // One database behind the whole stack, and these scenarios change shared rows (a company, a membership).
+  // Running files in parallel would let one test's setup change what another asserts, so the suite is serial.
+  fullyParallel: false,
+  workers: 1,
   forbidOnly: !!process.env['CI'],
   retries: 0,
   reporter: process.env['CI'] ? 'github' : 'list',

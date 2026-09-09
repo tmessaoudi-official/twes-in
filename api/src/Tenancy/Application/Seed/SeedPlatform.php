@@ -62,9 +62,16 @@ final readonly class SeedPlatform
 
         $created = [];
         foreach (self::BUILT_IN_ROLES as $name => $permissions) {
-            if (null === $this->roles->builtIn($name)) {
+            $role = $this->roles->builtIn($name);
+            if (null === $role) {
                 $this->roles->save(new Role($name, $permissions, null, $now));
                 $created[] = "role $name";
+                continue;
+            }
+            // A database seeded by an earlier release carries that release's permission set; converge on this one.
+            if ($role->redefinePermissions($permissions)) {
+                $this->roles->save($role);
+                $created[] = "role $name updated";
             }
         }
 

@@ -1,5 +1,8 @@
 {
-  "app": { "name": "twes-in", "tagline": "Invoicing for small companies" },
+  "app": {
+    "name": "twes-in",
+    "tagline": "Invoicing for small companies"
+  },
   "health": {
     "api": "API",
     "ok": "operational",
@@ -38,5 +41,35 @@
     "permissions": "Permissions",
     "none": "none"
   },
-  "roles": { "owner": "owner", "admin": "administrator", "member": "member" }
+  "roles": {
+    "owner": "owner",
+    "admin": "administrator",
+    "member": "member"
+  },
+  "members": {
+    "title": "Members",
+    "of": "Company {{company}}",
+    "back": "Back",
+    "name": "Name",
+    "email": "Email address",
+    "email_invalid": "This email address is not valid.",
+    "role": "Role",
+    "actions": "Actions",
+    "add": "Add",
+    "added": "The member was added.",
+    "remove": "Remove",
+    "none": "No members.",
+    "errors": {
+      "unknown_user": "No account holds that address. Invitations are coming.",
+      "already_member": "That person already belongs to the company.",
+      "last_owner": "A company keeps at least one owner.",
+      "not_found": "Company not found.",
+      "invalid": "Invalid request.",
+      "network": "The server could not be reached."
+    },
+    "no_company": "Choose a company first."
+  },
+  "company": {
+    "choose": "Choose a company"
+  }
 }

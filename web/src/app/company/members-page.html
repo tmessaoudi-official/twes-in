@@ -1,0 +1,91 @@
+<main class="mx-auto flex max-w-3xl flex-col gap-6 p-8">
+  <div class="flex items-center gap-4">
+    <h1 class="flex-1 text-3xl font-semibold" data-testid="members-title">
+      {{ 'members.title' | translate }}
+    </h1>
+    <a mat-button routerLink="/" data-testid="back">{{ 'members.back' | translate }}</a>
+  </div>
+
+  @if (company(); as company) {
+    <p class="opacity-80">{{ 'members.of' | translate: { company: company.name } }}</p>
+  } @else {
+    <p data-testid="members-no-company">{{ 'members.no_company' | translate }}</p>
+  }
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="members-error" class="text-red-700">
+      {{ 'members.errors.' + code | translate }}
+    </p>
+  }
+  @if (added()) {
+    <p role="status" data-testid="members-added">{{ 'members.added' | translate }}</p>
+  }
+
+  <table class="w-full text-left" data-testid="members-table">
+    <thead>
+      <tr>
+        <th scope="col">{{ 'members.name' | translate }}</th>
+        <th scope="col">{{ 'members.email' | translate }}</th>
+        <th scope="col">{{ 'members.role' | translate }}</th>
+        <th scope="col">
+          <span class="sr-only">{{ 'members.actions' | translate }}</span>
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.userId) {
+        <tr [attr.data-testid]="'member-' + row.email">
+          <td>{{ row.displayName }}</td>
+          <td>{{ row.email }}</td>
+          <td>{{ 'roles.' + row.role | translate }}</td>
+          <td>
+            @if (mayManage()) {
+              <button
+                mat-button
+                type="button"
+                (click)="remove(row.userId)"
+                [disabled]="busy()"
+                [attr.data-testid]="'remove-' + row.email"
+              >
+                {{ 'members.remove' | translate }}
+              </button>
+            }
+          </td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="4" data-testid="members-empty">{{ 'members.none' | translate }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (mayManage()) {
+    <mat-card>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="add()" class="flex flex-wrap items-start gap-4">
+          <mat-form-field>
+            <mat-label>{{ 'members.email' | translate }}</mat-label>
+            <input matInput type="email" formControlName="email" data-testid="member-email" />
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <mat-error data-testid="member-email-error">
+                {{ 'members.email_invalid' | translate }}
+              </mat-error>
+            }
+          </mat-form-field>
+          <mat-form-field>
+            <mat-label>{{ 'members.role' | translate }}</mat-label>
+            <mat-select formControlName="role" data-testid="member-role">
+              @for (role of roles; track role) {
+                <mat-option [value]="role">{{ 'roles.' + role | translate }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+          <button mat-flat-button type="submit" [disabled]="busy()" data-testid="member-add">
+            {{ 'members.add' | translate }}
+          </button>
+        </form>
+      </mat-card-content>
+    </mat-card>
+  }
+</main>

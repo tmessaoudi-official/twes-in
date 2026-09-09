@@ -80,6 +80,25 @@ class Role
         return $this->permissions;
     }
 
+    /**
+     * Built-in roles are defined by the release, not by the database: the seed brings a role stored by an
+     * earlier release up to date rather than leaving it behind (docs/SPEC.md § 7).
+     *
+     * @param list<string> $permissions
+     *
+     * @return bool whether anything actually changed
+     */
+    public function redefinePermissions(array $permissions): bool
+    {
+        $permissions = array_values(array_unique($permissions));
+        if ($permissions === $this->permissions) {
+            return false;
+        }
+        $this->permissions = $permissions;
+
+        return true;
+    }
+
     public function grants(string $permission): bool
     {
         return \in_array(Permission::WILDCARD, $this->permissions, true) || \in_array($permission, $this->permissions, true);

@@ -57,6 +57,7 @@ describe('HelloPage', () => {
   const logout = vi.fn(async () => {
     me.set(null);
   });
+  const hasPermission = vi.fn().mockReturnValue(false);
 
   beforeEach(async () => {
     me.set(owner);
@@ -65,7 +66,7 @@ describe('HelloPage', () => {
       imports: [HelloPage],
       providers: [
         provideRouter([]),
-        { provide: AuthFacade, useValue: { me: me.asReadonly(), logout } },
+        { provide: AuthFacade, useValue: { me: me.asReadonly(), logout, hasPermission } },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

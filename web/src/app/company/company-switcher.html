@@ -1,0 +1,27 @@
+@if (companies().length > 1) {
+  <button
+    mat-button
+    type="button"
+    [matMenuTriggerFor]="menu"
+    [disabled]="switching()"
+    data-testid="company-switcher"
+  >
+    <span data-testid="company-name">{{ current()?.name ?? ('company.choose' | translate) }}</span>
+  </button>
+  <mat-menu #menu="matMenu">
+    @for (company of companies(); track company.id) {
+      <button
+        mat-menu-item
+        type="button"
+        (click)="choose(company.id)"
+        [attr.data-testid]="'company-option-' + company.name"
+        [attr.aria-current]="company.id === current()?.id ? 'true' : null"
+      >
+        {{ company.name }}
+        <span class="opacity-60">— {{ 'roles.' + company.role | translate }}</span>
+      </button>
+    }
+  </mat-menu>
+} @else if (current(); as current) {
+  <span data-testid="company-name" class="text-sm opacity-90">{{ current.name }}</span>
+}

@@ -12,11 +12,17 @@ namespace App\Tenancy\Infrastructure\Doctrine;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineCompanyRepository implements CompanyRepository
 {
     public function __construct(private EntityManagerInterface $entityManager)
     {
+    }
+
+    public function ofId(Uuid $id): ?Company
+    {
+        return $this->entityManager->getRepository(Company::class)->find($id);
     }
 
     public function ofName(string $name): ?Company

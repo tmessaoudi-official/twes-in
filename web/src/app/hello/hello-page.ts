@@ -1,16 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { CompanySwitcher } from '../company/company-switcher';
 
 /** The signed-in landing page of G1a: who you are, where you work, what you may do, and the way out. */
 @Component({
   selector: 'app-hello-page',
-  imports: [MatToolbarModule, MatButtonModule, TranslatePipe],
+  imports: [MatToolbarModule, MatButtonModule, TranslatePipe, CompanySwitcher, RouterLink],
   templateUrl: './hello-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -20,6 +21,7 @@ export class HelloPage {
 
   protected readonly me = this.auth.me;
   protected readonly signingOut = signal(false);
+  protected readonly mayManageMembers = computed(() => this.auth.hasPermission('user.read'));
 
   protected async logout(): Promise<void> {
     this.signingOut.set(true);

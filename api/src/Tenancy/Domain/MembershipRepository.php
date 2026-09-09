@@ -16,7 +16,12 @@ interface MembershipRepository
     /** @return list<Membership> at most $limit of them, in no particular order */
     public function ofUser(Uuid $userId, int $limit): array;
 
+    /** @return list<Membership> every member of one company, oldest first */
+    public function ofCompany(Uuid $companyId): array;
+
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership;
 
     public function save(Membership $membership): void;
+
+    public function remove(Membership $membership): void;
 }

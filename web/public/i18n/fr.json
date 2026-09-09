@@ -1,5 +1,8 @@
 {
-  "app": { "name": "twes-in", "tagline": "Facturation pour petites entreprises" },
+  "app": {
+    "name": "twes-in",
+    "tagline": "Facturation pour petites entreprises"
+  },
   "health": {
     "api": "API",
     "ok": "opérationnelle",
@@ -38,5 +41,35 @@
     "permissions": "Permissions",
     "none": "aucune"
   },
-  "roles": { "owner": "propriétaire", "admin": "administrateur", "member": "membre" }
+  "roles": {
+    "owner": "propriétaire",
+    "admin": "administrateur",
+    "member": "membre"
+  },
+  "members": {
+    "title": "Membres",
+    "of": "Entreprise {{company}}",
+    "back": "Retour",
+    "name": "Nom",
+    "email": "Adresse e-mail",
+    "email_invalid": "Cette adresse e-mail n'est pas valide.",
+    "role": "Rôle",
+    "actions": "Actions",
+    "add": "Ajouter",
+    "added": "Le membre a été ajouté.",
+    "remove": "Retirer",
+    "none": "Aucun membre.",
+    "errors": {
+      "unknown_user": "Aucun compte ne porte cette adresse. L'invitation arrive bientôt.",
+      "already_member": "Cette personne fait déjà partie de l'entreprise.",
+      "last_owner": "Une entreprise garde au moins un propriétaire.",
+      "not_found": "Entreprise introuvable.",
+      "invalid": "Demande invalide.",
+      "network": "Impossible de joindre le serveur."
+    },
+    "no_company": "Choisissez d'abord une entreprise."
+  },
+  "company": {
+    "choose": "Choisir une entreprise"
+  }
 }

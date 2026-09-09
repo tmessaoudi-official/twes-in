@@ -17,6 +17,17 @@ final class InMemoryCompanies implements CompanyRepository
     /** @var list<Company> */
     public array $companies = [];
 
+    public function ofId(\Symfony\Component\Uid\Uuid $id): ?Company
+    {
+        foreach ($this->companies as $company) {
+            if ($company->getId()->equals($id)) {
+                return $company;
+            }
+        }
+
+        return null;
+    }
+
     public function ofName(string $name): ?Company
     {
         foreach ($this->companies as $company) {

@@ -25,6 +25,11 @@ final class InMemoryMemberships implements MembershipRepository
         return \array_slice($found, 0, $limit);
     }
 
+    public function ofCompany(Uuid $companyId): array
+    {
+        return array_values(array_filter($this->memberships, static fn (Membership $m) => $m->getCompany()->getId()->equals($companyId)));
+    }
+
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership
     {
         foreach ($this->memberships as $membership) {
@@ -38,6 +43,13 @@ final class InMemoryMemberships implements MembershipRepository
 
     public function save(Membership $membership): void
     {
-        $this->memberships[] = $membership;
+        if (!\in_array($membership, $this->memberships, true)) {
+            $this->memberships[] = $membership;
+        }
+    }
+
+    public function remove(Membership $membership): void
+    {
+        $this->memberships = array_values(array_filter($this->memberships, static fn (Membership $m) => $m !== $membership));
     }
 }

@@ -5,6 +5,12 @@ api_platform:
     # JSON-LD or Hydra. Docs formats keep the OpenAPI JSON export and the HTML page.
     formats:
         json: ['application/json']
+    # Errors follow the same decision. The default error_formats still lists jsonld FIRST, and a browser sending
+    # "Accept: */*" therefore negotiated a format that is not enabled: every API Platform error answered
+    # 500 "Serialization for the format jsonld is not supported" instead of its own status (docs/SPEC.md § 7).
+    error_formats:
+        jsonproblem: ['application/problem+json']
+        json: ['application/json']
     docs_formats:
         json: ['application/json']
         jsonopenapi: ['application/vnd.openapi+json']

@@ -15,6 +15,7 @@ use App\Identity\Domain\User;
 use App\Identity\Infrastructure\Security\CsrfRequestListener;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
+use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -81,6 +82,45 @@ abstract class ApiTestCase extends WebTestCase
             $headers['HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER))] = self::CSRF_TOKEN;
         }
         $this->client->request('POST', $path, [], [], $headers, null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR));
+    }
+
+    /** @param array<string, mixed>|null $body */
+    protected function sendJson(string $method, string $path, ?array $body = null, bool $withCsrf = true): void
+    {
+        $headers = ['CONTENT_TYPE' => 'application/json'];
+        if ($withCsrf) {
+            $headers['HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER))] = self::CSRF_TOKEN;
+        }
+        $this->client->request($method, $path, [], [], $headers, null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR));
+    }
+
+    protected function getJson(string $path): void
+    {
+        $this->client->request('GET', $path, [], [], ['HTTP_ACCEPT' => 'application/json']);
+    }
+
+    /** @return list<array<string, mixed>> */
+    protected function jsonList(): array
+    {
+        $body = json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($body);
+        $out = [];
+        foreach ($body as $row) {
+            self::assertIsArray($row);
+            $out[] = self::stringKeyed($row);
+        }
+
+        return $out;
+    }
+
+    /** AddMember resolves a role through RoleRepository::builtIn, which only ever returns a company-less role. */
+    protected function seedBuiltInRoles(): void
+    {
+        $em = $this->em();
+        $em->persist(new Role(Role::OWNER, [Permission::WILDCARD]));
+        $em->persist(new Role(Role::ADMIN, ['user.read', 'user.write', 'company.read']));
+        $em->persist(new Role(Role::MEMBER, ['company.read']));
+        $em->flush();
     }
 
     protected function login(string $email, string $password): void

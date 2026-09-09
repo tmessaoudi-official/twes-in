@@ -66,6 +66,38 @@ class Company
         $this->updatedAt = $now;
     }
 
+    /**
+     * A company an operator creates has no owner yet, so nobody can sign into it: it waits, and its first
+     * owner accepting the invitation activates it (docs/SPEC.md § 7, 2026-09-09).
+     */
+    public static function pending(string $name, string $countryCode, string $currency, string $locale, string $timezone, ?\DateTimeImmutable $now = null): self
+    {
+        $company = new self($name, $countryCode, $currency, $locale, $timezone, $now);
+        $company->status = self::STATUS_PENDING;
+
+        return $company;
+    }
+
+    /** Idempotent: a company that is already active stays active, and its timestamp does not move. */
+    public function activate(?\DateTimeImmutable $now = null): void
+    {
+        $this->changeStatusTo(self::STATUS_ACTIVE, $now);
+    }
+
+    public function suspend(?\DateTimeImmutable $now = null): void
+    {
+        $this->changeStatusTo(self::STATUS_SUSPENDED, $now);
+    }
+
+    private function changeStatusTo(string $status, ?\DateTimeImmutable $now): void
+    {
+        if ($status === $this->status) {
+            return;
+        }
+        $this->status = $status;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+    }
+
     public function getId(): Uuid
     {
         return $this->id;

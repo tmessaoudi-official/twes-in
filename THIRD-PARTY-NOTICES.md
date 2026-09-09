@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 81 runtime, 51 dev
+## api (Composer) — 82 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -101,6 +101,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/framework-bundle | 8.1.6 | MIT | runtime |
 | symfony/http-foundation | 8.1.6 | MIT | runtime |
 | symfony/http-kernel | 8.1.6 | MIT | runtime |
+| symfony/intl | 8.1.5 | MIT | runtime |
 | symfony/mailer | 8.1.5 | MIT | runtime |
 | symfony/maker-bundle | 1.67.0 | MIT | dev |
 | symfony/mime | 8.1.6 | MIT | runtime |

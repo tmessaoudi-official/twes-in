@@ -25,6 +25,11 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
         return $this->entityManager->getRepository(Membership::class)->findBy(['user' => $userId], limit: $limit);
     }
 
+    public function ofCompany(Uuid $companyId): array
+    {
+        return $this->entityManager->getRepository(Membership::class)->findBy(['company' => $companyId], ['createdAt' => 'ASC']);
+    }
+
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership
     {
         return $this->entityManager->getRepository(Membership::class)->findOneBy(['user' => $userId, 'company' => $companyId]);
@@ -33,6 +38,12 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
     public function save(Membership $membership): void
     {
         $this->entityManager->persist($membership);
+        $this->entityManager->flush();
+    }
+
+    public function remove(Membership $membership): void
+    {
+        $this->entityManager->remove($membership);
         $this->entityManager->flush();
     }
 }

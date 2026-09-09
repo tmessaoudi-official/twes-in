@@ -2,9 +2,7 @@
   <mat-toolbar color="primary" class="flex items-center gap-4">
     <span>{{ 'app.name' | translate }}</span>
     <span class="flex-1"></span>
-    @if (me.company; as company) {
-      <span data-testid="company-name" class="text-sm opacity-90">{{ company.name }}</span>
-    }
+    <app-company-switcher />
     <span data-testid="user-name" class="text-sm">{{ me.user.displayName }}</span>
     <button
       mat-button
@@ -38,6 +36,13 @@
     @if (me.user.isPlatformOperator) {
       <p data-testid="operator-line" class="text-sm opacity-80">
         {{ 'hello.operator' | translate }}
+      </p>
+    }
+    @if (mayManageMembers()) {
+      <p>
+        <a mat-stroked-button routerLink="/members" data-testid="members-link">
+          {{ 'members.title' | translate }}
+        </a>
       </p>
     }
     <p class="text-sm opacity-70" data-testid="permissions">
