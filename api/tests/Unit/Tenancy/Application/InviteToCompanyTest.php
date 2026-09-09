@@ -124,6 +124,15 @@ final class InviteToCompanyTest extends TestCase
         self::assertSame(hash('sha256', $raw), $this->invitations->invitations[0]->getTokenHash());
     }
 
+    public function testTheMailCarriesTheCompanysZoneSoTheDeadlineReadsCorrectly(): void
+    {
+        $this->invite->handle($this->request('stranger@twes.local'), null);
+
+        // Every timestamp is stored UTC; a deadline a person reads has to be rendered where they are.
+        self::assertSame('Africa/Tunis', $this->mailer->sent[0]->timezone);
+        self::assertSame('fr', $this->mailer->sent[0]->locale);
+    }
+
     public function testTheInvitationExpires(): void
     {
         $this->invite->handle($this->request('stranger@twes.local'), null);

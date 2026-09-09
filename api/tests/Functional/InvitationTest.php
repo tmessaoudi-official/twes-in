@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
@@ -161,6 +162,22 @@ final class InvitationTest extends ApiTestCase
         self::assertSame('stranger@twes.local', $message->getTo()[0]->getAddress());
         self::assertStringContainsString('Acme', (string) $message->getSubject());
         self::assertStringContainsString('Acme', (string) $message->getHtmlBody());
+
+        // The deadline is read by a person. Every timestamp is stored UTC, and Acme is Africa/Tunis (+1
+        // all year), so the rendered wall-clock time must be the company's, never the stored one.
+        $invitation = $this->em()->getRepository(Invitation::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]);
+        self::assertInstanceOf(Invitation::class, $invitation);
+        $expiresAt = $invitation->getExpiresAt();
+        $html = (string) $message->getHtmlBody();
+
+        self::assertStringContainsString(
+            $expiresAt->setTimezone(new \DateTimeZone('Africa/Tunis'))->format('d/m/Y H:i'),
+            $html,
+        );
+        self::assertStringNotContainsString(
+            $expiresAt->setTimezone(new \DateTimeZone('UTC'))->format('d/m/Y H:i'),
+            $html,
+        );
     }
 
     private function createPendingCompany(): Company

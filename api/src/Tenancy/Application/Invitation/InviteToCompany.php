@@ -105,6 +105,7 @@ final readonly class InviteToCompany
             $invitation->getInvitedBy()?->getDisplayName(),
             str_replace('{token}', $token->raw, $this->acceptUrlTemplate),
             $company->getLocale(),
+            $company->getTimezone(),
             $invitation->getExpiresAt(),
         ));
 

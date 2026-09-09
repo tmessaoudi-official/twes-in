@@ -19,6 +19,8 @@ final readonly class InvitationMail
         public ?string $invitedByName,
         public string $acceptUrl,
         public string $locale,
+        /** The company's zone: the deadline is read by a person, and every timestamp here is stored UTC. */
+        public string $timezone,
         public \DateTimeImmutable $expiresAt,
     ) {
     }

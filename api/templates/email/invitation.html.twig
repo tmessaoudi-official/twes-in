@@ -12,7 +12,7 @@
         {{ 'invitation.call_to_action'|trans({}, 'emails') }}
       </a>
     </p>
-    <p style="font-size: 13px; color: #555;">{{ 'invitation.expires'|trans({'%date%': expiresAt|date('d/m/Y H:i')}, 'emails') }}</p>
+    <p style="font-size: 13px; color: #555;">{{ 'invitation.expires'|trans({'%date%': expiresAt|date('d/m/Y H:i', timezone)}, 'emails') }}</p>
     <p style="font-size: 13px; color: #555;">{{ 'invitation.ignore'|trans({}, 'emails') }}</p>
     <p style="font-size: 12px; color: #888;">{{ productName }}</p>
   </body>

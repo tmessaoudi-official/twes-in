@@ -48,6 +48,7 @@ final readonly class SymfonyInvitationMailer implements InvitationMailer
                     'invitedByName' => $mail->invitedByName,
                     'acceptUrl' => $mail->acceptUrl,
                     'expiresAt' => $mail->expiresAt,
+                    'timezone' => $mail->timezone,
                     'productName' => $this->productName,
                 ]),
         );
