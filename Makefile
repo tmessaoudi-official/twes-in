@@ -16,8 +16,10 @@ gate: gate-licences gate-api gate-web   ## everything CI checks except e2e
 gate-licences:
 	bash scripts/gates/tests/dependency-licences.test.sh
 	bash scripts/gates/tests/spdx-headers.test.sh
+	bash scripts/gates/tests/executable-bits.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
+	bash scripts/gates/executable-bits.sh
 
 gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
 	cd api && composer gate

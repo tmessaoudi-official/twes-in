@@ -13,6 +13,8 @@ concurrency:
 jobs:
   # WHY: one copyleft or unlicensed package in a lock file kills the commercial licence, and nothing else
   # checks it. Also runs the gates' own tests, so a gate that stopped detecting cannot stay green.
+  # executable-bits is here too: a core.fileMode=false clone stages every script as 100644, which works on
+  # the developer's disk and failed this job's sibling with "bin/console: Permission denied" (run 1).
   licences:
     runs-on: ubuntu-latest
     steps:
@@ -23,8 +25,10 @@ jobs:
           coverage: none
       - run: bash scripts/gates/tests/dependency-licences.test.sh
       - run: bash scripts/gates/tests/spdx-headers.test.sh
+      - run: bash scripts/gates/tests/executable-bits.test.sh
       - run: php scripts/gates/dependency-licences.php
       - run: bash scripts/gates/spdx-headers.sh
+      - run: bash scripts/gates/executable-bits.sh
 
   # WHY: the API tier's gate — code style, PHPStan at level max, PHPUnit against a REAL PostgreSQL 18,
   # because money and tenancy bugs live in SQL and a mocked database cannot show them.
