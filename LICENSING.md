@@ -57,6 +57,12 @@ the CC-BY pair because that one covers build-time *data* and this covers build-t
 not leak. The dependency that needs it is `lightningcss`, the CSS transformer inside Angular's own build
 chain, which never reaches a shipped bundle.
 
+A **dev-only TOOLING** dependency may also carry **Python-2.0** (developer ruling, 2026-09-09). The Python
+Software Foundation licence is permissive and non-copyleft; it stays out of the distributed list only because
+it is a corporate-history licence stack rather than a plain grant, and nothing we ship needs it. The dependency
+that needs it is `argparse`, reached through `js-yaml` by every OpenAPI-to-TypeScript generator on npm; the
+one in use is `@hey-api/openapi-ts` (MIT, LICENSE read), which generates types at build time and ships nothing.
+
 A vendored **font asset** may carry **OFL-1.1** (developer ruling, 2026-07-30). The SIL Open Font License
 imposes nothing on our code; its Reserved Font Name clause binds only somebody who modifies a font and
 redistributes it under its original name, which vendoring unmodified does not do. An OFL-1.1 *code* package is

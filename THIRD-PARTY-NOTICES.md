@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 78 runtime, 52 dev
+## api (Composer) — 80 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -105,7 +105,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/mime | 8.1.6 | MIT | runtime |
 | symfony/monolog-bridge | 8.1.6 | MIT | runtime |
 | symfony/monolog-bundle | 4.0.2 | MIT | runtime |
-| symfony/options-resolver | 8.1.0 | MIT | dev |
+| symfony/options-resolver | 8.1.0 | MIT | runtime |
 | symfony/password-hasher | 8.1.0 | MIT | runtime |
 | symfony/polyfill-deepclone | 1.42.0 | MIT | runtime |
 | symfony/polyfill-intl-grapheme | 1.41.0 | MIT | runtime |
@@ -118,6 +118,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/process | 8.1.6 | MIT | dev |
 | symfony/property-access | 8.1.4 | MIT | runtime |
 | symfony/property-info | 8.1.6 | MIT | runtime |
+| symfony/rate-limiter | 8.1.6 | MIT | runtime |
 | symfony/routing | 8.1.6 | MIT | runtime |
 | symfony/runtime | 8.1.0 | MIT | runtime |
 | symfony/security-bundle | 8.1.6 | MIT | runtime |
@@ -142,7 +143,7 @@ not compiled into what we distribute, and are not listed here.
 | twig/twig | 3.28.0 | BSD-3-Clause | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 16 runtime, 605 dev
+## web (npm) — 16 runtime, 645 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -243,6 +244,12 @@ not compiled into what we distribute, and are not listed here.
 | @eslint/plugin-kit | 0.7.3 | Apache-2.0 | dev |
 | @exodus/bytes | 1.15.1 | MIT | dev |
 | @harperfast/extended-iterable | 1.0.3 | Apache-2.0 | dev |
+| @hey-api/codegen-core | 0.9.1 | MIT | dev |
+| @hey-api/json-schema-ref-parser | 1.4.4 | MIT | dev |
+| @hey-api/openapi-ts | 0.99.0 | MIT | dev |
+| @hey-api/shared | 0.5.0 | MIT | dev |
+| @hey-api/spec-types | 0.2.0 | MIT | dev |
+| @hey-api/types | 0.1.4 | MIT | dev |
 | @hono/node-server | 2.1.1 | MIT | dev |
 | @humanfs/core | 0.19.2 | Apache-2.0 | dev |
 | @humanfs/node | 0.16.8 | Apache-2.0 | dev |
@@ -271,6 +278,7 @@ not compiled into what we distribute, and are not listed here.
 | @jridgewell/resolve-uri | 3.1.2 | MIT | dev |
 | @jridgewell/sourcemap-codec | 1.6.0 | MIT | dev |
 | @jridgewell/trace-mapping | 0.3.31 | MIT | dev |
+| @jsdevtools/ono | 7.1.3 | MIT | dev |
 | @keyv/bigmap | 1.3.1 | MIT | dev |
 | @keyv/serialize | 1.1.1 | MIT | dev |
 | @listr2/prompt-adapter-inquirer | 4.2.5 | MIT | dev |
@@ -281,6 +289,7 @@ not compiled into what we distribute, and are not listed here.
 | @lmdb/lmdb-linux-x64 | 3.5.6 | MIT | dev |
 | @lmdb/lmdb-win32-arm64 | 3.5.6 | MIT | dev |
 | @lmdb/lmdb-win32-x64 | 3.5.6 | MIT | dev |
+| @lukeed/ms | 2.0.2 | MIT | dev |
 | @modelcontextprotocol/sdk | 1.30.0 | MIT | dev |
 | @msgpackr-extract/msgpackr-extract-darwin-arm64 | 3.0.4 | MIT | dev |
 | @msgpackr-extract/msgpackr-extract-darwin-x64 | 3.0.4 | MIT | dev |
@@ -436,9 +445,11 @@ not compiled into what we distribute, and are not listed here.
 | ajv | 8.20.0 | MIT | dev |
 | ajv-formats | 3.0.1 | MIT | dev |
 | angular-eslint | 22.5.0 | MIT | dev |
+| ansi-colors | 4.1.3 | MIT | dev |
 | ansi-escapes | 7.3.0 | MIT | dev |
 | ansi-regex | 6.3.0 | MIT | dev |
 | ansi-styles | 6.2.3 | MIT | dev |
+| argparse | 2.0.1 | Python-2.0 | dev |
 | aria-query | 5.3.2 | Apache-2.0 | dev |
 | assertion-error | 2.0.1 | MIT | dev |
 | axobject-query | 4.1.0 | Apache-2.0 | dev |
@@ -451,7 +462,9 @@ not compiled into what we distribute, and are not listed here.
 | brace-expansion | 5.0.9 | MIT | dev |
 | browserslist | 4.28.9 | MIT | dev |
 | buffer-from | 1.1.2 | MIT | dev |
+| bundle-name | 4.1.0 | MIT | dev |
 | bytes | 3.1.2 | MIT | dev |
+| c12 | 3.3.4 | MIT | dev |
 | cacheable | 2.5.0 | MIT | dev |
 | call-bind-apply-helpers | 1.0.2 | MIT | dev |
 | call-bound | 1.0.4 | MIT | dev |
@@ -465,6 +478,10 @@ not compiled into what we distribute, and are not listed here.
 | cli-truncate | 6.1.1 | MIT | dev |
 | cli-width | 4.1.0 | ISC | dev |
 | cliui | 9.0.1 | ISC | dev |
+| color-support | 1.1.3 | ISC | dev |
+| commander | 15.0.0 | MIT | dev |
+| confbox | 0.2.4 | MIT | dev |
+| confbox | 0.3.1 | MIT | dev |
 | content-disposition | 1.1.0 | MIT | dev |
 | content-type | 1.0.5 | MIT | dev |
 | content-type | 2.1.0 | MIT | dev |
@@ -482,12 +499,18 @@ not compiled into what we distribute, and are not listed here.
 | debug | 4.4.3 | MIT | dev |
 | decimal.js | 10.6.0 | MIT | dev |
 | deep-is | 0.1.4 | MIT | dev |
+| default-browser | 5.5.1 | MIT | dev |
+| default-browser-id | 5.0.1 | MIT | dev |
+| define-lazy-prop | 3.0.0 | MIT | dev |
+| defu | 6.1.7 | MIT | dev |
 | depd | 2.0.0 | MIT | dev |
+| destr | 2.0.5 | MIT | dev |
 | detect-libc | 2.1.2 | Apache-2.0 | dev |
 | dom-serializer | 2.0.0 | MIT | dev |
 | domelementtype | 2.3.0 | BSD-2-Clause | dev |
 | domhandler | 5.0.3 | BSD-2-Clause | dev |
 | domutils | 3.2.2 | BSD-2-Clause | dev |
+| dotenv | 17.4.2 | BSD-2-Clause | dev |
 | dunder-proto | 1.0.1 | MIT | dev |
 | ee-first | 1.1.1 | MIT | dev |
 | electron-to-chromium | 1.5.425 | ISC | dev |
@@ -523,6 +546,7 @@ not compiled into what we distribute, and are not listed here.
 | expect-type | 1.4.0 | Apache-2.0 | dev |
 | express | 5.2.1 | MIT | dev |
 | express-rate-limit | 8.7.0 | MIT | dev |
+| exsolve | 1.1.1 | MIT | dev |
 | fast-deep-equal | 3.1.3 | MIT | dev |
 | fast-json-stable-stringify | 2.1.0 | MIT | dev |
 | fast-levenshtein | 2.0.6 | MIT | dev |
@@ -545,6 +569,8 @@ not compiled into what we distribute, and are not listed here.
 | get-east-asian-width | 1.6.0 | MIT | dev |
 | get-intrinsic | 1.3.0 | MIT | dev |
 | get-proto | 1.0.1 | MIT | dev |
+| get-tsconfig | 4.14.0 | MIT | dev |
+| giget | 3.3.1 | MIT | dev |
 | glob-parent | 6.0.2 | ISC | dev |
 | gopd | 1.2.0 | MIT | dev |
 | graceful-fs | 4.2.11 | ISC | dev |
@@ -570,17 +596,22 @@ not compiled into what we distribute, and are not listed here.
 | inherits | 2.0.4 | ISC | dev |
 | ip-address | 10.7.0 | MIT | dev |
 | ipaddr.js | 1.9.1 | MIT | dev |
+| is-docker | 3.0.0 | MIT | dev |
 | is-extglob | 2.1.1 | MIT | dev |
 | is-fullwidth-code-point | 5.1.0 | MIT | dev |
 | is-glob | 4.0.3 | MIT | dev |
+| is-in-ssh | 1.0.0 | MIT | dev |
+| is-inside-container | 1.0.0 | MIT | dev |
 | is-interactive | 2.0.0 | MIT | dev |
 | is-potential-custom-element-name | 1.0.1 | MIT | dev |
 | is-promise | 4.0.0 | MIT | dev |
 | is-unicode-supported | 2.1.0 | MIT | dev |
+| is-wsl | 3.1.1 | MIT | dev |
 | isexe | 2.0.0 | ISC | dev |
 | jiti | 2.7.0 | MIT | dev |
 | jose | 6.2.12 | MIT | dev |
 | js-tokens | 10.0.0 | MIT | dev |
+| js-yaml | 4.3.2 | MIT | dev |
 | jsdom | 28.1.0 | MIT | dev |
 | jsesc | 3.1.0 | MIT | dev |
 | json-schema-traverse | 0.4.1 | MIT | dev |
@@ -648,9 +679,11 @@ not compiled into what we distribute, and are not listed here.
 | object-assign | 4.1.1 | MIT | dev |
 | object-inspect | 1.13.4 | MIT | dev |
 | obug | 2.2.1 | MIT | dev |
+| ohash | 2.0.12 | MIT | dev |
 | on-finished | 2.4.1 | MIT | dev |
 | once | 1.4.0 | ISC | dev |
 | onetime | 7.0.0 | MIT | dev |
+| open | 11.0.0 | MIT | dev |
 | optionator | 0.9.4 | MIT | dev |
 | ora | 9.4.1 | MIT | dev |
 | ordered-binary | 1.6.1 | MIT | dev |
@@ -665,15 +698,18 @@ not compiled into what we distribute, and are not listed here.
 | path-key | 3.1.1 | MIT | dev |
 | path-to-regexp | 8.4.2 | MIT | dev |
 | pathe | 2.0.3 | MIT | dev |
+| perfect-debounce | 2.1.0 | MIT | dev |
 | picocolors | 1.1.1 | ISC | dev |
 | picomatch | 4.0.5 | MIT | dev |
 | piscina | 5.2.0 | MIT | dev |
 | pkce-challenge | 5.0.1 | MIT | dev |
+| pkg-types | 2.3.3 | MIT | dev |
 | playwright | 1.63.0 | Apache-2.0 | dev |
 | playwright-core | 1.63.0 | Apache-2.0 | dev |
 | postcss | 8.5.28 | MIT | dev |
 | postcss-media-query-parser | 0.2.3 | MIT | dev |
 | postcss-safe-parser | 7.1.0 | MIT | dev |
+| powershell-utils | 0.1.0 | MIT | dev |
 | prelude-ls | 1.2.1 | MIT | dev |
 | prettier | 3.9.6 | MIT | dev |
 | proc-log | 7.0.0 | ISC | dev |
@@ -684,17 +720,21 @@ not compiled into what we distribute, and are not listed here.
 | qs | 6.16.0 | BSD-3-Clause | dev |
 | range-parser | 1.3.0 | MIT | dev |
 | raw-body | 3.0.2 | MIT | dev |
+| rc9 | 3.1.0 | MIT | dev |
 | readdirp | 5.1.1 | MIT | dev |
 | reflect-metadata | 0.2.2 | Apache-2.0 | dev |
 | require-from-string | 2.0.2 | MIT | dev |
+| resolve-pkg-maps | 1.0.0 | MIT | dev |
 | restore-cursor | 5.1.0 | MIT | dev |
 | rolldown | 1.1.5 | MIT | dev |
 | rolldown | 1.2.0 | MIT | dev |
 | router | 2.2.0 | MIT | dev |
+| run-applescript | 7.1.0 | MIT | dev |
 | rxjs | 7.8.2 | Apache-2.0 | runtime |
 | safer-buffer | 2.1.2 | MIT | dev |
 | sass | 1.101.0 | MIT | dev |
 | saxes | 6.0.0 | ISC | dev |
+| semver | 7.8.4 | ISC | dev |
 | semver | 7.8.5 | ISC | dev |
 | send | 1.2.1 | MIT | dev |
 | serve-static | 2.2.1 | MIT | dev |
@@ -758,6 +798,7 @@ not compiled into what we distribute, and are not listed here.
 | wrap-ansi | 10.0.1 | MIT | dev |
 | wrap-ansi | 9.0.2 | MIT | dev |
 | wrappy | 1.0.2 | ISC | dev |
+| wsl-utils | 0.3.1 | MIT | dev |
 | xml-name-validator | 5.0.0 | Apache-2.0 | dev |
 | xmlchars | 2.2.0 | MIT | dev |
 | y18n | 5.0.8 | ISC | dev |

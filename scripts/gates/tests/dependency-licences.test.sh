@@ -58,6 +58,12 @@ assert_gate "CC-BY-4.0 on a dev-only npm package passes" "$d" 0 "OK"
 d=$(fixture); mutate "$d" web/package-lock.json '$j["packages"]["node_modules/runtime-isc"]["license"]="CC-BY-4.0";'; php "$GEN" --root "$d" >/dev/null
 assert_gate "CC-BY-4.0 on a runtime npm package fails" "$d" 1 "runtime-isc (CC-BY-4.0) is a RUNTIME dependency"
 
+d=$(fixture); mutate "$d" web/package-lock.json '$j["packages"]["node_modules/dev-apache"]["license"]="Python-2.0";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "Python-2.0 on a dev-only npm package passes (argparse under @hey-api/openapi-ts, ruled 2026-09-09)" "$d" 0 "OK"
+
+d=$(fixture); mutate "$d" web/package-lock.json '$j["packages"]["node_modules/runtime-isc"]["license"]="Python-2.0";'; php "$GEN" --root "$d" >/dev/null
+assert_gate "Python-2.0 on a runtime npm package fails" "$d" 1 "runtime-isc (Python-2.0) is a RUNTIME dependency"
+
 d=$(fixture); mutate "$d" web/package-lock.json '$j["packages"]["node_modules/runtime-isc"]["license"]="(MIT OR Apache-2.0)";'; php "$GEN" --root "$d" >/dev/null
 assert_gate "an OR expression with one permitted branch passes" "$d" 0 "OK"
 
@@ -85,7 +91,7 @@ assert_gate "missing notices fail" "$d" 1 "THIRD-PARTY-NOTICES.md is out of date
 out=$(php "$GATE" --dump-rules 2>&1)
 if [[ $(echo "$out" | jq -c '.distributed') == '["MIT","Apache-2.0","BSD-2-Clause","BSD-3-Clause","ISC","0BSD","MIT-0","CC0-1.0","BlueOak-1.0.0"]' \
    && $(echo "$out" | jq -c '.dev_only_data') == '["CC-BY-4.0","CC-BY-3.0"]' \
-   && $(echo "$out" | jq -c '.dev_only_tooling') == '["MPL-2.0"]' \
+   && $(echo "$out" | jq -c '.dev_only_tooling') == '["MPL-2.0","Python-2.0"]' \
    && $(echo "$out" | jq -c '.font_assets') == '["OFL-1.1"]' \
    && $(echo "$out" | jq -c 'keys') == '["dev_only_data","dev_only_tooling","distributed","font_assets"]' ]]; then ok "--dump-rules exposes exactly the four lists (maximums)"; else bad "--dump-rules lists drifted" "$out"; fi
 

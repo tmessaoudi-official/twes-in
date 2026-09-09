@@ -21,8 +21,12 @@ const DISTRIBUTED = ['MIT', 'Apache-2.0', 'BSD-2-Clause', 'BSD-3-Clause', 'ISC',
 /** Dev-only build-time DATA (caniuse-lite, spdx-exceptions): attribution licences, tolerated only where nothing ships. */
 const DEV_ONLY_DATA = ['CC-BY-4.0', 'CC-BY-3.0'];
 
-/** Dev-only build-time TOOLING (lightningcss inside Angular's build): file-level copyleft, never in a shipped bundle. */
-const DEV_ONLY_TOOLING = ['MPL-2.0'];
+/**
+ * Dev-only build-time TOOLING: MPL-2.0 (lightningcss inside Angular's build, file-level copyleft) and Python-2.0
+ * (argparse under @hey-api/openapi-ts, the OpenAPI-to-TypeScript generator; permissive, non-copyleft). Neither
+ * reaches a shipped bundle.
+ */
+const DEV_ONLY_TOOLING = ['MPL-2.0', 'Python-2.0'];
 
 /**
  * Vendored FONT FILES (not packages) may carry OFL-1.1. No font is vendored yet; the file-level check lands with
@@ -80,7 +84,7 @@ exit(0);
 
 /**
  * SPDX expressions: "(MIT OR Apache-2.0)" passes if ANY branch is permitted; "(MIT AND GPL-2.0-only)" only if ALL are.
- * Anything that is not an identifier from the lists ("SEE LICENSE IN LICENSE.md", "Python-2.0") is refused.
+ * Anything that is not an identifier from the lists ("SEE LICENSE IN LICENSE.md", "GPL-3.0-only") is refused.
  *
  * @param list<string> $allowed
  */
