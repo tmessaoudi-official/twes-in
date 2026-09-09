@@ -20,7 +20,11 @@ RUN composer install --no-scripts --no-autoloader --prefer-dist --no-progress --
 
 COPY api/ ./
 RUN composer dump-autoload --optimize --classmap-authoritative \
- && composer run-script post-install-cmd --no-interaction
+ && composer run-script post-install-cmd --no-interaction \
+ && bin/console api:openapi:export --output=var/openapi.json
+# var/openapi.json is the contract the web image generates its TypeScript types from (compose.yaml: the web
+# build takes this image as an additional context). Exported here, at build time, so a fresh clone needs
+# nothing outside git to build the web image; it is the same command the CI api job runs for the web job.
 
 # Migrations run at container start, once the database answers (infra/api/docker-entrypoint.sh), as the official
 # Symfony Docker image does; the healthcheck below therefore also says "migrated".

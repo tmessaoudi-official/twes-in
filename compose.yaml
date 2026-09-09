@@ -38,6 +38,9 @@ services:
     build:
       context: .
       dockerfile: infra/web/Dockerfile
+      # The web image generates its TypeScript types from the OpenAPI document the api image exports at build.
+      additional_contexts:
+        api: service:api
     depends_on:
       api:
         condition: service_healthy

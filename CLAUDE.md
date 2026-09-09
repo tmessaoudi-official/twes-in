@@ -84,7 +84,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   API Platform resources (`Me`) and the OpenAPI decorator, the console command, the session handler. Every port has one
   adapter and Symfony aliases them (`services.yaml` scans `src/`); policy values are parameters there.
 - `web/src/app/api/` — TypeScript types generated from the API's OpenAPI document (`make api-types`, gitignored;
-  CI passes the document from the api job to the web job as an artifact). One directory per feature (`auth`,
+  CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
+  the document the api image exports at build, through a compose `additional_contexts` service reference, so a
+  clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature (`auth`,
   `hello`, `health`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
