@@ -6,5 +6,37 @@
     "degraded": "degraded",
     "unreachable": "unreachable",
     "checking": "checking…"
-  }
+  },
+  "auth": {
+    "login": {
+      "title": "Sign in",
+      "email": "Email address",
+      "email_required": "The email address is required.",
+      "email_invalid": "This email address is not valid.",
+      "password": "Password",
+      "password_required": "The password is required.",
+      "submit": "Sign in",
+      "submitting": "Signing in…"
+    },
+    "logout": "Sign out",
+    "errors": {
+      "invalid_credentials": "Wrong email address or password.",
+      "account_locked": "Account locked after too many attempts. Try again in a few minutes.",
+      "account_disabled": "This account is disabled.",
+      "too_many_attempts": "Too many attempts. Try again later.",
+      "authentication_required": "Please sign in.",
+      "csrf_token_missing": "The page has expired; reload it and try again.",
+      "csrf_token_invalid": "The page has expired; reload it and try again.",
+      "network": "The server cannot be reached."
+    }
+  },
+  "hello": {
+    "greeting": "Hello, {{name}}",
+    "company": "You are working in {{company}} as {{role}}.",
+    "no_company": "You are not a member of any company yet.",
+    "operator": "You are a platform operator.",
+    "permissions": "Permissions",
+    "none": "none"
+  },
+  "roles": { "owner": "owner", "admin": "administrator", "member": "member" }
 }

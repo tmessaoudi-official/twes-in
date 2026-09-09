@@ -45,3 +45,6 @@ Thumbs.db
 
 # Editor-specific; the Angular scaffold ships one, this repo does not keep it.
 /.vscode
+
+# Generated from the API's OpenAPI document by `npm run api:types` (types only; never hand-edited).
+/src/app/api/

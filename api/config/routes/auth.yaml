@@ -1,0 +1,7 @@
+# The two firewall endpoints (json_login check path, logout path). /api/auth/me is an API Platform resource.
+api_auth_login:
+    path: /api/auth/login
+    methods: [POST]
+api_auth_logout:
+    path: /api/auth/logout
+    methods: [POST]

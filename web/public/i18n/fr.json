@@ -6,5 +6,37 @@
     "degraded": "dégradée",
     "unreachable": "injoignable",
     "checking": "vérification…"
-  }
+  },
+  "auth": {
+    "login": {
+      "title": "Connexion",
+      "email": "Adresse e-mail",
+      "email_required": "L'adresse e-mail est obligatoire.",
+      "email_invalid": "Cette adresse e-mail n'est pas valide.",
+      "password": "Mot de passe",
+      "password_required": "Le mot de passe est obligatoire.",
+      "submit": "Se connecter",
+      "submitting": "Connexion…"
+    },
+    "logout": "Se déconnecter",
+    "errors": {
+      "invalid_credentials": "Adresse e-mail ou mot de passe incorrect.",
+      "account_locked": "Compte verrouillé après trop de tentatives. Réessayez dans quelques minutes.",
+      "account_disabled": "Ce compte est désactivé.",
+      "too_many_attempts": "Trop de tentatives. Réessayez plus tard.",
+      "authentication_required": "Veuillez vous connecter.",
+      "csrf_token_missing": "La page a expiré, rechargez-la puis réessayez.",
+      "csrf_token_invalid": "La page a expiré, rechargez-la puis réessayez.",
+      "network": "Impossible de joindre le serveur."
+    }
+  },
+  "hello": {
+    "greeting": "Bonjour, {{name}}",
+    "company": "Vous travaillez dans {{company}} en tant que {{role}}.",
+    "no_company": "Vous n'êtes membre d'aucune entreprise pour le moment.",
+    "operator": "Vous êtes opérateur de la plateforme.",
+    "permissions": "Permissions",
+    "none": "aucune"
+  },
+  "roles": { "owner": "propriétaire", "admin": "administrateur", "member": "membre" }
 }

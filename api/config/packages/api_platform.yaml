@@ -1,7 +1,26 @@
 api_platform:
     title: twes-in API
     version: 0.1.0
+    # Plain JSON in and out: the SPA speaks JSON, the contract is the OpenAPI document, and no consumer needs
+    # JSON-LD or Hydra. Docs formats keep the OpenAPI JSON export and the HTML page.
+    formats:
+        json: ['application/json']
+    docs_formats:
+        json: ['application/json']
+        jsonopenapi: ['application/vnd.openapi+json']
+        html: ['text/html']
     defaults:
-        stateless: true
+        # Session-authenticated on the same origin: resources need the session, so nothing here is stateless.
+        stateless: false
         cache_headers:
-            vary: ['Content-Type', 'Authorization', 'Origin']
+            vary: ['Content-Type', 'Origin']
+    # Resources live in each context's Infrastructure/ApiPlatform/ (docs/SPEC.md § 3 Architecture style).
+    mapping:
+        paths: ['%kernel.project_dir%/src']
+    # /api/auth/login and /api/auth/logout are firewall endpoints and /api/health a plain controller, not resources;
+    # App\Identity\Infrastructure\ApiPlatform\OpenApiExtras documents them so the generated TypeScript types carry their shapes.
+
+when@prod:
+    api_platform:
+        # The contract ships inside the TypeScript client; a live docs page in production is one surface too many.
+        enable_docs: false

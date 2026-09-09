@@ -77,11 +77,24 @@ tables, essay gotchas) was retired with the reset. What applies here:
   before the gate.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset.
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
+- `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Shared` (docs/SPEC.md § 3
+  "Architecture style"). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
+  Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
+  repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),
+  API Platform resources (`Me`) and the OpenAPI decorator, the console command, the session handler. Every port has one
+  adapter and Symfony aliases them (`services.yaml` scans `src/`); policy values are parameters there.
+- `web/src/app/api/` — TypeScript types generated from the API's OpenAPI document (`make api-types`, gitignored;
+  CI passes the document from the api job to the web job as an artifact). One directory per feature (`auth`,
+  `hello`, `health`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
+  (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
+  `public/i18n/{fr,en}.json` with a parity test.
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
-- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433), `make gate`
-  (licences + `composer gate` + `npm run gate`), `make e2e` (Playwright against the running stack).
+- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433; the api image migrates at
+  start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`), `make gate` (licences + `composer gate`
+  + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),
+  `make e2e` (Playwright against the running stack).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.
 - Node 26 for the web tier (`web/.nvmrc`). On this machine it is nvm's
@@ -89,12 +102,15 @@ tables, essay gotchas) was retired with the reset. What applies here:
 
 ## Lessons
 
-- A gate that enumerates `git ls-files` cached-only cannot see a new untracked file: stage
-  first, then run the checks, then commit.
-- Use `git grep`, not `grep -rn`, for completeness sweeps; use `git --no-pager -c core.pager=cat
-  diff --no-ext-diff` for programmatic diff reading (the external diff driver strips `+`/`-`).
-- Back a file up before applying a mutant and restore from the backup; `git restore` reverts
-  the uncommitted fix with it.
-- `docker compose config -q`, always `-q`, or every env_file secret is printed.
-- This clone has `core.fileMode=false`: a new script is staged as 100644 whatever its disk mode. Run
-  `git update-index --chmod=+x <path>` after `git add`; `scripts/gates/executable-bits.sh` catches it.
+- Stage first, then run the checks, then commit: the SPDX gate enumerates `git ls-files`, and this clone has
+  `core.fileMode=false`, so a new script also needs `git update-index --chmod=+x` (the executable-bits gate catches it).
+- Use `git grep`, not `grep -rn`, for completeness sweeps; use `git --no-pager -c core.pager=cat diff --no-ext-diff`
+  for programmatic diff reading (the external diff driver strips `+`/`-`). `docker compose config -q`, always `-q`.
+- Back a file up before applying a mutant and restore from the backup; `git restore` reverts the uncommitted fix with it.
+- A Bash `cd api` or `cd web` drifts the persistent cwd and re-arms every project-scoped gate hook; use absolute paths
+  or a subshell. Symfony's test client reboots the kernel between requests: re-find an entity after a request
+  instead of `refresh()`. Angular's `whenStable()` covers pending HTTP, not the microtask after a flushed response.
+- Never name a PHPUnit helper `run()`: `TestCase::run()` is final and the whole file fails to load.
+- BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
+  as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign
+  Referer, and a "no origin at all" request needs `getHistory()->clear()` as well as empty server parameters.

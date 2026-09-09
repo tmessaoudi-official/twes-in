@@ -13,6 +13,8 @@
     <php>
         <ini name="display_errors" value="1" />
         <ini name="error_reporting" value="-1" />
+        <!-- Every timestamp is UTC (docs/SPEC.md § 3 Architecture style); the API image sets the same. -->
+        <ini name="date.timezone" value="UTC" />
         <server name="APP_ENV" value="test" force="true" />
         <server name="SHELL_VERBOSITY" value="-1" />
     </php>

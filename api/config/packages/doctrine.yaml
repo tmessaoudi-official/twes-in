@@ -2,11 +2,18 @@ doctrine:
     dbal:
         url: '%env(resolve:DATABASE_URL)%'
 
+        # "sessions" is owned by the PDO session handler (migration Version20260909000000), not by an entity.
+        schema_filter: ~^(?!sessions$)~
+
         # IMPORTANT: You MUST configure your server version,
         # either here or in the DATABASE_URL env var (see .env file)
         #server_version: '16'
 
         profiling_collect_backtrace: '%kernel.debug%'
+
+        # Value objects stored through custom mapping types (docs/SPEC.md § 3 Architecture style).
+        types:
+            email: App\Identity\Infrastructure\Doctrine\EmailType
     orm:
         validate_xml_mapping: true
         naming_strategy: doctrine.orm.naming_strategy.underscore
@@ -17,8 +24,10 @@ doctrine:
             App:
                 type: attribute
                 is_bundle: false
-                dir: '%kernel.project_dir%/src/Entity'
-                prefix: 'App\Entity'
+                # Entities live in each context's Domain/ (docs/SPEC.md § 3 Architecture style); the attribute driver
+                # scans the whole tree and maps only classes carrying #[ORM\Entity].
+                dir: '%kernel.project_dir%/src'
+                prefix: 'App'
                 alias: App
 
 when@test:

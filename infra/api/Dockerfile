@@ -10,6 +10,7 @@ ENV APP_ENV=${APP_ENV} \
 WORKDIR /app
 
 RUN install-php-extensions pdo_pgsql intl zip opcache
+COPY infra/api/php.ini "$PHP_INI_DIR/conf.d/twes.ini"
 
 COPY --from=composer:2.10.2 /usr/bin/composer /usr/bin/composer
 
@@ -20,6 +21,12 @@ RUN composer install --no-scripts --no-autoloader --prefer-dist --no-progress --
 COPY api/ ./
 RUN composer dump-autoload --optimize --classmap-authoritative \
  && composer run-script post-install-cmd --no-interaction
+
+# Migrations run at container start, once the database answers (infra/api/docker-entrypoint.sh), as the official
+# Symfony Docker image does; the healthcheck below therefore also says "migrated".
+COPY --chmod=755 infra/api/docker-entrypoint.sh /usr/local/bin/docker-entrypoint
+ENTRYPOINT ["docker-entrypoint"]
+CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]
 
 HEALTHCHECK --interval=5s --timeout=3s --start-period=20s --retries=10 \
   CMD php -r 'exit(str_contains((string) @file_get_contents("http://127.0.0.1/api/health"), "\"status\":\"ok\"") ? 0 : 1);'

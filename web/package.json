@@ -16,7 +16,8 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "e2e": "playwright test",
-    "gate": "npm run lint && npm run format:check && npm test && npm run build"
+    "gate": "npm run api:types && npm run lint && npm run format:check && npm test && npm run build",
+    "api:types": "openapi-ts"
   },
   "dependencies": {
     "@angular/cdk": "^22.1.6",

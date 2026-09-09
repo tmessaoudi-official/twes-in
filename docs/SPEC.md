@@ -72,6 +72,77 @@ distribute, and the licence gate checks every one of them. Base images and servi
 the nine-identifier rule. SPDX identifiers are enforced on PHP by php-cs-fixer's header rule and on
 TypeScript and shell by `scripts/gates/spdx-headers.sh`.
 
+### Architecture style [RULED 2026-09-09]
+
+Hexagonal, domain-driven, test-first. Official Symfony, Doctrine, API Platform and Angular
+recommendations apply everywhere the spec does not rule otherwise; each ruled deviation is named here.
+
+**Bounded contexts.** One directory per context under `api/src/`: `Identity` (users, sessions,
+login), `Tenancy` (companies, memberships, roles), `Audit` now; every later module is a context of
+its own (customers, products, delivery notes, invoices, vendors, expenses, inventory), which is what
+the Modules ruling's "module directory" is. `api/src/Shared/` holds what several contexts need
+(the `CurrentCompany` port and its session adapter now, money at G3) and nothing that belongs to one;
+the clock port is PSR-20 (`Psr\Clock\ClockInterface`), which Symfony's clock implements. Contexts may
+depend on one another's `Domain` and `Application` (Tenancy's `Membership` points at Identity's `User`),
+never on another's `Infrastructure`.
+
+**Three layers per context**, dependencies pointing inwards only:
+
+| Layer | Holds | May import |
+|---|---|---|
+| `Domain/` | entities and aggregates, value objects, domain events, repository interfaces, domain services, exceptions; every business rule | PHP, `Shared/…/Domain`, `Symfony\Component\Uid` (identifiers), `Doctrine\ORM\Mapping` and `Doctrine\DBAL\Types\Types` on entities (mapping by attributes, the driver Doctrine recommends; no XML) |
+| `Application/` | use cases (one class per command or query, invoked by a handler method), their plain input and output types, the ports the use cases need (clock, password hasher, audit trail, current company, event dispatch) | `Domain`, `Shared`, `Psr\Clock`, `Symfony\Component\Uid`, PHP |
+| `Infrastructure/` | adapters: Doctrine repositories, Symfony security (user provider, authenticators, voters, listeners), API Platform resources with providers and processors, console commands, session handler, mailers | anything |
+
+An architecture test (`api/tests/Architecture/`) fails the suite when a `Domain/` or `Application/`
+file imports `Symfony\`, `ApiPlatform\` or `Doctrine\` beyond the carve-outs above, or any `Infrastructure`.
+A Symfony `UserInterface` implementation, an `#[ApiResource]` class, a console command are therefore
+Infrastructure: the security user is a wrapper around the domain `User`, loaded by a custom user
+provider through the repository port; the `Me` resource is built from the use case's plain output. Configuration (`api/config/`) wires each port to its adapter.
+
+**Domain conventions.** Identity is created in the constructor (UUID v7 through `symfony/uid`), so an
+aggregate is valid before it is persisted. Value objects where an invariant exists (email, permission,
+money, tax rate); they are stored through custom DBAL types or embeddables, Doctrine's documented ways.
+Entities are not `final` (Doctrine proxies). Domain events are plain objects recorded by the aggregate
+and dispatched in-process after the use case commits; no message bus, no event sourcing, no read models.
+Thin contexts (vendors, units) may have a use case that only calls the repository; the layers stay, the
+ceremony does not. Every timestamp is UTC (`date.timezone=UTC` in the image and the test bootstrap;
+`datetime_immutable` columns).
+
+**Tests.** `tests/Unit` for Domain and Application without the kernel (milliseconds, the bulk of the
+suite); `tests/Integration` for adapters against the real PostgreSQL (repositories, the session
+handler); `tests/Functional` for HTTP through the kernel; `tests/Architecture` for the layer rules;
+Playwright through the real stack. Failing test first, always; a sabotage check per goal.
+
+**Security, as the framework recommends.** CSRF through Symfony's stateless mechanism
+(`framework.csrf_protection` with `stateless_token_ids: [api]` and `check_header` set to
+`SameOriginCsrfTokenManager::CHECK_ONLY_HEADER`, a `!php/const` in YAML since the option is the
+manager's integer): the SPA sends a `csrf-token` header with a random value of at least 24 characters
+on every request, an Angular interceptor does it; a listener before the firewall asks the framework's
+`SameOriginCsrfTokenManager` on every unsafe `/api` request, which also enforces the origin
+(`Sec-Fetch-Site`, `Origin`, `Referer`) and remembers in the session which proof a client gave, so a
+proof that disappears later is refused. Error codes: `csrf_token_missing`, `csrf_token_invalid`. The
+security user is a snapshot of the domain `User` (`SecurityUser`, password hash replaced by a checksum
+when serialised, as the documentation recommends), loaded by a `UserProvider` that also implements
+`PasswordUpgraderInterface`. Login is `json_login`; the account lockout, the session company and the
+audit rows are use cases (`RecordSuccessfulLogin`, `RecordFailedLogin`, `RecordLogout`,
+`ChooseWorkingCompany`) called from Symfony's success handler and its authentication event listeners,
+which are adapters. Migrations run in the API image's entrypoint after the database answers, exactly
+as the official Symfony Docker entrypoint does (`--all-or-nothing`); `composer test` migrates the test
+database before PHPUnit, so CI needs no separate step. Deviations kept
+by ruling: `argon2id` with explicit parameters (docs default: `auto`), JSON-only formats (docs default
+adds JSON-LD), per-context directories (docs: the default layout), and the `/api` requests declared
+XMLHttpRequest by a listener so the firewall saves no login target path into a session for anonymous
+hits (no documented switch exists).
+
+**Web.** One directory per feature (`auth`, `hello`, `health`, later `customers`…), files named by
+role as the Angular style guide asks (hyphenated, matching the class: `login-page.ts`, `auth-facade.ts`,
+`auth-api.ts`, `auth-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`), no subdirectory per kind of
+code. Components depend on the feature's facade (signals) and never on `HttpClient`; the facade depends
+on the API adapter; the adapter is the only user of the generated types and maps them to the feature's
+own types. Components are `OnPush`. Deviation kept by ruling: ngx-translate instead of `@angular/localize`
+(runtime language switching).
+
 ### Tenancy [RULED 2026-09-09]
 
 - `company` is the tenant. Every business table carries `company_id`; a Doctrine filter plus
@@ -227,7 +298,8 @@ Every goal is done only when all six hold:
 ## 6. Repository layout and environment
 
 ```
-api/                Symfony application (src/Module/<Name>/, config/fiscal/<CC>.yaml, tests/)
+api/                Symfony application (src/<Context>/{Domain,Application,Infrastructure}/, config/fiscal/<CC>.yaml,
+                    tests/{Unit,Integration,Functional,Architecture}/)
 web/                Angular application (src/app/<feature>/, e2e/ Playwright)
 infra/              Dockerfiles, nginx config
 docs/               SPEC.md, fiscal/<CC>.md, spec/pricing-vectors.json
@@ -273,6 +345,14 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-09] AGREED: `cookie_secure: true` everywhere; Chromium accepts and returns a Secure cookie over plain http on 127.0.0.1 and localhost (Playwright probe), so the http dev stack and the e2e job need no TLS.
 - [2026-09-09] AGREED: `Python-2.0` is permitted for DEV-ONLY TOOLING (fifth identifier beside MPL-2.0): every OpenAPI-to-TypeScript generator reaches argparse through js-yaml, it is build-time code that never ships, and it is not copyleft. Supersedes the same-day ruling on openapi-typescript, which only accepts TypeScript 5: the generator is `@hey-api/openapi-ts` (MIT, LICENSE read, accepts TypeScript 6), types only. To be applied to CLAUDE.md invariant 3, LICENSING.md, the gate and its test in one change.
 - [2026-09-09] NOTED: `web/package.json` carries an npm `overrides` entry pinning `js-yaml` to 4.3.2 (MIT). `@hey-api/json-schema-ref-parser` pins 4.2.0 exactly, which `npm audit` flags for three quadratic-CPU advisories on hostile YAML (GHSA-52cp-r559-cp3m, GHSA-5p4m-2wfm-xmqj, GHSA-2883-xcg3-v3hh), all fixed at 4.3.2. Exposure was nil (dev-only tooling parsing our own JSON) and CI installs with `--no-audit`; the override keeps the tree at zero advisories anyway. Drop it once the ref-parser moves past 4.3.2.
+- [2026-09-09] NOTED: CSRF for the whole API is a stateless double-submit cookie (`XSRF-TOKEN`, readable, Secure, SameSite=Strict, echoed by Angular's HttpClient in `X-XSRF-TOKEN`) plus an Origin / Sec-Fetch-Site check, applied before the firewall so the login itself is covered; `/api/health` and safe methods are exempt. Chosen over Symfony's session-bound token because it starts no session for anonymous requests and needs no endpoint to fetch a token from.
+- [2026-09-09] NOTED: the account lockout counts wrong passwords only. A refusal because the account is already locked, disabled or throttled leaves the counter alone; counting it would let anyone keep an account locked by retrying. Throttling (10 per account and address, 50 per address, 15 minutes) is Symfony's login limiter over the app cache; the lockout (5 failures, 15 minutes) is a column and survives a restart.
+- [2026-09-09] NOTED: the seeded operator is `operator@twes.local` with the development password `twes-operator-dev`, passed explicitly by `make seed` and the CI e2e job; `app:seed` has no built-in password and refuses to create the operator without one.
+- [2026-09-09] AGREED: the API is hexagonal with a pure domain: no Symfony, Doctrine or API Platform import in a `Domain/` or `Application/` directory, enforced by an architecture test in PHPUnit; Doctrine mapping is XML under `Infrastructure/`.
+- [2026-09-09] AGREED: bounded contexts. The core is cut into `Identity` (users, sessions, login), `Tenancy` (companies, memberships, roles) and `Audit` now; every later module (customers, products, invoices, …) is its own context with the three layers inside, which is what the Modules ruling's "module directory" becomes.
+- [2026-09-09] AGREED: the Angular side follows the same discipline per feature: domain types and state, application facades, infrastructure HTTP adapters; components depend on facades, never on HttpClient; the generated API types are the infrastructure's contract.
+- [2026-09-09] AGREED: no XML mapping. Doctrine mapping is by PHP attributes, the driver Doctrine and Symfony recommend; `Doctrine\ORM\Mapping` (and `Doctrine\DBAL\Types\Types`) is the one framework import a `Domain/` entity may carry, and the architecture test carves out exactly that. Everything else follows the official Symfony, Doctrine, API Platform and Angular recommendations; where the spec has ruled otherwise, the ruling is named in § 3.
+- [2026-09-09] NOTED: applying the ruling above to G1a replaced the homegrown CSRF (double-submit `XSRF-TOKEN` cookie, the NOTED entry earlier today) by Symfony's stateless mechanism, header only (§ 3 Architecture style); `csrf_origin_mismatch` no longer exists as an error code. Migrations moved from `make up` and the CI e2e job into the API image's entrypoint; `composer test` migrates the test database. Every timestamp is UTC (`date.timezone` in the image and in PHPUnit). The Symfony user is a snapshot (`SecurityUser`), the domain `User` implements no framework interface, and `Email` is the first value object (custom DBAL type `email`).
 
 ## 8. Status
 
@@ -294,6 +374,10 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 12 | G9 expenses + attachments | M | todo | - | |
 | 13 | G10 inventory | M | todo | - | |
 <!-- /progress-block -->
+
+### Delivered
+- **G0** (`4001a34`, CI green at `381d510`): orphan root; `api/` (Symfony 8.1, API Platform 4, Doctrine, `/api/health`); `web/` (Angular 22, Material, Tailwind, ngx-translate fr/en); `compose.yaml` (PostgreSQL 18, FrankenPHP, nginx, Gotenberg, Mailpit); CI with four jobs; licence, SPDX and executable-bit gates with their own tests; one Playwright smoke.
+- **G1a**: three contexts, `Identity`, `Tenancy`, `Audit`, plus `Shared`, each with `Domain/`, `Application/`, `Infrastructure/` (§ 3 Architecture style; `tests/Architecture/LayerDependenciesTest` enforces the layers). Entities `user` (Identity), `company`, `role`, `membership` (Tenancy), `audit_log` (Audit) and the `sessions` table (migration `Version20260909000000`); `Email` value object through the `email` DBAL type; ports `UserRepository`, `CompanyRepository`, `RoleRepository`, `MembershipRepository`, `AuditTrail`, `PasswordHasher`, `CurrentCompany`, each with one Doctrine, Symfony or session adapter. Use cases: `RecordSuccessfulLogin`, `RecordFailedLogin` (lockout after 5, 15 min), `RecordLogout`, `ChooseWorkingCompany`, `DescribeWorkingContext`, `SeedPlatform`. Sessions in PostgreSQL through `PdoSessionHandler`; cookie `twes_session` HttpOnly, Secure, SameSite=Strict, session-scoped; id rotated at login; idle 30 min and absolute 12 h enforced per request (`app.session.*` parameters); `trusted_proxies: private_ranges`. Endpoints: `POST /api/auth/login` (json_login, argon2id 64 MiB / 3 passes, throttled, answers the `Me` shape), `POST /api/auth/logout` (204), `GET /api/auth/me` (API Platform resource built from the domain user and the working context: user, current company with role, permission strings), `GET /api/health` (in the OpenAPI document too). CSRF: Symfony stateless, `csrf-token` header on every request, origin enforced. Forced logout through a rotated `security_stamp` (`SecurityUser::isEqualTo`), deactivation ends sessions the same way. Auth events are `audit_log` rows (`auth.login`, `auth.login_failed`, `auth.logout`) with actor, address and company. `PermissionVoter` decides every permission string (`Permission` value object: `platform.*` for operators only; anything else through the membership role in the session's company, `*` wildcard); built-in roles owner / admin / member seeded by `app:seed` with the operator and the Demo company (idempotent). Migrations run in the API image's entrypoint. Web: features `auth` (`login-page`, `auth-facade` over signals, `auth-api` the only user of the generated types, `csrf-interceptor`, guards), `hello` (`hello-page`), `health` (facade + adapter for the G0 status line); TypeScript types generated from the exported OpenAPI document (`npm run api:types`, gitignored), fr/en parity test. nginx sends a CSP without nonces plus nosniff, Referrer-Policy and X-Frame-Options. Settings: none yet (the first company setting is G3). Playwright: unauthenticated redirect, login → hello → reload → logout, wrong password, security headers.
 ### Blocked
 ### Needs input
 - G2: fonts and the icon set. `web/src/index.html` loads nothing from Google; Material's default typography falls back to the system stack until a self-hosted font (OFL-1.1 or Apache-2.0) is chosen.
@@ -302,6 +386,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - G3: Tunisian and French fiscal rules with sources (rates, FODEC scope, stamp, withholding thresholds, identifier formats, mandatory mentions, El Fatoora scope).
 ### Fragile
 ### Known issues
-- Skeleton defaults G0 left for G1a, each a security precondition of the auth work: `trusted_proxies` is unset behind nginx (an audit log would record the container network's address as the actor), `APP_SECRET` is empty in `api/.env`, `security.yaml` still carries the skeleton's in-memory user provider, and sessions are on the filesystem until G1a moves them to PostgreSQL as ruled.
+- `APP_SECRET` is empty in `api/.env` by design: `.env.dev` carries the Flex-generated development secret and production must set its own through the environment; the API image ships no secret.
+- The PostgreSQL session handler is exercised by Playwright only (PHPUnit runs on `mock_file` storage, `framework.yaml` `when@test`); its own PDO connection sits outside dama's rollback, so a PHPUnit-level test of the handler would need its own cleanup. The idle and absolute timeouts are unit-tested against a mock session and not driven through a real clock end to end.
+- With header-only CSRF the framework still emits a `Set-Cookie` clearing a `csrf-token_<value>` double-submit cookie the browser never had, on every unsafe API response (`SameOriginCsrfTokenManager` registers the name so a reverse proxy can be cleaned up). Harmless; noted so nobody hunts for the cookie's origin.
+- No domain event exists yet: G1a's side effects are direct port calls from the use cases. The first event is `delivery_note.validated` (G6), and the in-process dispatch described in § 3 lands with it.
+- The CSP has no nonces (`style-src 'unsafe-inline'` for Material and the CDK); a nonce-based policy is owed once the design system lands (G2).
+- Login throttling counters live in the app cache (filesystem inside the api container): two api containers would count separately. The account lockout is a column and does not have this limit.
+- Expired rows in `sessions` are collected by PHP's session GC probability; no scheduled cleanup exists yet.
 - CI first went green at `381d510` (run 2; run 1 failed on executables committed as 100644, fixed there). Only a dev image has been built; no production image exists yet.
 - Breached-password check (spec § 3 Auth) is deferred to G1b, where the first password-set flow (invitation acceptance) lives; G1a's only passwords are seeded.

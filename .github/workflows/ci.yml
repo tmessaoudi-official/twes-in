@@ -56,6 +56,7 @@ jobs:
         with:
           php-version: '8.5'
           extensions: pdo_pgsql, intl, zip, opcache
+          ini-values: date.timezone=UTC
           coverage: none
       - uses: actions/cache@v4
         with:
@@ -63,10 +64,19 @@ jobs:
           key: composer-${{ hashFiles('api/composer.lock') }}
       - run: composer install --no-interaction --no-progress --prefer-dist
       - run: composer gate
+      # The OpenAPI document is the contract the web job generates its TypeScript types from.
+      - run: bin/console api:openapi:export --output=var/openapi.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openapi
+          path: api/var/openapi.json
+          retention-days: 7
 
-  # WHY: lint, formatting, the component tests, and the production build the web image is made from.
+  # WHY: lint, formatting, the component tests, and the production build the web image is made from. Needs
+  # the api job's OpenAPI artifact: the gate starts by generating the TypeScript types from it.
   web:
     runs-on: ubuntu-latest
+    needs: [api]
     defaults:
       run:
         working-directory: web
@@ -77,6 +87,10 @@ jobs:
           node-version-file: web/.nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: openapi
+          path: api/var
       - run: npm ci --no-audit --no-fund
       - run: npm run gate
 
@@ -87,7 +101,10 @@ jobs:
     needs: [licences, api, web]
     steps:
       - uses: actions/checkout@v5
+      # The api image migrates at start (infra/api/docker-entrypoint.sh) and --wait holds until it is healthy;
+      # the seed is data, not schema, so it stays a step: the operator the scenarios sign in as.
       - run: docker compose up -d --build --wait
+      - run: docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev
       - uses: actions/setup-node@v5
         with:
           node-version-file: web/.nvmrc

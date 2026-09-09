@@ -2,8 +2,31 @@
 framework:
     secret: '%env(APP_SECRET)%'
 
-    # Note that the session will be started ONLY if you read or write from it.
-    session: true
+    # nginx terminates the client connection and forwards X-Forwarded-*; without this the audit log would
+    # record the container network's address as the actor. Private ranges only: never a public proxy.
+    trusted_proxies: 'private_ranges'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port']
+
+    # CSRF for the API, Symfony's stateless mechanism: the SPA sends a random value of at least 24 characters in
+    # the csrf-token header on every request, and App\Identity\Infrastructure\Security\CsrfRequestListener asks the
+    # SameOriginCsrfTokenManager on every unsafe /api request (origin checked too). Header only: no double-submit cookie.
+    csrf_protection:
+        stateless_token_ids: [api]
+        check_header: !php/const Symfony\Component\Security\Csrf\SameOriginCsrfTokenManager::CHECK_ONLY_HEADER
+
+    # Server-side sessions in PostgreSQL (App\Identity\Infrastructure\Session\PostgresSessionHandler wraps PdoSessionHandler).
+    # Cookie: HttpOnly, Secure everywhere (Chromium accepts Secure cookies on http://localhost and 127.0.0.1,
+    # probed 2026-09-09), SameSite=Strict, session-scoped (no cookie_lifetime). Idle and absolute limits are
+    # enforced per request by App\Identity\Infrastructure\Session\SessionTimeoutListener; gc_maxlifetime is the absolute limit.
+    session:
+        handler_id: App\Identity\Infrastructure\Session\PostgresSessionHandler
+        name: twes_session
+        cookie_secure: true
+        cookie_httponly: true
+        cookie_samesite: strict
+        cookie_lifetime: 0
+        gc_maxlifetime: '%app.session.absolute_ttl%'
+        metadata_update_threshold: 0
 
     #esi: true
     #fragments: true
@@ -12,4 +35,7 @@ when@test:
     framework:
         test: true
         session:
+            # PHPUnit runs on a mock file storage; the PostgreSQL handler is exercised by the Playwright job
+            # through the real stack (login, hello page, logout is one session round-trip through the table).
             storage_factory_id: session.storage.factory.mock_file
+            handler_id: null

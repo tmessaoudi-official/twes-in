@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 80 runtime, 51 dev
+## api (Composer) — 81 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -94,6 +94,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/error-handler | 8.1.5 | MIT | runtime |
 | symfony/event-dispatcher | 8.1.5 | MIT | runtime |
 | symfony/event-dispatcher-contracts | 3.7.1 | MIT | runtime |
+| symfony/expression-language | 8.1.6 | MIT | runtime |
 | symfony/filesystem | 8.1.6 | MIT | runtime |
 | symfony/finder | 8.1.5 | MIT | runtime |
 | symfony/flex | 2.11.0 | MIT | runtime |

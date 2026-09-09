@@ -1,9 +1,22 @@
 # Developer entry points. Everything here is also what CI runs (.github/workflows/ci.yml).
 SHELL := /bin/sh
-.PHONY: up down logs gate gate-api gate-web gate-licences test-api test-web e2e notices
+.PHONY: up down logs migrate seed api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
 
-up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433)
+up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433), then seed
 	docker compose up -d --build --wait
+	$(MAKE) seed
+
+migrate:       ## apply pending migrations inside a running api container (the image entrypoint already did at start)
+	docker compose exec -T api bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
+
+seed:          ## built-in roles, the operator (operator@twes.local) and the Demo company; idempotent. Dev password only.
+	docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev
+
+api-openapi:   ## export the OpenAPI document the TypeScript types are generated from
+	cd api && bin/console api:openapi:export --output=var/openapi.json
+
+api-types: api-openapi   ## regenerate web/src/app/api (types only, gitignored)
+	cd web && npm run api:types
 
 down:          ## stop it, keep the database volume
 	docker compose down
@@ -24,7 +37,7 @@ gate-licences:
 gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
 	cd api && composer gate
 
-gate-web:
+gate-web: api-openapi   ## npm run gate starts with api:types, which reads api/var/openapi.json
 	cd web && npm run gate
 
 test-api:

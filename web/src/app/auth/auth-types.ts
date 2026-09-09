@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+/**
+ * The auth feature seen from its components: who is signed in, where they work, what they may do. Built by the
+ * API adapter (auth-api.ts) from the generated OpenAPI types, which nothing else imports.
+ */
+export type AuthStatus = 'unknown' | 'anonymous' | 'authenticated';
+
+export type LoginError =
+  | 'invalid_credentials'
+  | 'account_locked'
+  | 'account_disabled'
+  | 'too_many_attempts'
+  | 'authentication_required'
+  | 'csrf_token_missing'
+  | 'csrf_token_invalid'
+  | 'network';
+
+export interface Credentials {
+  email: string;
+  password: string;
+}
+
+export interface SignedInUser {
+  id: string;
+  email: string;
+  displayName: string;
+  locale: string;
+  isPlatformOperator: boolean;
+}
+
+export interface WorkingCompany {
+  id: string;
+  name: string;
+  countryCode: string;
+  currency: string;
+  locale: string;
+  timezone: string;
+  status: string;
+  /** the user role name in this company */
+  role: string;
+}
+
+export interface SignedInState {
+  user: SignedInUser;
+  company: WorkingCompany | null;
+  /** permission strings held in the working company; ["*"] for an owner */
+  permissions: string[];
+}
+
+export type LoginOutcome = { ok: true; state: SignedInState } | { ok: false; error: LoginError };

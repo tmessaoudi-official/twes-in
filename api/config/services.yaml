@@ -7,6 +7,12 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Session limits in seconds: 30 minutes idle, 12 hours absolute (docs/SPEC.md § 3 Auth).
+    app.session.idle_ttl: 1800
+    app.session.absolute_ttl: 43200
+    # Account lockout: after this many consecutive failures the account is locked for this long.
+    app.auth.lock_after_failures: 5
+    app.auth.lock_duration: 'PT15M'
 
 services:
     # default configuration for services in *this* file
@@ -18,6 +24,25 @@ services:
     # this creates a service per class whose id is the fully-qualified class name
     App\:
         resource: '../src/'
+        exclude:
+            - '../src/Kernel.php'
+        # Domain/ is scanned too: its entities and value objects are never injected and are dropped as unused, while
+        # its repository interfaces are the ports the resource aliases to their one adapter (Symfony aliases every
+        # interface with a single implementation). Application use cases carrying policy values get them here.
+    App\Identity\Application\Login\RecordFailedLogin:
+        arguments:
+            $lockAfterFailures: '%app.auth.lock_after_failures%'
+            $lockDuration: '%app.auth.lock_duration%'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+when@test:
+    services:
+        # FrameworkBundle hardcodes MOCKSESSID for the mock file session storage; the functional tests assert the
+        # cookie the browser will actually see, name included, so the test factory carries the real name.
+        session.storage.factory.mock_file:
+            class: Symfony\Component\HttpFoundation\Session\Storage\MockFileSessionStorageFactory
+            arguments:
+                - '%kernel.cache_dir%/sessions'
+                - 'twes_session'
+                - !service
+                    class: Symfony\Component\HttpFoundation\Session\Storage\MetadataBag
+                    arguments: ['%session.metadata.storage_key%', '%session.metadata.update_threshold%']
