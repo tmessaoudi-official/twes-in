@@ -50,7 +50,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'properties' => [
                 'error' => [
                     'type' => 'string',
-                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid'],
+                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required'],
                 ],
             ],
         ]);
@@ -70,7 +70,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             operationId: 'login',
             tags: ['Auth'],
             responses: [
-                '200' => new Response('Signed in; the session cookie is set', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$me]))])),
+                '200' => new Response('Signed in, or a second factor is owed', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['oneOf' => [['$ref' => '#/components/schemas/'.$me], ['$ref' => '#/components/schemas/MfaPending']]]))])),
                 '400' => $errorResponse('Malformed body'),
                 '401' => $errorResponse('Wrong credentials, locked or disabled account'),
                 '403' => $errorResponse('CSRF check failed'),
@@ -88,6 +88,72 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             ],
             summary: 'Sign out',
         )));
+        // The MFA endpoints are plain controllers for the same reason login is: one of them has to call
+        // Security::login() itself. They still belong in the document, because that is where the SPA's types
+        // come from.
+        $schemas['MfaCode'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['code'],
+            'properties' => [
+                'code' => ['type' => 'string', 'description' => 'A six-digit code, or a recovery code.'],
+            ],
+        ]);
+        $schemas['MfaPending'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['mfaRequired'],
+            'properties' => ['mfaRequired' => ['type' => 'boolean', 'enum' => [true]]],
+        ]);
+        $schemas['MfaEnrolment'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['secret', 'provisioningUri'],
+            'properties' => [
+                'secret' => ['type' => 'string', 'description' => 'Base32, for typing in by hand.'],
+                'provisioningUri' => ['type' => 'string', 'description' => 'otpauth:// URI, for the QR code.'],
+            ],
+        ]);
+        $schemas['MfaRecoveryCodes'] = new \ArrayObject([
+            'type' => 'object',
+            'required' => ['recoveryCodes'],
+            'properties' => [
+                'recoveryCodes' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Shown once and never again.'],
+            ],
+        ]);
+
+        $jsonOf = static fn (string $schema, string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$schema]))]));
+        $codeBody = new RequestBody('The code', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/MfaCode']))]), true);
+
+        $openApi->getPaths()->addPath('/api/auth/mfa/verify', new PathItem(post: new Operation(
+            operationId: 'verifySecondFactor',
+            tags: ['Auth'],
+            responses: [
+                '200' => new Response('Signed in; the session cookie is set', new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/'.$me]))])),
+                '401' => $errorResponse('No pending login, or the code is wrong'),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Finish a login that owes a second factor',
+            requestBody: $codeBody,
+        )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/enrolment', new PathItem(post: new Operation(
+            operationId: 'beginMfaEnrolment',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('MfaEnrolment', 'A pending secret; not in force until confirmed'),
+                '401' => $errorResponse('Not signed in'),
+            ],
+            summary: 'Start enrolling an authenticator',
+        )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/enrolment/confirm', new PathItem(post: new Operation(
+            operationId: 'confirmMfaEnrolment',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('MfaRecoveryCodes', 'Enrolled; the recovery codes are shown once'),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse('The code does not match the pending secret'),
+            ],
+            summary: 'Confirm the authenticator and receive the recovery codes',
+            requestBody: $codeBody,
+        )));
+
         $health = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Health']))]));
         $openApi->getPaths()->addPath('/api/health', new PathItem(get: new Operation(
             operationId: 'health',

@@ -30,15 +30,17 @@ final readonly class Me
         #[ApiProperty(required: true)] public MeUser $user,
         #[ApiProperty(required: true)] public ?MeCompany $company,
         #[ApiProperty(required: true, schema: ['type' => 'array', 'items' => ['type' => 'string']])] public array $permissions,
+        #[ApiProperty(required: true)] public MeMfa $mfa,
     ) {
     }
 
-    public static function of(User $user, ?WorkingContext $context): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator()),
             null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role),
             null === $context ? [] : $context->permissions,
+            new MeMfa($user->hasTotp(), $mfaRequired),
         );
     }
 }

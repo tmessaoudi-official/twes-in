@@ -20,6 +20,15 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
     {
     }
 
+    public function anyCompanyRequiresMfa(Uuid $userId): bool
+    {
+        // One query, no limit: this decides whether an account is allowed to work at all, so it must not be
+        // answerable by a page of results that happened to stop early.
+        return (bool) $this->entityManager->createQuery(
+            'SELECT COUNT(m.id) FROM '.Membership::class.' m JOIN m.company c WHERE m.user = :user AND c.mfaRequired = true',
+        )->setParameter('user', $userId, 'uuid')->getSingleScalarResult();
+    }
+
     public function ofUser(Uuid $userId, int $limit): array
     {
         return $this->entityManager->getRepository(Membership::class)->findBy(['user' => $userId], limit: $limit);

@@ -23,6 +23,13 @@ parameters:
     # The breached-password check reaches Have I Been Pwned over the network. Off in tests, which must never
     # depend on an external service (docs/SPEC.md § 7, 2026-09-09).
     app.password.breach_check_enabled: true
+    # Encrypts TOTP secrets at rest (ruling of 2026-09-10). Not APP_SECRET: that one rotates for unrelated
+    # reasons, and rotating this one means every enrolled authenticator has to be enrolled again.
+    app.mfa.key: '%env(APP_MFA_KEY)%'
+    # How long the half-authenticated state between password and second factor survives.
+    app.mfa.pending_ttl: 'PT5M'
+    # The issuer an authenticator app shows beside the account.
+    app.mfa.issuer: '%app.product_name%'
 
 services:
     # default configuration for services in *this* file
@@ -54,6 +61,18 @@ services:
     App\Identity\Infrastructure\Password\HibpBreachedPasswordCheck:
         arguments:
             $enabled: '%app.password.breach_check_enabled%'
+
+    App\Identity\Infrastructure\Mfa\SodiumSecretCipher:
+        arguments:
+            $base64Key: '%app.mfa.key%'
+
+    App\Identity\Infrastructure\Security\PendingSecondFactor:
+        arguments:
+            $ttl: '%app.mfa.pending_ttl%'
+
+    App\Identity\Application\Mfa\BeginTotpEnrolment:
+        arguments:
+            $issuer: '%app.mfa.issuer%'
 
 when@test:
     parameters:

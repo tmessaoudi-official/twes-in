@@ -47,6 +47,14 @@ class Company
     #[ORM\Column(length: 16)]
     private string $status = self::STATUS_ACTIVE;
 
+    /**
+     * Whether every member of this company must carry a second factor. A column rather than the first row of
+     * a settings table: settings are G3, where the real requirements live, and moving this one field there
+     * is a data migration (ruling of 2026-09-10).
+     */
+    #[ORM\Column]
+    private bool $mfaRequired = false;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -146,5 +154,23 @@ class Company
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function isMfaRequired(): bool
+    {
+        return $this->mfaRequired;
+    }
+
+    /** @return bool whether this changed anything, so a caller can stay quiet when it did not */
+    public function requireMfa(bool $required, ?\DateTimeImmutable $now = null): bool
+    {
+        if ($this->mfaRequired === $required) {
+            return false;
+        }
+
+        $this->mfaRequired = $required;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+
+        return true;
     }
 }

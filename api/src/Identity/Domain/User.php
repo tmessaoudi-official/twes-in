@@ -58,6 +58,22 @@ class User
     private ?\DateTimeImmutable $passwordChangedAt = null;
 
     /**
+     * Ciphertext, never the secret itself: a TOTP secret cannot be a digest, because verifying a code needs
+     * the secret back. The `SecretCipher` port does the encrypting; the domain only ever holds the opaque
+     * value it was handed (ruling of 2026-09-10).
+     */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $totpSecret = null;
+
+    /** Null while an enrolment is pending: a secret is not a second factor until one real code has proved it. */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $totpConfirmedAt = null;
+
+    /** The last timestep spent, so a code cannot be replayed inside its own window. */
+    #[ORM\Column(nullable: true)]
+    private ?int $totpLastTimestep = null;
+
+    /**
      * Rotated to force every session of this user out (admin-forced logout, password change): the security
      * token carries the stamp it was created with, and a mismatch on refresh means the token is stale.
      */
@@ -211,5 +227,73 @@ class User
     private function touch(?\DateTimeImmutable $now = null): void
     {
         $this->updatedAt = $now ?? new \DateTimeImmutable();
+    }
+
+    /** Stores a freshly generated secret as pending. Any factor already on stops counting until this one is confirmed. */
+    public function beginTotpEnrolment(string $cipherSecret, ?\DateTimeImmutable $now = null): void
+    {
+        $this->totpSecret = $cipherSecret;
+        $this->totpConfirmedAt = null;
+        $this->totpLastTimestep = null;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+    }
+
+    /** Turns the pending secret into a real factor. The timestep is the one the confirming code came from, and is spent. */
+    public function confirmTotpEnrolment(int $timestep, ?\DateTimeImmutable $now = null): void
+    {
+        if (null === $this->totpSecret) {
+            throw new \DomainException('There is no pending enrolment to confirm.');
+        }
+
+        $now ??= new \DateTimeImmutable();
+        $this->totpConfirmedAt = $now;
+        $this->totpLastTimestep = $timestep;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * Spends a timestep. Refuses anything not strictly newer than the last one, which is what stops a code
+     * being replayed while it is still arithmetically valid.
+     */
+    public function useTotpTimestep(int $timestep, ?\DateTimeImmutable $now = null): void
+    {
+        if (!$this->hasTotp()) {
+            throw new \DomainException('This account has no confirmed second factor.');
+        }
+
+        if (null !== $this->totpLastTimestep && $timestep <= $this->totpLastTimestep) {
+            throw new \DomainException('That code has already been used.');
+        }
+
+        $this->totpLastTimestep = $timestep;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+    }
+
+    public function disableTotp(?\DateTimeImmutable $now = null): void
+    {
+        $this->totpSecret = null;
+        $this->totpConfirmedAt = null;
+        $this->totpLastTimestep = null;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+    }
+
+    public function hasTotp(): bool
+    {
+        return null !== $this->totpSecret && null !== $this->totpConfirmedAt;
+    }
+
+    public function getTotpSecret(): ?string
+    {
+        return $this->totpSecret;
+    }
+
+    public function getTotpConfirmedAt(): ?\DateTimeImmutable
+    {
+        return $this->totpConfirmedAt;
+    }
+
+    public function getTotpLastTimestep(): ?int
+    {
+        return $this->totpLastTimestep;
     }
 }

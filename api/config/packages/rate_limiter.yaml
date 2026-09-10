@@ -1,0 +1,9 @@
+framework:
+    rate_limiter:
+        # The second factor is six digits with one step of leeway either way, which is a small space to guess
+        # in: three valid codes per million, and a patient attacker who already has the password. Keyed on the
+        # pending user rather than the IP, so a botnet does not get one budget per address.
+        mfa_verify:
+            policy: 'fixed_window'
+            limit: 5
+            interval: '5 minutes'

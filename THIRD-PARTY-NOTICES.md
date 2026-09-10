@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 85 runtime, 51 dev
+## api (Composer) — 87 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -38,6 +38,7 @@ not compiled into what we distribute, and are not listed here.
 | monolog/monolog | 3.12.0 | MIT | runtime |
 | myclabs/deep-copy | 1.14.0 | MIT | dev |
 | nikic/php-parser | 5.8.0 | BSD-3-Clause | dev |
+| paragonie/constant_time_encoding | 3.1.3 | MIT | runtime |
 | phar-io/manifest | 2.0.4 | BSD-3-Clause | dev |
 | phar-io/version | 3.2.1 | BSD-3-Clause | dev |
 | phpstan/extension-installer | 1.4.3 | MIT | dev |
@@ -78,6 +79,7 @@ not compiled into what we distribute, and are not listed here.
 | sebastian/recursion-context | 8.0.1 | BSD-3-Clause | dev |
 | sebastian/type | 7.0.2 | BSD-3-Clause | dev |
 | sebastian/version | 7.0.0 | BSD-3-Clause | dev |
+| spomky-labs/otphp | 11.5.0 | MIT | runtime |
 | staabm/side-effects-detector | 1.0.5 | MIT | dev |
 | symfony/browser-kit | 8.1.5 | MIT | dev |
 | symfony/cache | 8.1.6 | MIT | runtime |

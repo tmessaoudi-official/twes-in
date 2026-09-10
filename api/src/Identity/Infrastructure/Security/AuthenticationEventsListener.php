@@ -44,6 +44,13 @@ final readonly class AuthenticationEventsListener
     public function onLoginFailure(LoginFailureEvent $event): void
     {
         $exception = $event->getException();
+
+        // A login that owes a second factor is not a failed attempt: the password was right. Counting it
+        // would let anyone lock an account out by supplying its correct password five times.
+        if ($exception instanceof SecondFactorRequired) {
+            return;
+        }
+
         $userId = null;
         try {
             $resolved = $event->getPassport()?->getUser();

@@ -18,6 +18,17 @@ final class InMemoryMemberships implements MembershipRepository
     /** @var list<Membership> */
     private array $memberships = [];
 
+    public function anyCompanyRequiresMfa(Uuid $userId): bool
+    {
+        foreach ($this->memberships as $membership) {
+            if ($membership->getUser()->getId()->equals($userId) && $membership->getCompany()->isMfaRequired()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function ofUser(Uuid $userId, int $limit): array
     {
         $found = array_values(array_filter($this->memberships, static fn (Membership $m) => $m->getUser()->getId()->equals($userId)));

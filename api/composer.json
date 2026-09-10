@@ -13,6 +13,7 @@
     "doctrine/doctrine-bundle": "^3.3",
     "doctrine/doctrine-migrations-bundle": "^4.0",
     "doctrine/orm": "^3.7",
+    "spomky-labs/otphp": "^11.5",
     "symfony/console": "8.1.*",
     "symfony/dotenv": "8.1.*",
     "symfony/expression-language": "8.1.*",

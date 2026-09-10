@@ -21,6 +21,14 @@ interface MembershipRepository
 
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership;
 
+    /**
+     * Whether any company this user belongs to insists on a second factor.
+     *
+     * A predicate rather than a walk over `ofUser()`, which takes a limit: a cap that quietly stopped short
+     * would answer "no second factor needed" for a user who does need one.
+     */
+    public function anyCompanyRequiresMfa(Uuid $userId): bool;
+
     public function save(Membership $membership): void;
 
     public function remove(Membership $membership): void;

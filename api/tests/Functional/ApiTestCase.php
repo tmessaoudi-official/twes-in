@@ -74,6 +74,20 @@ abstract class ApiTestCase extends WebTestCase
     /** The SPA's token: one random value per page load, sent as a header (framework.csrf_protection, header only). */
     private const string CSRF_TOKEN = '0123456789abcdef0123456789abcdef';
 
+    /**
+     * A second (or third) company for a user who already exists.
+     *
+     * @param list<string> $permissions
+     */
+    protected function addMembership(User $user, Company $company, string $roleName = Role::MEMBER, array $permissions = ['*']): void
+    {
+        $em = $this->em();
+        $role = new Role($roleName, $permissions, $company);
+        $em->persist($role);
+        $em->persist(new Membership($user, $company, $role));
+        $em->flush();
+    }
+
     /** @param array<string, mixed>|null $body */
     protected function postJson(string $path, ?array $body, bool $withCsrf = true): void
     {
@@ -135,6 +149,42 @@ abstract class ApiTestCase extends WebTestCase
         self::assertIsArray($body);
 
         return self::stringKeyed($body);
+    }
+
+    /**
+     * Scalars out of a JSON body, asserted to be what they are. PHPStan runs at max here, so a test that
+     * indexes straight into a decoded body is indexing into `mixed`.
+     *
+     * @param array<string, mixed> $body
+     */
+    protected function stringAt(array $body, string $key): string
+    {
+        $value = $body[$key] ?? null;
+        self::assertIsString($value, "$key is a string");
+
+        return $value;
+    }
+
+    /** @param array<string, mixed> $body */
+    protected function boolAt(array $body, string $key): bool
+    {
+        $value = $body[$key] ?? null;
+        self::assertIsBool($value, "$key is a boolean");
+
+        return $value;
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     *
+     * @return array<mixed>
+     */
+    protected function arrayAt(array $body, string $key): array
+    {
+        $value = $body[$key] ?? null;
+        self::assertIsArray($value, "$key is an array");
+
+        return $value;
     }
 
     /**

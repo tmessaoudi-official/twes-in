@@ -48,6 +48,10 @@ security:
         # Invitation links are opened from a mail client, so under SameSite=Strict they arrive with no session
         # cookie at all: these two operations are designed logged out (docs/SPEC.md § 3 Auth, onboarding).
         - { path: ^/api/invitations, roles: PUBLIC_ACCESS }
+        # The second half of a login: by design no session exists yet, so there is no role to require. What
+        # authorises it is the pending marker the password step left in this same session, and the endpoint
+        # is rate limited (ruling of 2026-09-10).
+        - { path: ^/api/auth/mfa/verify$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

@@ -29,6 +29,8 @@ services:
       MAILER_DSN: smtp://mailpit:1025
       MAILER_SENDER: no-reply@twes.local
       DEFAULT_URI: "http://localhost:${WEB_PORT:-8090}"
+      # Development key. A deployment overrides it; see api/.env.
+      APP_MFA_KEY: "${APP_MFA_KEY:-ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc=}"
     depends_on:
       postgres:
         condition: service_healthy
