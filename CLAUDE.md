@@ -102,7 +102,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.
 - Node 26 for the web tier (`web/.nvmrc`). On this machine it is nvm's
-  `/stack/tools/nvm/versions/node/v26.7.0/bin`, which a fresh shell does not have on PATH.
+  `/stack/tools/nvm/versions/node/v26.*/bin` (v26.8.2 on 2026-09-13; /stack's env-update bumps the patch), which a
+  fresh shell does not have on PATH.
 
 ## Lessons
 
@@ -114,6 +115,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - A Bash `cd api` or `cd web` drifts the persistent cwd and re-arms every project-scoped gate hook; use absolute paths
   or a subshell. Symfony's test client reboots the kernel between requests: re-find an entity after a request
   instead of `refresh()`. Angular's `whenStable()` covers pending HTTP, not the microtask after a flushed response.
+- `make api-openapi` exports from the dev cache, so a stale `api/var/cache/dev` exports an OLD schema and the web gate
+  fails locally while CI (fresh cache) passes, or the reverse. After an API resource change: `bin/console cache:clear`
+  before `make gate-web` (2026-09-13: `Me` exported without `mfa`, three days after `MeMfa` landed).
 - Never name a PHPUnit helper `run()`: `TestCase::run()` is final and the whole file fails to load.
 - BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
   as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign
