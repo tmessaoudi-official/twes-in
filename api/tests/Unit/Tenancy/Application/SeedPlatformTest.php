@@ -125,6 +125,20 @@ final class SeedPlatformTest extends TestCase
         self::assertCount(8, $this->regimes->regimes);
     }
 
+    public function testEveryCompanyCreatedBeforeTheFiscalPresetsGetsItsTaxesAndUnitsOnTheNextRun(): void
+    {
+        // The migration records a preset for every existing company but cannot read the preset files.
+        $other = new \App\Tenancy\Domain\Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->companies->save($other);
+
+        $created = $this->seed->seed($this->request(password: 'secret'));
+
+        self::assertContains('tax components of Globex', $created);
+        self::assertContains('units of Globex', $created);
+        self::assertCount(6, $this->components->ofCompany($other->getId()));
+        self::assertSame([], $this->seed->seed($this->request(password: null)));
+    }
+
     public function testACompanySeededBeforeTheFiscalPresetsGetsItsTaxesOnTheNextRun(): void
     {
         $this->companies->save(new \App\Tenancy\Domain\Company('Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis'));

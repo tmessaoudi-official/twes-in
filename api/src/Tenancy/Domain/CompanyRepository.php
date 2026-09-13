@@ -17,5 +17,8 @@ interface CompanyRepository
 
     public function ofName(string $name): ?Company;
 
+    /** @return list<Company> every company, by name */
+    public function all(): array;
+
     public function save(Company $company): void;
 }

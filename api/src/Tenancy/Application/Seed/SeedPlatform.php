@@ -26,7 +26,7 @@ use Psr\Clock\ClockInterface;
 
 /**
  * The built-in roles, the first operator, the first company, the customer tax regimes of every fiscal preset and
- * the first company's taxes and units, idempotently: run on an empty database and again after a migration it
+ * every company's taxes and units, idempotently: run on an empty database and again after a migration it
  * converges on the same rows. A company is unusable without an owner role, so the roles are seeded here too.
  */
 final readonly class SeedPlatform
@@ -100,7 +100,13 @@ final readonly class SeedPlatform
             $created[] = "membership $email owns {$request->companyName}";
         }
 
-        // A company seeded before the fiscal presets existed gets its taxes and units on the next run.
-        return [...$created, ...$this->regimes->handle(), ...$this->provision->handle($company)];
+        // Every company created before the fiscal presets existed gets its taxes and units on the next run: the
+        // migration records each company's preset but cannot read the preset files.
+        $provisioned = [];
+        foreach ($this->companies->all() as $each) {
+            $provisioned = [...$provisioned, ...$this->provision->handle($each)];
+        }
+
+        return [...$created, ...$this->regimes->handle(), ...$provisioned];
     }
 }

@@ -39,6 +39,11 @@ final class InMemoryCompanies implements CompanyRepository
         return null;
     }
 
+    public function all(): array
+    {
+        return $this->companies;
+    }
+
     public function save(Company $company): void
     {
         if (!\in_array($company, $this->companies, true)) {
