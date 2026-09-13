@@ -1,0 +1,52 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tenancy\Infrastructure\Doctrine;
+
+use App\Tenancy\Domain\NumberingSeries;
+use App\Tenancy\Domain\NumberingSeriesRepository;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Uid\Uuid;
+
+final readonly class DoctrineNumberingSeriesRepository implements NumberingSeriesRepository
+{
+    public function __construct(private EntityManagerInterface $entityManager)
+    {
+    }
+
+    public function ofCompany(Uuid $companyId): array
+    {
+        /** @var list<NumberingSeries> $series */
+        $series = $this->entityManager->createQueryBuilder()
+            ->select('s', 'e')
+            ->from(NumberingSeries::class, 's')
+            ->join('s.establishment', 'e')
+            ->where('s.company = :company')
+            ->setParameter('company', $companyId, 'uuid')
+            ->orderBy('e.code', 'ASC')
+            ->addOrderBy('s.documentType', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $series;
+    }
+
+    public function ofIdInCompany(Uuid $id, Uuid $companyId): ?NumberingSeries
+    {
+        $series = $this->entityManager->find(NumberingSeries::class, $id);
+
+        return null !== $series && $series->getCompany()->getId()->equals($companyId) ? $series : null;
+    }
+
+    public function save(NumberingSeries $series): void
+    {
+        $this->entityManager->persist($series);
+        $this->entityManager->flush();
+    }
+}

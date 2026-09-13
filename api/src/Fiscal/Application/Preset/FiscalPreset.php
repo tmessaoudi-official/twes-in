@@ -28,6 +28,7 @@ final readonly class FiscalPreset
      * @param list<string>                   $invoiceMentions    translation keys printed on every invoice
      * @param array<string, PresetNumbering> $numbering          by document type
      * @param list<PresetUnit>               $units
+     * @param PresetEstablishment            $establishment      how the country codes a company's establishments
      */
     public function __construct(
         public string $country,
@@ -43,6 +44,7 @@ final readonly class FiscalPreset
         public array $invoiceMentions,
         public array $numbering,
         public array $units,
+        public PresetEstablishment $establishment,
     ) {
     }
 

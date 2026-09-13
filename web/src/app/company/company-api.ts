@@ -6,16 +6,25 @@ import { firstValueFrom } from 'rxjs';
 import type {
   CompanyProfileCompanyProfileRead,
   CompanyProfileCompanyProfileWrite,
+  EstablishmentEstablishmentRead,
+  EstablishmentEstablishmentWrite,
   MemberMemberRead,
+  NumberingSeriesNumberingSeriesRead,
+  NumberingSeriesNumberingSeriesWrite,
   WorkingCompanyWorkingCompanyRead,
 } from '../api/types.gen';
-import type {
-  CompanyError,
-  CompanyOption,
-  CompanyProfile,
-  CompanyProfileChanges,
-  MemberRole,
-  MemberRow,
+import {
+  RESET_PERIODS,
+  type CompanyError,
+  type CompanyOption,
+  type CompanyProfile,
+  type CompanyProfileChanges,
+  type EstablishmentInput,
+  type EstablishmentRow,
+  type MemberRole,
+  type MemberRow,
+  type NumberingChanges,
+  type NumberingSeriesRow,
 } from './company-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -125,6 +134,95 @@ export class CompanyApi {
     );
   }
 
+  /** The company's establishments, the default first, each carrying the shape of a code. */
+  async establishments(companyId: string): Promise<EstablishmentRow[]> {
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.get<EstablishmentEstablishmentRead[]>(
+              companyPath(companyId, 'establishments'),
+            ),
+          )
+        ).map(toEstablishment),
+      rowCodeOf,
+    );
+  }
+
+  /** A new establishment numbers its documents the way the default one does; 409 when its code is taken. */
+  async createEstablishment(
+    companyId: string,
+    input: EstablishmentInput,
+  ): Promise<EstablishmentRow> {
+    const body: EstablishmentEstablishmentWrite = { ...input };
+    return this.guard(
+      async () =>
+        toEstablishment(
+          await firstValueFrom(
+            this.http.post<EstablishmentEstablishmentRead>(
+              companyPath(companyId, 'establishments'),
+              body,
+            ),
+          ),
+        ),
+      rowCodeOf,
+    );
+  }
+
+  async reviseEstablishment(
+    companyId: string,
+    id: string,
+    input: EstablishmentInput,
+  ): Promise<EstablishmentRow> {
+    const body: EstablishmentEstablishmentWrite = { ...input };
+    return this.guard(
+      async () =>
+        toEstablishment(
+          await firstValueFrom(
+            this.http.put<EstablishmentEstablishmentRead>(
+              `${companyPath(companyId, 'establishments')}/${encodeURIComponent(id)}`,
+              body,
+            ),
+          ),
+        ),
+      rowCodeOf,
+    );
+  }
+
+  async numberingSeries(companyId: string): Promise<NumberingSeriesRow[]> {
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.get<NumberingSeriesNumberingSeriesRead[]>(
+              companyPath(companyId, 'numbering-series'),
+            ),
+          )
+        ).map(toSeries),
+      rowCodeOf,
+    );
+  }
+
+  async reviseNumberingSeries(
+    companyId: string,
+    id: string,
+    changes: NumberingChanges,
+  ): Promise<NumberingSeriesRow> {
+    const body: NumberingSeriesNumberingSeriesWrite = { ...changes };
+    return this.guard(
+      async () =>
+        toSeries(
+          await firstValueFrom(
+            this.http.put<NumberingSeriesNumberingSeriesRead>(
+              `${companyPath(companyId, 'numbering-series')}/${encodeURIComponent(id)}`,
+              body,
+            ),
+          ),
+        ),
+      rowCodeOf,
+    );
+  }
+
   private async guard<T>(
     call: () => Promise<T>,
     refusal: (error: unknown) => CompanyError = codeOf,
@@ -176,6 +274,50 @@ function profileCodeOf(error: unknown): CompanyError {
     return 'network';
   }
   return error.status === 404 ? 'not_found' : 'invalid';
+}
+
+const companyPath = (companyId: string, collection: string): string =>
+  `/api/companies/${encodeURIComponent(companyId)}/${collection}`;
+
+/** A row refused for what it says (422), for a code another row already has (409), or missing (404). */
+function rowCodeOf(error: unknown): CompanyError {
+  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+    return 'network';
+  }
+  if (error.status === 404) {
+    return 'not_found';
+  }
+  return error.status === 409 ? 'code_taken' : 'invalid';
+}
+
+function toEstablishment(row: EstablishmentEstablishmentRead): EstablishmentRow {
+  return {
+    id: row.id ?? '',
+    code: row.code ?? '',
+    name: row.name ?? '',
+    addressLine1: row.addressLine1 ?? null,
+    addressLine2: row.addressLine2 ?? null,
+    postalCode: row.postalCode ?? null,
+    city: row.city ?? null,
+    phone: row.phone ?? null,
+    email: row.email ?? null,
+    isDefault: row.isDefault ?? false,
+    codePattern: row.codePattern ?? '',
+  };
+}
+
+function toSeries(row: NumberingSeriesNumberingSeriesRead): NumberingSeriesRow {
+  return {
+    id: row.id ?? '',
+    establishmentId: row.establishmentId ?? '',
+    establishmentCode: row.establishmentCode ?? '',
+    documentType: row.documentType ?? '',
+    format: row.format ?? '',
+    nextNumber: row.nextNumber ?? 1,
+    resetPeriod: RESET_PERIODS.find((period) => period === row.resetPeriod) ?? 'yearly',
+    isDefault: row.isDefault ?? false,
+    preview: row.preview ?? '',
+  };
 }
 
 function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {

@@ -78,6 +78,11 @@ company_vat_regimes:
 mentions:
     invoice: []
 
+# The establishment part of a registration number: the three digits closing a matricule fiscal (docs/fiscal/TN.md § 8).
+establishment:
+    default_code: '000'
+    code_pattern: '^[0-9]{3}$'
+
 numbering:
     invoice: { format: 'FAC-{YYYY}-{SEQ:5}', reset: yearly }
     credit_note: { format: 'AV-{YYYY}-{SEQ:5}', reset: yearly }

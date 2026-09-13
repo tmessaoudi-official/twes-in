@@ -107,6 +107,82 @@
         "not_found": "Company not found.",
         "network": "The server could not be reached."
       }
+    },
+    "establishments": {
+      "title": "Establishments",
+      "intro": "The places the company issues documents from. Each numbers its documents on its own; one of them is the default.",
+      "add": "Add an establishment",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "The establishment was saved.",
+      "none": "No establishment yet.",
+      "no_company": "Choose a company first.",
+      "yes": "Yes",
+      "no": "No",
+      "section": "Establishment",
+      "fields": {
+        "code": "Code",
+        "code_hint": "The shape the registration numbers of the company's country give it.",
+        "name": "Name",
+        "addressLine1": "Address",
+        "addressLine2": "Address line 2",
+        "postalCode": "Postal code",
+        "city": "City",
+        "phone": "Phone",
+        "email": "Email",
+        "isDefault": "Default establishment",
+        "isDefault_hint": "The default stays the default until another establishment takes its place."
+      },
+      "errors": {
+        "code_taken": "Another establishment already has this code.",
+        "invalid": "The establishment was refused. Check its code and its email.",
+        "not_found": "Establishment not found.",
+        "network": "The server could not be reached."
+      }
+    },
+    "numbering": {
+      "title": "Document numbering",
+      "intro": "How each establishment numbers each kind of document. Numbers are given when a document is issued; until then a series may resume at any number.",
+      "edit": "Edit",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "The numbering was saved.",
+      "none": "No numbering series yet.",
+      "no_company": "Choose a company first.",
+      "section": "Numbering",
+      "preview": "Next number: {{number}}",
+      "preview_invalid": "This format cannot number a document yet.",
+      "columns": {
+        "establishment": "Establishment",
+        "documentType": "Document",
+        "format": "Format",
+        "nextNumber": "Next sequence",
+        "resetPeriod": "Starts again",
+        "preview": "Next number"
+      },
+      "fields": {
+        "format": "Format",
+        "format_hint": "Text around {YYYY}, {YY}, {MM}, {EST} (the establishment's code) and one sequence, {SEQ} or {SEQ:5} padded to five digits.",
+        "nextNumber": "Resume at",
+        "nextNumber_hint": "A company moving from another tool continues where it stopped.",
+        "resetPeriod": "Starts again"
+      },
+      "document_types": {
+        "invoice": "Invoice",
+        "credit_note": "Credit note",
+        "delivery_note": "Delivery note"
+      },
+      "reset": {
+        "yearly": "Every year",
+        "monthly": "Every month",
+        "never": "Never"
+      },
+      "errors": {
+        "invalid": "The numbering was refused. Check the format and the number it resumes at.",
+        "not_found": "Numbering series not found.",
+        "network": "The server could not be reached."
+      }
     }
   },
   "nav": {
@@ -120,7 +196,9 @@
     "taxes": "Taxes",
     "units": "Units",
     "settings": "Settings",
-    "company_profile": "Company profile"
+    "company_profile": "Company profile",
+    "establishments": "Establishments",
+    "numbering": "Document numbering"
   },
   "shell": {
     "skip": "Skip to content",

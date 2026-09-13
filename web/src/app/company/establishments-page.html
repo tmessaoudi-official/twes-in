@@ -1,0 +1,83 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="establishments-title">
+      {{ 'company.establishments.title' | translate }}
+    </h1>
+    @if (mayManage() && editing() === null && company()) {
+      <button mat-flat-button type="button" (click)="add()" data-testid="establishment-add">
+        {{ 'company.establishments.add' | translate }}
+      </button>
+    }
+  </div>
+  <p class="max-w-prose">{{ 'company.establishments.intro' | translate }}</p>
+
+  @if (!company()) {
+    <p data-testid="establishments-no-company">
+      {{ 'company.establishments.no_company' | translate }}
+    </p>
+  }
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="establishments-error" class="text-error">
+      {{ 'company.establishments.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="establishment-saved">
+      {{ 'company.establishments.saved' | translate }}
+    </p>
+  }
+
+  @if (form(); as form) {
+    <mat-card>
+      <mat-card-content>
+        <app-descriptor-form
+          [descriptor]="descriptor()"
+          [form]="form"
+          testId="establishment-form"
+          (submitted)="save($event)"
+        >
+          <div class="flex flex-wrap justify-end gap-2">
+            <button mat-button type="button" (click)="cancel()" data-testid="establishment-cancel">
+              {{ 'company.establishments.cancel' | translate }}
+            </button>
+            <button
+              mat-flat-button
+              type="submit"
+              [disabled]="busy()"
+              data-testid="establishment-save"
+            >
+              {{ 'company.establishments.save' | translate }}
+            </button>
+          </div>
+        </app-descriptor-form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="establishments()"
+    testId="establishments-table"
+    [rowTestId]="rowTestId"
+    emptyKey="company.establishments.none"
+    emptyTestId="establishments-empty"
+  >
+    <ng-template appDataListCell="isDefault" let-row>
+      {{ (row.isDefault ? 'company.establishments.yes' : 'company.establishments.no') | translate }}
+    </ng-template>
+    @if (mayManage()) {
+      <ng-template appDataListRowActions let-row>
+        <button
+          mat-button
+          type="button"
+          (click)="edit(row)"
+          [disabled]="busy()"
+          [attr.data-testid]="'establishment-edit-' + row.code"
+        >
+          {{ 'company.establishments.edit' | translate }}
+        </button>
+      </ng-template>
+    }
+  </app-data-list>
+</section>

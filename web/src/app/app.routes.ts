@@ -49,6 +49,15 @@ export const routes: Routes = [
           import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
       },
       {
+        path: 'company/establishments',
+        loadComponent: () =>
+          import('./company/establishments-page').then((m) => m.EstablishmentsPage),
+      },
+      {
+        path: 'company/numbering',
+        loadComponent: () => import('./company/numbering-page').then((m) => m.NumberingPage),
+      },
+      {
         // The G2b design checkpoint's fixture screens. canMatch keeps them out of a production build's router
         // entirely; the nav entry is devOnly for the same reason.
         path: 'design',

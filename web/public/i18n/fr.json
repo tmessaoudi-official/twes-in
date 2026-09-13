@@ -107,6 +107,82 @@
         "not_found": "Société introuvable.",
         "network": "Le serveur est injoignable."
       }
+    },
+    "establishments": {
+      "title": "Établissements",
+      "intro": "Les lieux d'où la société émet ses documents. Chacun numérote ses documents à part ; l'un d'eux est l'établissement par défaut.",
+      "add": "Ajouter un établissement",
+      "edit": "Modifier",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "saved": "L'établissement a été enregistré.",
+      "none": "Aucun établissement pour le moment.",
+      "no_company": "Choisissez d'abord une société.",
+      "yes": "Oui",
+      "no": "Non",
+      "section": "Établissement",
+      "fields": {
+        "code": "Code",
+        "code_hint": "La forme que lui donnent les numéros d'immatriculation du pays de la société.",
+        "name": "Nom",
+        "addressLine1": "Adresse",
+        "addressLine2": "Complément d'adresse",
+        "postalCode": "Code postal",
+        "city": "Ville",
+        "phone": "Téléphone",
+        "email": "E-mail",
+        "isDefault": "Établissement par défaut",
+        "isDefault_hint": "L'établissement par défaut le reste tant qu'un autre ne prend pas sa place."
+      },
+      "errors": {
+        "code_taken": "Un autre établissement porte déjà ce code.",
+        "invalid": "L'établissement a été refusé. Vérifiez son code et son e-mail.",
+        "not_found": "Établissement introuvable.",
+        "network": "Le serveur est injoignable."
+      }
+    },
+    "numbering": {
+      "title": "Numérotation des documents",
+      "intro": "Comment chaque établissement numérote chaque type de document. Les numéros sont attribués à l'émission d'un document ; d'ici là, une série peut reprendre à n'importe quel numéro.",
+      "edit": "Modifier",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "saved": "La numérotation a été enregistrée.",
+      "none": "Aucune série de numérotation pour le moment.",
+      "no_company": "Choisissez d'abord une société.",
+      "section": "Numérotation",
+      "preview": "Prochain numéro : {{number}}",
+      "preview_invalid": "Ce format ne peut pas encore numéroter un document.",
+      "columns": {
+        "establishment": "Établissement",
+        "documentType": "Document",
+        "format": "Format",
+        "nextNumber": "Prochaine séquence",
+        "resetPeriod": "Redémarre",
+        "preview": "Prochain numéro"
+      },
+      "fields": {
+        "format": "Format",
+        "format_hint": "Du texte autour de {YYYY}, {YY}, {MM}, {EST} (le code de l'établissement) et d'une séquence, {SEQ} ou {SEQ:5} sur cinq chiffres.",
+        "nextNumber": "Reprendre à",
+        "nextNumber_hint": "Une société venant d'un autre outil continue là où elle s'était arrêtée.",
+        "resetPeriod": "Redémarre"
+      },
+      "document_types": {
+        "invoice": "Facture",
+        "credit_note": "Avoir",
+        "delivery_note": "Bon de livraison"
+      },
+      "reset": {
+        "yearly": "Chaque année",
+        "monthly": "Chaque mois",
+        "never": "Jamais"
+      },
+      "errors": {
+        "invalid": "La numérotation a été refusée. Vérifiez le format et le numéro de reprise.",
+        "not_found": "Série de numérotation introuvable.",
+        "network": "Le serveur est injoignable."
+      }
     }
   },
   "nav": {
@@ -120,7 +196,9 @@
     "taxes": "Taxes",
     "units": "Unités",
     "settings": "Paramètres",
-    "company_profile": "Profil de la société"
+    "company_profile": "Profil de la société",
+    "establishments": "Établissements",
+    "numbering": "Numérotation des documents"
   },
   "shell": {
     "skip": "Aller au contenu",

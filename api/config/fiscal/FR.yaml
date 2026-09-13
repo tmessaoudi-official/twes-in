@@ -80,6 +80,11 @@ mentions:
         - fiscal.mention.fr.recovery_indemnity
         - fiscal.mention.fr.no_early_discount
 
+# The establishment part of a registration number: the five-digit NIC closing a SIRET (docs/fiscal/FR.md § 5).
+establishment:
+    default_code: '00001'
+    code_pattern: '^[0-9]{5}$'
+
 numbering:
     invoice: { format: 'FA-{YYYY}-{SEQ:5}', reset: yearly }
     credit_note: { format: 'AV-{YYYY}-{SEQ:5}', reset: yearly }

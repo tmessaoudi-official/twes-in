@@ -77,7 +77,7 @@ the regime mentions is unsourced.**
 | Rule | Preset | Source | Status |
 |---|---|---|---|
 | Seven digits, a check letter, the VAT code, the category code and a three-digit establishment number: `1234567A/B/M/000` | identifier `matricule_fiscal`, pattern `^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$`, required for the company and business customers | secondary sources only [8] | unvalidated |
-| The establishment number is the establishment's code (G3b) | noted for G3b | same | unvalidated |
+| The establishment number is the establishment's code | `establishment.code_pattern` `^[0-9]{3}$`; a company's first establishment starts as `000`, which the company corrects if its matricule says otherwise | same | unvalidated |
 | The check letter has an algorithm | **not implemented** (no primary source) | none | unvalidated |
 
 ## 9. Customer tax regimes

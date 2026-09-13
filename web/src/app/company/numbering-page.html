@@ -1,0 +1,86 @@
+<section class="flex max-w-5xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="numbering-title">
+    {{ 'company.numbering.title' | translate }}
+  </h1>
+  <p class="max-w-prose">{{ 'company.numbering.intro' | translate }}</p>
+
+  @if (!company()) {
+    <p data-testid="numbering-no-company">{{ 'company.numbering.no_company' | translate }}</p>
+  }
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="numbering-error" class="text-error">
+      {{ 'company.numbering.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="series-saved">{{ 'company.numbering.saved' | translate }}</p>
+  }
+
+  @if (form(); as form) {
+    @if (editing(); as row) {
+      <mat-card>
+        <mat-card-content>
+          <h2 class="mb-4 text-xl font-medium" data-testid="series-editing">
+            {{ row.establishmentCode }} ·
+            {{ 'company.numbering.document_types.' + row.documentType | translate }}
+          </h2>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="series-form"
+            (submitted)="save($event)"
+          >
+            <p aria-live="polite" data-testid="series-preview" class="font-mono">
+              @if (preview(); as number) {
+                {{ 'company.numbering.preview' | translate: { number } }}
+              } @else {
+                {{ 'company.numbering.preview_invalid' | translate }}
+              }
+            </p>
+            <div class="flex flex-wrap justify-end gap-2">
+              <button mat-button type="button" (click)="cancel()" data-testid="series-cancel">
+                {{ 'company.numbering.cancel' | translate }}
+              </button>
+              <button mat-flat-button type="submit" [disabled]="busy()" data-testid="series-save">
+                {{ 'company.numbering.save' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="series()"
+    testId="series-table"
+    [rowTestId]="rowTestId"
+    emptyKey="company.numbering.none"
+    emptyTestId="series-empty"
+  >
+    <ng-template appDataListCell="documentType" let-row>
+      {{ 'company.numbering.document_types.' + row.documentType | translate }}
+    </ng-template>
+    <ng-template appDataListCell="resetPeriod" let-row>
+      {{ 'company.numbering.reset.' + row.resetPeriod | translate }}
+    </ng-template>
+    <ng-template appDataListCell="preview" let-row>
+      <span class="font-mono">{{ row.preview }}</span>
+    </ng-template>
+    @if (mayManage()) {
+      <ng-template appDataListRowActions let-row>
+        <button
+          mat-button
+          type="button"
+          (click)="edit(row)"
+          [disabled]="busy()"
+          [attr.data-testid]="'series-edit-' + row.establishmentCode + '-' + row.documentType"
+        >
+          {{ 'company.numbering.edit' | translate }}
+        </button>
+      </ng-template>
+    }
+  </app-data-list>
+</section>

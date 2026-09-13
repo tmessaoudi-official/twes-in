@@ -73,9 +73,13 @@ final class YamlFiscalPresetsTest extends TestCase
         );
         self::assertSame([TaxFamily::Vat], $tn->customerTaxRegimes[1]->excludedFamilies);
         self::assertSame('C62', $tn->units[0]->code);
+        self::assertSame('000', $tn->establishment->defaultCode);
+        self::assertSame('^[0-9]{3}$', $tn->establishment->codePattern);
 
         $fr = $presets->get('FR');
         self::assertSame(2, $fr->minorUnit);
+        self::assertSame('00001', $fr->establishment->defaultCode);
+        self::assertSame('^[0-9]{5}$', $fr->establishment->codePattern);
         self::assertSame('5.5', $fr->component('TVA5_5')->rate);
         self::assertSame('fiscal.mention.fr.franchise', $fr->companyVatRegimes[1]->mentionKey);
         self::assertSame(['fiscal.mention.fr.late_payment', 'fiscal.mention.fr.recovery_indemnity', 'fiscal.mention.fr.no_early_discount'], $fr->invoiceMentions);
@@ -125,6 +129,11 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a rounding point that does not exist' => ['rounding.vat_point', 'per_document', 'vat_point'];
         yield 'a document language the product does not speak' => ['document_languages', ['ar'], 'document_languages'];
         yield 'a numbering format without its sequence' => ['numbering.invoice.format', 'FAC-{YYYY}', 'format'];
+        yield 'a numbering format with a token the product does not know' => ['numbering.invoice.format', 'FAC-{DD}-{SEQ}', 'format'];
+        yield 'a reset period that does not exist' => ['numbering.invoice.reset', 'weekly', 'reset'];
+        yield 'an establishment without its default code' => ['establishment.default_code', self::REMOVE, 'default_code'];
+        yield 'a default establishment code outside its own pattern' => ['establishment.default_code', '12', 'default_code'];
+        yield 'an establishment code pattern that does not compile' => ['establishment.code_pattern', '([0-9]', 'code_pattern'];
         yield 'an unknown key' => ['vat_rates', ['19'], 'vat_rates'];
     }
 

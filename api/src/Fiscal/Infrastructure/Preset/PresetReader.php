@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Fiscal\Infrastructure\Preset;
 
 use App\Fiscal\Application\Preset\FiscalPreset;
+use App\Fiscal\Application\Preset\PresetEstablishment;
 use App\Fiscal\Application\Preset\PresetIdentifier;
 use App\Fiscal\Application\Preset\PresetNumbering;
 use App\Fiscal\Application\Preset\PresetRegime;
@@ -19,6 +20,9 @@ use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
+use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\InvalidNumbering;
+use App\Tenancy\Domain\NumberFormat;
 use Symfony\Component\Intl\Countries;
 use Symfony\Component\Intl\Currencies;
 
@@ -79,6 +83,7 @@ final readonly class PresetReader
             $this->mentions($config),
             $this->numbering($this->node($config, 'numbering', 'numbering')),
             $this->units($this->node($config, 'units', 'units')),
+            $this->establishment($this->node($config, 'establishment', 'establishment')),
         );
     }
 
@@ -227,13 +232,30 @@ final readonly class PresetReader
             $path = "numbering.$type";
             $node = $this->asNode($node, $path);
             $format = $this->string($node, 'format', "$path.format");
-            if (!str_contains($format, '{SEQ')) {
-                $this->refuse("$path.format", 'must contain the sequence placeholder {SEQ} or {SEQ:n}');
+            try {
+                new NumberFormat($format);
+            } catch (InvalidNumbering $refused) {
+                $this->refuse("$path.format", $refused->getMessage());
             }
             $numbering[(string) $type] = new PresetNumbering($format, $this->string($node, 'reset', "$path.reset"));
         }
 
         return $numbering;
+    }
+
+    /** @param array<mixed> $node */
+    private function establishment(array $node): PresetEstablishment
+    {
+        $pattern = $this->string($node, 'code_pattern', 'establishment.code_pattern');
+        if (false === @preg_match("\x01".$pattern."\x01u", '')) {
+            $this->refuse('establishment.code_pattern', 'is not a valid regular expression');
+        }
+        $default = $this->string($node, 'default_code', 'establishment.default_code');
+        if (1 !== preg_match("\x01".$pattern."\x01u", $default) || 1 !== preg_match(Establishment::CODE, $default)) {
+            $this->refuse('establishment.default_code', "\"$default\" matches neither the code pattern nor the shape of an establishment code");
+        }
+
+        return new PresetEstablishment($default, $pattern);
     }
 
     /**

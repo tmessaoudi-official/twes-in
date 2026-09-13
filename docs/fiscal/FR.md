@@ -60,6 +60,7 @@ Their wording is unsourced beyond the articles named.
 |---|---|---|---|
 | SIREN: 9 digits, the last a Luhn check digit | `^[0-9]{9}$` | INSEE, secondary sources | unvalidated |
 | SIRET: 14 digits (SIREN + 5-digit NIC), Luhn over all 14 (La Poste's establishments are an exception) | `^[0-9]{14}$` | INSEE, secondary sources | unvalidated |
+| The NIC, the SIRET's last five digits, tells a company's establishments apart | `establishment.code_pattern` `^[0-9]{5}$`; a company's first establishment starts as `00001`, a placeholder the company corrects to its real NIC | INSEE, secondary sources | unvalidated |
 | Intra-EU VAT number: `FR`, a two-character key, the SIREN; key = (12 + 3 × (SIREN mod 97)) mod 97 | `^FR[0-9A-Z]{2}[0-9]{9}$` | secondary sources | unvalidated |
 
 The preset carries patterns only. The Luhn and key checks are validators for G4, where identifiers are typed.

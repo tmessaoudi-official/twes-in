@@ -35,6 +35,7 @@ final class SeedPlatformTest extends TestCase
     private InMemoryMemberships $memberships;
     private InMemoryTaxComponents $components;
     private InMemoryCustomerTaxRegimes $regimes;
+    private \App\Tests\Support\InMemoryEstablishments $establishments;
     private SeedPlatform $seed;
 
     protected function setUp(): void
@@ -45,6 +46,7 @@ final class SeedPlatformTest extends TestCase
         $this->memberships = new InMemoryMemberships();
         $this->components = new InMemoryTaxComponents();
         $this->regimes = new InMemoryCustomerTaxRegimes();
+        $this->establishments = new \App\Tests\Support\InMemoryEstablishments();
         $hasher = new class implements PasswordHasher {
             public function hash(string $plainPassword): string
             {
@@ -60,7 +62,7 @@ final class SeedPlatformTest extends TestCase
             $this->memberships,
             $hasher,
             new SyncCustomerTaxRegimes($presets, $this->regimes, $clock),
-            new ProvisionCompany($presets, $this->components, new InMemoryUnits(), ShippedFiscalPresets::scales(), $clock),
+            new ProvisionCompany($presets, $this->components, new InMemoryUnits(), $this->establishments, new \App\Tests\Support\InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock),
             $clock,
         );
     }
@@ -110,7 +112,7 @@ final class SeedPlatformTest extends TestCase
 
         self::assertSame([
             'role owner', 'role admin', 'role member', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded',
-            'customer tax regimes of FR', 'customer tax regimes of TN', 'tax components of Seeded', 'units of Seeded',
+            'customer tax regimes of FR', 'customer tax regimes of TN', 'tax components of Seeded', 'units of Seeded', 'establishments of Seeded', 'numbering series of Seeded',
         ], $created);
         self::assertCount(3, $this->roles->roles);
         self::assertSame(['*'], $this->roles->builtIn(Role::OWNER)?->getPermissions());
@@ -135,6 +137,8 @@ final class SeedPlatformTest extends TestCase
 
         self::assertContains('tax components of Globex', $created);
         self::assertContains('units of Globex', $created);
+        self::assertContains('establishments of Globex', $created);
+        self::assertCount(1, $this->establishments->ofCompany($other->getId()));
         self::assertCount(6, $this->components->ofCompany($other->getId()));
         self::assertSame([], $this->seed->seed($this->request(password: null)));
     }

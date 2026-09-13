@@ -70,4 +70,52 @@ export interface CompanyProfile extends CompanyProfileChanges {
 }
 
 export type CompanyError =
-  'unknown_user' | 'already_member' | 'last_owner' | 'not_found' | 'invalid' | 'network';
+  | 'unknown_user'
+  | 'already_member'
+  | 'last_owner'
+  | 'code_taken'
+  | 'not_found'
+  | 'invalid'
+  | 'network';
+
+/** One place the company issues documents from, as the establishments page lists it. */
+export interface EstablishmentRow {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly addressLine1: string | null;
+  readonly addressLine2: string | null;
+  readonly postalCode: string | null;
+  readonly city: string | null;
+  readonly phone: string | null;
+  readonly email: string | null;
+  readonly isDefault: boolean;
+  /** A regular expression the whole code matches: the shape the company's fiscal preset gives a code. */
+  readonly codePattern: string;
+}
+
+/** What a person writes about an establishment; setting isDefault hands the role over from the current default. */
+export type EstablishmentInput = Omit<EstablishmentRow, 'id' | 'codePattern'>;
+
+export type ResetPeriod = 'yearly' | 'monthly' | 'never';
+
+export const RESET_PERIODS: readonly ResetPeriod[] = ['yearly', 'monthly', 'never'];
+
+/** How one establishment numbers one document type, with the number the next document would get today. */
+export interface NumberingSeriesRow {
+  readonly id: string;
+  readonly establishmentId: string;
+  readonly establishmentCode: string;
+  readonly documentType: string;
+  readonly format: string;
+  readonly nextNumber: number;
+  readonly resetPeriod: ResetPeriod;
+  readonly isDefault: boolean;
+  readonly preview: string;
+}
+
+export interface NumberingChanges {
+  readonly format: string;
+  readonly nextNumber: number;
+  readonly resetPeriod: ResetPeriod;
+}

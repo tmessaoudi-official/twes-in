@@ -42,7 +42,7 @@ final class CreateCompanyTest extends TestCase
         $this->units = new InMemoryUnits();
         $clock = new MockClock('2026-09-09 10:00:00');
         $presets = ShippedFiscalPresets::presets();
-        $provision = new ProvisionCompany($presets, $this->components, $this->units, ShippedFiscalPresets::scales(), $clock);
+        $provision = new ProvisionCompany($presets, $this->components, $this->units, new \App\Tests\Support\InMemoryEstablishments(), new \App\Tests\Support\InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
         $this->create = new CreateCompany($this->companies, $presets, $provision, $this->audit, $clock);
     }
 
