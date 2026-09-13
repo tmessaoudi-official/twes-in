@@ -16,14 +16,17 @@ identifiers:
       label_key: fiscal.identifier.fr.siren
       pattern: '^[0-9]{9}$'
       required_for: [company, business_customer]
+      check: luhn
     - key: siret
       label_key: fiscal.identifier.fr.siret
       pattern: '^[0-9]{14}$'
       required_for: [company]
+      check: siret
     - key: vat_number
       label_key: fiscal.identifier.fr.vat_number
       pattern: '^FR[0-9A-Z]{2}[0-9]{9}$'
       required_for: []
+      check: fr_vat_key
 
 tax_components:
     - code: TVA20

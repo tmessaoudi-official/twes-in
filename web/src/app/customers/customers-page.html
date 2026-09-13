@@ -1,0 +1,52 @@
+<section class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="customers-title">
+      {{ 'customers.title' | translate }}
+    </h1>
+    <div class="flex flex-wrap gap-2">
+      <a mat-button routerLink="/customers/groups" data-testid="customer-groups-link">
+        {{ 'customers.groups.title' | translate }}
+      </a>
+      @if (mayWrite() && company()) {
+        <a mat-flat-button routerLink="/customers/new" data-testid="customer-add">
+          {{ 'customers.add' | translate }}
+        </a>
+      }
+    </div>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="customers-no-company">{{ 'customers.no_company' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="customers-error" class="text-error">
+      {{ 'customers.errors.' + code | translate }}
+    </p>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows()"
+    testId="customers-table"
+    [rowTestId]="rowTestId"
+    emptyKey="customers.none"
+    emptyTestId="customers-empty"
+  >
+    <ng-template appDataListCell="kind" let-row>
+      {{ 'customers.kinds.' + row.kind | translate }}
+    </ng-template>
+    <ng-template appDataListCell="status" let-row>
+      {{ 'customers.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+    </ng-template>
+    <ng-template appDataListRowActions let-row>
+      <a
+        mat-button
+        [routerLink]="['/customers', row.id]"
+        [attr.data-testid]="'customer-open-' + row.number"
+        [attr.aria-label]="'customers.open' | translate: { name: row.name }"
+      >
+        {{ 'customers.open_short' | translate }}
+      </a>
+    </ng-template>
+  </app-data-list>
+</section>

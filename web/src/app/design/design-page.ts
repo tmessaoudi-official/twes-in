@@ -17,8 +17,6 @@ import { TranslatePipe } from '@ngx-translate/core';
 })
 export class DesignPage {
   protected readonly tabs = [
-    { key: 'customers', path: 'customers', label: 'design.customers.title' },
-    { key: 'customer-form', path: 'customers/new', label: 'design.customer_form.title' },
     { key: 'invoice', path: 'invoice', label: 'design.invoice.title' },
   ] as const;
 }

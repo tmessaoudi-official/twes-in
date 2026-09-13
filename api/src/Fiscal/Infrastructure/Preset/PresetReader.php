@@ -18,6 +18,7 @@ use App\Fiscal\Application\Preset\PresetTaxComponent;
 use App\Fiscal\Application\Preset\PresetUnit;
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
+use App\Fiscal\Domain\IdentifierCheck;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
 use App\Tenancy\Domain\Establishment;
@@ -107,6 +108,7 @@ final readonly class PresetReader
                 $this->translationKey($node, 'label_key', "$path.label_key"),
                 $pattern,
                 $this->strings($node, 'required_for', "$path.required_for"),
+                \is_string($node['check'] ?? null) ? IdentifierCheck::from($node['check']) : null,
             );
         }
 

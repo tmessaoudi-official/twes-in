@@ -102,9 +102,10 @@ final class LayerDependenciesTest extends TestCase
     private function contexts(): array
     {
         $contexts = [];
-        foreach (glob(self::SRC.'/*', \GLOB_ONLYDIR) ?: [] as $dir) {
+        // A module (docs/SPEC.md § 3 Modules) is a context one level down, under src/Module/<Name>/.
+        foreach ([...glob(self::SRC.'/*', \GLOB_ONLYDIR) ?: [], ...glob(self::SRC.'/Module/*', \GLOB_ONLYDIR) ?: []] as $dir) {
             if (is_dir("$dir/Domain") || is_dir("$dir/Application") || is_dir("$dir/Infrastructure")) {
-                $contexts[] = basename($dir);
+                $contexts[] = substr($dir, \strlen(self::SRC) + 1);
             }
         }
 

@@ -63,7 +63,9 @@ Their wording is unsourced beyond the articles named.
 | The NIC, the SIRET's last five digits, tells a company's establishments apart | `establishment.code_pattern` `^[0-9]{5}$`; a company's first establishment starts as `00001`, a placeholder the company corrects to its real NIC | INSEE, secondary sources | unvalidated |
 | Intra-EU VAT number: `FR`, a two-character key, the SIREN; key = (12 + 3 × (SIREN mod 97)) mod 97 | `^FR[0-9A-Z]{2}[0-9]{9}$` | secondary sources | unvalidated |
 
-The preset carries patterns only. The Luhn and key checks are validators for G4, where identifiers are typed.
+The preset names each identifier's check beside its pattern: `luhn` for the SIREN, `siret` for the SIRET (Luhn, or for
+La Poste's SIREN 356000000 a digit sum divisible by five) and `fr_vat_key` for the VAT number, whose key is checked
+only when it is two digits. Unvalidated, like the rest of this section.
 
 ## 6. Customer tax regimes
 
@@ -98,7 +100,8 @@ E-invoicing comes after the POC (docs/SPEC.md § 2).
 ## Known gaps
 
 - The CIBS article numbers replace the CGI references from 1 January 2027 (§ 2, § 3), not yet reflected.
-- SIREN, SIRET and VAT key checksums (§ 5) are left to G4.
+- La Poste's SIRET exception (§ 5) is taken from secondary sources; no primary INSEE text was found for it.
+- A VAT key of letters (numbers issued without a SIREN) is accepted unchecked (§ 5).
 - Mention wording (§ 4, § 6) is unsourced beyond the articles named.
 
 ## Sources

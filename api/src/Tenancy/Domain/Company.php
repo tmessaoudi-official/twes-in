@@ -69,7 +69,7 @@ class Company
     private ?string $legalForm = null;
 
     /** @var array<string, string> registration numbers by the preset's identifier key */
-    #[ORM\Column(type: Types::JSON, options: ['jsonb' => true])]
+    #[ORM\Column(type: Types::JSON, options: ['jsonb' => true, 'default' => '{}'])]
     private array $identifiers = [];
 
     #[ORM\Column(name: 'address_line1', length: 200, nullable: true)]

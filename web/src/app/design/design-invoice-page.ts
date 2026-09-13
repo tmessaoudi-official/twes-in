@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
-import { DESIGN_CUSTOMERS, DESIGN_INVOICE } from './design-fixtures';
+import { DESIGN_CUSTOMER_NAMES, DESIGN_INVOICE } from './design-fixtures';
 
 /**
  * A static invoice editor for the design checkpoint: the layout of header, lines, totals and actions over one
@@ -29,6 +29,6 @@ import { DESIGN_CUSTOMERS, DESIGN_INVOICE } from './design-fixtures';
 })
 export class DesignInvoicePage {
   protected readonly invoice = DESIGN_INVOICE;
-  protected readonly customers = DESIGN_CUSTOMERS.slice(0, 8).map((customer) => customer.name);
+  protected readonly customers = DESIGN_CUSTOMER_NAMES;
   protected readonly taxes = ['TVA 19 %', 'TVA 13 %', 'TVA 7 %', 'Exonéré'];
 }

@@ -12,6 +12,7 @@ namespace App\Tenancy\Application\Company;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\CompanyRepository;
@@ -45,24 +46,9 @@ final readonly class ReviseCompanyProfile
             throw new InvalidCompanyProfile('vatRegime', \sprintf('The %s preset offers companies no VAT regime "%s".', $preset->country, $profile->vatRegime));
         }
 
-        $known = [];
-        foreach ($preset->identifiers as $identifier) {
-            $known[] = $identifier->key;
-            $value = $profile->identifiers[$identifier->key] ?? null;
-            if (null === $value) {
-                if (\in_array('company', $identifier->requiredFor, true)) {
-                    throw new InvalidCompanyProfile("identifiers.$identifier->key", \sprintf('The %s preset requires a company to carry its %s.', $preset->country, $identifier->key));
-                }
-                continue;
-            }
-            if (1 !== preg_match('#'.str_replace('#', '\#', $identifier->pattern).'#u', $value)) {
-                throw new InvalidCompanyProfile("identifiers.$identifier->key", \sprintf('This %s does not have the shape the %s preset expects.', $identifier->key, $preset->country));
-            }
-        }
-        foreach (array_keys($profile->identifiers) as $key) {
-            if (!\in_array($key, $known, true)) {
-                throw new InvalidCompanyProfile("identifiers.$key", \sprintf('The %s preset knows no identifier "%s".', $preset->country, $key));
-            }
+        $refusal = IdentifierRules::refusal($preset, $profile->identifiers, IdentifierRules::COMPANY);
+        if (null !== $refusal) {
+            throw new InvalidCompanyProfile(...$refusal);
         }
 
         $changed = $profile->differencesFrom($company->getProfile());

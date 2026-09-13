@@ -198,7 +198,9 @@
     "settings": "Paramètres",
     "company_profile": "Profil de la société",
     "establishments": "Établissements",
-    "numbering": "Numérotation des documents"
+    "numbering": "Numérotation des documents",
+    "customers": "Clients",
+    "customer_groups": "Groupes de clients"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -271,41 +273,6 @@
   "design": {
     "title": "Point de validation du design",
     "intro": "Écrans de démonstration à valider. Aucune donnée n’est enregistrée.",
-    "customers": {
-      "title": "Clients",
-      "name": "Nom",
-      "city": "Ville",
-      "country": "Pays",
-      "vat": "Numéro de TVA",
-      "balance": "Solde",
-      "status": "Statut",
-      "none": "Aucun client pour l’instant.",
-      "statuses": {
-        "active": "Actif",
-        "archived": "Archivé"
-      },
-      "new": "Nouveau client",
-      "open": "Ouvrir {{name}}"
-    },
-    "customer_form": {
-      "title": "Nouveau client",
-      "identity": "Identité",
-      "address": "Adresse",
-      "billing": "Facturation",
-      "name": "Nom",
-      "email": "E-mail",
-      "phone": "Téléphone",
-      "street": "Rue",
-      "postal_code": "Code postal",
-      "city": "Ville",
-      "country": "Pays",
-      "vat": "Numéro de TVA",
-      "payment_terms": "Délai de paiement (jours)",
-      "currency": "Devise",
-      "save": "Enregistrer",
-      "cancel": "Annuler",
-      "saved": "Enregistré (démonstration)."
-    },
     "invoice": {
       "title": "Facture",
       "number": "Numéro",
@@ -472,6 +439,118 @@
       "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
       "not_found": "Paramètre introuvable.",
       "network": "Le serveur est injoignable."
+    }
+  },
+  "customers": {
+    "title": "Clients",
+    "add": "Nouveau client",
+    "open": "Ouvrir {{name}}",
+    "open_short": "Ouvrir",
+    "none": "Aucun client pour l’instant.",
+    "no_company": "Choisissez d’abord une entreprise.",
+    "new_title": "Nouveau client",
+    "back": "Retour aux clients",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "saved": "Le client a été enregistré.",
+    "read_only": "Vous pouvez consulter les clients mais pas les modifier.",
+    "kinds": {
+      "company": "Entreprise",
+      "individual": "Particulier"
+    },
+    "statuses": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "sections": {
+      "identity": "Identité",
+      "identifiers": "Numéros d’immatriculation",
+      "contact": "Coordonnées",
+      "billing": "Adresse de facturation",
+      "shipping": "Adresse de livraison",
+      "terms": "Fiscalité et conditions",
+      "notes": "Notes"
+    },
+    "fields": {
+      "number": "Numéro client",
+      "kind": "Type",
+      "name": "Nom",
+      "legalName": "Raison sociale",
+      "customerGroupId": "Groupe",
+      "isActive": "Actif",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "website": "Site web",
+      "addressLine1": "Adresse",
+      "addressLine2": "Complément d’adresse",
+      "postalCode": "Code postal",
+      "city": "Ville",
+      "countryCode": "Code pays",
+      "billingCity": "Ville",
+      "taxRegime": "Régime fiscal",
+      "defaultDiscountRate": "Remise par défaut (%)",
+      "notes": "Notes"
+    },
+    "form": {
+      "no_group": "Aucun groupe",
+      "number_hint": "Lettres, chiffres et . _ / -, 32 caractères au plus, unique dans l’entreprise.",
+      "active_hint": "Un client inactif reste sur ses documents mais n’est plus proposé pour les nouveaux.",
+      "identifier_hint": "Obligatoire pour une entreprise facturée dans le pays de l’entreprise.",
+      "country_hint": "Deux lettres, comme TN ou FR. Laissé vide, le pays de l’entreprise.",
+      "shipping_hint": "Laissez vide quand la marchandise part à l’adresse de facturation.",
+      "discount_hint": "Un pourcentage de 0 à 100, avec trois décimales au plus.",
+      "notes_hint": "Pour votre équipe ; jamais imprimé sur les documents."
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Client introuvable.",
+      "number_taken": "Un autre client porte déjà ce numéro.",
+      "name_taken": "Un autre groupe porte déjà ce nom.",
+      "in_use": "Des clients sont encore dans ce groupe.",
+      "invalid": "La modification a été refusée. Vérifiez les numéros d’immatriculation, le régime et les taxes."
+    },
+    "groups": {
+      "title": "Groupes de clients",
+      "intro": "Les groupes classent les clients, et ce qui est réglé sur un groupe s’applique à chacun de ses clients, sauf s’il règle le sien.",
+      "add": "Ajouter un groupe",
+      "delete": "Supprimer",
+      "delete_named": "Supprimer {{name}}",
+      "saved": "Le groupe a été enregistré.",
+      "none": "Aucun groupe pour l’instant.",
+      "section": "Groupe",
+      "fields": {
+        "name": "Nom",
+        "description": "Description",
+        "customerCount": "Clients"
+      },
+      "errors": {
+        "network": "Le serveur est injoignable.",
+        "not_found": "Groupe introuvable.",
+        "name_taken": "Un autre groupe porte déjà ce nom.",
+        "in_use": "Des clients sont encore dans ce groupe. Déplacez-les d’abord dans un autre groupe.",
+        "invalid": "Le groupe a été refusé. Vérifiez son nom.",
+        "number_taken": "Le groupe a été refusé."
+      }
+    },
+    "contacts": {
+      "title": "Contacts",
+      "add": "Ajouter un contact",
+      "save": "Enregistrer le contact",
+      "remove": "Retirer",
+      "none": "Aucun contact pour l’instant.",
+      "section": "Contact",
+      "primary": "Principal",
+      "name_hint": "Un prénom ou un nom est nécessaire.",
+      "fields": {
+        "name": "Nom",
+        "firstName": "Prénom",
+        "lastName": "Nom",
+        "role": "Fonction",
+        "email": "E-mail",
+        "phone": "Téléphone",
+        "isPrimary": "Contact principal"
+      }
     }
   }
 }

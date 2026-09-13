@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Application\Preset;
 
-/** A registration number a country's documents carry, as a shape to check; checksums are validators of their own. */
+use App\Fiscal\Domain\IdentifierCheck;
+
+/** A registration number a country's documents carry: the shape it has and, when its research sources one, its check. */
 final readonly class PresetIdentifier
 {
     /**
@@ -21,6 +23,7 @@ final readonly class PresetIdentifier
         public string $labelKey,
         public string $pattern,
         public array $requiredFor,
+        public ?IdentifierCheck $check = null,
     ) {
     }
 }

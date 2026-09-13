@@ -13,6 +13,7 @@ use App\Fiscal\Application\Preset\PresetRegime;
 use App\Fiscal\Application\Preset\UnknownFiscalPreset;
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
+use App\Fiscal\Domain\IdentifierCheck;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Infrastructure\Preset\InvalidFiscalPreset;
@@ -82,6 +83,8 @@ final class YamlFiscalPresetsTest extends TestCase
         self::assertSame('^[0-9]{5}$', $fr->establishment->codePattern);
         self::assertSame('5.5', $fr->component('TVA5_5')->rate);
         self::assertSame('fiscal.mention.fr.franchise', $fr->companyVatRegimes[1]->mentionKey);
+        self::assertSame([IdentifierCheck::Luhn, IdentifierCheck::Siret, IdentifierCheck::FrenchVatKey], array_map(static fn ($identifier) => $identifier->check, $fr->identifiers));
+        self::assertNull($tn->identifiers[0]->check, "the matricule fiscal's check letter is not sourced (docs/fiscal/TN.md § 8)");
         self::assertSame(['fiscal.mention.fr.late_payment', 'fiscal.mention.fr.recovery_indemnity', 'fiscal.mention.fr.no_early_discount'], $fr->invoiceMentions);
     }
 
@@ -118,6 +121,7 @@ final class YamlFiscalPresetsTest extends TestCase
         yield 'a component code that is not a code' => ['tax_components.1.code', 'tva 13', 'code'];
         yield 'a name missing its English' => ['tax_components.0.names.en', self::REMOVE, 'en'];
         yield 'an identifier pattern that does not compile' => ['identifiers.0.pattern', '([0-9]', 'pattern'];
+        yield 'an identifier check the product does not implement' => ['identifiers.0.check', 'mod23', 'check'];
         yield 'a regime excluding a family that does not exist' => ['customer_tax_regimes.1.excluded_families', ['tva'], 'excluded_families'];
         yield 'a regime code used twice' => ['customer_tax_regimes.1.code', 'standard', 'standard'];
         yield 'a translation key outside the fiscal domain' => ['customer_tax_regimes.1.mention_key', 'mention.exempt', 'mention_key'];

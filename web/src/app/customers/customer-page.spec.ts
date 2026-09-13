@@ -1,0 +1,254 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
+import { signal } from '@angular/core';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { provideRouter, Router } from '@angular/router';
+import {
+  provideTranslateLoader,
+  provideTranslateService,
+  TranslateLoader,
+} from '@ngx-translate/core';
+import { of } from 'rxjs';
+import { AuthFacade } from '../auth/auth-facade';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
+import { CustomerPage } from './customer-page';
+import { CustomersFacade } from './customers-facade';
+import type {
+  ContactRow,
+  CustomerGroupRow,
+  CustomerOptions,
+  CustomerRow,
+  CustomersError,
+} from './customers-types';
+
+class StaticLoader implements TranslateLoader {
+  getTranslation() {
+    return of({
+      customers: { errors: { number_taken: 'Un autre client porte déjà ce numéro.' } },
+    });
+  }
+}
+
+const options: CustomerOptions = {
+  countryCode: 'TN',
+  identifiers: [
+    {
+      key: 'matricule_fiscal',
+      label: 'Matricule fiscal',
+      pattern: '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$',
+      requiredForBusiness: true,
+    },
+  ],
+  regimes: [{ code: 'standard', label: 'Régime normal', excludedFamilies: [] }],
+  taxes: [{ id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat' }],
+};
+const carthage: CustomerRow = {
+  id: 'k1',
+  number: 'CLI-0001',
+  kind: 'company',
+  customerGroupId: null,
+  taxRegime: 'standard',
+  name: 'Carthage Conseil',
+  legalName: null,
+  identifiers: { matricule_fiscal: '1234567A/B/M/000' },
+  email: null,
+  phone: null,
+  website: null,
+  billingAddress: { line1: null, line2: null, postalCode: null, city: 'Tunis', countryCode: 'TN' },
+  shippingAddress: null,
+  defaultTaxComponentIds: ['t1'],
+  defaultDiscountRate: null,
+  notes: null,
+  isActive: true,
+};
+const leila: ContactRow = {
+  id: 'p1',
+  firstName: 'Leila',
+  lastName: 'Ben Salah',
+  email: 'leila@carthage.tn',
+  phone: null,
+  role: 'Comptable',
+  isPrimary: true,
+};
+
+describe('CustomerPage', () => {
+  const error = signal<CustomersError | null>(null);
+  const customer = signal<CustomerRow | null>(null);
+  const facade = {
+    options: signal<CustomerOptions | null>(options).asReadonly(),
+    groups: signal<readonly CustomerGroupRow[]>([]).asReadonly(),
+    customer: customer.asReadonly(),
+    contacts: signal<readonly ContactRow[]>([leila]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: error.asReadonly(),
+    loadCustomer: vi.fn(),
+    createCustomer: vi.fn(),
+    reviseCustomer: vi.fn(),
+    addContact: vi.fn(),
+    reviseContact: vi.fn(),
+    removeContact: vi.fn(),
+    clearError: vi.fn(),
+  };
+  const auth = {
+    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    hasPermission: vi.fn(),
+  };
+  let fixture: ComponentFixture<CustomerPage>;
+
+  const q = (testId: string): HTMLElement | null =>
+    fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+  async function settle(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  function type(testId: string, value: string): void {
+    const input = q(testId) as HTMLInputElement;
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
+  async function open(customerId: string | undefined): Promise<void> {
+    fixture = TestBed.createComponent(CustomerPage);
+    if (customerId !== undefined) {
+      fixture.componentRef.setInput('customerId', customerId);
+    }
+    await settle();
+  }
+
+  beforeEach(() => {
+    error.set(null);
+    customer.set(null);
+    facade.loadCustomer.mockReset().mockResolvedValue(undefined);
+    facade.createCustomer.mockReset().mockResolvedValue({ ...carthage, id: 'k9' });
+    facade.reviseCustomer.mockReset().mockResolvedValue(carthage);
+    facade.addContact.mockReset().mockResolvedValue(true);
+    facade.reviseContact.mockReset().mockResolvedValue(true);
+    facade.removeContact.mockReset().mockResolvedValue(true);
+    auth.hasPermission.mockReset().mockReturnValue(true);
+    TestBed.configureTestingModule({
+      imports: [CustomerPage],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideTranslateService({
+          lang: 'fr',
+          fallbackLang: 'fr',
+          loader: provideTranslateLoader(() => new StaticLoader()),
+        }),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+        { provide: CustomersFacade, useValue: facade },
+        { provide: AuthFacade, useValue: auth },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+      ],
+    });
+  });
+
+  it('creates a customer, then opens it by its identifier', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    expect(facade.loadCustomer).toHaveBeenCalledWith('c1', null);
+    expect(q('customer-contacts')).toBeNull();
+
+    type('field-number', 'CLI-0009');
+    type('field-name', 'Carthage Conseil');
+    type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    q('customer-save')!.click();
+    await settle();
+
+    expect(facade.createCustomer).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        number: 'CLI-0009',
+        kind: 'company',
+        taxRegime: 'standard',
+        identifiers: { matricule_fiscal: '1234567A/B/M/000' },
+        billingAddress: expect.objectContaining({ countryCode: 'TN' }),
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(navigate).toHaveBeenCalledWith(['/customers', 'k9'], { replaceUrl: true }),
+    );
+  });
+
+  it('does not send a registration number of the wrong shape', async () => {
+    await open(undefined);
+    type('field-number', 'CLI-0009');
+    type('field-name', 'Carthage Conseil');
+    type('field-identifier__matricule_fiscal', '1234567');
+    q('customer-save')!.click();
+    await settle();
+
+    expect(facade.createCustomer).not.toHaveBeenCalled();
+  });
+
+  it('revises an existing customer and lists its contacts', async () => {
+    customer.set(carthage);
+    await open('k1');
+
+    expect(facade.loadCustomer).toHaveBeenCalledWith('c1', 'k1');
+    expect((q('field-number') as HTMLInputElement).value).toBe('CLI-0001');
+    expect(q('contact-leila@carthage.tn')?.textContent).toContain('Leila Ben Salah');
+
+    type('field-email', 'compta@carthage.tn');
+    q('customer-save')!.click();
+    await settle();
+
+    expect(facade.reviseCustomer).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ email: 'compta@carthage.tn', defaultTaxComponentIds: ['t1'] }),
+    );
+    expect(q('customer-saved')).not.toBeNull();
+  });
+
+  it('adds a contact to the customer and removes one', async () => {
+    customer.set(carthage);
+    await open('k1');
+
+    q('contact-add')!.click();
+    await settle();
+    type('field-firstName', 'Karim');
+    q('contact-save')!.click();
+    await settle();
+    expect(facade.addContact).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ firstName: 'Karim', isPrimary: false }),
+    );
+
+    q('contact-remove-p1')!.click();
+    await settle();
+    expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1');
+  });
+
+  it('says why the API refused', async () => {
+    error.set('number_taken');
+    await open(undefined);
+
+    expect(q('customer-error')?.textContent).toContain('porte déjà ce numéro');
+  });
+
+  it('shows a reader the customer without a way to change it', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    customer.set(carthage);
+    await open('k1');
+
+    expect(q('customer-save')).toBeNull();
+    expect((q('field-number') as HTMLInputElement).disabled).toBe(true);
+    expect(q('contact-add')).toBeNull();
+    expect(q('contact-remove-p1')).toBeNull();
+  });
+});

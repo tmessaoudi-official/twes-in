@@ -5,19 +5,8 @@
  * string: nothing here computes money, which is test-driven where invoices are built for real (G3 and G7).
  */
 
-export interface DesignCustomer {
-  id: string;
-  name: string;
-  city: string;
-  country: 'TN' | 'FR';
-  vat: string;
-  /** Used to sort only; the screen shows `balanceLabel`. */
-  balanceSortKey: number;
-  balanceLabel: string;
-  status: 'active' | 'archived';
-}
-
-const CUSTOMER_NAMES = [
+/** Names the invoice screen offers in its customer picker. */
+export const DESIGN_CUSTOMER_NAMES: readonly string[] = [
   'Atlas Distribution',
   'Béja Agro',
   'Carthage Conseil',
@@ -26,50 +15,7 @@ const CUSTOMER_NAMES = [
   'Fennec Informatique',
   'Gabès Chimie',
   'Hammamet Hôtels',
-  'Institut Salammbô',
-  'Jasmin Cosmétiques',
-  'Kairouan Tapis',
-  'Lyon Mécanique',
-  'Marseille Logistique',
-  'Nabeul Céramique',
-  'Olivier & Fils',
-  'Paris Studio',
-  'Quai des Arts',
-  'Rades Port Services',
-  'Sfax Textiles',
-  'Tunis Numérique',
-  'Utique Bâtiment',
-  'Val de Loire Vins',
-  'Wadi Énergie',
-  'Zaghouan Eaux',
 ];
-
-const TN_CITIES = ['Tunis', 'Sfax', 'Sousse', 'Bizerte', 'Nabeul', 'Gabès'];
-const FR_CITIES = ['Paris', 'Lyon', 'Marseille', 'Nantes'];
-
-export const DESIGN_CUSTOMERS: readonly DesignCustomer[] = CUSTOMER_NAMES.map((name, index) => {
-  const country = index % 4 === 3 ? 'FR' : 'TN';
-  const balance = ((index * 7919) % 48000) + (index % 3) * 125;
-  const whole = Math.trunc(balance / 10);
-  const fraction = balance % 10;
-  return {
-    id: `c-${String(index + 1).padStart(3, '0')}`,
-    name,
-    city:
-      country === 'TN' ? TN_CITIES[index % TN_CITIES.length] : FR_CITIES[index % FR_CITIES.length],
-    country,
-    vat:
-      country === 'TN'
-        ? `${String(1234567 + index * 311).slice(0, 7)}${'ABCDEFGH'[index % 8]}/A/M/000`
-        : `FR${String(40 + index)}${String(123456789 + index * 97).slice(0, 9)}`,
-    balanceSortKey: balance,
-    balanceLabel:
-      country === 'TN'
-        ? `${whole.toLocaleString('fr-FR')},${String(fraction).padEnd(3, '0')} TND`
-        : `${whole.toLocaleString('fr-FR')},${String(fraction).padEnd(2, '0')} €`,
-    status: index % 5 === 4 ? 'archived' : 'active',
-  };
-});
 
 export interface DesignInvoiceLine {
   description: string;

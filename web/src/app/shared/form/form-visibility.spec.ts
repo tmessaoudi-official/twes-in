@@ -86,6 +86,19 @@ describe('form visibility', () => {
     expect(applicableValues(tax, form)).toEqual({ family: 'stamp', amount: '1', isDefault: false });
   });
 
+  it('keeps every field disabled in a read-only form, whatever applies', () => {
+    const form = buildFormGroup(tax);
+    applyVisibility(tax, form);
+
+    applyVisibility(tax, form, true);
+
+    expect(Object.values(form.controls).every((control) => control.disabled)).toBe(true);
+
+    applyVisibility(tax, form);
+    expect(form.controls['rate'].enabled).toBe(true);
+    expect(form.controls['amount'].disabled).toBe(true);
+  });
+
   it('refuses a condition on a field the form does not declare', () => {
     const broken: FormDescriptor = {
       id: 'broken',

@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
+import { MatButtonModule } from '@angular/material/button';
+import { RouterLink } from '@angular/router';
+import { TranslatePipe } from '@ngx-translate/core';
+import { AuthFacade } from '../auth/auth-facade';
+import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { CUSTOMERS_LIST, type CustomerListRow, customerListRows } from './customer-forms';
+import { CustomersFacade } from './customers-facade';
+
+/** The customers of the company being worked in. */
+@Component({
+  selector: 'app-customers-page',
+  imports: [MatButtonModule, RouterLink, TranslatePipe, DataList, DataListCell, DataListRowActions],
+  templateUrl: './customers-page.html',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class CustomersPage implements OnInit {
+  private readonly facade = inject(CustomersFacade);
+  private readonly auth = inject(AuthFacade);
+
+  protected readonly list = CUSTOMERS_LIST;
+  protected readonly rows = computed(() =>
+    customerListRows(this.facade.customers(), this.facade.groups()),
+  );
+  protected readonly error = this.facade.error;
+  protected readonly company = computed(() => this.auth.me()?.company ?? null);
+  protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
+  protected readonly rowTestId = (row: CustomerListRow): string => `customer-${row.number}`;
+
+  async ngOnInit(): Promise<void> {
+    const companyId = this.company()?.id;
+    if (companyId) {
+      await this.facade.loadList(companyId);
+    }
+  }
+}

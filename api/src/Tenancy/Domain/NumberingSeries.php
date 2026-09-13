@@ -22,7 +22,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'numbering_series')]
 #[ORM\Index(name: 'idx_numbering_series_company', columns: ['company_id'])]
-#[ORM\UniqueConstraint(name: 'uniq_numbering_series_default', columns: ['establishment_id', 'document_type'], options: ['where' => '(is_default)'])]
+#[ORM\Index(name: 'idx_numbering_series_establishment', columns: ['establishment_id'])]
+#[ORM\UniqueConstraint(name: 'uniq_numbering_series_default', columns: ['establishment_id', 'document_type'], options: ['where' => 'is_default'])]
 class NumberingSeries
 {
     public const string DOCUMENT_TYPE = '/^[a-z][a-z_]{0,31}$/';

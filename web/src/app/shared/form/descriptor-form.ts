@@ -46,6 +46,8 @@ export class DescriptorForm {
   readonly descriptor = input.required<FormDescriptor>();
   readonly form = input.required<DescriptorFormGroup>();
   readonly testId = input('descriptor-form');
+  /** Shows the values with every field disabled, for someone who may read but not change them. */
+  readonly readOnly = input(false);
   readonly submitted = output<FormValues>();
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */
@@ -55,9 +57,10 @@ export class DescriptorForm {
     effect((onCleanup) => {
       const descriptor = this.descriptor();
       const form = this.form();
-      applyVisibility(descriptor, form);
+      const readOnly = this.readOnly();
+      applyVisibility(descriptor, form, readOnly);
       const subscription = form.events.subscribe(() => {
-        applyVisibility(descriptor, form);
+        applyVisibility(descriptor, form, readOnly);
         this.revision.update((revision) => revision + 1);
       });
       onCleanup(() => subscription.unsubscribe());
@@ -81,6 +84,7 @@ export class DescriptorForm {
 
   protected submit(): void {
     const form = this.form();
+    if (this.readOnly()) return;
     applyVisibility(this.descriptor(), form);
     if (form.invalid) {
       form.markAllAsTouched();

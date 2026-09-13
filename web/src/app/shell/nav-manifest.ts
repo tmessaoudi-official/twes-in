@@ -29,6 +29,22 @@ const SECTION_ORDER: readonly NavSection[] = ['main', 'admin'];
 export const CORE_NAV: readonly NavEntry[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
   {
+    key: 'customers',
+    labelKey: 'nav.customers',
+    icon: 'contacts',
+    route: '/customers',
+    section: 'main',
+    permission: 'customer.read',
+  },
+  {
+    key: 'customer-groups',
+    labelKey: 'nav.customer_groups',
+    icon: 'folder_shared',
+    route: '/customers/groups',
+    section: 'main',
+    permission: 'customer.read',
+  },
+  {
     key: 'members',
     labelKey: 'nav.members',
     icon: 'group',

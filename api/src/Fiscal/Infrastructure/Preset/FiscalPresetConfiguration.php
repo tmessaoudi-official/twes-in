@@ -11,6 +11,7 @@ namespace App\Fiscal\Infrastructure\Preset;
 
 use App\Fiscal\Domain\Calculation\RoundingPoint;
 use App\Fiscal\Domain\Calculation\TaxBasis;
+use App\Fiscal\Domain\IdentifierCheck;
 use App\Fiscal\Domain\TaxFamily;
 use App\Fiscal\Domain\TaxKind;
 use Symfony\Component\Config\Definition\Builder\ArrayNodeDefinition;
@@ -47,6 +48,7 @@ final class FiscalPresetConfiguration implements ConfigurationInterface
                         ->scalarNode('label_key')->isRequired()->cannotBeEmpty()->end()
                         ->scalarNode('pattern')->isRequired()->cannotBeEmpty()->end()
                         ->arrayNode('required_for')->scalarPrototype()->end()->end()
+                        ->enumNode('check')->values(array_map(static fn (IdentifierCheck $check) => $check->value, IdentifierCheck::cases()))->end()
                     ->end()
                 ->end()
             ->end()

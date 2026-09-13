@@ -21,8 +21,9 @@ use Symfony\Component\Uid\Uuid;
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'establishment')]
+#[ORM\Index(name: 'idx_establishment_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_establishment_company_code', columns: ['company_id', 'code'])]
-#[ORM\UniqueConstraint(name: 'uniq_establishment_default', columns: ['company_id'], options: ['where' => '(is_default)'])]
+#[ORM\UniqueConstraint(name: 'uniq_establishment_default', columns: ['company_id'], options: ['where' => 'is_default'])]
 class Establishment
 {
     public const string CODE = '/^[A-Za-z0-9]{1,16}$/';

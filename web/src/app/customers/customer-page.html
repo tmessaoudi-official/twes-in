@@ -1,0 +1,142 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="customer-title">
+      @if (current(); as customer) {
+        {{ customer.number }} · {{ customer.name }}
+      } @else {
+        {{ 'customers.new_title' | translate }}
+      }
+    </h1>
+    <a mat-button routerLink="/customers">{{ 'customers.back' | translate }}</a>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="customer-no-company">{{ 'customers.no_company' | translate }}</p>
+  }
+  @if (!mayWrite()) {
+    <p data-testid="customer-read-only">{{ 'customers.read_only' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="customer-error" class="text-error">
+      {{ 'customers.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="customer-saved">{{ 'customers.saved' | translate }}</p>
+  }
+
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="customer-form"
+            [readOnly]="!mayWrite()"
+            (submitted)="save($event)"
+          >
+            @if (mayWrite()) {
+              <div class="flex flex-wrap justify-end gap-2">
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="busy()"
+                  data-testid="customer-save"
+                >
+                  {{ 'customers.save' | translate }}
+                </button>
+              </div>
+            }
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (current()) {
+    <section
+      class="flex flex-col gap-4"
+      data-testid="customer-contacts"
+      aria-labelledby="customer-contacts-title"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <h2 id="customer-contacts-title" class="text-xl font-semibold">
+          {{ 'customers.contacts.title' | translate }}
+        </h2>
+        @if (mayWrite() && contactEditing() === null) {
+          <button mat-button type="button" (click)="openContact('new')" data-testid="contact-add">
+            {{ 'customers.contacts.add' | translate }}
+          </button>
+        }
+      </div>
+
+      @if (contactForm(); as contactForm) {
+        <mat-card>
+          <mat-card-content>
+            <app-descriptor-form
+              [descriptor]="contactDescriptor"
+              [form]="contactForm"
+              testId="contact-form"
+              (submitted)="saveContact($event)"
+            >
+              <div class="flex flex-wrap justify-end gap-2">
+                <button
+                  mat-button
+                  type="button"
+                  (click)="cancelContact()"
+                  data-testid="contact-cancel"
+                >
+                  {{ 'customers.cancel' | translate }}
+                </button>
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="busy()"
+                  data-testid="contact-save"
+                >
+                  {{ 'customers.contacts.save' | translate }}
+                </button>
+              </div>
+            </app-descriptor-form>
+          </mat-card-content>
+        </mat-card>
+      }
+
+      <app-data-list
+        [descriptor]="contactList"
+        [rows]="contacts()"
+        testId="contacts-table"
+        [rowTestId]="contactTestId"
+        emptyKey="customers.contacts.none"
+        emptyTestId="contacts-empty"
+      >
+        <ng-template appDataListCell="isPrimary" let-row>
+          {{ row.isPrimary ? ('customers.contacts.primary' | translate) : '' }}
+        </ng-template>
+        @if (mayWrite()) {
+          <ng-template appDataListRowActions let-row>
+            <button
+              mat-button
+              type="button"
+              (click)="openContact(row)"
+              [disabled]="busy()"
+              [attr.data-testid]="'contact-edit-' + row.id"
+            >
+              {{ 'customers.edit' | translate }}
+            </button>
+            <button
+              mat-button
+              type="button"
+              (click)="removeContact(row)"
+              [disabled]="busy()"
+              [attr.data-testid]="'contact-remove-' + row.id"
+            >
+              {{ 'customers.contacts.remove' | translate }}
+            </button>
+          </ng-template>
+        }
+      </app-data-list>
+    </section>
+  }
+</section>

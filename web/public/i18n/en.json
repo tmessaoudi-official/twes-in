@@ -198,7 +198,9 @@
     "settings": "Settings",
     "company_profile": "Company profile",
     "establishments": "Establishments",
-    "numbering": "Document numbering"
+    "numbering": "Document numbering",
+    "customers": "Customers",
+    "customer_groups": "Customer groups"
   },
   "shell": {
     "skip": "Skip to content",
@@ -271,41 +273,6 @@
   "design": {
     "title": "Design checkpoint",
     "intro": "Fixture screens for review. No data is saved.",
-    "customers": {
-      "title": "Customers",
-      "name": "Name",
-      "city": "City",
-      "country": "Country",
-      "vat": "VAT number",
-      "balance": "Balance",
-      "status": "Status",
-      "none": "No customers yet.",
-      "statuses": {
-        "active": "Active",
-        "archived": "Archived"
-      },
-      "new": "New customer",
-      "open": "Open {{name}}"
-    },
-    "customer_form": {
-      "title": "New customer",
-      "identity": "Identity",
-      "address": "Address",
-      "billing": "Billing",
-      "name": "Name",
-      "email": "Email",
-      "phone": "Phone",
-      "street": "Street",
-      "postal_code": "Postal code",
-      "city": "City",
-      "country": "Country",
-      "vat": "VAT number",
-      "payment_terms": "Payment terms (days)",
-      "currency": "Currency",
-      "save": "Save",
-      "cancel": "Cancel",
-      "saved": "Saved (fixture only)."
-    },
     "invoice": {
       "title": "Invoice",
       "number": "Number",
@@ -472,6 +439,118 @@
       "invalid": "The values were refused. Check the limits shown.",
       "not_found": "Setting not found.",
       "network": "The server could not be reached."
+    }
+  },
+  "customers": {
+    "title": "Customers",
+    "add": "New customer",
+    "open": "Open {{name}}",
+    "open_short": "Open",
+    "none": "No customers yet.",
+    "no_company": "Choose a company first.",
+    "new_title": "New customer",
+    "back": "Back to customers",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "saved": "The customer was saved.",
+    "read_only": "You can read customers but not change them.",
+    "kinds": {
+      "company": "Business",
+      "individual": "Private individual"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "sections": {
+      "identity": "Identity",
+      "identifiers": "Registration numbers",
+      "contact": "Contact details",
+      "billing": "Billing address",
+      "shipping": "Shipping address",
+      "terms": "Tax and terms",
+      "notes": "Notes"
+    },
+    "fields": {
+      "number": "Customer number",
+      "kind": "Kind",
+      "name": "Name",
+      "legalName": "Legal name",
+      "customerGroupId": "Group",
+      "isActive": "Active",
+      "email": "Email",
+      "phone": "Phone",
+      "website": "Website",
+      "addressLine1": "Address",
+      "addressLine2": "Address line 2",
+      "postalCode": "Postal code",
+      "city": "City",
+      "countryCode": "Country code",
+      "billingCity": "City",
+      "taxRegime": "Tax regime",
+      "defaultDiscountRate": "Default discount (%)",
+      "notes": "Notes"
+    },
+    "form": {
+      "no_group": "No group",
+      "number_hint": "Letters, digits and . _ / -, up to 32 characters, unique in the company.",
+      "active_hint": "An inactive customer stays on its documents but is no longer offered for new ones.",
+      "identifier_hint": "Required for a business billed in the company's country.",
+      "country_hint": "Two letters, such as TN or FR. Left empty, the company's country.",
+      "shipping_hint": "Leave empty when goods go to the billing address.",
+      "discount_hint": "A percentage from 0 to 100, with up to three decimals.",
+      "notes_hint": "For your team; never printed on documents."
+    },
+    "errors": {
+      "network": "The server could not be reached.",
+      "not_found": "Customer not found.",
+      "number_taken": "Another customer already has this number.",
+      "name_taken": "Another group already has this name.",
+      "in_use": "Customers are still in this group.",
+      "invalid": "The change was refused. Check the registration numbers, the regime and the taxes."
+    },
+    "groups": {
+      "title": "Customer groups",
+      "intro": "Groups sort customers, and what is set on a group applies to every customer in it unless the customer sets its own.",
+      "add": "Add a group",
+      "delete": "Delete",
+      "delete_named": "Delete {{name}}",
+      "saved": "The group was saved.",
+      "none": "No group yet.",
+      "section": "Group",
+      "fields": {
+        "name": "Name",
+        "description": "Description",
+        "customerCount": "Customers"
+      },
+      "errors": {
+        "network": "The server could not be reached.",
+        "not_found": "Group not found.",
+        "name_taken": "Another group already has this name.",
+        "in_use": "Customers are still in this group. Move them to another group first.",
+        "invalid": "The group was refused. Check its name.",
+        "number_taken": "The group was refused."
+      }
+    },
+    "contacts": {
+      "title": "Contacts",
+      "add": "Add a contact",
+      "save": "Save the contact",
+      "remove": "Remove",
+      "none": "No contact yet.",
+      "section": "Contact",
+      "primary": "Primary",
+      "name_hint": "A first or a last name is needed.",
+      "fields": {
+        "name": "Name",
+        "firstName": "First name",
+        "lastName": "Last name",
+        "role": "Role",
+        "email": "Email",
+        "phone": "Phone",
+        "isPrimary": "Primary contact"
+      }
     }
   }
 }

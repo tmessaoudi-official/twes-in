@@ -28,6 +28,24 @@ export const routes: Routes = [
         loadComponent: () => import('./hello/hello-page').then((m) => m.HelloPage),
       },
       {
+        path: 'customers',
+        loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),
+      },
+      {
+        // Before ':customerId', which would otherwise take "new" and "groups" for identifiers.
+        path: 'customers/new',
+        loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
+      },
+      {
+        path: 'customers/groups',
+        loadComponent: () =>
+          import('./customers/customer-groups-page').then((m) => m.CustomerGroupsPage),
+      },
+      {
+        path: 'customers/:customerId',
+        loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
+      },
+      {
         path: 'members',
         loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
       },
@@ -64,17 +82,7 @@ export const routes: Routes = [
         canMatch: [() => isDevMode()],
         loadComponent: () => import('./design/design-page').then((m) => m.DesignPage),
         children: [
-          { path: '', pathMatch: 'full', redirectTo: 'customers' },
-          {
-            path: 'customers',
-            loadComponent: () =>
-              import('./design/design-customers-page').then((m) => m.DesignCustomersPage),
-          },
-          {
-            path: 'customers/new',
-            loadComponent: () =>
-              import('./design/design-customer-form-page').then((m) => m.DesignCustomerFormPage),
-          },
+          { path: '', pathMatch: 'full', redirectTo: 'invoice' },
           {
             path: 'invoice',
             loadComponent: () =>

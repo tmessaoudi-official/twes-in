@@ -124,8 +124,6 @@ async function capture(page: Page, name: string): Promise<void> {
 
 const SCREENS = [
   { key: 'members', path: '/members', ready: 'members-table' },
-  { key: 'customers', path: '/design/customers', ready: 'design-customers-table' },
-  { key: 'customer-form', path: '/design/customers/new', ready: 'design-customer-form' },
   { key: 'invoice', path: '/design/invoice', ready: 'design-invoice-lines' },
 ] as const;
 
@@ -152,21 +150,3 @@ for (const scheme of ['light', 'dark'] as const) {
     }
   }
 }
-
-test('customers with the column chooser open, desktop, light', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await serveFixtures(page, 'light');
-  await page.goto('/design/customers');
-  await page.getByTestId('list-columns').click();
-  await expect(page.getByTestId('list-column-toggle-vat')).toBeVisible();
-  await capture(page, 'customers-chooser-desktop-light');
-});
-
-test('customer form refusing an empty submit, phone, light', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await serveFixtures(page, 'light');
-  await page.goto('/design/customers/new');
-  await page.getByTestId('design-customer-save').click();
-  await expect(page.getByTestId('field-error-name')).toBeVisible();
-  await capture(page, 'customer-form-errors-phone-light');
-});
