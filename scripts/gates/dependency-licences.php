@@ -29,8 +29,8 @@ const DEV_ONLY_DATA = ['CC-BY-4.0', 'CC-BY-3.0'];
 const DEV_ONLY_TOOLING = ['MPL-2.0', 'Python-2.0'];
 
 /**
- * Vendored FONT FILES (not packages) may carry OFL-1.1. No font is vendored yet; the file-level check lands with
- * the first one (G2, design system). Listed here so the maximum is pinned before it is needed.
+ * Vendored FONT FILES (not packages) under web/public and web/src may carry OFL-1.1, and only with the licence text
+ * in a LICENSE file beside them. An OFL-1.1 package is still a refused runtime dependency.
  */
 const FONT_ASSETS = ['OFL-1.1'];
 
@@ -68,8 +68,19 @@ foreach ($records as $r) {
     }
 }
 
+$fonts = vendoredFonts($root);
+foreach ($fonts as $f) {
+    if ('' === $f['licence']) {
+        foreach ($f['files'] as $file) {
+            $violations[] = sprintf('%s/%s is a vendored font with no LICENSE file beside it', $f['dir'], $file);
+        }
+    } elseif (!in_array($f['licence'], FONT_ASSETS, true)) {
+        $violations[] = sprintf('%s/LICENSE is not a permitted font licence (%s)', $f['dir'], implode(', ', FONT_ASSETS));
+    }
+}
+
 $notices = $root.'/THIRD-PARTY-NOTICES.md';
-if (!is_file($notices) || file_get_contents($notices) !== renderNotices($records)) {
+if (!is_file($notices) || file_get_contents($notices) !== renderNotices($records, $fonts)) {
     $violations[] = 'THIRD-PARTY-NOTICES.md is out of date — run: php scripts/notices/generate-third-party-notices.php';
 }
 

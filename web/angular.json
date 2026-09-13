@@ -30,7 +30,11 @@
                 "input": "public"
               }
             ],
-            "styles": ["src/styles.scss", "src/tailwind.css"]
+            "styles": [
+              "node_modules/material-symbols/outlined.css",
+              "src/styles.scss",
+              "src/tailwind.css"
+            ]
           },
           "configurations": {
             "production": {

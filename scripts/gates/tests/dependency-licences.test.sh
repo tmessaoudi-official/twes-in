@@ -98,4 +98,26 @@ if [[ $(echo "$out" | jq -c '.distributed') == '["MIT","Apache-2.0","BSD-2-Claus
 d=$(fixture); out=$(php "$GEN" --root "$d" 2>&1); n="$d/THIRD-PARTY-NOTICES.md"
 if grep -q 'vendor/runtime-mit | 1.0.0 | MIT | runtime' "$n" && grep -q 'dev-apache | 3.0.0 | Apache-2.0 | dev' "$n" && grep -q 'GENERATED' "$n"; then ok "generator writes one row per package with tier and role"; else bad "generator output" "$(cat "$n")"; fi
 
+# Vendored font FILES (not packages) may carry OFL-1.1, and only with their licence text beside them.
+# vendor_font <root> <dir under web/> <licence text or empty for none>
+vendor_font() {
+  mkdir -p "$1/web/$2"; printf 'wOF2-fixture' > "$1/web/$2/demo-latin.woff2"
+  if [[ -n "$3" ]]; then printf '%s\n' "$3" > "$1/web/$2/LICENSE"; fi
+  php "$GEN" --root "$1" >/dev/null 2>&1
+}
+OFL='This Font Software is licensed under the SIL Open Font License, Version 1.1.'
+
+d=$(fixture); vendor_font "$d" public/fonts/demo "$OFL"
+assert_gate "a vendored OFL-1.1 font with its LICENSE passes" "$d" 0 "OK"
+if grep -q 'web/public/fonts/demo | OFL-1.1 | demo-latin.woff2' "$d/THIRD-PARTY-NOTICES.md"; then ok "notices list a vendored font with its licence and files"; else bad "notices lack the vendored font" "$(cat "$d/THIRD-PARTY-NOTICES.md")"; fi
+
+d=$(fixture); vendor_font "$d" public/fonts/demo ""
+assert_gate "a vendored font with no LICENSE beside it fails, naming it" "$d" 1 "web/public/fonts/demo/demo-latin.woff2 is a vendored font with no LICENSE file beside it"
+
+d=$(fixture); vendor_font "$d" public/fonts/demo "GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007"
+assert_gate "a vendored font under another licence fails" "$d" 1 "web/public/fonts/demo/LICENSE is not a permitted font licence (OFL-1.1)"
+
+d=$(fixture); vendor_font "$d" src/assets/odd ""
+assert_gate "a font file under web/src is checked too" "$d" 1 "web/src/assets/odd/demo-latin.woff2 is a vendored font with no LICENSE file beside it"
+
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
