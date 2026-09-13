@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # twes-in web: the Angular bundle built once, then served by nginx, which also proxies /api to the API container.
-FROM node:26.8.1-alpine AS build
+FROM node:26.8.2-alpine AS build
 WORKDIR /app
 COPY web/package.json web/package-lock.json ./
 RUN npm ci --no-audit --no-fund

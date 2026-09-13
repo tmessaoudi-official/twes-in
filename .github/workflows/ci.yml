@@ -18,7 +18,7 @@ jobs:
   licences:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
@@ -51,14 +51,14 @@ jobs:
       run:
         working-directory: api
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
           extensions: pdo_pgsql, intl, zip, opcache
           ini-values: date.timezone=UTC
           coverage: none
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: ~/.cache/composer
           key: composer-${{ hashFiles('api/composer.lock') }}
@@ -66,7 +66,7 @@ jobs:
       - run: composer gate
       # The OpenAPI document is the contract the web job generates its TypeScript types from.
       - run: bin/console api:openapi:export --output=var/openapi.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: openapi
           path: api/var/openapi.json
@@ -81,13 +81,13 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.nvmrc
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: openapi
           path: api/var
@@ -100,12 +100,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [licences, api, web]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # The api image migrates at start (infra/api/docker-entrypoint.sh) and --wait holds until it is healthy;
       # the seed is data, not schema, so it stays a step: the operator the scenarios sign in as.
       - run: docker compose up -d --build --wait
       - run: docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.nvmrc
           cache: npm
@@ -123,7 +123,7 @@ jobs:
       - if: failure()
         run: docker compose logs --no-color
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: web/playwright-report

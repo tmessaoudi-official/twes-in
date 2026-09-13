@@ -75,7 +75,7 @@ services:
       - "${WEB_PORT:-8090}:80"
 
   gotenberg:
-    image: gotenberg/gotenberg:8.36.0
+    image: gotenberg/gotenberg:8.37.0
 
   mailpit:
     image: axllent/mailpit:v1.31.1
