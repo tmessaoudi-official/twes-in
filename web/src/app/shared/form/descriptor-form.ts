@@ -11,23 +11,27 @@ import {
   signal,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
 import type { FormDescriptor, FormField, FormValues } from './form-types';
+import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
 
 /**
  * Every form: the descriptor's sections as titled groups on a two-column grid (one column on a phone), each field
- * with its label, an "optional" hint, and its one message once it has been left. The screen builds the group with
- * buildFormGroup and projects its own buttons; a valid submit emits the values, an invalid one shows every error
- * and focuses the first invalid field.
+ * with its label, an "optional" hint, and its one message once it has been left. A field with a condition appears
+ * only while it applies, and is neither validated nor submitted otherwise. The screen builds the group with
+ * buildFormGroup and projects its own buttons; a valid submit emits the values of the fields that apply, an invalid
+ * one shows every error and focuses the first invalid field.
  */
 @Component({
   selector: 'app-descriptor-form',
   imports: [
     ReactiveFormsModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
@@ -49,11 +53,20 @@ export class DescriptorForm {
 
   constructor() {
     effect((onCleanup) => {
-      const subscription = this.form().events.subscribe(() =>
-        this.revision.update((revision) => revision + 1),
-      );
+      const descriptor = this.descriptor();
+      const form = this.form();
+      applyVisibility(descriptor, form);
+      const subscription = form.events.subscribe(() => {
+        applyVisibility(descriptor, form);
+        this.revision.update((revision) => revision + 1);
+      });
       onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  protected applies(field: FormField): boolean {
+    this.revision();
+    return fieldApplies(field, this.form().getRawValue());
   }
 
   protected errorFor(field: FormField): FieldError | null {
@@ -68,13 +81,14 @@ export class DescriptorForm {
 
   protected submit(): void {
     const form = this.form();
+    applyVisibility(this.descriptor(), form);
     if (form.invalid) {
       form.markAllAsTouched();
       this.revision.update((revision) => revision + 1);
       this.focusFirstInvalid();
       return;
     }
-    this.submitted.emit(form.getRawValue());
+    this.submitted.emit(applicableValues(this.descriptor(), form));
   }
 
   private focusFirstInvalid(): void {

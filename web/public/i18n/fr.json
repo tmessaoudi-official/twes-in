@@ -79,7 +79,9 @@
       "main": "Général",
       "admin": "Administration"
     },
-    "design": "Maquettes"
+    "design": "Maquettes",
+    "taxes": "Taxes",
+    "units": "Unités"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -231,6 +233,73 @@
       "max_length": "Au plus {{max}} caractères.",
       "min": "Au moins {{min}}.",
       "max": "Au plus {{max}}."
+    }
+  },
+  "fiscal": {
+    "no_company": "Choisissez d'abord une société.",
+    "edit": "Modifier",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "yes": "Oui",
+    "no": "Non",
+    "families": {
+      "vat": "TVA",
+      "levy": "Taxe parafiscale",
+      "stamp": "Droit de timbre",
+      "withholding": "Retenue à la source"
+    },
+    "taxes": {
+      "title": "Taxes",
+      "add": "Ajouter une taxe",
+      "saved": "La taxe a été enregistrée.",
+      "none": "Aucune taxe.",
+      "section_identity": "Taxe",
+      "section_value": "Valeur",
+      "code": "Code",
+      "code_hint": "Majuscules, chiffres et tirets bas, par exemple TVA19. Il ne pourra plus changer.",
+      "name": "Nom",
+      "family": "Famille",
+      "value": "Taux ou montant",
+      "rate": "Taux (%)",
+      "rate_hint": "Un pourcentage, par exemple 19 ou 5,5.",
+      "amount": "Montant par document",
+      "threshold": "Seuil",
+      "threshold_hint": "Retenue dès que le total atteint ce montant.",
+      "enters_vat_base": "Entre dans la base de TVA",
+      "is_default": "Appliquée par défaut",
+      "is_active": "Active",
+      "is_active_hint": "Une taxe inactive reste sur les documents qui la portent.",
+      "exemption_mention": "Mention d'exonération",
+      "sort_order": "Ordre"
+    },
+    "regimes": {
+      "title": "Régimes fiscaux des clients",
+      "intro": "Les régimes sous lesquels un client peut être placé, tels que le préréglage fiscal du pays les définit.",
+      "label": "Régime",
+      "excluded": "Taxes non facturées",
+      "all_charged": "Aucune",
+      "mention": "Mention légale sur la facture",
+      "none": "Aucun régime."
+    },
+    "units": {
+      "title": "Unités",
+      "add": "Ajouter une unité",
+      "saved": "L'unité a été enregistrée.",
+      "none": "Aucune unité.",
+      "section": "Unité",
+      "code": "Code",
+      "code_hint": "Un code de la recommandation 20 de la CEE-ONU, par exemple KGM. Il ne pourra plus changer.",
+      "name": "Nom",
+      "decimals": "Décimales",
+      "decimals_hint": "Combien de décimales une quantité dans cette unité peut porter.",
+      "is_active": "Active",
+      "sort_order": "Ordre"
+    },
+    "errors": {
+      "code_taken": "Ce code est déjà utilisé dans cette société.",
+      "invalid": "Les valeurs ont été refusées. Vérifiez que le taux, le montant et le seuil correspondent à la famille.",
+      "not_found": "Introuvable.",
+      "network": "Le serveur est injoignable."
     }
   }
 }

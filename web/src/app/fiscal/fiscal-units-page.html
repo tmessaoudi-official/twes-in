@@ -1,0 +1,75 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="units-title">
+      {{ 'fiscal.units.title' | translate }}
+    </h1>
+    @if (mayManage() && editing() === null && company()) {
+      <button mat-flat-button type="button" (click)="add()" data-testid="unit-add">
+        {{ 'fiscal.units.add' | translate }}
+      </button>
+    }
+  </div>
+
+  @if (!company()) {
+    <p data-testid="units-no-company">{{ 'fiscal.no_company' | translate }}</p>
+  }
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="units-error" class="text-error">
+      {{ 'fiscal.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="unit-saved">{{ 'fiscal.units.saved' | translate }}</p>
+  }
+
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="unit-form"
+            (submitted)="save($event)"
+          >
+            <div class="flex flex-wrap justify-end gap-2">
+              <button mat-button type="button" (click)="cancel()" data-testid="unit-cancel">
+                {{ 'fiscal.cancel' | translate }}
+              </button>
+              <button mat-flat-button type="submit" [disabled]="busy()" data-testid="unit-save">
+                {{ 'fiscal.save' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="units()"
+    testId="units-table"
+    [rowTestId]="rowTestId"
+    emptyKey="fiscal.units.none"
+    emptyTestId="units-empty"
+  >
+    <ng-template appDataListCell="isActive" let-row>
+      {{ (row.isActive ? 'fiscal.yes' : 'fiscal.no') | translate }}
+    </ng-template>
+    @if (mayManage()) {
+      <ng-template appDataListRowActions let-row>
+        <button
+          mat-button
+          type="button"
+          (click)="edit(row)"
+          [disabled]="busy()"
+          [attr.data-testid]="'unit-edit-' + row.code"
+        >
+          {{ 'fiscal.edit' | translate }}
+        </button>
+      </ng-template>
+    }
+  </app-data-list>
+</section>

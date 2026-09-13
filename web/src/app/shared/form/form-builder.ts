@@ -59,7 +59,9 @@ function oneOf(field: FormField): ValidatorFn {
 
 function validatorsFor(field: FormField): ValidatorFn[] {
   const validators: ValidatorFn[] = [];
-  if (field.required) validators.push(requiredValue);
+  // A required checkbox is one that must be ticked; requiredTrue reports the same `required` error.
+  if (field.required)
+    validators.push(field.kind === 'checkbox' ? Validators.requiredTrue : requiredValue);
   if (field.kind === 'email') validators.push(Validators.email);
   if (field.kind === 'select') validators.push(oneOf(field));
   // A string pattern is anchored at both ends by Validators.pattern, so it matches the whole value.
@@ -77,7 +79,10 @@ function assertValidField(field: FormField): void {
   }
 }
 
-const emptyValue = (field: FormField): FieldValue => (field.kind === 'number' ? null : '');
+function emptyValue(field: FormField): FieldValue {
+  if (field.kind === 'number') return null;
+  return field.kind === 'checkbox' ? false : '';
+}
 
 /** Controls for every declared field, starting from `initial`, then the declared default, then empty. */
 export function buildFormGroup(
@@ -94,6 +99,15 @@ export function buildFormGroup(
       controls[field.id] = new FormControl<FieldValue>(start, {
         validators: validatorsFor(field),
       });
+    }
+  }
+  for (const field of descriptor.sections.flatMap((section) => section.fields)) {
+    const condition = field.visibleWhen;
+    if (condition !== undefined && !Object.hasOwn(controls, condition.field)) {
+      throw new InvalidFormField(
+        field.id,
+        `its condition names "${condition.field}", which this form does not declare`,
+      );
     }
   }
   return new FormGroup(controls);

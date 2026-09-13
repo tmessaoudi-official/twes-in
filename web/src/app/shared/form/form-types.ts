@@ -1,13 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-export type FieldKind = 'text' | 'email' | 'tel' | 'number' | 'date' | 'textarea' | 'select';
+export type FieldKind =
+  'text' | 'email' | 'tel' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox';
 
-export type FieldValue = string | number | null;
+export type FieldValue = string | number | boolean | null;
 
 export interface FieldOption {
   value: string;
   /** A translation key for declared options; custom options carry their configured label. */
   label: string;
+}
+
+/** Another field of the same form, and the values of it under which a field applies. */
+export interface FieldCondition {
+  field: string;
+  oneOf: string[];
 }
 
 /**
@@ -20,6 +27,7 @@ export interface FormField {
   /** A translation key for declared fields; custom fields carry their configured label. */
   label: string;
   kind: FieldKind;
+  /** For a checkbox, required means it must be ticked. */
   required?: boolean;
   minLength?: number;
   maxLength?: number;
@@ -34,6 +42,11 @@ export interface FormField {
   span?: 1 | 2;
   defaultValue?: FieldValue;
   autocomplete?: string;
+  /**
+   * Shown, validated and submitted only while another field holds one of these values: a stamp has an amount, a
+   * VAT rate has a rate. A hidden field keeps what was typed in it, in case the person switches back.
+   */
+  visibleWhen?: FieldCondition;
 }
 
 export interface FormSection {

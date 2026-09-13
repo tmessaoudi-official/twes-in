@@ -79,7 +79,9 @@
       "main": "General",
       "admin": "Administration"
     },
-    "design": "Design"
+    "design": "Design",
+    "taxes": "Taxes",
+    "units": "Units"
   },
   "shell": {
     "skip": "Skip to content",
@@ -231,6 +233,73 @@
       "max_length": "At most {{max}} characters.",
       "min": "At least {{min}}.",
       "max": "At most {{max}}."
+    }
+  },
+  "fiscal": {
+    "no_company": "Choose a company first.",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "save": "Save",
+    "yes": "Yes",
+    "no": "No",
+    "families": {
+      "vat": "VAT",
+      "levy": "Levy",
+      "stamp": "Stamp duty",
+      "withholding": "Withholding"
+    },
+    "taxes": {
+      "title": "Taxes",
+      "add": "Add a tax",
+      "saved": "The tax was saved.",
+      "none": "No taxes.",
+      "section_identity": "Tax",
+      "section_value": "Value",
+      "code": "Code",
+      "code_hint": "Capital letters, digits and underscores, such as TVA19. It cannot change later.",
+      "name": "Name",
+      "family": "Family",
+      "value": "Rate or amount",
+      "rate": "Rate (%)",
+      "rate_hint": "A percentage, such as 19 or 5.5.",
+      "amount": "Amount per document",
+      "threshold": "Threshold",
+      "threshold_hint": "Withheld when the total reaches this amount.",
+      "enters_vat_base": "Enters the VAT base",
+      "is_default": "Applied by default",
+      "is_active": "Active",
+      "is_active_hint": "An inactive tax stays on the documents that carry it.",
+      "exemption_mention": "Exemption mention",
+      "sort_order": "Order"
+    },
+    "regimes": {
+      "title": "Customer tax regimes",
+      "intro": "The regimes a customer may be under, as the country's fiscal preset defines them.",
+      "label": "Regime",
+      "excluded": "Taxes not charged",
+      "all_charged": "None",
+      "mention": "Legal mention on the invoice",
+      "none": "No regimes."
+    },
+    "units": {
+      "title": "Units",
+      "add": "Add a unit",
+      "saved": "The unit was saved.",
+      "none": "No units.",
+      "section": "Unit",
+      "code": "Code",
+      "code_hint": "A UN/ECE Recommendation 20 code, such as KGM. It cannot change later.",
+      "name": "Name",
+      "decimals": "Decimals",
+      "decimals_hint": "How many decimals a quantity in this unit may carry.",
+      "is_active": "Active",
+      "sort_order": "Order"
+    },
+    "errors": {
+      "code_taken": "That code is already used in this company.",
+      "invalid": "The values were refused. Check that the rate, amount and threshold match the family.",
+      "not_found": "Not found.",
+      "network": "The server could not be reached."
     }
   }
 }
