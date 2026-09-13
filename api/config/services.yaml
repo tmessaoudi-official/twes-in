@@ -47,6 +47,11 @@ services:
         autowire: true      # Automatically injects dependencies in your services.
         autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
 
+    _instanceof:
+        # Every module's settings reach the one catalogue (docs/SPEC.md § 3 Settings).
+        App\Settings\Application\DeclaresSettings:
+            tags: ['app.settings.declarations']
+
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
     App\:
@@ -56,6 +61,9 @@ services:
         # Domain/ is scanned too: its entities and value objects are never injected and are dropped as unused, while
         # its repository interfaces are the ports the resource aliases to their one adapter (Symfony aliases every
         # interface with a single implementation). Application use cases carrying policy values get them here.
+    App\Settings\Application\SettingCatalog:
+        arguments:
+            $declarations: !tagged_iterator app.settings.declarations
     App\Identity\Application\Login\RecordFailedLogin:
         arguments:
             $lockAfterFailures: '%app.auth.lock_after_failures%'

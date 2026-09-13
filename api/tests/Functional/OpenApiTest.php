@@ -49,6 +49,30 @@ final class OpenApiTest extends KernelTestCase
         self::assertContains(['type' => 'null'], $company['anyOf'], 'company is required but may be null');
     }
 
+    public function testASettingValueIsAnyJsonValueAndEachLevelNamesItsValue(): void
+    {
+        self::bootKernel();
+        $schemas = static::getContainer()->get(OpenApiFactoryInterface::class)()->getComponents()->getSchemas();
+        self::assertNotNull($schemas);
+        self::assertTrue(isset($schemas['Setting-setting.read']), 'the settings read shape is in the contract');
+
+        $setting = json_decode(json_encode($schemas['Setting-setting.read'], \JSON_THROW_ON_ERROR), true, 512, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($setting);
+        self::assertIsArray($setting['properties']);
+        // A setting holds a colour, a number, a flag or a list layout: typed as a string, a layout would not compile.
+        foreach (['value', 'default'] as $name) {
+            $property = $setting['properties'][$name];
+            self::assertIsArray($property);
+            self::assertIsArray($property['anyOf'] ?? null);
+            self::assertContains(['type' => 'object', 'additionalProperties' => true], $property['anyOf'], "$name may be an object");
+            self::assertContains(['type' => 'boolean'], $property['anyOf'], "$name may be a flag");
+        }
+        $levels = $setting['properties']['levels'];
+        self::assertIsArray($levels);
+        self::assertIsArray($levels['items'] ?? null);
+        self::assertSame(['level', 'value'], $levels['items']['required'] ?? null);
+    }
+
     /** @return list<string> */
     private function required(mixed $schema): array
     {

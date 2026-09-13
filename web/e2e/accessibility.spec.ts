@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { forgetPresentationChoices } from './presentation';
 
 // The design system's quality bar (docs/SPEC.md § 7, 2026-09-13): every screen passes axe's WCAG 2.1 A and AA
 // rules in both colour schemes, the shell works at phone width, and the Content Security Policy is never
@@ -14,6 +15,8 @@ async function signIn(page: Page): Promise<void> {
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);
+  // The scheme a scenario checks must be the default, not a choice a previous scenario left in the database.
+  await forgetPresentationChoices(page);
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {

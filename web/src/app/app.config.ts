@@ -14,6 +14,7 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
 import { csrfInterceptor } from './auth/csrf-interceptor';
+import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
 import { SettingsFacade } from './shared/settings/settings-facade';
 import { TranslatedPaginatorIntl } from './shared/list/translated-paginator-intl';
@@ -32,8 +33,10 @@ export const appConfig: ApplicationConfig = {
       fallbackLang: 'fr',
       loader: provideTranslateHttpLoader({ prefix: '/i18n/', suffix: '.json' }),
     }),
-    // Presentation preferences live in the browser until G3b swaps in the API adapter behind the same port.
-    { provide: SettingsFacade, useClass: BrowserStorageSettings },
+    // Presentation preferences go through the API's presentation chain; the browser keeps them only for the pages
+    // shown before anyone signs in.
+    { provide: SettingsFacade, useClass: ApiSettings },
+    BrowserStorageSettings,
     // Every paginator's labels follow the chosen language.
     { provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl },
     // Icons are Material Symbols ligatures (the material-symbols package), and the theme is applied before the

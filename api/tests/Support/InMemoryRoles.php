@@ -11,6 +11,7 @@ namespace App\Tests\Support;
 
 use App\Tenancy\Domain\Role;
 use App\Tenancy\Domain\RoleRepository;
+use Symfony\Component\Uid\Uuid;
 
 final class InMemoryRoles implements RoleRepository
 {
@@ -22,6 +23,17 @@ final class InMemoryRoles implements RoleRepository
         foreach ($this->roles as $role) {
             if ($role->isBuiltIn() && $role->getName() === $name) {
                 return $role;
+            }
+        }
+
+        return null;
+    }
+
+    public function ofIdForCompany(Uuid $roleId, Uuid $companyId): ?Role
+    {
+        foreach ($this->roles as $role) {
+            if ($role->getId()->equals($roleId)) {
+                return $role->isBuiltIn() || true === $role->getCompany()?->getId()->equals($companyId) ? $role : null;
             }
         }
 

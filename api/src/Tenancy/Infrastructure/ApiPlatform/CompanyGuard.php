@@ -38,21 +38,24 @@ final readonly class CompanyGuard
     /** @throws NotFoundHttpException when the company is absent or none of the caller's business */
     public function companyForActing(Uuid $companyId, string $permission): Company
     {
-        $account = $this->account();
         $company = $this->companies->ofId($companyId);
-        if (null === $company) {
-            throw new NotFoundHttpException('No such company.');
-        }
-        if ($account->isPlatformOperator()) {
-            return $company;
-        }
-
-        $role = $this->memberships->ofUserInCompany($account->getId(), $companyId)?->getRole();
-        if (null === $role || !$role->grants($permission)) {
+        if (null === $company || !$this->may($company, $permission)) {
             throw new NotFoundHttpException('No such company.');
         }
 
         return $company;
+    }
+
+    /** Whether the caller holds the permission in the company: what a response offers them. Enforcing is companyForActing's. */
+    public function may(Company $company, string $permission): bool
+    {
+        $account = $this->account();
+        if ($account->isPlatformOperator()) {
+            return true;
+        }
+        $role = $this->memberships->ofUserInCompany($account->getId(), $company->getId())?->getRole();
+
+        return null !== $role && $role->grants($permission);
     }
 
     public function account(): SecurityUser

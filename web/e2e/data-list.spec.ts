@@ -1,19 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { forgetPresentationChoices } from './presentation';
 
-// G2b: presentation preferences survive a reload through the real bundle (browser storage until G3b), and the
-// list chrome every screen shares stays accessible with its column chooser open, at desktop and phone width.
-// Each test runs in a fresh browser context, so nothing it chooses leaks into another scenario.
+// G2b and G3b: presentation preferences survive a reload, and a fresh browser, through the API's presentation
+// chain, and the list chrome every screen shares stays accessible with its column chooser open, at desktop and
+// phone width. The choices live in the shared database, so each scenario starts by forgetting the operator's own.
 const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 
-async function signIn(page: Page): Promise<void> {
+async function logIn(page: Page): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(EMAIL);
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
   await expect(page).toHaveURL(/\/$/);
+}
+
+async function signIn(page: Page): Promise<void> {
+  await logIn(page);
+  await forgetPresentationChoices(page);
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {
@@ -113,15 +119,29 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
 });
 
-test('compact density survives a reload', async ({ page }) => {
+test('compact density follows the person into a fresh browser', async ({ page, browser }) => {
   await signIn(page);
+  await expect(page.locator('html')).not.toHaveClass(/density-compact/);
   await page.getByTestId('user-menu').click();
+  const saved = page.waitForResponse(
+    (response) =>
+      response.url().includes('/settings/presentation.density') &&
+      response.request().method() === 'PUT',
+  );
   await page.getByTestId('density-toggle').click();
+  expect((await saved).status()).toBe(200);
   await expect(page.locator('html')).toHaveClass(/density-compact/);
 
-  await page.reload();
-  await expect(page.getByTestId('greeting')).toBeVisible();
-  await expect(page.locator('html')).toHaveClass(/density-compact/);
+  // A second browser context shares no storage with the first: only the API can carry the choice over.
+  const elsewhere = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  try {
+    const other = await elsewhere.newPage();
+    await logIn(other);
+    await expect(other.getByTestId('greeting')).toBeVisible();
+    await expect(other.locator('html')).toHaveClass(/density-compact/);
+  } finally {
+    await elsewhere.close();
+  }
 });
 
 test('at phone width the members list and its chooser are accessible and fit the screen', async ({
