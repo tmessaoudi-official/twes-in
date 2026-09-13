@@ -44,8 +44,11 @@ test("the owner sets the company's payment terms, which survive a reload until r
     await expect(terms).toHaveValue('30');
     await expect(page.getByTestId('field-article__default_unit')).toHaveValue('C62');
 
-    const axe = await new AxeBuilder({ page }).analyze();
-    expect(axe.violations).toEqual([]);
+    // The suite's accessibility bar is WCAG 2.1 AA, as in accessibility.spec.ts.
+    const axe = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    expect(axe.violations.map((violation) => violation.id)).toEqual([]);
 
     await terms.fill('45');
     await page.getByTestId('settings-save').click();
