@@ -1,0 +1,48 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="profile-title">
+    {{ 'company.profile.title' | translate }}
+  </h1>
+
+  @if (!company()) {
+    <p data-testid="profile-no-company">{{ 'company.profile.no_company' | translate }}</p>
+  } @else if (!mayManage()) {
+    <p data-testid="profile-forbidden">{{ 'company.profile.forbidden' | translate }}</p>
+  } @else {
+    <p>{{ 'company.profile.intro' | translate }}</p>
+
+    @if (error(); as code) {
+      <p role="alert" data-testid="profile-error" class="text-error">
+        {{ 'company.profile.errors.' + code | translate }}
+      </p>
+    }
+    @if (saved()) {
+      <p role="status" data-testid="profile-saved">{{ 'company.profile.saved' | translate }}</p>
+    }
+
+    @if (descriptor(); as descriptor) {
+      @if (form(); as form) {
+        <mat-card>
+          <mat-card-content>
+            <app-descriptor-form
+              [descriptor]="descriptor"
+              [form]="form"
+              testId="profile-form"
+              (submitted)="save($event)"
+            >
+              <div class="flex justify-end">
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="busy()"
+                  data-testid="profile-save"
+                >
+                  {{ 'company.profile.save' | translate }}
+                </button>
+              </div>
+            </app-descriptor-form>
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+  }
+</section>

@@ -3,8 +3,20 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { MemberMemberRead, WorkingCompanyWorkingCompanyRead } from '../api/types.gen';
-import type { CompanyError, CompanyOption, MemberRole, MemberRow } from './company-types';
+import type {
+  CompanyProfileCompanyProfileRead,
+  CompanyProfileCompanyProfileWrite,
+  MemberMemberRead,
+  WorkingCompanyWorkingCompanyRead,
+} from '../api/types.gen';
+import type {
+  CompanyError,
+  CompanyOption,
+  CompanyProfile,
+  CompanyProfileChanges,
+  MemberRole,
+  MemberRow,
+} from './company-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class CompanyRefused extends Error {
@@ -78,13 +90,92 @@ export class CompanyApi {
     });
   }
 
-  private async guard<T>(call: () => Promise<T>): Promise<T> {
+  /** What the company's documents say about it, with what its fiscal preset asks for. */
+  async profile(companyId: string): Promise<CompanyProfile> {
+    return this.guard(
+      async () =>
+        toProfile(
+          await firstValueFrom(
+            this.http.get<CompanyProfileCompanyProfileRead>(
+              `/api/companies/${encodeURIComponent(companyId)}/profile`,
+            ),
+          ),
+        ),
+      profileCodeOf,
+    );
+  }
+
+  /** Answers the profile as the API kept it, normalised; 422 when the preset refuses a value. */
+  async reviseProfile(companyId: string, changes: CompanyProfileChanges): Promise<CompanyProfile> {
+    const body: CompanyProfileCompanyProfileWrite = {
+      ...changes,
+      identifiers: { ...changes.identifiers },
+    };
+    return this.guard(
+      async () =>
+        toProfile(
+          await firstValueFrom(
+            this.http.put<CompanyProfileCompanyProfileRead>(
+              `/api/companies/${encodeURIComponent(companyId)}/profile`,
+              body,
+            ),
+          ),
+        ),
+      profileCodeOf,
+    );
+  }
+
+  private async guard<T>(
+    call: () => Promise<T>,
+    refusal: (error: unknown) => CompanyError = codeOf,
+  ): Promise<T> {
     try {
       return await call();
     } catch (error) {
-      throw new CompanyRefused(codeOf(error));
+      throw new CompanyRefused(refusal(error));
     }
   }
+}
+
+function toProfile(raw: CompanyProfileCompanyProfileRead): CompanyProfile {
+  return {
+    name: raw.name ?? '',
+    countryCode: raw.countryCode ?? '',
+    writable: raw.writable ?? false,
+    legalName: raw.legalName ?? null,
+    legalForm: raw.legalForm ?? null,
+    identifiers: raw.identifiers ?? {},
+    addressLine1: raw.addressLine1 ?? null,
+    addressLine2: raw.addressLine2 ?? null,
+    postalCode: raw.postalCode ?? null,
+    city: raw.city ?? null,
+    email: raw.email ?? null,
+    phone: raw.phone ?? null,
+    website: raw.website ?? null,
+    iban: raw.iban ?? null,
+    bic: raw.bic ?? null,
+    vatRegime: raw.vatRegime ?? 'standard',
+    invoiceFooterText: raw.invoiceFooterText ?? null,
+    latePenaltyText: raw.latePenaltyText ?? null,
+    identifierFields: (raw.identifierFields ?? []).map((field) => ({
+      key: field.key,
+      label: field.label,
+      pattern: field.pattern,
+      required: field.required,
+    })),
+    vatRegimes: (raw.vatRegimes ?? []).map((regime) => ({
+      code: regime.code,
+      label: regime.label,
+    })),
+  };
+}
+
+/** A profile the API refuses is a value its preset does not accept; nothing to do with members. */
+function profileCodeOf(error: unknown): CompanyError {
+  if (!(error instanceof HttpErrorResponse) || error.status === 0) {
+    return 'network';
+  }
+  return error.status === 404 ? 'not_found' : 'invalid';
 }
 
 function toOption(row: WorkingCompanyWorkingCompanyRead): CompanyOption {

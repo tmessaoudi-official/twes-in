@@ -60,6 +60,14 @@ export const CORE_NAV: readonly NavEntry[] = [
     section: 'admin',
     permission: 'company.settings',
   },
+  {
+    key: 'company-profile',
+    labelKey: 'nav.company_profile',
+    icon: 'business',
+    route: '/company/profile',
+    section: 'admin',
+    permission: 'company.settings',
+  },
   // The design checkpoint's fixture screens: a development build only, never shipped.
   {
     key: 'design',

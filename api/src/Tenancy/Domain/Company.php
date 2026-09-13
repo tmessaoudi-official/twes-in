@@ -62,6 +62,57 @@ class Company
     #[ORM\Column]
     private bool $mfaRequired = false;
 
+    #[ORM\Column(length: 200, nullable: true)]
+    private ?string $legalName = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $legalForm = null;
+
+    /** @var array<string, string> registration numbers by the preset's identifier key */
+    #[ORM\Column(type: Types::JSON, options: ['jsonb' => true])]
+    private array $identifiers = [];
+
+    #[ORM\Column(name: 'address_line1', length: 200, nullable: true)]
+    private ?string $addressLine1 = null;
+
+    #[ORM\Column(name: 'address_line2', length: 200, nullable: true)]
+    private ?string $addressLine2 = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $postalCode = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $city = null;
+
+    #[ORM\Column(length: 254, nullable: true)]
+    private ?string $email = null;
+
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $phone = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $website = null;
+
+    #[ORM\Column(length: 34, nullable: true)]
+    private ?string $iban = null;
+
+    #[ORM\Column(length: 11, nullable: true)]
+    private ?string $bic = null;
+
+    /**
+     * A literal, not CompanyProfile::STANDARD_REGIME: a property default naming another class's constant leaves the
+     * class's defaults to be resolved at runtime, which Doctrine's lazy ghosts skip (PHP 8.5 asserts on it in
+     * zend_lazy_object_init). CompanyProfileTest pins the two to the same value.
+     */
+    #[ORM\Column(length: 32, options: ['default' => 'standard'])]
+    private string $vatRegime = 'standard';
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $invoiceFooterText = null;
+
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $latePenaltyText = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -167,6 +218,54 @@ class Company
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
+    }
+
+    public function getProfile(): CompanyProfile
+    {
+        return new CompanyProfile(
+            $this->legalName,
+            $this->legalForm,
+            $this->identifiers,
+            $this->addressLine1,
+            $this->addressLine2,
+            $this->postalCode,
+            $this->city,
+            $this->email,
+            $this->phone,
+            $this->website,
+            $this->iban,
+            $this->bic,
+            $this->vatRegime,
+            $this->invoiceFooterText,
+            $this->latePenaltyText,
+        );
+    }
+
+    /** @return bool whether this changed anything, so a caller records a revision only when there was one */
+    public function reviseProfile(CompanyProfile $profile, ?\DateTimeImmutable $now = null): bool
+    {
+        if ($this->getProfile()->equals($profile)) {
+            return false;
+        }
+
+        $this->legalName = $profile->legalName;
+        $this->legalForm = $profile->legalForm;
+        $this->identifiers = $profile->identifiers;
+        $this->addressLine1 = $profile->addressLine1;
+        $this->addressLine2 = $profile->addressLine2;
+        $this->postalCode = $profile->postalCode;
+        $this->city = $profile->city;
+        $this->email = $profile->email;
+        $this->phone = $profile->phone;
+        $this->website = $profile->website;
+        $this->iban = $profile->iban;
+        $this->bic = $profile->bic;
+        $this->vatRegime = $profile->vatRegime;
+        $this->invoiceFooterText = $profile->invoiceFooterText;
+        $this->latePenaltyText = $profile->latePenaltyText;
+        $this->updatedAt = $now ?? new \DateTimeImmutable();
+
+        return true;
     }
 
     public function isMfaRequired(): bool

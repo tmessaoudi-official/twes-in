@@ -70,7 +70,44 @@
     "invited": "L'invitation a été envoyée par e-mail."
   },
   "company": {
-    "choose": "Choisir une entreprise"
+    "choose": "Choisir une entreprise",
+    "profile": {
+      "title": "Profil de la société",
+      "intro": "Ce que les documents de la société disent d'elle : identité, identifiants, adresse, coordonnées, banque et mentions imprimées.",
+      "save": "Enregistrer",
+      "saved": "Le profil a été enregistré.",
+      "no_company": "Choisissez d'abord une société.",
+      "forbidden": "Modifier le profil de la société demande la permission des paramètres.",
+      "sections": {
+        "identity": "Identité",
+        "identifiers": "Identifiants",
+        "address": "Adresse",
+        "contact": "Coordonnées",
+        "banking": "Banque",
+        "documents": "Mentions sur les factures"
+      },
+      "fields": {
+        "legalName": "Raison sociale",
+        "legalForm": "Forme juridique",
+        "vatRegime": "Régime de TVA",
+        "addressLine1": "Adresse",
+        "addressLine2": "Complément d'adresse",
+        "postalCode": "Code postal",
+        "city": "Ville",
+        "email": "E-mail de facturation",
+        "phone": "Téléphone",
+        "website": "Site web",
+        "iban": "IBAN",
+        "bic": "BIC",
+        "invoiceFooterText": "Pied de facture",
+        "latePenaltyText": "Pénalités de retard"
+      },
+      "errors": {
+        "invalid": "Le profil a été refusé. Vérifiez les identifiants, l'IBAN et le BIC.",
+        "not_found": "Société introuvable.",
+        "network": "Le serveur est injoignable."
+      }
+    }
   },
   "nav": {
     "home": "Accueil",
@@ -82,7 +119,8 @@
     "design": "Maquettes",
     "taxes": "Taxes",
     "units": "Unités",
-    "settings": "Paramètres"
+    "settings": "Paramètres",
+    "company_profile": "Profil de la société"
   },
   "shell": {
     "skip": "Aller au contenu",

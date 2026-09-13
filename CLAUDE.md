@@ -135,3 +135,6 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
   as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign
   Referer, and a "no origin at all" request needs `getHistory()->clear()` as well as empty server parameters.
+- An entity's property default must be a literal, never another class's constant (`= Other::X`): the class then needs
+  its defaults resolved at runtime, Doctrine's lazy ghosts skip that, and the local debug PHP aborts the whole PHPUnit
+  run in `zend_lazy_object_init` (CI's release PHP does not assert, so only the local gate shows it). 2026-09-13.

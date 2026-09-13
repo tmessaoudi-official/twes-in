@@ -70,7 +70,44 @@
     "invited": "The invitation was sent by email."
   },
   "company": {
-    "choose": "Choose a company"
+    "choose": "Choose a company",
+    "profile": {
+      "title": "Company profile",
+      "intro": "What the company's documents say about it: identity, registration numbers, address, contact, banking and printed texts.",
+      "save": "Save",
+      "saved": "The profile was saved.",
+      "no_company": "Choose a company first.",
+      "forbidden": "Changing the company profile needs the settings permission.",
+      "sections": {
+        "identity": "Identity",
+        "identifiers": "Registration numbers",
+        "address": "Address",
+        "contact": "Contact",
+        "banking": "Banking",
+        "documents": "Printed on invoices"
+      },
+      "fields": {
+        "legalName": "Legal name",
+        "legalForm": "Legal form",
+        "vatRegime": "VAT regime",
+        "addressLine1": "Address",
+        "addressLine2": "Address line 2",
+        "postalCode": "Postal code",
+        "city": "City",
+        "email": "Billing email",
+        "phone": "Phone",
+        "website": "Website",
+        "iban": "IBAN",
+        "bic": "BIC",
+        "invoiceFooterText": "Invoice footer",
+        "latePenaltyText": "Late payment penalties"
+      },
+      "errors": {
+        "invalid": "The profile was refused. Check the registration numbers, the IBAN and the BIC.",
+        "not_found": "Company not found.",
+        "network": "The server could not be reached."
+      }
+    }
   },
   "nav": {
     "home": "Home",
@@ -82,7 +119,8 @@
     "design": "Design",
     "taxes": "Taxes",
     "units": "Units",
-    "settings": "Settings"
+    "settings": "Settings",
+    "company_profile": "Company profile"
   },
   "shell": {
     "skip": "Skip to content",
