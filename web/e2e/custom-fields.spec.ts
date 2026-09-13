@@ -1,0 +1,100 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page, test } from '@playwright/test';
+
+// G4 custom fields through the real stack: in the seeded Tunisian company, the owner declares a choice field for
+// customers, files a customer with a value for it, and finds the value again. One database is shared by the whole
+// suite, so the field's key is unique to the run and optional (a required one would refuse every other scenario's
+// customers), and both the field and the customer are retired afterwards (neither is ever deleted).
+const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
+const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
+const CSRF = '0123456789abcdef0123456789abcdef';
+
+async function signIn(page: Page): Promise<void> {
+  await page.goto('/login');
+  await page.getByTestId('email').fill(EMAIL);
+  await page.getByTestId('password').fill(PASSWORD);
+  await page.getByTestId('submit').click();
+  await expect(page).toHaveURL(/\/$/);
+}
+
+async function wcagViolations(page: Page): Promise<string[]> {
+  const axe = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  return axe.violations.map((violation) => violation.id);
+}
+
+/** Retires the run's field and deactivates the run's customer. */
+async function retire(page: Page, key: string, number: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, fieldKey, customerNumber]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const headers = { 'content-type': 'application/json', 'csrf-token': csrf };
+      const customers = (await (await fetch(`${base}/customers`)).json()) as {
+        id: string;
+        number: string;
+      }[];
+      const customer = customers.find((row) => row.number === customerNumber);
+      if (customer) {
+        await fetch(`${base}/customers/${customer.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ ...customer, isActive: false }),
+        });
+      }
+      const fields = (await (await fetch(`${base}/custom-fields?entity=customer`)).json()) as {
+        id: string;
+        key: string;
+      }[];
+      const field = fields.find((row) => row.key === fieldKey);
+      if (field) {
+        await fetch(`${base}/custom-fields/${field.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({ ...field, isActive: false }),
+        });
+      }
+    },
+    [CSRF, key, number] as const,
+  );
+}
+
+test('a custom field declared for customers is filled in on a customer and kept', async ({
+  page,
+}) => {
+  const run = Date.now().toString(36);
+  const key = `e2e_${run}`;
+  const label = `Secteur ${run}`;
+  const number = `CF-${run.toUpperCase()}`;
+  const field = `field-custom__${key}`;
+  await signIn(page);
+  try {
+    await page.goto('/company/custom-fields');
+    await page.getByTestId('custom-field-add').click();
+    await page.getByTestId('field-key').fill(key);
+    await page.getByTestId('field-label').fill(label);
+    await page.getByTestId('field-type').click();
+    await page.getByRole('option', { name: /^(Choice|Choix)$/ }).click();
+    await page.getByTestId('field-choices').fill('Détail\nGros');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('custom-field-save').click();
+    await expect(page.getByTestId(`custom-field-${key}`)).toContainText(label);
+
+    await page.goto('/customers/new');
+    await page.getByTestId('field-number').fill(number);
+    await page.getByTestId('field-name').fill(`Médina Import ${run}`);
+    await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
+    await page.getByTestId(field).click();
+    await page.getByRole('option', { name: 'Gros' }).click();
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('customer-save').click();
+
+    await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
+    await page.reload();
+    await expect(page.getByTestId(field)).toContainText('Gros');
+  } finally {
+    await retire(page, key, number);
+  }
+});

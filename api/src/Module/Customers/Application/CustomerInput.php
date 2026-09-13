@@ -15,7 +15,10 @@ use Symfony\Component\Uid\Uuid;
 /** A customer as it is written: its number and profile, and the group, regime and taxes it names by id or code. */
 final readonly class CustomerInput
 {
-    /** @param list<Uuid> $defaultTaxComponentIds */
+    /**
+     * @param list<Uuid>              $defaultTaxComponentIds
+     * @param array<array-key, mixed> $customFields           values by the company's custom field keys, checked by the use case
+     */
     public function __construct(
         public string $number,
         public CustomerProfile $profile,
@@ -23,6 +26,7 @@ final readonly class CustomerInput
         public string $taxRegimeCode,
         public array $defaultTaxComponentIds,
         public bool $isActive,
+        public array $customFields = [],
     ) {
     }
 }

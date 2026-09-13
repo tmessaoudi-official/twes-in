@@ -131,6 +131,12 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `make api-openapi` exports from the dev cache, so a stale `api/var/cache/dev` exports an OLD schema and the web gate
   fails locally while CI (fresh cache) passes, or the reverse. After an API resource change: `bin/console cache:clear`
   before `make gate-web` (2026-09-13: `Me` exported without `mfa`, three days after `MeMfa` landed).
+- API Platform's metadata pools survive `cache:clear`: a property added to a resource is then silently dropped on write and
+  missing from the OpenAPI export. After a resource property change run `bin/console cache:pool:clear --all` in dev and
+  with `--env=test` (2026-09-14: `customFields` arrived empty until the pools were cleared).
+- A `@var list<string>` on an API Platform property refuses nothing: a JSON object is denormalized with its keys and
+  stored as a JSON object. A writable list property carries `#[Assert\Type('list')]` (2026-09-14: `choices` and
+  `defaultTaxComponentIds` both accepted `{"first": …}` with 201).
 - Never name a PHPUnit helper `run()`: `TestCase::run()` is final and the whole file fails to load.
 - BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
   as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign

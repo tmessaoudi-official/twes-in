@@ -100,6 +100,14 @@ export const CORE_NAV: readonly NavEntry[] = [
     section: 'admin',
     permission: 'company.settings',
   },
+  {
+    key: 'custom-fields',
+    labelKey: 'nav.custom_fields',
+    icon: 'dynamic_form',
+    route: '/company/custom-fields',
+    section: 'admin',
+    permission: 'company.settings',
+  },
   // The design checkpoint's fixture screens: a development build only, never shipped.
   {
     key: 'design',

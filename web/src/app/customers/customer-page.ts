@@ -74,14 +74,16 @@ export class CustomerPage {
   });
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
-    return options === null ? null : customerForm(options, this.facade.groups());
+    return options === null
+      ? null
+      : customerForm(options, this.facade.groups(), this.facade.customFields());
   });
   protected readonly form = computed(() => {
     const descriptor = this.descriptor();
     const options = this.facade.options();
     const current = this.current();
     if (descriptor === null || options === null || current === undefined) return null;
-    return buildFormGroup(descriptor, customerValues(current, options));
+    return buildFormGroup(descriptor, customerValues(current, options, this.facade.customFields()));
   });
 
   /** The subject of the defaults panel: the customer once it exists. */
@@ -119,7 +121,7 @@ export class CustomerPage {
     const companyId = this.company()?.id;
     const options = this.facade.options();
     if (!companyId || options === null || this.busy()) return;
-    const input = customerInput(values, options);
+    const input = customerInput(values, options, this.facade.customFields());
     const id = this.id();
     this.saved.set(false);
     if (id === null) {

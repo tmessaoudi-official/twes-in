@@ -54,6 +54,7 @@ const amel: CustomerRow = {
   defaultDiscountRate: null,
   notes: null,
   isActive: false,
+  customFields: {},
 };
 const wholesalers: CustomerGroupRow = {
   id: 'g1',
@@ -68,6 +69,7 @@ describe('CustomersPage', () => {
     groups: signal<readonly CustomerGroupRow[]>([wholesalers]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
+    customFields: signal([]).asReadonly(),
     loadList: vi.fn(),
   };
   const auth = {

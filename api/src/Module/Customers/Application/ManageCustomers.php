@@ -11,6 +11,11 @@ namespace App\Module\Customers\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\CustomFields\Domain\CustomFieldDefinition;
+use App\CustomFields\Domain\CustomFieldDefinitionRepository;
+use App\CustomFields\Domain\CustomFieldEntity;
+use App\CustomFields\Domain\CustomFieldValues;
+use App\CustomFields\Domain\InvalidCustomFieldValue;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Fiscal\Domain\CustomerTaxRegime;
@@ -29,7 +34,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A company's customers. The company's fiscal preset decides the regimes a customer may be given and the registration
  * numbers a domestic business customer must carry; a customer billed abroad carries none of them. Default taxes are
- * the company's active ones that the customer's regime charges. Audited with the names of the fields a revision
+ * the company's active ones that the customer's regime charges. Custom field values are checked against the company's
+ * fields for customers. Audited with the names of the fields a revision
  * changed, never their values: a customer may be a private person.
  */
 final readonly class ManageCustomers
@@ -46,6 +52,7 @@ final readonly class ManageCustomers
         private FiscalPresets $presets,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private CustomFieldDefinitionRepository $customFields,
     ) {
     }
 
@@ -71,7 +78,9 @@ final readonly class ManageCustomers
             throw new CustomerNumberTaken();
         }
         [$group, $regime] = $this->checked($company, $input, null);
+        $values = $this->customFieldValues($company, $input, null);
         $customer = Customer::create($company, $input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $this->clock->now());
+        $customer->reviseCustomFields($values, $this->clock->now());
         if (!$input->isActive) {
             $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, false, $this->clock->now());
         }
@@ -94,8 +103,10 @@ final readonly class ManageCustomers
             throw new CustomerNumberTaken();
         }
         [$group, $regime] = $this->checked($company, $input, $customer);
+        $values = $this->customFieldValues($company, $input, $customer);
 
         $changed = $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $input->isActive, $this->clock->now());
+        $changed = [...$changed, ...$customer->reviseCustomFields($values, $this->clock->now())];
         if ([] !== $changed) {
             $this->customers->save($customer);
             $this->record($company, $customer->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
@@ -146,6 +157,17 @@ final readonly class ManageCustomers
         }
 
         return [$group, $regime];
+    }
+
+    /** @return array<string, string|int|float|bool> */
+    private function customFieldValues(Company $company, CustomerInput $input, ?Customer $current): array
+    {
+        $rules = array_map(static fn (CustomFieldDefinition $field) => $field->rule(), $this->customFields->ofCompanyAndEntity($company->getId(), CustomFieldEntity::Customer));
+        try {
+            return CustomFieldValues::checked($rules, $input->customFields, $current?->getCustomFields() ?? []);
+        } catch (InvalidCustomFieldValue $refused) {
+            throw new InvalidCustomer($refused->field, $refused->getMessage());
+        }
     }
 
     /** @param array<string, mixed> $changes */

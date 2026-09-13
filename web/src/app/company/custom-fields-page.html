@@ -1,0 +1,89 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="custom-fields-title">
+      {{ 'company.custom_fields.title' | translate }}
+    </h1>
+    @if (mayManage() && editing() === null && company()) {
+      <button mat-flat-button type="button" (click)="add()" data-testid="custom-field-add">
+        {{ 'company.custom_fields.add' | translate }}
+      </button>
+    }
+  </div>
+  <p class="max-w-prose">{{ 'company.custom_fields.intro' | translate }}</p>
+
+  @if (!company()) {
+    <p data-testid="custom-fields-no-company">
+      {{ 'company.custom_fields.no_company' | translate }}
+    </p>
+  }
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="custom-fields-error" class="text-error">
+      {{ 'company.custom_fields.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="custom-field-saved">
+      {{ 'company.custom_fields.saved' | translate }}
+    </p>
+  }
+
+  @if (form(); as form) {
+    <mat-card>
+      <mat-card-content>
+        <app-descriptor-form
+          [descriptor]="descriptor()"
+          [form]="form"
+          testId="custom-field-form"
+          (submitted)="save($event)"
+        >
+          <div class="flex flex-wrap justify-end gap-2">
+            <button mat-button type="button" (click)="cancel()" data-testid="custom-field-cancel">
+              {{ 'company.custom_fields.cancel' | translate }}
+            </button>
+            <button
+              mat-flat-button
+              type="submit"
+              [disabled]="busy()"
+              data-testid="custom-field-save"
+            >
+              {{ 'company.custom_fields.save' | translate }}
+            </button>
+          </div>
+        </app-descriptor-form>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="fields()"
+    testId="custom-fields-table"
+    [rowTestId]="rowTestId"
+    emptyKey="company.custom_fields.none"
+    emptyTestId="custom-fields-empty"
+  >
+    <ng-template appDataListCell="type" let-row>
+      {{ 'company.custom_fields.types.' + row.type | translate }}
+    </ng-template>
+    <ng-template appDataListCell="required" let-row>
+      {{ (row.required ? 'company.custom_fields.yes' : 'company.custom_fields.no') | translate }}
+    </ng-template>
+    <ng-template appDataListCell="status" let-row>
+      {{ 'company.custom_fields.statuses.' + (row.isActive ? 'active' : 'retired') | translate }}
+    </ng-template>
+    @if (mayManage()) {
+      <ng-template appDataListRowActions let-row>
+        <button
+          mat-button
+          type="button"
+          (click)="edit(row)"
+          [disabled]="busy()"
+          [attr.data-testid]="'custom-field-edit-' + row.key"
+        >
+          {{ 'company.custom_fields.edit' | translate }}
+        </button>
+      </ng-template>
+    }
+  </app-data-list>
+</section>

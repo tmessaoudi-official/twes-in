@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
@@ -70,6 +71,7 @@ const carthage: CustomerRow = {
   defaultDiscountRate: null,
   notes: null,
   isActive: true,
+  customFields: {},
 };
 const leila: ContactRow = {
   id: 'p1',
@@ -84,6 +86,7 @@ const leila: ContactRow = {
 describe('CustomerPage', () => {
   const error = signal<CustomersError | null>(null);
   const customer = signal<CustomerRow | null>(null);
+  const customFields = signal<readonly CustomFieldDefinition[]>([]);
   const facade = {
     options: signal<CustomerOptions | null>(options).asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([]).asReadonly(),
@@ -98,6 +101,7 @@ describe('CustomerPage', () => {
     reviseContact: vi.fn(),
     removeContact: vi.fn(),
     clearError: vi.fn(),
+    customFields: customFields.asReadonly(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -140,6 +144,7 @@ describe('CustomerPage', () => {
   beforeEach(() => {
     error.set(null);
     customer.set(null);
+    customFields.set([]);
     facade.loadCustomer.mockReset().mockResolvedValue(undefined);
     facade.createCustomer.mockReset().mockResolvedValue({ ...carthage, id: 'k9' });
     facade.reviseCustomer.mockReset().mockResolvedValue(carthage);
@@ -194,6 +199,36 @@ describe('CustomerPage', () => {
     );
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/customers', 'k9'], { replaceUrl: true }),
+    );
+  });
+
+  it("sends what the company's custom fields were filled in with", async () => {
+    customFields.set([
+      {
+        id: 'f1',
+        entity: 'customer',
+        key: 'sector',
+        label: 'Secteur',
+        type: 'text',
+        required: false,
+        choices: [],
+        sortOrder: 0,
+        isActive: true,
+      },
+    ]);
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+
+    type('field-number', 'CLI-0009');
+    type('field-name', 'Carthage Conseil');
+    type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
+    type('field-custom__sector', ' Gros ');
+    q('customer-save')!.click();
+    await settle();
+
+    expect(facade.createCustomer).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ customFields: { sector: 'Gros' } }),
     );
   });
 

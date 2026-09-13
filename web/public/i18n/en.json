@@ -183,6 +183,49 @@
         "not_found": "Numbering series not found.",
         "network": "The server could not be reached."
       }
+    },
+    "custom_fields": {
+      "title": "Custom fields",
+      "intro": "Fields your company adds to its customers. A field's key and type are fixed once declared; retire a field rather than delete it, and the values customers hold for it stay.",
+      "add": "Add a field",
+      "section": "Field",
+      "save": "Save",
+      "cancel": "Cancel",
+      "edit": "Edit",
+      "saved": "The field was saved.",
+      "none": "No custom field yet.",
+      "no_company": "Choose a company to manage its custom fields.",
+      "statuses": {
+        "active": "Active",
+        "retired": "Retired"
+      },
+      "yes": "Yes",
+      "no": "No",
+      "types": {
+        "text": "Text",
+        "number": "Number",
+        "date": "Date",
+        "bool": "Yes or no",
+        "choice": "Choice"
+      },
+      "fields": {
+        "key": "Key",
+        "key_hint": "Lowercase letters, digits and underscores, starting with a letter. It cannot change later.",
+        "label": "Label",
+        "type": "Type",
+        "choices": "Choices",
+        "choices_hint": "One choice per line.",
+        "required": "Required",
+        "sortOrder": "Position",
+        "isActive": "Active",
+        "isActive_hint": "A retired field is no longer shown; the values customers hold for it stay."
+      },
+      "errors": {
+        "network": "The server could not be reached. Try again.",
+        "not_found": "This field no longer exists.",
+        "key_taken": "Another field already has this key.",
+        "invalid": "The field was refused. Check its label, choices and position."
+      }
     }
   },
   "nav": {
@@ -200,7 +243,8 @@
     "establishments": "Establishments",
     "numbering": "Document numbering",
     "customers": "Customers",
-    "customer_groups": "Customer groups"
+    "customer_groups": "Customer groups",
+    "custom_fields": "Custom fields"
   },
   "shell": {
     "skip": "Skip to content",
@@ -308,6 +352,7 @@
   },
   "form": {
     "optional": "optional",
+    "no_value": "None",
     "errors": {
       "required": "This field is required.",
       "email": "Enter a valid email address.",
@@ -470,7 +515,8 @@
       "billing": "Billing address",
       "shipping": "Shipping address",
       "terms": "Tax and terms",
-      "notes": "Notes"
+      "notes": "Notes",
+      "custom": "Custom fields"
     },
     "fields": {
       "number": "Customer number",

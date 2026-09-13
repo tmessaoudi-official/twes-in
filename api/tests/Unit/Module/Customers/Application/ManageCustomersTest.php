@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Customers\Application;
 
+use App\CustomFields\Domain\CustomFieldDefinition;
+use App\CustomFields\Domain\CustomFieldEntity;
+use App\CustomFields\Domain\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Module\Customers\Application\CustomerInput;
@@ -25,6 +28,7 @@ use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerGroups;
 use App\Tests\Support\InMemoryCustomers;
 use App\Tests\Support\InMemoryCustomerTaxRegimes;
+use App\Tests\Support\InMemoryCustomFieldDefinitions;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -41,6 +45,7 @@ final class ManageCustomersTest extends TestCase
     private InMemoryCustomerGroups $groups;
     private InMemoryTaxComponents $taxes;
     private InMemoryAuditTrail $audit;
+    private InMemoryCustomFieldDefinitions $fields;
     private ManageCustomers $manage;
     private Company $company;
     private Company $globex;
@@ -54,7 +59,8 @@ final class ManageCustomersTest extends TestCase
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, new InMemoryUnits(), new InMemoryEstablishments(), new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
         $this->groups = new InMemoryCustomerGroups();
         $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock);
+        $this->fields = new InMemoryCustomFieldDefinitions();
+        $this->manage = new ManageCustomers(new InMemoryCustomers(), $this->groups, $regimes, $this->taxes, ShippedFiscalPresets::presets(), $this->audit, $clock, $this->fields);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -164,6 +170,27 @@ final class ManageCustomersTest extends TestCase
         $this->manage->revise($this->company, $theirs->getId(), self::input(kind: CustomerKind::Individual), null);
     }
 
+    public function testCustomFieldValuesAreCheckedAgainstTheCompanysFieldsAndKeptWhenAFieldRetires(): void
+    {
+        $sector = CustomFieldDefinition::create($this->company, CustomFieldEntity::Customer, 'sector', 'Secteur', CustomFieldType::Choice, true, ['retail', 'wholesale'], 0, new \DateTimeImmutable());
+        $this->fields->save($sector);
+        $this->fields->save(CustomFieldDefinition::create($this->globex, CustomFieldEntity::Customer, 'region', 'Région', CustomFieldType::Text, true, [], 0, new \DateTimeImmutable()));
+
+        $this->assertRefused('customFields.sector', fn () => $this->manage->create($this->company, self::input(kind: CustomerKind::Individual), null));
+        $this->assertRefused('customFields.region', fn () => $this->manage->create($this->company, self::input(kind: CustomerKind::Individual, customFields: ['sector' => 'retail', 'region' => 'Nord']), null));
+
+        $customer = $this->manage->create($this->company, self::input(kind: CustomerKind::Individual, customFields: ['sector' => 'retail']), null);
+        self::assertSame(['sector' => 'retail'], $customer->getCustomFields());
+
+        $this->manage->revise($this->company, $customer->getId(), self::input(kind: CustomerKind::Individual, customFields: ['sector' => 'wholesale']), null);
+        self::assertSame(['fields' => ['customFields.sector']], $this->audit->entries[1]->changes);
+
+        $sector->revise('Secteur', true, ['retail', 'wholesale'], 0, false, new \DateTimeImmutable());
+        $this->manage->revise($this->company, $customer->getId(), self::input(kind: CustomerKind::Individual), null);
+        self::assertSame(['sector' => 'wholesale'], $this->manage->get($this->company, $customer->getId())->getCustomFields());
+        self::assertCount(2, $this->audit->entries, 'carrying a retired value over changes nothing');
+    }
+
     /** @param callable(): mixed $attempt */
     private function assertRefused(string $field, callable $attempt): void
     {
@@ -178,6 +205,7 @@ final class ManageCustomersTest extends TestCase
     /**
      * @param array<string, string> $identifiers
      * @param list<Uuid>            $taxes
+     * @param array<string, mixed>  $customFields
      */
     private static function input(
         string $number = 'CLI-0001',
@@ -189,6 +217,7 @@ final class ManageCustomersTest extends TestCase
         array $taxes = [],
         ?string $email = null,
         bool $active = true,
+        array $customFields = [],
     ): CustomerInput {
         return new CustomerInput(
             $number,
@@ -197,6 +226,7 @@ final class ManageCustomersTest extends TestCase
             $regime,
             $taxes,
             $active,
+            $customFields,
         );
     }
 }

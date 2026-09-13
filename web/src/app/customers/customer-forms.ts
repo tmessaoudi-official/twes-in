@@ -1,5 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import {
+  customFieldInput,
+  customFieldValues,
+  customFormFields,
+  customListColumns,
+} from '../shared/custom-fields/custom-fields';
+import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import { withCustomFields } from '../shared/form/form-builder';
 import type {
   FieldValue,
   FormDescriptor,
@@ -8,6 +16,7 @@ import type {
   FormValues,
 } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
+import { withCustomColumns } from '../shared/list/list-view';
 import {
   CUSTOMER_KINDS,
   type ContactInput,
@@ -112,6 +121,13 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
   ],
 };
 
+/** The customers list with a hidden column per active custom field of the company. */
+export function customersList(
+  fields: readonly CustomFieldDefinition[],
+): ListDescriptor<CustomerListRow> {
+  return withCustomColumns(CUSTOMERS_LIST, customListColumns<CustomerListRow>(fields));
+}
+
 const section = (id: string, fields: FormField[]): FormSection => ({
   id,
   title: `customers.sections.${id}`,
@@ -149,11 +165,13 @@ const addressFields = (prefix: 'billing' | 'shipping'): FormField[] => [
 /**
  * The customer form, from what the company's preset and fiscal setup offer: its registration numbers (shown for a
  * business, never required here because only the API knows whether the customer is billed at home), its regimes
- * and one box per active tax a new line for the customer starts with. The API checks everything again.
+ * and one box per active tax a new line for the customer starts with, then the company's own custom fields, joined
+ * through withCustomFields. The API checks everything again.
  */
 export function customerForm(
   options: CustomerOptions,
   groups: readonly CustomerGroupRow[],
+  fields: readonly CustomFieldDefinition[] = [],
 ): FormDescriptor {
   const identifiers: FormField[] = options.identifiers.map((identifier) => ({
     id: IDENTIFIER_PREFIX + identifier.key,
@@ -165,7 +183,7 @@ export function customerForm(
     ...(identifier.requiredForBusiness ? { hint: 'customers.form.identifier_hint' } : {}),
   }));
 
-  return {
+  const descriptor: FormDescriptor = {
     id: 'customer',
     sections: [
       section('identity', [
@@ -268,10 +286,22 @@ export function customerForm(
       ]),
     ],
   };
+  const custom = customFormFields(fields);
+  return custom.length === 0
+    ? descriptor
+    : withCustomFields(
+        { ...descriptor, sections: [...descriptor.sections, section('custom', [])] },
+        'custom',
+        custom,
+      );
 }
 
 /** Each field at the customer's value; a new customer is a business in the company's country under the first regime. */
-export function customerValues(row: CustomerRow | null, options: CustomerOptions): FormValues {
+export function customerValues(
+  row: CustomerRow | null,
+  options: CustomerOptions,
+  fields: readonly CustomFieldDefinition[] = [],
+): FormValues {
   const values: FormValues = {
     number: row?.number ?? '',
     kind: row?.kind ?? 'company',
@@ -298,11 +328,15 @@ export function customerValues(row: CustomerRow | null, options: CustomerOptions
   for (const tax of options.taxes) {
     values[TAX_PREFIX + tax.id] = row?.defaultTaxComponentIds.includes(tax.id) ?? false;
   }
-  return values;
+  return { ...values, ...customFieldValues(fields, row?.customFields ?? {}) };
 }
 
 /** The form's values as the API takes them: trimmed, an empty field as no value, an individual without identifiers. */
-export function customerInput(values: FormValues, options: CustomerOptions): CustomerInput {
+export function customerInput(
+  values: FormValues,
+  options: CustomerOptions,
+  fields: readonly CustomFieldDefinition[] = [],
+): CustomerInput {
   const kind = (CUSTOMER_KINDS as readonly string[]).includes(String(values['kind']))
     ? (values['kind'] as CustomerKind)
     : 'company';
@@ -336,6 +370,7 @@ export function customerInput(values: FormValues, options: CustomerOptions): Cus
     defaultDiscountRate: text(values['defaultDiscountRate']),
     notes: text(values['notes']),
     isActive: values['isActive'] === true,
+    customFields: customFieldInput(fields, values),
   };
 }
 

@@ -265,6 +265,7 @@ function toCustomer(raw: CustomerCustomerRead): CustomerRow {
     defaultDiscountRate: raw.defaultDiscountRate ?? null,
     notes: raw.notes ?? null,
     isActive: raw.isActive ?? true,
+    customFields: { ...(raw.customFields ?? {}) },
   };
 }
 
@@ -273,6 +274,7 @@ function toCustomerBody(input: CustomerInput): CustomerCustomerWrite {
   return {
     ...rest,
     identifiers: { ...input.identifiers },
+    customFields: { ...input.customFields },
     billingAddressLine1: billingAddress.line1,
     billingAddressLine2: billingAddress.line2,
     billingPostalCode: billingAddress.postalCode,

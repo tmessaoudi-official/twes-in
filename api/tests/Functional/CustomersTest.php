@@ -84,6 +84,10 @@ final class CustomersTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
         }
+
+        $this->postJson($this->path(), $this->customer(['defaultTaxComponentIds' => ['first' => $this->taxId('TVA19')]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the default taxes are a list, never a map');
+        self::assertStringContainsString('defaultTaxComponentIds', (string) $this->client->getResponse()->getContent());
     }
 
     public function testANumberAnotherCustomerHasAnswersConflict(): void

@@ -60,6 +60,7 @@ const carthage: CustomerRow = {
   defaultDiscountRate: '5.000',
   notes: null,
   isActive: true,
+  customFields: {},
 };
 
 describe('customer forms', () => {

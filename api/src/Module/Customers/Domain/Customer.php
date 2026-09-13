@@ -88,6 +88,10 @@ class Customer
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
 
+    /** @var array<string, string|int|float|bool> values by the company's custom field keys, checked by ManageCustomers */
+    #[ORM\Column(type: Types::JSON, options: ['jsonb' => true, 'default' => '{}'])]
+    private array $customFields = [];
+
     #[ORM\Column]
     private bool $isActive = true;
 
@@ -163,6 +167,33 @@ class Customer
         $this->updatedAt = $now;
 
         return $changed;
+    }
+
+    /**
+     * @param array<string, string|int|float|bool> $values
+     *
+     * @return list<string> the fields that changed, named `customFields.<key>`
+     */
+    public function reviseCustomFields(array $values, \DateTimeImmutable $now): array
+    {
+        $changed = [];
+        foreach (array_unique([...array_keys($this->customFields), ...array_keys($values)]) as $key) {
+            if (($this->customFields[$key] ?? null) !== ($values[$key] ?? null)) {
+                $changed[] = 'customFields.'.$key;
+            }
+        }
+        if ([] !== $changed) {
+            $this->customFields = $values;
+            $this->updatedAt = $now;
+        }
+
+        return $changed;
+    }
+
+    /** @return array<string, string|int|float|bool> */
+    public function getCustomFields(): array
+    {
+        return $this->customFields;
     }
 
     public function getProfile(): CustomerProfile

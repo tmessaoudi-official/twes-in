@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
+import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import { CustomersFacade } from './customers-facade';
 import type { ContactInput, CustomerGroupRow, CustomerInput, CustomerRow } from './customers-types';
@@ -21,6 +23,18 @@ const input: CustomerInput = {
   defaultTaxComponentIds: [],
   defaultDiscountRate: null,
   notes: null,
+  isActive: true,
+  customFields: {},
+};
+const sector: CustomFieldDefinition = {
+  id: 'f1',
+  entity: 'customer',
+  key: 'sector',
+  label: 'Secteur',
+  type: 'text',
+  required: false,
+  choices: [],
+  sortOrder: 0,
   isActive: true,
 };
 const amel: CustomerRow = { ...input, id: 'k1' };
@@ -55,11 +69,18 @@ describe('CustomersFacade', () => {
     reviseContact: vi.fn(),
     removeContact: vi.fn(),
   };
+  const fieldsApi = { list: vi.fn() };
   let facade: CustomersFacade;
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
-    TestBed.configureTestingModule({ providers: [{ provide: CustomersApi, useValue: api }] });
+    fieldsApi.list.mockReset().mockResolvedValue([sector]);
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CustomersApi, useValue: api },
+        { provide: CustomFieldsApi, useValue: fieldsApi },
+      ],
+    });
     facade = TestBed.inject(CustomersFacade);
   });
 
@@ -71,6 +92,8 @@ describe('CustomersFacade', () => {
 
     expect(facade.customers()).toEqual([amel]);
     expect(facade.groups()).toEqual([wholesalers]);
+    expect(facade.customFields()).toEqual([sector]);
+    expect(fieldsApi.list).toHaveBeenCalledWith('c1', 'customer');
     expect(facade.error()).toBeNull();
   });
 
@@ -81,6 +104,7 @@ describe('CustomersFacade', () => {
     await facade.loadCustomer('c1', 'k1');
     expect(facade.customer()).toEqual(amel);
     expect(facade.contacts().map((contact) => contact.id)).toEqual(['p1']);
+    expect(facade.customFields()).toEqual([sector]);
 
     await facade.loadCustomer('c1', null);
     expect(facade.customer()).toBeNull();

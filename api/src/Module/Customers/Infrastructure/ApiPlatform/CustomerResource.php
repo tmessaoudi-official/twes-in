@@ -76,7 +76,7 @@ final class CustomerResource
     private const array NORMALIZATION = [
         'groups' => [self::READ],
         AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true,
-        AbstractNormalizer::CALLBACKS => ['identifiers' => [self::class, 'identifiersAsObject']],
+        AbstractNormalizer::CALLBACKS => ['identifiers' => [self::class, 'asObject'], 'customFields' => [self::class, 'asObject']],
     ];
     private const string PHONE = '/^\+?[0-9 ().\-]{3,40}$/';
 
@@ -174,6 +174,7 @@ final class CustomerResource
     public ?string $shippingCountryCode = null;
 
     /** @var list<string> the ids of the company's taxes a new line for this customer starts with */
+    #[Assert\Type('list', groups: [self::WRITE])]
     #[Assert\All([new Assert\Uuid()], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $defaultTaxComponentIds = [];
@@ -186,6 +187,11 @@ final class CustomerResource
     #[Assert\Length(max: 5000, groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $notes = null;
+
+    /** @var array<string, string|int|float|bool> values by the company's custom field keys (GET .../custom-fields?entity=customer) */
+    #[ApiProperty(schema: ['type' => 'object', 'additionalProperties' => ['oneOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean']]]])]
+    #[Groups([self::READ, self::WRITE])]
+    public array $customFields = [];
 
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
@@ -210,6 +216,7 @@ final class CustomerResource
         $resource->defaultTaxComponentIds = $customer->getDefaultTaxComponentIds();
         $resource->defaultDiscountRate = $profile->defaultDiscountRate;
         $resource->notes = $profile->notes;
+        $resource->customFields = $customer->getCustomFields();
         $resource->isActive = $customer->isActive();
 
         return $resource;
@@ -240,17 +247,18 @@ final class CustomerResource
             $this->taxRegime,
             array_map(static fn (string $id): Uuid => Uuid::fromString($id), $this->defaultTaxComponentIds),
             $this->isActive,
+            $this->customFields,
         );
     }
 
     /**
-     * @param array<string, string> $identifiers
+     * @param array<string, mixed> $values
      *
-     * @return \ArrayObject<string, string>
+     * @return \ArrayObject<string, mixed>
      */
-    public static function identifiersAsObject(array $identifiers): \ArrayObject
+    public static function asObject(array $values): \ArrayObject
     {
-        return new \ArrayObject($identifiers);
+        return new \ArrayObject($values);
     }
 
     private static function inCompanyCountry(PostalAddress $address, Company $company): PostalAddress

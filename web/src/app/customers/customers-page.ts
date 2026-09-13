@@ -6,10 +6,10 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
-import { CUSTOMERS_LIST, type CustomerListRow, customerListRows } from './customer-forms';
+import { type CustomerListRow, customerListRows, customersList } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
 
-/** The customers of the company being worked in. */
+/** The customers of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
   selector: 'app-customers-page',
   imports: [MatButtonModule, RouterLink, TranslatePipe, DataList, DataListCell, DataListRowActions],
@@ -20,7 +20,7 @@ export class CustomersPage implements OnInit {
   private readonly facade = inject(CustomersFacade);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = CUSTOMERS_LIST;
+  protected readonly list = computed(() => customersList(this.facade.customFields()));
   protected readonly rows = computed(() =>
     customerListRows(this.facade.customers(), this.facade.groups()),
   );

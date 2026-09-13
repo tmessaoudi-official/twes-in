@@ -183,6 +183,49 @@
         "not_found": "Série de numérotation introuvable.",
         "network": "Le serveur est injoignable."
       }
+    },
+    "custom_fields": {
+      "title": "Champs personnalisés",
+      "intro": "Les champs que votre société ajoute à ses clients. La clé et le type d'un champ sont fixés une fois déclarés ; retirez un champ plutôt que de le supprimer, les valeurs des clients sont conservées.",
+      "add": "Ajouter un champ",
+      "section": "Champ",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "edit": "Modifier",
+      "saved": "Le champ a été enregistré.",
+      "none": "Aucun champ personnalisé pour le moment.",
+      "no_company": "Choisissez une société pour gérer ses champs personnalisés.",
+      "statuses": {
+        "active": "Actif",
+        "retired": "Retiré"
+      },
+      "yes": "Oui",
+      "no": "Non",
+      "types": {
+        "text": "Texte",
+        "number": "Nombre",
+        "date": "Date",
+        "bool": "Oui ou non",
+        "choice": "Choix"
+      },
+      "fields": {
+        "key": "Clé",
+        "key_hint": "Minuscules, chiffres et tirets bas, en commençant par une lettre. Elle ne pourra plus changer.",
+        "label": "Libellé",
+        "type": "Type",
+        "choices": "Choix",
+        "choices_hint": "Un choix par ligne.",
+        "required": "Obligatoire",
+        "sortOrder": "Position",
+        "isActive": "Actif",
+        "isActive_hint": "Un champ retiré n'est plus affiché ; les valeurs des clients sont conservées."
+      },
+      "errors": {
+        "network": "Le serveur est injoignable. Réessayez.",
+        "not_found": "Ce champ n'existe plus.",
+        "key_taken": "Un autre champ porte déjà cette clé.",
+        "invalid": "Le champ a été refusé. Vérifiez son libellé, ses choix et sa position."
+      }
     }
   },
   "nav": {
@@ -200,7 +243,8 @@
     "establishments": "Établissements",
     "numbering": "Numérotation des documents",
     "customers": "Clients",
-    "customer_groups": "Groupes de clients"
+    "customer_groups": "Groupes de clients",
+    "custom_fields": "Champs personnalisés"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -308,6 +352,7 @@
   },
   "form": {
     "optional": "facultatif",
+    "no_value": "Aucune valeur",
     "errors": {
       "required": "Ce champ est obligatoire.",
       "email": "Saisissez une adresse e-mail valide.",
@@ -470,7 +515,8 @@
       "billing": "Adresse de facturation",
       "shipping": "Adresse de livraison",
       "terms": "Fiscalité et conditions",
-      "notes": "Notes"
+      "notes": "Notes",
+      "custom": "Champs personnalisés"
     },
     "fields": {
       "number": "Numéro client",

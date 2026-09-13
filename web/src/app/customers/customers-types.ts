@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { CustomFieldValue } from '../shared/custom-fields/custom-fields-types';
+
 /** Why the API refused, as the customers screens translate it. */
 export type CustomersError =
   'network' | 'not_found' | 'number_taken' | 'name_taken' | 'in_use' | 'invalid';
@@ -37,6 +39,8 @@ export interface CustomerRow {
   defaultDiscountRate: string | null;
   notes: string | null;
   isActive: boolean;
+  /** Values by the company's custom field keys; a retired field's value stays here. */
+  customFields: Record<string, CustomFieldValue>;
 }
 
 export type CustomerInput = Omit<CustomerRow, 'id'>;

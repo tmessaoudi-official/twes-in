@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
+import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import type {
   ContactInput,
@@ -13,10 +15,12 @@ import type {
   CustomersError,
 } from './customers-types';
 
-/** The customers of the company being worked in, their groups, and the contacts of the one open. */
+/** The customers of the company being worked in, their groups, the company's custom fields, and the open one's contacts. */
 @Injectable({ providedIn: 'root' })
 export class CustomersFacade {
   private readonly api = inject(CustomersApi);
+  private readonly fields = inject(CustomFieldsApi);
+  private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly customersSignal = signal<readonly CustomerRow[]>([]);
   private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
   private readonly optionsSignal = signal<CustomerOptions | null>(null);
@@ -27,6 +31,8 @@ export class CustomersFacade {
 
   readonly customers = this.customersSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();
+  /** Every custom field declared for customers, retired ones included; screens show the active ones. */
+  readonly customFields = this.customFieldsSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   readonly customer = this.customerSignal.asReadonly();
   readonly contacts = this.contactsSignal.asReadonly();
@@ -35,12 +41,14 @@ export class CustomersFacade {
 
   async loadList(companyId: string): Promise<void> {
     await this.read(async () => {
-      const [customers, groups] = await Promise.all([
+      const [customers, groups, customFields] = await Promise.all([
         this.api.customers(companyId),
         this.api.groups(companyId),
+        this.fields.list(companyId, 'customer'),
       ]);
       this.customersSignal.set(customers);
       this.groupsSignal.set(groups);
+      this.customFieldsSignal.set(customFields);
     });
   }
 
@@ -51,14 +59,16 @@ export class CustomersFacade {
   /** What the customer form needs: its options, the groups, and the customer with its contacts unless it is new. */
   async loadCustomer(companyId: string, id: string | null): Promise<void> {
     await this.read(async () => {
-      const [options, groups, customer, contacts] = await Promise.all([
+      const [options, groups, customFields, customer, contacts] = await Promise.all([
         this.api.options(companyId),
         this.api.groups(companyId),
+        this.fields.list(companyId, 'customer'),
         id === null ? Promise.resolve(null) : this.api.customer(companyId, id),
         id === null ? Promise.resolve([]) : this.api.contacts(companyId, id),
       ]);
       this.optionsSignal.set(options);
       this.groupsSignal.set(groups);
+      this.customFieldsSignal.set(customFields);
       this.customerSignal.set(customer);
       this.contactsSignal.set(contacts);
     });

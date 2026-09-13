@@ -29,6 +29,7 @@ const carthage: CustomerInput = {
   defaultDiscountRate: null,
   notes: null,
   isActive: true,
+  customFields: {},
 };
 
 describe('CustomersApi', () => {
@@ -74,6 +75,7 @@ describe('CustomersApi', () => {
         city: 'Sfax',
         countryCode: 'TN',
       },
+      customFields: { sector: 'retail', vip: true },
     });
     const request = http.expectOne('/api/companies/c1/customers');
     expect(request.request.method).toBe('POST');
@@ -83,6 +85,7 @@ describe('CustomersApi', () => {
       billingCity: 'Tunis',
       shippingCity: 'Sfax',
       shippingAddressLine1: null,
+      customFields: { sector: 'retail', vip: true },
     });
     expect(request.request.body).not.toHaveProperty('billingAddress');
     request.flush({ id: 'k1', ...request.request.body });
