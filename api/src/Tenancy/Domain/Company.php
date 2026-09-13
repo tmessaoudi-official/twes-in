@@ -14,8 +14,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The tenant. G1a carries the identity columns; the profile (identifiers, address, banking, fiscal
- * preset, terms) lands with the company profile at G3 as additive migrations.
+ * The tenant. G1a carries the identity columns and G3a the fiscal preset; the profile (identifiers, address,
+ * banking, terms) lands with the company profile as additive migrations.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'company')]
@@ -34,6 +34,13 @@ class Company
 
     #[ORM\Column(length: 2)]
     private string $countryCode;
+
+    /**
+     * The fiscal preset (api/config/fiscal/<key>.yaml) the company's taxes were copied from: its country's. A column
+     * of its own because a country may come to carry several presets, a free zone or an offshore regime.
+     */
+    #[ORM\Column(length: 8)]
+    private string $fiscalPreset;
 
     #[ORM\Column(length: 3)]
     private string $currency;
@@ -67,6 +74,7 @@ class Company
         $this->id = Uuid::v7();
         $this->name = $name;
         $this->countryCode = strtoupper($countryCode);
+        $this->fiscalPreset = $this->countryCode;
         $this->currency = strtoupper($currency);
         $this->locale = $locale;
         $this->timezone = $timezone;
@@ -119,6 +127,11 @@ class Company
     public function getCountryCode(): string
     {
         return $this->countryCode;
+    }
+
+    public function getFiscalPreset(): string
+    {
+        return $this->fiscalPreset;
     }
 
     public function getCurrency(): string

@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Fiscal\Domain\TaxComponent;
+use App\Fiscal\Domain\Unit;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -43,6 +45,30 @@ final class CompanyTest extends ApiTestCase
         $this->postJson('/api/companies', self::VALID);
 
         self::assertNotNull($this->em()->getRepository(Company::class)->findOneBy(['name' => 'Acme']));
+    }
+
+    public function testTheCompanyOpensWithItsCountrysTaxesAndUnits(): void
+    {
+        $this->operatorSignedIn();
+
+        $this->postJson('/api/companies', self::VALID);
+
+        $company = $this->em()->getRepository(Company::class)->findOneBy(['name' => 'Acme']);
+        self::assertNotNull($company);
+        self::assertSame('TN', $company->getFiscalPreset());
+        self::assertCount(6, $this->em()->getRepository(TaxComponent::class)->findBy(['company' => $company]));
+        self::assertCount(8, $this->em()->getRepository(Unit::class)->findBy(['company' => $company]));
+    }
+
+    public function testACountryWithNoFiscalPresetIsRefused(): void
+    {
+        $this->operatorSignedIn();
+
+        $this->postJson('/api/companies', [...self::VALID, 'countryCode' => 'DE', 'currency' => 'EUR', 'timezone' => 'Europe/Berlin']);
+
+        // A company there could not invoice without its taxes; a new country is a preset file plus translations.
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertNull($this->em()->getRepository(Company::class)->findOneBy(['name' => 'Acme']));
     }
 
     public function testAnAnonymousCallerIsRefused(): void

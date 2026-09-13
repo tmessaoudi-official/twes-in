@@ -14,7 +14,9 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Application\Company\NewCompany;
+use App\Tenancy\Application\Company\NoFiscalPreset;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /** @implements ProcessorInterface<CompanyResource, CompanyResource> */
 final readonly class CreateCompanyProcessor implements ProcessorInterface
@@ -32,6 +34,8 @@ final readonly class CreateCompanyProcessor implements ProcessorInterface
             );
         } catch (CompanyNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
+        } catch (NoFiscalPreset $unsupported) {
+            throw new UnprocessableEntityHttpException($unsupported->getMessage(), $unsupported);
         }
 
         return CompanyResource::of($company);

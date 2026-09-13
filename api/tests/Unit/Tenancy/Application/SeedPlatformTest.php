@@ -9,15 +9,21 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Tenancy\Application;
 
+use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Identity\Application\PasswordHasher;
 use App\Tenancy\Application\Seed\OperatorPasswordRequired;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Application\Seed\SeedRequest;
 use App\Tenancy\Domain\Role;
 use App\Tests\Support\InMemoryCompanies;
+use App\Tests\Support\InMemoryCustomerTaxRegimes;
 use App\Tests\Support\InMemoryMemberships;
 use App\Tests\Support\InMemoryRoles;
+use App\Tests\Support\InMemoryTaxComponents;
+use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\InMemoryUsers;
+use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 
@@ -27,6 +33,8 @@ final class SeedPlatformTest extends TestCase
     private InMemoryUsers $users;
     private InMemoryCompanies $companies;
     private InMemoryMemberships $memberships;
+    private InMemoryTaxComponents $components;
+    private InMemoryCustomerTaxRegimes $regimes;
     private SeedPlatform $seed;
 
     protected function setUp(): void
@@ -35,13 +43,26 @@ final class SeedPlatformTest extends TestCase
         $this->users = new InMemoryUsers();
         $this->companies = new InMemoryCompanies();
         $this->memberships = new InMemoryMemberships();
+        $this->components = new InMemoryTaxComponents();
+        $this->regimes = new InMemoryCustomerTaxRegimes();
         $hasher = new class implements PasswordHasher {
             public function hash(string $plainPassword): string
             {
                 return 'hashed:'.$plainPassword;
             }
         };
-        $this->seed = new SeedPlatform($this->roles, $this->users, $this->companies, $this->memberships, $hasher, new MockClock('2026-09-09 12:00:00'));
+        $clock = new MockClock('2026-09-09 12:00:00');
+        $presets = ShippedFiscalPresets::presets();
+        $this->seed = new SeedPlatform(
+            $this->roles,
+            $this->users,
+            $this->companies,
+            $this->memberships,
+            $hasher,
+            new SyncCustomerTaxRegimes($presets, $this->regimes, $clock),
+            new ProvisionCompany($presets, $this->components, new InMemoryUnits(), ShippedFiscalPresets::scales(), $clock),
+            $clock,
+        );
     }
 
     public function testARoleWhosePermissionsChangedIsBroughtUpToDate(): void
@@ -53,6 +74,13 @@ final class SeedPlatformTest extends TestCase
 
         self::assertSame(SeedPlatform::BUILT_IN_ROLES[Role::ADMIN], $this->roles->builtIn(Role::ADMIN)?->getPermissions());
         self::assertContains('role admin updated', $created);
+    }
+
+    public function testTheBuiltInRolesReachTheFiscalSetup(): void
+    {
+        self::assertContains('fiscal.write', SeedPlatform::BUILT_IN_ROLES[Role::ADMIN]);
+        self::assertContains('fiscal.read', SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
+        self::assertNotContains('fiscal.write', SeedPlatform::BUILT_IN_ROLES[Role::MEMBER]);
     }
 
     public function testARoleThatAlreadyMatchesIsLeftAlone(): void
@@ -76,11 +104,14 @@ final class SeedPlatformTest extends TestCase
         self::assertSame(['company.read'], $custom->getPermissions());
     }
 
-    public function testItCreatesTheRolesTheOperatorTheCompanyAndTheOwnership(): void
+    public function testItCreatesTheRolesTheOperatorTheCompanyTheOwnershipAndTheFiscalRows(): void
     {
         $created = $this->seed->seed($this->request(password: 'secret'));
 
-        self::assertSame(['role owner', 'role admin', 'role member', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded'], $created);
+        self::assertSame([
+            'role owner', 'role admin', 'role member', 'operator op@example.test', 'company Seeded', 'membership op@example.test owns Seeded',
+            'customer tax regimes of FR', 'customer tax regimes of TN', 'tax components of Seeded', 'units of Seeded',
+        ], $created);
         self::assertCount(3, $this->roles->roles);
         self::assertSame(['*'], $this->roles->builtIn(Role::OWNER)?->getPermissions());
         $operator = $this->users->ofEmail(\App\Identity\Domain\Email::fromString('op@example.test'));
@@ -90,6 +121,18 @@ final class SeedPlatformTest extends TestCase
         $company = $this->companies->ofName('Seeded');
         self::assertNotNull($company);
         self::assertSame('owner', $this->memberships->ofUserInCompany($operator->getId(), $company->getId())?->getRole()->getName());
+        self::assertCount(6, $this->components->ofCompany($company->getId()));
+        self::assertCount(8, $this->regimes->regimes);
+    }
+
+    public function testACompanySeededBeforeTheFiscalPresetsGetsItsTaxesOnTheNextRun(): void
+    {
+        $this->companies->save(new \App\Tenancy\Domain\Company('Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis'));
+
+        $created = $this->seed->seed($this->request(password: 'secret'));
+
+        self::assertContains('tax components of Seeded', $created);
+        self::assertNotContains('company Seeded', $created);
     }
 
     public function testASecondRunConverges(): void
@@ -111,6 +154,7 @@ final class SeedPlatformTest extends TestCase
 
         self::assertNull($this->users->ofEmail(\App\Identity\Domain\Email::fromString('op@example.test')));
         self::assertCount(0, $this->companies->companies);
+        self::assertSame([], $this->regimes->regimes);
     }
 
     private function request(?string $password): SeedRequest

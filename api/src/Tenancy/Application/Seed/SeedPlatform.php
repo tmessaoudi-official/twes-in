@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Seed;
 
+use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
@@ -23,17 +25,17 @@ use App\Tenancy\Domain\RoleRepository;
 use Psr\Clock\ClockInterface;
 
 /**
- * The built-in roles, the first operator and the first company, idempotently: run on an empty database and
- * again after a migration it converges on the same rows. A company is unusable without an owner role, so the
- * roles are seeded here too.
+ * The built-in roles, the first operator, the first company, the customer tax regimes of every fiscal preset and
+ * the first company's taxes and units, idempotently: run on an empty database and again after a migration it
+ * converges on the same rows. A company is unusable without an owner role, so the roles are seeded here too.
  */
 final readonly class SeedPlatform
 {
     /** @var array<string, list<string>> the three built-in roles and their permission sets */
     public const array BUILT_IN_ROLES = [
         Role::OWNER => [Permission::WILDCARD],
-        Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'customer.read', 'customer.write', 'product.read', 'product.write'],
-        Role::MEMBER => ['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read'],
+        Role::ADMIN => ['company.read', 'company.settings', 'user.read', 'user.write', 'invoice.read', 'invoice.write', 'invoice.issue', 'customer.read', 'customer.write', 'product.read', 'product.write', 'fiscal.read', 'fiscal.write'],
+        Role::MEMBER => ['company.read', 'invoice.read', 'invoice.write', 'customer.read', 'customer.write', 'product.read', 'fiscal.read'],
     ];
 
     public function __construct(
@@ -42,6 +44,8 @@ final readonly class SeedPlatform
         private CompanyRepository $companies,
         private MembershipRepository $memberships,
         private PasswordHasher $hasher,
+        private SyncCustomerTaxRegimes $regimes,
+        private ProvisionCompany $provision,
         private ClockInterface $clock,
     ) {
     }
@@ -96,6 +100,7 @@ final readonly class SeedPlatform
             $created[] = "membership $email owns {$request->companyName}";
         }
 
-        return $created;
+        // A company seeded before the fiscal presets existed gets its taxes and units on the next run.
+        return [...$created, ...$this->regimes->handle(), ...$this->provision->handle($company)];
     }
 }

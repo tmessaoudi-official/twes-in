@@ -11,6 +11,8 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use Psr\Clock\ClockInterface;
@@ -18,7 +20,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A platform operator opens a company. It starts pending, because a company with no owner cannot be signed
- * into; its first owner joining activates it (docs/SPEC.md § 7, 2026-09-09).
+ * into; its first owner joining activates it (docs/SPEC.md § 7, 2026-09-09). It is opened with its fiscal
+ * preset's taxes and units, so a country with no preset is refused before anything is written.
  */
 final readonly class CreateCompany
 {
@@ -27,12 +30,17 @@ final readonly class CreateCompany
 
     public function __construct(
         private CompanyRepository $companies,
+        private FiscalPresets $presets,
+        private ProvisionCompany $provision,
         private AuditTrail $audit,
         private ClockInterface $clock,
     ) {
     }
 
-    /** @throws CompanyNameTaken */
+    /**
+     * @throws CompanyNameTaken
+     * @throws NoFiscalPreset
+     */
     public function handle(NewCompany $request, ?Uuid $actorUserId): Company
     {
         if (null !== $this->companies->ofName($request->name)) {
@@ -47,14 +55,18 @@ final readonly class CreateCompany
             $request->timezone,
             $this->clock->now(),
         );
+        if (!$this->presets->has($company->getFiscalPreset())) {
+            throw new NoFiscalPreset(\sprintf('There is no fiscal preset for %s yet, so a company there could not invoice.', $company->getCountryCode()));
+        }
         $this->companies->save($company);
+        $this->provision->handle($company);
 
         $this->audit->record(new AuditEntry(
             self::ENTITY_TYPE,
             $company->getId(),
             self::CREATED,
             $actorUserId,
-            ['name' => $company->getName(), 'status' => $company->getStatus()],
+            ['name' => $company->getName(), 'status' => $company->getStatus(), 'fiscal_preset' => $company->getFiscalPreset()],
             $company->getId(),
         ));
 
