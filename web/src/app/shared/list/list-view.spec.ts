@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { ListDescriptor, ListPreferences } from './list-types';
+import type { ListDescriptor, ListFilter, ListPreferences, ListView } from './list-types';
 import { NO_LIST_PREFERENCES } from './list-types';
 import {
+  applyFilters,
   DuplicateListColumn,
   filterRows,
+  InvalidViewName,
   paginate,
+  removeView,
   resolveColumns,
+  saveView,
   sortRows,
   withCustomColumns,
 } from './list-view';
@@ -200,5 +204,103 @@ describe('withCustomColumns', () => {
     expect(() =>
       withCustomColumns(customers, [{ id: 'name', label: 'x', value: () => null }]),
     ).toThrow(DuplicateListColumn);
+  });
+});
+
+interface Account {
+  id: string;
+  status: 'active' | 'archived';
+  country: 'TN' | 'FR';
+}
+
+const accounts: Account[] = [
+  { id: 'a', status: 'active', country: 'TN' },
+  { id: 'b', status: 'archived', country: 'TN' },
+  { id: 'c', status: 'active', country: 'FR' },
+];
+
+const accountFilters: ListFilter<Account>[] = [
+  {
+    id: 'status',
+    label: 'accounts.status',
+    value: (row) => row.status,
+    options: [
+      { value: 'active', label: 'accounts.active' },
+      { value: 'archived', label: 'accounts.archived' },
+    ],
+  },
+  {
+    id: 'country',
+    label: 'accounts.country',
+    value: (row) => row.country,
+    options: [
+      { value: 'TN', label: 'TN' },
+      { value: 'FR', label: 'FR' },
+    ],
+  },
+];
+
+describe('applyFilters', () => {
+  it('keeps only the rows matching every chosen filter', () => {
+    expect(
+      applyFilters(accounts, accountFilters, { status: 'active' }).map((row) => row.id),
+    ).toEqual(['a', 'c']);
+    expect(
+      applyFilters(accounts, accountFilters, { status: 'active', country: 'TN' }).map(
+        (row) => row.id,
+      ),
+    ).toEqual(['a']);
+  });
+
+  it('ignores a filter nobody declared and an option that no longer exists, as a stale view may carry', () => {
+    expect(applyFilters(accounts, accountFilters, { gone: 'x', country: 'DE' })).toEqual(accounts);
+  });
+});
+
+describe('saved views', () => {
+  const layout: ListPreferences = { hidden: ['city'], order: [], widths: {}, sort: null };
+  const tunisia: ListView = {
+    id: 'v1',
+    name: 'Tunisie',
+    query: '',
+    filters: { country: 'TN' },
+    layout,
+  };
+
+  it('adds a named view carrying its query, filters and layout', () => {
+    const views = saveView(
+      [],
+      { name: '  Actifs ', query: 'sfax', filters: { status: 'active' }, layout },
+      'v2',
+    );
+
+    expect(views).toEqual([
+      { id: 'v2', name: 'Actifs', query: 'sfax', filters: { status: 'active' }, layout },
+    ]);
+  });
+
+  it('replaces a view saved again under the same name, keeping its id and its place', () => {
+    const other: ListView = { ...tunisia, id: 'v0', name: 'Archivés' };
+    const views = saveView(
+      [other, tunisia],
+      { name: 'tunisie', query: 'x', filters: {}, layout },
+      'v9',
+    );
+
+    expect(views.map((view) => [view.id, view.name, view.query])).toEqual([
+      ['v0', 'Archivés', ''],
+      ['v1', 'tunisie', 'x'],
+    ]);
+  });
+
+  it('refuses a view without a name', () => {
+    expect(() => saveView([], { name: '   ', query: '', filters: {}, layout }, 'v1')).toThrow(
+      InvalidViewName,
+    );
+  });
+
+  it('removes one view by its id', () => {
+    const other: ListView = { ...tunisia, id: 'v2', name: 'Autre' };
+    expect(removeView([tunisia, other], 'v1')).toEqual([other]);
   });
 });

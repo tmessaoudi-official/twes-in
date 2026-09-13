@@ -5,7 +5,12 @@ import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../../auth/auth-facade';
 import { BrowserStorageSettings } from './browser-storage-settings';
 import { SETTINGS_STORAGE, SettingsFacade, UnregisteredSetting } from './settings-facade';
-import { defineSetting, listPreferencesSetting, PRESENTATION } from './settings-registry';
+import {
+  defineSetting,
+  listPreferencesSetting,
+  listViewsSetting,
+  PRESENTATION,
+} from './settings-registry';
 
 /** An in-memory Storage, so a test controls exactly what "the browser kept" and can make it fail. */
 class MemoryStorage implements Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> {
@@ -122,5 +127,22 @@ describe('BrowserStorageSettings', () => {
 
     expect(() => settings().value(invented)).toThrow(UnregisteredSetting);
     expect(() => settings().set(invented, 2)).toThrow(UnregisteredSetting);
+  });
+
+  it('keeps a list screen its saved views, dropping any stored view that is not a valid one', () => {
+    const good = {
+      id: 'v1',
+      name: 'Tunisie',
+      query: '',
+      filters: { country: 'TN' },
+      layout: { hidden: [], order: [], widths: {}, sort: null },
+    };
+    storage.items.set(
+      'twes.settings.u1.presentation.list.customers.views',
+      JSON.stringify([good, { id: 'v2', name: '' }, 'not a view']),
+    );
+
+    expect(settings().value(listViewsSetting('customers'))()).toEqual([good]);
+    expect(settings().value(listViewsSetting('members'))()).toEqual([]);
   });
 });

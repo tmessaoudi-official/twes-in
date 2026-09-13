@@ -61,6 +61,26 @@ export const DESIGN_CUSTOMERS_LIST: ListDescriptor<DesignCustomer> = {
       width: 120,
     },
   ],
+  filters: [
+    {
+      id: 'status',
+      label: 'design.customers.status',
+      value: (row) => row.status,
+      options: ['active', 'archived'].map((status) => ({
+        value: status,
+        label: `design.customers.statuses.${status}`,
+      })),
+    },
+    {
+      id: 'country',
+      label: 'design.customers.country',
+      value: (row) => row.country,
+      options: ['TN', 'FR'].map((country) => ({
+        value: country,
+        label: `design.countries.${country}`,
+      })),
+    },
+  ],
 };
 
 @Component({

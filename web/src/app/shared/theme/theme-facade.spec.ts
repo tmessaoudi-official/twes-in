@@ -75,6 +75,17 @@ describe('ThemeFacade', () => {
     expect(primary()).toBe(before);
   });
 
+  it('toggles between comfortable and compact density', () => {
+    const facade = start();
+    facade.toggleDensity();
+    TestBed.tick();
+    expect(facade.density()).toBe('compact');
+    expect(root.classList.contains('density-compact')).toBe(true);
+    facade.toggleDensity();
+    TestBed.tick();
+    expect(facade.density()).toBe('comfortable');
+  });
+
   it('marks the document for compact density, and removes the mark again', () => {
     const facade = start();
     facade.setDensity('compact');

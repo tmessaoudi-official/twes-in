@@ -88,7 +88,9 @@
     "user_menu": "Account",
     "language": "Language",
     "dark_on": "Dark mode",
-    "dark_off": "Light mode"
+    "dark_off": "Light mode",
+    "density_compact": "Compact density",
+    "density_comfortable": "Comfortable density"
   },
   "languages": {
     "fr": "Français",
@@ -138,7 +140,14 @@
       "last": "Last page",
       "range": "{{start}} – {{end}} of {{total}}",
       "empty": "0 of {{total}}"
-    }
+    },
+    "no_match_filters": "Nothing matches these filters.",
+    "filter_any": "All",
+    "views": "Views",
+    "views_none": "No saved views yet. Arrange the list, then name the view to keep it.",
+    "view_name": "View name",
+    "view_save": "Save view",
+    "view_delete": "Delete the view {{name}}"
   },
   "design": {
     "title": "Design checkpoint",

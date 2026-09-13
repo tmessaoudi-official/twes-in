@@ -4,8 +4,12 @@ import type {
   CellValue,
   ListColumn,
   ListDescriptor,
+  ListFilter,
+  ListFilterValues,
   ListPreferences,
   ListSort,
+  ListView,
+  ListViewDraft,
 } from './list-types';
 
 /**
@@ -116,6 +120,21 @@ export function filterRows<Row>(
   );
 }
 
+/**
+ * Rows matching every chosen filter option. A filter nobody declared, or an option it no longer offers, is ignored:
+ * a saved view may outlive the configuration it was saved against.
+ */
+export function applyFilters<Row>(
+  rows: readonly Row[],
+  filters: readonly ListFilter<Row>[],
+  chosen: ListFilterValues,
+): Row[] {
+  const active = filters.filter((filter) =>
+    filter.options.some((option) => option.value === chosen[filter.id]),
+  );
+  return rows.filter((row) => active.every((filter) => filter.value(row) === chosen[filter.id]));
+}
+
 export interface Page<Row> {
   rows: Row[];
   pageIndex: number;
@@ -148,4 +167,33 @@ export function withCustomColumns<Row>(
     known.add(column.id);
   }
   return { ...descriptor, columns: [...descriptor.columns, ...custom] };
+}
+
+export class InvalidViewName extends Error {
+  constructor() {
+    super('a saved view needs a name');
+    this.name = 'InvalidViewName';
+  }
+}
+
+/**
+ * The views with this draft saved: a name already used (ignoring case and accents) is replaced in place and keeps
+ * its id, any other name is appended under `newId`. Throws InvalidViewName for a blank name.
+ */
+export function saveView(
+  views: readonly ListView[],
+  draft: ListViewDraft,
+  newId: string,
+): ListView[] {
+  const name = draft.name.trim();
+  if (name === '') throw new InvalidViewName();
+  const existing = views.find((view) => fold(view.name) === fold(name));
+  const saved: ListView = { ...draft, name, id: existing?.id ?? newId };
+  return existing
+    ? views.map((view) => (view.id === existing.id ? saved : view))
+    : [...views, saved];
+}
+
+export function removeView(views: readonly ListView[], id: string): ListView[] {
+  return views.filter((view) => view.id !== id);
 }

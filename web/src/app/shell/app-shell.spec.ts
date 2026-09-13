@@ -77,7 +77,12 @@ describe('AppShell', () => {
     load: vi.fn(async () => []),
     switchTo: vi.fn(),
   };
-  const theme = { scheme: signal<'light' | 'dark'>('light'), toggleScheme: vi.fn() };
+  const theme = {
+    scheme: signal<'light' | 'dark'>('light'),
+    toggleScheme: vi.fn(),
+    density: signal<'comfortable' | 'compact'>('comfortable'),
+    toggleDensity: vi.fn(),
+  };
   const language = { current: signal('fr'), use: vi.fn(async () => undefined) };
 
   beforeEach(async () => {
@@ -174,5 +179,12 @@ describe('AppShell', () => {
     await click('user-menu');
     await click('theme-toggle');
     expect(theme.toggleScheme).toHaveBeenCalledTimes(1);
+  });
+
+  it('switches to compact density from the account menu', async () => {
+    const { click } = await render();
+    await click('user-menu');
+    await click('density-toggle');
+    expect(theme.toggleDensity).toHaveBeenCalledTimes(1);
   });
 });

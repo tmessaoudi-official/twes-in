@@ -44,6 +44,17 @@ export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
     },
     { id: 'role', label: 'members.role', value: (row) => row.role, sortable: true },
   ],
+  filters: [
+    {
+      id: 'role',
+      label: 'members.role',
+      value: (row) => row.role,
+      options: ['owner', 'admin', 'member'].map((role) => ({
+        value: role,
+        label: `roles.${role}`,
+      })),
+    },
+  ],
 };
 
 /** Who belongs to the company being worked in, and the two things an administrator does about it. */

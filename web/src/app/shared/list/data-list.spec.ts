@@ -12,9 +12,9 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../../auth/auth-facade';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
-import { listPreferencesSetting } from '../settings/settings-registry';
+import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
 import { DataList, DataListCell, DataListRowActions } from './data-list';
-import type { ListDescriptor, ListPreferences } from './list-types';
+import type { ListDescriptor, ListPreferences, ListView } from './list-types';
 import { NO_LIST_PREFERENCES } from './list-types';
 
 interface Customer {
@@ -57,6 +57,17 @@ const descriptor: ListDescriptor<Customer> = {
     },
     { id: 'status', label: 'c.status', value: (row) => row.status },
   ],
+  filters: [
+    {
+      id: 'status',
+      label: 'c.status',
+      value: (row) => row.status,
+      options: [
+        { value: 'active', label: 'c.active' },
+        { value: 'archived', label: 'c.archived' },
+      ],
+    },
+  ],
 };
 
 @Component({
@@ -95,6 +106,8 @@ class StaticLoader implements TranslateLoader {
         balance: 'Balance',
         status: 'Status',
         none: 'No customers.',
+        active: 'Active',
+        archived: 'Archived',
       },
       list: {
         filter: 'Filter',
@@ -104,6 +117,14 @@ class StaticLoader implements TranslateLoader {
         move_column: 'Move {{column}}',
         resize_column: 'Resize {{column}}',
         no_match: 'Nothing matches {{query}}',
+        no_match_filters: 'Nothing matches these filters',
+        filter_any: 'All',
+        views: 'Views',
+        views_none: 'No saved views',
+        view_name: 'View name',
+        view_save: 'Save view',
+        view_apply: 'Apply {{name}}',
+        view_delete: 'Delete {{name}}',
       },
     });
   }
@@ -134,7 +155,17 @@ describe('DataList', () => {
     fixture.detectChanges();
   }
 
-  async function mount(saved?: ListPreferences): Promise<void> {
+  const views = (): ListView[] =>
+    TestBed.inject(SettingsFacade).value(listViewsSetting('customers'))();
+
+  async function type(testId: string, value: string): Promise<void> {
+    const field = q(testId) as HTMLInputElement;
+    field.value = value;
+    field.dispatchEvent(new Event('input'));
+    await settle();
+  }
+
+  async function mount(saved?: ListPreferences, savedViews?: ListView[]): Promise<void> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [Host],
@@ -150,6 +181,7 @@ describe('DataList', () => {
       ],
     });
     if (saved) TestBed.inject(SettingsFacade).set(listPreferencesSetting('customers'), saved);
+    if (savedViews) TestBed.inject(SettingsFacade).set(listViewsSetting('customers'), savedViews);
     fixture = TestBed.createComponent(Host);
     await settle();
   }
@@ -293,5 +325,91 @@ describe('DataList', () => {
   it('keeps the table as wide as its columns, so a narrow screen scrolls the list and not the page', () => {
     // name, city and status declare no width (160 each), balance declares 120, the actions column is 96.
     expect(q('customers-table')!.style.minWidth).toBe('696px');
+  });
+
+  it('narrows the rows to the option picked in a filter, and says when the filters match nothing', async () => {
+    const status = q('list-facet-status') as HTMLSelectElement;
+    status.value = 'archived';
+    status.dispatchEvent(new Event('change'));
+    await settle();
+
+    expect(rowIds()).toEqual(['2', '4', '6', '8', '10', '12', '14', '16', '18', '20']);
+
+    await type('list-filter', 'Customer 01');
+    expect(rowIds()).toEqual([]);
+    expect(q('list-no-match')?.textContent).toContain('Customer 01');
+
+    await type('list-filter', '');
+    fixture.componentInstance.rows.set(all.filter((row) => row.status === 'active'));
+    await settle();
+    expect(q('list-no-match')?.textContent?.trim()).toBe('Nothing matches these filters');
+  });
+
+  it('saves what is shown as a named view, and brings it back after the screen changed', async () => {
+    await type('list-filter', 'sfax');
+    q('list-columns')!.click();
+    await settle();
+    q('list-column-toggle-city')!.click();
+    await settle();
+
+    q('list-views')!.click();
+    await settle();
+    expect((q('list-view-save') as HTMLButtonElement).disabled).toBe(true);
+    await type('list-view-name', '  Sfax only ');
+    q('list-view-save')!.click();
+    await settle();
+
+    const [saved] = views();
+    expect(views()).toHaveLength(1);
+    expect(saved).toMatchObject({ name: 'Sfax only', query: 'sfax', filters: {} });
+    expect(saved.layout.hidden).toEqual(['city']);
+
+    q('list-columns-reset')!.click();
+    await type('list-filter', '');
+    expect(headers()).toEqual(['name', 'city', 'balance', 'status']);
+
+    q(`list-view-apply-${saved.id}`)!.click();
+    await settle();
+    expect(headers()).toEqual(['name', 'balance', 'status']);
+    expect((q('list-filter') as HTMLInputElement).value).toBe('sfax');
+    expect(rowIds()).toEqual(['1', '4', '7', '10', '13', '16', '19', '22', '25', '28']);
+    expect(q(`list-view-apply-${saved.id}`)!.getAttribute('aria-pressed')).toBe('true');
+  });
+
+  it('applies a saved view that picked a filter option', async () => {
+    await mount(undefined, [
+      {
+        id: 'v1',
+        name: 'Archived',
+        query: '',
+        filters: { status: 'archived' },
+        layout: NO_LIST_PREFERENCES,
+      },
+    ]);
+    q('list-views')!.click();
+    await settle();
+    q('list-view-apply-v1')!.click();
+    await settle();
+
+    expect((q('list-facet-status') as HTMLSelectElement).value).toBe('archived');
+    expect(rowIds()[0]).toBe('2');
+  });
+
+  it('deletes a saved view', async () => {
+    const view: ListView = {
+      id: 'v1',
+      name: 'Mine',
+      query: '',
+      filters: {},
+      layout: NO_LIST_PREFERENCES,
+    };
+    await mount(undefined, [view, { ...view, id: 'v2', name: 'Theirs' }]);
+    q('list-views')!.click();
+    await settle();
+    q('list-view-delete-v1')!.click();
+    await settle();
+
+    expect(views().map((kept) => kept.id)).toEqual(['v2']);
+    expect(q('list-view-apply-v1')).toBeNull();
   });
 });

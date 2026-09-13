@@ -83,6 +83,47 @@ test('the dark scheme survives a reload', async ({ page }) => {
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
 });
 
+test('a saved view brings back its filters and columns after a reload', async ({ page }) => {
+  await signIn(page);
+  await openMembers(page);
+
+  await page.getByTestId('list-filter').fill('operator');
+  await page.getByTestId('list-facet-role').selectOption('owner');
+  await page.getByTestId('list-columns').click();
+  await page.getByTestId('list-column-toggle-email').click();
+  await page.getByTestId('list-views').click();
+  await page.getByTestId('list-view-name').fill('Owners');
+  await page.getByTestId('list-view-save').click();
+  const saved = page.locator('[data-testid^="list-view-apply-"]', { hasText: 'Owners' });
+  await expect(saved).toHaveAttribute('aria-pressed', 'true');
+  await expectAccessible(page, 'members, saved views open');
+
+  await page.reload();
+  await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
+  await expect(page.getByTestId('list-filter')).toHaveValue('');
+  await page.getByTestId('list-columns').click();
+  await page.getByTestId('list-columns-reset').click();
+  await expect(page.getByTestId('list-header-email')).toBeVisible();
+
+  await page.getByTestId('list-views').click();
+  await saved.click();
+  await expect(page.getByTestId('list-header-email')).toHaveCount(0);
+  await expect(page.getByTestId('list-filter')).toHaveValue('operator');
+  await expect(page.getByTestId('list-facet-role')).toHaveValue('owner');
+  await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
+});
+
+test('compact density survives a reload', async ({ page }) => {
+  await signIn(page);
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('density-toggle').click();
+  await expect(page.locator('html')).toHaveClass(/density-compact/);
+
+  await page.reload();
+  await expect(page.getByTestId('greeting')).toBeVisible();
+  await expect(page.locator('html')).toHaveClass(/density-compact/);
+});
+
 test('at phone width the members list and its chooser are accessible and fit the screen', async ({
   page,
 }) => {

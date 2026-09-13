@@ -32,14 +32,24 @@ import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SettingsFacade } from '../settings/settings-facade';
-import { listPreferencesSetting } from '../settings/settings-registry';
-import type { ListColumn, ListDescriptor, ListPreferences, ListSort } from './list-types';
+import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
+import type {
+  ListColumn,
+  ListDescriptor,
+  ListFilterValues,
+  ListPreferences,
+  ListSort,
+  ListView,
+} from './list-types';
 import {
+  applyFilters,
   filterRows,
   isColumnVisible,
   orderColumns,
   paginate,
+  removeView,
   resolveColumns,
+  saveView,
   sortRows,
 } from './list-view';
 
@@ -65,8 +75,16 @@ const ACTIONS_WIDTH = 96;
 
 const clampWidth = (width: number): number => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
 
+/** Unique enough for one person's views of one list; `crypto.randomUUID` needs a secure context. */
+const newViewId = (): string =>
+  `v${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+
+/** What a view restores, in a comparable form: filter options in id order, so key order never matters. */
+const viewState = (query: string, filters: ListFilterValues, layout: ListPreferences): string =>
+  JSON.stringify([query, Object.entries(filters).sort(([a], [b]) => a.localeCompare(b)), layout]);
+
 /**
- * Every list screen: a filter, sortable columns a person may hide, reorder (by dragging or with buttons) and
+ * Every list screen: a text filter and faceted filters, saved views, sortable columns a person may hide, reorder (by dragging or with buttons) and
  * resize (by pointer or keyboard), pages, and an empty state. What it shows comes from the screen's descriptor
  * and the pure functions in list-view.ts; what a person chose is kept through the presentation settings.
  */
@@ -107,8 +125,13 @@ export class DataList<Row> {
   private readonly setting = computed(() => listPreferencesSetting(this.descriptor().id));
   private readonly stored = computed(() => this.settings.value(this.setting()));
   protected readonly preferences = computed(() => this.stored()());
+  private readonly viewsSetting = computed(() => listViewsSetting(this.descriptor().id));
+  protected readonly views = computed(() => this.settings.value(this.viewsSetting())());
 
   protected readonly query = signal('');
+  protected readonly chosenFilters = signal<ListFilterValues>({});
+  protected readonly viewsOpen = signal(false);
+  protected readonly viewName = signal('');
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = linkedSignal(() => this.descriptor().pageSizes[0] ?? 25);
   protected readonly chooserOpen = signal(false);
@@ -133,12 +156,22 @@ export class DataList<Row> {
   protected readonly filterable = computed(() =>
     this.descriptor().columns.some((column) => column.filterable),
   );
+  protected readonly filters = computed(() => this.descriptor().filters ?? []);
+  /** The saved view that matches what the screen shows now, if any. */
+  protected readonly currentViewId = computed(() => {
+    const now = viewState(this.query(), this.chosenFilters(), this.preferences());
+    return (
+      this.views().find((view) => viewState(view.query, view.filters, view.layout) === now)?.id ??
+      null
+    );
+  });
   protected readonly cellTemplates = computed(
     () => new Map(this.cells().map((cell) => [cell.column(), cell.template] as const)),
   );
   protected readonly page = computed(() => {
     const columns = this.descriptor().columns;
-    const shown = sortRows(filterRows(this.rows(), columns, this.query()), columns, this.sort());
+    const narrowed = applyFilters(this.rows(), this.filters(), this.chosenFilters());
+    const shown = sortRows(filterRows(narrowed, columns, this.query()), columns, this.sort());
     return paginate(shown, this.pageIndex(), this.pageSize());
   });
   protected readonly paged = computed(
@@ -181,6 +214,44 @@ export class DataList<Row> {
   protected clearFilter(): void {
     this.query.set('');
     this.pageIndex.set(0);
+  }
+
+  protected onFacet(filterId: string, event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.chosenFilters.update((chosen) => ({
+      ...Object.fromEntries(Object.entries(chosen).filter(([id]) => id !== filterId)),
+      ...(value === '' ? {} : { [filterId]: value }),
+    }));
+    this.pageIndex.set(0);
+  }
+
+  protected onViewName(event: Event): void {
+    this.viewName.set((event.target as HTMLInputElement).value);
+  }
+
+  /** Saves the text filter, the filter options and the column layout under the typed name. */
+  protected onSaveView(event: Event): void {
+    event.preventDefault();
+    if (this.viewName().trim() === '') return;
+    const draft = {
+      name: this.viewName(),
+      query: this.query(),
+      filters: this.chosenFilters(),
+      layout: this.preferences(),
+    };
+    this.settings.set(this.viewsSetting(), saveView(this.views(), draft, newViewId()));
+    this.viewName.set('');
+  }
+
+  protected applyView(view: ListView): void {
+    this.query.set(view.query);
+    this.chosenFilters.set({ ...view.filters });
+    this.settings.set(this.setting(), view.layout);
+    this.pageIndex.set(0);
+  }
+
+  protected deleteView(id: string): void {
+    this.settings.set(this.viewsSetting(), removeView(this.views(), id));
   }
 
   protected onSort(sort: Sort): void {

@@ -24,9 +24,39 @@
         }
       </mat-form-field>
     }
+    @for (filter of filters(); track filter.id) {
+      <mat-form-field subscriptSizing="dynamic" class="w-full sm:w-44">
+        <mat-label>{{ filter.label | translate }}</mat-label>
+        <select
+          matNativeControl
+          (change)="onFacet(filter.id, $event)"
+          [attr.data-testid]="'list-facet-' + filter.id"
+        >
+          <option value="" [selected]="!chosenFilters()[filter.id]">
+            {{ 'list.filter_any' | translate }}
+          </option>
+          @for (option of filter.options; track option.value) {
+            <option [value]="option.value" [selected]="chosenFilters()[filter.id] === option.value">
+              {{ option.label | translate }}
+            </option>
+          }
+        </select>
+      </mat-form-field>
+    }
     <button
       mat-stroked-button
       class="ms-auto"
+      type="button"
+      (click)="viewsOpen.set(!viewsOpen())"
+      [attr.aria-expanded]="viewsOpen()"
+      [attr.aria-controls]="testId() + '-views'"
+      data-testid="list-views"
+    >
+      <mat-icon aria-hidden="true">bookmarks</mat-icon>
+      {{ 'list.views' | translate }}
+    </button>
+    <button
+      mat-stroked-button
       type="button"
       (click)="chooserOpen.set(!chooserOpen())"
       [attr.aria-expanded]="chooserOpen()"
@@ -37,6 +67,69 @@
       {{ 'list.columns' | translate }}
     </button>
   </div>
+
+  @if (viewsOpen()) {
+    <div
+      [id]="testId() + '-views'"
+      role="group"
+      [attr.aria-label]="'list.views' | translate"
+      class="flex flex-col gap-2 rounded-lg border border-outline-variant bg-surface-container-low p-2"
+    >
+      @if (views().length === 0) {
+        <p class="px-2 py-1 text-sm text-on-surface-variant" data-testid="list-views-none">
+          {{ 'list.views_none' | translate }}
+        </p>
+      } @else {
+        <ul class="flex flex-wrap gap-2">
+          @for (view of views(); track view.id) {
+            <li class="flex items-center rounded-full border border-outline-variant">
+              <button
+                mat-button
+                type="button"
+                [attr.aria-pressed]="currentViewId() === view.id"
+                (click)="applyView(view)"
+                [attr.data-testid]="'list-view-apply-' + view.id"
+              >
+                @if (currentViewId() === view.id) {
+                  <mat-icon aria-hidden="true">check</mat-icon>
+                }
+                {{ view.name }}
+              </button>
+              <button
+                mat-icon-button
+                type="button"
+                (click)="deleteView(view.id)"
+                [attr.aria-label]="'list.view_delete' | translate: { name: view.name }"
+                [attr.data-testid]="'list-view-delete-' + view.id"
+              >
+                <mat-icon aria-hidden="true">delete</mat-icon>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      <form class="flex flex-wrap items-center gap-2" (submit)="onSaveView($event)">
+        <mat-form-field subscriptSizing="dynamic" class="w-full sm:w-64">
+          <mat-label>{{ 'list.view_name' | translate }}</mat-label>
+          <input
+            matInput
+            maxlength="60"
+            [value]="viewName()"
+            (input)="onViewName($event)"
+            data-testid="list-view-name"
+          />
+        </mat-form-field>
+        <button
+          mat-flat-button
+          type="submit"
+          [disabled]="viewName().trim() === ''"
+          data-testid="list-view-save"
+        >
+          {{ 'list.view_save' | translate }}
+        </button>
+      </form>
+    </div>
+  }
 
   @if (chooserOpen()) {
     <div
@@ -190,7 +283,9 @@
             <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
           } @else {
             <span data-testid="list-no-match">{{
-              'list.no_match' | translate: { query: query() }
+              query()
+                ? ('list.no_match' | translate: { query: query() })
+                : ('list.no_match_filters' | translate)
             }}</span>
           }
         </td>

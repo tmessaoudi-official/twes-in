@@ -124,6 +124,22 @@
               (theme.scheme() === 'dark' ? 'shell.dark_off' : 'shell.dark_on') | translate
             }}</span>
           </button>
+          <button
+            mat-menu-item
+            type="button"
+            (click)="theme.toggleDensity()"
+            data-testid="density-toggle"
+          >
+            <mat-icon aria-hidden="true">{{
+              theme.density() === 'compact' ? 'density_medium' : 'density_small'
+            }}</mat-icon>
+            <span>{{
+              (theme.density() === 'compact'
+                ? 'shell.density_comfortable'
+                : 'shell.density_compact'
+              ) | translate
+            }}</span>
+          </button>
           <mat-divider />
           <button
             mat-menu-item

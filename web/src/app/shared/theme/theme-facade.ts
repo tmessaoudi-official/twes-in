@@ -52,4 +52,8 @@ export class ThemeFacade {
   setDensity(density: Density): void {
     this.settings.set(PRESENTATION.density, density);
   }
+
+  toggleDensity(): void {
+    this.setDensity(this.density() === 'compact' ? 'comfortable' : 'compact');
+  }
 }

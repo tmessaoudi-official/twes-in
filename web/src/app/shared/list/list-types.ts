@@ -30,7 +30,26 @@ export interface ListDescriptor<Row> {
   rowId: (row: Row) => string;
   pageSizes: number[];
   defaultSort?: ListSort;
+  /** Choices shown beside the text filter, each narrowing the rows to one value. */
+  filters?: ListFilter<Row>[];
 }
+
+export interface ListFilterOption {
+  value: string;
+  /** A translation key for declared options; custom options carry their configured label. */
+  label: string;
+}
+
+/** One faceted filter of a list screen: the rows whose value equals the option a person picked. */
+export interface ListFilter<Row> {
+  id: string;
+  label: string;
+  value: (row: Row) => string | null;
+  options: ListFilterOption[];
+}
+
+/** The option chosen per filter id; a filter with no entry shows every row. */
+export type ListFilterValues = Record<string, string>;
 
 export interface ListSort {
   column: string;
@@ -54,3 +73,17 @@ export const NO_LIST_PREFERENCES: ListPreferences = {
   widths: {},
   sort: null,
 };
+
+/**
+ * A named snapshot of how one person looks at one list screen: the text filter, the chosen filter options and
+ * the column layout with its sort. Kept per user and per list, under `presentation.list.<id>.views`.
+ */
+export interface ListView {
+  id: string;
+  name: string;
+  query: string;
+  filters: ListFilterValues;
+  layout: ListPreferences;
+}
+
+export type ListViewDraft = Omit<ListView, 'id'>;

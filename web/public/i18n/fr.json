@@ -88,7 +88,9 @@
     "user_menu": "Compte",
     "language": "Langue",
     "dark_on": "Mode sombre",
-    "dark_off": "Mode clair"
+    "dark_off": "Mode clair",
+    "density_compact": "Affichage compact",
+    "density_comfortable": "Affichage confortable"
   },
   "languages": {
     "fr": "Français",
@@ -138,7 +140,14 @@
       "last": "Dernière page",
       "range": "{{start}} – {{end}} sur {{total}}",
       "empty": "0 sur {{total}}"
-    }
+    },
+    "no_match_filters": "Aucun résultat pour ces filtres.",
+    "filter_any": "Tous",
+    "views": "Vues",
+    "views_none": "Aucune vue enregistrée. Disposez la liste, puis nommez la vue pour la garder.",
+    "view_name": "Nom de la vue",
+    "view_save": "Enregistrer la vue",
+    "view_delete": "Supprimer la vue {{name}}"
   },
   "design": {
     "title": "Point de validation du design",
