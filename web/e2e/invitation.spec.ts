@@ -1,35 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { expect, Page, test } from '@playwright/test';
+import { invitationTokenFor } from './mailpit';
 
 // The whole invitation, through the real stack: an operator invites an address with no account, Mailpit
 // receives the mail, the link in it is opened with no session, an account is created, and that account signs
 // in. The mail is read through Mailpit's own API, which is what makes this end to end rather than a mock.
 const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
-const MAILPIT = process.env['MAILPIT_URL'] ?? 'http://127.0.0.1:8092';
 const NEW_PASSWORD = 'a-long-enough-password';
-
-/** Polls Mailpit until the invitation for that address has arrived, and returns the raw token from its link. */
-async function tokenFromMailpit(request: APIRequestContext, to: string): Promise<string> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const listed = await request.get(`${MAILPIT}/api/v1/messages`);
-    const { messages } = (await listed.json()) as {
-      messages: { ID: string; To: { Address: string }[] }[];
-    };
-    const mine = messages.find((message) => message.To.some((address) => address.Address === to));
-    if (mine) {
-      const body = (await (await request.get(`${MAILPIT}/api/v1/message/${mine.ID}`)).json()) as {
-        HTML?: string;
-      };
-      const found = /\/invitations\/([0-9a-f]{64})/.exec(String(body.HTML ?? ''));
-      if (found) {
-        return found[1];
-      }
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
-  throw new Error(`no invitation mail for ${to} arrived at Mailpit`);
-}
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
@@ -54,7 +32,7 @@ test('an invited address sets a password from the mailed link and then signs in'
   await expect(page.getByTestId('members-added')).toContainText('invitation');
 
   // The mail really went out: Mailpit has it, and it carries a usable link.
-  const token = await tokenFromMailpit(request, invited);
+  const token = await invitationTokenFor(request, invited);
 
   // The link arrives from a mail client, so it is opened with no session at all.
   await page.context().clearCookies();

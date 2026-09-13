@@ -1,0 +1,48 @@
+<button
+  mat-icon-button
+  type="button"
+  [matMenuTriggerFor]="centre"
+  [attr.aria-label]="'notifications.bell' | translate: { count: unread() }"
+  [attr.data-unread]="unread()"
+  data-testid="notification-bell"
+>
+  <mat-icon
+    aria-hidden="true"
+    [matBadge]="unread()"
+    [matBadgeHidden]="unread() === 0"
+    matBadgeSize="small"
+    matBadgeColor="warn"
+    >notifications</mat-icon
+  >
+</button>
+
+<mat-menu #centre="matMenu" xPosition="before">
+  <div class="flex min-w-72 items-center justify-between gap-4 px-4 py-2">
+    <span class="font-medium text-on-surface">{{ 'notifications.title' | translate }}</span>
+    @if (unread() > 0) {
+      <button mat-button type="button" (click)="readAll()" data-testid="notifications-read-all">
+        {{ 'notifications.mark_all' | translate }}
+      </button>
+    }
+  </div>
+  @for (entry of items(); track entry.id) {
+    <button
+      mat-menu-item
+      type="button"
+      (click)="read(entry)"
+      [class.font-semibold]="entry.readAt === null"
+      data-testid="notification-item"
+    >
+      <span data-testid="notification-text">{{
+        keyOf(entry.type) | translate: entry.payload
+      }}</span>
+      <span class="block text-xs text-on-surface-variant">{{
+        entry.createdAt | date: 'short'
+      }}</span>
+    </button>
+  } @empty {
+    <p class="px-4 py-2 text-on-surface-variant" data-testid="notifications-empty">
+      {{ 'notifications.empty' | translate }}
+    </p>
+  }
+</mat-menu>

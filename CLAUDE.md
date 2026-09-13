@@ -77,7 +77,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   before the gate.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset.
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
-- `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Shared` (docs/SPEC.md § 3
+- `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
+  centre behind the `Notifications` port), `Shared` (docs/SPEC.md § 3
   "Architecture style"). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
   repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),
@@ -87,7 +88,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature (`auth`,
-  `company`, `hello`, `health`, `invitation`, `shell` — the signed-in layout, its nav manifest and account menu; every
+  `company`, `hello`, `health`, `invitation`, `notifications` — the bell, the centre and the Centrifugo connection behind
+  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout, its nav manifest and account menu; every
   signed-in route is a child of it), `shared/` for what several features use (`theme/`: runtime accent colour tokens and
   `ThemeFacade`; `i18n/`: `LanguageFacade`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
@@ -106,6 +108,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Node 26 for the web tier (`web/.nvmrc`). On this machine it is nvm's
   `/stack/tools/nvm/versions/node/v26.*/bin` (v26.8.2 on 2026-09-13; /stack's env-update bumps the patch), which a
   fresh shell does not have on PATH.
+- PHP 8.5 for the api tier, as in CI. The host's first `php` on PATH is phpbrew's `php-master` (8.6-dev), which
+  php-cs-fixer refuses to run on: prepend `/stack/tools/phpbrew/php/php-8.5.10/bin` before `composer gate`.
 
 ## Lessons
 
@@ -117,6 +121,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - A Bash `cd api` or `cd web` drifts the persistent cwd and re-arms every project-scoped gate hook; use absolute paths
   or a subshell. Symfony's test client reboots the kernel between requests: re-find an entity after a request
   instead of `refresh()`. Angular's `whenStable()` covers pending HTTP, not the microtask after a flushed response.
+- Local Playwright and Vitest timing is not evidence while other projects load this machine (load average 20+ on 8
+  cores fails a different 5-second wait each run): check `uptime`, measure the server with curl, let CI arbitrate.
+  A pipe hides a failing `composer gate`: read the tool's own exit or its `[OK]` line, never the pipeline's status.
 - `make api-openapi` exports from the dev cache, so a stale `api/var/cache/dev` exports an OLD schema and the web gate
   fails locally while CI (fresh cache) passes, or the reverse. After an API resource change: `bin/console cache:clear`
   before `make gate-web` (2026-09-13: `Me` exported without `mfa`, three days after `MeMfa` landed).

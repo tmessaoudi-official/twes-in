@@ -22,6 +22,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySwitcher } from '../company/company-switcher';
+import { NotificationBell } from '../notifications/notification-bell';
 import { LanguageFacade, SUPPORTED_LANGUAGES } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { CORE_NAV, navSections, visibleEntries } from './nav-manifest';
@@ -59,6 +60,7 @@ export function initialsOf(displayName: string): string {
     MatDividerModule,
     TranslatePipe,
     CompanySwitcher,
+    NotificationBell,
   ],
   templateUrl: './app-shell.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -93,6 +93,17 @@
     "fr": "Français",
     "en": "English"
   },
+  "notifications": {
+    "bell": "Notifications, {{count}} non lue(s)",
+    "title": "Notifications",
+    "empty": "Aucune notification.",
+    "mark_all": "Tout marquer comme lu",
+    "types": {
+      "membership_added": "Vous avez été ajouté à {{company}}.",
+      "invitation_accepted": "{{display_name}} a rejoint l'entreprise.",
+      "unknown": "Nouvelle notification."
+    }
+  },
   "invitation": {
     "title": "Rejoindre une entreprise",
     "offer": "Vous êtes invité à rejoindre {{company}} en tant que {{role}}.",

@@ -30,6 +30,16 @@ parameters:
     app.mfa.pending_ttl: 'PT5M'
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
+    # Realtime notifications through Centrifugo (docs/SPEC.md § 7, 2026-09-13). The token key signs the browser's
+    # connection token and is the same secret Centrifugo holds as client.token.hmac_secret_key; the API key
+    # authorises publishing through its HTTP API. The token is short-lived: the browser asks for a new one.
+    app.realtime.token_key: '%env(REALTIME_TOKEN_KEY)%'
+    app.realtime.token_lifetime: 900
+    app.realtime.api_url: '%env(REALTIME_API_URL)%'
+    app.realtime.api_key: '%env(REALTIME_API_KEY)%'
+    app.realtime.push_enabled: true
+    # How many notifications the centre returns at once; the unread count always covers all of them.
+    app.inbox.page_size: 50
 
 services:
     # default configuration for services in *this* file
@@ -74,8 +84,25 @@ services:
         arguments:
             $issuer: '%app.mfa.issuer%'
 
+    App\Shared\Infrastructure\Realtime\CentrifugoTokens:
+        arguments:
+            $hmacKey: '%app.realtime.token_key%'
+            $lifetimeSeconds: '%app.realtime.token_lifetime%'
+
+    App\Shared\Infrastructure\Realtime\CentrifugoPublisher:
+        arguments:
+            $apiUrl: '%app.realtime.api_url%'
+            $apiKey: '%app.realtime.api_key%'
+            $enabled: '%app.realtime.push_enabled%'
+
+    App\Inbox\Application\NotificationCentre:
+        arguments:
+            $pageSize: '%app.inbox.page_size%'
+
 when@test:
     parameters:
+        # The same rule for the realtime push: the rows are asserted, the push is the adapter's own unit test.
+        app.realtime.push_enabled: false
         # No test reaches the network: the check answers "not breached" and the use case is exercised through
         # its port with a fake that returns each of the three answers.
         app.password.breach_check_enabled: false

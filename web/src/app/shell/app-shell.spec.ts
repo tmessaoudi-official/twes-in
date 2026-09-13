@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
+import { NotificationsFacade } from '../notifications/notifications-facade';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
@@ -91,6 +92,19 @@ describe('AppShell', () => {
         { provide: CompanyFacade, useValue: companies },
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },
+        {
+          provide: NotificationsFacade,
+          useValue: {
+            items: signal([]).asReadonly(),
+            unread: signal(0).asReadonly(),
+            error: signal(false).asReadonly(),
+            connect: vi.fn(),
+            disconnect: vi.fn(),
+            refresh: vi.fn(async () => undefined),
+            markRead: vi.fn(),
+            markAllRead: vi.fn(),
+          },
+        },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

@@ -93,6 +93,17 @@
     "fr": "Français",
     "en": "English"
   },
+  "notifications": {
+    "bell": "Notifications, {{count}} unread",
+    "title": "Notifications",
+    "empty": "No notifications.",
+    "mark_all": "Mark all as read",
+    "types": {
+      "membership_added": "You were added to {{company}}.",
+      "invitation_accepted": "{{display_name}} joined the company.",
+      "unknown": "New notification."
+    }
+  },
   "invitation": {
     "title": "Join a company",
     "offer": "You are invited to join {{company}} as {{role}}.",
