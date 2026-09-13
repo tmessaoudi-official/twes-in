@@ -19,6 +19,7 @@ import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListRowActions } from '../shared/list/data-list';
 import { GROUP_FORM, GROUPS_LIST, groupInput, groupValues } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
+import { PartyDefaults } from './party-defaults';
 import type { CustomerGroupRow } from './customers-types';
 
 /** The groups customers are sorted into; a group's settings apply to every customer in it. */
@@ -32,6 +33,7 @@ import type { CustomerGroupRow } from './customers-types';
     DataList,
     DataListRowActions,
     DescriptorForm,
+    PartyDefaults,
   ],
   templateUrl: './customer-groups-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +58,12 @@ export class CustomerGroupsPage implements OnInit {
     return editing === null
       ? null
       : buildFormGroup(GROUP_FORM, groupValues(editing === 'new' ? null : editing));
+  });
+
+  /** The subject of the defaults panel: the group being edited, once it exists. */
+  protected readonly defaultsSubject = computed(() => {
+    const editing = this.editing();
+    return editing === null || editing === 'new' ? null : { customerGroupId: editing.id };
   });
 
   async ngOnInit(): Promise<void> {

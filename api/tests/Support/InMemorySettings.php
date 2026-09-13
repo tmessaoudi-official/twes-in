@@ -48,4 +48,9 @@ final class InMemorySettings implements SettingRepository
     {
         $this->settings = array_values(array_filter($this->settings, static fn (Setting $each) => $each !== $setting));
     }
+
+    public function removeAt(SettingAddress $address): void
+    {
+        $this->settings = array_values(array_filter($this->settings, static fn (Setting $each) => !$each->isAt($address)));
+    }
 }

@@ -551,6 +551,20 @@
         "phone": "Téléphone",
         "isPrimary": "Contact principal"
       }
+    },
+    "defaults": {
+      "title": "Valeurs par défaut",
+      "intro_customer": "Ce que disent les documents de ce client, sauf si un document dit autre chose. Une valeur non réglée ici vient du groupe du client, sinon de l’entreprise.",
+      "intro_group": "Ce que disent les documents des clients de ce groupe, sauf si un client dit autre chose. Une valeur non réglée ici vient de l’entreprise.",
+      "save": "Enregistrer les valeurs par défaut",
+      "saved": "Les valeurs par défaut ont été enregistrées.",
+      "overrides": "Valeurs réglées ici",
+      "reset": "Réinitialiser",
+      "errors": {
+        "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
+        "not_found": "Introuvable.",
+        "network": "Le serveur est injoignable."
+      }
     }
   }
 }

@@ -54,6 +54,14 @@
     }
   }
 
+  @if (defaultsSubject(); as subject) {
+    <mat-card>
+      <mat-card-content>
+        <app-party-defaults [subject]="subject" />
+      </mat-card-content>
+    </mat-card>
+  }
+
   @if (current()) {
     <section
       class="flex flex-col gap-4"

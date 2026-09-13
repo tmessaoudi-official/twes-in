@@ -9,6 +9,7 @@ import type {
   SettingLevel,
   SettingRow,
   SettingsError,
+  SettingSubject,
   SettingType,
 } from './settings-types';
 
@@ -24,11 +25,18 @@ export class SettingsRefused extends Error {
 export class SettingsApi {
   private readonly http = inject(HttpClient);
 
-  async chain(companyId: string, chain: SettingChain): Promise<SettingRow[]> {
+  /** A chain as the caller sees it, or as the named customer or customer group does. */
+  async chain(
+    companyId: string,
+    chain: SettingChain,
+    subject?: SettingSubject,
+  ): Promise<SettingRow[]> {
     return this.guard(async () =>
       (
         await firstValueFrom(
-          this.http.get<SettingSettingRead[]>(this.path(companyId), { params: { chain } }),
+          this.http.get<SettingSettingRead[]>(this.path(companyId), {
+            params: { chain, ...subject },
+          }),
         )
       ).map(toRow),
     );
@@ -40,8 +48,9 @@ export class SettingsApi {
     level: SettingLevel,
     value: unknown,
     roleId?: string,
+    subject?: SettingSubject,
   ): Promise<SettingRow> {
-    const body = roleId === undefined ? { level, value } : { level, value, roleId };
+    const body = { level, value, ...(roleId === undefined ? {} : { roleId }), ...subject };
     return this.guard(async () =>
       toRow(
         await firstValueFrom(
@@ -54,8 +63,18 @@ export class SettingsApi {
     );
   }
 
-  async reset(companyId: string, key: string, level: SettingLevel, roleId?: string): Promise<void> {
-    const params: Record<string, string> = roleId === undefined ? { level } : { level, roleId };
+  async reset(
+    companyId: string,
+    key: string,
+    level: SettingLevel,
+    roleId?: string,
+    subject?: SettingSubject,
+  ): Promise<void> {
+    const params: Record<string, string> = {
+      level,
+      ...(roleId === undefined ? {} : { roleId }),
+      ...subject,
+    };
     await this.guard(() =>
       firstValueFrom(
         this.http.delete<null>(`${this.path(companyId)}/${encodeURIComponent(key)}`, { params }),

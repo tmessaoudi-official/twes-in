@@ -60,6 +60,14 @@
     </mat-card>
   }
 
+  @if (defaultsSubject(); as subject) {
+    <mat-card>
+      <mat-card-content>
+        <app-party-defaults [subject]="subject" />
+      </mat-card-content>
+    </mat-card>
+  }
+
   <app-data-list
     [descriptor]="list"
     [rows]="groups()"

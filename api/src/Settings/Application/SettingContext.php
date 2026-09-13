@@ -17,8 +17,8 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * Whom a read or a change is for: the company, the role the person holds in it, the person. A level whose subject
- * the context lacks is skipped when reading and refused when writing. The levels that arrive with customers,
- * products and documents add their subject here.
+ * the context lacks is skipped when reading and refused when writing. A customer carries its group, so reading as
+ * a customer walks the group's defaults too; products and documents add their subject when they arrive.
  */
 final readonly class SettingContext
 {
@@ -26,6 +26,8 @@ final readonly class SettingContext
         public ?Company $company = null,
         public ?Uuid $roleId = null,
         public ?Uuid $userId = null,
+        public ?Uuid $customerGroupId = null,
+        public ?Uuid $customerId = null,
     ) {
     }
 
@@ -35,6 +37,8 @@ final readonly class SettingContext
             SettingLevel::Platform => SettingAddress::platform(),
             SettingLevel::Company => null === $this->company ? null : SettingAddress::company($this->company),
             SettingLevel::Role => null === $this->company || null === $this->roleId ? null : SettingAddress::role($this->company, $this->roleId),
+            SettingLevel::CustomerGroup => null === $this->company || null === $this->customerGroupId ? null : SettingAddress::customerGroup($this->company, $this->customerGroupId),
+            SettingLevel::Customer => null === $this->company || null === $this->customerId ? null : SettingAddress::customer($this->company, $this->customerId),
             SettingLevel::User => null === $this->userId ? null : SettingAddress::user($this->userId),
             default => null,
         };

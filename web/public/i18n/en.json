@@ -551,6 +551,20 @@
         "phone": "Phone",
         "isPrimary": "Primary contact"
       }
+    },
+    "defaults": {
+      "title": "Defaults",
+      "intro_customer": "What documents for this customer say unless a document says otherwise. A value not set here comes from the customer's group, else from the company.",
+      "intro_group": "What documents for the customers in this group say unless a customer says otherwise. A value not set here comes from the company.",
+      "save": "Save the defaults",
+      "saved": "The defaults were saved.",
+      "overrides": "Values set here",
+      "reset": "Reset",
+      "errors": {
+        "invalid": "The values were refused. Check the limits shown.",
+        "not_found": "Not found.",
+        "network": "The server could not be reached."
+      }
     }
   }
 }

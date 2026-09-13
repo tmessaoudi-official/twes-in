@@ -49,3 +49,6 @@ export interface SettingRow {
 }
 
 export type SettingsError = 'not_found' | 'invalid' | 'network';
+
+/** Whom a parties-chain read or change is for, below the company: one customer, or one customer group. */
+export type SettingSubject = { customerId: string } | { customerGroupId: string };

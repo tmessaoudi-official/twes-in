@@ -35,6 +35,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: ['groups' => [self::READ]],
             openapi: new OpenApiOperation(parameters: [
                 new Parameter('chain', 'query', 'One chain; every chain when absent', false, schema: ['type' => 'string', 'enum' => ['presentation', 'parties', 'articles']]),
+                new Parameter('customerId', 'query', 'Read the chain as this customer sees it, its group included', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('customerGroupId', 'query', 'Read the chain as this customer group sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
         new Put(
@@ -56,6 +58,8 @@ use Symfony\Component\Validator\Constraints as Assert;
             openapi: new OpenApiOperation(parameters: [
                 new Parameter('level', 'query', 'The level to forget the value at', true, schema: ['type' => 'string']),
                 new Parameter('roleId', 'query', 'The role, at the role level', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('customerId', 'query', 'The customer, at the customer level', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('customerGroupId', 'query', 'The customer group, at the customer group level', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
     ],
@@ -134,6 +138,14 @@ final class SettingResource
     /** At the role level, the role whose default this is. */
     #[Groups([self::WRITE])]
     public ?string $roleId = null;
+
+    /** At the customer level, the customer whose own value this is. */
+    #[Groups([self::WRITE])]
+    public ?string $customerId = null;
+
+    /** At the customer group level, the group whose default this is. */
+    #[Groups([self::WRITE])]
+    public ?string $customerGroupId = null;
 
     /** @param list<string> $writableLevels */
     public static function of(ResolvedSetting $setting, array $writableLevels): self

@@ -17,10 +17,14 @@ use App\Module\Customers\Application\ManageCustomerGroups;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Settings\Application\ForgetSettings;
+use App\Settings\Domain\Setting;
+use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerGroups;
 use App\Tests\Support\InMemoryCustomers;
+use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -29,6 +33,7 @@ final class ManageCustomerGroupsTest extends TestCase
 {
     private InMemoryCustomerGroups $groups;
     private InMemoryCustomers $customers;
+    private InMemorySettings $settings;
     private InMemoryAuditTrail $audit;
     private ManageCustomerGroups $manage;
     private Company $company;
@@ -37,8 +42,9 @@ final class ManageCustomerGroupsTest extends TestCase
     {
         $this->groups = new InMemoryCustomerGroups();
         $this->customers = new InMemoryCustomers();
+        $this->settings = new InMemorySettings();
         $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageCustomerGroups($this->groups, $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'));
+        $this->manage = new ManageCustomerGroups($this->groups, $this->customers, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'));
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 
@@ -102,6 +108,18 @@ final class ManageCustomerGroupsTest extends TestCase
 
         self::assertSame([], $this->manage->list($this->company));
         self::assertSame(ManageCustomerGroups::DELETED, $this->audit->entries[1]->action);
+    }
+
+    public function testDeletingAGroupForgetsWhatItsSettingsSaid(): void
+    {
+        $group = $this->manage->create($this->company, 'Grossistes', null, null);
+        $this->settings->save(new Setting(SettingAddress::customerGroup($this->company, $group->getId()), 'document.payment_terms_days', 45, new \DateTimeImmutable()));
+        $this->settings->save(new Setting(SettingAddress::company($this->company), 'document.payment_terms_days', 60, new \DateTimeImmutable()));
+
+        $this->manage->delete($this->company, $group->getId(), null);
+
+        self::assertCount(1, $this->settings->settings);
+        self::assertSame(60, $this->settings->settings[0]->getValue());
     }
 
     public function testAnotherCompanysGroupIsNotFound(): void

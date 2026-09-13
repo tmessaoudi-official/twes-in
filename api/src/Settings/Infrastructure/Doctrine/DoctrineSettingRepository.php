@@ -54,4 +54,16 @@ final readonly class DoctrineSettingRepository implements SettingRepository
         $this->entityManager->remove($setting);
         $this->entityManager->flush();
     }
+
+    public function removeAt(SettingAddress $address): void
+    {
+        $this->entityManager->createQueryBuilder()
+            ->delete(Setting::class, 's')
+            ->where('s.level = :level')
+            ->andWhere('s.levelId = :levelId')
+            ->setParameter('level', $address->level->value)
+            ->setParameter('levelId', $address->levelId)
+            ->getQuery()
+            ->execute();
+    }
 }

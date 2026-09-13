@@ -23,4 +23,7 @@ interface SettingRepository
     public function save(Setting $setting): void;
 
     public function remove(Setting $setting): void;
+
+    /** Forgets every value stored at the address, whatever its key. */
+    public function removeAt(SettingAddress $address): void;
 }

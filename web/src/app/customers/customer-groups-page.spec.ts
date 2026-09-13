@@ -21,6 +21,8 @@ import {
 } from '../shared/settings/settings-facade';
 import { CustomerGroupsPage } from './customer-groups-page';
 import { CustomersFacade } from './customers-facade';
+import { PartySettings } from './party-settings-facade';
+import type { SettingRow } from '../shared/settings/settings-types';
 import type { CustomerGroupRow, CustomersError } from './customers-types';
 
 class StaticLoader implements TranslateLoader {
@@ -54,6 +56,15 @@ describe('CustomerGroupsPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const partySettings = {
+    rows: signal<readonly SettingRow[]>([]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: signal(null).asReadonly(),
+    load: vi.fn(),
+    save: vi.fn(),
+    reset: vi.fn(),
+    clearError: vi.fn(),
+  };
   let fixture: ComponentFixture<CustomerGroupsPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -78,6 +89,7 @@ describe('CustomerGroupsPage', () => {
     facade.reviseGroup.mockReset().mockResolvedValue(true);
     facade.deleteGroup.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    partySettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [CustomerGroupsPage],
       providers: [
@@ -91,6 +103,7 @@ describe('CustomerGroupsPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CustomersFacade, useValue: facade },
+        { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -118,6 +131,7 @@ describe('CustomerGroupsPage', () => {
   it('renames a group and deletes one by its identifier', async () => {
     q('customer-group-edit-Grossistes')!.click();
     await settle();
+    expect(partySettings.load).toHaveBeenCalledWith('c1', { customerGroupId: 'g1' });
     type('field-name', 'Grossistes TN');
     q('customer-group-save')!.click();
     await settle();

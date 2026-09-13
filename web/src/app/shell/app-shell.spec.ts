@@ -143,6 +143,19 @@ describe('AppShell', () => {
     expect(byTestId('nav-members')?.textContent).toContain('Membres');
   });
 
+  it('keeps every part of the shell inside a landmark, each named once', async () => {
+    const { el } = await render();
+
+    expect(el.querySelector('[data-testid="brand"]')?.closest('nav')).not.toBeNull();
+    expect(el.querySelector('[data-testid="user-menu"]')?.closest('header')).not.toBeNull();
+    const lists = [...el.querySelectorAll<HTMLElement>('mat-nav-list')];
+    expect(lists.length).toBeGreaterThan(0);
+    const names = lists.map((list) =>
+      el.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
+    );
+    expect(names).toEqual(['Général', 'Administration']);
+  });
+
   it('hides an entry whose permission the user lacks', async () => {
     permissions.set([]);
     const { byTestId } = await render();

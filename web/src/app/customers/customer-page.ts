@@ -29,6 +29,7 @@ import {
   customerValues,
 } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
+import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
 
 /** One customer: a new one to fill in, or an existing one with the people to write to there. */
@@ -43,6 +44,7 @@ import type { ContactRow } from './customers-types';
     DataListCell,
     DataListRowActions,
     DescriptorForm,
+    PartyDefaults,
   ],
   templateUrl: './customer-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,6 +82,12 @@ export class CustomerPage {
     const current = this.current();
     if (descriptor === null || options === null || current === undefined) return null;
     return buildFormGroup(descriptor, customerValues(current, options));
+  });
+
+  /** The subject of the defaults panel: the customer once it exists. */
+  protected readonly defaultsSubject = computed(() => {
+    const current = this.current();
+    return current ? { customerId: current.id } : null;
   });
 
   protected readonly contactList = CONTACTS_LIST;

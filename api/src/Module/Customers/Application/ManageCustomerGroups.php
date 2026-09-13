@@ -15,12 +15,15 @@ use App\Module\Customers\Domain\CustomerGroup;
 use App\Module\Customers\Domain\CustomerGroupRepository;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\InvalidCustomerGroup;
+use App\Settings\Application\ForgetSettings;
+use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A company's customer groups: listed by name, each name used once, and deleted only once no customer belongs to it.
+ * A company's customer groups: listed by name, each name used once, and deleted only once no customer belongs to it,
+ * taking the defaults set for it along.
  * Audited with the names of the fields a revision changed, never their values.
  */
 final readonly class ManageCustomerGroups
@@ -33,6 +36,7 @@ final readonly class ManageCustomerGroups
     public function __construct(
         private CustomerGroupRepository $groups,
         private CustomerRepository $customers,
+        private ForgetSettings $settings,
         private AuditTrail $audit,
         private ClockInterface $clock,
     ) {
@@ -99,6 +103,7 @@ final readonly class ManageCustomerGroups
         if ($this->customers->countInGroup($group->getId()) > 0) {
             throw new CustomerGroupInUse();
         }
+        $this->settings->at(SettingAddress::customerGroup($company, $id));
         $this->groups->remove($group);
         $this->record($company, $id, self::DELETED, [], $actorUserId);
     }

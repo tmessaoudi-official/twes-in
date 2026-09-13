@@ -21,6 +21,8 @@ import {
 } from '../shared/settings/settings-facade';
 import { CustomerPage } from './customer-page';
 import { CustomersFacade } from './customers-facade';
+import { PartySettings } from './party-settings-facade';
+import type { SettingRow } from '../shared/settings/settings-types';
 import type {
   ContactRow,
   CustomerGroupRow,
@@ -101,6 +103,15 @@ describe('CustomerPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const partySettings = {
+    rows: signal<readonly SettingRow[]>([]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: signal(null).asReadonly(),
+    load: vi.fn(),
+    save: vi.fn(),
+    reset: vi.fn(),
+    clearError: vi.fn(),
+  };
   let fixture: ComponentFixture<CustomerPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -136,6 +147,7 @@ describe('CustomerPage', () => {
     facade.reviseContact.mockReset().mockResolvedValue(true);
     facade.removeContact.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    partySettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [CustomerPage],
       providers: [
@@ -149,6 +161,7 @@ describe('CustomerPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CustomersFacade, useValue: facade },
+        { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -161,6 +174,7 @@ describe('CustomerPage', () => {
     await open(undefined);
     expect(facade.loadCustomer).toHaveBeenCalledWith('c1', null);
     expect(q('customer-contacts')).toBeNull();
+    expect(q('party-defaults')).toBeNull();
 
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
@@ -199,6 +213,7 @@ describe('CustomerPage', () => {
     await open('k1');
 
     expect(facade.loadCustomer).toHaveBeenCalledWith('c1', 'k1');
+    expect(partySettings.load).toHaveBeenCalledWith('c1', { customerId: 'k1' });
     expect((q('field-number') as HTMLInputElement).value).toBe('CLI-0001');
     expect(q('contact-leila@carthage.tn')?.textContent).toContain('Leila Ben Salah');
 
@@ -223,15 +238,17 @@ describe('CustomerPage', () => {
     type('field-firstName', 'Karim');
     q('contact-save')!.click();
     await settle();
-    expect(facade.addContact).toHaveBeenCalledWith(
-      'c1',
-      'k1',
-      expect.objectContaining({ firstName: 'Karim', isPrimary: false }),
+    await vi.waitFor(() =>
+      expect(facade.addContact).toHaveBeenCalledWith(
+        'c1',
+        'k1',
+        expect.objectContaining({ firstName: 'Karim', isPrimary: false }),
+      ),
     );
 
     q('contact-remove-p1')!.click();
     await settle();
-    expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1');
+    await vi.waitFor(() => expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1'));
   });
 
   it('says why the API refused', async () => {

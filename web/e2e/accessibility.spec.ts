@@ -55,6 +55,20 @@ test('the shell, the home page and the members page are accessible in light and 
   await expectAccessible(page, 'members, dark');
 });
 
+test('the shell keeps its content in landmarks, each named once', async ({ page }) => {
+  await signIn(page);
+  await expect(page.getByTestId('greeting')).toBeVisible();
+
+  const results = await new AxeBuilder({ page }).withRules(['region', 'landmark-unique']).analyze();
+
+  expect(
+    results.violations.map(
+      (violation) =>
+        `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
+    ),
+  ).toEqual([]);
+});
+
 test('at phone width the navigation is a drawer behind the menu button', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page);
