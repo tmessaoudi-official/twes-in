@@ -101,7 +101,8 @@ async function serveFixtures(page: Page, scheme: 'light' | 'dark'): Promise<void
 
 async function capture(page: Page, name: string): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true });
+  // Finished animations: a message still fading in would otherwise be captured half transparent.
+  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: true, animations: 'disabled' });
 
   const results = await new AxeBuilder({ page })
     .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

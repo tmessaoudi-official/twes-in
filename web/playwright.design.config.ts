@@ -16,6 +16,9 @@ export default defineConfig({
   use: {
     baseURL: process.env['BASE_URL'] ?? 'http://127.0.0.1:4200',
     browserName: 'chromium',
+    // Native date inputs format in the browser's locale: show them as a French user in Tunis sees them.
+    locale: 'fr-FR',
+    timezoneId: 'Africa/Tunis',
     channel: process.env['PLAYWRIGHT_CHANNEL'] || undefined,
   },
   webServer: {
