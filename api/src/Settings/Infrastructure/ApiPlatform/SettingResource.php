@@ -123,6 +123,10 @@ final class SettingResource
     #[Groups([self::READ])]
     public ?int $maxLength = null;
 
+    /** A regular expression a text value must match, in PHP's delimited form. */
+    #[Groups([self::READ])]
+    public ?string $pattern = null;
+
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public string $level = '';
@@ -157,6 +161,7 @@ final class SettingResource
         $resource->min = $definition->min;
         $resource->max = $definition->max;
         $resource->maxLength = $definition->maxLength;
+        $resource->pattern = $definition->pattern;
 
         return $resource;
     }

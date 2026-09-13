@@ -85,8 +85,9 @@ final readonly class SettingAccess
         $levels = [];
         foreach ($definition->chain->levels() as $level) {
             $mine = SettingLevel::User === $level;
-            // The platform level belongs to the operator's own screen, which does not exist yet.
-            $shared = $mayShare && SettingLevel::Platform !== $level;
+            // This endpoint writes the company and role levels. The platform level belongs to the operator's own
+            // screen, and a customer group, customer, product or document is written from its own screen.
+            $shared = $mayShare && \in_array($level, [SettingLevel::Company, SettingLevel::Role], true);
             if ($definition->allows($level) && ($mine || $shared)) {
                 $levels[] = $level->value;
             }

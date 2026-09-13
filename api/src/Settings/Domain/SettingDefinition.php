@@ -30,6 +30,7 @@ final readonly class SettingDefinition
      * @param list<string>       $choices       an enum's values
      * @param int|string|null    $min           inclusive; an int for an int, a decimal string for a decimal or money
      * @param int|string|null    $max           inclusive, as $min
+     * @param string|null        $pattern       a regular expression a text value must match
      * @param string|null        $keyPattern    a regular expression, when the definition covers a family of keys
      *
      * @throws \InvalidArgumentException for a malformed key, a level outside the chain or a default it would refuse
@@ -46,6 +47,7 @@ final readonly class SettingDefinition
         public int|string|null $min = null,
         public int|string|null $max = null,
         public ?int $maxLength = null,
+        public ?string $pattern = null,
         public ?string $keyPattern = null,
     ) {
         if (1 !== preg_match(self::KEY, $key)) {
@@ -140,8 +142,11 @@ final readonly class SettingDefinition
             return 'expected text';
         }
         $limit = $this->maxLength ?? self::TEXT_MAX_LENGTH;
+        if (mb_strlen($value) > $limit) {
+            return \sprintf('expected at most %d characters', $limit);
+        }
 
-        return mb_strlen($value) > $limit ? \sprintf('expected at most %d characters', $limit) : null;
+        return null === $this->pattern || 1 === preg_match($this->pattern, $value) ? null : 'expected text matching '.$this->pattern;
     }
 
     private function jsonRefusal(mixed $value): ?string

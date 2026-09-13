@@ -52,6 +52,14 @@ export const CORE_NAV: readonly NavEntry[] = [
     section: 'admin',
     permission: 'fiscal.read',
   },
+  {
+    key: 'settings',
+    labelKey: 'nav.settings',
+    icon: 'tune',
+    route: '/settings',
+    section: 'admin',
+    permission: 'company.settings',
+  },
   // The design checkpoint's fixture screens: a development build only, never shipped.
   {
     key: 'design',

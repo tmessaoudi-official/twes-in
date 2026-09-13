@@ -81,7 +81,8 @@
     },
     "design": "Maquettes",
     "taxes": "Taxes",
-    "units": "Unités"
+    "units": "Unités",
+    "settings": "Paramètres"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -299,6 +300,61 @@
       "code_taken": "Ce code est déjà utilisé dans cette société.",
       "invalid": "Les valeurs ont été refusées. Vérifiez que le taux, le montant et le seuil correspondent à la famille.",
       "not_found": "Introuvable.",
+      "network": "Le serveur est injoignable."
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "intro": "Les valeurs par défaut de la société. Un client, un produit ou un document peut encore en décider autrement.",
+    "no_company": "Choisissez d'abord une société.",
+    "forbidden": "Modifier les paramètres de la société demande la permission des paramètres.",
+    "save": "Enregistrer",
+    "saved": "Les paramètres ont été enregistrés.",
+    "chains": {
+      "parties": "Clients et documents",
+      "articles": "Produits",
+      "presentation": "Apparence"
+    },
+    "document": {
+      "payment_terms_days": "Délai de paiement (jours)",
+      "language": "Langue des documents",
+      "printed_notes": "Notes imprimées sur les documents"
+    },
+    "article": {
+      "default_unit": "Unité par défaut",
+      "stock_tracking": "Suivre le stock"
+    },
+    "presentation": {
+      "accent": "Couleur d'accent",
+      "scheme": "Thème",
+      "density": "Densité"
+    },
+    "choices": {
+      "document": {
+        "language": {
+          "fr": "Français",
+          "en": "Anglais"
+        }
+      },
+      "presentation": {
+        "scheme": {
+          "light": "Clair",
+          "dark": "Sombre"
+        },
+        "density": {
+          "comfortable": "Confortable",
+          "compact": "Compacte"
+        }
+      }
+    },
+    "overrides": {
+      "title": "Valeurs fixées pour la société",
+      "intro": "Réinitialiser une valeur la ramène à la valeur par défaut.",
+      "reset": "Réinitialiser"
+    },
+    "errors": {
+      "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
+      "not_found": "Paramètre introuvable.",
       "network": "Le serveur est injoignable."
     }
   }

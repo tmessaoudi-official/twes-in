@@ -21,6 +21,7 @@ const density = {
   min: null,
   max: null,
   maxLength: null,
+  pattern: null,
 };
 
 describe('SettingsApi', () => {
@@ -60,6 +61,7 @@ describe('SettingsApi', () => {
         min: null,
         max: null,
         maxLength: null,
+        pattern: null,
       },
     ]);
   });

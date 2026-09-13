@@ -30,6 +30,7 @@ final class SettingDefinitionTest extends TestCase
         yield 'a decimal above its maximum' => [self::of(SettingType::Decimal, '0', min: '0', max: '100'), '100.001'];
         yield 'money as a number' => [self::of(SettingType::Money, '0.000'), 12];
         yield 'text longer than allowed' => [self::of(SettingType::Text, '', maxLength: 5), 'abcdef'];
+        yield 'text outside its pattern' => [self::of(SettingType::Text, 'C62', pattern: '/^[A-Z0-9]{3}$/'), 'kilo'];
         yield 'a choice nobody declared' => [self::of(SettingType::Enum, 'light', choices: ['light', 'dark']), 'purple'];
         yield 'a colour name' => [self::of(SettingType::Colour, '#1f6feb'), 'blue'];
         yield 'a three-digit colour' => [self::of(SettingType::Colour, '#1f6feb'), '#fff'];
@@ -51,6 +52,7 @@ final class SettingDefinitionTest extends TestCase
         self::assertNull(self::of(SettingType::Decimal, '0.000', min: '0', max: '100')->refusal('19.500'));
         self::assertNull(self::of(SettingType::Money, '0.000')->refusal('-12.345'));
         self::assertNull(self::of(SettingType::Text, '', maxLength: 5)->refusal('abcde'));
+        self::assertNull(self::of(SettingType::Text, 'C62', pattern: '/^[A-Z0-9]{3}$/')->refusal('KGM'));
         self::assertNull(self::of(SettingType::Enum, 'light', choices: ['light', 'dark'])->refusal('dark'));
         self::assertNull(self::of(SettingType::Colour, '#1f6feb')->refusal('#A0B1C2'));
         self::assertNull(self::of(SettingType::Json, null)->refusal(['hidden' => ['email']]));
@@ -94,8 +96,8 @@ final class SettingDefinitionTest extends TestCase
     }
 
     /** @param list<string> $choices */
-    private static function of(SettingType $type, mixed $default, array $choices = [], int|string|null $min = null, int|string|null $max = null, ?int $maxLength = null): SettingDefinition
+    private static function of(SettingType $type, mixed $default, array $choices = [], int|string|null $min = null, int|string|null $max = null, ?int $maxLength = null, ?string $pattern = null): SettingDefinition
     {
-        return new SettingDefinition('document.example', $type, $default, SettingChain::Parties, [SettingLevel::Company], 'settings.example', 'core', choices: $choices, min: $min, max: $max, maxLength: $maxLength);
+        return new SettingDefinition('document.example', $type, $default, SettingChain::Parties, [SettingLevel::Company], 'settings.example', 'core', choices: $choices, min: $min, max: $max, maxLength: $maxLength, pattern: $pattern);
     }
 }

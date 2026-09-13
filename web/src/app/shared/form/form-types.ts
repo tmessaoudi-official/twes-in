@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 export type FieldKind =
-  'text' | 'email' | 'tel' | 'number' | 'date' | 'textarea' | 'select' | 'checkbox';
+  | 'text'
+  | 'email'
+  | 'tel'
+  | 'number'
+  | 'date'
+  | 'textarea'
+  | 'select'
+  | 'checkbox'
+  /** A `#rrggbb` colour, picked with the browser's colour control. */
+  | 'colour';
 
 export type FieldValue = string | number | boolean | null;
 

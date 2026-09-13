@@ -76,6 +76,15 @@
                       [attr.data-testid]="'field-' + field.id"
                     />
                   }
+                  @case ('colour') {
+                    <input
+                      matInput
+                      type="color"
+                      [formControlName]="field.id"
+                      [required]="field.required ?? false"
+                      [attr.data-testid]="'field-' + field.id"
+                    />
+                  }
                   @default {
                     <input
                       matInput

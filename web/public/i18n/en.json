@@ -81,7 +81,8 @@
     },
     "design": "Design",
     "taxes": "Taxes",
-    "units": "Units"
+    "units": "Units",
+    "settings": "Settings"
   },
   "shell": {
     "skip": "Skip to content",
@@ -299,6 +300,61 @@
       "code_taken": "That code is already used in this company.",
       "invalid": "The values were refused. Check that the rate, amount and threshold match the family.",
       "not_found": "Not found.",
+      "network": "The server could not be reached."
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "intro": "The company's defaults. A customer, a product or a document may still say otherwise.",
+    "no_company": "Choose a company first.",
+    "forbidden": "Changing the company's settings needs the settings permission.",
+    "save": "Save",
+    "saved": "The settings were saved.",
+    "chains": {
+      "parties": "Customers and documents",
+      "articles": "Products",
+      "presentation": "Appearance"
+    },
+    "document": {
+      "payment_terms_days": "Payment terms (days)",
+      "language": "Document language",
+      "printed_notes": "Notes printed on documents"
+    },
+    "article": {
+      "default_unit": "Default unit",
+      "stock_tracking": "Track stock"
+    },
+    "presentation": {
+      "accent": "Accent colour",
+      "scheme": "Colour scheme",
+      "density": "Density"
+    },
+    "choices": {
+      "document": {
+        "language": {
+          "fr": "French",
+          "en": "English"
+        }
+      },
+      "presentation": {
+        "scheme": {
+          "light": "Light",
+          "dark": "Dark"
+        },
+        "density": {
+          "comfortable": "Comfortable",
+          "compact": "Compact"
+        }
+      }
+    },
+    "overrides": {
+      "title": "Values set for the company",
+      "intro": "Resetting a value returns it to the default.",
+      "reset": "Reset"
+    },
+    "errors": {
+      "invalid": "The values were refused. Check the limits shown.",
+      "not_found": "Setting not found.",
       "network": "The server could not be reached."
     }
   }

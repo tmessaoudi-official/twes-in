@@ -102,5 +102,6 @@ function toRow(raw: SettingSettingRead): SettingRow {
     min: raw.min ?? null,
     max: raw.max ?? null,
     maxLength: raw.maxLength ?? null,
+    pattern: raw.pattern ?? null,
   };
 }

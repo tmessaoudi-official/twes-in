@@ -131,6 +131,37 @@ final class SettingsTest extends ApiTestCase
         self::assertEquals($layout, $this->row('presentation.list.members')['value']);
     }
 
+    public function testAnAdministratorSetsTheCompanysPaymentTerms(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->getJson($this->path().'?chain=parties');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['document.payment_terms_days', 'document.language', 'document.printed_notes'], array_column($this->jsonList(), 'key'));
+        $terms = $this->row('document.payment_terms_days');
+        self::assertSame(30, $terms['value']);
+        self::assertSame(['company'], $terms['writableLevels']);
+
+        $this->sendJson('PUT', $this->path().'/document.payment_terms_days', ['level' => 'company', 'value' => 45]);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->path().'?chain=parties');
+        self::assertSame(45, $this->row('document.payment_terms_days')['value']);
+        $this->sendJson('PUT', $this->path().'/document.payment_terms_days', ['level' => 'user', 'value' => 10]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testEveryChainIsReadWithoutTheParameter(): void
+    {
+        $this->signedIn(['company.read']);
+
+        $this->getJson($this->path());
+
+        self::assertResponseIsSuccessful();
+        $chains = array_map(fn (array $row): string => $this->stringAt($row, 'chain'), $this->jsonList());
+        self::assertSame(['parties', 'articles', 'presentation'], array_values(array_unique($chains)));
+    }
+
     public function testAnUnknownSettingIsNotFound(): void
     {
         $this->signedIn(['company.read']);

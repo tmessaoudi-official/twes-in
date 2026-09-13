@@ -33,6 +33,7 @@ function row(key: string, defaultValue: unknown, ...levels: SettingLevelValue[])
     min: null,
     max: null,
     maxLength: null,
+    pattern: null,
   };
 }
 

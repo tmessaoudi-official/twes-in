@@ -44,6 +44,8 @@ export interface SettingRow {
   min: number | string | null;
   max: number | string | null;
   maxLength: number | null;
+  /** A regular expression a text value must match, in the API's delimited form (`/^…$/`). */
+  pattern: string | null;
 }
 
 export type SettingsError = 'not_found' | 'invalid' | 'network';
