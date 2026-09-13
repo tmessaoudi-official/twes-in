@@ -49,6 +49,7 @@ const me: Me = {
   },
   company: null,
   permissions: [],
+  mfa: { enrolled: false, required: false },
 };
 
 describe('LoginPage', () => {

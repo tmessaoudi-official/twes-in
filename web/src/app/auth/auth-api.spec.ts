@@ -25,6 +25,7 @@ const owner: Me = {
     role: 'owner',
   },
   permissions: ['*'],
+  mfa: { enrolled: false, required: false },
 };
 
 describe('AuthApi', () => {
