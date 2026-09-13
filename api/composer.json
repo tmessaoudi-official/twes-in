@@ -9,8 +9,8 @@
     "php": ">=8.5",
     "ext-ctype": "*",
     "ext-iconv": "*",
-    "api-platform/core": "^4",
-    "doctrine/doctrine-bundle": "^3.3",
+    "api-platform/core": "^4.3.19",
+    "doctrine/doctrine-bundle": "^3.3.2",
     "doctrine/doctrine-migrations-bundle": "^4.0",
     "doctrine/orm": "^3.7",
     "spomky-labs/otphp": "^11.5",
@@ -22,7 +22,7 @@
     "symfony/http-client": "8.1.*",
     "symfony/intl": "8.1.*",
     "symfony/mailer": "8.1.*",
-    "symfony/monolog-bundle": "^4.0",
+    "symfony/monolog-bundle": "^4.1",
     "symfony/rate-limiter": "8.1.*",
     "symfony/runtime": "8.1.*",
     "symfony/security-bundle": "8.1.*",
@@ -104,12 +104,12 @@
     "dama/doctrine-test-bundle": "*",
     "friendsofphp/php-cs-fixer": "*",
     "phpstan/extension-installer": "*",
-    "phpstan/phpstan": "*",
+    "phpstan/phpstan": ">=2.2.14",
     "phpstan/phpstan-doctrine": "*",
     "phpstan/phpstan-symfony": "*",
     "phpunit/phpunit": "^13.3",
     "symfony/browser-kit": "8.1.*",
     "symfony/css-selector": "8.1.*",
-    "symfony/maker-bundle": "*"
+    "symfony/maker-bundle": ">=1.68"
   }
 }

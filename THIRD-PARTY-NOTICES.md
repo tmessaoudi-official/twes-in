@@ -7,11 +7,11 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 87 runtime, 51 dev
+## api (Composer) — 88 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
-| api-platform/core | 4.3.18 | MIT | runtime |
+| api-platform/core | 4.3.19 | MIT | runtime |
 | clue/ndjson-react | 1.3.0 | MIT | dev |
 | composer/pcre | 3.4.0 | MIT | dev |
 | composer/semver | 3.4.4 | MIT | runtime |
@@ -20,7 +20,7 @@ not compiled into what we distribute, and are not listed here.
 | doctrine/collections | 3.1.0 | MIT | runtime |
 | doctrine/dbal | 4.4.4 | MIT | runtime |
 | doctrine/deprecations | 1.1.6 | MIT | runtime |
-| doctrine/doctrine-bundle | 3.3.1 | MIT | runtime |
+| doctrine/doctrine-bundle | 3.3.2 | MIT | runtime |
 | doctrine/doctrine-migrations-bundle | 4.0.1 | MIT | runtime |
 | doctrine/event-manager | 2.1.1 | MIT | runtime |
 | doctrine/inflector | 2.1.0 | MIT | runtime |
@@ -42,10 +42,10 @@ not compiled into what we distribute, and are not listed here.
 | phar-io/manifest | 2.0.4 | BSD-3-Clause | dev |
 | phar-io/version | 3.2.1 | BSD-3-Clause | dev |
 | phpstan/extension-installer | 1.4.3 | MIT | dev |
-| phpstan/phpstan | 2.2.13 | MIT | dev |
+| phpstan/phpstan | 2.2.14 | MIT | dev |
 | phpstan/phpstan-doctrine | 2.0.28 | MIT | dev |
 | phpstan/phpstan-symfony | 2.0.20 | MIT | dev |
-| phpunit/php-code-coverage | 14.3.2 | BSD-3-Clause | dev |
+| phpunit/php-code-coverage | 14.3.3 | BSD-3-Clause | dev |
 | phpunit/php-file-iterator | 7.0.2 | BSD-3-Clause | dev |
 | phpunit/php-invoker | 7.0.0 | BSD-3-Clause | dev |
 | phpunit/php-text-template | 6.0.0 | BSD-3-Clause | dev |
@@ -81,6 +81,7 @@ not compiled into what we distribute, and are not listed here.
 | sebastian/version | 7.0.0 | BSD-3-Clause | dev |
 | spomky-labs/otphp | 11.5.0 | MIT | runtime |
 | staabm/side-effects-detector | 1.0.5 | MIT | dev |
+| symfony/asset | 8.1.0 | MIT | runtime |
 | symfony/browser-kit | 8.1.5 | MIT | dev |
 | symfony/cache | 8.1.6 | MIT | runtime |
 | symfony/cache-contracts | 3.7.1 | MIT | runtime |
@@ -107,10 +108,10 @@ not compiled into what we distribute, and are not listed here.
 | symfony/http-kernel | 8.1.6 | MIT | runtime |
 | symfony/intl | 8.1.5 | MIT | runtime |
 | symfony/mailer | 8.1.5 | MIT | runtime |
-| symfony/maker-bundle | 1.67.0 | MIT | dev |
+| symfony/maker-bundle | 1.68.0 | MIT | dev |
 | symfony/mime | 8.1.6 | MIT | runtime |
 | symfony/monolog-bridge | 8.1.6 | MIT | runtime |
-| symfony/monolog-bundle | 4.0.2 | MIT | runtime |
+| symfony/monolog-bundle | 4.1.0 | MIT | runtime |
 | symfony/options-resolver | 8.1.0 | MIT | runtime |
 | symfony/password-hasher | 8.1.0 | MIT | runtime |
 | symfony/polyfill-deepclone | 1.42.0 | MIT | runtime |
