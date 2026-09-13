@@ -1,24 +1,25 @@
 {
-  "version": 1,
-  "purpose": "The single source of truth for twes-in's pricing arithmetic. The same formulas run in PHP (api/src/Domain), TypeScript (admin/) and Dart (mobile/), and three implementations of one money formula WILL drift — producing a wrong price rather than a crash. Every tier's own test suite reads this file and asserts against it. A tier whose suite does not consume this file ONCE THAT TIER HAS PRICING CODE is a completeness-reviewer P0. The qualifier is a correction, not a loophole: the unqualified sentence declared a P0 against admin/ and mobile/ from the day this file was written, while the build plan rules their consumers to Wave 8 and Wave 11 respectively -- so the fixture contradicted the plan and one of them had to be wrong. Today TWO API-tier suites consume it: PricingVectorsTest (the reference implementation of this file's shape) and DocumentTotalsTest (the document kernel). Both now route their arithmetic through DocumentCalculator -- round 13 found PricingVectorsTest open-coding a SECOND implementation of the composition that grouped on the RAW rate string rather than the canonical percentage, so \"19\" and \"19.0\" gave two groups and 0.004 where the kernel gives one and 0.005. One formula, two answers, same fixture. The obligation attaches the moment a tier computes a price.",
+  "version": 2,
+  "purpose": "The single source of truth for twes-in's pricing arithmetic: product pricing (cost, profit rate, net), document totals, and the tax components of docs/SPEC.md § 3 Fiscal presets. The API's calculator (api/src/Fiscal/Domain/Calculation) is held to it by api/tests/Unit/Fiscal/Domain/PricingVectorsTest.php, which reads every section of this file. Any other tier that computes a price, such as a web preview, must consume this file from the day it does: two implementations of one money formula drift, and the drift is a wrong price rather than a crash.",
   "rules": {
     "net_from_cost": "net = cost * (1 + profit_rate)",
     "rate_from_net": "profit_rate = (net - cost) / cost, undefined when cost is zero",
     "vat_from_net": "vat = net * vat_rate  -- the VAT base is ALWAYS the net, never the cost",
     "gross": "gross = net + vat",
-    "vat_rounding": "VAT is grouped by rate and rounded ONCE per rate group on the summed base -- not per line and then summed. The two orders differ by a millime on some inputs, and the document_totals cases below include one where they diverge specifically so a tier that gets this wrong cannot pass.",
-    "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE — and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate."
+    "vat_rounding": "Each percentage tax is rounded where the document's rounding point says. per_rate_group, the default of both presets and the order of EN 16931 BR-CO-17, sums the base of the lines sharing the tax and rounds once; per_line rounds on each line and sums. The two differ by a millime on some inputs, and cases below pin both.",
+    "authored_field": "A product stores WHICH field the user typed (authored_by: profit_rate or net_price). The typed field is authoritative and is NEVER recomputed; only the other is derived. Changing the cost preserves the RATE and moves the PRICE — and when the price was the typed field, the rate implied by the typed pair is what carries forward, so authorship transfers to the rate.",
+    "tax_components": "A line carries a SET of tax components (docs/SPEC.md § 3). A percentage component flagged enters_vat_base (a levy: Tunisia's FODEC) is computed on the line's discounted net first, and its amount joins the base of every other percentage component on that line. A fixed_document component is added after every tax, outside every base and every discount. A withholding_total component applies when the document's total excluding fixed charges reaches its threshold in absolute value, is computed on that amount, and reduces the amount due, never the total. Tax-inclusive entry is refused on a line carrying a flagged component or more than one percentage component (ruled 2026-09-13). Cases written with `components` name each line's taxes by code in `lines[].taxes` and the document's in `document_taxes`; the older cases write a VAT rate per line or per document and `fixed_charges`, which the consumer maps onto the same components."
   },
   "conventions": {
     "amounts": "Decimal strings at exactly the currency's own scale. TND has THREE decimals (1 dinar = 1000 millimes), EUR two, JPY none. A two-decimal assumption is wrong for the default currency.",
-    "rates": "Percentage strings, canonicalised to exactly 10 decimal places. The underlying fraction carries 12, so 30% is the fraction 0.300000000000 and the percentage string \"30.0000000000\". Twelve was chosen over six because six rounded a real rate to zero: a cost of 10000.000 with a price of 10000.001 needs seven. Ten decimals is not a display format — clients format for the locale; this is the canonical value so cross-tier comparison is exact. **This applies to EXPECTED OUTPUT ONLY, and the previous wording said \"as well as to input\", which round 16 found false.** INPUT rates are written the way a human types them -- `19`, `30`, `33.3333` -- deliberately, because a fixture whose inputs are pre-canonicalised cannot prove a tier canonicalises them, and `Rate::fromPercentage()` accepting `19` is part of what these vectors test. **WHICH FIELDS ARE INPUTS IS DERIVED, AND NEVER COUNTED HERE** (round 17's P3-2: the previous wording said \"all 22 input rate values in this file\" and no criterion reproduces 22 -- not the number of such values, not the distinct ones, not the lines matching either field name). The criterion is the consumers' own: a rate value is an INPUT exactly where a consumer passes it to `Rate::fromPercentage()` as an argument, rather than normalising it through the same call in order to COMPARE against it. That is `cases[].profit_rate`, `cases[].vat_rate`, `edit_directions[].profit_rate`, `document_totals[].vat_rate`, `document_totals[].lines[].vat_rate` and `authored_field[].profit_rate`; everything under `expected`, `expected_after` and `vat_by_rate[].rate` is an OUTPUT. **And this convention was FALSE ON THE DAY IT WAS WRITTEN** (round 17's P2-5): the three `per-line-vat-allocation-*` cases already carried `19.0000000000` in `document_totals[].vat_rate` -- an input path, and the only pre-canonicalised inputs in the file -- landing one commit BEFORE the sentence forbidding them, so the file contradicted its own rule from the moment it stated it. They are now `19`, and no expected value moves, because `Rate::fromPercentage()` canonicalises both spellings to the identical rate. The canonical-string PARSE stays exercised regardless, since both consumers put `vat_by_rate[].rate` through `Rate::fromPercentage()` before comparing. It is the EXPECTED side that must be canonical, for the reason round 15 gave: `vat_by_rate[].rate` was written as `19`, so an Angular tier emitting `19` and a Flutter tier emitting `19.0000000000` for the required per-rate VAT table both passed the cross-tier contract. Both consumers normalise the declared value before comparing, so nothing pinned a RENDERING until the fixture-shape assertion added at round 15.",
-    "rounding": "half_up on every amount and every rate. There is NO per-case override: every consumer applies half_up to every case, and a case needing another mode would need the consumers changed first. Ties are the cases that separate correct implementations from plausible ones: JavaScript's Math.round and Dart's num.round() both disagree with half-up on negative ties. The negative tie LANDED WITH WAVE 2 (2026-09-05), in `document_totals` under `document_type: credit` -- `credit-note-negative-tie-rounds-away-from-zero` pins Math.round(-0.5) === -0 and Dart's half-away-from-zero directly, and `credit-note-allocation-floors-negative-shares` pins that the per-line allocator FLOORS rather than truncating toward zero. It was owed from 2026-07-30: one case was added at round 11 and REMOVED at round 12 by developer ruling, because the only way to reach a negative tie from a PRODUCT is a profit rate below -100%, which derives a negative selling price -- refused by ProductPricing, since a negative gross on a document line is a CREDIT NOTE rather than a sale. So the tie lives where a negative amount is the legitimate shape: a credit's figures are negative, and the sign is the DOCUMENT's, not a line's.",
+    "rates": "Percentage strings, canonicalised to exactly 10 decimal places in EXPECTED output; the underlying fraction carries 12, because six decimals rounded a real rate to zero (a cost of 10000.000 with a price of 10000.001 needs seven). INPUT rates are written the way a person types them (`19`, `30`, `33.3333`), because a fixture whose inputs are pre-canonicalised cannot prove the calculator canonicalises them. Inputs are `cases[].profit_rate`, `cases[].vat_rate`, `edit_directions[].profit_rate`, `document_totals[].vat_rate`, `document_totals[].lines[].vat_rate`, `document_totals[].components[].rate` and `authored_field[].profit_rate`; everything under `expected`, `expected_after` and `vat_by_rate[].rate` is output, and the consumer asserts that every `vat_by_rate[].rate` is written canonically.",
+    "rounding": "half_up on every amount and every rate: ties round away from zero, so a negative tie on a credit note rounds down (JavaScript's Math.round(-0.5) is -0, which is wrong here). There is no per-case override. `credit-note-negative-tie-rounds-away-from-zero` pins the negative tie and `credit-note-allocation-floors-negative-shares` pins that allocation FLOORS rather than truncating toward zero.",
     "null": "A JSON null means the value is mathematically undefined and the UI must show an empty field -- never 0, and never an error.",
-    "owed_document_vectors": "OWED, recorded rather than dropped -- the same treatment as the negative-tie gap above. Two document scenarios have NO case here and were disclosed only in a test docblock until round 14, which is not where Wave 8's Angular implementer or Wave 11's Flutter one will look: (1) an EMPTY document, so nothing pins whether a TND invoice with no lines renders 0.000, 0.00 or 0 -- the kernel is correct and the RENDERING is unspecified, which is a cross-tier disagreement waiting to happen; (2) a FIXED CHARGE in a currency other than the document's, which is now refused by DocumentCalculator and by Invoice::withFixedCharge() but has no vector, so the two client tiers have nothing to validate against. Both are Wave 8/11 obligations; a tier that invents its own answer is what these vectors exist to prevent.",
+    "owed_document_vectors": "Both documents owed by the earlier fixture now have cases: `empty-document-renders-zero-at-the-currency-scale`, and `fixed-charge-finer-than-the-currency-is-refused`, which replaces the foreign-currency charge: a document carries the company's one currency, so a charge in another currency cannot be expressed, and a charge finer than the currency is refused.",
     "per_line_vat": "PER-LINE VAT IS ALLOCATED, NEVER RECOMPUTED (developer ruling, 2026-07-31: a per-line VAT figure is required). Under per_rate_group the group's VAT is rounded ONCE on the summed base, so `line_net x rate` rounded per line does not add up to it. The rule is LARGEST REMAINDER with ties to the EARLIEST line: floor each line's exact share to the currency's scale, then hand the shortfall out one smallest-unit at a time to the lines with the largest floored-away remainder. Flooring first is load-bearing -- rounding to nearest lets the shares EXCEED the group figure, and there is then no way to take a unit back from a line without picking a victim. **The invariant every tier must satisfy: the per-line column sums EXACTLY to vat. A line column that does not add up to the total printed beneath it is a document a tax authority reads as arithmetically wrong.** Largest-remainder rather than 'put the difference on the last line' because the latter makes DOCUMENT ORDER significant to a tax figure, so re-ordering two lines would change which line is taxed what -- while the total stays right, so no reviewer would see it.",
     "tax_basis": "EVERY document_totals case DECLARES `tax_basis`: `exclusive` (the authored line figures are net of VAT, `unit_net` / `line_net`) or `inclusive` (they are what the customer pays, `unit_gross` / `line_gross`, and the kernel EXTRACTS the net). Ruled 2026-08-23: inclusive tax extracts PER RATE GROUP, reusing `vat_rounding_point` rather than adding a second axis -- the group's net is gross / (1 + rate) rounded ONCE on the summed gross, and the VAT is the residue; under `per_line` each line extracts on its own. On the half-grid tie the NET is the figure rounded half-up and the VAT absorbs the residue (0.111 TND at 20 % -> 0.093 / 0.018). Both settings are a TENANT setting read server-side, like the rounding point; a client may choose neither. A tier that hard-codes one of them fails half of these vectors -- that is deliberate.",
     "discounts": "A LINE discount is a RATE (`discount_rate`, written as a user types it) and REDUCES THE VAT BASE: the allowance `line_discount` is the rounded amount printed beside the line, and `line_net` is the amount minus it (ruled 2026-08-23; EN 16931 BT-136 reduces BT-131, which feeds BT-116). A DOCUMENT discount is an AMOUNT (`document_discount`) and is allocated PRO-RATA BY BASE across rate groups by the same largest-remainder rule as per-line VAT, ties to the earliest group (ruled 2026-08-23); `vat_by_rate[].document_discount` is each group's share and `vat_by_rate[].base` is the base AFTER it. Under `per_line` each group's share is split again across its lines by the same rule (`document_discount_by_line`), so every line's VAT is rounded on a DISCOUNTED net and the per-line column still sums exactly to the total. `net_after_document_discount` is EN 16931's BT-109. Under `inclusive` tax both discounts apply to GROSS figures before extraction. Fixed charges are outside every base and untouched by every discount.",
-    "credit_sign": "EVERY document_totals case DECLARES `document_type` (`invoice` or `credit`). On a `credit` every INPUT is authored exactly as on an invoice -- positive quantities, prices, rates, discounts and charges -- and every COMPUTED figure is NEGATIVE: line amounts, discounts, nets, bases, VAT, charges and the total. The sign is a property of the document type (EN 16931 type code 381), not of a line: `DocumentLine` refuses a negative quantity or unit price on every type, so an invoice and a credit note are the same arithmetic with the sign applied once at the entry to the kernel, and a negative tie or a negative allocation share reaches the same rounding and flooring code the positive cases pin."
+    "credit_sign": "EVERY document_totals case DECLARES `document_type` (`invoice` or `credit`). On a `credit` every INPUT is authored exactly as on an invoice -- positive quantities, prices, rates, discounts and charges -- and every COMPUTED figure is NEGATIVE: line amounts, discounts, nets, bases, VAT, charges and the total. The sign is a property of the document type (EN 16931 type code 381), not of a line: the calculator refuses a negative quantity or unit price on every type, so an invoice and a credit note are the same arithmetic with the sign applied once at the entry to the kernel, and a negative tie or a negative allocation share reaches the same rounding and flooring code the positive cases pin."
   },
   "cases": [
     {
@@ -1225,9 +1226,908 @@
       "expected": {
         "total": "-215.775"
       }
+    },
+    {
+      "id": "tn-fodec-enters-the-vat-base",
+      "why": "docs/fiscal/TN.md § 2-3: the Tunisian VAT base is the price 'tous frais, droits et taxes inclus', so FODEC is computed on the net and joins the VAT base. 10 x 100.000 = 1000.000; FODEC 1 % = 10.000; VAT 19 % on 1010.000 = 191.900; the 1.000 stamp is added last. A calculator that charges VAT on the bare net gets 190.000 and a total of 1201.000.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "100.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE"
+      ],
+      "expected": {
+        "subtotal_net": "1000.000",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "1000.000",
+            "amount": "10.000"
+          },
+          {
+            "code": "TVA19",
+            "base": "1010.000",
+            "amount": "191.900"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "1000.000",
+              "amount": "10.000"
+            },
+            {
+              "code": "TVA19",
+              "base": "1010.000",
+              "amount": "191.900"
+            }
+          ]
+        ],
+        "total_tax": "201.900",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "1202.900",
+        "withholding": [],
+        "amount_due": "1202.900"
+      }
+    },
+    {
+      "id": "tn-withholding-applies-from-the-threshold",
+      "why": "docs/fiscal/TN.md § 5: the 1 % withholding applies to amounts of 1000 TND or more, VAT included. The base is the total of the lines and their percentage taxes, 1201.900; the stamp duty is not part of it (the preset's choice, unvalidated). The withholding reduces the amount due, never the total.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        },
+        {
+          "code": "RS1",
+          "kind": "withholding_total",
+          "rate": "1",
+          "threshold": "1000.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "100.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE",
+        "RS1"
+      ],
+      "expected": {
+        "subtotal_net": "1000.000",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "1000.000",
+            "amount": "10.000"
+          },
+          {
+            "code": "TVA19",
+            "base": "1010.000",
+            "amount": "191.900"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "1000.000",
+              "amount": "10.000"
+            },
+            {
+              "code": "TVA19",
+              "base": "1010.000",
+              "amount": "191.900"
+            }
+          ]
+        ],
+        "total_tax": "201.900",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "1202.900",
+        "withholding": [
+          {
+            "code": "RS1",
+            "base": "1201.900",
+            "amount": "12.019"
+          }
+        ],
+        "amount_due": "1190.881"
+      }
+    },
+    {
+      "id": "tn-withholding-applies-exactly-at-the-threshold",
+      "why": "The threshold is inclusive: 840.336 + VAT 159.664 = exactly 1000.000, so 10.000 is withheld. A strict comparison withholds nothing here.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        },
+        {
+          "code": "RS1",
+          "kind": "withholding_total",
+          "rate": "1",
+          "threshold": "1000.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "840.336",
+          "taxes": [
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE",
+        "RS1"
+      ],
+      "expected": {
+        "subtotal_net": "840.336",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "840.336",
+            "amount": "159.664"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "840.336",
+              "amount": "159.664"
+            }
+          ]
+        ],
+        "total_tax": "159.664",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "1001.000",
+        "withholding": [
+          {
+            "code": "RS1",
+            "base": "1000.000",
+            "amount": "10.000"
+          }
+        ],
+        "amount_due": "991.000"
+      }
+    },
+    {
+      "id": "tn-withholding-ignores-the-stamp-below-the-threshold",
+      "why": "840.000 + VAT 159.600 = 999.600, below 1000.000. With the 1.000 stamp the total reaches 1000.600, but the stamp is outside the withholding base, so nothing is withheld and the amount due equals the total.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        },
+        {
+          "code": "RS1",
+          "kind": "withholding_total",
+          "rate": "1",
+          "threshold": "1000.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "840.000",
+          "taxes": [
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE",
+        "RS1"
+      ],
+      "expected": {
+        "subtotal_net": "840.000",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "840.000",
+            "amount": "159.600"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "840.000",
+              "amount": "159.600"
+            }
+          ]
+        ],
+        "total_tax": "159.600",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "1000.600",
+        "withholding": [],
+        "amount_due": "1000.600"
+      }
+    },
+    {
+      "id": "tn-three-components-allocate-per-rate-group",
+      "why": "FODEC and VAT on two lines, a 7 % line beside them. FODEC is rounded once on 30.110 (0.301); its line shares are ALLOCATED (0.101 / 0.200, the tie to the earliest line), and each line's VAT base is its net plus ITS FODEC share, so the VAT column and the FODEC column both add up to their totals. Recomputing FODEC per line would give 0.101 + 0.201 = 0.302.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TVA7",
+          "kind": "percentage_line",
+          "rate": "7"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.055",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "20.055",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "2",
+          "unit_net": "12.250",
+          "taxes": [
+            "TVA7"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE"
+      ],
+      "expected": {
+        "subtotal_net": "54.610",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "30.110",
+            "amount": "0.301"
+          },
+          {
+            "code": "TVA19",
+            "base": "30.411",
+            "amount": "5.778"
+          },
+          {
+            "code": "TVA7",
+            "base": "24.500",
+            "amount": "1.715"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "10.055",
+              "amount": "0.101"
+            },
+            {
+              "code": "TVA19",
+              "base": "10.156",
+              "amount": "1.930"
+            }
+          ],
+          [
+            {
+              "code": "FODEC",
+              "base": "20.055",
+              "amount": "0.200"
+            },
+            {
+              "code": "TVA19",
+              "base": "20.255",
+              "amount": "3.848"
+            }
+          ],
+          [
+            {
+              "code": "TVA7",
+              "base": "24.500",
+              "amount": "1.715"
+            }
+          ]
+        ],
+        "total_tax": "7.794",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "63.404",
+        "withholding": [],
+        "amount_due": "63.404"
+      }
+    },
+    {
+      "id": "tn-three-components-per-line",
+      "why": "The same document rounded per line: FODEC 0.101 and 0.201 (0.302), and each line's VAT on its net plus its own rounded FODEC.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_line",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TVA7",
+          "kind": "percentage_line",
+          "rate": "7"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.055",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "20.055",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "2",
+          "unit_net": "12.250",
+          "taxes": [
+            "TVA7"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE"
+      ],
+      "expected": {
+        "subtotal_net": "54.610",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "30.110",
+            "amount": "0.302"
+          },
+          {
+            "code": "TVA19",
+            "base": "30.412",
+            "amount": "5.779"
+          },
+          {
+            "code": "TVA7",
+            "base": "24.500",
+            "amount": "1.715"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "10.055",
+              "amount": "0.101"
+            },
+            {
+              "code": "TVA19",
+              "base": "10.156",
+              "amount": "1.930"
+            }
+          ],
+          [
+            {
+              "code": "FODEC",
+              "base": "20.055",
+              "amount": "0.201"
+            },
+            {
+              "code": "TVA19",
+              "base": "20.256",
+              "amount": "3.849"
+            }
+          ],
+          [
+            {
+              "code": "TVA7",
+              "base": "24.500",
+              "amount": "1.715"
+            }
+          ]
+        ],
+        "total_tax": "7.796",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "1.000"
+          }
+        ],
+        "total": "63.406",
+        "withholding": [],
+        "amount_due": "63.406"
+      }
+    },
+    {
+      "id": "tn-document-discount-reaches-fodec-lines",
+      "why": "A document discount is allocated across tax-signature groups (the set of percentage taxes a line carries) pro rata by net, then across each group's lines, by the same largest-remainder rule; FODEC and VAT are then computed on the discounted nets. 15.000 on 100.000 (FODEC + VAT) and 50.000 (VAT) -> 10.000 / 5.000.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "100.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "50.000",
+          "taxes": [
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [],
+      "document_discount": "15.000",
+      "expected": {
+        "subtotal_net": "150.000",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "90.000",
+            "amount": "0.900"
+          },
+          {
+            "code": "TVA19",
+            "base": "135.900",
+            "amount": "25.821"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "90.000",
+              "amount": "0.900"
+            },
+            {
+              "code": "TVA19",
+              "base": "90.900",
+              "amount": "17.271"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "45.000",
+              "amount": "8.550"
+            }
+          ]
+        ],
+        "total_tax": "26.721",
+        "fixed_charges": [],
+        "total": "161.721",
+        "withholding": [],
+        "amount_due": "161.721",
+        "document_discount_by_line": [
+          "10.000",
+          "5.000"
+        ],
+        "net_after_document_discount": "135.000"
+      }
+    },
+    {
+      "id": "tn-credit-note-refunds-fodec-and-stamp",
+      "why": "A credit note mirrors tn-fodec-enters-the-vat-base: the lines are authored positive, and every computed figure, FODEC, VAT and the stamp included, is negative.",
+      "currency": "TND",
+      "document_type": "credit",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.000"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "10",
+          "unit_net": "100.000",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE"
+      ],
+      "expected": {
+        "subtotal_net": "-1000.000",
+        "tax_breakdown": [
+          {
+            "code": "FODEC",
+            "base": "-1000.000",
+            "amount": "-10.000"
+          },
+          {
+            "code": "TVA19",
+            "base": "-1010.000",
+            "amount": "-191.900"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "FODEC",
+              "base": "-1000.000",
+              "amount": "-10.000"
+            },
+            {
+              "code": "TVA19",
+              "base": "-1010.000",
+              "amount": "-191.900"
+            }
+          ]
+        ],
+        "total_tax": "-201.900",
+        "fixed_charges": [
+          {
+            "code": "TIMBRE",
+            "amount": "-1.000"
+          }
+        ],
+        "total": "-1202.900",
+        "withholding": [],
+        "amount_due": "-1202.900"
+      }
+    },
+    {
+      "id": "tn-inclusive-entry-with-fodec-is-refused",
+      "why": "Ruled 2026-09-13: no source says how Tunisia rounds a tax-inclusive price carrying FODEC and VAT, so the calculator refuses tax-inclusive entry on a line with a tax entering the VAT base or with more than one percentage tax. Tax-exclusive entry works for every combination.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "inclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "FODEC",
+          "kind": "percentage_line",
+          "rate": "1",
+          "enters_vat_base": true
+        },
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_gross": "120.190",
+          "taxes": [
+            "FODEC",
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [],
+      "expected": {
+        "error": "compound_inclusive_unsupported"
+      }
+    },
+    {
+      "id": "fixed-charge-finer-than-the-currency-is-refused",
+      "why": "A document has one currency, the company's (docs/SPEC.md § 3 Money). A fixed charge written with more decimals than that currency has cannot be charged and is refused, never rounded.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TIMBRE",
+          "kind": "fixed_document",
+          "amount": "1.0005"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "10.000",
+          "taxes": [
+            "TVA19"
+          ]
+        }
+      ],
+      "document_taxes": [
+        "TIMBRE"
+      ],
+      "expected": {
+        "error": "amount_scale_exceeds_currency"
+      }
+    },
+    {
+      "id": "empty-document-renders-zero-at-the-currency-scale",
+      "why": "A document with no lines renders every figure as zero at the currency's own scale: 0.000 for TND, never 0 or 0.00.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "lines": [],
+      "subtotal_net": "0.000",
+      "vat": "0.000",
+      "vat_by_line": [],
+      "fixed_charges": [],
+      "expected": {
+        "total": "0.000"
+      }
+    },
+    {
+      "id": "document-discount-splits-across-tax-groups-before-lines",
+      "why": "The two levels of the document-discount allocation give different shares, which no earlier case showed. 0.002 TND against two 1.000 lines at 19 % and one at 7 %: across the tax groups first, 0.001 / 0.001 (the 7 % group has the larger remainder), then the 19 % group's 0.001 across its two lines, tie to the earliest -> 0.001, 0.000, 0.001. Allocating straight across the three lines would give 0.001, 0.001, 0.000 and move a millime of discount from the 7 % base to the 19 % base.",
+      "currency": "TND",
+      "document_type": "invoice",
+      "tax_basis": "exclusive",
+      "vat_rounding_point": "per_rate_group",
+      "components": [
+        {
+          "code": "TVA19",
+          "kind": "percentage_line",
+          "rate": "19"
+        },
+        {
+          "code": "TVA7",
+          "kind": "percentage_line",
+          "rate": "7"
+        }
+      ],
+      "lines": [
+        {
+          "quantity": "1",
+          "unit_net": "1.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.000",
+          "taxes": [
+            "TVA19"
+          ]
+        },
+        {
+          "quantity": "1",
+          "unit_net": "1.000",
+          "taxes": [
+            "TVA7"
+          ]
+        }
+      ],
+      "document_taxes": [],
+      "document_discount": "0.002",
+      "expected": {
+        "subtotal_net": "3.000",
+        "tax_breakdown": [
+          {
+            "code": "TVA19",
+            "base": "1.999",
+            "amount": "0.380"
+          },
+          {
+            "code": "TVA7",
+            "base": "0.999",
+            "amount": "0.070"
+          }
+        ],
+        "line_taxes": [
+          [
+            {
+              "code": "TVA19",
+              "base": "0.999",
+              "amount": "0.190"
+            }
+          ],
+          [
+            {
+              "code": "TVA19",
+              "base": "1.000",
+              "amount": "0.190"
+            }
+          ],
+          [
+            {
+              "code": "TVA7",
+              "base": "0.999",
+              "amount": "0.070"
+            }
+          ]
+        ],
+        "total_tax": "0.450",
+        "fixed_charges": [],
+        "total": "3.448",
+        "withholding": [],
+        "amount_due": "3.448",
+        "document_discount_by_line": [
+          "0.001",
+          "0.000",
+          "0.001"
+        ],
+        "net_after_document_discount": "2.998"
+      }
     }
   ],
-  "schema": "No JSON Schema yet — owed. Until then this file's shape is defined by its consumers, of which api/tests/Unit/Pricing/PricingVectorsTest.php is the reference implementation.",
+  "schema": "No JSON Schema. The shape is defined by its one consumer, api/tests/Unit/Fiscal/Domain/PricingVectorsTest.php, which refuses a case missing a field it reads.",
   "authored_field": [
     {
       "id": "authored-net-survives-a-cost-change",

@@ -9,7 +9,8 @@ ENV APP_ENV=${APP_ENV} \
 
 WORKDIR /app
 
-RUN install-php-extensions pdo_pgsql intl zip opcache
+# bcmath: the money calculator works on BcMath\Number (api/src/Fiscal/Domain/Calculation).
+RUN install-php-extensions pdo_pgsql intl zip opcache bcmath
 COPY infra/api/php.ini "$PHP_INI_DIR/conf.d/twes.ini"
 
 COPY --from=composer:2.10.2 /usr/bin/composer /usr/bin/composer
