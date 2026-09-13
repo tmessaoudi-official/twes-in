@@ -186,20 +186,36 @@ directory `src/Module/<Name>/` (entities, resources, handlers) plus one manifest
 key, dependencies, settings definitions, nav entries, permissions) plus a lazy-loaded Angular
 feature. `module_state(company_id, key, enabled_at)`. Disabled: nav hidden, resources answer
 404, data kept, dependencies enforced on toggle. The registry is born at G5, with the second
-module. Plans gate modules once the licensing module exists.
+module; G2a defines the manifest's navigation shape with hardcoded core entries, which the registry then
+supplies without a change to the shell. Plans gate modules once the licensing module exists.
 
 Core (always on): auth, memberships, roles, companies and fiscal presets, settings, files,
 audit log, mail. Modules: customers, products, delivery notes, invoices (payments, credit
 notes), vendors, expenses, inventory.
 
-### Settings [RULED 2026-09-09]
+### Settings [RULED 2026-09-09, amended 2026-09-13]
 
-Two scopes. **Platform settings** belong to the operator (`signup.enabled`,
-`signup.approval_required`, default plan, product name, mail identity). **Company settings**
-belong to each company. A setting is declared in code (key, type, default, group, constraints,
-label key, module) and stored as `setting(scope, scope_id, key, value jsonb)`. One endpoint
-returns definitions plus values; one generic page renders by type (bool, int, decimal, text,
-enum, money, colour, file). The settings page is born at G3 with the first company setting.
+One generic engine with any number of **levels** (the two scopes of 2026-09-09 became levels).
+A setting is declared in code: key, type, default, constraints, label key, module, and the levels
+allowed to override it. Values are stored as `setting(level, level_id, key, value jsonb)`. A read
+names its context and the engine walks that context's chain, most specific level first, down to the
+declared default. A test refuses a business value read in code that is not registered, so nothing is
+hardcoded where a setting belongs. The POC fills three chains:
+
+| Chain | Levels, most general first | Example keys |
+|---|---|---|
+| business defaults, parties | platform → company → customer group → customer → document | payment terms, document language, printed notes |
+| business defaults, articles | platform → company → product category → product → document line | unit, default taxes, stock tracking |
+| presentation | platform → company → role → user | table columns, saved views, density, dark mode, accent colour |
+
+**Platform** settings belong to the operator (`signup.enabled`, `signup.approval_required`, default
+plan, product name, mail identity). Tax arithmetic and legal mentions are not settings a company can
+edit: they change only as operator-owned preset data (§ Fiscal presets). Screens are metadata-driven:
+lists, filters and forms are rendered from descriptors, so their columns, filters, saved views and
+custom fields are configuration. One endpoint returns definitions plus resolved values; one generic
+page renders by type (bool, int, decimal, text, enum, money, colour, file). G2b ships the presentation
+chain through a web `SettingsFacade` port with a browser-storage adapter; G3b swaps in the API adapter,
+the business chains and the settings page. A later level is registered, never rewritten.
 
 ### Fiscal presets [RULED 2026-09-09, rules to be sourced at G3]
 
@@ -248,17 +264,21 @@ Common columns: `id` (uuid v7), `company_id` (business tables), `created_at`, `u
 | invitation | company_id, email, role_id, token_hash, expires_at, accepted_at |
 | tax_component | code, name, kind (percentage_line, fixed_document, withholding_total), rate or amount, enters_vat_base, threshold, is_default, is_active, exemption_mention, sort_order |
 | unit | code, label, decimals |
-| number_sequence | document_type, pattern, next_number, reset_period, last_reset_year |
-| setting | scope, scope_id, key, value jsonb |
+| numbering_series | establishment_id, document_type, format, next_number, reset_period, last_reset_year, is_default |
+| setting | level, level_id, key, value jsonb |
 | module_state | company_id, key, enabled_at |
-| customer | customer_number, kind, name, legal_name, identifiers jsonb, email, phone, website, billing_address, shipping_address, payment_terms_days, default_tax_component_ids, default_discount_rate, document_language, notes, is_active |
+| establishment | code (the establishment part of the tax identifier), name, address, phone, email, is_default |
+| customer_group | name, description; its settings resolve through the parties chain |
+| customer_tax_regime | code (standard, exempt, suspended, export), label key, which tax components apply, mandatory mention; operator-owned preset data |
+| stock_location | establishment_id, code, name, is_default |
+| customer | customer_number, kind, customer_group_id, tax_regime_id, name, legal_name, identifiers jsonb, email, phone, website, billing_address, shipping_address, payment_terms_days, default_tax_component_ids, default_discount_rate, document_language, notes, is_active |
 | contact | customer_id, first_name, last_name, email, phone, role, is_primary |
 | product | reference, name, description, kind (goods, service), unit_id, unit_price_net, cost_price, category_id, barcode, is_active; `product_tax` = default tax components |
 | product_category | name, parent_id |
-| delivery_note | number, status (draft, validated, delivered, invoiced, cancelled), customer_id, customer_snapshot, issue_date, delivery_date, delivery_address, customer_reference, remarks_printed, notes_internal, invoiced_by_invoice_id |
+| delivery_note | establishment_id, number, status (draft, validated, delivered, invoiced, cancelled), customer_id, customer_snapshot, issue_date, delivery_date, delivery_address, customer_reference, remarks_printed, notes_internal, invoiced_by_invoice_id |
 | delivery_note_line | position, product_id, description, quantity, unit_id, unit_price_net; `delivery_note_line_tax` collection |
 | invoice_tax | invoice_id, tax_component_id (document-level: stamp, withholding), base, amount |
-| invoice | number, status (draft, issued, partially_paid, paid; cancelled while draft only), customer_id, customer_snapshot, issue_date, supply_date, due_date, payment_terms_days, currency, language, customer_reference, discount_rate, discount_amount, subtotal_net, total_net, tax_breakdown jsonb, total_tax, fixed_taxes, total_gross, withholding_amount, amount_paid, amount_due, notes_printed, terms_printed, footer_snapshot, mentions_snapshot, issued_at, issued_by, pdf_file_id, operation_category, vat_on_debits |
+| invoice | establishment_id, number, status (draft, issued, partially_paid, paid; cancelled while draft only), customer_id, customer_snapshot, issue_date, supply_date, due_date, payment_terms_days, currency, language, customer_reference, discount_rate, discount_amount, subtotal_net, total_net, tax_breakdown jsonb, total_tax, fixed_taxes, total_gross, withholding_amount, amount_paid, amount_due, notes_printed, terms_printed, footer_snapshot, mentions_snapshot, issued_at, issued_by, pdf_file_id, operation_category, vat_on_debits |
 | invoice_line | position, product_id, description, quantity, unit_id, unit_price_net, discount_rate, line_net, line_tax, line_gross, source_delivery_note_line_id; `invoice_line_tax` collection (component, base, rate snapshot, amount) |
 | payment | invoice_id, date, amount, method, reference, notes |
 | credit_note | mirrors invoice, `corrects_invoice_id`, own sequence |
@@ -266,7 +286,7 @@ Common columns: `id` (uuid v7), `company_id` (business tables), `created_at`, `u
 | expense | reference, date, vendor_id, category_id, description, amount_net, tax_component_id, tax_amount, amount_gross, currency, payment_method, payment_date, status (draft, recorded, paid), notes |
 | expense_category | name, parent_id, is_active |
 | file, attachment | storage_key, original_name, mime, size, sha256, uploaded_by; attachment: entity_type, entity_id, file_id |
-| stock_movement | product_id, kind (in, out, adjustment), quantity, source_type, source_id, at |
+| stock_movement | product_id, location_id, kind (in, out, adjustment), quantity, source_type, source_id, at |
 | audit_log | entity_type, entity_id, action, actor_user_id, changes jsonb, at, ip |
 
 ## 5. Goals and the definition of done
@@ -288,15 +308,17 @@ Every goal is done only when all six hold:
 | G1b | Companies, memberships, company switcher, invitations, mail | platform scope |
 | G1c | TOTP + passkeys, `security.mfa_required` | |
 | G1d | Public signup behind `signup.enabled`, approval flow | |
-| G2 | Shell (sidebar from modules, switcher, user menu, language), page designs as mockups first, generic list and form | design system |
-| G3 | Fiscal research TN + FR, presets, company profile, taxes, units, numbering | settings page, calculator |
-| G4 | Customers + contacts | |
+| G2a | Shell (sidebar from the nav manifest, switcher, user menu, language), design tokens and theme (Inter, Material Symbols, accent from a hex), Centrifugo notifications and the notification centre, nonce-based CSP | design system |
+| G2b | Generic metadata-driven list and form, presentation settings (columns, saved views, density, dark mode), the design checkpoint screens on fixture data under a dev-only `/design` route | the checkpoint |
+| G3a | Fiscal research TN + FR (marked unvalidated), presets, tax components, customer tax regimes, units | calculator |
+| G3b | Settings engine chains through the API, settings page, establishments, numbering series, company profile | settings page |
+| G4 | Customers + contacts + customer groups | |
 | G5 | Products + categories | module registry |
 | G6 | Delivery notes + PDF, `delivery_note.validated` event | Gotenberg template |
 | G7 | Invoices, DN conversion, manual payments, credit notes, gapless numbering | |
 | G8 | Vendors | |
 | G9 | Expenses + attachments | Flysystem |
-| G10 | Inventory module consuming delivery-note events | |
+| G10 | Inventory module consuming delivery-note events, stock kept per product and location | |
 
 ## 6. Repository layout and environment
 
@@ -375,6 +397,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-13] AGREED: passkeys stay in G1c, beside TOTP, as the spec's G1c row already says; G1c is done only with the web pages, passkeys and a Playwright scenario. The WebAuthn libraries are chosen when G1c resumes, and their LICENSE files are read before either is added.
 - [2026-09-13] AGREED: G2's typography is Inter and its icon set is Material Symbols, both self-hosted, never loaded from Google. Their LICENSE files (expected OFL-1.1 and Apache-2.0) are read when they are vendored. Inter carries no Arabic glyphs, so the post-POC Arabic UI adds an Arabic face as a fallback.
 - [2026-09-13] AGREED: G3's fiscal research is written by Claude into `docs/fiscal/TN.md` and `docs/fiscal/FR.md` from official texts, with every rule cited to its source, and the developer or an accountant validates both before any preset is coded.
+- [2026-09-13] AGREED: amends the entry above so the POC run does not stop at G3: the presets are coded from the cited research straight away, every rule is marked `unvalidated` in `docs/fiscal/<CC>.md` and in `api/config/fiscal/<CC>.yaml`, and the developer validates after the run; a correction is a data edit plus its pricing vector.
+- [2026-09-13] AGREED: the goal of the current run is a minimal usable version covering the whole POC scope (§ 2), run without stopping except for a question; a decision Claude takes alone is written here as `DECIDED (revisit)`, distinct from `AGREED`, so it can be reviewed later.
+- [2026-09-13] AGREED: the run's order is G2 shell → G3 fiscal, settings, numbering → G4 customers → G5 products → G6 delivery notes + PDF → G7 invoices, payments, credit notes → G10 inventory → G8 vendors → G9 expenses → G1c MFA pages + passkeys → G1d signup. Invoices come before stock because G10 consumes `delivery_note.validated`; MFA is off by default, so its pages can wait. No compromise: every ruling above stays valid, and a ruling that proves wrong or costly is raised with a recommendation, never dropped silently.
+- [2026-09-13] AGREED: one design checkpoint after G2. The shell, the customer list and form, and a static invoice-editor screen are published as screenshots in one artifact, and the run stops once for approval; every later screen reuses the approved patterns. Quality bar on every screen: design tokens (spacing, type scale, colours), one list pattern (filters, table, pagination, empty state), one form pattern (sections, inline validation), keyboard reachability, an axe check in Playwright, and desktop and phone screenshots reviewed before a goal closes.
+- [2026-09-13] AGREED: the visual direction is a calm SaaS dashboard on restyled Angular Material: light neutral ground, one accent colour taken from branding, compact tables, spacious forms, dark mode through tokens. Customisability is a first-class requirement: every feature is designed by answering "how is this configurable?", and the scope of that model is the next entry.
+- [2026-09-13] AGREED: customisation is metadata-driven: lists, filters and forms are rendered from metadata, not hand-coded; theme tokens and logo, every table's columns (visibility, order, width, sort), filters and saved views, density and dark mode, translation overrides, custom fields on customers, products and documents, PDF template and colours, numbering formats and module switches are configurable. Tax arithmetic and legal mentions are not company-editable; they change only as operator-owned preset data. Amends the 2026-09-09 ruling of two settings scopes: a user scope is added, and the developer wants many more levels (client, product, document, group), with anything that would double the POC moved to the next milestone, but never hardcoded in a way that makes adding it later a rewrite. The level model is the next entry.
+- [2026-09-13] AGREED: settings are resolved by one generic engine with any number of levels. Each setting is registered with its type, its validation and the levels allowed to override it, and a test refuses a business value read in code that is not registered. The POC fills two chains for business defaults, platform → company → customer group → customer → document and platform → company → product category → product → document line, and one for presentation, platform → company → role → user. Customer groups and product categories are real entities with their own screens. A later level is registered, never rewritten.
+- [2026-09-13] DECIDED (revisit): numbering is a `numbering_series` entity (document type, format, next number, reset period) rather than a setting value, because gapless numbering needs a row locked in the issuing transaction; a company may hold several series per document type, and the settings engine picks the default one.
+- [2026-09-13] AGREED: three more concepts enter the data model now, each with one default instance so the POC screens stay minimal and going multi later is data: establishments (a company starts with one; documents and numbering series reference the issuing establishment, whose code is part of the Tunisian tax identifier), stock locations (stock is kept per product and location, one default location per establishment) and customer tax regimes (standard, exempt, suspended, export; operator-owned preset data sourced in the G3 research). Price lists are deferred to the next milestone: they are additive, a lookup before the product price, so adding them later is not a rewrite.
+- [2026-09-13] DECIDED (revisit): G2 is split into G2a (shell, tokens, theme, notifications, nonce CSP) and G2b (generic list and form, presentation settings, checkpoint), G3 into G3a (fiscal) and G3b (settings engine chains, establishments, numbering), and G4 and G5 grow from M to L with customer groups and categories; the status denominator goes from 75 to 101 points, so progress reads 23 % (24 of 101), not 32 %. The Centrifugo notifications of the 2026-09-09 ruling and the nonce-based CSP owed by the known issue both stay in G2a as ruled.
+- [2026-09-13] DECIDED (revisit): screens are described by TypeScript descriptors in `web/src/app/shared/`: a list descriptor (columns with key, label key, type, sortable, filterable, width, visible by default; filters; default sort) and a form descriptor (sections, fields, validators), with one merge point where server-provided custom fields are appended from G4 on.
+- [2026-09-13] DECIDED (revisit): presentation preferences go through a `SettingsFacade` port from G2b, first with a browser-storage adapter, replaced by the API adapter of the presentation chain at G3b; the nav manifest type is defined at G2a with hardcoded core entries and supplied by the G5 module registry. Both swaps are additive.
+- [2026-09-13] DECIDED (revisit): the accent colour is any hex, turned into Material tonal palettes at runtime with `@material/material-color-utilities` (Apache-2.0), rather than a fixed set of Sass palettes, because a fixed set is not "100 % customisable".
+- [2026-09-13] DECIDED (revisit): the design checkpoint's customer list and form and the static invoice editor are built on fixture data under a dev-only `/design` route, never on a throwaway API; the members page is the first real consumer of the list pattern, and G4 and G7 replace the fixtures with their facades.
+- [2026-09-13] DECIDED (revisit): the accessibility check is `@axe-core/playwright` in the e2e suite. It is MPL-2.0, which the licence gate already permits for dev-only tooling as a list (`--dump-rules`: `dev_only_tooling` = MPL-2.0, Python-2.0), so no licensing decision is involved; it never ships.
 
 ## 8. Status
 
@@ -386,15 +423,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 2 | G1b companies + memberships + switcher + invitations + mail | L | done | a021c93 | api/src/Tenancy/** api/templates/** web/src/app/company/** web/src/app/invitation/** |
 | 3 | G1c MFA | M | todo | - | |
 | 4 | G1d signup | M | todo | - | |
-| 5 | G2 shell + designs + generic list/form | L | todo | - | |
-| 6 | G3 fiscal presets + company + taxes + numbering | L | todo | - | |
-| 7 | G4 customers | M | todo | - | |
-| 8 | G5 products + module registry | M | todo | - | |
+| 5 | G2a shell + design tokens + theme + notifications + nonce CSP | L | todo | - | |
+| 6 | G3a fiscal research + presets + tax components + tax regimes | L | todo | - | |
+| 7 | G4 customers + contacts + customer groups | L | todo | - | |
+| 8 | G5 products + categories + module registry | L | todo | - | |
 | 9 | G6 delivery notes + PDF | L | todo | - | |
 | 10 | G7 invoices + payments + credit notes | L | todo | - | |
 | 11 | G8 vendors | S | todo | - | |
 | 12 | G9 expenses + attachments | M | todo | - | |
-| 13 | G10 inventory | M | todo | - | |
+| 13 | G10 inventory with stock locations | M | todo | - | |
+| 14 | G2b generic metadata list/form + presentation settings + design checkpoint | L | todo | - | |
+| 15 | G3b settings engine chains + settings page + establishments + numbering series + company profile | L | todo | - | |
 <!-- /progress-block -->
 
 ### Delivered
