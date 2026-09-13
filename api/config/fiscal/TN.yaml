@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Tunisia's fiscal preset. Every value is sourced in docs/fiscal/TN.md, where each rule is marked unvalidated:
+# change a rule there first, with its source, then here. Validated by App\Fiscal\Infrastructure\Preset.
+country: TN
+currency: TND
+minor_unit: 3
+document_languages: [fr]
+
+rounding:
+    mode: half_up
+    vat_point: per_rate_group
+    tax_basis: exclusive
+
+identifiers:
+    - key: matricule_fiscal
+      label_key: fiscal.identifier.tn.matricule_fiscal
+      pattern: '^[0-9]{7}[A-Z]/[A-Z]/[A-Z]/[0-9]{3}$'
+      required_for: [company, business_customer]
+
+tax_components:
+    - code: TVA19
+      names: { fr: 'TVA 19 %', en: 'VAT 19%' }
+      kind: percentage_line
+      family: vat
+      rate: '19'
+      is_default: true
+    - code: TVA13
+      names: { fr: 'TVA 13 %', en: 'VAT 13%' }
+      kind: percentage_line
+      family: vat
+      rate: '13'
+    - code: TVA7
+      names: { fr: 'TVA 7 %', en: 'VAT 7%' }
+      kind: percentage_line
+      family: vat
+      rate: '7'
+    - code: FODEC
+      names: { fr: 'FODEC 1 %', en: 'FODEC 1%' }
+      kind: percentage_line
+      family: levy
+      rate: '1'
+      enters_vat_base: true
+    - code: TIMBRE
+      names: { fr: 'Droit de timbre', en: 'Stamp duty' }
+      kind: fixed_document
+      family: stamp
+      amount: '1.000'
+      is_default: true
+    - code: RS1
+      names: { fr: 'Retenue à la source 1 %', en: 'Withholding 1%' }
+      kind: withholding_total
+      family: withholding
+      rate: '1'
+      threshold: '1000.000'
+
+customer_tax_regimes:
+    - code: standard
+      label_key: fiscal.regime.standard
+      excluded_families: []
+    - code: exempt
+      label_key: fiscal.regime.exempt
+      excluded_families: [vat]
+      mention_key: fiscal.mention.tn.exempt
+    - code: suspended
+      label_key: fiscal.regime.suspended
+      excluded_families: [vat]
+      mention_key: fiscal.mention.tn.suspended
+    - code: export
+      label_key: fiscal.regime.export
+      excluded_families: [vat]
+      mention_key: fiscal.mention.tn.export
+
+company_vat_regimes:
+    - code: standard
+      label_key: fiscal.regime.standard
+      excluded_families: []
+
+mentions:
+    invoice: []
+
+numbering:
+    invoice: { format: 'FAC-{YYYY}-{SEQ:5}', reset: yearly }
+    credit_note: { format: 'AV-{YYYY}-{SEQ:5}', reset: yearly }
+    delivery_note: { format: 'BL-{YYYY}-{SEQ:5}', reset: yearly }
+
+# UN/ECE Recommendation 20 codes, which EN 16931 (BT-130) expects on every invoice line.
+units:
+    - { code: C62, names: { fr: 'Unité', en: 'Unit' }, decimals: 0 }
+    - { code: H87, names: { fr: 'Pièce', en: 'Piece' }, decimals: 0 }
+    - { code: HUR, names: { fr: 'Heure', en: 'Hour' }, decimals: 2 }
+    - { code: DAY, names: { fr: 'Jour', en: 'Day' }, decimals: 2 }
+    - { code: KGM, names: { fr: 'Kilogramme', en: 'Kilogram' }, decimals: 3 }
+    - { code: MTR, names: { fr: 'Mètre', en: 'Metre' }, decimals: 3 }
+    - { code: MTK, names: { fr: 'Mètre carré', en: 'Square metre' }, decimals: 3 }
+    - { code: LTR, names: { fr: 'Litre', en: 'Litre' }, decimals: 3 }

@@ -1,0 +1,30 @@
+# Labels and printed mentions the fiscal presets name by key (api/config/fiscal/*.yaml). The wording of each
+# mention is unvalidated: docs/fiscal/<CC>.md cites what exists for it.
+fiscal:
+    identifier:
+        tn:
+            matricule_fiscal: 'Matricule fiscal'
+        fr:
+            siren: 'SIREN'
+            siret: 'SIRET'
+            vat_number: 'Numéro de TVA intracommunautaire'
+    regime:
+        standard: 'Régime normal'
+        exempt: 'Exonéré de TVA'
+        suspended: 'En suspension de TVA'
+        export: 'Export'
+        intra_eu: 'Intracommunautaire'
+        franchise: 'Franchise en base de TVA'
+    mention:
+        tn:
+            exempt: 'Opération exonérée de la TVA.'
+            suspended: 'Vente en suspension de la TVA.'
+            export: 'Exportation exonérée de la TVA.'
+        fr:
+            exempt: 'Exonération de TVA, %reference%.'
+            intra_eu: 'Autoliquidation. Exonération de TVA, articles 262 ter I et 283-2 du CGI.'
+            export: 'Exonération de TVA, article 262 I du CGI.'
+            franchise: 'TVA non applicable, art. 293 B du CGI.'
+            late_payment: 'En cas de retard de paiement, des pénalités sont exigibles au taux de %rate%.'
+            recovery_indemnity: 'Indemnité forfaitaire pour frais de recouvrement en cas de retard de paiement : 40 €.'
+            no_early_discount: "Pas d'escompte pour paiement anticipé."

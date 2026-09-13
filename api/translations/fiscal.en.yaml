@@ -1,0 +1,30 @@
+# Labels and printed mentions the fiscal presets name by key (api/config/fiscal/*.yaml). The wording of each
+# mention is unvalidated: docs/fiscal/<CC>.md cites what exists for it.
+fiscal:
+    identifier:
+        tn:
+            matricule_fiscal: 'Tax identification number (matricule fiscal)'
+        fr:
+            siren: 'SIREN'
+            siret: 'SIRET'
+            vat_number: 'EU VAT number'
+    regime:
+        standard: 'Standard'
+        exempt: 'VAT exempt'
+        suspended: 'VAT suspended'
+        export: 'Export'
+        intra_eu: 'Intra-EU'
+        franchise: 'VAT-free threshold (franchise en base)'
+    mention:
+        tn:
+            exempt: 'Transaction exempt from VAT.'
+            suspended: 'Sale under VAT suspension.'
+            export: 'Export, exempt from VAT.'
+        fr:
+            exempt: 'VAT exemption, %reference%.'
+            intra_eu: 'Reverse charge. VAT exemption, articles 262 ter I and 283-2 of the French General Tax Code.'
+            export: 'VAT exemption, article 262 I of the French General Tax Code.'
+            franchise: 'VAT not applicable, article 293 B of the French General Tax Code.'
+            late_payment: 'Late payment penalties are due at a rate of %rate%.'
+            recovery_indemnity: 'Fixed recovery fee in case of late payment: €40.'
+            no_early_discount: 'No discount for early payment.'

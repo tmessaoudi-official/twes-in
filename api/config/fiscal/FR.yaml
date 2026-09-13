@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# France's fiscal preset. Every value is sourced in docs/fiscal/FR.md, where each rule is marked unvalidated:
+# change a rule there first, with its source, then here. Validated by App\Fiscal\Infrastructure\Preset.
+country: FR
+currency: EUR
+minor_unit: 2
+document_languages: [fr]
+
+rounding:
+    mode: half_up
+    vat_point: per_rate_group
+    tax_basis: exclusive
+
+identifiers:
+    - key: siren
+      label_key: fiscal.identifier.fr.siren
+      pattern: '^[0-9]{9}$'
+      required_for: [company, business_customer]
+    - key: siret
+      label_key: fiscal.identifier.fr.siret
+      pattern: '^[0-9]{14}$'
+      required_for: [company]
+    - key: vat_number
+      label_key: fiscal.identifier.fr.vat_number
+      pattern: '^FR[0-9A-Z]{2}[0-9]{9}$'
+      required_for: []
+
+tax_components:
+    - code: TVA20
+      names: { fr: 'TVA 20 %', en: 'VAT 20%' }
+      kind: percentage_line
+      family: vat
+      rate: '20'
+      is_default: true
+    - code: TVA10
+      names: { fr: 'TVA 10 %', en: 'VAT 10%' }
+      kind: percentage_line
+      family: vat
+      rate: '10'
+    - code: TVA5_5
+      names: { fr: 'TVA 5,5 %', en: 'VAT 5.5%' }
+      kind: percentage_line
+      family: vat
+      rate: '5.5'
+    - code: TVA2_1
+      names: { fr: 'TVA 2,1 %', en: 'VAT 2.1%' }
+      kind: percentage_line
+      family: vat
+      rate: '2.1'
+
+customer_tax_regimes:
+    - code: standard
+      label_key: fiscal.regime.standard
+      excluded_families: []
+    - code: exempt
+      label_key: fiscal.regime.exempt
+      excluded_families: [vat]
+      mention_key: fiscal.mention.fr.exempt
+    - code: intra_eu
+      label_key: fiscal.regime.intra_eu
+      excluded_families: [vat]
+      mention_key: fiscal.mention.fr.intra_eu
+    - code: export
+      label_key: fiscal.regime.export
+      excluded_families: [vat]
+      mention_key: fiscal.mention.fr.export
+
+company_vat_regimes:
+    - code: standard
+      label_key: fiscal.regime.standard
+      excluded_families: []
+    - code: franchise
+      label_key: fiscal.regime.franchise
+      excluded_families: [vat]
+      mention_key: fiscal.mention.fr.franchise
+
+mentions:
+    invoice:
+        - fiscal.mention.fr.late_payment
+        - fiscal.mention.fr.recovery_indemnity
+        - fiscal.mention.fr.no_early_discount
+
+numbering:
+    invoice: { format: 'FA-{YYYY}-{SEQ:5}', reset: yearly }
+    credit_note: { format: 'AV-{YYYY}-{SEQ:5}', reset: yearly }
+    delivery_note: { format: 'BL-{YYYY}-{SEQ:5}', reset: yearly }
+
+# UN/ECE Recommendation 20 codes, which EN 16931 (BT-130) expects on every invoice line.
+units:
+    - { code: C62, names: { fr: 'Unité', en: 'Unit' }, decimals: 0 }
+    - { code: H87, names: { fr: 'Pièce', en: 'Piece' }, decimals: 0 }
+    - { code: HUR, names: { fr: 'Heure', en: 'Hour' }, decimals: 2 }
+    - { code: DAY, names: { fr: 'Jour', en: 'Day' }, decimals: 2 }
+    - { code: KGM, names: { fr: 'Kilogramme', en: 'Kilogram' }, decimals: 3 }
+    - { code: MTR, names: { fr: 'Mètre', en: 'Metre' }, decimals: 3 }
+    - { code: MTK, names: { fr: 'Mètre carré', en: 'Square metre' }, decimals: 3 }
+    - { code: LTR, names: { fr: 'Litre', en: 'Litre' }, decimals: 3 }

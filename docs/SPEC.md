@@ -429,6 +429,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-13] AGREED: the Tunisian preset ships the invoice stamp as a flat 1.000 TND fixed per-document charge (CDET art. 117, as amended by LF 2023). The brackets LF 2026 art. 20 sets for large retail outlets (1.5 TND for invoices of 50 to 100 TND, 2 TND above) are a known issue, not modelled; the amount stays editable per company.
 - [2026-09-13] AGREED: tax-inclusive (TTC) entry is refused on a line carrying more than one percentage tax or a tax that enters the VAT base (Tunisian FODEC with VAT): no source says how that compound extraction is rounded. Tax-exclusive entry works for every combination, a pricing vector pins the refusal, and the revisit is a sourced rounding rule.
 - [2026-09-13] AGREED: creating a company in a country with no fiscal preset answers 422 ("no fiscal preset for this country"): a company cannot invoice without its taxes, and a new country is a preset file plus translations.
+- [2026-09-13] DECIDED (revisit): the tax-kind set is closed for the POC as § 3's three kinds, and each component also has a `family`: `vat` and `levy` are `percentage_line`, `stamp` is `fixed_document`, `withholding` is `withholding_total`, and only a levy may enter the VAT base. Regimes exclude families, never codes, so an export regime removes a company's VAT rates whatever the company named them. Mapping: Tunisian VAT 19/13/7 % and French VAT 20/10/5.5/2.1 % are `vat`; FODEC 1 % is a `levy` entering the VAT base; the Tunisian stamp is `stamp`; the 1 % retenue à la source is `withholding` (docs/fiscal/TN.md, docs/fiscal/FR.md).
+- [2026-09-13] DECIDED (revisit): a preset is `api/config/fiscal/<CC>.yaml`, validated when read by a Symfony Config tree plus the rules spanning several values (`App\Fiscal\Infrastructure\Preset`), each refusal naming the file, the path and the rule. Component and unit names are written in every product language and copied into the company's own rows, in its locale, at creation. Regime labels, identifier labels and printed mentions are translation keys under `fiscal.` in `api/translations/fiscal.{fr,en}.yaml`, because the API renders documents; a test holds both files to the keys the presets use. Identifiers carry a pattern only; checksums are G4 validators. `symfony/config` becomes a direct dependency (it was already locked through the framework).
+- [2026-09-13] DECIDED (revisit): the configurable rounding point of the pricing vectors becomes a preset rounding rule. Both presets say `half_up`, `per_rate_group` (EN 16931 BR-CO-17) and `exclusive`; the vectors keep declaring `vat_rounding_point` and `tax_basis` per case, because the calculator implements both. The rounding rules and numbering defaults reach a company through the settings engine at G3b; G3a copies at creation only what has a table: the tax components and the units.
 
 ## 8. Status
 
@@ -462,8 +465,6 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 ### Blocked
 ### Needs input
 ### Needs research
-- G3: the kept pricing vectors encode a configurable rounding point from the old design; the preset now carries rounding rules. Reconcile at G3.
-- G3: Tunisian and French fiscal rules with sources (rates, FODEC scope, stamp, withholding thresholds, identifier formats, mandatory mentions, El Fatoora scope).
 ### Fragile
 ### Known issues
 - `APP_SECRET` is empty in `api/.env` by design: `.env.dev` carries the Flex-generated development secret and production must set its own through the environment; the API image ships no secret.

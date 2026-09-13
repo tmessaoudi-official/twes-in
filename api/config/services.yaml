@@ -99,6 +99,11 @@ services:
         arguments:
             $pageSize: '%app.inbox.page_size%'
 
+    # One validated file per country (docs/SPEC.md § 3 Fiscal presets).
+    App\Fiscal\Infrastructure\Preset\YamlFiscalPresets:
+        arguments:
+            $directory: '%kernel.project_dir%/config/fiscal'
+
 when@test:
     parameters:
         # The same rule for the realtime push: the rows are asserted, the push is the adapter's own unit test.
