@@ -1,5 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "types": ["node"], "module": "esnext", "moduleResolution": "bundler" },
-  "include": ["e2e/**/*.ts", "playwright.config.ts"]
+  "include": [
+    "e2e/**/*.ts",
+    "e2e-design/**/*.ts",
+    "playwright.config.ts",
+    "playwright.design.config.ts"
+  ]
 }

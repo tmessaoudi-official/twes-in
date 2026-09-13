@@ -1,4 +1,4 @@
-<section class="flex max-w-3xl flex-col gap-6">
+<section class="flex max-w-4xl flex-col gap-6">
   <h1 class="text-3xl font-semibold" data-testid="members-title">
     {{ 'members.title' | translate }}
   </h1>
@@ -10,7 +10,7 @@
   }
 
   @if (error(); as code) {
-    <p role="alert" data-testid="members-error" class="text-red-700">
+    <p role="alert" data-testid="members-error" class="text-error">
       {{ 'members.errors.' + code | translate }}
     </p>
   }
@@ -18,44 +18,31 @@
     <p role="status" data-testid="members-added">{{ 'members.' + outcome | translate }}</p>
   }
 
-  <table class="w-full text-left" data-testid="members-table">
-    <thead>
-      <tr>
-        <th scope="col">{{ 'members.name' | translate }}</th>
-        <th scope="col">{{ 'members.email' | translate }}</th>
-        <th scope="col">{{ 'members.role' | translate }}</th>
-        <th scope="col">
-          <span class="sr-only">{{ 'members.actions' | translate }}</span>
-        </th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of rows(); track row.userId) {
-        <tr [attr.data-testid]="'member-' + row.email">
-          <td>{{ row.displayName }}</td>
-          <td>{{ row.email }}</td>
-          <td>{{ 'roles.' + row.role | translate }}</td>
-          <td>
-            @if (mayManage()) {
-              <button
-                mat-button
-                type="button"
-                (click)="remove(row.userId)"
-                [disabled]="busy()"
-                [attr.data-testid]="'remove-' + row.email"
-              >
-                {{ 'members.remove' | translate }}
-              </button>
-            }
-          </td>
-        </tr>
-      } @empty {
-        <tr>
-          <td colspan="4" data-testid="members-empty">{{ 'members.none' | translate }}</td>
-        </tr>
-      }
-    </tbody>
-  </table>
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows()"
+    testId="members-table"
+    [rowTestId]="rowTestId"
+    emptyKey="members.none"
+    emptyTestId="members-empty"
+  >
+    <ng-template appDataListCell="role" let-row>
+      {{ 'roles.' + row.role | translate }}
+    </ng-template>
+    @if (mayManage()) {
+      <ng-template appDataListRowActions let-row>
+        <button
+          mat-button
+          type="button"
+          (click)="remove(row.userId)"
+          [disabled]="busy()"
+          [attr.data-testid]="'remove-' + row.email"
+        >
+          {{ 'members.remove' | translate }}
+        </button>
+      </ng-template>
+    }
+  </app-data-list>
 
   @if (mayManage()) {
     <mat-card>

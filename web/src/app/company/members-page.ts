@@ -16,8 +16,35 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import type { MemberRole } from './company-types';
+import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import type { MemberRole, MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
+
+/** The members list as configuration: its columns, what a person may hide, and its page sizes. */
+export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
+  id: 'members',
+  rowId: (row) => row.userId,
+  pageSizes: [25, 50, 100],
+  columns: [
+    {
+      id: 'name',
+      label: 'members.name',
+      value: (row) => row.displayName,
+      sortable: true,
+      filterable: true,
+      hideable: false,
+    },
+    {
+      id: 'email',
+      label: 'members.email',
+      value: (row) => row.email,
+      sortable: true,
+      filterable: true,
+    },
+    { id: 'role', label: 'members.role', value: (row) => row.role, sortable: true },
+  ],
+};
 
 /** Who belongs to the company being worked in, and the two things an administrator does about it. */
 @Component({
@@ -30,6 +57,9 @@ import { MembersFacade } from './members-facade';
     MatSelectModule,
     MatButtonModule,
     TranslatePipe,
+    DataList,
+    DataListCell,
+    DataListRowActions,
   ],
   templateUrl: './members-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -39,6 +69,8 @@ export class MembersPage implements OnInit {
   private readonly auth = inject(AuthFacade);
 
   protected readonly roles: readonly MemberRole[] = ['owner', 'admin', 'member'];
+  protected readonly list = MEMBERS_LIST;
+  protected readonly rowTestId = (row: MemberRow): string => `member-${row.email}`;
   protected readonly rows = this.members.members;
   protected readonly busy = this.members.busy;
   protected readonly error = this.members.error;

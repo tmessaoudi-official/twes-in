@@ -8,11 +8,15 @@ import {
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
 import { MatIconRegistry } from '@angular/material/icon';
+import { MatPaginatorIntl } from '@angular/material/paginator';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
 import { csrfInterceptor } from './auth/csrf-interceptor';
+import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
+import { SettingsFacade } from './shared/settings/settings-facade';
+import { TranslatedPaginatorIntl } from './shared/list/translated-paginator-intl';
 import { ThemeFacade } from './shared/theme/theme-facade';
 
 export const appConfig: ApplicationConfig = {
@@ -28,6 +32,10 @@ export const appConfig: ApplicationConfig = {
       fallbackLang: 'fr',
       loader: provideTranslateHttpLoader({ prefix: '/i18n/', suffix: '.json' }),
     }),
+    // Presentation preferences live in the browser until G3b swaps in the API adapter behind the same port.
+    { provide: SettingsFacade, useClass: BrowserStorageSettings },
+    // Every paginator's labels follow the chosen language.
+    { provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl },
     // Icons are Material Symbols ligatures (the material-symbols package), and the theme is applied before the
     // first page renders, so nothing paints in the compiled fallback colours for longer than a frame.
     provideAppInitializer(() => {

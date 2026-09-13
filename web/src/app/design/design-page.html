@@ -1,0 +1,28 @@
+<section class="flex flex-col gap-4">
+  <header class="flex flex-col gap-1">
+    <h1 class="text-3xl font-semibold" data-testid="design-title">
+      {{ 'design.title' | translate }}
+    </h1>
+    <p class="text-on-surface-variant">{{ 'design.intro' | translate }}</p>
+  </header>
+
+  <nav mat-tab-nav-bar [tabPanel]="panel" [attr.aria-label]="'design.tabs_label' | translate">
+    @for (tab of tabs; track tab.key) {
+      <a
+        mat-tab-link
+        [routerLink]="tab.path"
+        routerLinkActive
+        #active="routerLinkActive"
+        [routerLinkActiveOptions]="{ exact: true }"
+        [active]="active.isActive"
+        [attr.data-testid]="'design-tab-' + tab.key"
+      >
+        {{ tab.label | translate }}
+      </a>
+    }
+  </nav>
+
+  <mat-tab-nav-panel #panel>
+    <router-outlet />
+  </mat-tab-nav-panel>
+</section>

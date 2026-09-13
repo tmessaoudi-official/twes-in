@@ -1,0 +1,43 @@
+<div class="flex flex-col gap-4 pt-4">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="text-xl font-semibold">{{ 'design.customers.title' | translate }}</h2>
+    <a mat-flat-button routerLink="new" data-testid="design-customer-new">
+      <mat-icon aria-hidden="true">add</mat-icon>
+      {{ 'design.customers.new' | translate }}
+    </a>
+  </div>
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows"
+    testId="design-customers-table"
+    [rowTestId]="rowTestId"
+    emptyKey="design.customers.none"
+    emptyTestId="design-customers-empty"
+  >
+    <ng-template appDataListCell="balance" let-row>
+      <span class="tabular-nums">{{ row.balanceLabel }}</span>
+    </ng-template>
+    <ng-template appDataListCell="status" let-row>
+      <span
+        class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
+        [class]="
+          row.status === 'active'
+            ? 'bg-primary-container text-on-primary-container'
+            : 'bg-surface-container-high text-on-surface-variant'
+        "
+      >
+        {{ 'design.customers.statuses.' + row.status | translate }}
+      </span>
+    </ng-template>
+    <ng-template appDataListRowActions let-row>
+      <button
+        mat-icon-button
+        type="button"
+        [attr.aria-label]="'design.customers.open' | translate: { name: row.name }"
+      >
+        <mat-icon aria-hidden="true">chevron_right</mat-icon>
+      </button>
+    </ng-template>
+  </app-data-list>
+</div>

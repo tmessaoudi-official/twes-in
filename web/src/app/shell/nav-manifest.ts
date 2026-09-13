@@ -36,6 +36,15 @@ export const CORE_NAV: readonly NavEntry[] = [
     section: 'admin',
     permission: 'user.read',
   },
+  // The design checkpoint's fixture screens: a development build only, never shipped.
+  {
+    key: 'design',
+    labelKey: 'nav.design',
+    icon: 'palette',
+    route: '/design',
+    section: 'admin',
+    devOnly: true,
+  },
 ];
 
 /** The entries this user may see in this build. Hiding is a courtesy; the API refuses what the voter refuses. */

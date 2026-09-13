@@ -1,0 +1,211 @@
+<div class="flex flex-col gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    @if (filterable()) {
+      <mat-form-field subscriptSizing="dynamic" class="w-full sm:w-auto sm:max-w-sm sm:flex-1">
+        <mat-label>{{ 'list.filter' | translate }}</mat-label>
+        <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+        <input
+          matInput
+          type="search"
+          [value]="query()"
+          (input)="onFilter($event)"
+          data-testid="list-filter"
+        />
+        @if (query()) {
+          <button
+            matSuffix
+            mat-icon-button
+            type="button"
+            (click)="clearFilter()"
+            [attr.aria-label]="'list.filter_clear' | translate"
+          >
+            <mat-icon aria-hidden="true">close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+    }
+    <button
+      mat-stroked-button
+      class="ms-auto"
+      type="button"
+      (click)="chooserOpen.set(!chooserOpen())"
+      [attr.aria-expanded]="chooserOpen()"
+      [attr.aria-controls]="testId() + '-columns'"
+      data-testid="list-columns"
+    >
+      <mat-icon aria-hidden="true">view_column</mat-icon>
+      {{ 'list.columns' | translate }}
+    </button>
+  </div>
+
+  @if (chooserOpen()) {
+    <div
+      [id]="testId() + '-columns'"
+      role="group"
+      [attr.aria-label]="'list.columns' | translate"
+      class="flex flex-col gap-1 rounded-lg border border-outline-variant bg-surface-container-low p-2"
+    >
+      <ul cdkDropList (cdkDropListDropped)="drop($event)" class="flex flex-col">
+        @for (entry of chooser(); track entry.column.id; let first = $first, last = $last) {
+          <li cdkDrag class="flex items-center gap-1 rounded bg-surface-container-low px-1">
+            <mat-icon
+              cdkDragHandle
+              class="cursor-grab text-on-surface-variant"
+              [attr.aria-label]="
+                'list.move_column' | translate: { column: (entry.column.label | translate) }
+              "
+              >drag_indicator</mat-icon
+            >
+            <label class="flex flex-1 items-center gap-2 py-1">
+              <input
+                type="checkbox"
+                class="size-4 accent-[var(--mat-sys-primary)]"
+                [checked]="entry.visible"
+                [disabled]="entry.column.hideable === false"
+                (change)="toggleColumn(entry.column.id)"
+                [attr.data-testid]="'list-column-toggle-' + entry.column.id"
+              />
+              {{ entry.column.label | translate }}
+            </label>
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="first"
+              (click)="move(entry.column.id, -1)"
+              [attr.aria-label]="
+                'list.move_column' | translate: { column: (entry.column.label | translate) }
+              "
+              [attr.data-testid]="'list-column-up-' + entry.column.id"
+            >
+              <mat-icon aria-hidden="true">arrow_upward</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="last"
+              (click)="move(entry.column.id, 1)"
+              [attr.aria-label]="
+                'list.move_column' | translate: { column: (entry.column.label | translate) }
+              "
+              [attr.data-testid]="'list-column-down-' + entry.column.id"
+            >
+              <mat-icon aria-hidden="true">arrow_downward</mat-icon>
+            </button>
+          </li>
+        }
+      </ul>
+      <button
+        mat-button
+        type="button"
+        class="self-start"
+        (click)="resetColumns()"
+        data-testid="list-columns-reset"
+      >
+        {{ 'list.columns_reset' | translate }}
+      </button>
+    </div>
+  }
+
+  <div class="overflow-x-auto rounded-lg border border-outline-variant">
+    <table
+      mat-table
+      [dataSource]="page().rows"
+      [trackBy]="trackRow"
+      matSort
+      [matSortActive]="sort()?.column ?? ''"
+      [matSortDirection]="sort()?.direction ?? ''"
+      (matSortChange)="onSort($event)"
+      class="w-full table-fixed"
+      [style.min-width.px]="tableWidth()"
+      [attr.data-testid]="testId()"
+    >
+      @for (column of columns(); track column.id) {
+        <ng-container [matColumnDef]="column.id">
+          <th
+            mat-header-cell
+            *matHeaderCellDef
+            mat-sort-header
+            [disabled]="!column.sortable"
+            [arrowPosition]="column.align === 'end' ? 'before' : 'after'"
+            class="relative"
+            [class]="column.align === 'end' ? '!text-end' : ''"
+            [style.width.px]="widthOf(column)"
+            [attr.data-testid]="'list-header-' + column.id"
+          >
+            {{ column.label | translate }}
+            <span
+              role="separator"
+              aria-orientation="vertical"
+              tabindex="0"
+              [attr.aria-label]="
+                'list.resize_column' | translate: { column: (column.label | translate) }
+              "
+              [attr.aria-valuenow]="widthOf(column)"
+              [attr.aria-valuemin]="minWidth"
+              [attr.aria-valuemax]="maxWidth"
+              class="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-primary focus:outline-none"
+              (click)="$event.stopPropagation()"
+              (keydown)="onResizeKey($event, column)"
+              (pointerdown)="startResize($event, column)"
+              [attr.data-testid]="'list-resize-' + column.id"
+            ></span>
+          </th>
+          <td
+            mat-cell
+            *matCellDef="let row"
+            class="truncate"
+            [class]="column.align === 'end' ? '!text-end tabular-nums' : ''"
+          >
+            @if (cellTemplates().get(column.id); as template) {
+              <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+            } @else {
+              {{ column.value(row) }}
+            }
+          </td>
+        </ng-container>
+      }
+      @if (actions(); as actions) {
+        <ng-container [matColumnDef]="actionsColumn">
+          <th mat-header-cell *matHeaderCellDef [style.width.px]="actionsWidth">
+            <span class="sr-only">{{ 'list.actions' | translate }}</span>
+          </th>
+          <td mat-cell *matCellDef="let row" class="text-end">
+            <ng-container *ngTemplateOutlet="actions.template; context: { $implicit: row }" />
+          </td>
+        </ng-container>
+      }
+
+      <tr mat-header-row *matHeaderRowDef="columnIds()"></tr>
+      <tr
+        mat-row
+        *matRowDef="let row; columns: columnIds()"
+        [attr.data-testid]="testIdOf(row)"
+      ></tr>
+      <tr *matNoDataRow>
+        <td
+          [attr.colspan]="columnIds().length"
+          class="px-4 py-8 text-center text-on-surface-variant"
+        >
+          @if (rows().length === 0) {
+            <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
+          } @else {
+            <span data-testid="list-no-match">{{
+              'list.no_match' | translate: { query: query() }
+            }}</span>
+          }
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  @if (paged()) {
+    <mat-paginator
+      [length]="page().total"
+      [pageIndex]="page().pageIndex"
+      [pageSize]="pageSize()"
+      [pageSizeOptions]="descriptor().pageSizes"
+      (page)="onPage($event)"
+      data-testid="list-paginator"
+    />
+  }
+</div>

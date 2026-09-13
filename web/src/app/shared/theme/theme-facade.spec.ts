@@ -1,19 +1,32 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { AuthFacade } from '../../auth/auth-facade';
+import { BrowserStorageSettings } from '../settings/browser-storage-settings';
+import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { colourTokens, InvalidAccentColour } from './accent-theme';
 import { DEFAULT_ACCENT, ThemeFacade } from './theme-facade';
 
 describe('ThemeFacade', () => {
   const root = document.documentElement;
 
+  let storage: PageMemoryStorage;
+
   beforeEach(() => {
-    TestBed.resetTestingModule();
+    storage = new PageMemoryStorage();
     root.className = '';
     root.removeAttribute('style');
   });
 
   function start(): ThemeFacade {
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: storage },
+        { provide: AuthFacade, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+      ],
+    });
     const facade = TestBed.inject(ThemeFacade);
     TestBed.tick();
     return facade;
@@ -70,5 +83,20 @@ describe('ThemeFacade', () => {
     facade.setDensity('comfortable');
     TestBed.tick();
     expect(root.classList.contains('density-compact')).toBe(false);
+  });
+
+  it('keeps scheme, density and accent for the next page load', () => {
+    const facade = start();
+    facade.setScheme('dark');
+    facade.setDensity('compact');
+    facade.setAccent('#D93025');
+
+    root.className = '';
+    const reloaded = start();
+
+    expect(reloaded.scheme()).toBe('dark');
+    expect(reloaded.density()).toBe('compact');
+    expect(reloaded.accent()).toBe('#d93025');
+    expect(root.classList.contains('theme-dark')).toBe(true);
   });
 });

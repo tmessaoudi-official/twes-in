@@ -12,6 +12,12 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
 import { MembersPage } from './members-page';
@@ -60,7 +66,7 @@ describe('MembersPage', () => {
     remove: vi.fn(),
   };
   const auth = {
-    me: () => ({ company: { id: 'c1', name: 'Acme' } }),
+    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
   let fixture: ComponentFixture<MembersPage>;
@@ -89,6 +95,8 @@ describe('MembersPage', () => {
         }),
         { provide: MembersFacade, useValue: members },
         { provide: AuthFacade, useValue: auth },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
     fixture = TestBed.createComponent(MembersPage);

@@ -78,7 +78,8 @@
     "sections": {
       "main": "General",
       "admin": "Administration"
-    }
+    },
+    "design": "Design"
   },
   "shell": {
     "skip": "Skip to content",
@@ -118,6 +119,109 @@
       "password_refused": "That password has appeared in a data breach. Choose another one.",
       "invalid": "Invalid request.",
       "network": "The server could not be reached."
+    }
+  },
+  "list": {
+    "filter": "Filter",
+    "filter_clear": "Clear the filter",
+    "columns": "Columns",
+    "columns_reset": "Reset columns",
+    "move_column": "Drag to reorder {{column}}",
+    "resize_column": "Resize {{column}}",
+    "no_match": "Nothing matches “{{query}}”.",
+    "actions": "Actions",
+    "paginator": {
+      "items_per_page": "Items per page:",
+      "next": "Next page",
+      "previous": "Previous page",
+      "first": "First page",
+      "last": "Last page",
+      "range": "{{start}} – {{end}} of {{total}}",
+      "empty": "0 of {{total}}"
+    }
+  },
+  "design": {
+    "title": "Design checkpoint",
+    "intro": "Fixture screens for review. No data is saved.",
+    "customers": {
+      "title": "Customers",
+      "name": "Name",
+      "city": "City",
+      "country": "Country",
+      "vat": "VAT number",
+      "balance": "Balance",
+      "status": "Status",
+      "none": "No customers yet.",
+      "statuses": {
+        "active": "Active",
+        "archived": "Archived"
+      },
+      "new": "New customer",
+      "open": "Open {{name}}"
+    },
+    "customer_form": {
+      "title": "New customer",
+      "identity": "Identity",
+      "address": "Address",
+      "billing": "Billing",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "street": "Street",
+      "postal_code": "Postal code",
+      "city": "City",
+      "country": "Country",
+      "vat": "VAT number",
+      "payment_terms": "Payment terms (days)",
+      "currency": "Currency",
+      "save": "Save",
+      "cancel": "Cancel",
+      "saved": "Saved (fixture only)."
+    },
+    "invoice": {
+      "title": "Invoice",
+      "number": "Number",
+      "customer": "Customer",
+      "issue_date": "Issue date",
+      "due_date": "Due date",
+      "lines": "Lines",
+      "description": "Description",
+      "quantity": "Qty",
+      "unit_price": "Unit price",
+      "tax": "Tax",
+      "line_total": "Total",
+      "add_line": "Add a line",
+      "subtotal": "Subtotal",
+      "tax_total": "Taxes",
+      "stamp": "Stamp duty",
+      "total": "Total due",
+      "notes": "Notes",
+      "draft": "Draft",
+      "send": "Send",
+      "preview": "Preview PDF",
+      "line": "Line {{n}}",
+      "remove_line": "Remove line {{n}}",
+      "totals": "Totals",
+      "bill_to": "Bill to"
+    },
+    "tabs_label": "Design screens",
+    "fixture_notice": "Fixture screen: amounts are sample values and do not recompute.",
+    "countries": {
+      "TN": "Tunisia",
+      "FR": "France"
+    }
+  },
+  "form": {
+    "optional": "optional",
+    "errors": {
+      "required": "This field is required.",
+      "email": "Enter a valid email address.",
+      "option": "Choose one of the proposed values.",
+      "pattern": "This value does not have the expected format.",
+      "min_length": "At least {{min}} characters.",
+      "max_length": "At most {{max}} characters.",
+      "min": "At least {{min}}.",
+      "max": "At most {{max}}."
     }
   }
 }

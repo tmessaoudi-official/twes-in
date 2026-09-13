@@ -1,0 +1,89 @@
+<form
+  [formGroup]="form()"
+  (ngSubmit)="submit()"
+  novalidate
+  class="flex flex-col gap-6"
+  [attr.data-testid]="testId()"
+>
+  @for (section of descriptor().sections; track section.id) {
+    <fieldset class="flex min-w-0 flex-col gap-2 rounded-xl border border-outline-variant p-4">
+      <legend class="px-1 text-base font-semibold">{{ section.title | translate }}</legend>
+      <div class="grid gap-x-4 sm:grid-cols-2">
+        @for (field of section.fields; track field.id) {
+          <mat-form-field
+            [class]="spanClass(field)"
+            [attr.data-testid]="'field-wrapper-' + field.id"
+          >
+            <mat-label>{{ field.label | translate }}</mat-label>
+            @switch (field.kind) {
+              @case ('textarea') {
+                <textarea
+                  matInput
+                  rows="3"
+                  [formControlName]="field.id"
+                  [required]="field.required ?? false"
+                  [attr.maxlength]="field.maxLength ?? null"
+                  [attr.data-testid]="'field-' + field.id"
+                ></textarea>
+              }
+              @case ('select') {
+                <mat-select
+                  [formControlName]="field.id"
+                  [required]="field.required ?? false"
+                  [attr.data-testid]="'field-' + field.id"
+                >
+                  @for (option of field.options ?? []; track option.value) {
+                    <mat-option [value]="option.value">{{ option.label | translate }}</mat-option>
+                  }
+                </mat-select>
+              }
+              @case ('number') {
+                <!-- A static type="number" is what gives the control a number rather than a string. -->
+                <input
+                  matInput
+                  type="number"
+                  inputmode="decimal"
+                  [formControlName]="field.id"
+                  [required]="field.required ?? false"
+                  [attr.min]="field.min ?? null"
+                  [attr.max]="field.max ?? null"
+                  [attr.data-testid]="'field-' + field.id"
+                />
+              }
+              @default {
+                <input
+                  matInput
+                  [type]="field.kind"
+                  [formControlName]="field.id"
+                  [required]="field.required ?? false"
+                  [attr.maxlength]="field.maxLength ?? null"
+                  [attr.autocomplete]="field.autocomplete ?? null"
+                  [attr.data-testid]="'field-' + field.id"
+                />
+              }
+            }
+            @if (field.hint || !field.required) {
+              <mat-hint>
+                @if (field.hint) {
+                  {{ field.hint | translate }}
+                }
+                @if (field.hint && !field.required) {
+                  ·
+                }
+                @if (!field.required) {
+                  {{ 'form.optional' | translate }}
+                }
+              </mat-hint>
+            }
+            @if (errorFor(field); as error) {
+              <mat-error [attr.data-testid]="'field-error-' + field.id">
+                {{ error.key | translate: error.params }}
+              </mat-error>
+            }
+          </mat-form-field>
+        }
+      </div>
+    </fieldset>
+  }
+  <ng-content />
+</form>

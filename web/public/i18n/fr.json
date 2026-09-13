@@ -78,7 +78,8 @@
     "sections": {
       "main": "Général",
       "admin": "Administration"
-    }
+    },
+    "design": "Maquettes"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -118,6 +119,109 @@
       "password_refused": "Ce mot de passe a été vu dans une fuite de données. Choisissez-en un autre.",
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur."
+    }
+  },
+  "list": {
+    "filter": "Filtrer",
+    "filter_clear": "Effacer le filtre",
+    "columns": "Colonnes",
+    "columns_reset": "Réinitialiser les colonnes",
+    "move_column": "Glisser pour déplacer {{column}}",
+    "resize_column": "Redimensionner {{column}}",
+    "no_match": "Aucun résultat pour « {{query}} ».",
+    "actions": "Actions",
+    "paginator": {
+      "items_per_page": "Éléments par page :",
+      "next": "Page suivante",
+      "previous": "Page précédente",
+      "first": "Première page",
+      "last": "Dernière page",
+      "range": "{{start}} – {{end}} sur {{total}}",
+      "empty": "0 sur {{total}}"
+    }
+  },
+  "design": {
+    "title": "Point de validation du design",
+    "intro": "Écrans de démonstration à valider. Aucune donnée n’est enregistrée.",
+    "customers": {
+      "title": "Clients",
+      "name": "Nom",
+      "city": "Ville",
+      "country": "Pays",
+      "vat": "Numéro de TVA",
+      "balance": "Solde",
+      "status": "Statut",
+      "none": "Aucun client pour l’instant.",
+      "statuses": {
+        "active": "Actif",
+        "archived": "Archivé"
+      },
+      "new": "Nouveau client",
+      "open": "Ouvrir {{name}}"
+    },
+    "customer_form": {
+      "title": "Nouveau client",
+      "identity": "Identité",
+      "address": "Adresse",
+      "billing": "Facturation",
+      "name": "Nom",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "street": "Rue",
+      "postal_code": "Code postal",
+      "city": "Ville",
+      "country": "Pays",
+      "vat": "Numéro de TVA",
+      "payment_terms": "Délai de paiement (jours)",
+      "currency": "Devise",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "saved": "Enregistré (démonstration)."
+    },
+    "invoice": {
+      "title": "Facture",
+      "number": "Numéro",
+      "customer": "Client",
+      "issue_date": "Date d’émission",
+      "due_date": "Échéance",
+      "lines": "Lignes",
+      "description": "Désignation",
+      "quantity": "Qté",
+      "unit_price": "Prix unitaire",
+      "tax": "Taxe",
+      "line_total": "Total",
+      "add_line": "Ajouter une ligne",
+      "subtotal": "Sous-total",
+      "tax_total": "Taxes",
+      "stamp": "Droit de timbre",
+      "total": "Total à payer",
+      "notes": "Notes",
+      "draft": "Brouillon",
+      "send": "Envoyer",
+      "preview": "Aperçu PDF",
+      "line": "Ligne {{n}}",
+      "remove_line": "Supprimer la ligne {{n}}",
+      "totals": "Totaux",
+      "bill_to": "Facturer à"
+    },
+    "tabs_label": "Écrans de maquette",
+    "fixture_notice": "Écran de démonstration : les montants sont des exemples et ne se recalculent pas.",
+    "countries": {
+      "TN": "Tunisie",
+      "FR": "France"
+    }
+  },
+  "form": {
+    "optional": "facultatif",
+    "errors": {
+      "required": "Ce champ est obligatoire.",
+      "email": "Saisissez une adresse e-mail valide.",
+      "option": "Choisissez l’une des valeurs proposées.",
+      "pattern": "Cette valeur n’a pas le format attendu.",
+      "min_length": "Au moins {{min}} caractères.",
+      "max_length": "Au plus {{max}} caractères.",
+      "min": "Au moins {{min}}.",
+      "max": "Au plus {{max}}."
     }
   }
 }
