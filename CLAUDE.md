@@ -87,7 +87,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature (`auth`,
-  `company`, `hello`, `health`, `invitation`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
+  `company`, `hello`, `health`, `invitation`, `shell` — the signed-in layout, its nav manifest and account menu; every
+  signed-in route is a child of it), `shared/` for what several features use (`theme/`: runtime accent colour tokens and
+  `ThemeFacade`; `i18n/`: `LanguageFacade`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
 - `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail. Everything a

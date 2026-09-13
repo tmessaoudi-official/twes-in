@@ -10,21 +10,27 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/login-page').then((m) => m.LoginPage),
   },
   {
-    path: '',
-    pathMatch: 'full',
-    canActivate: [authGuard],
-    loadComponent: () => import('./hello/hello-page').then((m) => m.HelloPage),
-  },
-  {
-    path: 'members',
-    canActivate: [authGuard],
-    loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
-  },
-  {
-    // Opened from a mail client, with no session: deliberately outside both guards.
+    // Opened from a mail client, with no session: deliberately outside both guards and outside the shell.
     path: 'invitations/:token',
     loadComponent: () =>
       import('./invitation/accept-invitation-page').then((m) => m.AcceptInvitationPage),
+  },
+  {
+    // Every signed-in page is a child of the shell, which carries the navigation and the account menu.
+    path: '',
+    canActivate: [authGuard],
+    loadComponent: () => import('./shell/app-shell').then((m) => m.AppShell),
+    children: [
+      {
+        path: '',
+        pathMatch: 'full',
+        loadComponent: () => import('./hello/hello-page').then((m) => m.HelloPage),
+      },
+      {
+        path: 'members',
+        loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
+      },
+    ],
   },
   { path: '**', redirectTo: '' },
 ];

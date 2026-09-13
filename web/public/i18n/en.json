@@ -49,7 +49,6 @@
   "members": {
     "title": "Members",
     "of": "Company {{company}}",
-    "back": "Back",
     "name": "Name",
     "email": "Email address",
     "email_invalid": "This email address is not valid.",
@@ -72,6 +71,27 @@
   },
   "company": {
     "choose": "Choose a company"
+  },
+  "nav": {
+    "home": "Home",
+    "members": "Members",
+    "sections": {
+      "main": "General",
+      "admin": "Administration"
+    }
+  },
+  "shell": {
+    "skip": "Skip to content",
+    "navigation": "Main navigation",
+    "menu": "Open the menu",
+    "user_menu": "Account",
+    "language": "Language",
+    "dark_on": "Dark mode",
+    "dark_off": "Light mode"
+  },
+  "languages": {
+    "fr": "Français",
+    "en": "English"
   },
   "invitation": {
     "title": "Join a company",

@@ -28,6 +28,8 @@ test('login, hello page, logout', async ({ page }) => {
   await page.reload();
   await expect(page.getByTestId('greeting')).toContainText('Bonjour, Operator');
 
+  // Signing out lives in the account menu of the shell.
+  await page.getByTestId('user-menu').click();
   await page.getByTestId('logout').click();
   await expect(page).toHaveURL(/\/login$/);
 
@@ -52,4 +54,31 @@ test('the responses carry the security headers', async ({ request }) => {
   expect(csp).toContain("default-src 'self'");
   expect(csp).toContain("frame-ancestors 'none'");
   expect(response.headers()['x-content-type-options']).toBe('nosniff');
+});
+
+test('every page load carries a fresh CSP nonce, shared by the header and the document', async ({
+  request,
+}) => {
+  const load = async () => {
+    const response = await request.get('/members');
+    const csp = response.headers()['content-security-policy'] ?? '';
+    return {
+      csp,
+      header: /'nonce-([A-Za-z0-9+/=_-]{16,})'/.exec(csp)?.[1],
+      document: /ngCspNonce="([^"]+)"/i.exec(await response.text())?.[1],
+      cacheControl: response.headers()['cache-control'] ?? '',
+    };
+  };
+
+  const first = await load();
+  const second = await load();
+
+  expect(first.header, first.csp).toBeDefined();
+  expect(first.document).toBe(first.header);
+  expect(second.header).not.toBe(first.header);
+  expect(first.csp).not.toContain('unsafe-inline');
+  expect(first.csp).toContain(`script-src 'self' 'nonce-${first.header}'`);
+  expect(first.csp).toContain(`style-src 'self' 'nonce-${first.header}'`);
+  // A stored copy of the document would pair an old nonce with a new header.
+  expect(first.cacheControl).toContain('no-store');
 });

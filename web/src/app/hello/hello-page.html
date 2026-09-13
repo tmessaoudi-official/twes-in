@@ -1,21 +1,5 @@
 @if (me(); as me) {
-  <mat-toolbar color="primary" class="flex items-center gap-4">
-    <span>{{ 'app.name' | translate }}</span>
-    <span class="flex-1"></span>
-    <app-company-switcher />
-    <span data-testid="user-name" class="text-sm">{{ me.user.displayName }}</span>
-    <button
-      mat-button
-      type="button"
-      (click)="logout()"
-      [disabled]="signingOut()"
-      data-testid="logout"
-    >
-      {{ 'auth.logout' | translate }}
-    </button>
-  </mat-toolbar>
-
-  <main class="mx-auto flex max-w-3xl flex-col gap-4 p-8">
+  <section class="flex max-w-3xl flex-col gap-4">
     <h1 class="text-3xl font-semibold" data-testid="greeting">
       {{ 'hello.greeting' | translate: { name: me.user.displayName } }}
     </h1>
@@ -34,20 +18,13 @@
       <p data-testid="company-line">{{ 'hello.no_company' | translate }}</p>
     }
     @if (me.user.isPlatformOperator) {
-      <p data-testid="operator-line" class="text-sm opacity-80">
+      <p data-testid="operator-line" class="text-sm text-on-surface-variant">
         {{ 'hello.operator' | translate }}
       </p>
     }
-    @if (mayManageMembers()) {
-      <p>
-        <a mat-stroked-button routerLink="/members" data-testid="members-link">
-          {{ 'members.title' | translate }}
-        </a>
-      </p>
-    }
-    <p class="text-sm opacity-70" data-testid="permissions">
+    <p class="text-sm text-on-surface-variant" data-testid="permissions">
       {{ 'hello.permissions' | translate }} :
       {{ me.permissions.length ? me.permissions.join(', ') : ('hello.none' | translate) }}
     </p>
-  </main>
+  </section>
 }

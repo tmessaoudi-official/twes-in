@@ -1,10 +1,7 @@
-<main class="mx-auto flex max-w-3xl flex-col gap-6 p-8">
-  <div class="flex items-center gap-4">
-    <h1 class="flex-1 text-3xl font-semibold" data-testid="members-title">
-      {{ 'members.title' | translate }}
-    </h1>
-    <a mat-button routerLink="/" data-testid="back">{{ 'members.back' | translate }}</a>
-  </div>
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="members-title">
+    {{ 'members.title' | translate }}
+  </h1>
 
   @if (company(); as company) {
     <p class="opacity-80">{{ 'members.of' | translate: { company: company.name } }}</p>
@@ -88,4 +85,4 @@
       </mat-card-content>
     </mat-card>
   }
-</main>
+</section>

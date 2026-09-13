@@ -84,9 +84,7 @@ const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
  * the accent's hue, tames its chroma and guarantees readable contrast for text roles, whatever the accent is.
  */
 export function colourTokens(accent: string, scheme: ColourScheme): ColourTokens {
-  if (!HEX_COLOUR.test(accent)) {
-    throw new InvalidAccentColour(accent);
-  }
+  assertAccentColour(accent);
   const dynamic = new SchemeTonalSpot(
     Hct.fromInt(argbFromHex(accent.toLowerCase())),
     scheme === 'dark',
@@ -97,6 +95,13 @@ export function colourTokens(accent: string, scheme: ColourScheme): ColourTokens
     tokens[`--mat-sys-${role}`] = hexFromArgb(roleArgb(dynamic, role)).toLowerCase();
   }
   return tokens as ColourTokens;
+}
+
+/** Throws InvalidAccentColour unless the value is #rrggbb; the one place that rule lives. */
+export function assertAccentColour(value: string): void {
+  if (!HEX_COLOUR.test(value)) {
+    throw new InvalidAccentColour(value);
+  }
 }
 
 /** Writes the tokens as custom properties on an element; the document root themes the whole application. */

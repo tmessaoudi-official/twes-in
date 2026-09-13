@@ -46,7 +46,7 @@ test('an invited address sets a password from the mailed link and then signs in'
   const invited = `invited-${Date.now()}@twes.local`;
 
   await signIn(page, EMAIL, PASSWORD);
-  await page.getByTestId('members-link').click();
+  await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
 
   await page.getByTestId('member-email').fill(invited);

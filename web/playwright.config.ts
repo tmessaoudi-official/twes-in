@@ -15,5 +15,12 @@ export default defineConfig({
     baseURL: process.env['BASE_URL'] ?? 'http://127.0.0.1:8090',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
+  // CI downloads Playwright's own Chromium. A machine that cannot reach Playwright's browser CDN runs the same
+  // engine through an installed Chrome instead: PLAYWRIGHT_CHANNEL=chrome npx playwright test.
+  projects: [
+    {
+      name: 'chromium',
+      use: { browserName: 'chromium', channel: process.env['PLAYWRIGHT_CHANNEL'] || undefined },
+    },
+  ],
 });

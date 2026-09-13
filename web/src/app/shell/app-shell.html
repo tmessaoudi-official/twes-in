@@ -1,0 +1,145 @@
+<a
+  href="#main-content"
+  class="sr-only bg-surface text-primary focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:px-4 focus:py-2"
+>
+  {{ 'shell.skip' | translate }}
+</a>
+
+<mat-sidenav-container class="min-h-full bg-surface">
+  <mat-sidenav
+    #drawer
+    [mode]="handset() ? 'over' : 'side'"
+    [opened]="!handset()"
+    class="w-64 border-r border-outline-variant bg-surface-container-low"
+  >
+    <div class="flex h-16 items-center gap-2 px-5">
+      <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
+      <span class="text-lg font-semibold tracking-tight" data-testid="brand">
+        {{ 'app.name' | translate }}
+      </span>
+    </div>
+
+    <nav [attr.aria-label]="'shell.navigation' | translate" class="px-2 pb-4">
+      @for (group of sections(); track group.section) {
+        <h2
+          class="px-4 pb-1 pt-4 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+        >
+          {{ 'nav.sections.' + group.section | translate }}
+        </h2>
+        <mat-nav-list>
+          @for (entry of group.entries; track entry.key) {
+            <a
+              mat-list-item
+              [routerLink]="entry.route"
+              routerLinkActive
+              #active="routerLinkActive"
+              [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
+              [activated]="active.isActive"
+              [attr.aria-current]="active.isActive ? 'page' : null"
+              [attr.data-testid]="'nav-' + entry.key"
+              (click)="handset() && drawer.close()"
+            >
+              <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
+              <span matListItemTitle>{{ entry.labelKey | translate }}</span>
+            </a>
+          }
+        </mat-nav-list>
+      }
+    </nav>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="flex min-h-screen flex-col">
+    <mat-toolbar class="sticky top-0 z-10 gap-2 border-b border-outline-variant !bg-surface">
+      @if (handset()) {
+        <button
+          mat-icon-button
+          type="button"
+          (click)="drawer.toggle()"
+          [attr.aria-label]="'shell.menu' | translate"
+          data-testid="menu-toggle"
+        >
+          <mat-icon aria-hidden="true">menu</mat-icon>
+        </button>
+      }
+      <span class="flex-1"></span>
+      <app-company-switcher />
+
+      @if (me(); as me) {
+        <button
+          mat-button
+          type="button"
+          [matMenuTriggerFor]="account"
+          [attr.aria-label]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
+          data-testid="user-menu"
+        >
+          <span
+            class="inline-flex size-8 items-center justify-center rounded-full bg-primary-container text-sm font-semibold text-on-primary-container"
+            aria-hidden="true"
+          >
+            {{ initials() }}
+          </span>
+          <span class="ml-2 hidden text-on-surface sm:inline" data-testid="user-name">
+            {{ me.user.displayName }}
+          </span>
+        </button>
+
+        <mat-menu #account="matMenu" xPosition="before">
+          <div class="px-4 pb-2 pt-1">
+            <p class="font-medium text-on-surface">{{ me.user.displayName }}</p>
+            <p class="text-sm text-on-surface-variant">{{ me.user.email }}</p>
+          </div>
+          <mat-divider />
+          <p
+            class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+          >
+            {{ 'shell.language' | translate }}
+          </p>
+          @for (lang of languages; track lang) {
+            <button
+              mat-menu-item
+              type="button"
+              role="menuitemradio"
+              [attr.aria-checked]="language.current() === lang"
+              (click)="useLanguage(lang)"
+              [attr.data-testid]="'language-' + lang"
+            >
+              <mat-icon aria-hidden="true">{{
+                language.current() === lang ? 'radio_button_checked' : 'radio_button_unchecked'
+              }}</mat-icon>
+              <span>{{ 'languages.' + lang | translate }}</span>
+            </button>
+          }
+          <mat-divider />
+          <button
+            mat-menu-item
+            type="button"
+            (click)="theme.toggleScheme()"
+            data-testid="theme-toggle"
+          >
+            <mat-icon aria-hidden="true">{{
+              theme.scheme() === 'dark' ? 'light_mode' : 'dark_mode'
+            }}</mat-icon>
+            <span>{{
+              (theme.scheme() === 'dark' ? 'shell.dark_off' : 'shell.dark_on') | translate
+            }}</span>
+          </button>
+          <mat-divider />
+          <button
+            mat-menu-item
+            type="button"
+            (click)="logout()"
+            [disabled]="signingOut()"
+            data-testid="logout"
+          >
+            <mat-icon aria-hidden="true">logout</mat-icon>
+            <span>{{ 'auth.logout' | translate }}</span>
+          </button>
+        </mat-menu>
+      }
+    </mat-toolbar>
+
+    <main id="main-content" tabindex="-1" class="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

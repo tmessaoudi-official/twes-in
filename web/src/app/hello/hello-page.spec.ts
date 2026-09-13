@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter, Router } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -92,8 +92,6 @@ describe('HelloPage', () => {
     expect(text('greeting')).toBe('Bonjour, Amel');
     expect(text('company-line')).toBe('Vous travaillez dans Demo en tant que propriétaire.');
     expect(text('permissions')).toContain('*');
-    expect(text('user-name')).toBe('Amel');
-    expect(text('company-name')).toBe('Demo');
   });
 
   it('says so when the user has no company, and shows the operator line', async () => {
@@ -107,15 +105,5 @@ describe('HelloPage', () => {
     expect(text('company-line')).toBe('Aucune entreprise.');
     expect(text('operator-line')).toBe('Opérateur de la plateforme.');
     expect(text('permissions')).toContain('aucune');
-  });
-
-  it('signs out through the facade and goes to the login page', async () => {
-    const { fixture, el } = await render();
-    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
-    el.querySelector<HTMLButtonElement>('[data-testid="logout"]')?.click();
-    await fixture.whenStable();
-
-    expect(logout).toHaveBeenCalledTimes(1);
-    expect(navigate).toHaveBeenCalledWith('/login');
   });
 });

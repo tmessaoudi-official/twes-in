@@ -1,0 +1,74 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { TestBed } from '@angular/core/testing';
+import { colourTokens, InvalidAccentColour } from './accent-theme';
+import { DEFAULT_ACCENT, ThemeFacade } from './theme-facade';
+
+describe('ThemeFacade', () => {
+  const root = document.documentElement;
+
+  beforeEach(() => {
+    TestBed.resetTestingModule();
+    root.className = '';
+    root.removeAttribute('style');
+  });
+
+  function start(): ThemeFacade {
+    const facade = TestBed.inject(ThemeFacade);
+    TestBed.tick();
+    return facade;
+  }
+
+  const primary = () => root.style.getPropertyValue('--mat-sys-primary');
+
+  it('applies the default accent in the light scheme as soon as it starts', () => {
+    start();
+    expect(primary()).toBe(colourTokens(DEFAULT_ACCENT, 'light')['--mat-sys-primary']);
+    expect(root.classList.contains('theme-dark')).toBe(false);
+  });
+
+  it('switches to the dark scheme: the class for color-scheme and the dark tokens', () => {
+    const facade = start();
+    facade.setScheme('dark');
+    TestBed.tick();
+
+    expect(root.classList.contains('theme-dark')).toBe(true);
+    expect(primary()).toBe(colourTokens(DEFAULT_ACCENT, 'dark')['--mat-sys-primary']);
+    expect(facade.scheme()).toBe('dark');
+  });
+
+  it('toggles between the two schemes', () => {
+    const facade = start();
+    facade.toggleScheme();
+    TestBed.tick();
+    expect(facade.scheme()).toBe('dark');
+    facade.toggleScheme();
+    TestBed.tick();
+    expect(root.classList.contains('theme-dark')).toBe(false);
+  });
+
+  it('re-themes the whole document from a new accent', () => {
+    const facade = start();
+    facade.setAccent('#d93025');
+    TestBed.tick();
+    expect(primary()).toBe(colourTokens('#d93025', 'light')['--mat-sys-primary']);
+  });
+
+  it('refuses an invalid accent and keeps the current theme', () => {
+    const facade = start();
+    const before = primary();
+    expect(() => facade.setAccent('blue')).toThrow(InvalidAccentColour);
+    TestBed.tick();
+    expect(primary()).toBe(before);
+  });
+
+  it('marks the document for compact density, and removes the mark again', () => {
+    const facade = start();
+    facade.setDensity('compact');
+    TestBed.tick();
+    expect(root.classList.contains('density-compact')).toBe(true);
+    facade.setDensity('comfortable');
+    TestBed.tick();
+    expect(root.classList.contains('density-compact')).toBe(false);
+  });
+});

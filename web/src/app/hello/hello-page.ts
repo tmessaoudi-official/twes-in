@@ -1,35 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { MatButtonModule } from '@angular/material/button';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { Router, RouterLink } from '@angular/router';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { CompanySwitcher } from '../company/company-switcher';
 
-/** The signed-in landing page of G1a: who you are, where you work, what you may do, and the way out. */
+/** The signed-in home page: who you are, where you work, what you may do. The shell carries the chrome around it. */
 @Component({
   selector: 'app-hello-page',
-  imports: [MatToolbarModule, MatButtonModule, TranslatePipe, CompanySwitcher, RouterLink],
+  imports: [TranslatePipe],
   templateUrl: './hello-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class HelloPage {
-  private readonly auth = inject(AuthFacade);
-  private readonly router = inject(Router);
-
-  protected readonly me = this.auth.me;
-  protected readonly signingOut = signal(false);
-  protected readonly mayManageMembers = computed(() => this.auth.hasPermission('user.read'));
-
-  protected async logout(): Promise<void> {
-    this.signingOut.set(true);
-    try {
-      await this.auth.logout();
-    } finally {
-      this.signingOut.set(false);
-      await this.router.navigateByUrl('/login');
-    }
-  }
+  protected readonly me = inject(AuthFacade).me;
 }
