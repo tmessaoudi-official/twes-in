@@ -3,6 +3,8 @@
 import { TestBed } from '@angular/core/testing';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import { SettingsApi } from '../shared/settings/settings-api';
+import type { SettingRow } from '../shared/settings/settings-types';
 import { ProductsApi, ProductsRefused } from './products-api';
 import { ProductsFacade } from './products-facade';
 import type {
@@ -60,6 +62,7 @@ describe('ProductsFacade', () => {
     deleteCategory: vi.fn(),
   };
   const fieldsApi = { list: vi.fn() };
+  const settingsApi = { chain: vi.fn() };
   let facade: ProductsFacade;
 
   beforeEach(() => {
@@ -68,10 +71,12 @@ describe('ProductsFacade', () => {
     api.products.mockResolvedValue([laptop]);
     api.categories.mockResolvedValue([hardware]);
     fieldsApi.list.mockReset().mockResolvedValue([warranty]);
+    settingsApi.chain.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({
       providers: [
         { provide: ProductsApi, useValue: api },
         { provide: CustomFieldsApi, useValue: fieldsApi },
+        { provide: SettingsApi, useValue: settingsApi },
       ],
     });
     facade = TestBed.inject(ProductsFacade);
@@ -97,6 +102,22 @@ describe('ProductsFacade', () => {
     await facade.loadProduct('c1', null);
     expect(api.product).toHaveBeenCalledTimes(1);
     expect(facade.product()).toBeNull();
+  });
+
+  it("starts a new product in the unit the company's articles chain resolves", async () => {
+    settingsApi.chain.mockResolvedValue([
+      { key: 'article.stock_tracking', value: false } as SettingRow,
+      { key: 'article.default_unit', value: 'HUR' } as SettingRow,
+    ]);
+
+    await facade.loadProduct('c1', null);
+    expect(settingsApi.chain).toHaveBeenCalledWith('c1', 'articles');
+    expect(facade.defaultUnitCode()).toBe('HUR');
+
+    api.product.mockResolvedValue(laptop);
+    settingsApi.chain.mockClear();
+    await facade.loadProduct('c1', 'p1');
+    expect(settingsApi.chain).not.toHaveBeenCalled();
   });
 
   it('keeps the product the API answered, or says why it refused', async () => {

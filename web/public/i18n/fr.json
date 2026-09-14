@@ -721,6 +721,20 @@
         "in_use": "Cette catégorie contient encore des sous-catégories ou des produits. Déplacez-les d’abord.",
         "invalid": "La catégorie a été refusée. Une catégorie ne peut pas se ranger sous elle-même ni sous l’une de ses sous-catégories."
       }
+    },
+    "defaults": {
+      "title": "Valeurs par défaut",
+      "intro_product": "Ce qu’une nouvelle ligne de document pour ce produit reprend, sauf si la ligne dit autre chose. Une valeur non réglée ici vient de la catégorie du produit, sinon de l’entreprise.",
+      "intro_category": "Ce que reprennent les produits rangés dans cette catégorie, sauf si un produit dit autre chose. Une valeur non réglée ici vient de l’entreprise ; une sous-catégorie a ses propres valeurs.",
+      "save": "Enregistrer les valeurs par défaut",
+      "saved": "Les valeurs par défaut ont été enregistrées.",
+      "overrides": "Valeurs réglées ici",
+      "reset": "Réinitialiser",
+      "errors": {
+        "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
+        "not_found": "Introuvable.",
+        "network": "Le serveur est injoignable."
+      }
     }
   }
 }

@@ -144,7 +144,11 @@ describe('product forms', () => {
   });
 
   it("starts a new product as goods in the company's unit, and fills a product's own values", () => {
-    expect(productValues(null, options, [])).toEqual(
+    expect(productValues(null, options, [], 'HUR')['unitId']).toBe('u-hour');
+    // A unit the company does not offer, or none resolved: the first unit it offers.
+    expect(productValues(null, options, [], 'KGM')['unitId']).toBe('u-hour');
+    expect(productValues(null, options, [], null)['unitId']).toBe('u-hour');
+    expect(productValues(null, options, [], 'C62')).toEqual(
       expect.objectContaining({
         reference: '',
         kind: 'goods',

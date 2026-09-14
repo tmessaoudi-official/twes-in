@@ -65,6 +65,14 @@
     </mat-card>
   }
 
+  @if (defaultsSubject(); as subject) {
+    <mat-card>
+      <mat-card-content>
+        <app-article-defaults [subject]="subject" />
+      </mat-card-content>
+    </mat-card>
+  }
+
   <app-data-list
     [descriptor]="list"
     [rows]="rows()"

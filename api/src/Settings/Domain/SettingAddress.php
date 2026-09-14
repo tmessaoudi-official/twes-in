@@ -15,7 +15,7 @@ use Symfony\Component\Uid\Uuid;
 /**
  * Where a value is stored: a level and its subject, written as the row's `level_id`. Nothing for the platform;
  * the company for a company; the company and the role for a role, because the built-in roles are shared by every
- * company; the company and the group or customer for those, for the same reason; the user for a user, whose own preferences follow them from one company to the next. The company is
+ * company; the company and the customer group, customer, product category or product for those, for the same reason; the user for a user, whose own preferences follow them from one company to the next. The company is
  * kept for every level inside one, so its settings go when it goes.
  */
 final readonly class SettingAddress
@@ -54,6 +54,12 @@ final readonly class SettingAddress
     public static function customer(Company $company, Uuid $customerId): self
     {
         return new self(SettingLevel::Customer, $company->getId()->toRfc4122().'/'.$customerId->toRfc4122(), $company);
+    }
+
+    /** A product's own value; the company leads the id, as for a customer. */
+    public static function product(Company $company, Uuid $productId): self
+    {
+        return new self(SettingLevel::Product, $company->getId()->toRfc4122().'/'.$productId->toRfc4122(), $company);
     }
 
     public static function user(Uuid $userId): self

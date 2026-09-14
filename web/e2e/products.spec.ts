@@ -79,6 +79,13 @@ test('a product is filed in a category, priced at the currency scale and revised
     await expect(page.getByTestId(`product-category-${categoryName}`)).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
 
+    // The category says its products are sold by the hour; the product filed in it hears so.
+    await page.getByTestId(`product-category-edit-${categoryName}`).click();
+    await page.getByTestId('field-article__default_unit').fill('HUR');
+    await page.getByTestId('article-defaults-save').click();
+    await expect(page.getByTestId('article-defaults-saved')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+
     await page.goto('/products/new');
     await page.getByTestId('field-reference').fill(reference);
     await page.getByTestId('field-name').fill(`Audit fiscal ${run}`);
@@ -100,6 +107,7 @@ test('a product is filed in a category, priced at the currency scale and revised
     await page.getByTestId('field-unitPriceNet').fill('135');
     await page.getByTestId('product-save').click();
     await expect(page.getByTestId('product-saved')).toBeVisible();
+    await expect(page.getByTestId('field-article__default_unit')).toHaveValue('HUR');
 
     await page.goto('/products');
     await expect(page.getByTestId(`product-${reference}`)).toContainText(categoryName);

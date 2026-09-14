@@ -22,45 +22,45 @@ import {
   settingsForm,
   settingsValues,
 } from '../shared/settings/setting-forms';
-import type { SettingChain, PartySubject } from '../shared/settings/settings-types';
-import { levelOf, PartySettings } from './party-settings-facade';
+import type { ArticleSubject, SettingChain } from '../shared/settings/settings-types';
+import { articleLevelOf, ArticleSettings } from './article-settings-facade';
 
-const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
+const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 
 /**
- * A customer's or a customer group's defaults: the parties chain at its own level, each field starting at what the
+ * A product's or a product category's defaults: the articles chain at its own level, each field starting at what the
  * level above says, saved only where it was changed, with the values set here listed for a reset.
  */
 @Component({
-  selector: 'app-party-defaults',
+  selector: 'app-article-defaults',
   imports: [MatButtonModule, TranslatePipe, DescriptorForm],
-  templateUrl: './party-defaults.html',
+  templateUrl: './article-defaults.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class PartyDefaults {
-  private readonly settings = inject(PartySettings);
+export class ArticleDefaults {
+  private readonly settings = inject(ArticleSettings);
   private readonly auth = inject(AuthFacade);
 
-  readonly subject = input.required<PartySubject>();
+  readonly subject = input.required<ArticleSubject>();
 
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
   protected readonly saved = signal(false);
   protected readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
-  protected readonly level = computed(() => levelOf(this.subject()));
+  protected readonly level = computed(() => articleLevelOf(this.subject()));
   protected readonly intro = computed(() =>
-    'customerId' in this.subject()
-      ? 'customers.defaults.intro_customer'
-      : 'customers.defaults.intro_group',
+    'productId' in this.subject()
+      ? 'products.defaults.intro_product'
+      : 'products.defaults.intro_category',
   );
   protected readonly writable = computed(() =>
     this.settings.rows().some((row) => row.writableLevels.includes(this.level())),
   );
   protected readonly descriptor = computed(() =>
     settingsForm(this.settings.rows(), {
-      id: 'party-defaults',
+      id: 'article-defaults',
       level: this.level(),
-      chains: PARTY_CHAINS,
+      chains: ARTICLE_CHAINS,
       readOnly: !this.writable(),
     }),
   );

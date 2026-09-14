@@ -3,6 +3,8 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import { SettingsApi } from '../shared/settings/settings-api';
+import type { SettingRow } from '../shared/settings/settings-types';
 import { ProductsApi, ProductsRefused } from './products-api';
 import type {
   ProductCategoryInput,
@@ -18,11 +20,13 @@ import type {
 export class ProductsFacade {
   private readonly api = inject(ProductsApi);
   private readonly fields = inject(CustomFieldsApi);
+  private readonly settings = inject(SettingsApi);
   private readonly productsSignal = signal<readonly ProductRow[]>([]);
   private readonly categoriesSignal = signal<readonly ProductCategoryRow[]>([]);
   private readonly optionsSignal = signal<ProductOptions | null>(null);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly productSignal = signal<ProductRow | null>(null);
+  private readonly defaultUnitCodeSignal = signal<string | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<ProductsError | null>(null);
 
@@ -32,6 +36,8 @@ export class ProductsFacade {
   /** Every custom field declared for products, retired ones included; screens show the active ones. */
   readonly customFields = this.customFieldsSignal.asReadonly();
   readonly product = this.productSignal.asReadonly();
+  /** The unit code `article.default_unit` resolves to for the company, read with a new product's form. */
+  readonly defaultUnitCode = this.defaultUnitCodeSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -58,12 +64,17 @@ export class ProductsFacade {
   /** What the product form needs: its options, the categories, the fields, and the product unless it is new. */
   async loadProduct(companyId: string, id: string | null): Promise<void> {
     await this.read(async () => {
-      const [options, categories, customFields, product] = await Promise.all([
+      const [options, categories, customFields, product, articles] = await Promise.all([
         this.api.options(companyId),
         this.api.categories(companyId),
         this.fields.list(companyId, 'product'),
         id === null ? Promise.resolve(null) : this.api.product(companyId, id),
+        // Only a new product starts in the company's default unit; an existing one has its own.
+        id === null ? this.settings.chain(companyId, 'articles') : Promise.resolve(null),
       ]);
+      if (articles !== null) {
+        this.defaultUnitCodeSignal.set(unitCodeOf(articles));
+      }
       this.optionsSignal.set(options);
       this.categoriesSignal.set(categories);
       this.customFieldsSignal.set(customFields);
@@ -158,6 +169,12 @@ export class ProductsFacade {
       this.busySignal.set(false);
     }
   }
+}
+
+/** The unit code the articles chain resolves, when it names one. */
+function unitCodeOf(rows: readonly SettingRow[]): string | null {
+  const value = rows.find((row) => row.key === 'article.default_unit')?.value;
+  return typeof value === 'string' ? value : null;
 }
 
 function codeOf(error: unknown): ProductsError {

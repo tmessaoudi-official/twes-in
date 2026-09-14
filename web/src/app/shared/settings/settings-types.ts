@@ -51,4 +51,10 @@ export interface SettingRow {
 export type SettingsError = 'not_found' | 'invalid' | 'network';
 
 /** Whom a parties-chain read or change is for, below the company: one customer, or one customer group. */
-export type SettingSubject = { customerId: string } | { customerGroupId: string };
+export type PartySubject = { customerId: string } | { customerGroupId: string };
+
+/** Whom an articles-chain read or change is for, below the company: one product, or one product category. */
+export type ArticleSubject = { productId: string } | { productCategoryId: string };
+
+/** A read or a change names one subject at most, of either chain. */
+export type SettingSubject = PartySubject | ArticleSubject;

@@ -17,6 +17,7 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListRowActions } from '../shared/list/data-list';
+import { ArticleDefaults } from './article-defaults';
 import {
   CATEGORIES_LIST,
   categoryForm,
@@ -39,6 +40,7 @@ import type { ProductCategoryRow } from './products-types';
     DataList,
     DataListRowActions,
     DescriptorForm,
+    ArticleDefaults,
   ],
   templateUrl: './product-categories-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -70,6 +72,12 @@ export class ProductCategoriesPage implements OnInit {
     return editing === null
       ? null
       : buildFormGroup(this.descriptor(), categoryValues(editing === 'new' ? null : editing));
+  });
+
+  /** The subject of the defaults panel: the category being edited, once it exists. */
+  protected readonly defaultsSubject = computed(() => {
+    const editing = this.editing();
+    return editing === null || editing === 'new' ? null : { productCategoryId: editing.id };
   });
 
   async ngOnInit(): Promise<void> {

@@ -28,14 +28,15 @@ final readonly class SettingCollectionProvider implements ProviderInterface
     {
         $company = $this->access->companyToRead(CompanyPath::identifier($uriVariables, 'companyId'));
         $filters = \is_array($context['filters'] ?? null) ? $context['filters'] : [];
-        $settingContext = $this->access->contextOf($company, self::filter($filters, 'customerId'), self::filter($filters, 'customerGroupId'));
+        $settingContext = $this->access->contextOf($company, self::filter($filters, 'customerId'), self::filter($filters, 'customerGroupId'), self::filter($filters, 'productId'), self::filter($filters, 'productCategoryId'));
         $mayShare = $this->access->mayShare($company);
         $mayWriteParties = $this->access->mayWriteParties($company);
+        $mayWriteArticles = $this->access->mayWriteArticles($company);
 
         $rows = [];
         foreach ($this->chains($context) as $chain) {
             foreach ($this->resolve->handle($chain, $settingContext) as $setting) {
-                $rows[] = SettingResource::of($setting, $this->access->writableLevels($setting->definition, $mayShare, $mayWriteParties, $settingContext));
+                $rows[] = SettingResource::of($setting, $this->access->writableLevels($setting->definition, $mayShare, $mayWriteParties, $settingContext, $mayWriteArticles));
             }
         }
 

@@ -20,6 +20,8 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { ProductCategoriesPage } from './product-categories-page';
+import type { SettingRow } from '../shared/settings/settings-types';
+import { ArticleSettings } from './article-settings-facade';
 import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow, ProductsError } from './products-types';
 
@@ -64,6 +66,15 @@ describe('ProductCategoriesPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const articleSettings = {
+    rows: signal<readonly SettingRow[]>([]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: signal(null).asReadonly(),
+    load: vi.fn(),
+    save: vi.fn(),
+    reset: vi.fn(),
+    clearError: vi.fn(),
+  };
   let fixture: ComponentFixture<ProductCategoriesPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -88,6 +99,7 @@ describe('ProductCategoriesPage', () => {
     facade.reviseCategory.mockReset().mockResolvedValue(true);
     facade.deleteCategory.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    articleSettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [ProductCategoriesPage],
       providers: [
@@ -101,6 +113,7 @@ describe('ProductCategoriesPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ProductsFacade, useValue: facade },
+        { provide: ArticleSettings, useValue: articleSettings },
         { provide: AuthFacade, useValue: auth },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -141,6 +154,19 @@ describe('ProductCategoriesPage', () => {
     q('product-category-delete-Portables')!.click();
     await settle();
     expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k2');
+  });
+
+  it("shows a category's defaults while it is edited, and none for a new one", async () => {
+    q('product-category-add')!.click();
+    await settle();
+    expect(q('article-defaults')).toBeNull();
+    q('product-category-cancel')!.click();
+    await settle();
+
+    q('product-category-edit-Portables')!.click();
+    await settle();
+    expect(q('article-defaults')).not.toBeNull();
+    expect(articleSettings.load).toHaveBeenCalledWith('c1', { productCategoryId: 'k2' });
   });
 
   it('says a category still in use cannot go', async () => {

@@ -4,19 +4,19 @@ import { inject, Injectable, signal } from '@angular/core';
 import type { SettingChange } from '../shared/settings/setting-forms';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import type {
+  ArticleSubject,
   SettingLevel,
   SettingRow,
   SettingsError,
-  PartySubject,
 } from '../shared/settings/settings-types';
 
-/** The level a customer's or a customer group's own values are stored at. */
-export const levelOf = (subject: PartySubject): SettingLevel =>
-  'customerId' in subject ? 'customer' : 'customer_group';
+/** The level a product's or a product category's own values are stored at. */
+export const articleLevelOf = (subject: ArticleSubject): SettingLevel =>
+  'productId' in subject ? 'product' : 'product_category';
 
-/** The parties chain as one customer or one customer group sees it, read and changed at its own level. */
+/** The articles chain as one product or one product category sees it, read and changed at its own level. */
 @Injectable({ providedIn: 'root' })
-export class PartySettings {
+export class ArticleSettings {
   private readonly api = inject(SettingsApi);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
   private readonly busySignal = signal(false);
@@ -26,10 +26,10 @@ export class PartySettings {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  async load(companyId: string, subject: PartySubject): Promise<void> {
+  async load(companyId: string, subject: ArticleSubject): Promise<void> {
     this.busySignal.set(true);
     try {
-      this.rowsSignal.set(await this.api.chain(companyId, 'parties', subject));
+      this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -41,7 +41,7 @@ export class PartySettings {
   /** True when the API accepted every change; the chain is read again after. */
   async save(
     companyId: string,
-    subject: PartySubject,
+    subject: ArticleSubject,
     changes: readonly SettingChange[],
   ): Promise<boolean> {
     return this.write(companyId, subject, async () => {
@@ -49,7 +49,7 @@ export class PartySettings {
         await this.api.change(
           companyId,
           change.key,
-          levelOf(subject),
+          articleLevelOf(subject),
           change.value,
           undefined,
           subject,
@@ -58,10 +58,10 @@ export class PartySettings {
     });
   }
 
-  /** Forgets the subject's own value: the setting falls back to the group's or the company's. */
-  async reset(companyId: string, subject: PartySubject, key: string): Promise<boolean> {
+  /** Forgets the subject's own value: the setting falls back to the category's or the company's. */
+  async reset(companyId: string, subject: ArticleSubject, key: string): Promise<boolean> {
     return this.write(companyId, subject, () =>
-      this.api.reset(companyId, key, levelOf(subject), undefined, subject),
+      this.api.reset(companyId, key, articleLevelOf(subject), undefined, subject),
     );
   }
 
@@ -71,14 +71,14 @@ export class PartySettings {
 
   private async write(
     companyId: string,
-    subject: PartySubject,
+    subject: ArticleSubject,
     call: () => Promise<unknown>,
   ): Promise<boolean> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       await call();
-      this.rowsSignal.set(await this.api.chain(companyId, 'parties', subject));
+      this.rowsSignal.set(await this.api.chain(companyId, 'articles', subject));
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));

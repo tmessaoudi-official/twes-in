@@ -31,11 +31,6 @@ const FIELDS = 'products.fields';
 const TAX_PREFIX = 'tax__';
 /** The API's shape of a price, anchored by the form: at most ten digits, then at most four decimals. */
 const PRICE_PATTERN = '(0|[1-9][0-9]{0,9})([.][0-9]{1,4})?';
-/**
- * The unit a new product starts in: the declared default of `article.default_unit` (docs/SPEC.md § 7), until the
- * form reads the company's resolved value through the articles chain.
- */
-const DEFAULT_UNIT_CODE = 'C62';
 
 /**
  * A price as the screens show it: at the currency's scale, and finer only when the unit price itself is ("0.0045"
@@ -291,13 +286,17 @@ export function productForm(
       );
 }
 
-/** Each field at the product's value; a new product is goods in the default unit, active, without taxes. */
+/**
+ * Each field at the product's value. A new product is goods, active and without taxes, in the unit its company's
+ * articles chain resolves (`article.default_unit`), or in the first unit the company offers when it offers not that one.
+ */
 export function productValues(
   row: ProductRow | null,
   options: ProductOptions,
   fields: readonly CustomFieldDefinition[] = [],
+  defaultUnitCode: string | null = null,
 ): FormValues {
-  const unit = options.units.find((each) => each.code === DEFAULT_UNIT_CODE) ?? options.units[0];
+  const unit = options.units.find((each) => each.code === defaultUnitCode) ?? options.units[0];
   const values: FormValues = {
     reference: row?.reference ?? '',
     kind: row?.kind ?? 'goods',

@@ -21,8 +21,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
- * Forgets the value stored at one level, named by the `level` query parameter (and `roleId`, `customerId` or
- * `customerGroupId` at those levels):
+ * Forgets the value stored at one level, named by the `level` query parameter (and `roleId`, `customerId`,
+ * `customerGroupId`, `productId` or `productCategoryId` at those levels):
  * the setting falls back to the level above.
  *
  * @implements ProcessorInterface<mixed, null>
@@ -42,7 +42,7 @@ final readonly class ResetSettingProcessor implements ProcessorInterface
         $rawLevel = $query?->getString('level') ?? '';
         $level = SettingLevel::tryFrom($rawLevel) ?? throw new UnprocessableEntityHttpException(\sprintf('level: no level is called %s.', $rawLevel));
         $company = $this->access->companyToWrite($companyId, $level);
-        $settingContext = $this->access->contextToWrite($company, $level, $query?->getString('roleId'), $query?->getString('customerId'), $query?->getString('customerGroupId'));
+        $settingContext = $this->access->contextToWrite($company, $level, $query?->getString('roleId'), $query?->getString('customerId'), $query?->getString('customerGroupId'), $query?->getString('productId'), $query?->getString('productCategoryId'));
 
         try {
             $this->change->reset($settingContext, SettingKey::of($uriVariables), $level, $this->access->callerId());

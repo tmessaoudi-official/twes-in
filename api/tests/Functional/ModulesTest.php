@@ -200,11 +200,14 @@ final class ModulesTest extends ApiTestCase
         $this->signedIn(['company.read', 'company.settings', 'product.read', 'product.write']);
         $this->postJson($this->companyPath().'/product-categories', ['name' => 'Matériel']);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $categorySettings = '/settings?chain=articles&productCategoryId='.$this->stringAt($this->json(), 'id');
+        $this->getJson($this->companyPath().$categorySettings);
+        self::assertResponseIsSuccessful();
 
         $this->sendJson('PUT', $this->path('products'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
 
-        foreach (['/products', '/product-categories', '/product-options'] as $hidden) {
+        foreach (['/products', '/product-categories', '/product-options', $categorySettings] as $hidden) {
             $this->getJson($this->companyPath().$hidden);
             self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $hidden);
         }

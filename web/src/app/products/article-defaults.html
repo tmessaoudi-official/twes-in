@@ -1,0 +1,71 @@
+<section
+  class="flex flex-col gap-4"
+  data-testid="article-defaults"
+  aria-labelledby="article-defaults-title"
+>
+  <h2 id="article-defaults-title" class="text-xl font-semibold">
+    {{ 'products.defaults.title' | translate }}
+  </h2>
+  <p class="max-w-prose">{{ intro() | translate }}</p>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="article-defaults-error" class="text-error">
+      {{ 'products.defaults.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="article-defaults-saved">
+      {{ 'products.defaults.saved' | translate }}
+    </p>
+  }
+
+  @if (descriptor().sections.length > 0) {
+    <app-descriptor-form
+      [descriptor]="descriptor()"
+      [form]="form()"
+      testId="article-defaults-form"
+      [readOnly]="!writable()"
+      (submitted)="save($event)"
+    >
+      @if (writable()) {
+        <div class="flex justify-end">
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="busy()"
+            data-testid="article-defaults-save"
+          >
+            {{ 'products.defaults.save' | translate }}
+          </button>
+        </div>
+      }
+    </app-descriptor-form>
+  }
+
+  @if (overrides().length > 0) {
+    <div class="flex flex-col gap-2">
+      <h3 class="text-base font-semibold">{{ 'products.defaults.overrides' | translate }}</h3>
+      <ul class="flex flex-col gap-2">
+        @for (setting of overrides(); track setting.key) {
+          <li
+            class="flex flex-wrap items-center justify-between gap-2"
+            [attr.data-testid]="'article-defaults-override-' + setting.key"
+          >
+            <span>{{ setting.labelKey | translate }}</span>
+            @if (writable()) {
+              <button
+                mat-button
+                type="button"
+                (click)="reset(setting.key)"
+                [disabled]="busy()"
+                [attr.data-testid]="'article-defaults-reset-' + setting.key"
+              >
+                {{ 'products.defaults.reset' | translate }}
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </div>
+  }
+</section>

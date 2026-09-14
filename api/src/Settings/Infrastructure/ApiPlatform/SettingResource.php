@@ -37,6 +37,8 @@ use Symfony\Component\Validator\Constraints as Assert;
                 new Parameter('chain', 'query', 'One chain; every chain when absent', false, schema: ['type' => 'string', 'enum' => ['presentation', 'parties', 'articles']]),
                 new Parameter('customerId', 'query', 'Read the chain as this customer sees it, its group included', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('customerGroupId', 'query', 'Read the chain as this customer group sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('productId', 'query', 'Read the chain as this product sees it, its category included', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('productCategoryId', 'query', 'Read the chain as this product category sees it', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
         new Put(
@@ -60,6 +62,8 @@ use Symfony\Component\Validator\Constraints as Assert;
                 new Parameter('roleId', 'query', 'The role, at the role level', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('customerId', 'query', 'The customer, at the customer level', false, schema: ['type' => 'string', 'format' => 'uuid']),
                 new Parameter('customerGroupId', 'query', 'The customer group, at the customer group level', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('productId', 'query', 'The product, at the product level', false, schema: ['type' => 'string', 'format' => 'uuid']),
+                new Parameter('productCategoryId', 'query', 'The product category, at the product category level', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
     ],
@@ -146,6 +150,14 @@ final class SettingResource
     /** At the customer group level, the group whose default this is. */
     #[Groups([self::WRITE])]
     public ?string $customerGroupId = null;
+
+    /** At the product level, the product whose own value this is. */
+    #[Groups([self::WRITE])]
+    public ?string $productId = null;
+
+    /** At the product category level, the category whose default this is. */
+    #[Groups([self::WRITE])]
+    public ?string $productCategoryId = null;
 
     /** @param list<string> $writableLevels */
     public static function of(ResolvedSetting $setting, array $writableLevels): self

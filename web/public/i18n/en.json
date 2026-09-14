@@ -721,6 +721,20 @@
         "in_use": "This category still holds subcategories or products. Move them first.",
         "invalid": "The category was refused. A category cannot sit under itself or one of its subcategories."
       }
+    },
+    "defaults": {
+      "title": "Defaults",
+      "intro_product": "What a new document line for this product starts with unless the line says otherwise. A value not set here comes from the product's category, else from the company.",
+      "intro_category": "What the products filed in this category start with unless a product says otherwise. A value not set here comes from the company; a subcategory has its own values.",
+      "save": "Save the defaults",
+      "saved": "The defaults were saved.",
+      "overrides": "Values set here",
+      "reset": "Reset",
+      "errors": {
+        "invalid": "The values were refused. Check the limits shown.",
+        "not_found": "Not found.",
+        "network": "The server could not be reached."
+      }
     }
   }
 }

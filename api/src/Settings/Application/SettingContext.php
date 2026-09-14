@@ -28,6 +28,8 @@ final readonly class SettingContext
         public ?Uuid $userId = null,
         public ?Uuid $customerGroupId = null,
         public ?Uuid $customerId = null,
+        public ?Uuid $productCategoryId = null,
+        public ?Uuid $productId = null,
     ) {
     }
 
@@ -39,6 +41,8 @@ final readonly class SettingContext
             SettingLevel::Role => null === $this->company || null === $this->roleId ? null : SettingAddress::role($this->company, $this->roleId),
             SettingLevel::CustomerGroup => null === $this->company || null === $this->customerGroupId ? null : SettingAddress::customerGroup($this->company, $this->customerGroupId),
             SettingLevel::Customer => null === $this->company || null === $this->customerId ? null : SettingAddress::customer($this->company, $this->customerId),
+            SettingLevel::ProductCategory => null === $this->company || null === $this->productCategoryId ? null : SettingAddress::productCategory($this->company, $this->productCategoryId),
+            SettingLevel::Product => null === $this->company || null === $this->productId ? null : SettingAddress::product($this->company, $this->productId),
             SettingLevel::User => null === $this->userId ? null : SettingAddress::user($this->userId),
             default => null,
         };

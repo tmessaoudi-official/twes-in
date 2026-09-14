@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Settings\Infrastructure\ApiPlatform;
 
+use App\Settings\Application\ArticleSubjects;
 use App\Settings\Application\PartySubjects;
 use App\Settings\Application\SettingContext;
 use App\Settings\Domain\SettingDefinition;
@@ -26,8 +27,8 @@ use Symfony\Component\Uid\Uuid;
  * Who may read and change settings in a company. Anyone the company lets read it reads its settings and keeps
  * their own preferences; a default shared with others, for the whole company or for a role, needs
  * `company.settings`. A customer's or a customer group's settings are read with `customer.read` and changed with
- * `customer.write`, naming the customer or the group. Another company's settings, customers and groups answer 404,
- * like everything behind CompanyGuard.
+ * `customer.write`, a product's or a product category's with `product.read` and `product.write`, naming that one
+ * subject. Another company's settings and subjects answer 404, like everything behind CompanyGuard.
  */
 final readonly class SettingAccess
 {
@@ -35,12 +36,15 @@ final readonly class SettingAccess
     public const string SHARE = 'company.settings';
     public const string PARTIES_READ = 'customer.read';
     public const string PARTIES_WRITE = 'customer.write';
+    public const string ARTICLES_READ = 'product.read';
+    public const string ARTICLES_WRITE = 'product.write';
 
     public function __construct(
         private CompanyGuard $guard,
         private MembershipRepository $memberships,
         private RoleRepository $roles,
         private PartySubjects $parties,
+        private ArticleSubjects $articles,
     ) {
     }
 
@@ -54,6 +58,7 @@ final readonly class SettingAccess
         return $this->guard->companyForActing($companyId, match ($level) {
             SettingLevel::User => self::READ,
             SettingLevel::CustomerGroup, SettingLevel::Customer => self::PARTIES_WRITE,
+            SettingLevel::ProductCategory, SettingLevel::Product => self::ARTICLES_WRITE,
             default => self::SHARE,
         });
     }
@@ -68,6 +73,11 @@ final readonly class SettingAccess
         return $this->guard->may($company, self::PARTIES_WRITE);
     }
 
+    public function mayWriteArticles(Company $company): bool
+    {
+        return $this->guard->may($company, self::ARTICLES_WRITE);
+    }
+
     public function callerId(): Uuid
     {
         return $this->guard->account()->getId();
@@ -75,46 +85,44 @@ final readonly class SettingAccess
 
     /**
      * The caller in the company: their role there, when they hold one (an operator may not), and themselves; and, when
-     * one is named, the customer (with its group) or the customer group the chain is read for.
+     * one is named, the subject the chain is read for: a customer (with its group) or a customer group, a product (with
+     * its category) or a product category. A read names one subject at most, whatever its chain.
      */
-    public function contextOf(Company $company, ?string $customerId = null, ?string $customerGroupId = null): SettingContext
+    public function contextOf(Company $company, ?string $customerId = null, ?string $customerGroupId = null, ?string $productId = null, ?string $productCategoryId = null): SettingContext
     {
         $userId = $this->callerId();
         $roleId = $this->memberships->ofUserInCompany($userId, $company->getId())?->getRole()->getId();
-        $customerId = self::named($customerId);
-        $customerGroupId = self::named($customerGroupId);
-        if (null === $customerId && null === $customerGroupId) {
+        $named = [];
+        foreach (['customerId' => $customerId, 'customerGroupId' => $customerGroupId, 'productId' => $productId, 'productCategoryId' => $productCategoryId] as $name => $identifier) {
+            $value = self::named($identifier);
+            if (null !== $value) {
+                $named[$name] = $value;
+            }
+        }
+        if ([] === $named) {
             return new SettingContext($company, $roleId, $userId);
         }
-        if (null !== $customerId && null !== $customerGroupId) {
-            throw new BadRequestHttpException('customerId, customerGroupId: name a customer or a customer group, not both.');
+        if (\count($named) > 1) {
+            throw new BadRequestHttpException(implode(', ', array_keys($named)).': name one subject, not several.');
         }
-        if (!$this->guard->may($company, self::PARTIES_READ)) {
-            throw new NotFoundHttpException('No such company.');
-        }
-        if (null !== $customerId) {
-            $subject = Uuid::isValid($customerId) ? $this->parties->customer($company, Uuid::fromString($customerId)) : null;
-            if (null === $subject) {
-                throw new NotFoundHttpException('No such customer.');
-            }
+        $name = array_key_first($named);
+        $id = Uuid::isValid($named[$name]) ? Uuid::fromString($named[$name]) : null;
 
-            return new SettingContext($company, $roleId, $userId, $subject->customerGroupId, $subject->customerId);
-        }
-        $groupId = Uuid::isValid((string) $customerGroupId) ? Uuid::fromString((string) $customerGroupId) : null;
-        if (null === $groupId || !$this->parties->hasCustomerGroup($company, $groupId)) {
-            throw new NotFoundHttpException('No such customer group.');
-        }
-
-        return new SettingContext($company, $roleId, $userId, $groupId);
+        return match ($name) {
+            'customerId', 'customerGroupId' => $this->partyContext($company, $roleId, $userId, $name, $id),
+            default => $this->articleContext($company, $roleId, $userId, $name, $id),
+        };
     }
 
-    /** The context a change at the level is made in: the named role, customer or group in place of the caller's own. */
-    public function contextToWrite(Company $company, SettingLevel $level, ?string $roleId, ?string $customerId, ?string $customerGroupId): SettingContext
+    /** The context a change at the level is made in: the named role or subject in place of the caller's own. */
+    public function contextToWrite(Company $company, SettingLevel $level, ?string $roleId, ?string $customerId, ?string $customerGroupId, ?string $productId = null, ?string $productCategoryId = null): SettingContext
     {
         return match ($level) {
             SettingLevel::Role => $this->contextOfRole($company, $roleId),
             SettingLevel::Customer => $this->contextOf($company, self::named($customerId) ?? throw new UnprocessableEntityHttpException('customerId: the customer level names a customer.')),
             SettingLevel::CustomerGroup => $this->contextOf($company, null, self::named($customerGroupId) ?? throw new UnprocessableEntityHttpException('customerGroupId: the customer group level names a group.')),
+            SettingLevel::Product => $this->contextOf($company, productId: self::named($productId) ?? throw new UnprocessableEntityHttpException('productId: the product level names a product.')),
+            SettingLevel::ProductCategory => $this->contextOf($company, productCategoryId: self::named($productCategoryId) ?? throw new UnprocessableEntityHttpException('productCategoryId: the product category level names a category.')),
             default => $this->contextOf($company),
         };
     }
@@ -134,25 +142,69 @@ final readonly class SettingAccess
     }
 
     /** @return list<string> the levels of the definition the caller may change, for the subject the chain was read for */
-    public function writableLevels(SettingDefinition $definition, bool $mayShare, bool $mayWriteParties = false, ?SettingContext $context = null): array
+    public function writableLevels(SettingDefinition $definition, bool $mayShare, bool $mayWriteParties = false, ?SettingContext $context = null, bool $mayWriteArticles = false): array
     {
         $levels = [];
         foreach ($definition->chain->levels() as $level) {
             $mine = SettingLevel::User === $level;
-            // This endpoint writes the company and role levels, and the customer group or customer the chain was read
-            // for. The platform level belongs to the operator's own screen; products and documents arrive later.
+            // This endpoint writes the company and role levels, and the one subject the chain was read for. The platform
+            // level belongs to the operator's own screen; documents and their lines arrive later.
             $shared = $mayShare && \in_array($level, [SettingLevel::Company, SettingLevel::Role], true);
-            $party = $mayWriteParties && null !== $context && match ($level) {
-                SettingLevel::CustomerGroup => null !== $context->customerGroupId && null === $context->customerId,
-                SettingLevel::Customer => null !== $context->customerId,
+            $subject = null !== $context && match ($level) {
+                SettingLevel::CustomerGroup => $mayWriteParties && null !== $context->customerGroupId && null === $context->customerId,
+                SettingLevel::Customer => $mayWriteParties && null !== $context->customerId,
+                SettingLevel::ProductCategory => $mayWriteArticles && null !== $context->productCategoryId && null === $context->productId,
+                SettingLevel::Product => $mayWriteArticles && null !== $context->productId,
                 default => false,
             };
-            if ($definition->allows($level) && ($mine || $shared || $party)) {
+            if ($definition->allows($level) && ($mine || $shared || $subject)) {
                 $levels[] = $level->value;
             }
         }
 
         return $levels;
+    }
+
+    /** A customer, with its group, or a customer group; read with customer.read. */
+    private function partyContext(Company $company, ?Uuid $roleId, Uuid $userId, string $name, ?Uuid $id): SettingContext
+    {
+        if (!$this->guard->may($company, self::PARTIES_READ)) {
+            throw new NotFoundHttpException('No such company.');
+        }
+        if ('customerId' === $name) {
+            $subject = null === $id ? null : $this->parties->customer($company, $id);
+            if (null === $subject) {
+                throw new NotFoundHttpException('No such customer.');
+            }
+
+            return new SettingContext($company, $roleId, $userId, $subject->customerGroupId, $subject->customerId);
+        }
+        if (null === $id || !$this->parties->hasCustomerGroup($company, $id)) {
+            throw new NotFoundHttpException('No such customer group.');
+        }
+
+        return new SettingContext($company, $roleId, $userId, $id);
+    }
+
+    /** A product, with its category, or a product category; read with product.read. */
+    private function articleContext(Company $company, ?Uuid $roleId, Uuid $userId, string $name, ?Uuid $id): SettingContext
+    {
+        if (!$this->guard->may($company, self::ARTICLES_READ)) {
+            throw new NotFoundHttpException('No such company.');
+        }
+        if ('productId' === $name) {
+            $subject = null === $id ? null : $this->articles->product($company, $id);
+            if (null === $subject) {
+                throw new NotFoundHttpException('No such product.');
+            }
+
+            return new SettingContext($company, $roleId, $userId, productCategoryId: $subject->productCategoryId, productId: $subject->productId);
+        }
+        if (null === $id || !$this->articles->hasProductCategory($company, $id)) {
+            throw new NotFoundHttpException('No such product category.');
+        }
+
+        return new SettingContext($company, $roleId, $userId, productCategoryId: $id);
     }
 
     private static function named(?string $identifier): ?string

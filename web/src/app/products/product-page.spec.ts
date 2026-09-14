@@ -21,6 +21,8 @@ import {
   SettingsFacade,
 } from '../shared/settings/settings-facade';
 import { ProductPage } from './product-page';
+import type { SettingRow } from '../shared/settings/settings-types';
+import { ArticleSettings } from './article-settings-facade';
 import { ProductsFacade } from './products-facade';
 import type {
   ProductCategoryRow,
@@ -70,6 +72,7 @@ describe('ProductPage', () => {
     product: product.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    defaultUnitCode: signal<string | null>('C62').asReadonly(),
     loadProduct: vi.fn(),
     createProduct: vi.fn(),
     reviseProduct: vi.fn(),
@@ -78,6 +81,15 @@ describe('ProductPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+  };
+  const articleSettings = {
+    rows: signal<readonly SettingRow[]>([]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: signal(null).asReadonly(),
+    load: vi.fn(),
+    save: vi.fn(),
+    reset: vi.fn(),
+    clearError: vi.fn(),
   };
   let fixture: ComponentFixture<ProductPage>;
 
@@ -112,6 +124,7 @@ describe('ProductPage', () => {
     facade.createProduct.mockReset().mockResolvedValue({ ...laptop, id: 'p9' });
     facade.reviseProduct.mockReset().mockResolvedValue(laptop);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    articleSettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [ProductPage],
       providers: [
@@ -125,6 +138,7 @@ describe('ProductPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ProductsFacade, useValue: facade },
+        { provide: ArticleSettings, useValue: articleSettings },
         { provide: AuthFacade, useValue: auth },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -136,6 +150,7 @@ describe('ProductPage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
     expect(facade.loadProduct).toHaveBeenCalledWith('c1', null);
+    expect(q('article-defaults')).toBeNull();
 
     type('field-reference', 'ART-009');
     type('field-name', 'Souris');
@@ -174,6 +189,8 @@ describe('ProductPage', () => {
     product.set(laptop);
     await open('p1');
     expect(facade.loadProduct).toHaveBeenCalledWith('c1', 'p1');
+    expect(articleSettings.load).toHaveBeenCalledWith('c1', { productId: 'p1' });
+    expect(q('article-defaults')).not.toBeNull();
     expect(q('product-title')?.textContent).toContain('ART-001');
     expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('1250.500');
 

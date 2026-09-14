@@ -18,13 +18,21 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
+import { ArticleDefaults } from './article-defaults';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
   selector: 'app-product-page',
-  imports: [MatButtonModule, MatCardModule, RouterLink, TranslatePipe, DescriptorForm],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    RouterLink,
+    TranslatePipe,
+    DescriptorForm,
+    ArticleDefaults,
+  ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -75,9 +83,15 @@ export class ProductPage {
       if (descriptor === null || options === null || current === undefined) return null;
       return buildFormGroup(
         descriptor,
-        productValues(current, options, this.facade.customFields()),
+        productValues(current, options, this.facade.customFields(), this.facade.defaultUnitCode()),
       );
     });
+  });
+
+  /** The subject of the defaults panel: the product once it exists. */
+  protected readonly defaultsSubject = computed(() => {
+    const current = this.current();
+    return current ? { productId: current.id } : null;
   });
 
   constructor() {
