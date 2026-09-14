@@ -43,6 +43,10 @@ describe('colourTokens', () => {
           contrast(tokens['--mat-sys-on-surface'], tokens['--mat-sys-surface']),
           `${accent} ${scheme}`,
         ).toBeGreaterThanOrEqual(4.5);
+        expect(
+          contrast(tokens['--mat-sys-on-primary-container'], tokens['--mat-sys-primary-container']),
+          `${accent} ${scheme}`,
+        ).toBeGreaterThanOrEqual(4.5);
       }
     }
   });
@@ -50,6 +54,12 @@ describe('colourTokens', () => {
   it('gives a light surface in the light scheme and a dark one in the dark scheme', () => {
     expect(luminance(colourTokens('#1f6feb', 'light')['--mat-sys-surface'])).toBeGreaterThan(0.8);
     expect(luminance(colourTokens('#1f6feb', 'dark')['--mat-sys-surface'])).toBeLessThan(0.05);
+  });
+
+  it('shows the accent as picked: its container is the accent itself, not a muted tone of it', () => {
+    for (const accent of ['#1f6feb', '#0b7a3b', '#d93025']) {
+      expect(colourTokens(accent, 'light')['--mat-sys-primary-container'], accent).toBe(accent);
+    }
   });
 
   it('follows the accent: two accents give two different primaries', () => {

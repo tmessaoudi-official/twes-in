@@ -5,7 +5,7 @@ import {
   DynamicScheme,
   Hct,
   hexFromArgb,
-  SchemeTonalSpot,
+  SchemeFidelity,
 } from '@material/material-color-utilities';
 
 /**
@@ -80,12 +80,13 @@ export class InvalidAccentColour extends Error {
 const HEX_COLOUR = /^#[0-9a-f]{6}$/i;
 
 /**
- * Every system colour role for one accent and one scheme. The tonal-spot scheme is Material's default: it keeps
- * the accent's hue, tames its chroma and guarantees readable contrast for text roles, whatever the accent is.
+ * Every system colour role for one accent and one scheme. The fidelity scheme keeps the accent's chroma, so the colour
+ * a company picks shows as picked (docs/SPEC.md § 7, 2026-09-14: tonal spot rendered #1f6feb as a muted slate), and
+ * still guarantees readable contrast for text roles, whatever the accent is.
  */
 export function colourTokens(accent: string, scheme: ColourScheme): ColourTokens {
   assertAccentColour(accent);
-  const dynamic = new SchemeTonalSpot(
+  const dynamic = new SchemeFidelity(
     Hct.fromInt(argbFromHex(accent.toLowerCase())),
     scheme === 'dark',
     0,
