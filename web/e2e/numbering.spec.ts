@@ -3,9 +3,9 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 
 // G3b through the real stack: the seeded Tunisian company starts with its default establishment, coded the way its
-// preset says, and a numbering series per document type on it. The owner renumbers invoices, sees the next number
-// before saving, and finds it after a reload. Invoices, because nothing numbers them before G7: once a document
-// carries a number from a series, where it resumes no longer changes, and the delivery notes scenario numbers them.
+// preset says, and a numbering series per document type on it. The owner changes how invoices are numbered, sees the
+// next number before saving, and finds it after a reload. Only the format changes: the invoices scenario numbers
+// invoices, and once a document carries a number from a series, where it resumes no longer changes.
 // One database is shared by the whole suite, so the series is put back as it was found; no establishment is added,
 // because an establishment cannot be removed.
 const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
@@ -68,10 +68,11 @@ async function putSeries(page: Page, series: Series): Promise<void> {
   expect(status).toBe(200);
 }
 
-test('the owner renumbers invoices and sees the next number before saving', async ({ page }) => {
+test('the owner reformats invoices and sees the next number before saving', async ({ page }) => {
   await signIn(page);
   const original = await invoices(page);
   const code = original.establishmentCode;
+  const next = String(original.nextNumber).padStart(4, '0');
   try {
     await page.goto('/company/establishments');
     await expect(page.getByTestId(`establishment-${code}`)).toBeVisible();
@@ -80,9 +81,8 @@ test('the owner renumbers invoices and sees the next number before saving', asyn
     await page.goto('/company/numbering');
     await page.getByTestId(`series-edit-${code}-invoice`).click();
     await page.getByTestId('field-format').fill('FAC-{EST}-{YY}-{SEQ:4}');
-    await page.getByTestId('field-nextNumber').fill('12');
     await expect(page.getByTestId('series-preview')).toContainText(
-      new RegExp(`FAC-${code}-\\d{2}-0012`),
+      new RegExp(`FAC-${code}-\\d{2}-${next}`),
     );
     expect(await wcagViolations(page)).toEqual([]);
 
@@ -91,7 +91,7 @@ test('the owner renumbers invoices and sees the next number before saving', asyn
 
     await page.reload();
     await expect(page.getByTestId(`series-${code}-invoice`)).toContainText(
-      new RegExp(`FAC-${code}-\\d{2}-0012`),
+      new RegExp(`FAC-${code}-\\d{2}-${next}`),
     );
   } finally {
     await putSeries(page, original);

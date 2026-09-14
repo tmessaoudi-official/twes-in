@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Domain;
 
 use App\Files\Domain\StoredFile;
 use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Shared\Domain\DomainEvent;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;

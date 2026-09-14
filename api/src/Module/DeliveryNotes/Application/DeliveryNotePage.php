@@ -10,7 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Application;
 
 use App\Fiscal\Domain\Calculation\DocumentTotals;
-use App\Module\DeliveryNotes\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 
 /**

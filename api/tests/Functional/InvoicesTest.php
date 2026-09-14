@@ -1,0 +1,319 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional;
+
+use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\CustomerTaxRegimeRepository;
+use App\Fiscal\Domain\TaxComponentRepository;
+use App\Fiscal\Domain\UnitRepository;
+use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\CustomerKind;
+use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceHeader;
+use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductDetails;
+use App\Module\Products\Domain\ProductKind;
+use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\EstablishmentRepository;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Uid\Uuid;
+
+final class InvoicesTest extends ApiTestCase
+{
+    private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
+
+    private Company $company;
+    private string $customerId;
+    private string $productId;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->company = $this->createCompany('Acme');
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        static::getContainer()->get(SyncCustomerTaxRegimes::class)->handle();
+        $this->customerId = $this->customer('CLI-0001', 'standard', [$this->tax('RS1')->getId()], '5')->getId()->toRfc4122();
+        $product = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $this->unit('C62'), null, [$this->tax('FODEC')->getId(), $this->tax('TVA19')->getId()], new \DateTimeImmutable());
+        $this->em()->persist($product);
+        $this->em()->flush();
+        $this->productId = $product->getId()->toRfc4122();
+    }
+
+    public function testTheOptionsSayWhatTheInvoiceFormAsksFor(): void
+    {
+        $this->signedIn(['invoice.read']);
+
+        $this->getJson($this->companyPath().'/invoice-options');
+
+        self::assertResponseIsSuccessful();
+        $options = $this->json();
+        self::assertSame(['TND', 3], [$options['currency'], $options['currencyScale']]);
+        self::assertSame(['000'], array_column($this->arrayAt($options, 'establishments'), 'code'));
+        $customers = $this->arrayAt($options, 'customers');
+        self::assertSame(['CLI-0001'], array_column($customers, 'number'));
+        self::assertSame(['5.000'], array_column($customers, 'defaultDiscountRate'));
+        self::assertSame([[$this->taxId('RS1')]], array_column($customers, 'defaultTaxComponentIds'));
+        self::assertSame(['ART-001'], array_column($this->arrayAt($options, 'products'), 'reference'));
+        $taxes = array_column($this->arrayAt($options, 'taxes'), null, 'code');
+        self::assertIsArray($taxes['TVA19']);
+        self::assertIsArray($taxes['TIMBRE']);
+        self::assertIsArray($taxes['RS1']);
+        self::assertSame(['percentage_line', 'vat', '19.000', null, null, true], [$taxes['TVA19']['kind'], $taxes['TVA19']['family'], $taxes['TVA19']['rate'], $taxes['TVA19']['amount'], $taxes['TVA19']['threshold'], $taxes['TVA19']['isDefault']]);
+        self::assertSame(['fixed_document', 'stamp', null, '1.000', null, true], [$taxes['TIMBRE']['kind'], $taxes['TIMBRE']['family'], $taxes['TIMBRE']['rate'], $taxes['TIMBRE']['amount'], $taxes['TIMBRE']['threshold'], $taxes['TIMBRE']['isDefault']]);
+        self::assertSame(['withholding_total', '1.000', '1000.000', false], [$taxes['RS1']['kind'], $taxes['RS1']['rate'], $taxes['RS1']['threshold'], $taxes['RS1']['isDefault']]);
+    }
+
+    public function testAWriterDraftsAnInvoiceWhoseFiguresApplyItsDiscountsItsStampAndItsWithholding(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+
+        $this->postJson($this->path(), $this->invoice([
+            'supplyDate' => '2026-09-10',
+            'paymentTermsDays' => 45,
+            'customerReference' => 'PO-77',
+            'notesPrinted' => 'Merci',
+            'lines' => [
+                ['description' => 'Conseil', 'quantity' => '2', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '500', 'discountRate' => '10', 'taxComponentIds' => [$this->taxId('TVA19')]],
+                ['productId' => $this->productId, 'quantity' => '1'],
+            ],
+            'discountAmount' => '1125',
+        ]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $invoice = $this->json();
+        self::assertSame(['invoice', 'draft', null, null, null], [$invoice['type'], $invoice['status'], $invoice['number'], $invoice['issueDate'], $invoice['correctsInvoiceId']]);
+        self::assertSame([$this->establishmentId(), $this->customerId], [$invoice['establishmentId'], $invoice['customerId']]);
+        self::assertSame(['2026-09-10', 45, 'PO-77', 'Merci', null, '1125.000'], [$invoice['supplyDate'], $invoice['paymentTermsDays'], $invoice['customerReference'], $invoice['notesPrinted'], $invoice['notesInternal'], $invoice['discountAmount']]);
+        self::assertSame([$this->taxId('TIMBRE'), $this->taxId('RS1')], $invoice['documentTaxComponentIds'], 'left out, the company\'s stamp and the customer\'s withholding');
+        $lines = $this->arrayAt($invoice, 'lines');
+        self::assertSame(['10.000', null], array_column($lines, 'discountRate'));
+        self::assertSame(['Conseil', 'Portable 14"'], array_column($lines, 'description'));
+        self::assertSame([[$this->taxId('TVA19')], [$this->taxId('FODEC'), $this->taxId('TVA19')]], array_column($lines, 'taxComponentIds'));
+        self::assertSame(['900.000', '1250.000'], array_column($lines, 'net'));
+        // 2150 of lines less 1125 is 1025. The discount is spread pro rata over the two tax groups, 900:1250, the
+        // remainder to the largest: 470.930 and 654.070 off. FODEC is 1 % of 595.930, 5.959, and enters its VAT base:
+        // VAT 19 % of 429.070 + 595.930 + 5.959 is 195.882. 1025 + 201.841 = 1226.841 reaches the RS1 threshold: 1 %
+        // of it, 12.268, is withheld from what is due, and the stamp adds 1.000 to the total.
+        self::assertSame(['2150.000', '1125.000', '1025.000'], [$invoice['subtotalNet'], $invoice['documentDiscount'], $invoice['totalNet']]);
+        $taxes = $this->arrayAt($invoice, 'taxes');
+        self::assertSame([['TVA19', '195.882'], ['FODEC', '5.959']], array_map(null, array_column($taxes, 'code'), array_column($taxes, 'amount')), 'in the order they first appear');
+        self::assertSame([['TIMBRE', '1.000']], array_map(static fn (mixed $charge): array => \is_array($charge) ? [$charge['code'], $charge['amount']] : [], $this->arrayAt($invoice, 'fixedTaxes')));
+        self::assertSame(['201.841', '1227.841'], [$invoice['totalTax'], $invoice['total']]);
+        self::assertSame([['RS1', '1226.841', '12.268']], array_map(static fn (mixed $held): array => \is_array($held) ? [$held['code'], $held['base'], $held['amount']] : [], $this->arrayAt($invoice, 'withholdings')));
+        self::assertSame('1215.573', $invoice['amountDue']);
+
+        $this->getJson($this->path($this->stringAt($invoice, 'id')));
+        self::assertResponseIsSuccessful();
+        self::assertSame('1215.573', $this->json()['amountDue'], 'the stored draft totals the same');
+        $this->getJson($this->path());
+        self::assertCount(1, $this->jsonList());
+        self::assertSame('[]', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'invoice.created'"));
+    }
+
+    public function testWhatTheShapeOrTheCompanyRefusesAnswersUnprocessableNamingTheField(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $piece = ['description' => 'Pièce', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '10'];
+        $exempt = $this->customer('CLI-0002', 'exempt')->getId()->toRfc4122();
+
+        foreach ([
+            ['customerId', ['customerId' => self::ABSENT]],
+            ['establishmentId', ['establishmentId' => self::ABSENT]],
+            ['supplyDate', ['supplyDate' => '10/09/2026']],
+            ['paymentTermsDays', ['paymentTermsDays' => 400]],
+            ['discountAmount', ['discountAmount' => '-1']],
+            ['discountAmount', ['lines' => [$piece], 'discountAmount' => '10.001']],
+            ['lines[0].discountRate', ['lines' => [[...$piece, 'discountRate' => '101']]]],
+            ['lines[0].taxComponentIds', ['lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TIMBRE')]]]]],
+            ['lines[0].taxComponentIds', ['customerId' => $exempt, 'lines' => [[...$piece, 'taxComponentIds' => [$this->taxId('TVA19')]]]]],
+            ['documentTaxComponentIds', ['documentTaxComponentIds' => [$this->taxId('TVA19')]]],
+            ['documentTaxComponentIds', ['documentTaxComponentIds' => [self::ABSENT]]],
+        ] as [$field, $change]) {
+            $this->postJson($this->path(), $this->invoice($change));
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+        }
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => ['first' => $this->taxId('TIMBRE')]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a JSON object is not a list');
+    }
+
+    public function testARevisionIsAuditedAndADraftIsCancelledOnceAndThenFixed(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice(['customerReference' => 'PO-78', 'documentTaxComponentIds' => [], 'lines' => [['productId' => $this->productId, 'quantity' => '3', 'discountRate' => '5']]]));
+
+        self::assertResponseIsSuccessful();
+        $invoice = $this->json();
+        self::assertSame(['PO-78', [], ['5.000']], [$invoice['customerReference'], $invoice['documentTaxComponentIds'], array_column($this->arrayAt($invoice, 'lines'), 'discountRate')]);
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'invoice.revised'");
+        self::assertIsString($changes);
+        self::assertSame(['fields' => ['customerReference', 'documentTaxComponentIds', 'lines']], json_decode($changes, true));
+
+        $this->postJson($this->path($id).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame('cancelled', $this->json()['status']);
+        $this->sendJson('PUT', $this->path($id), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a cancelled invoice is no longer revised');
+        $this->postJson($this->path($id).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice is cancelled once');
+
+        $this->sendJson('PUT', $this->path(self::ABSENT), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson($this->path(self::ABSENT).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testAReaderOnlyReadsAndAnotherCompanysInvoiceIsNotFound(): void
+    {
+        $globex = $this->createCompany('Globex');
+        static::getContainer()->get(ProvisionCompany::class)->handle($globex);
+        $theirEstablishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($globex->getId())[0];
+        $theirs = Invoice::create($globex, $theirEstablishment, $this->customer('CLI-0001', 'standard', company: $globex), new InvoiceHeader(), [], [], new \DateTimeImmutable());
+        $this->em()->persist($theirs);
+        $this->em()->flush();
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => []]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a draft may have no line yet');
+        $mine = $this->stringAt($this->json(), 'id');
+        self::assertSame(['0.000', '0.000', '0.000', []], [$this->json()['total'], $this->json()['subtotalNet'], $this->json()['amountDue'], $this->json()['taxes']]);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($this->path($mine));
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->companyPath().'/invoice-options');
+        self::assertResponseIsSuccessful();
+        $this->sendJson('PUT', $this->path($mine), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson($this->path(), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->postJson($this->path($mine).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->getJson($this->path($theirs->getId()->toRfc4122()));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->path('not-a-uuid'));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->getJson($this->path());
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
+    public function testSwitchedOffTheModuleAnswersNotFoundAndKeepsItsInvoices(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'company.read', 'company.settings']);
+        $this->postJson($this->path(), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->companyPath().'/invoice-options');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => true]);
+        $this->getJson($this->path());
+        self::assertResponseIsSuccessful();
+        self::assertCount(1, $this->jsonList());
+    }
+
+    /**
+     * @param array<string, mixed> $changes
+     *
+     * @return array<string, mixed>
+     */
+    private function invoice(array $changes = []): array
+    {
+        return [...[
+            'customerId' => $this->customerId,
+            'establishmentId' => null,
+            'supplyDate' => null,
+            'paymentTermsDays' => null,
+            'customerReference' => null,
+            'notesPrinted' => null,
+            'notesInternal' => null,
+            'discountAmount' => null,
+            'documentTaxComponentIds' => null,
+            'lines' => [],
+        ], ...$changes];
+    }
+
+    /** @param list<Uuid> $defaultTaxes */
+    private function customer(string $number, string $regime, array $defaultTaxes = [], ?string $defaultDiscountRate = null, ?Company $company = null): Customer
+    {
+        $taxRegime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', $regime);
+        self::assertNotNull($taxRegime);
+        $profile = new CustomerProfile(CustomerKind::Company, 'Carthage Conseil', defaultDiscountRate: $defaultDiscountRate);
+        $customer = Customer::create($company ?? $this->company, $number, $profile, null, $taxRegime, $defaultTaxes, new \DateTimeImmutable());
+        $this->em()->persist($customer);
+        $this->em()->flush();
+
+        return $customer;
+    }
+
+    private function unit(string $code): \App\Fiscal\Domain\Unit
+    {
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany($code, $this->company->getId());
+        self::assertNotNull($unit);
+
+        return $unit;
+    }
+
+    private function unitId(string $code): string
+    {
+        return $this->unit($code)->getId()->toRfc4122();
+    }
+
+    private function tax(string $code): \App\Fiscal\Domain\TaxComponent
+    {
+        $tax = static::getContainer()->get(TaxComponentRepository::class)->ofCodeInCompany($code, $this->company->getId());
+        self::assertNotNull($tax);
+
+        return $tax;
+    }
+
+    private function taxId(string $code): string
+    {
+        return $this->tax($code)->getId()->toRfc4122();
+    }
+
+    private function establishmentId(): string
+    {
+        return static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
+    }
+
+    /** @param list<string> $permissions */
+    private function signedIn(array $permissions): void
+    {
+        $this->createUser('sales@twes.local', 'password-1234', $this->company, $permissions, 'member');
+        $this->login('sales@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+    }
+
+    private function companyPath(): string
+    {
+        return '/api/companies/'.$this->company->getId()->toRfc4122();
+    }
+
+    private function path(?string $id = null): string
+    {
+        return $this->companyPath().'/invoices'.(null === $id ? '' : '/'.$id);
+    }
+}

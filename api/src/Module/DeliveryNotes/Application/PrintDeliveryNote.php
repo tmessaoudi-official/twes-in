@@ -12,7 +12,7 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Files\Application\Files;
 use App\Files\Application\StoredFileCorrupted;
 use App\Files\Application\StoredFileMissing;
-use App\Module\DeliveryNotes\Domain\CustomerSnapshot;
+use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;

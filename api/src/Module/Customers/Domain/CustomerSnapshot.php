@@ -7,9 +7,8 @@
 
 declare(strict_types=1);
 
-namespace App\Module\DeliveryNotes\Domain;
+namespace App\Module\Customers\Domain;
 
-use App\Module\Customers\Domain\Customer;
 use App\Shared\Domain\PostalAddress;
 
 /**
