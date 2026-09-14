@@ -12,12 +12,16 @@ namespace App\Tests\Support;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryInvoices implements InvoiceRepository
 {
     /** @var list<Invoice> */
     public array $invoices = [];
+
+    /** When given, a lock is refused outside its transaction, as the database refuses one. */
+    public ?Transactions $transactions = null;
 
     public function ofCompany(Uuid $companyId): array
     {
@@ -36,6 +40,15 @@ final class InMemoryInvoices implements InvoiceRepository
         }
 
         return null;
+    }
+
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
+    {
+        if (null !== $this->transactions && !$this->transactions->active()) {
+            throw new \LogicException('An invoice is locked inside a transaction.');
+        }
+
+        return $this->ofIdInCompany($id, $companyId);
     }
 
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool

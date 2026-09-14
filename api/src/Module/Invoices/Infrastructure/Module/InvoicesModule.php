@@ -29,7 +29,7 @@ final readonly class InvoicesModule implements DeclaresModule
             self::KEY,
             'modules.invoices',
             [CustomersModule::KEY, ProductsModule::KEY],
-            [InvoicePermission::READ, InvoicePermission::WRITE, InvoicePermission::ISSUE],
+            [InvoicePermission::READ, InvoicePermission::WRITE, InvoicePermission::ISSUE, InvoicePermission::PAYMENT_WRITE],
         );
     }
 }

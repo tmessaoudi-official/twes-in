@@ -12,7 +12,9 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceType;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineInvoiceRepository implements InvoiceRepository
@@ -31,6 +33,25 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
         $invoice = $this->entityManager->find(Invoice::class, $id);
 
         return null !== $invoice && $invoice->getCompany()->getId()->equals($companyId) ? $invoice : null;
+    }
+
+    public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
+    {
+        $invoice = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.id = :id')
+            ->andWhere('i.company = :company')
+            ->setParameter('id', $id, 'uuid')
+            ->setParameter('company', $companyId, 'uuid')
+            ->getQuery()
+            // SELECT … FOR UPDATE, which Doctrine refuses outside a transaction; the refresh hint replaces whatever an
+            // earlier read of the row in this request left in memory with what the lock just read.
+            ->setLockMode(LockMode::PESSIMISTIC_WRITE)
+            ->setHint(Query::HINT_REFRESH, true)
+            ->getOneOrNullResult();
+
+        return $invoice instanceof Invoice ? $invoice : null;
     }
 
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool

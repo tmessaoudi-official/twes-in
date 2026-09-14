@@ -25,6 +25,7 @@ use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceTax;
+use App\Module\Invoices\Domain\Payment;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Uid\Uuid;
@@ -284,6 +285,31 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public string $amountCredited = '0';
 
+    /**
+     * The payments recorded on the invoice, by day (POST .../payments, DELETE .../payments/{paymentId}).
+     *
+     * @var list<array{id: string, date: string, amount: string, method: string, reference: string|null, notes: string|null, recordedBy: string|null, createdAt: string}>
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['id', 'date', 'amount', 'method', 'reference', 'notes', 'recordedBy', 'createdAt'],
+            'properties' => [
+                'id' => self::ID,
+                'date' => ['type' => 'string', 'format' => 'date'],
+                'amount' => ['type' => 'string'],
+                'method' => ['type' => 'string', 'enum' => ['transfer', 'cash', 'check', 'card', 'other']],
+                'reference' => self::TEXT_OR_NULL,
+                'notes' => self::TEXT_OR_NULL,
+                'recordedBy' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'createdAt' => ['type' => 'string', 'format' => 'date-time'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $payments = [];
+
     /** The issue day plus the terms; null while it is a draft. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
     #[Groups([self::READ])]
@@ -375,6 +401,11 @@ final class InvoiceResource
         $resource->amountDue = $figures->amountDue;
         $resource->amountPaid = $figures->amountPaid;
         $resource->amountCredited = $figures->amountCredited;
+        $resource->payments = array_map(static function (Payment $payment): array {
+            $row = PaymentResource::of($payment);
+
+            return ['id' => (string) $row->id, 'date' => $row->date, 'amount' => $row->amount, 'method' => $row->method, 'reference' => $row->reference, 'notes' => $row->notes, 'recordedBy' => $row->recordedBy, 'createdAt' => $row->createdAt];
+        }, $invoice->getPayments());
         $resource->dueDate = $invoice->getDueDate()?->format('Y-m-d');
         $resource->language = $invoice->getLanguage();
         $snapshot = $invoice->getCustomerSnapshot();

@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain;
 
 use App\Files\Domain\StoredFile;
+use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Customers\Domain\Customer;
@@ -38,6 +39,9 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
 class Invoice
 {
+    /** The decimals of every stored amount column; the currency's scale is applied when the figures are read. */
+    private const int STORED_SCALE = 3;
+
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]
     private Uuid $id;
@@ -168,6 +172,10 @@ class Invoice
     #[ORM\OrderBy(['position' => 'ASC'])]
     private Collection $documentTaxes;
 
+    /** @var Collection<int, Payment> */
+    #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'invoice', cascade: ['persist'], orphanRemoval: true)]
+    private Collection $payments;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -180,6 +188,7 @@ class Invoice
         $this->company = $company;
         $this->lines = new ArrayCollection();
         $this->documentTaxes = new ArrayCollection();
+        $this->payments = new ArrayCollection();
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }
@@ -325,6 +334,75 @@ class Invoice
         $this->updatedAt = $now;
     }
 
+    /**
+     * Money the customer paid (docs/SPEC.md § 7, 2026-09-14): an issued invoice takes a payment dated from its issue day
+     * to the company's today, of an amount the currency can count and at most what is still due; what is due and the
+     * status follow.
+     *
+     * @param \DateTimeImmutable $today the company's today, in its time zone
+     * @param int                $scale the decimals of the company's currency
+     *
+     * @throws InvoiceTransitionRefused when the invoice is not issued
+     * @throws InvalidInvoice           on `amount` or `date`
+     */
+    public function recordPayment(PaymentDetails $details, \DateTimeImmutable $today, int $scale, ?Uuid $recordedBy, \DateTimeImmutable $now): Payment
+    {
+        if (!\in_array($this->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true) || null === $this->issueDate) {
+            throw new InvoiceTransitionRefused(\sprintf('The invoice %s is %s: only an issued invoice is paid.', $this->reference(), $this->status->value));
+        }
+        $amount = Decimal::of($details->amount);
+        if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
+            throw new InvalidInvoice('amount', \sprintf('The currency %s has %d decimals.', $this->company->getCurrency(), $scale));
+        }
+        $due = Decimal::of($this->amountDue ?? '0');
+        if ($amount->compare($due) > 0) {
+            throw new InvalidInvoice('amount', \sprintf('A payment is at most what is still due, %s.', Decimal::format($due, $scale)));
+        }
+        $day = $details->date->format('Y-m-d');
+        if ($day < $this->issueDate->format('Y-m-d')) {
+            throw new InvalidInvoice('date', \sprintf('A payment is dated from the issue day, %s.', $this->issueDate->format('Y-m-d')));
+        }
+        if ($day > $today->format('Y-m-d')) {
+            throw new InvalidInvoice('date', \sprintf('A payment is dated today at the latest, %s.', $today->format('Y-m-d')));
+        }
+
+        $payment = new Payment($this, $details, $recordedBy, $now);
+        $this->payments->add($payment);
+        $this->settle($now);
+
+        return $payment;
+    }
+
+    /** One of its payments; null when it has none of this id. */
+    public function payment(Uuid $id): ?Payment
+    {
+        foreach ($this->payments as $payment) {
+            if ($payment->getId()->equals($id)) {
+                return $payment;
+            }
+        }
+
+        return null;
+    }
+
+    /** Deletes one of its payments: what it paid is due again, and the status follows. */
+    public function removePayment(Payment $payment, \DateTimeImmutable $now): void
+    {
+        if (!$this->payments->removeElement($payment)) {
+            throw new \LogicException('An invoice deletes a payment of its own.');
+        }
+        $this->settle($now);
+    }
+
+    /** @return list<Payment> by day, then in the order they were recorded */
+    public function getPayments(): array
+    {
+        $payments = array_values($this->payments->toArray());
+        usort($payments, static fn (Payment $a, Payment $b): int => [$a->getDate()->format('Y-m-d'), $a->getCreatedAt(), $a->getId()->toRfc4122()] <=> [$b->getDate()->format('Y-m-d'), $b->getCreatedAt(), $b->getId()->toRfc4122()]);
+
+        return $payments;
+    }
+
     /** Keeps the PDF a numbered document was issued with; a document keeps one, and never replaces it. */
     public function attachPdf(StoredFile $file): void
     {
@@ -447,6 +525,29 @@ class Invoice
     public function getIssuedBy(): ?Uuid
     {
         return $this->issuedBy;
+    }
+
+    /**
+     * What is due is the total less what is withheld, paid and credited; nothing paid or credited is `issued`, nothing
+     * due `paid`, anything between `partially_paid` (docs/SPEC.md § 7, 2026-09-14).
+     */
+    private function settle(\DateTimeImmutable $now): void
+    {
+        if (null === $this->totalGross || null === $this->withholdingAmount) {
+            throw new \LogicException(\sprintf('The invoice %s has no figures to settle.', $this->reference()));
+        }
+        $paid = Decimal::sum(array_map(static fn (Payment $payment) => Decimal::of($payment->getAmount()), $this->getPayments()));
+        $credited = Decimal::of($this->amountCredited);
+        $due = Decimal::of($this->totalGross)->sub(Decimal::of($this->withholdingAmount))->sub($paid)->sub($credited);
+
+        $this->amountPaid = Decimal::format($paid, self::STORED_SCALE);
+        $this->amountDue = Decimal::format($due, self::STORED_SCALE);
+        $this->status = match (true) {
+            0 === $paid->compare(0) && 0 === $credited->compare(0) => InvoiceStatus::Issued,
+            0 === $due->compare(0) => InvoiceStatus::Paid,
+            default => InvoiceStatus::PartiallyPaid,
+        };
+        $this->updatedAt = $now;
     }
 
     private function apply(InvoiceHeader $header): void

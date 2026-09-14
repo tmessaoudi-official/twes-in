@@ -26,6 +26,8 @@ use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Module\Invoices\Domain\PaymentDetails;
+use App\Module\Invoices\Domain\PaymentMethod;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
@@ -235,7 +237,88 @@ final class InvoiceTest extends TestCase
         $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(), $this->now);
     }
 
-    private function figures(): \App\Module\Invoices\Domain\InvoiceFigures
+    public function testAPaymentLowersWhatIsDueAndTheStatusFollowsWhatIsPaidBothWays(): void
+    {
+        $invoice = $this->issued(total: '1190.000', withheld: '11.900', due: '1178.100');
+        $today = new \DateTimeImmutable('2026-09-20');
+        $recordedBy = \Symfony\Component\Uid\Uuid::v7();
+
+        $first = $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15 22:00:00'), '178.1', PaymentMethod::Transfer, ' VIR-1 ', ''), $today, 3, $recordedBy, $this->now);
+
+        self::assertSame(['2026-09-15', '178.100', PaymentMethod::Transfer, 'VIR-1', null], [$first->getDate()->format('Y-m-d'), $first->getAmount(), $first->getMethod(), $first->getReference(), $first->getNotes()]);
+        self::assertTrue($recordedBy->equals($first->getRecordedBy()));
+        self::assertSame([InvoiceStatus::PartiallyPaid, '178.100', '1000.000', '0.000'], $this->settlement($invoice), 'the issue day is a payment day');
+
+        $second = $invoice->recordPayment(new PaymentDetails($today, '1000', PaymentMethod::Cash), $today, 3, null, $this->now);
+        self::assertSame([InvoiceStatus::Paid, '1178.100', '0.000', '0.000'], $this->settlement($invoice), 'paying exactly what is due, today, pays the invoice');
+        self::assertSame([$first, $second], $invoice->getPayments());
+        self::assertSame('1190.000', $invoice->getIssuedFigures()?->total, 'a payment changes what is due, never what was invoiced');
+
+        self::assertSame($first, $invoice->payment($first->getId()));
+        $invoice->removePayment($first, $this->now);
+        self::assertSame([InvoiceStatus::PartiallyPaid, '1000.000', '178.100', '0.000'], $this->settlement($invoice));
+        $invoice->removePayment($second, $this->now);
+        self::assertSame([InvoiceStatus::Issued, '0.000', '1178.100', '0.000'], $this->settlement($invoice), 'nothing paid is issued again');
+        self::assertSame([[], null], [$invoice->getPayments(), $invoice->payment($first->getId())]);
+    }
+
+    public function testAPaymentIsAboveZeroAtMostWhatIsDueInTheCurrencyAndDatedFromTheIssueDayToToday(): void
+    {
+        $invoice = $this->issued(total: '1190.000', withheld: '11.900', due: '1178.100');
+        $today = new \DateTimeImmutable('2026-09-20');
+        $pay = fn (string $amount, string $day = '2026-09-18', int $scale = 3) => $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable($day), $amount, PaymentMethod::Check), $today, $scale, null, $this->now);
+
+        foreach (['0', '0.000', '-5', '1.0001', '1,5', 'ten', ''] as $amount) {
+            $this->assertRefused('amount', static fn () => $pay($amount), "amount \"$amount\"");
+        }
+        $this->assertRefused('amount', static fn () => $pay('1178.101'), 'a thousandth above what is due');
+        $this->assertRefused('amount', static fn () => $pay('10.005', scale: 2), 'finer than a two-decimal currency');
+        $this->assertRefused('date', static fn () => $pay('10', '2026-09-14'), 'the day before the issue day');
+        $this->assertRefused('date', static fn () => $pay('10', '2026-09-21'), 'tomorrow');
+        $this->assertRefused('reference', fn () => $invoice->recordPayment(new PaymentDetails($today, '1', PaymentMethod::Card, str_repeat('R', 65)), $today, 3, null, $this->now));
+        $this->assertRefused('notes', fn () => $invoice->recordPayment(new PaymentDetails($today, '1', PaymentMethod::Other, null, str_repeat('n', 5001)), $today, 3, null, $this->now));
+        self::assertSame([InvoiceStatus::Issued, '0.000', '1178.100', '0.000', []], [...$this->settlement($invoice), $invoice->getPayments()], 'a refused payment leaves no trace');
+
+        $nothingDue = $this->issued(total: '0.000', withheld: '0.000', due: '0.000');
+        self::assertSame(InvoiceStatus::Issued, $nothingDue->getStatus(), 'an invoice of nothing is issued, not paid: nothing was paid');
+        $this->assertRefused('amount', fn () => $nothingDue->recordPayment(new PaymentDetails($today, '0.001', PaymentMethod::Cash), $today, 3, null, $this->now));
+    }
+
+    public function testOnlyAnIssuedInvoiceIsPaid(): void
+    {
+        $today = new \DateTimeImmutable('2026-09-20');
+        $draft = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $cancelled = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $cancelled->cancel($this->now);
+
+        foreach (['a draft' => $draft, 'a cancelled draft' => $cancelled] as $case => $invoice) {
+            try {
+                $invoice->recordPayment(new PaymentDetails($today, '1', PaymentMethod::Cash), $today, 3, null, $this->now);
+                self::fail("$case was paid");
+            } catch (InvoiceTransitionRefused) {
+                self::assertSame([], $invoice->getPayments());
+            }
+        }
+    }
+
+    private function issued(string $total, string $withheld, string $due): Invoice
+    {
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15 08:00:00'), 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures($total, $withheld, $due), $this->now);
+
+        return $invoice;
+    }
+
+    /** @return array{InvoiceStatus, string, string, string} status, amount paid, amount due, amount credited */
+    private function settlement(Invoice $invoice): array
+    {
+        $figures = $invoice->getIssuedFigures();
+        self::assertNotNull($figures);
+
+        return [$invoice->getStatus(), $figures->amountPaid, $figures->amountDue, $figures->amountCredited];
+    }
+
+    private function figures(string $total = '12.900', string $withheld = '0.000', string $due = '12.900'): \App\Module\Invoices\Domain\InvoiceFigures
     {
         return new \App\Module\Invoices\Domain\InvoiceFigures(
             subtotalNet: '10.000',
@@ -244,10 +327,10 @@ final class InvoiceTest extends TestCase
             taxes: [['code' => 'TVA19', 'rate' => '19.000', 'base' => '10.000', 'amount' => '1.900']],
             totalTax: '1.900',
             fixedTaxes: [['code' => 'TIMBRE', 'amount' => '1.000']],
-            total: '12.900',
-            withholdings: [],
-            withholdingAmount: '0.000',
-            amountDue: '12.900',
+            total: $total,
+            withholdings: '0.000' === $withheld ? [] : [['code' => 'RS1', 'rate' => '1.000', 'base' => $total, 'amount' => $withheld]],
+            withholdingAmount: $withheld,
+            amountDue: $due,
             lines: [['net' => '10.000', 'tax' => '1.900', 'gross' => '11.900']],
         );
     }

@@ -279,6 +279,85 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    public function testAPaymentHolderRecordsAndDeletesPaymentsAndTheInvoiceSaysWhatIsStillDue(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $due = $this->stringAt($this->json(), 'amountDue');
+        self::assertIsNumeric($due);
+        $payments = $this->path($id).'/payments';
+
+        $this->postJson($payments, ['date' => $today, 'amount' => '100', 'method' => 'transfer', 'reference' => 'VIR-1', 'notes' => null]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $first = $this->json();
+        self::assertSame([$today, '100.000', 'transfer', 'VIR-1', null], [$first['date'], $first['amount'], $first['method'], $first['reference'], $first['notes']]);
+        $firstId = $this->stringAt($first, 'id');
+        $this->getJson($this->path($id));
+        $remaining = bcsub($due, '100', 3);
+        self::assertSame(['partially_paid', '100.000', $remaining], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountDue']]);
+        self::assertSame([$firstId], array_column($this->arrayAt($this->json(), 'payments'), 'id'));
+
+        $tomorrow = new \DateTimeImmutable($today)->modify('+1 day')->format('Y-m-d');
+        $yesterday = new \DateTimeImmutable($today)->modify('-1 day')->format('Y-m-d');
+        foreach ([
+            'amount' => ['amount' => bcadd($remaining, '0.001', 3)],
+            'amount ' => ['amount' => '0'],
+            'amount  ' => ['amount' => '1.0001'],
+            'date' => ['date' => $tomorrow],
+            'date ' => ['date' => $yesterday],
+            'method' => ['method' => 'bitcoin'],
+        ] as $field => $change) {
+            $this->postJson($payments, [...['date' => $today, 'amount' => '1', 'method' => 'cash', 'reference' => null, 'notes' => null], ...$change]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, json_encode($change, \JSON_THROW_ON_ERROR));
+            self::assertStringContainsString(trim($field), (string) $this->client->getResponse()->getContent());
+        }
+
+        $this->postJson($payments, ['date' => $today, 'amount' => $remaining, 'method' => 'cash', 'reference' => null, 'notes' => 'Au comptoir']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->getJson($this->path($id));
+        self::assertSame(['paid', $due, '0.000'], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountDue']]);
+        self::assertEquals(2, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'payment.recorded'"));
+
+        $this->sendJson('DELETE', $payments.'/'.$firstId);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->path($id));
+        self::assertSame(['partially_paid', $remaining, '100.000'], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountDue']]);
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'payment.deleted'");
+        self::assertIsString($changes);
+        self::assertEquals(['paymentId' => $firstId, 'date' => $today, 'amount' => '100.000', 'method' => 'transfer'], json_decode($changes, true), 'jsonb keeps the keys, not their order');
+
+        $this->sendJson('DELETE', $payments.'/'.$firstId);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a payment is deleted once');
+        $this->postJson($this->path(self::ABSENT).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
+    }
+
+    public function testPaymentsNeedPaymentWriteAndStayInTheirCompany(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+
+        $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'recording a payment needs payment.write');
+        self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM payment'));
+
+        $globex = $this->createCompany('Globex');
+        $this->createUser('globex@twes.local', 'password-1234', $globex, ['invoice.read', 'payment.write'], 'member');
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('globex@twes.local', 'password-1234');
+        $this->postJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoices/'.$id.'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company\'s invoice');
+        $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a company the user is not a member of');
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysInvoiceIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');
@@ -336,6 +415,17 @@ final class InvoicesTest extends ApiTestCase
         $this->getJson($this->path());
         self::assertResponseIsSuccessful();
         self::assertCount(1, $this->jsonList());
+    }
+
+    /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */
+    private function issuedInvoice(): string
+    {
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+
+        return $id;
     }
 
     /**
