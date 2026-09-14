@@ -14,7 +14,7 @@
           @if (note.issueDate) {
             · {{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate }}
           }
-          @if (note.deliveryDate && note.status === 'delivered') {
+          @if (note.deliveryDate && (note.status === 'delivered' || note.status === 'invoiced')) {
             · {{ 'delivery_notes.fields.deliveryDate' | translate }} {{ note.deliveryDate }}
           }
         </p>
@@ -46,6 +46,8 @@
   }
   @if (!mayWrite()) {
     <p data-testid="delivery-note-read-only">{{ 'delivery_notes.read_only' | translate }}</p>
+  } @else if (current()?.status === 'invoiced') {
+    <p data-testid="delivery-note-invoiced">{{ 'delivery_notes.invoiced_note' | translate }}</p>
   } @else if (current() && current()?.status !== 'draft') {
     <p data-testid="delivery-note-fixed">{{ 'delivery_notes.fixed' | translate }}</p>
   }

@@ -32,7 +32,9 @@ class StaticLoader implements TranslateLoader {
     return of({
       delivery_notes: {
         errors: { conflict: 'La note a changé d’état entre-temps.' },
-        statuses: { draft: 'Brouillon', validated: 'Validé' },
+        statuses: { draft: 'Brouillon', validated: 'Validé', invoiced: 'Facturé' },
+        fixed: 'Numéroté, il peut encore être livré.',
+        invoiced_note: 'Ce bon est sur une facture.',
       },
     });
   }
@@ -301,6 +303,20 @@ describe('DeliveryNotePage', () => {
     q('delivery-note-cancel-confirm')!.click();
     await settle();
     expect(facade.cancel).toHaveBeenCalledWith('c1', 'n1');
+  });
+
+  it('shows an invoiced note with its delivery day and PDF, neither delivered nor cancelled again', async () => {
+    note.set({ ...validated, status: 'invoiced', deliveryDate: '2026-09-20' });
+    await open('n1');
+
+    expect(q('delivery-note-status')?.textContent).toContain('Facturé');
+    expect(q('delivery-note-status')?.textContent).toContain('2026-09-20');
+    expect(q('delivery-note-invoiced')?.textContent).toContain('sur une facture');
+    expect(q('delivery-note-fixed')).toBeNull();
+    expect(q('delivery-note-deliver')).toBeNull();
+    expect(q('delivery-note-delivered-on')).toBeNull();
+    expect(q('delivery-note-cancel')).toBeNull();
+    expect(q('delivery-note-pdf')).not.toBeNull();
   });
 
   it('shows a reader the note and its PDF without a way to change it', async () => {
