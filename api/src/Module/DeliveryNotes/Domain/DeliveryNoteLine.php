@@ -75,6 +75,14 @@ class DeliveryNoteLine
         }
     }
 
+    /** @internal validation takes each tax's code, rate and VAT base behaviour again, as they stand on the issue day */
+    public function retakeTaxes(): void
+    {
+        foreach ($this->taxes as $tax) {
+            $tax->retake();
+        }
+    }
+
     /** @return array{string|null, string, string, string, string, list<string>} compared the way DeliveryNoteLineDetails::values() is */
     public function values(): array
     {

@@ -32,6 +32,11 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
         return null !== $note && $note->getCompany()->getId()->equals($companyId) ? $note : null;
     }
 
+    public function numberTaken(Uuid $companyId, string $number): bool
+    {
+        return null !== $this->entityManager->getRepository(DeliveryNote::class)->findOneBy(['company' => $companyId, 'number' => $number]);
+    }
+
     public function save(DeliveryNote $note): void
     {
         $this->entityManager->persist($note);

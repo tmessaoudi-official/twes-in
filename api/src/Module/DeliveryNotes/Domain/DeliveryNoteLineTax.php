@@ -52,14 +52,20 @@ class DeliveryNoteLineTax
     /** @internal a line's taxes are written by its line */
     public function __construct(DeliveryNoteLine $line, int $position, TaxComponent $taxComponent)
     {
-        $rate = $taxComponent->getRate() ?? throw new \LogicException(\sprintf('The line tax %s has no rate.', $taxComponent->getCode()));
         $this->id = Uuid::v7();
         $this->line = $line;
         $this->position = $position;
         $this->taxComponent = $taxComponent;
-        $this->code = $taxComponent->getCode();
+        $this->retake();
+    }
+
+    /** @internal the code, rate and VAT base behaviour its component has now */
+    public function retake(): void
+    {
+        $rate = $this->taxComponent->getRate() ?? throw new \LogicException(\sprintf('The line tax %s has no rate.', $this->taxComponent->getCode()));
+        $this->code = $this->taxComponent->getCode();
         $this->rate = Decimal::format(Decimal::of($rate), 3);
-        $this->entersVatBase = $taxComponent->entersVatBase();
+        $this->entersVatBase = $this->taxComponent->entersVatBase();
     }
 
     public function getLine(): DeliveryNoteLine

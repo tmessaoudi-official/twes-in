@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\DeliveryNotes\Domain;
 
 use App\Module\Customers\Domain\Customer;
+use App\Shared\Domain\DomainEvent;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
@@ -72,6 +73,13 @@ class DeliveryNote
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notesInternal = null;
 
+    /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by validation */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $customerSnapshot = null;
+
+    /** @var list<DomainEvent> recorded since they were last released; never stored */
+    private array $events = [];
+
     /** @var Collection<int, DeliveryNoteLine> */
     #[ORM\OneToMany(targetEntity: DeliveryNoteLine::class, mappedBy: 'deliveryNote', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -118,9 +126,7 @@ class DeliveryNote
      */
     public function revise(Establishment $establishment, Customer $customer, DeliveryNoteHeader $header, array $lines, \DateTimeImmutable $now): array
     {
-        if (DeliveryNoteStatus::Draft !== $this->status) {
-            throw new DeliveryNoteNotDraft(\sprintf('The delivery note %s is %s: only a draft changes.', $this->number ?? $this->id->toRfc4122(), $this->status->value));
-        }
+        $this->assertDraft('changes');
         $establishment = $this->establishmentOfThisCompany($establishment);
         $customer = $this->customerOfThisCompany($customer);
         $lines = $this->linesOfThisCompany($lines);
@@ -152,6 +158,105 @@ class DeliveryNote
         return $changed;
     }
 
+    /**
+     * Gives a draft with lines its number and issue day. From then on it prints what its customer was called that day,
+     * the rates its taxes had that day, and, when it names no delivery address, where the customer takes goods
+     * (its shipping address, else its billing one). Records `delivery_note.validated`.
+     *
+     * @throws DeliveryNoteNotDraft
+     * @throws InvalidDeliveryNote
+     */
+    public function validate(string $number, \DateTimeImmutable $issueDate, \DateTimeImmutable $now): void
+    {
+        $this->assertDraft('is validated');
+        if ($this->lines->isEmpty()) {
+            throw new InvalidDeliveryNote('lines', 'A delivery note is validated with at least one line.');
+        }
+
+        foreach ($this->getLines() as $line) {
+            $line->retakeTaxes();
+        }
+        if ($this->deliveryAddress->isEmpty()) {
+            $profile = $this->customer->getProfile();
+            $address = null === $profile->shippingAddress || $profile->shippingAddress->isEmpty() ? $profile->billingAddress : $profile->shippingAddress;
+            $this->deliveryAddress = new PostalAddress(...$address->parts());
+        }
+        $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
+        $this->status = DeliveryNoteStatus::Validated;
+        $this->number = $number;
+        $this->issueDate = self::day($issueDate);
+        $this->updatedAt = $now;
+        $this->events[] = new DeliveryNoteValidated(
+            $this->id,
+            $this->company->getId(),
+            $this->establishment->getId(),
+            $number,
+            $this->issueDate,
+            array_map(static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId()), $this->getLines()),
+        );
+    }
+
+    /**
+     * A validated note's goods reached the customer on a day from its issue day to the company's today, which becomes
+     * its delivery date.
+     *
+     * @throws DeliveryNoteTransitionRefused
+     * @throws InvalidDeliveryNote
+     */
+    public function deliver(\DateTimeImmutable $deliveredOn, \DateTimeImmutable $today, \DateTimeImmutable $now): void
+    {
+        if (DeliveryNoteStatus::Validated !== $this->status) {
+            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated note is delivered.', $this->reference(), $this->status->value));
+        }
+        $issued = $this->issueDate ?? throw new \LogicException('A validated delivery note has an issue day.');
+        $day = self::day($deliveredOn);
+        if ($day < $issued) {
+            throw new InvalidDeliveryNote('deliveredOn', \sprintf('Goods are delivered on or after the issue day, %s.', $issued->format('Y-m-d')));
+        }
+        if ($day > self::day($today)) {
+            throw new InvalidDeliveryNote('deliveredOn', 'A delivery is confirmed once it happened, today at the latest.');
+        }
+
+        $this->deliveryDate = $day;
+        $this->status = DeliveryNoteStatus::Delivered;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * A draft or a validated note that will not be delivered. A validated note keeps its number, which is never given
+     * again, and records `delivery_note.cancelled`.
+     *
+     * @throws DeliveryNoteTransitionRefused
+     */
+    public function cancel(\DateTimeImmutable $now): void
+    {
+        $was = $this->status;
+        if (DeliveryNoteStatus::Draft !== $was && DeliveryNoteStatus::Validated !== $was) {
+            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a draft or a validated note is cancelled.', $this->reference(), $was->value));
+        }
+
+        $this->status = DeliveryNoteStatus::Cancelled;
+        $this->updatedAt = $now;
+        if (DeliveryNoteStatus::Validated === $was) {
+            $this->events[] = new DeliveryNoteCancelled($this->id, $this->company->getId(), $this->establishment->getId(), $this->number ?? throw new \LogicException('A validated delivery note has a number.'));
+        }
+    }
+
+    /** @return list<DomainEvent> what happened since the last call, each once */
+    public function releaseEvents(): array
+    {
+        $events = $this->events;
+        $this->events = [];
+
+        return $events;
+    }
+
+    /** What its customer was called the day the note was validated; null while it is a draft or was cancelled as one. */
+    public function getCustomerSnapshot(): ?CustomerSnapshot
+    {
+        return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
     public function getHeader(): DeliveryNoteHeader
     {
         return new DeliveryNoteHeader($this->deliveryDate, $this->deliveryAddress, $this->customerReference, $this->remarksPrinted, $this->notesInternal);
@@ -179,6 +284,23 @@ class DeliveryNote
         foreach ($lines as $index => $details) {
             $this->lines->add(new DeliveryNoteLine($this, $index + 1, $details));
         }
+    }
+
+    private function assertDraft(string $what): void
+    {
+        if (DeliveryNoteStatus::Draft !== $this->status) {
+            throw new DeliveryNoteNotDraft(\sprintf('The delivery note %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));
+        }
+    }
+
+    private function reference(): string
+    {
+        return $this->number ?? $this->id->toRfc4122();
+    }
+
+    private static function day(\DateTimeImmutable $moment): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable($moment->format('Y-m-d'), new \DateTimeZone('UTC'));
     }
 
     private function establishmentOfThisCompany(Establishment $establishment): Establishment

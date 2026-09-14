@@ -23,6 +23,7 @@ use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineTax;
+use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 
 /**
  * What a delivery note's lines come to, worked out by the calculator every document shares: prices net of tax, the
@@ -33,6 +34,20 @@ final readonly class DeliveryNoteTotals
 {
     public function __construct(private FiscalPresets $presets, private CurrencyScales $scales)
     {
+    }
+
+    /**
+     * The totals, or the calculator's refusal named on the note's `lines`.
+     *
+     * @throws InvalidDeliveryNote
+     */
+    public function checked(DeliveryNote $note): DocumentTotals
+    {
+        try {
+            return $this->of($note);
+        } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
+            throw new InvalidDeliveryNote('lines', $refused->getMessage());
+        }
     }
 
     /**

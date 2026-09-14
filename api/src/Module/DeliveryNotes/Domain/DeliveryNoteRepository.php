@@ -19,5 +19,8 @@ interface DeliveryNoteRepository
     /** Null for a delivery note that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote;
 
+    /** Whether a delivery note of the company already carries this number. */
+    public function numberTaken(Uuid $companyId, string $number): bool;
+
     public function save(DeliveryNote $note): void;
 }

@@ -37,6 +37,11 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
         return null;
     }
 
+    public function numberTaken(Uuid $companyId, string $number): bool
+    {
+        return [] !== array_filter($this->ofCompany($companyId), static fn (DeliveryNote $note): bool => $note->getNumber() === $number);
+    }
+
     public function save(DeliveryNote $note): void
     {
         if (!\in_array($note, $this->notes, true)) {

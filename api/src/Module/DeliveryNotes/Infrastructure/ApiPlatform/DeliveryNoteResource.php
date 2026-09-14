@@ -71,14 +71,44 @@ use Symfony\Component\Validator\Constraints as Assert;
             denormalizationContext: ['groups' => [self::WRITE]],
             validationContext: ['groups' => [self::WRITE]],
         ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/validate',
+            status: 200,
+            processor: ValidateDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            input: false,
+            normalizationContext: self::NORMALIZATION,
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/deliver',
+            status: 200,
+            processor: DeliverDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            normalizationContext: self::NORMALIZATION,
+            denormalizationContext: ['groups' => [self::DELIVER]],
+            validationContext: ['groups' => [self::DELIVER]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}/cancel',
+            status: 200,
+            processor: CancelDeliveryNoteProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            input: false,
+            normalizationContext: self::NORMALIZATION,
+        ),
     ],
 )]
 final class DeliveryNoteResource
 {
     public const string READ = 'delivery_note:read';
     public const string WRITE = 'delivery_note:write';
-    /** Nulls are answered: a draft's absent number and a line without a product read alike. */
-    private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false];
+    public const string DELIVER = 'delivery_note:deliver';
+    /** Nulls are answered: a draft's absent number and a line without a product read alike; no identifiers read `{}`. */
+    private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
+    private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
 
     #[ApiProperty(identifier: false, writable: false)]
@@ -104,6 +134,38 @@ final class DeliveryNoteResource
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $establishmentId = null;
+
+    /**
+     * What the customer was called, where it was billed and its tax regime, the day the note was validated; null before.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => ['object', 'null'],
+        'required' => ['number', 'kind', 'name', 'legalName', 'identifiers', 'billingAddress', 'taxRegimeCode', 'taxMentionKey'],
+        'properties' => [
+            'number' => ['type' => 'string'],
+            'kind' => ['type' => 'string', 'enum' => ['company', 'individual']],
+            'name' => ['type' => 'string'],
+            'legalName' => self::TEXT_OR_NULL,
+            'identifiers' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
+            'billingAddress' => [
+                'type' => 'object',
+                'required' => ['line1', 'line2', 'postalCode', 'city', 'countryCode'],
+                'properties' => ['line1' => self::TEXT_OR_NULL, 'line2' => self::TEXT_OR_NULL, 'postalCode' => self::TEXT_OR_NULL, 'city' => self::TEXT_OR_NULL, 'countryCode' => self::TEXT_OR_NULL],
+            ],
+            'taxRegimeCode' => ['type' => 'string'],
+            'taxMentionKey' => self::TEXT_OR_NULL,
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public ?array $customerSnapshot = null;
+
+    /** The day the goods arrived, YYYY-MM-DD, from the issue day to the company's today; left out, today. Sent to deliver. */
+    #[ApiProperty(readable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Assert\Date(groups: [self::DELIVER])]
+    #[Groups([self::DELIVER])]
+    public ?string $deliveredOn = null;
 
     /** The day validation numbered the note, in the company's time zone; null while it is a draft. */
     #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
@@ -222,6 +284,8 @@ final class DeliveryNoteResource
         $resource->status = $note->getStatus()->value;
         $resource->customerId = $note->getCustomer()->getId()->toRfc4122();
         $resource->establishmentId = $note->getEstablishment()->getId()->toRfc4122();
+        $snapshot = $note->getCustomerSnapshot();
+        $resource->customerSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();
         $resource->issueDate = $note->getIssueDate()?->format('Y-m-d');
         $resource->deliveryDate = $header->deliveryDate?->format('Y-m-d');
         [$resource->deliveryAddressLine1, $resource->deliveryAddressLine2, $resource->deliveryPostalCode, $resource->deliveryCity, $resource->deliveryCountryCode] = $header->deliveryAddress->parts();

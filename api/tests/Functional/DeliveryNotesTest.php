@@ -168,6 +168,73 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testAValidatorNumbersANoteWithoutGapsAndItThenOnlyMovesForward(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $number = static fn (int $sequence): string => \sprintf('BL-%s-%05d', substr($today, 0, 4), $sequence);
+        $id = $this->draftWithALine();
+
+        $this->postJson($this->path($id).'/validate', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $note = $this->json();
+        self::assertSame(['validated', $number(1), $today], [$note['status'], $note['number'], $note['issueDate']]);
+        $snapshot = $this->arrayAt($note, 'customerSnapshot');
+        self::assertSame(['CLI-0001', 'company', 'Carthage Conseil', 'standard'], [$snapshot['number'], $snapshot['kind'], $snapshot['name'], $snapshot['taxRegimeCode']]);
+        self::assertStringContainsString('"identifiers":{}', (string) $this->client->getResponse()->getContent(), 'no identifiers read as an empty object');
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'delivery_note.validated'");
+        self::assertIsString($changes);
+        self::assertSame(['number' => $number(1)], json_decode($changes, true));
+
+        $this->sendJson('PUT', $this->path($id), $this->note());
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a validated note is no longer revised');
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a note is numbered once');
+
+        foreach (['2000-01-01' => 'before its issue day', '2999-01-01' => 'after today', '15/09/2026' => 'not a day'] as $day => $case) {
+            $this->postJson($this->path($id).'/deliver', ['deliveredOn' => $day]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertStringContainsString('deliveredOn', (string) $this->client->getResponse()->getContent(), $case);
+        }
+        $this->postJson($this->path($id).'/deliver', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['delivered', $today], [$this->json()['status'], $this->json()['deliveryDate']]);
+        $this->postJson($this->path($id).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'delivered goods are not cancelled');
+
+        $this->postJson($this->path(), $this->note());
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a note without a line is not validated');
+        self::assertStringContainsString('lines', (string) $this->client->getResponse()->getContent());
+
+        $second = $this->draftWithALine();
+        $this->postJson($this->path($second).'/validate', null);
+        self::assertSame($number(2), $this->json()['number'], 'a refused validation gives its number back');
+        $this->postJson($this->path($second).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['cancelled', $number(2)], [$this->json()['status'], $this->json()['number']]);
+
+        $this->postJson($this->path(self::ABSENT).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testAWriterDraftsButNeitherValidatesNorCancels(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write']);
+        $id = $this->draftWithALine();
+
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'validating needs delivery_note.validate');
+        $this->postJson($this->path($id).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'cancelling needs delivery_note.validate');
+        $this->postJson($this->path($id).'/deliver', []);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not delivered');
+
+        $this->getJson($this->path($id));
+        self::assertSame(['draft', null, null], [$this->json()['status'], $this->json()['number'], $this->json()['customerSnapshot']]);
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysNoteIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');
@@ -246,6 +313,15 @@ final class DeliveryNotesTest extends ApiTestCase
             'notesInternal' => null,
             'lines' => [],
         ], ...$changes];
+    }
+
+    /** A draft delivering one unit of the product; its id. */
+    private function draftWithALine(): string
+    {
+        $this->postJson($this->path(), $this->note(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->json(), 'id');
     }
 
     private function customer(string $number, string $regime, bool $active = true, ?Company $company = null): Customer

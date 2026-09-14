@@ -11,8 +11,6 @@ namespace App\Module\DeliveryNotes\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Fiscal\Domain\Calculation\InvalidDocument;
-use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
@@ -72,7 +70,7 @@ final readonly class ManageDeliveryNotes
     {
         [$establishment, $customer, $lines] = $this->checked($company, $input, null);
         $note = DeliveryNote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now());
-        $this->assertTotals($note);
+        $this->totals->checked($note);
         $this->notes->save($note);
         $this->record($company, $note->getId(), self::CREATED, [], $actorUserId);
 
@@ -90,7 +88,7 @@ final readonly class ManageDeliveryNotes
         [$establishment, $customer, $lines] = $this->checked($company, $input, $note);
         $changed = $note->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
         if ([] !== $changed) {
-            $this->assertTotals($note);
+            $this->totals->checked($note);
             $this->notes->save($note);
             $this->record($company, $note->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
         }
@@ -210,15 +208,6 @@ final readonly class ManageDeliveryNotes
         }
 
         return $named;
-    }
-
-    private function assertTotals(DeliveryNote $note): void
-    {
-        try {
-            $this->totals->of($note);
-        } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
-            throw new InvalidDeliveryNote('lines', $refused->getMessage());
-        }
     }
 
     /** @param array<string, mixed> $changes */
