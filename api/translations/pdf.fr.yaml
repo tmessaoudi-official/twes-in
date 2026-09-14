@@ -1,0 +1,31 @@
+# What a printed document says (templates/pdf). pdf.en.yaml carries the same keys (ApiTranslationParityTest).
+format:
+    date: 'd/m/Y'
+company:
+    phone: 'Tél.'
+    email: 'Courriel'
+delivery_note:
+    title: 'Bon de livraison'
+    customer: 'Client'
+    customer_number: 'Code client'
+    delivery_address: 'Adresse de livraison'
+    issue_date: 'Date'
+    delivery_date: 'Date de livraison'
+    customer_reference: 'Votre référence'
+    remarks: 'Remarques'
+    received: 'Reçu par le client (date, nom et signature)'
+line:
+    description: 'Désignation'
+    quantity: 'Quantité'
+    unit: 'Unité'
+    unit_price: 'Prix unitaire HT'
+    taxes: 'Taxes'
+    net: 'Montant HT'
+totals:
+    subtotal: 'Total HT'
+    total_tax: 'Total des taxes'
+    total: 'Total TTC'
+    currency: 'Montants en %currency%'
+watermark:
+    draft: 'BROUILLON'
+    cancelled: 'ANNULÉ'

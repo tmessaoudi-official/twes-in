@@ -235,6 +235,69 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame(['draft', null, null], [$this->json()['status'], $this->json()['number'], $this->json()['customerSnapshot']]);
     }
 
+    public function testADraftPrintsOnRequestAndAValidatedNotePrintsAsItWasIssued(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $id = $this->draftWithALine();
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame('application/pdf', $response->headers->get('content-type'));
+        self::assertStringContainsString('delivery-note-'.$id.'.pdf', (string) $response->headers->get('content-disposition'));
+        $draft = (string) $response->getContent();
+        self::assertStringStartsWith('%PDF-', $draft);
+        self::assertStringContainsString('BROUILLON', $draft);
+        self::assertStringContainsString("1\u{a0}250,000", $draft);
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'a draft is never stored');
+
+        $this->postJson($this->path($id).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $number = $this->stringAt($this->json(), 'number');
+        $stored = $this->em()->getConnection()->fetchAssociative('SELECT f.original_name, f.mime, f.sha256 FROM file f JOIN delivery_note n ON n.pdf_file_id = f.id WHERE n.id = ?', [$id]);
+        self::assertIsArray($stored, 'validation stores the PDF as it was issued');
+        self::assertSame([$number.'.pdf', 'application/pdf'], [$stored['original_name'], $stored['mime']]);
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $issued = (string) $this->client->getResponse()->getContent();
+        self::assertSame($stored['sha256'], hash('sha256', $issued), 'the download is the stored file');
+        self::assertStringContainsString($number, $issued);
+        self::assertStringContainsString('Carthage Conseil', $issued);
+        self::assertStringNotContainsString('BROUILLON', $issued);
+    }
+
+    public function testACompanyThatHidesPricesPrintsNoneAndAReaderDownloads(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'company.read', 'company.settings']);
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['delivery_note.read'], 'reader');
+        $this->sendJson('PUT', $this->companyPath().'/settings/delivery_note.show_prices', ['level' => 'company', 'value' => false]);
+        self::assertResponseIsSuccessful();
+        $id = $this->draftWithALine();
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $pdf = (string) $this->client->getResponse()->getContent();
+        self::assertStringContainsString('Portable 14', $pdf);
+        self::assertStringNotContainsString("1\u{a0}250,000", $pdf);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $this->path(self::ABSENT).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->client->request('GET', '/api/companies/'.self::ABSENT.'/delivery-notes/'.$id.'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'another company has no such note');
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysNoteIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');
@@ -278,11 +341,14 @@ final class DeliveryNotesTest extends ApiTestCase
         $this->signedIn(['delivery_note.read', 'delivery_note.write', 'company.read', 'company.settings']);
         $this->postJson($this->path(), $this->note());
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $id = $this->stringAt($this->json(), 'id');
 
         $this->sendJson('PUT', $this->companyPath().'/modules/delivery_notes', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->path());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'the PDF is the module\'s too');
         $this->getJson($this->companyPath().'/delivery-note-options');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 

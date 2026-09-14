@@ -1,0 +1,156 @@
+{# A delivery note on A4, rendered by Gotenberg's Chromium. Everything it says comes from translations/pdf and fiscal
+   in the note's language; amounts go through the decimal filter, never through a float. Nothing here runs a script. #}
+{%- set t = 'pdf' -%}
+{%- set dateFormat = 'format.date'|trans({}, t, locale) -%}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ 'delivery_note.title'|trans({}, t, locale) }} {{ note.number }}</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
+    .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .party { width: 48%; }
+    .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
+    .company-name { font-size: 14pt; font-weight: 700; }
+    .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1f2328; padding-bottom: 6px; margin-bottom: 12px; }
+    .title h1 { margin: 0; font-size: 18pt; }
+    .facts { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; margin-bottom: 16px; }
+    .facts dt { font-size: 8pt; color: #57606a; }
+    .facts dd { margin: 0; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
+    td { padding: 6px 4px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .totals { margin-left: auto; margin-top: 12px; width: 50%; }
+    .totals td { border: 0; padding: 2px 4px; }
+    .totals .grand td { border-top: 2px solid #1f2328; font-weight: 700; padding-top: 6px; }
+    .mention, .remarks { margin-top: 16px; }
+    .received { margin-top: 32px; height: 64px; border: 1px dashed #afb8c1; padding: 6px; font-size: 8pt; color: #57606a; }
+    .muted { color: #57606a; }
+    .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
+  </style>
+</head>
+<body>
+  {%- if page.watermark %}
+    <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
+  {%- endif %}
+
+  <div class="parties">
+    <div class="party">
+      <div class="company-name">{{ profile.legalName ?? company.name }}{% if profile.legalForm %} {{ profile.legalForm }}{% endif %}</div>
+      {%- for key, value in profile.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- if establishment.addressLine1 %}
+        <div>{{ establishment.addressLine1 }}</div>
+        {% if establishment.addressLine2 %}<div>{{ establishment.addressLine2 }}</div>{% endif %}
+        <div>{{ establishment.postalCode }} {{ establishment.city }}</div>
+      {%- elseif profile.addressLine1 %}
+        <div>{{ profile.addressLine1 }}</div>
+        {% if profile.addressLine2 %}<div>{{ profile.addressLine2 }}</div>{% endif %}
+        <div>{{ profile.postalCode }} {{ profile.city }}</div>
+      {%- endif %}
+      {%- set phone = establishment.phone ?? profile.phone -%}
+      {%- set email = establishment.email ?? profile.email -%}
+      {% if phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ phone }}</div>{% endif %}
+      {% if email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ email }}</div>{% endif %}
+    </div>
+    <div class="party">
+      <h2>{{ 'delivery_note.customer'|trans({}, t, locale) }}</h2>
+      <div class="company-name">{{ customer.legalName ?? customer.name }}</div>
+      {% if customer.legalName %}<div>{{ customer.name }}</div>{% endif %}
+      <div class="muted">{{ 'delivery_note.customer_number'|trans({}, t, locale) }} {{ customer.number }}</div>
+      {%- for key, value in customer.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- set billing = customer.billingAddress %}
+      {% if billing.line1 %}<div>{{ billing.line1 }}</div>{% endif %}
+      {% if billing.line2 %}<div>{{ billing.line2 }}</div>{% endif %}
+      {% if billing.postalCode or billing.city %}<div>{{ billing.postalCode }} {{ billing.city }}</div>{% endif %}
+      {%- set delivery = header.deliveryAddress %}
+      {%- if not delivery.isEmpty() %}
+        <h2 style="margin-top: 10px;">{{ 'delivery_note.delivery_address'|trans({}, t, locale) }}</h2>
+        {% if delivery.line1 %}<div>{{ delivery.line1 }}</div>{% endif %}
+        {% if delivery.line2 %}<div>{{ delivery.line2 }}</div>{% endif %}
+        <div>{{ delivery.postalCode }} {{ delivery.city }}{% if delivery.countryCode and delivery.countryCode|lower != country %} {{ delivery.countryCode }}{% endif %}</div>
+      {%- endif %}
+    </div>
+  </div>
+
+  <div class="title">
+    <h1>{{ 'delivery_note.title'|trans({}, t, locale) }}</h1>
+    {% if note.number %}<strong>{{ note.number }}</strong>{% endif %}
+  </div>
+
+  <dl class="facts">
+    {% if note.issueDate %}<div><dt>{{ 'delivery_note.issue_date'|trans({}, t, locale) }}</dt><dd>{{ note.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if header.deliveryDate %}<div><dt>{{ 'delivery_note.delivery_date'|trans({}, t, locale) }}</dt><dd>{{ header.deliveryDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if header.customerReference %}<div><dt>{{ 'delivery_note.customer_reference'|trans({}, t, locale) }}</dt><dd>{{ header.customerReference }}</dd></div>{% endif %}
+  </dl>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ 'line.description'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.quantity'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.unit'|trans({}, t, locale) }}</th>
+        {%- if page.showPrices %}
+          <th class="number">{{ 'line.unit_price'|trans({}, t, locale) }}</th>
+          <th>{{ 'line.taxes'|trans({}, t, locale) }}</th>
+          <th class="number">{{ 'line.net'|trans({}, t, locale) }}</th>
+        {%- endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {%- for line in note.lines %}
+        <tr>
+          <td>{{ line.description|nl2br }}</td>
+          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale) }}</td>
+          <td>{{ line.unit.code }}</td>
+          {%- if page.showPrices %}
+            <td class="number">{{ line.unitPriceNet|decimal(scale, locale) }}</td>
+            <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
+            <td class="number">{{ page.totals.lines[loop.index0].net|decimal(scale, locale) }}</td>
+          {%- endif %}
+        </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+
+  {%- if page.showPrices %}
+    <table class="totals">
+      <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.subtotalNet|decimal(scale, locale) }}</td></tr>
+      {%- for tax in page.totals.taxes %}
+        <tr>
+          <td>{{ tax.code }} {{ tax.rate.percentage()|decimal(0, locale) }} % <span class="muted">({{ tax.base|decimal(scale, locale) }})</span></td>
+          <td class="number">{{ tax.amount|decimal(scale, locale) }}</td>
+        </tr>
+      {%- endfor %}
+      <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.totalTax|decimal(scale, locale) }}</td></tr>
+      <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ page.totals.total|decimal(scale, locale) }}</td></tr>
+    </table>
+    <p class="muted">{{ 'totals.currency'|trans({'%currency%': company.currency}, t, locale) }}</p>
+  {%- endif %}
+
+  {%- if customer.taxMentionKey %}
+    {%- set mention = customer.taxMentionKey|trans({}, 'fiscal', locale) %}
+    {#- A mention still waiting for its parameters (a legal reference) is not printed half-written. #}
+    {%- if '%' not in mention %}
+      <p class="mention">{{ mention }}</p>
+    {%- endif %}
+  {%- endif %}
+
+  {%- if header.remarksPrinted or page.printedNotes %}
+    <div class="remarks">
+      <h2 class="muted" style="font-size: 9pt; margin: 0 0 4px;">{{ 'delivery_note.remarks'|trans({}, t, locale) }}</h2>
+      {% if header.remarksPrinted %}<p style="margin: 0;">{{ header.remarksPrinted|nl2br }}</p>{% endif %}
+      {% if page.printedNotes %}<p style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
+    </div>
+  {%- endif %}
+
+  <div class="received">{{ 'delivery_note.received'|trans({}, t, locale) }}</div>
+</body>
+</html>

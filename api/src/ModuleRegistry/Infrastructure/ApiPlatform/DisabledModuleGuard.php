@@ -32,12 +32,15 @@ final readonly class DisabledModuleGuard
     public function __invoke(RequestEvent $event): void
     {
         $request = $event->getRequest();
+        // An API Platform resource names its class; a plain controller of a module (a PDF download) is owned by its own.
         $resource = $request->attributes->get('_api_resource_class');
+        $controller = $request->attributes->get('_controller');
+        $owned = \is_string($resource) ? $resource : (\is_string($controller) ? explode('::', $controller)[0] : null);
         $companyId = $request->attributes->get('companyId');
-        if (!$event->isMainRequest() || !\is_string($resource) || !\is_string($companyId) || !Uuid::isValid($companyId)) {
+        if (!$event->isMainRequest() || null === $owned || !\is_string($companyId) || !Uuid::isValid($companyId)) {
             return;
         }
-        $module = $this->ownership->ownerOf($resource);
+        $module = $this->ownership->ownerOf($owned);
         if (null === $module) {
             return;
         }

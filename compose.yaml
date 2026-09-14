@@ -35,8 +35,15 @@ services:
       REALTIME_TOKEN_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       REALTIME_API_URL: http://centrifugo:8000/api
       REALTIME_API_KEY: "${REALTIME_API_KEY:-twes-in-development-realtime-api-key}"
+      GOTENBERG_URL: http://gotenberg:3000
+      FILES_DIRECTORY: /app/var/files
+    volumes:
+      # Stored files (issued PDFs) outlive the container.
+      - api-files:/app/var/files
     depends_on:
       postgres:
+        condition: service_healthy
+      gotenberg:
         condition: service_healthy
     ports:
       - "${API_PORT:-8091}:80"
@@ -74,8 +81,16 @@ services:
     ports:
       - "${WEB_PORT:-8090}:80"
 
+  # Renders PDFs from HTML (docs/SPEC.md § 2 PDF). Only the api calls it; the host port serves a host-side api process.
   gotenberg:
     image: gotenberg/gotenberg:8.37.0
+    ports:
+      - "${GOTENBERG_PORT:-8094}:3000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
 
   mailpit:
     image: axllent/mailpit:v1.31.1
@@ -85,3 +100,4 @@ services:
 
 volumes:
   postgres-data:
+  api-files:

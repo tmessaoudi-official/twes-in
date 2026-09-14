@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain;
 
+use App\Files\Domain\StoredFile;
 use App\Module\Customers\Domain\Customer;
 use App\Shared\Domain\DomainEvent;
 use App\Shared\Domain\PostalAddress;
@@ -30,6 +31,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_delivery_note_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_delivery_note_establishment', columns: ['establishment_id'])]
 #[ORM\Index(name: 'idx_delivery_note_customer', columns: ['customer_id'])]
+#[ORM\Index(name: 'idx_delivery_note_pdf_file', columns: ['pdf_file_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_delivery_note_company_number', columns: ['company_id', 'number'])]
 class DeliveryNote
 {
@@ -76,6 +78,11 @@ class DeliveryNote
     /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by validation */
     #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
     private ?array $customerSnapshot = null;
+
+    /** The PDF as the note was issued; null until it is stored. */
+    #[ORM\ManyToOne(targetEntity: StoredFile::class)]
+    #[ORM\JoinColumn(name: 'pdf_file_id', nullable: true)]
+    private ?StoredFile $pdfFile = null;
 
     /** @var list<DomainEvent> recorded since they were last released; never stored */
     private array $events = [];
@@ -240,6 +247,26 @@ class DeliveryNote
         if (DeliveryNoteStatus::Validated === $was) {
             $this->events[] = new DeliveryNoteCancelled($this->id, $this->company->getId(), $this->establishment->getId(), $this->number ?? throw new \LogicException('A validated delivery note has a number.'));
         }
+    }
+
+    /** Keeps the PDF a numbered note was issued with; a note keeps one, and never replaces it. */
+    public function attachPdf(StoredFile $file): void
+    {
+        if (null === $this->number) {
+            throw new \LogicException('Only a numbered delivery note keeps the PDF it was issued with.');
+        }
+        if (null !== $this->pdfFile) {
+            throw new \LogicException(\sprintf('The delivery note %s already keeps the PDF it was issued with.', $this->number));
+        }
+        if (!$file->getCompany()->getId()->equals($this->company->getId())) {
+            throw new \LogicException('A delivery note keeps a file of its own company.');
+        }
+        $this->pdfFile = $file;
+    }
+
+    public function getPdfFile(): ?StoredFile
+    {
+        return $this->pdfFile;
     }
 
     /** @return list<DomainEvent> what happened since the last call, each once */

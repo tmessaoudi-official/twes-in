@@ -40,6 +40,10 @@ parameters:
     app.realtime.push_enabled: true
     # How many notifications the centre returns at once; the unread count always covers all of them.
     app.inbox.page_size: 50
+    # PDFs are rendered by a Gotenberg container (docs/SPEC.md § 2 PDF).
+    app.pdf.gotenberg_url: '%env(GOTENBERG_URL)%'
+    # Files live on a local volume through Flysystem (docs/SPEC.md § 2 Files); S3-compatible storage swaps the adapter.
+    app.files.directory: '%env(resolve:FILES_DIRECTORY)%'
 
 services:
     # default configuration for services in *this* file
@@ -116,6 +120,16 @@ services:
         arguments:
             $pageSize: '%app.inbox.page_size%'
 
+    League\Flysystem\Local\LocalFilesystemAdapter:
+        arguments: ['%app.files.directory%']
+    League\Flysystem\FilesystemOperator:
+        class: League\Flysystem\Filesystem
+        arguments: ['@League\Flysystem\Local\LocalFilesystemAdapter']
+
+    App\Shared\Infrastructure\Pdf\GotenbergPdfRenderer:
+        arguments:
+            $url: '%app.pdf.gotenberg_url%'
+
     # One validated file per country (docs/SPEC.md § 3 Fiscal presets).
     App\Fiscal\Infrastructure\Preset\YamlFiscalPresets:
         arguments:
@@ -128,7 +142,12 @@ when@test:
         # No test reaches the network: the check answers "not breached" and the use case is exercised through
         # its port with a fake that returns each of the three answers.
         app.password.breach_check_enabled: false
+        # Files a test stores stay out of the development volume.
+        app.files.directory: '%kernel.project_dir%/var/test-files'
     services:
+        # No test reaches Gotenberg either: the fake answers a PDF header followed by the page, which a test can read.
+        App\Tests\Support\FakePdfRenderer: ~
+        App\Shared\Application\PdfRenderer: '@App\Tests\Support\FakePdfRenderer'
         # A module only the tests declare, needing customers: the dependency refusals go through the API with it.
         App\Tests\Support\Module\LedgerFixtureModule:
             tags: ['app.modules.declarations']

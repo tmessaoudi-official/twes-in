@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\DeliveryNotes\Domain;
 
+use App\Files\Domain\StoredFile;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxComponent;
@@ -280,6 +281,30 @@ final class DeliveryNoteTest extends TestCase
         self::assertSame([DeliveryNoteStatus::Cancelled, 'BL-2026-00001'], [$note->getStatus(), $note->getNumber()]);
         self::assertEquals($later, $note->getUpdatedAt());
         self::assertEquals([new DeliveryNoteCancelled($note->getId(), $this->company->getId(), $this->establishment()->getId(), 'BL-2026-00001')], $note->releaseEvents());
+    }
+
+    public function testANumberedNoteKeepsTheOnePdfItWasIssuedWith(): void
+    {
+        $pdf = fn (Company $company): StoredFile => new StoredFile($company, 'BL-2026-00001.pdf', 'application/pdf', '%PDF-1.7', null, $this->now);
+        $draft = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now);
+        $note = $this->validated($this->customer, new DeliveryNoteHeader());
+        $issued = $pdf($this->company);
+
+        foreach ([
+            'a draft' => fn () => $draft->attachPdf($pdf($this->company)),
+            'another company\'s file' => fn () => $note->attachPdf($pdf($this->globex)),
+        ] as $case => $attempt) {
+            try {
+                $attempt();
+                self::fail("$case was attached");
+            } catch (\LogicException) {
+            }
+        }
+
+        $note->attachPdf($issued);
+        self::assertSame($issued, $note->getPdfFile());
+        $this->expectException(\LogicException::class);
+        $note->attachPdf($pdf($this->company));
     }
 
     /** A note validated on 2026-09-15 with one line, its validation event already released. */

@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 88 runtime, 51 dev
+## api (Composer) — 91 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -35,6 +35,9 @@ not compiled into what we distribute, and are not listed here.
 | evenement/evenement | 3.0.2 | MIT | dev |
 | fidry/cpu-core-counter | 1.3.0 | MIT | dev |
 | friendsofphp/php-cs-fixer | 3.95.25 | MIT | dev |
+| league/flysystem | 3.36.0 | MIT | runtime |
+| league/flysystem-local | 3.35.3 | MIT | runtime |
+| league/mime-type-detection | 1.17.0 | MIT | runtime |
 | monolog/monolog | 3.12.0 | MIT | runtime |
 | myclabs/deep-copy | 1.14.0 | MIT | dev |
 | nikic/php-parser | 5.8.0 | BSD-3-Clause | dev |

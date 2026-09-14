@@ -80,7 +80,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
   centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
   `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
-  `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources), `CustomFields`,
+  `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources and plain controllers),
+  `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, a local volume),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
   "Architecture style"). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
@@ -100,12 +101,14 @@ tables, essay gotchas) was retired with the reset. What applies here:
   functions and `DataList`; `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
-- `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail. Everything a
-  person reads in the SPA lives in `web/public/i18n/` instead, with the parity test.
+- `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
+  labels and mentions (`fiscal`), and printed documents (`pdf`, laid out in `api/templates/pdf/` and rendered by
+  Gotenberg). `ApiTranslationParityTest` keeps each pair's keys identical. Everything a person reads in the SPA lives
+  in `web/public/i18n/` instead, with its own parity test.
 - `var/claude/**` — transient review output, gitignored.
 - `.claude/settings.json` — `defaultMode: auto`, allow-list, empty `deny`, no `ask`; one
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
-- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433; the api image migrates at
+- `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`), `make gate` (licences + `composer gate`
   + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),
   `make e2e` (Playwright against the running stack).

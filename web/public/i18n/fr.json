@@ -480,6 +480,9 @@
       "default_unit": "Unité par défaut",
       "stock_tracking": "Suivre le stock"
     },
+    "delivery_note": {
+      "show_prices": "Afficher les prix sur les bons de livraison"
+    },
     "presentation": {
       "accent": "Couleur d'accent",
       "scheme": "Thème",

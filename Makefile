@@ -2,7 +2,7 @@
 SHELL := /bin/sh
 .PHONY: up down logs migrate seed api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
 
-up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433), then seed
+up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094), then seed
 	docker compose up -d --build --wait
 	$(MAKE) seed
 
