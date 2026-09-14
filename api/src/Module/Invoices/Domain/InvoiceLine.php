@@ -56,6 +56,16 @@ class InvoiceLine
     #[ORM\Column(type: Types::DECIMAL, precision: 6, scale: 3, nullable: true)]
     private ?string $discountRate;
 
+    /** The line after its own discount, as issuing fixed it; null on a draft, whose figures are worked out on every read. */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $lineNet = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $lineTax = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $lineGross = null;
+
     /** @var Collection<int, InvoiceLineTax> */
     #[ORM\OneToMany(targetEntity: InvoiceLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -85,6 +95,28 @@ class InvoiceLine
         foreach ($this->taxes as $tax) {
             $tax->retake();
         }
+    }
+
+    /**
+     * @internal issuing writes what the line comes to, never recomputed afterwards
+     *
+     * @param array{net: string, tax: string, gross: string} $figures
+     */
+    public function fix(array $figures): void
+    {
+        $this->lineNet = $figures['net'];
+        $this->lineTax = $figures['tax'];
+        $this->lineGross = $figures['gross'];
+    }
+
+    /** @return array{net: string, tax: string, gross: string}|null what issuing fixed; null on a draft */
+    public function getFixedFigures(): ?array
+    {
+        if (null === $this->lineNet || null === $this->lineTax || null === $this->lineGross) {
+            return null;
+        }
+
+        return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
     /** @return array{string|null, string, string, string, string, string|null, list<string>} compared the way InvoiceLineDetails::values() is */

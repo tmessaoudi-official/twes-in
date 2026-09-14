@@ -24,6 +24,7 @@ use App\Fiscal\Domain\Calculation\UnsupportedTaxCombination;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceTax;
@@ -69,6 +70,30 @@ final readonly class InvoiceTotals
         } catch (InvalidDocument|UnsupportedTaxCombination $refused) {
             throw new InvalidInvoice('lines', $refused->getMessage());
         }
+    }
+
+    /**
+     * What a document prints: a draft's figures worked out now, an issued document's as issuing wrote them, never
+     * recomputed (docs/SPEC.md § 7, 2026-09-14). Amounts at the currency's scale.
+     *
+     * @throws InvalidDocument           when a draft cannot be totalled
+     * @throws UnsupportedTaxCombination when a draft's lines combine taxes the calculator does not
+     */
+    public function figures(Invoice $invoice): InvoiceFigures
+    {
+        $scale = $this->scales->of($invoice->getCompany()->getCurrency());
+
+        return $invoice->getIssuedFigures()?->atScale($scale) ?? InvoiceFigures::of($this->of($invoice), $scale);
+    }
+
+    /**
+     * The figures issuing fixes, checked as a draft's are.
+     *
+     * @throws InvalidInvoice
+     */
+    public function issued(Invoice $invoice): InvoiceFigures
+    {
+        return InvoiceFigures::of($this->checked($invoice), $this->scales->of($invoice->getCompany()->getCurrency()));
     }
 
     /**

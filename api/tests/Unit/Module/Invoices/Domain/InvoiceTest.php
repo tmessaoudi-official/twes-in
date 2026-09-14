@@ -177,6 +177,81 @@ final class InvoiceTest extends TestCase
         $invoice->cancel($this->now);
     }
 
+    public function testIssuingNumbersADraftFixesItsFiguresAndSnapshotsWhatItPrints(): void
+    {
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(taxes: [$this->tax('TVA19')])], [$this->tax('TIMBRE')], $this->now);
+        $issuedBy = \Symfony\Component\Uid\Uuid::v7();
+        $asked = 0;
+
+        $invoice->issue(
+            new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', new \DateTimeImmutable('2026-09-15 23:30:00'), 30, 'en', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 %', 'Merci', $issuedBy),
+            function (Invoice $issuing) use (&$asked): \App\Module\Invoices\Domain\InvoiceFigures {
+                ++$asked;
+
+                return $this->figures();
+            },
+            $this->now,
+        );
+
+        self::assertSame(1, $asked, 'the figures are worked out once, as issuing fixes them');
+        self::assertSame([InvoiceStatus::Issued, 'FAC-2026-00001', '2026-09-15', '2026-10-15', 30], [$invoice->getStatus(), $invoice->getNumber(), $invoice->getIssueDate()?->format('Y-m-d'), $invoice->getDueDate()?->format('Y-m-d'), $invoice->getHeader()->paymentTermsDays]);
+        self::assertSame(['en', ['fiscal.mention.tn.export'], 'Pénalité de retard : 1 %', 'Merci'], [$invoice->getLanguage(), $invoice->getMentionKeys(), $invoice->getLatePenaltyText(), $invoice->getFooter()]);
+        self::assertSame('CLI-0001', $invoice->getCustomerSnapshot()?->number);
+        self::assertTrue($issuedBy->equals($invoice->getIssuedBy()));
+        self::assertEquals($this->figures(), $invoice->getIssuedFigures());
+        $events = $invoice->releaseEvents();
+        self::assertCount(1, $events);
+        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $events[0]);
+        self::assertSame(['FAC-2026-00001', InvoiceType::Invoice, []], [$events[0]->number, $events[0]->type, $events[0]->sourceDeliveryNoteLineIds]);
+
+        foreach ([
+            'issued again' => fn () => $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00002', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(), $this->now),
+            'revised' => fn () => $invoice->revise($this->establishment(), $this->customer($this->company), new InvoiceHeader(), [], [], $this->now),
+        ] as $case => $attempt) {
+            try {
+                $attempt();
+                self::fail("an issued invoice was $case");
+            } catch (InvoiceNotDraft) {
+            }
+        }
+        $this->expectException(InvoiceTransitionRefused::class);
+        $invoice->cancel($this->now);
+    }
+
+    public function testAnInvoiceIsIssuedWithAtLeastOneLineAndADraftHasNoFixedFigures(): void
+    {
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [], [], $this->now);
+        self::assertSame([null, null, null, null], [$invoice->getIssuedFigures(), $invoice->getDueDate(), $invoice->getCustomerSnapshot(), $invoice->getLanguage()]);
+
+        $this->assertRefused('lines', fn () => $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), static fn (Invoice $i) => throw new \LogicException('never asked'), $this->now));
+        self::assertSame([InvoiceStatus::Draft, null], [$invoice->getStatus(), $invoice->getNumber()]);
+    }
+
+    public function testIssuedFiguresHoldOneRowPerLineAndTheirAmountsAtTheCurrencyScale(): void
+    {
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(), $this->pieceLine()], [], $this->now);
+
+        $this->expectException(\LogicException::class);
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(), $this->now);
+    }
+
+    private function figures(): \App\Module\Invoices\Domain\InvoiceFigures
+    {
+        return new \App\Module\Invoices\Domain\InvoiceFigures(
+            subtotalNet: '10.000',
+            documentDiscount: '0.000',
+            totalNet: '10.000',
+            taxes: [['code' => 'TVA19', 'rate' => '19.000', 'base' => '10.000', 'amount' => '1.900']],
+            totalTax: '1.900',
+            fixedTaxes: [['code' => 'TIMBRE', 'amount' => '1.000']],
+            total: '12.900',
+            withholdings: [],
+            withholdingAmount: '0.000',
+            amountDue: '12.900',
+            lines: [['net' => '10.000', 'tax' => '1.900', 'gross' => '11.900']],
+        );
+    }
+
     /** @param list<TaxComponent> $taxes */
     private function pieceLine(?Product $product = null, ?Unit $unit = null, array $taxes = []): InvoiceLineDetails
     {

@@ -35,6 +35,6 @@ final readonly class CreateInvoiceProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->of($invoice));
+        return InvoiceResource::of($invoice, $this->totals->figures($invoice));
     }
 }

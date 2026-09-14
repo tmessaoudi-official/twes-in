@@ -29,6 +29,6 @@ final readonly class InvoiceCollectionProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
 
-        return array_map(fn (Invoice $invoice) => InvoiceResource::of($invoice, $this->totals->of($invoice)), $this->manage->list($company));
+        return array_map(fn (Invoice $invoice) => InvoiceResource::of($invoice, $this->totals->figures($invoice)), $this->manage->list($company));
     }
 }

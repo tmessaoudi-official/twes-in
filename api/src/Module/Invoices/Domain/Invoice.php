@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Domain;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Shared\Domain\DomainEvent;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
@@ -84,6 +85,68 @@ class Invoice
 
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $discountAmount = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $dueDate = null;
+
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $language = null;
+
+    /** @var array<string, mixed>|null CustomerSnapshot::toArray(), written by issuing */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $customerSnapshot = null;
+
+    #[ORM\Column(name: 'footer_snapshot', type: Types::TEXT, nullable: true)]
+    private ?string $footer = null;
+
+    /** @var array<string, mixed>|null {keys: list<string>, latePenaltyText: string|null}, written by issuing */
+    #[ORM\Column(name: 'mentions_snapshot', type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $mentions = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $issuedAt = null;
+
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $issuedBy = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $subtotalNet = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $documentDiscount = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $totalNet = null;
+
+    /** @var list<array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $taxBreakdown = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $totalTax = null;
+
+    /** @var list<array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $fixedTaxes = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $totalGross = null;
+
+    /** @var list<array<string, mixed>>|null */
+    #[ORM\Column(type: Types::JSON, nullable: true, options: ['jsonb' => true])]
+    private ?array $withholdings = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $withholdingAmount = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, options: ['default' => '0'])]
+    private string $amountPaid = '0.000';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, options: ['default' => '0'])]
+    private string $amountCredited = '0.000';
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $amountDue = null;
 
     /** @var list<DomainEvent> recorded since they were last released; never stored */
     private array $events = [];
@@ -184,6 +247,64 @@ class Invoice
     }
 
     /**
+     * Numbers a draft with lines and fixes what it says (docs/SPEC.md § 7, 2026-09-14): its taxes take their rates of the
+     * issue day, then the figures those give are written once and answered from then on; what the customer was called,
+     * the language, the mentions, the footer and the due day (the issue day plus the terms) are kept as they stand.
+     * Records `invoice.issued`.
+     *
+     * @param \Closure(self): InvoiceFigures $figures what the document comes to, asked once its taxes are the issue day's
+     *
+     * @throws InvoiceNotDraft
+     * @throws InvalidInvoice
+     */
+    public function issue(InvoiceIssue $issue, \Closure $figures, \DateTimeImmutable $now): void
+    {
+        $this->assertDraft('is issued');
+        if ($this->lines->isEmpty()) {
+            throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.');
+        }
+
+        foreach ($this->getLines() as $line) {
+            $line->retakeTaxes();
+        }
+        foreach ($this->getDocumentTaxes() as $tax) {
+            $tax->retake();
+        }
+        $fixed = $figures($this);
+        $lines = $this->getLines();
+        if (\count($fixed->lines) !== \count($lines)) {
+            throw new \LogicException(\sprintf('Figures for %d lines were given to an invoice of %d.', \count($fixed->lines), \count($lines)));
+        }
+        foreach ($lines as $index => $line) {
+            $line->fix($fixed->lines[$index]);
+        }
+        $this->subtotalNet = $fixed->subtotalNet;
+        $this->documentDiscount = $fixed->documentDiscount;
+        $this->totalNet = $fixed->totalNet;
+        $this->taxBreakdown = $fixed->taxes;
+        $this->totalTax = $fixed->totalTax;
+        $this->fixedTaxes = $fixed->fixedTaxes;
+        $this->totalGross = $fixed->total;
+        $this->withholdings = $fixed->withholdings;
+        $this->withholdingAmount = $fixed->withholdingAmount;
+        $this->amountDue = $fixed->amountDue;
+
+        $this->customerSnapshot = CustomerSnapshot::of($this->customer)->toArray();
+        $this->status = InvoiceStatus::Issued;
+        $this->number = $issue->number;
+        $this->issueDate = self::day($issue->issueDate);
+        $this->paymentTermsDays = $issue->paymentTermsDays;
+        $this->dueDate = $this->issueDate->modify(\sprintf('+%d days', $issue->paymentTermsDays));
+        $this->language = $issue->language;
+        $this->mentions = ['keys' => $issue->mentionKeys, 'latePenaltyText' => $issue->latePenaltyText];
+        $this->footer = $issue->footer;
+        $this->issuedAt = $now;
+        $this->issuedBy = $issue->issuedBy;
+        $this->updatedAt = $now;
+        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, []);
+    }
+
+    /**
      * A draft that will not be issued. An issued document is never cancelled: a credit note corrects it.
      *
      * @throws InvoiceTransitionRefused
@@ -223,6 +344,84 @@ class Invoice
         return array_values($this->documentTaxes->toArray());
     }
 
+    /** What issuing wrote, as the columns hold it; null while the document is a draft or was cancelled as one. */
+    public function getIssuedFigures(): ?InvoiceFigures
+    {
+        if (null === $this->subtotalNet || null === $this->documentDiscount || null === $this->totalNet || null === $this->totalTax
+            || null === $this->totalGross || null === $this->withholdingAmount || null === $this->amountDue) {
+            return null;
+        }
+        $lines = [];
+        foreach ($this->getLines() as $line) {
+            $lines[] = $line->getFixedFigures() ?? throw new \LogicException(\sprintf('A line of the issued invoice %s has no figures.', $this->reference()));
+        }
+
+        return new InvoiceFigures(
+            $this->subtotalNet,
+            $this->documentDiscount,
+            $this->totalNet,
+            self::rated($this->taxBreakdown ?? []),
+            $this->totalTax,
+            array_map(static fn (array $charge): array => ['code' => self::text($charge, 'code'), 'amount' => self::text($charge, 'amount')], $this->fixedTaxes ?? []),
+            $this->totalGross,
+            self::rated($this->withholdings ?? []),
+            $this->withholdingAmount,
+            $this->amountDue,
+            $lines,
+            $this->amountPaid,
+            $this->amountCredited,
+        );
+    }
+
+    /** What its customer was called the day it was issued; null while it is a draft or was cancelled as one. */
+    public function getCustomerSnapshot(): ?CustomerSnapshot
+    {
+        return null === $this->customerSnapshot ? null : CustomerSnapshot::fromArray($this->customerSnapshot);
+    }
+
+    public function getDueDate(): ?\DateTimeImmutable
+    {
+        return $this->dueDate;
+    }
+
+    /** The language it prints in, fixed at issue; null on a draft. */
+    public function getLanguage(): ?string
+    {
+        return $this->language;
+    }
+
+    /** @return list<string> the translation keys of the mentions it prints, fixed at issue */
+    public function getMentionKeys(): array
+    {
+        $keys = $this->mentions['keys'] ?? [];
+
+        return \is_array($keys) ? array_values(array_filter($keys, is_string(...))) : [];
+    }
+
+    /** The company's late penalty text as it read at issue; null when it had none or on a draft. */
+    public function getLatePenaltyText(): ?string
+    {
+        $text = $this->mentions['latePenaltyText'] ?? null;
+
+        return \is_string($text) ? $text : null;
+    }
+
+    /** The company's invoice footer as it read at issue; null when it had none or on a draft. */
+    public function getFooter(): ?string
+    {
+        return $this->footer;
+    }
+
+    public function getIssuedAt(): ?\DateTimeImmutable
+    {
+        return $this->issuedAt;
+    }
+
+    public function getIssuedBy(): ?Uuid
+    {
+        return $this->issuedBy;
+    }
+
     private function apply(InvoiceHeader $header): void
     {
         $this->supplyDate = $header->supplyDate;
@@ -259,6 +458,29 @@ class Invoice
     private static function taxIds(array $taxes): array
     {
         return array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $taxes);
+    }
+
+    /**
+     * @param list<array<string, mixed>> $stored
+     *
+     * @return list<array{code: string, rate: string, base: string, amount: string}>
+     */
+    private static function rated(array $stored): array
+    {
+        return array_map(static fn (array $each): array => ['code' => self::text($each, 'code'), 'rate' => self::text($each, 'rate'), 'base' => self::text($each, 'base'), 'amount' => self::text($each, 'amount')], $stored);
+    }
+
+    /** @param array<string, mixed> $stored */
+    private static function text(array $stored, string $key): string
+    {
+        $value = $stored[$key] ?? null;
+
+        return \is_string($value) ? $value : throw new \LogicException(\sprintf('A stored figure has no %s.', $key));
+    }
+
+    private static function day(\DateTimeImmutable $moment): \DateTimeImmutable
+    {
+        return new \DateTimeImmutable($moment->format('Y-m-d'), new \DateTimeZone('UTC'));
     }
 
     private function assertDraft(string $what): void

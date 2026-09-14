@@ -175,6 +175,68 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testAnIssuerNumbersAnInvoiceWithoutGapsAndItThenAnswersWhatIssuingWrote(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $number = static fn (int $sequence): string => \sprintf('FAC-%s-%05d', substr($today, 0, 4), $sequence);
+        $inDays = static fn (int $days): string => new \DateTimeImmutable($today)->modify("+$days days")->format('Y-m-d');
+        $this->postJson($this->path(), $this->invoice(['paymentTermsDays' => 45, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $draft = $this->json();
+
+        $this->postJson($this->path($id).'/issue', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        $invoice = $this->json();
+        self::assertSame(['issued', $number(1), $today, $inDays(45), 45, 'fr'], [$invoice['status'], $invoice['number'], $invoice['issueDate'], $invoice['dueDate'], $invoice['paymentTermsDays'], $invoice['language']]);
+        self::assertSame([$draft['total'], $draft['amountDue'], '0.000', '0.000'], [$invoice['total'], $invoice['amountDue'], $invoice['amountPaid'], $invoice['amountCredited']]);
+        self::assertSame([[], null], [$invoice['mentions'], $invoice['footer']], 'a Tunisian standard customer of a standard company prints no mention');
+        $snapshot = $this->arrayAt($invoice, 'customerSnapshot');
+        self::assertSame(['CLI-0001', 'Carthage Conseil', 'standard'], [$snapshot['number'], $snapshot['name'], $snapshot['taxRegimeCode']]);
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'invoice.issued'");
+        self::assertIsString($changes);
+        self::assertSame(['number' => $number(1)], json_decode($changes, true));
+
+        $this->em()->getConnection()->executeStatement('UPDATE invoice_line SET unit_price_net = 1 WHERE invoice_id = ?', [$id]);
+        $this->getJson($this->path($id));
+        self::assertSame([$draft['total'], $draft['amountDue'], $draft['taxes']], [$this->json()['total'], $this->json()['amountDue'], $this->json()['taxes']], 'an issued invoice is never recomputed');
+        self::assertSame(array_column($this->arrayAt($draft, 'lines'), 'net'), array_column($this->arrayAt($this->json(), 'lines'), 'net'));
+
+        $this->sendJson('PUT', $this->path($id), $this->invoice());
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is no longer revised');
+        $this->postJson($this->path($id).'/cancel', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an issued invoice is corrected by a credit note, never cancelled');
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'an invoice is numbered once');
+
+        $this->postJson($this->path(), $this->invoice());
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'an invoice without a line is not issued');
+        self::assertStringContainsString('lines', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame([$number(2), 30, $inDays(30)], [$this->json()['number'], $this->json()['paymentTermsDays'], $this->json()['dueDate']], 'terms left out are the customer\'s at issue, and a refused issue gave its number back');
+
+        $this->postJson($this->path(self::ABSENT).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testAWriterDraftsButDoesNotIssue(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path($id).'/issue', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'issuing needs invoice.issue');
+        $this->getJson($this->path($id));
+        self::assertSame(['draft', null, null, null], [$this->json()['status'], $this->json()['number'], $this->json()['dueDate'], $this->json()['customerSnapshot']]);
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysInvoiceIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');

@@ -15,15 +15,11 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
-use App\Fiscal\Domain\Calculation\ChargeTotal;
-use App\Fiscal\Domain\Calculation\Decimal;
-use App\Fiscal\Domain\Calculation\DocumentTotals;
-use App\Fiscal\Domain\Calculation\LineTotals;
-use App\Fiscal\Domain\Calculation\TaxTotal;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
@@ -82,6 +78,15 @@ use Symfony\Component\Validator\Constraints as Assert;
             input: false,
             normalizationContext: self::NORMALIZATION,
         ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/issue',
+            status: 200,
+            processor: IssueInvoiceProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            input: false,
+            normalizationContext: self::NORMALIZATION,
+        ),
     ],
 )]
 final class InvoiceResource
@@ -91,6 +96,7 @@ final class InvoiceResource
     /** Nulls are answered: a draft's absent number and a line without a product read alike. */
     private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
+    private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array AMOUNT_LIST = [
         'type' => 'array',
         'items' => [
@@ -263,12 +269,73 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public array $withholdings = [];
 
-    /** The total less what is withheld: what the customer pays. */
+    /** The total less what is withheld, paid and credited: what the customer still owes. */
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public string $amountDue = '0';
 
-    public static function of(Invoice $invoice, DocumentTotals $totals): self
+    /** What payments recorded on the invoice come to. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $amountPaid = '0';
+
+    /** What issued credit notes took off the invoice. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $amountCredited = '0';
+
+    /** The issue day plus the terms; null while it is a draft. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'date'])]
+    #[Groups([self::READ])]
+    public ?string $dueDate = null;
+
+    /** The language the document prints in, fixed at issue; null while it is a draft. */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'enum' => ['fr', 'en', null]])]
+    #[Groups([self::READ])]
+    public ?string $language = null;
+
+    /**
+     * What the customer was called the day the document was issued; null while it is a draft.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ApiProperty(writable: false, schema: [
+        'type' => ['object', 'null'],
+        'required' => ['number', 'kind', 'name', 'legalName', 'identifiers', 'billingAddress', 'taxRegimeCode', 'taxMentionKey'],
+        'properties' => [
+            'number' => ['type' => 'string'],
+            'kind' => ['type' => 'string'],
+            'name' => ['type' => 'string'],
+            'legalName' => self::TEXT_OR_NULL,
+            'identifiers' => ['type' => 'object', 'additionalProperties' => ['type' => 'string']],
+            'billingAddress' => [
+                'type' => 'object',
+                'required' => ['line1', 'line2', 'postalCode', 'city', 'countryCode'],
+                'properties' => ['line1' => self::TEXT_OR_NULL, 'line2' => self::TEXT_OR_NULL, 'postalCode' => self::TEXT_OR_NULL, 'city' => self::TEXT_OR_NULL, 'countryCode' => self::TEXT_OR_NULL],
+            ],
+            'taxRegimeCode' => ['type' => 'string'],
+            'taxMentionKey' => self::TEXT_OR_NULL,
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public ?array $customerSnapshot = null;
+
+    /** @var list<string> the translation keys of the legal mentions it prints, fixed at issue; none on a draft */
+    #[ApiProperty(writable: false, schema: ['type' => 'array', 'items' => ['type' => 'string']])]
+    #[Groups([self::READ])]
+    public array $mentions = [];
+
+    /** The company's late penalty text as it read at issue; null when it had none or on a draft. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $latePenaltyText = null;
+
+    /** The company's invoice footer as it read at issue; null when it had none or on a draft. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $footer = null;
+
+    public static function of(Invoice $invoice, InvoiceFigures $figures): self
     {
         $header = $invoice->getHeader();
         $resource = new self();
@@ -287,7 +354,7 @@ final class InvoiceResource
         $resource->notesInternal = $header->notesInternal;
         $resource->discountAmount = $header->discountAmount;
         $resource->documentTaxComponentIds = array_map(static fn (InvoiceTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $invoice->getDocumentTaxes());
-        $resource->lines = array_map(static fn (InvoiceLine $line, LineTotals $figures): array => [
+        $resource->lines = array_map(static fn (InvoiceLine $line, array $fixed): array => [
             'productId' => $line->getProduct()?->getId()->toRfc4122(),
             'description' => $line->getDescription(),
             'quantity' => $line->getQuantity(),
@@ -295,17 +362,26 @@ final class InvoiceResource
             'unitPriceNet' => $line->getUnitPriceNet(),
             'discountRate' => $line->getDiscountRate(),
             'taxComponentIds' => array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
-            'net' => $figures->net,
-        ], $invoice->getLines(), $totals->lines);
-        $resource->subtotalNet = $totals->subtotalNet;
-        $resource->documentDiscount = $totals->documentDiscount;
-        $resource->totalNet = $totals->netAfterDocumentDiscount;
-        $resource->taxes = array_map(self::taxTotal(...), $totals->taxes);
-        $resource->totalTax = $totals->totalTax;
-        $resource->fixedTaxes = array_map(static fn (ChargeTotal $charge): array => ['code' => $charge->code, 'amount' => $charge->amount], $totals->fixedCharges);
-        $resource->total = $totals->total;
-        $resource->withholdings = array_map(self::taxTotal(...), $totals->withholdings);
-        $resource->amountDue = $totals->amountDue;
+            'net' => $fixed['net'],
+        ], $invoice->getLines(), $figures->lines);
+        $resource->subtotalNet = $figures->subtotalNet;
+        $resource->documentDiscount = $figures->documentDiscount;
+        $resource->totalNet = $figures->totalNet;
+        $resource->taxes = $figures->taxes;
+        $resource->totalTax = $figures->totalTax;
+        $resource->fixedTaxes = $figures->fixedTaxes;
+        $resource->total = $figures->total;
+        $resource->withholdings = $figures->withholdings;
+        $resource->amountDue = $figures->amountDue;
+        $resource->amountPaid = $figures->amountPaid;
+        $resource->amountCredited = $figures->amountCredited;
+        $resource->dueDate = $invoice->getDueDate()?->format('Y-m-d');
+        $resource->language = $invoice->getLanguage();
+        $snapshot = $invoice->getCustomerSnapshot();
+        $resource->customerSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();
+        $resource->mentions = $invoice->getMentionKeys();
+        $resource->latePenaltyText = $invoice->getLatePenaltyText();
+        $resource->footer = $invoice->getFooter();
 
         return $resource;
     }
@@ -341,12 +417,6 @@ final class InvoiceResource
             $lines,
             null === $this->documentTaxComponentIds ? null : self::uuids($this->documentTaxComponentIds),
         );
-    }
-
-    /** @return array{code: string, rate: string, base: string, amount: string} */
-    private static function taxTotal(TaxTotal $tax): array
-    {
-        return ['code' => $tax->code, 'rate' => Decimal::format(Decimal::of($tax->rate->percentage()), 3), 'base' => $tax->base, 'amount' => $tax->amount];
     }
 
     /**

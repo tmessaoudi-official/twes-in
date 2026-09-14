@@ -43,6 +43,6 @@ final readonly class CancelInvoiceProcessor implements ProcessorInterface
             throw new ConflictHttpException($conflict->getMessage(), $conflict);
         }
 
-        return InvoiceResource::of($invoice, $this->totals->of($invoice));
+        return InvoiceResource::of($invoice, $this->totals->figures($invoice));
     }
 }
