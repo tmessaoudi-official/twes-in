@@ -41,6 +41,7 @@ use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
+use Symfony\Component\Uid\Uuid;
 
 final class DeliveryNoteTest extends TestCase
 {
@@ -305,6 +306,45 @@ final class DeliveryNoteTest extends TestCase
         self::assertSame($issued, $note->getPdfFile());
         $this->expectException(\LogicException::class);
         $note->attachPdf($pdf($this->company));
+    }
+
+    public function testAValidatedOrDeliveredNoteIsInvoicedOnceAndIsThenNeitherDeliveredNorCancelled(): void
+    {
+        $invoiceId = Uuid::v7();
+        $today = new \DateTimeImmutable('2026-09-15 00:00:00', new \DateTimeZone('UTC'));
+        $later = $this->now->modify('+1 hour');
+        $validated = $this->validated($this->customer, new DeliveryNoteHeader());
+        $delivered = $this->validated($this->customer, new DeliveryNoteHeader());
+        $delivered->deliver($today, $today, $this->now);
+        $cancelled = $this->validated($this->customer, new DeliveryNoteHeader());
+        $cancelled->cancel($this->now);
+        $cancelled->releaseEvents();
+
+        $validated->markInvoiced($invoiceId, $later);
+        $delivered->markInvoiced($invoiceId, $later);
+
+        foreach ([$validated, $delivered] as $note) {
+            self::assertSame(DeliveryNoteStatus::Invoiced, $note->getStatus());
+            self::assertTrue($invoiceId->equals($note->getInvoicedByInvoiceId()));
+            self::assertEquals($later, $note->getUpdatedAt());
+            self::assertSame([], $note->releaseEvents(), 'the invoice tells what it invoiced');
+        }
+        self::assertNull($cancelled->getInvoicedByInvoiceId());
+        foreach ([
+            'invoiced again' => static fn () => $validated->markInvoiced(Uuid::v7(), $later),
+            'delivered once invoiced' => static fn () => $validated->deliver($today, $today, $later),
+            'cancelled once invoiced' => static fn () => $delivered->cancel($later),
+            'a draft invoiced' => fn () => DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now)->markInvoiced($invoiceId, $later),
+            'a cancelled note invoiced' => static fn () => $cancelled->markInvoiced($invoiceId, $later),
+        ] as $case => $attempt) {
+            try {
+                $attempt();
+                self::fail("$case accepted");
+            } catch (DeliveryNoteTransitionRefused) {
+            }
+        }
+        self::assertTrue($invoiceId->equals($validated->getInvoicedByInvoiceId()), 'a refused move changes nothing');
+        self::assertSame(DeliveryNoteStatus::Cancelled, $cancelled->getStatus());
     }
 
     /** A note validated on 2026-09-15 with one line, its validation event already released. */

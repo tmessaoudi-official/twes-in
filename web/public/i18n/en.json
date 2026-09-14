@@ -664,7 +664,8 @@
       "draft": "Draft",
       "validated": "Validated",
       "delivered": "Delivered",
-      "cancelled": "Cancelled"
+      "cancelled": "Cancelled",
+      "invoiced": "Invoiced"
     },
     "sections": {
       "parties": "Customer and establishment",

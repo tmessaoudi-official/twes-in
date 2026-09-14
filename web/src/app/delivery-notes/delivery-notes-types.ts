@@ -3,12 +3,13 @@
 /** Why the API refused, as the delivery notes screens translate it. */
 export type DeliveryNotesError = 'network' | 'not_found' | 'conflict' | 'invalid';
 
-export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelled';
+export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelled' | 'invoiced';
 export const DELIVERY_NOTE_STATUSES: readonly DeliveryNoteStatus[] = [
   'draft',
   'validated',
   'delivered',
   'cancelled',
+  'invoiced',
 ];
 
 export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';

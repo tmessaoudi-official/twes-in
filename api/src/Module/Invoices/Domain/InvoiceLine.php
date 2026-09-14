@@ -23,6 +23,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_line_invoice', columns: ['invoice_id'])]
 #[ORM\Index(name: 'idx_invoice_line_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_invoice_line_unit', columns: ['unit_id'])]
+#[ORM\Index(name: 'idx_invoice_line_source_delivery_note_line', columns: ['source_delivery_note_line_id'])]
 class InvoiceLine
 {
     #[ORM\Id]
@@ -66,6 +67,10 @@ class InvoiceLine
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $lineGross = null;
 
+    /** The delivery note line it invoices; an id rather than an association, delivery notes being their own module. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $sourceDeliveryNoteLineId;
+
     /** @var Collection<int, InvoiceLineTax> */
     #[ORM\OneToMany(targetEntity: InvoiceLineTax::class, mappedBy: 'line', cascade: ['persist'], orphanRemoval: true)]
     #[ORM\OrderBy(['position' => 'ASC'])]
@@ -83,6 +88,7 @@ class InvoiceLine
         $this->unit = $details->unit;
         $this->unitPriceNet = $details->unitPriceNet;
         $this->discountRate = $details->discountRate;
+        $this->sourceDeliveryNoteLineId = $details->sourceDeliveryNoteLineId;
         $this->taxes = new ArrayCollection();
         foreach ($details->taxes as $index => $tax) {
             $this->taxes->add(new InvoiceLineTax($this, $index + 1, $tax));
@@ -111,7 +117,7 @@ class InvoiceLine
         return ['net' => $this->lineNet, 'tax' => $this->lineTax, 'gross' => $this->lineGross];
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>} compared the way InvoiceLineDetails::values() is */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null} compared the way InvoiceLineDetails::values() is */
     public function values(): array
     {
         return [
@@ -122,6 +128,7 @@ class InvoiceLine
             $this->unitPriceNet,
             $this->discountRate,
             array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $this->getTaxes()),
+            $this->sourceDeliveryNoteLineId?->toRfc4122(),
         ];
     }
 
@@ -169,6 +176,12 @@ class InvoiceLine
     public function getDiscountRate(): ?string
     {
         return $this->discountRate;
+    }
+
+    /** The delivery note line it invoices; null for a line written by hand. */
+    public function getSourceDeliveryNoteLineId(): ?Uuid
+    {
+        return $this->sourceDeliveryNoteLineId;
     }
 
     /** @return list<InvoiceLineTax> in the order they are printed */

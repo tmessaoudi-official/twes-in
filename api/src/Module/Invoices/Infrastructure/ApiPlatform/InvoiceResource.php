@@ -103,7 +103,7 @@ final class InvoiceResource
     public const string READ = 'invoice:read';
     public const string WRITE = 'invoice:write';
     /** Nulls are answered: a draft's absent number and a line without a product read alike. */
-    private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
+    public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array AMOUNT_LIST = [
@@ -199,7 +199,8 @@ final class InvoiceResource
 
     /**
      * The lines, in order. A line naming a product may leave out its description, unit, price and taxes (null), which
-     * then come from the product; `net` is answered, never read: the line after its own discount.
+     * then come from the product; a line of a draft drafted from delivery notes names the delivery note line it invoices,
+     * which a revision may keep or drop but never add; `net` is answered, never read: the line after its own discount.
      *
      * @var list<array<string, mixed>>
      */
@@ -216,6 +217,7 @@ final class InvoiceResource
                 'unitPriceNet' => ['type' => ['string', 'null'], 'pattern' => '^(0|[1-9][0-9]{0,9})(\.[0-9]{1,4})?$', 'example' => '1250.5000'],
                 'discountRate' => ['type' => ['string', 'null'], 'example' => '10'],
                 'taxComponentIds' => ['type' => ['array', 'null'], 'items' => self::ID],
+                'sourceDeliveryNoteLineId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
                 'net' => ['type' => 'string', 'readOnly' => true],
             ],
         ],
@@ -232,6 +234,7 @@ final class InvoiceResource
             new Assert\Type('list', groups: [self::WRITE]),
             new Assert\All([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
         ], groups: [self::WRITE]),
+        'sourceDeliveryNoteLineId' => new Assert\Optional([new Assert\Type('string', groups: [self::WRITE]), new Assert\Uuid(groups: [self::WRITE])], groups: [self::WRITE]),
     ], allowExtraFields: true, groups: [self::WRITE])], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public array $lines = [];
@@ -396,6 +399,7 @@ final class InvoiceResource
             'unitPriceNet' => $line->getUnitPriceNet(),
             'discountRate' => $line->getDiscountRate(),
             'taxComponentIds' => array_map(static fn (InvoiceLineTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $line->getTaxes()),
+            'sourceDeliveryNoteLineId' => $line->getSourceDeliveryNoteLineId()?->toRfc4122(),
             'net' => $fixed['net'],
         ], $invoice->getLines(), $figures->lines);
         $resource->subtotalNet = $figures->subtotalNet;
@@ -439,6 +443,7 @@ final class InvoiceResource
                 self::text($line, 'unitPriceNet'),
                 self::text($line, 'discountRate'),
                 \is_array($taxIds) ? self::uuids($taxIds) : null,
+                self::uuid(self::text($line, 'sourceDeliveryNoteLineId')),
             );
         }
 

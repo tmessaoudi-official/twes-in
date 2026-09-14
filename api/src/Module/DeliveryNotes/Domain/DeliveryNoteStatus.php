@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain;
 
-/** Where a delivery note stands (docs/SPEC.md § 4 delivery_note); being invoiced arrives with invoices (G7). */
+/** Where a delivery note stands (docs/SPEC.md § 4 delivery_note). */
 enum DeliveryNoteStatus: string
 {
     /** Still being written: no number, every field revisable. */
@@ -20,4 +20,6 @@ enum DeliveryNoteStatus: string
     case Delivered = 'delivered';
     /** Withdrawn; a validated note keeps its number. */
     case Cancelled = 'cancelled';
+    /** On an issued invoice: neither delivered nor cancelled from then on. */
+    case Invoiced = 'invoiced';
 }

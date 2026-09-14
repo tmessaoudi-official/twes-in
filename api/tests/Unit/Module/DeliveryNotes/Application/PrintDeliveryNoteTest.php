@@ -122,6 +122,9 @@ final class PrintDeliveryNoteTest extends TestCase
         self::assertSame('BL-2026-00001.pdf', $printed->fileName);
         self::assertSame($this->storage->contents[$file->getStorageKey()], $printed->contents);
         self::assertCount(1, $this->renderer->rendered, 'a stored PDF is served, never rendered again');
+        $note->markInvoiced(\Symfony\Component\Uid\Uuid::v7(), new \DateTimeImmutable());
+        self::assertSame($printed->contents, $this->print->pdf($this->company, $note->getId())->contents, 'an invoiced note prints as it was issued');
+        self::assertCount(1, $this->renderer->rendered);
 
         $this->expectException(DeliveryNoteNotFound::class);
         $this->print->pdf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $note->getId());

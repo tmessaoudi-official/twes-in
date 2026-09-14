@@ -24,6 +24,7 @@ use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\ManageInvoices;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
+use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceTax;
@@ -175,6 +176,31 @@ final class ManageInvoicesTest extends TestCase
         $this->manage->cancel($this->company, $invoice->getId(), null);
     }
 
+    public function testADraftOfDeliveryNoteLinesKeepsWhereTheyCameFromAndALineClaimsNoOtherOne(): void
+    {
+        $customer = $this->customer('standard', [], [$this->tax('RS1')->getId()]);
+        $establishment = array_find($this->establishments->ofCompany($this->company->getId()), static fn ($e): bool => $e->isDefault());
+        self::assertNotNull($establishment);
+        [$first, $second] = [Uuid::v7(), Uuid::v7()];
+        $actor = Uuid::v7();
+        $line = fn (Uuid $from): InvoiceLineDetails => new InvoiceLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', null, [$this->tax('TVA19')], $from);
+
+        $invoice = $this->manage->createFromLines($this->company, $establishment, $customer, new InvoiceHeader(customerReference: 'PO-7'), [$line($first), $line($second)], ['deliveryNoteIds' => ['n1']], $actor);
+
+        self::assertSame([$invoice], $this->manage->list($this->company));
+        self::assertEquals([$first, $second], $this->sources($invoice->getLines()));
+        self::assertSame('PO-7', $invoice->getHeader()->customerReference);
+        self::assertSame(['TIMBRE', 'RS1'], $this->documentTaxCodes($invoice->getDocumentTaxes()), 'the document taxes a draft leaving them out has');
+        $entry = $this->audit->entries[0];
+        self::assertSame(['invoice.created', ['deliveryNoteIds' => ['n1']], $actor], [$entry->action, $entry->changes, $entry->actorUserId]);
+
+        $carried = fn (?Uuid $from): InvoiceLineInput => new InvoiceLineInput(null, 'Pièce', '1', $this->unit('C62')->getId(), '10', null, [$this->tax('TVA19')->getId()], $from);
+        $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, [$carried($second), $carried(null)], [$this->tax('TIMBRE')->getId()]), null);
+        self::assertEquals([$second, null], $this->sources($invoice->getLines()), 'a revision keeps a line it carried and adds one written by hand');
+        $this->assertRefused('lines[1].sourceDeliveryNoteLineId', fn () => $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, [$carried($second), $carried($first)]), null));
+        $this->assertRefused('lines[0].sourceDeliveryNoteLineId', fn () => $this->manage->create($this->company, $this->input($customer, [$carried($second)]), null));
+    }
+
     public function testAnotherCompanysInvoiceIsNotFound(): void
     {
         $globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
@@ -236,6 +262,16 @@ final class ManageInvoicesTest extends TestCase
     private function retire(TaxComponent $tax): void
     {
         $tax->revise($tax->getName(), $tax->getRate(), $tax->getAmount(), $tax->getThreshold(), $tax->entersVatBase(), $tax->isDefault(), false, $tax->getExemptionMention(), $tax->getSortOrder(), 3, $this->clock->now());
+    }
+
+    /**
+     * @param list<\App\Module\Invoices\Domain\InvoiceLine> $lines
+     *
+     * @return list<Uuid|null>
+     */
+    private function sources(array $lines): array
+    {
+        return array_map(static fn ($line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $lines);
     }
 
     /**

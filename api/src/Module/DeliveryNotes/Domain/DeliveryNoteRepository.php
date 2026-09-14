@@ -19,6 +19,25 @@ interface DeliveryNoteRepository
     /** Null for a delivery note that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote;
 
+    /**
+     * The company's delivery notes among these ids, their rows held until the transaction this runs in ends; outside a
+     * transaction it refuses.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<DeliveryNote>
+     */
+    public function lockedOfIdsInCompany(array $ids, Uuid $companyId): array;
+
+    /**
+     * The same, for the company's delivery notes carrying any of these lines.
+     *
+     * @param list<Uuid> $lineIds
+     *
+     * @return list<DeliveryNote>
+     */
+    public function lockedOfLineIdsInCompany(array $lineIds, Uuid $companyId): array;
+
     /** Whether a delivery note of the company already carries this number. */
     public function numberTaken(Uuid $companyId, string $number): bool;
 

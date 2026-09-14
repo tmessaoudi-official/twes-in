@@ -22,6 +22,16 @@ interface InvoiceRepository
     /** The same, its row held until the transaction this runs in ends; outside a transaction it refuses. */
     public function lockedOfIdInCompany(Uuid $id, Uuid $companyId): ?Invoice;
 
+    /**
+     * The company's invoices that are not cancelled with a line invoicing any of these delivery note lines; credit notes
+     * never invoice one.
+     *
+     * @param list<Uuid> $deliveryNoteLineIds
+     *
+     * @return list<Invoice>
+     */
+    public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array;
+
     /** Whether a document of this type of the company already carries this number. */
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool;
 

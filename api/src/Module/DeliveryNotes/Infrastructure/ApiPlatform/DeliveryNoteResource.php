@@ -120,9 +120,14 @@ final class DeliveryNoteResource
     #[Groups([self::READ])]
     public ?string $number = null;
 
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'cancelled']])]
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'cancelled', 'invoiced']])]
     #[Groups([self::READ])]
     public string $status = 'draft';
+
+    /** The issued invoice the note is on; null until one is (POST .../invoices/from-delivery-notes, then issuing). */
+    #[ApiProperty(writable: false, schema: ['type' => ['string', 'null'], 'format' => 'uuid'])]
+    #[Groups([self::READ])]
+    public ?string $invoicedByInvoiceId = null;
 
     /** One of the company's active customers (GET .../delivery-note-options). */
     #[Assert\NotBlank(groups: [self::WRITE])]
@@ -282,6 +287,7 @@ final class DeliveryNoteResource
         $resource->id = $note->getId()->toRfc4122();
         $resource->number = $note->getNumber();
         $resource->status = $note->getStatus()->value;
+        $resource->invoicedByInvoiceId = $note->getInvoicedByInvoiceId()?->toRfc4122();
         $resource->customerId = $note->getCustomer()->getId()->toRfc4122();
         $resource->establishmentId = $note->getEstablishment()->getId()->toRfc4122();
         $snapshot = $note->getCustomerSnapshot();

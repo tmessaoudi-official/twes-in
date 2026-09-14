@@ -664,7 +664,8 @@
       "draft": "Brouillon",
       "validated": "Validé",
       "delivered": "Livré",
-      "cancelled": "Annulé"
+      "cancelled": "Annulé",
+      "invoiced": "Facturé"
     },
     "sections": {
       "parties": "Client et établissement",

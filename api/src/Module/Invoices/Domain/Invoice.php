@@ -356,7 +356,8 @@ class Invoice
         $this->issuedAt = $now;
         $this->issuedBy = $issue->issuedBy;
         $this->updatedAt = $now;
-        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, []);
+        $sources = array_values(array_filter(array_map(static fn (InvoiceLine $line): ?Uuid => $line->getSourceDeliveryNoteLineId(), $this->getLines())));
+        $this->events[] = new InvoiceIssued($this->id, $this->company->getId(), $this->establishment->getId(), $this->documentType, $issue->number, $this->issueDate, $sources);
     }
 
     /**
@@ -775,7 +776,13 @@ class Invoice
     private function linesOfThisCompany(array $lines): array
     {
         $companyId = $this->company->getId();
+        $sources = [];
         foreach ($lines as $index => $line) {
+            $source = $line->sourceDeliveryNoteLineId?->toRfc4122();
+            if (null !== $source && isset($sources[$source])) {
+                throw new InvalidInvoice("lines[$index].sourceDeliveryNoteLineId", 'A document invoices a delivery note line once.');
+            }
+            $sources[$source ?? ''] = true;
             if (null !== $line->product && !$line->product->getCompany()->getId()->equals($companyId)) {
                 throw new InvalidInvoice("lines[$index].productId", 'A line sells a product of its own company.');
             }

@@ -12,10 +12,12 @@ namespace App\Module\DeliveryNotes\Application;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
+use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Shared\Application\DomainEvents;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -26,8 +28,9 @@ use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * A delivery note past its draft: validated (numbered, in the transaction that stores it), delivered, or cancelled.
- * What a note records happening is published once it is stored, and every move is audited.
+ * A delivery note past its draft: validated (numbered, in the transaction that stores it), delivered, or cancelled
+ * unless an invoice that is not cancelled carries it. What a note records happening is published once it is stored,
+ * and every move is audited.
  */
 final readonly class DeliveryNoteWorkflow
 {
@@ -38,6 +41,7 @@ final readonly class DeliveryNoteWorkflow
 
     public function __construct(
         private DeliveryNoteRepository $notes,
+        private InvoiceRepository $invoices,
         private AllocateNumber $numbers,
         private Transactions $transactions,
         private DeliveryNoteTotals $totals,
@@ -102,6 +106,11 @@ final readonly class DeliveryNoteWorkflow
     public function cancel(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
     {
         $note = $this->get($company, $id);
+        $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
+        $invoice = [] === $lines ? null : ($this->invoices->carryingDeliveryNoteLines($company->getId(), $lines)[0] ?? null);
+        if (null !== $invoice) {
+            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s: cancel that draft first.', $note->getNumber() ?? $note->getId()->toRfc4122(), $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+        }
         $note->cancel($this->clock->now());
         $this->notes->save($note);
         $this->record($company, $note, self::CANCELLED, [], $actorUserId);

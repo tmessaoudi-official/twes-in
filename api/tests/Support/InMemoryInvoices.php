@@ -10,7 +10,9 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
@@ -49,6 +51,15 @@ final class InMemoryInvoices implements InvoiceRepository
         }
 
         return $this->ofIdInCompany($id, $companyId);
+    }
+
+    public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (Invoice $invoice): bool => InvoiceType::Invoice === $invoice->getType()
+            && InvoiceStatus::Cancelled !== $invoice->getStatus()
+            && [] !== array_filter($invoice->getLines(), static fn (InvoiceLine $line): bool => \in_array($line->getSourceDeliveryNoteLineId()?->toRfc4122(), $wanted, true))));
     }
 
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool

@@ -39,6 +39,7 @@ use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShippedFiscalPresets;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
 
 final class InvoiceTest extends TestCase
 {
@@ -182,7 +183,7 @@ final class InvoiceTest extends TestCase
     public function testIssuingNumbersADraftFixesItsFiguresAndSnapshotsWhatItPrints(): void
     {
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine(taxes: [$this->tax('TVA19')])], [$this->tax('TIMBRE')], $this->now);
-        $issuedBy = \Symfony\Component\Uid\Uuid::v7();
+        $issuedBy = Uuid::v7();
         $asked = 0;
 
         $invoice->issue(
@@ -241,7 +242,7 @@ final class InvoiceTest extends TestCase
     {
         $invoice = $this->issued(total: '1190.000', withheld: '11.900', due: '1178.100');
         $today = new \DateTimeImmutable('2026-09-20');
-        $recordedBy = \Symfony\Component\Uid\Uuid::v7();
+        $recordedBy = Uuid::v7();
 
         $first = $invoice->recordPayment(new PaymentDetails(new \DateTimeImmutable('2026-09-15 22:00:00'), '178.1', PaymentMethod::Transfer, ' VIR-1 ', ''), $today, 3, $recordedBy, $this->now);
 
@@ -385,6 +386,28 @@ final class InvoiceTest extends TestCase
         self::assertSame([InvoiceStatus::PartiallyPaid, '0.000', '1000.000', '178.100'], $this->settlement($invoice));
         $invoice->credit($this->issuedCreditNote($invoice, '-1000.000'), $this->now);
         self::assertSame([InvoiceStatus::Paid, '0.000', '0.000', '1178.100'], $this->settlement($invoice), 'a credit up to what is due settles the invoice');
+    }
+
+    public function testALineKeepsTheDeliveryNoteLineItCameFromAndIssuingNamesThemButACreditNoteCopiesNone(): void
+    {
+        [$first, $second] = [Uuid::v7(), Uuid::v7()];
+        $line = fn (?Uuid $from): InvoiceLineDetails => new InvoiceLineDetails(null, 'Pièce', '1', $this->unit('C62'), '10', null, [], $from);
+        $this->assertRefused('lines[1].sourceDeliveryNoteLineId', fn () => Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($first), $line($first)], [], $this->now), 'a delivery note line invoiced twice');
+
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$line($first), $line(null), $line($second)], [], $this->now);
+
+        self::assertEquals([$first, null, $second], array_map(static fn ($kept): ?Uuid => $kept->getSourceDeliveryNoteLineId(), $invoice->getLines()));
+        self::assertSame(['lines'], $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($second), $line(null), $line($first)], [], $this->now), 'where a line came from is part of what it says');
+        self::assertSame([], $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($second), $line(null), $line($first)], [], $this->now));
+        $this->assertRefused('lines[2].sourceDeliveryNoteLineId', fn () => $invoice->revise($invoice->getEstablishment(), $invoice->getCustomer(), new InvoiceHeader(), [$line($second), $line(null), $line($second)], [], $this->now));
+
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(lines: 3), $this->now);
+
+        $events = $invoice->releaseEvents();
+        self::assertInstanceOf(\App\Module\Invoices\Domain\InvoiceIssued::class, $events[0]);
+        self::assertEquals([$second, $first], $events[0]->sourceDeliveryNoteLineIds, 'the delivery note lines its lines came from, in order');
+        $credit = Invoice::creditNoteFor($invoice, $this->now);
+        self::assertSame([null, null, null], array_map(static fn ($copied): ?Uuid => $copied->getSourceDeliveryNoteLineId(), $credit->getLines()), 'a credit note invoices no delivery note');
     }
 
     private function issuedCreditNote(Invoice $invoice, string $due): Invoice

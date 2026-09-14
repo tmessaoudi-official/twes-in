@@ -19,6 +19,7 @@ use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
@@ -35,8 +36,8 @@ use Symfony\Component\Uid\Uuid;
  * establishments; a line sells one of its active products or states what it is, in an active unit, with active line
  * taxes the customer's regime charges; the document carries active fixed charges and withholdings the regime charges,
  * by default the company's own and the customer's. A customer, product, unit or tax retired since stays with the draft
- * that already names it. The document must total. Audited with the names of the fields a revision changed, never their
- * values.
+ * that already names it. A line invoices a delivery note line only when its draft already did: such a draft starts from
+ * delivery notes. The document must total. Audited with the names of the fields a revision changed, never their values.
  */
 final readonly class ManageInvoices
 {
@@ -78,6 +79,25 @@ final readonly class ManageInvoices
         $this->totals->checked($invoice);
         $this->invoices->save($invoice);
         $this->record($company, $invoice->getId(), self::CREATED, [], $actorUserId);
+
+        return $invoice;
+    }
+
+    /**
+     * A draft of lines already written, such as a delivery note's (docs/SPEC.md § 7, 2026-09-14): its document taxes are
+     * those a draft leaving them out has, and it is audited as created with what it was drafted from.
+     *
+     * @param list<InvoiceLineDetails> $lines
+     * @param array<string, mixed>     $origin
+     *
+     * @throws InvalidInvoice
+     */
+    public function createFromLines(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $origin, ?Uuid $actorUserId): Invoice
+    {
+        $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now());
+        $this->totals->checked($invoice);
+        $this->invoices->save($invoice);
+        $this->record($company, $invoice->getId(), self::CREATED, $origin, $actorUserId);
 
         return $invoice;
     }
@@ -167,9 +187,13 @@ final readonly class ManageInvoices
         return [$establishment, $customer, $lines, $this->documentTaxes($company, $customer, $input->documentTaxComponentIds, $kept['documentTaxes'])];
     }
 
-    /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>} $kept */
+    /** @param array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>} $kept */
     private function line(Company $company, Customer $customer, InvoiceLineInput $line, array $kept): InvoiceLineDetails
     {
+        if (null !== $line->sourceDeliveryNoteLineId && !\in_array($line->sourceDeliveryNoteLineId->toRfc4122(), $kept['sources'], true)) {
+            throw new InvalidInvoice('sourceDeliveryNoteLineId', 'A line invoices a delivery note line only when its draft already did: an invoice of delivery notes is drafted from them.');
+        }
+
         $product = null;
         if (null !== $line->productId) {
             $product = $this->products->ofIdInCompany($line->productId, $company->getId())
@@ -188,7 +212,7 @@ final readonly class ManageInvoices
         $price = $line->unitPriceNet ?? $product?->getDetails()->unitPriceNet ?? throw new InvalidInvoice('unitPriceNet', 'A line without a product states its price.');
         $description = null === $line->description || '' === trim($line->description) ? ($product?->getDetails()->name ?? '') : $line->description;
 
-        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']));
+        return new InvoiceLineDetails($product, $description, $line->quantity, $unit, $price, $line->discountRate, $this->lineTaxes($company, $customer, $line, $product?->getDefaultTaxComponentIds(), $kept['taxes']), $line->sourceDeliveryNoteLineId);
     }
 
     /**
@@ -281,19 +305,23 @@ final readonly class ManageInvoices
     }
 
     /**
-     * The products, units, line taxes and document taxes a draft already names, by id.
+     * The products, units, line taxes, document taxes and delivery note lines a draft already names, by id.
      *
-     * @return array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>}
+     * @return array{products: list<string>, units: list<string>, taxes: list<string>, documentTaxes: list<string>, sources: list<string>}
      */
     private static function named(?Invoice $invoice): array
     {
-        $named = ['products' => [], 'units' => [], 'taxes' => [], 'documentTaxes' => []];
+        $named = ['products' => [], 'units' => [], 'taxes' => [], 'documentTaxes' => [], 'sources' => []];
         foreach ($invoice?->getLines() ?? [] as $line) {
             $product = $line->getProduct();
             if (null !== $product) {
                 $named['products'][] = $product->getId()->toRfc4122();
             }
             $named['units'][] = $line->getUnit()->getId()->toRfc4122();
+            $source = $line->getSourceDeliveryNoteLineId();
+            if (null !== $source) {
+                $named['sources'][] = $source->toRfc4122();
+            }
             foreach ($line->getTaxes() as $tax) {
                 $named['taxes'][] = $tax->getTaxComponent()->getId()->toRfc4122();
             }

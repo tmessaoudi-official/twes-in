@@ -33,6 +33,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_delivery_note_establishment', columns: ['establishment_id'])]
 #[ORM\Index(name: 'idx_delivery_note_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'idx_delivery_note_pdf_file', columns: ['pdf_file_id'])]
+#[ORM\Index(name: 'idx_delivery_note_invoiced_by_invoice', columns: ['invoiced_by_invoice_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_delivery_note_company_number', columns: ['company_id', 'number'])]
 class DeliveryNote
 {
@@ -84,6 +85,10 @@ class DeliveryNote
     #[ORM\ManyToOne(targetEntity: StoredFile::class)]
     #[ORM\JoinColumn(name: 'pdf_file_id', nullable: true)]
     private ?StoredFile $pdfFile = null;
+
+    /** The issued invoice the note is on; null until one is. An id rather than an association: invoices are their own module. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $invoicedByInvoiceId = null;
 
     /** @var list<DomainEvent> recorded since they were last released; never stored */
     private array $events = [];
@@ -227,6 +232,23 @@ class DeliveryNote
 
         $this->deliveryDate = $day;
         $this->status = DeliveryNoteStatus::Delivered;
+        $this->updatedAt = $now;
+    }
+
+    /**
+     * A validated or delivered note an invoice was issued for (docs/SPEC.md § 7, 2026-09-14). It is then neither delivered
+     * nor cancelled, and never invoiced again.
+     *
+     * @throws DeliveryNoteTransitionRefused
+     */
+    public function markInvoiced(Uuid $invoiceId, \DateTimeImmutable $now): void
+    {
+        if (DeliveryNoteStatus::Validated !== $this->status && DeliveryNoteStatus::Delivered !== $this->status) {
+            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is %s: only a validated or delivered note is invoiced.', $this->reference(), $this->status->value));
+        }
+
+        $this->status = DeliveryNoteStatus::Invoiced;
+        $this->invoicedByInvoiceId = $invoiceId;
         $this->updatedAt = $now;
     }
 
@@ -397,6 +419,12 @@ class DeliveryNote
     public function getStatus(): DeliveryNoteStatus
     {
         return $this->status;
+    }
+
+    /** The issued invoice the note is on; null until one is. */
+    public function getInvoicedByInvoiceId(): ?Uuid
+    {
+        return $this->invoicedByInvoiceId;
     }
 
     public function getNumber(): ?string

@@ -14,12 +14,13 @@ use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Fiscal\Domain\Unit;
 use App\Module\Products\Domain\Product;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * One line as it is written: what is sold, how much of it in which unit, its net unit price, a discount rate reducing
  * its tax base, and the taxes charged on it. A quantity is positive and never finer than its unit counts; the quantity
  * is kept with three decimals, the price with four, the discount as a percentage with three. Only a line tax sits on a
- * line, each at most once.
+ * line, each at most once. A line drafted from a delivery note names the delivery note line it invoices.
  */
 final readonly class InvoiceLineDetails
 {
@@ -40,10 +41,11 @@ final readonly class InvoiceLineDetails
 
     /**
      * @param list<TaxComponent> $taxes
+     * @param Uuid|null          $sourceDeliveryNoteLineId the delivery note line it invoices; null for a line written by hand
      *
      * @throws InvalidInvoice
      */
-    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes)
+    public function __construct(public ?Product $product, string $description, string $quantity, public Unit $unit, string $unitPriceNet, ?string $discountRate, array $taxes, public ?Uuid $sourceDeliveryNoteLineId = null)
     {
         $description = trim($description);
         if ('' === $description || mb_strlen($description) > self::DESCRIPTION_MAX) {
@@ -68,7 +70,7 @@ final readonly class InvoiceLineDetails
         $this->taxes = $taxes;
     }
 
-    /** @return array{string|null, string, string, string, string, string|null, list<string>} what two lines are compared on */
+    /** @return array{string|null, string, string, string, string, string|null, list<string>, string|null} what two lines are compared on */
     public function values(): array
     {
         return [
@@ -79,6 +81,7 @@ final readonly class InvoiceLineDetails
             $this->unitPriceNet,
             $this->discountRate,
             array_map(static fn (TaxComponent $tax): string => $tax->getId()->toRfc4122(), $this->taxes),
+            $this->sourceDeliveryNoteLineId?->toRfc4122(),
         ];
     }
 

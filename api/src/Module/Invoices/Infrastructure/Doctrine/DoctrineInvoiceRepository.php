@@ -10,8 +10,11 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Infrastructure\Doctrine;
 
 use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
@@ -52,6 +55,29 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
             ->getOneOrNullResult();
 
         return $invoice instanceof Invoice ? $invoice : null;
+    }
+
+    public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array
+    {
+        if ([] === $deliveryNoteLineIds) {
+            return [];
+        }
+        $invoices = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invoice::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.documentType = :type')
+            ->andWhere('i.status <> :cancelled')
+            ->andWhere('i.id IN (SELECT IDENTITY(l.invoice) FROM '.InvoiceLine::class.' l WHERE l.sourceDeliveryNoteLineId IN (:lines))')
+            ->orderBy('i.createdAt')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('type', InvoiceType::Invoice->value)
+            ->setParameter('cancelled', InvoiceStatus::Cancelled->value)
+            ->setParameter('lines', array_map(static fn (Uuid $id): string => $id->toRfc4122(), $deliveryNoteLineIds), ArrayParameterType::STRING)
+            ->getQuery()
+            ->getResult();
+
+        return array_values(array_filter(\is_array($invoices) ? $invoices : [], static fn (mixed $invoice): bool => $invoice instanceof Invoice));
     }
 
     public function numberTaken(Uuid $companyId, InvoiceType $type, string $number): bool

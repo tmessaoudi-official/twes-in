@@ -54,7 +54,7 @@ final readonly class PrintDeliveryNote
         return new PrintedDeliveryNote(self::fileName($note), match ($note->getStatus()) {
             DeliveryNoteStatus::Draft => $this->render($note, DeliveryNotePage::DRAFT),
             DeliveryNoteStatus::Cancelled => $this->render($note, DeliveryNotePage::CANCELLED),
-            DeliveryNoteStatus::Validated, DeliveryNoteStatus::Delivered => $this->issued($note),
+            DeliveryNoteStatus::Validated, DeliveryNoteStatus::Delivered, DeliveryNoteStatus::Invoiced => $this->issued($note),
         });
     }
 

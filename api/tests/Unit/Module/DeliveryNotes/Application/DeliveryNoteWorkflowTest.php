@@ -28,6 +28,9 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
+use App\Module\Invoices\Domain\Invoice;
+use App\Module\Invoices\Domain\InvoiceHeader;
+use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Tenancy\Application\Establishment\EstablishmentDetails;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
 use App\Tenancy\Application\Numbering\AllocateNumber;
@@ -38,6 +41,7 @@ use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryDeliveryNotes;
 use App\Tests\Support\InMemoryEstablishments;
+use App\Tests\Support\InMemoryInvoices;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
@@ -54,6 +58,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
     private InMemoryEstablishments $establishments;
     private InMemoryNumberingSeries $series;
     private InMemoryDeliveryNotes $notes;
+    private InMemoryInvoices $invoices;
     private InMemoryAuditTrail $audit;
     private FakeTransactions $transactions;
     private RecordingDomainEvents $events;
@@ -73,11 +78,13 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->notes = new InMemoryDeliveryNotes();
+        $this->invoices = new InMemoryInvoices();
         $this->audit = new InMemoryAuditTrail();
         $this->transactions = new FakeTransactions();
         $this->events = new RecordingDomainEvents($this->transactions);
         $this->workflow = new DeliveryNoteWorkflow(
             $this->notes,
+            $this->invoices,
             new AllocateNumber($this->series, $this->transactions, $this->clock),
             $this->transactions,
             new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),
@@ -199,6 +206,27 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
         $this->expectException(DeliveryNoteNotFound::class);
         $this->workflow->deliver($this->globex, $delivered->getId(), null, null);
+    }
+
+    public function testANoteOnAnInvoiceThatIsNotCancelledIsNotCancelled(): void
+    {
+        $note = $this->workflow->validate($this->company, $this->draft()->getId(), null);
+        $invoice = Invoice::create($this->company, $note->getEstablishment(), $this->customer, new InvoiceHeader(), [
+            new InvoiceLineDetails(null, 'Pièce', '2', $this->unit('C62'), '10', null, [], $note->getLines()[0]->getId()),
+        ], [], $this->clock->now());
+        $this->invoices->save($invoice);
+
+        try {
+            $this->workflow->cancel($this->company, $note->getId(), null);
+            self::fail('a note on a draft invoice was cancelled');
+        } catch (DeliveryNoteTransitionRefused $refused) {
+            self::assertStringContainsString('invoice', $refused->getMessage());
+        }
+        self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
+
+        $invoice->cancel($this->clock->now());
+        $this->workflow->cancel($this->company, $note->getId(), null);
+        self::assertSame(DeliveryNoteStatus::Cancelled, $note->getStatus(), 'a cancelled invoice holds no note');
     }
 
     /** @param list<DeliveryNoteLineDetails>|null $lines one line of two pieces when left out */
