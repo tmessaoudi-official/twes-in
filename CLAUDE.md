@@ -157,3 +157,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   never checks its `fetch` status hides that, and leaks rows into the shared database: throw on `!response.ok`.
 - Playwright's `page.request` does not send the session cookie (`Secure`, `SameSite=Strict`) to the local http stack, so
   it answers 401: fetch an API file from inside the page (`page.evaluate`) instead (2026-09-14, the delivery note PDF).
+- Judge a rendered PDF by looking at it: `magick -trim -format '%@'` answered `+0+0` on pages whose content was visibly
+  inset, which read as "Gotenberg ignores its margins". What was wrong was a template's `@page { margin: 0 }`, which
+  overrides the renderer's margin fields in Chromium: every delivery note and invoice printed flush to the paper's edge
+  (2026-09-14; `PdfTemplateMarginsTest` pins it).
