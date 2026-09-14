@@ -4,6 +4,7 @@ import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 import { anonymousGuard, authGuard } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
+import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
 import { moduleGuard } from './shell/module-guard';
 
@@ -73,6 +74,25 @@ export const routes: Routes = [
         path: 'products/:productId',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
+      },
+      {
+        path: 'delivery-notes',
+        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
+        loadComponent: () =>
+          import('./delivery-notes/delivery-notes-page').then((m) => m.DeliveryNotesPage),
+      },
+      {
+        // Before ':deliveryNoteId', which would otherwise take "new" for an identifier.
+        path: 'delivery-notes/new',
+        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
+        loadComponent: () =>
+          import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
+      },
+      {
+        path: 'delivery-notes/:deliveryNoteId',
+        canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
+        loadComponent: () =>
+          import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
         path: 'members',

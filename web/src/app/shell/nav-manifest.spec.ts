@@ -3,6 +3,7 @@
 import en from '../../../public/i18n/en.json';
 import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
+import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { CORE_NAV, MODULE_NAV, type NavEntry, navSections, visibleEntries } from './nav-manifest';
 
@@ -126,7 +127,10 @@ describe('the navigation manifest', () => {
       ['products', 'products', 'product.read'],
       ['product-categories', 'products', 'product.read'],
     ]);
-    expect(MODULE_NAV).toEqual([...CUSTOMERS_NAV, ...PRODUCTS_NAV]);
+    expect(
+      DELIVERY_NOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['delivery-notes', 'delivery_notes', 'delivery_note.read', '/delivery-notes']]);
+    expect(MODULE_NAV).toEqual([...CUSTOMERS_NAV, ...PRODUCTS_NAV, ...DELIVERY_NOTES_NAV]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);
   });
 

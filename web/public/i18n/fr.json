@@ -272,7 +272,8 @@
     "customer_groups": "Groupes de clients",
     "custom_fields": "Champs personnalisés",
     "products": "Produits",
-    "product_categories": "Catégories de produits"
+    "product_categories": "Catégories de produits",
+    "delivery_notes": "Bons de livraison"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -642,6 +643,105 @@
         "not_found": "Introuvable.",
         "network": "Le serveur est injoignable."
       }
+    }
+  },
+  "delivery_notes": {
+    "title": "Bons de livraison",
+    "add": "Nouveau bon de livraison",
+    "open": "Ouvrir {{number}}",
+    "open_short": "Ouvrir",
+    "none": "Aucun bon de livraison pour l'instant.",
+    "no_company": "Choisissez d'abord une société.",
+    "no_customers": "Un bon de livraison est établi pour un client : ajoutez d'abord un client.",
+    "new_title": "Nouveau bon de livraison",
+    "draft_title": "Bon de livraison en brouillon",
+    "draft": "Brouillon",
+    "back": "Retour aux bons de livraison",
+    "saved": "Le brouillon a été enregistré.",
+    "read_only": "Vous pouvez consulter les bons de livraison, pas les modifier.",
+    "fixed": "Ce bon est numéroté et ne change plus ; il peut encore être livré, annulé et imprimé.",
+    "statuses": {
+      "draft": "Brouillon",
+      "validated": "Validé",
+      "delivered": "Livré",
+      "cancelled": "Annulé"
+    },
+    "sections": {
+      "parties": "Client et établissement",
+      "delivery_address": "Adresse de livraison",
+      "remarks": "Remarques"
+    },
+    "fields": {
+      "number": "Numéro",
+      "status": "Statut",
+      "customer": "Client",
+      "customerId": "Client",
+      "establishmentId": "Établissement",
+      "customerReference": "Référence du client",
+      "issueDate": "Émis le",
+      "deliveryDate": "Date de livraison",
+      "total": "Total TTC",
+      "deliveryAddressLine1": "Adresse",
+      "deliveryAddressLine2": "Complément d'adresse",
+      "deliveryPostalCode": "Code postal",
+      "deliveryCity": "Ville",
+      "deliveryCountryCode": "Pays",
+      "remarksPrinted": "Remarques imprimées sur le bon",
+      "notesInternal": "Notes internes"
+    },
+    "form": {
+      "reference_hint": "Le numéro de commande du client, imprimé sur le bon.",
+      "delivery_date_hint": "Le jour où la marchandise est attendue ; devient le jour de la remise une fois livrée.",
+      "address_hint": "Laissée vide, l'adresse de livraison du client, sinon son adresse de facturation, est imprimée à la validation.",
+      "country_hint": "Deux lettres, par exemple TN.",
+      "remarks_hint": "Imprimées sur le bon.",
+      "notes_hint": "Gardées dans la société, jamais imprimées."
+    },
+    "lines": {
+      "title": "Lignes",
+      "position": "Ligne {{position}}",
+      "product": "Produit",
+      "no_product": "Sans produit",
+      "description": "Ce qui est livré",
+      "quantity": "Quantité",
+      "unit": "Unité",
+      "unitPriceNet": "Prix unitaire HT",
+      "price_hint": "En {{currency}}, avec au plus quatre décimales.",
+      "taxes": "Taxes de la ligne",
+      "add": "Ajouter une ligne",
+      "remove": "Retirer la ligne {{position}}",
+      "remove_short": "Retirer",
+      "none": "Aucune ligne : un bon en demande au moins une pour être validé.",
+      "errors": {
+        "description": "Indiquez ce qui est livré.",
+        "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
+        "unitId": "Choisissez une unité.",
+        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales et un point."
+      }
+    },
+    "totals": {
+      "title": "Totaux",
+      "subtotal": "Total HT",
+      "total_tax": "Total des taxes",
+      "total": "Total TTC",
+      "as_saved": "En {{currency}}, tels qu'enregistrés en dernier."
+    },
+    "actions": {
+      "save": "Enregistrer le brouillon",
+      "validate": "Valider et numéroter",
+      "deliver": "Marquer livré",
+      "delivered_on": "Livré le",
+      "cancel": "Annuler le bon",
+      "confirm_cancel": "Confirmer l'annulation",
+      "keep": "Garder le bon",
+      "pdf": "Télécharger le PDF",
+      "pdf_draft": "Aperçu du PDF"
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Bon de livraison introuvable.",
+      "conflict": "Le bon a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des bons de livraison.",
+      "invalid": "Le bon a été refusé. Vérifiez le client, les lignes et les dates."
     }
   },
   "products": {

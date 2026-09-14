@@ -52,8 +52,9 @@ const laptops: ProductCategoryRow = {
 
 describe('ProductCategoriesPage', () => {
   const error = signal<ProductsError | null>(null);
+  const categories = signal<readonly ProductCategoryRow[]>([hardware, laptops]);
   const facade = {
-    categories: signal<readonly ProductCategoryRow[]>([hardware, laptops]).asReadonly(),
+    categories: categories.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadCategories: vi.fn(),
@@ -94,6 +95,7 @@ describe('ProductCategoriesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    categories.set([hardware, laptops]);
     facade.loadCategories.mockReset().mockResolvedValue(undefined);
     facade.createCategory.mockReset().mockResolvedValue(true);
     facade.reviseCategory.mockReset().mockResolvedValue(true);
@@ -128,6 +130,20 @@ describe('ProductCategoriesPage', () => {
     const row = q('product-category-Portables')?.textContent ?? '';
     expect(row).toContain('Matériel › Portables');
     expect(row).toContain('4');
+  });
+
+  it('keeps what was typed when the categories arrive after the form was opened', async () => {
+    q('product-category-add')!.click();
+    await settle();
+    type('field-name', 'Services');
+
+    // What a slow first read gives: the list, and so the parents offered, arrive once the form is open.
+    categories.set([hardware, laptops, { ...laptops, id: 'k3', name: 'Écrans' }]);
+    await settle();
+    q('product-category-save')!.click();
+    await settle();
+
+    expect(facade.createCategory).toHaveBeenCalledWith('c1', { name: 'Services', parentId: null });
   });
 
   it('adds a category at the top of the tree', async () => {

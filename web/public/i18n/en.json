@@ -272,7 +272,8 @@
     "customer_groups": "Customer groups",
     "custom_fields": "Custom fields",
     "products": "Products",
-    "product_categories": "Product categories"
+    "product_categories": "Product categories",
+    "delivery_notes": "Delivery notes"
   },
   "shell": {
     "skip": "Skip to content",
@@ -642,6 +643,105 @@
         "not_found": "Not found.",
         "network": "The server could not be reached."
       }
+    }
+  },
+  "delivery_notes": {
+    "title": "Delivery notes",
+    "add": "New delivery note",
+    "open": "Open {{number}}",
+    "open_short": "Open",
+    "none": "No delivery notes yet.",
+    "no_company": "Choose a company first.",
+    "no_customers": "A delivery note is for a customer: add a customer first.",
+    "new_title": "New delivery note",
+    "draft_title": "Draft delivery note",
+    "draft": "Draft",
+    "back": "Back to delivery notes",
+    "saved": "The draft was saved.",
+    "read_only": "You can read delivery notes but not change them.",
+    "fixed": "This note is numbered and no longer changes; it can still be delivered, cancelled and printed.",
+    "statuses": {
+      "draft": "Draft",
+      "validated": "Validated",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled"
+    },
+    "sections": {
+      "parties": "Customer and establishment",
+      "delivery_address": "Delivery address",
+      "remarks": "Remarks"
+    },
+    "fields": {
+      "number": "Number",
+      "status": "Status",
+      "customer": "Customer",
+      "customerId": "Customer",
+      "establishmentId": "Establishment",
+      "customerReference": "Customer's reference",
+      "issueDate": "Issued on",
+      "deliveryDate": "Delivery date",
+      "total": "Total incl. tax",
+      "deliveryAddressLine1": "Address",
+      "deliveryAddressLine2": "Address, continued",
+      "deliveryPostalCode": "Postal code",
+      "deliveryCity": "City",
+      "deliveryCountryCode": "Country",
+      "remarksPrinted": "Remarks printed on the note",
+      "notesInternal": "Internal notes"
+    },
+    "form": {
+      "reference_hint": "The customer's order number, printed on the note.",
+      "delivery_date_hint": "The day the goods are expected; set to the day they are handed over once delivered.",
+      "address_hint": "Left empty, the customer's shipping address, else its billing address, is printed when the note is validated.",
+      "country_hint": "Two letters, such as TN.",
+      "remarks_hint": "Printed on the note.",
+      "notes_hint": "Kept inside the company, never printed."
+    },
+    "lines": {
+      "title": "Lines",
+      "position": "Line {{position}}",
+      "product": "Product",
+      "no_product": "No product",
+      "description": "What is delivered",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unitPriceNet": "Net unit price",
+      "price_hint": "In {{currency}}, with up to four decimals.",
+      "taxes": "Taxes on the line",
+      "add": "Add a line",
+      "remove": "Remove line {{position}}",
+      "remove_short": "Remove",
+      "none": "No lines: a note needs at least one to be validated.",
+      "errors": {
+        "description": "Say what is delivered.",
+        "quantity": "A quantity above zero, with no more decimals than its unit counts (at most three).",
+        "unitId": "Choose a unit.",
+        "unitPriceNet": "A price from 0, with up to four decimals and a point."
+      }
+    },
+    "totals": {
+      "title": "Totals",
+      "subtotal": "Total excl. tax",
+      "total_tax": "Total tax",
+      "total": "Total incl. tax",
+      "as_saved": "In {{currency}}, as last saved."
+    },
+    "actions": {
+      "save": "Save the draft",
+      "validate": "Validate and number",
+      "deliver": "Mark delivered",
+      "delivered_on": "Delivered on",
+      "cancel": "Cancel the note",
+      "confirm_cancel": "Confirm the cancellation",
+      "keep": "Keep the note",
+      "pdf": "Download the PDF",
+      "pdf_draft": "Preview the PDF"
+    },
+    "errors": {
+      "network": "The server could not be reached.",
+      "not_found": "Delivery note not found.",
+      "conflict": "The note changed state meanwhile, or its establishment has no delivery note numbering series to number it with.",
+      "invalid": "The note was refused. Check the customer, the lines and the dates."
     }
   },
   "products": {

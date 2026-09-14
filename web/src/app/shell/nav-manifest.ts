@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
+import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 
 /**
@@ -117,7 +118,11 @@ export const CORE_NAV: readonly NavEntry[] = [
 ];
 
 /** Every module's entries, each declared by its module's web feature. */
-export const MODULE_NAV: readonly NavEntry[] = [...CUSTOMERS_NAV, ...PRODUCTS_NAV];
+export const MODULE_NAV: readonly NavEntry[] = [
+  ...CUSTOMERS_NAV,
+  ...PRODUCTS_NAV,
+  ...DELIVERY_NOTES_NAV,
+];
 
 /**
  * The entries this user may see in this build, in the working company. Hiding is a courtesy: the API refuses what

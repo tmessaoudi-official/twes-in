@@ -1,0 +1,50 @@
+<section class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="delivery-notes-title">
+      {{ 'delivery_notes.title' | translate }}
+    </h1>
+    @if (mayWrite() && company()) {
+      <a mat-flat-button routerLink="/delivery-notes/new" data-testid="delivery-note-add">
+        {{ 'delivery_notes.add' | translate }}
+      </a>
+    }
+  </div>
+
+  @if (!company()) {
+    <p data-testid="delivery-notes-no-company">{{ 'delivery_notes.no_company' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="delivery-notes-error" class="text-error">
+      {{ 'delivery_notes.errors.' + code | translate }}
+    </p>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows()"
+    testId="delivery-notes-table"
+    [rowTestId]="rowTestId"
+    emptyKey="delivery_notes.none"
+    emptyTestId="delivery-notes-empty"
+  >
+    <ng-template appDataListCell="number" let-row>
+      {{ row.number ?? ('delivery_notes.draft' | translate) }}
+    </ng-template>
+    <ng-template appDataListCell="status" let-row>
+      {{ 'delivery_notes.statuses.' + row.status | translate }}
+    </ng-template>
+    <ng-template appDataListRowActions let-row>
+      <a
+        mat-button
+        [routerLink]="['/delivery-notes', row.id]"
+        [attr.data-testid]="'delivery-note-open-' + row.id"
+        [attr.aria-label]="
+          'delivery_notes.open'
+            | translate: { number: row.number ?? ('delivery_notes.draft' | translate) }
+        "
+      >
+        {{ 'delivery_notes.open_short' | translate }}
+      </a>
+    </ng-template>
+  </app-data-list>
+</section>

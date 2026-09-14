@@ -1,0 +1,195 @@
+<section class="flex max-w-5xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h1 class="text-3xl font-semibold" data-testid="delivery-note-title">
+        @if (current(); as note) {
+          {{ note.number ?? ('delivery_notes.draft_title' | translate) }}
+        } @else {
+          {{ 'delivery_notes.new_title' | translate }}
+        }
+      </h1>
+      @if (current(); as note) {
+        <p class="text-sm opacity-80" data-testid="delivery-note-status">
+          {{ 'delivery_notes.statuses.' + note.status | translate }}
+          @if (note.issueDate) {
+            · {{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate }}
+          }
+          @if (note.deliveryDate && note.status === 'delivered') {
+            · {{ 'delivery_notes.fields.deliveryDate' | translate }} {{ note.deliveryDate }}
+          }
+        </p>
+      }
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (pdfUrl(); as url) {
+        <a
+          mat-stroked-button
+          [href]="url"
+          target="_blank"
+          rel="noopener"
+          data-testid="delivery-note-pdf"
+        >
+          {{
+            (current()?.status === 'draft'
+              ? 'delivery_notes.actions.pdf_draft'
+              : 'delivery_notes.actions.pdf'
+            ) | translate
+          }}
+        </a>
+      }
+      <a mat-button routerLink="/delivery-notes">{{ 'delivery_notes.back' | translate }}</a>
+    </div>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="delivery-note-no-company">{{ 'delivery_notes.no_company' | translate }}</p>
+  }
+  @if (!mayWrite()) {
+    <p data-testid="delivery-note-read-only">{{ 'delivery_notes.read_only' | translate }}</p>
+  } @else if (current() && current()?.status !== 'draft') {
+    <p data-testid="delivery-note-fixed">{{ 'delivery_notes.fixed' | translate }}</p>
+  }
+  @if (noCustomers()) {
+    <p data-testid="delivery-note-no-customers">
+      {{ 'delivery_notes.no_customers' | translate }}
+    </p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="delivery-note-error" class="text-error">
+      {{ 'delivery_notes.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="delivery-note-saved">{{ 'delivery_notes.saved' | translate }}</p>
+  }
+
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="delivery-note-form"
+            [readOnly]="!editable()"
+            (submitted)="save()"
+          />
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (lines(); as lines) {
+    @if (options(); as options) {
+      <mat-card>
+        <mat-card-content>
+          <app-delivery-note-lines
+            [lines]="lines"
+            [options]="options"
+            [excludedFamilies]="excludedFamilies()"
+            [readOnly]="!editable()"
+          />
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (current(); as note) {
+    <mat-card data-testid="delivery-note-totals">
+      <mat-card-content class="flex flex-col gap-2">
+        <h2 class="text-xl font-semibold">{{ 'delivery_notes.totals.title' | translate }}</h2>
+        <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+          <dt>{{ 'delivery_notes.totals.subtotal' | translate }}</dt>
+          <dd class="text-end">{{ amount(note.subtotalNet) }}</dd>
+          @for (tax of note.taxes; track tax.code + '|' + tax.rate) {
+            <dt>{{ tax.code }} {{ tax.rate }} %</dt>
+            <dd class="text-end">{{ amount(tax.amount) }}</dd>
+          }
+          <dt>{{ 'delivery_notes.totals.total_tax' | translate }}</dt>
+          <dd class="text-end">{{ amount(note.totalTax) }}</dd>
+          <dt class="font-semibold">{{ 'delivery_notes.totals.total' | translate }}</dt>
+          <dd class="text-end font-semibold">{{ amount(note.total) }}</dd>
+        </dl>
+        <p class="text-xs opacity-70">
+          {{ 'delivery_notes.totals.as_saved' | translate: { currency: options()?.currency } }}
+        </p>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    @if (editable() && form()) {
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="busy()"
+        (click)="save()"
+        data-testid="delivery-note-save"
+      >
+        {{ 'delivery_notes.actions.save' | translate }}
+      </button>
+    }
+    @if (canValidate()) {
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="busy()"
+        (click)="validate()"
+        data-testid="delivery-note-validate"
+      >
+        {{ 'delivery_notes.actions.validate' | translate }}
+      </button>
+    }
+    @if (canDeliver()) {
+      <mat-form-field subscriptSizing="dynamic">
+        <mat-label>{{ 'delivery_notes.actions.delivered_on' | translate }}</mat-label>
+        <input
+          matInput
+          type="date"
+          [value]="deliveredOn()"
+          (input)="onDeliveredOn($event)"
+          data-testid="delivery-note-delivered-on"
+        />
+      </mat-form-field>
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="busy()"
+        (click)="deliver()"
+        data-testid="delivery-note-deliver"
+      >
+        {{ 'delivery_notes.actions.deliver' | translate }}
+      </button>
+    }
+    @if (canCancel()) {
+      @if (confirmingCancel()) {
+        <button
+          mat-button
+          type="button"
+          (click)="confirmingCancel.set(false)"
+          data-testid="delivery-note-cancel-keep"
+        >
+          {{ 'delivery_notes.actions.keep' | translate }}
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="cancel()"
+          data-testid="delivery-note-cancel-confirm"
+        >
+          {{ 'delivery_notes.actions.confirm_cancel' | translate }}
+        </button>
+      } @else {
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="confirmingCancel.set(true)"
+          data-testid="delivery-note-cancel"
+        >
+          {{ 'delivery_notes.actions.cancel' | translate }}
+        </button>
+      }
+    }
+  </div>
+</section>

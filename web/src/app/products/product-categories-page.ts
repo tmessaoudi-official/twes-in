@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   inject,
+  linkedSignal,
   OnInit,
   signal,
 } from '@angular/core';
@@ -14,8 +15,8 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
-import { buildFormGroup } from '../shared/form/form-builder';
-import type { FormValues } from '../shared/form/form-types';
+import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { DataList, DataListRowActions } from '../shared/list/data-list';
 import { ArticleDefaults } from './article-defaults';
 import {
@@ -67,11 +68,27 @@ export class ProductCategoriesPage implements OnInit {
       editing === null || editing === 'new' ? null : editing,
     );
   });
-  protected readonly form = computed(() => {
-    const editing = this.editing();
-    return editing === null
-      ? null
-      : buildFormGroup(this.descriptor(), categoryValues(editing === 'new' ? null : editing));
+  /**
+   * The form of the category being edited. The categories arriving or changing while it is open (a slow first read, a
+   * reload after a save) change the parents offered and rebuild the form over what was already typed, never over the
+   * category's own values; opening another category starts from that one.
+   */
+  protected readonly form = linkedSignal<
+    { editing: ProductCategoryRow | 'new' | null; descriptor: FormDescriptor },
+    DescriptorFormGroup | null
+  >({
+    source: () => ({ editing: this.editing(), descriptor: this.descriptor() }),
+    computation: ({ editing, descriptor }, previous) => {
+      if (editing === null) return null;
+      const typed =
+        previous?.value && previous.source.editing === editing
+          ? previous.value.getRawValue()
+          : null;
+      return buildFormGroup(
+        descriptor,
+        typed ?? categoryValues(editing === 'new' ? null : editing),
+      );
+    },
   });
 
   /** The subject of the defaults panel: the category being edited, once it exists. */
