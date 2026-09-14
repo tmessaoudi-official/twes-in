@@ -151,6 +151,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   run in `zend_lazy_object_init` (CI's release PHP does not assert, so only the local gate shows it). 2026-09-13.
 - A `FormGroup` built in a `computed` over facade signals is rebuilt by any reload that returns equal data as new
   objects, discarding what was typed (2026-09-14: revising a product right after creating it saved the old price and
-  said "saved"). Key the form on the record's id and the descriptor's content, and read its inputs `untracked`.
+  said "saved"). Key the form on the record's id and the descriptor's content, and read its inputs `untracked`. A list
+  read after the form opened does the same; a `linkedSignal` over what is edited rebuilds over the typed values.
 - A PUT body that echoes a read row with its `id` answers 400 ("Cannot find object to populate"). An e2e cleanup that
   never checks its `fetch` status hides that, and leaks rows into the shared database: throw on `!response.ok`.
+- Playwright's `page.request` does not send the session cookie (`Secure`, `SameSite=Strict`) to the local http stack, so
+  it answers 401: fetch an API file from inside the page (`page.evaluate`) instead (2026-09-14, the delivery note PDF).
