@@ -122,9 +122,13 @@ jobs:
         working-directory: web
       - if: failure()
         run: docker compose logs --no-color
+      # WHY: the dot reporter CI uses writes no HTML report, so web/playwright-report alone uploaded nothing and a
+      # failure left no evidence (run 34797116869). test-results holds each failure's trace and error context.
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report
-          path: web/playwright-report
+          path: |
+            web/playwright-report
+            web/test-results
           retention-days: 7
