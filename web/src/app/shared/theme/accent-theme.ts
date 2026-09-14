@@ -6,6 +6,7 @@ import {
   Hct,
   hexFromArgb,
   SchemeFidelity,
+  TonalPalette,
 } from '@material/material-color-utilities';
 
 /**
@@ -119,4 +120,37 @@ export function applyColourTokens(
 function roleArgb(scheme: DynamicScheme, role: SystemColourRole): number {
   const getter = role.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
   return (scheme as unknown as Record<string, number>)[getter];
+}
+
+/** The tones a status badge takes: `accent` follows the company's accent, the others keep their own hue. */
+export const STATUS_TONES = ['accent', 'green', 'amber', 'red', 'neutral'] as const;
+export type StatusTone = (typeof STATUS_TONES)[number];
+export type StatusTokens = Record<`--twes-status-${StatusTone}-${'bg' | 'fg' | 'dot'}`, string>;
+
+/** Hue and chroma of the tones that do not follow the accent, as the design canvas computed them. */
+const FIXED_TONES: Record<Exclude<StatusTone, 'accent'>, readonly [number, number]> = {
+  green: [150, 40],
+  amber: [70, 45],
+  red: [25, 60],
+  neutral: [75, 4],
+};
+
+/**
+ * Each status tone's badge colours in one scheme: a soft tone behind, a strong one for the label and the dot, far
+ * enough apart in lightness that the label reads on its badge whatever the hue ("quiet ledger": colour marks status).
+ */
+export function statusTokens(accent: string, scheme: ColourScheme): StatusTokens {
+  assertAccentColour(accent);
+  const source = Hct.fromInt(argbFromHex(accent.toLowerCase()));
+  const dark = scheme === 'dark';
+  const tokens: Record<string, string> = {};
+  for (const tone of STATUS_TONES) {
+    const [hue, chroma] = tone === 'accent' ? [source.hue, source.chroma] : FIXED_TONES[tone];
+    const strong = TonalPalette.fromHueAndChroma(hue, chroma);
+    const soft = TonalPalette.fromHueAndChroma(hue, Math.min(chroma, 18));
+    tokens[`--twes-status-${tone}-bg`] = hexFromArgb(soft.tone(dark ? 22 : 94)).toLowerCase();
+    tokens[`--twes-status-${tone}-fg`] = hexFromArgb(strong.tone(dark ? 88 : 30)).toLowerCase();
+    tokens[`--twes-status-${tone}-dot`] = hexFromArgb(strong.tone(dark ? 70 : 50)).toLowerCase();
+  }
+  return tokens as StatusTokens;
 }

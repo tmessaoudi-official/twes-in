@@ -4,6 +4,8 @@ import {
   applyColourTokens,
   colourTokens,
   InvalidAccentColour,
+  STATUS_TONES,
+  statusTokens,
   SYSTEM_COLOUR_ROLES,
 } from './accent-theme';
 
@@ -76,6 +78,39 @@ describe('colourTokens', () => {
     for (const bad of ['blue', '#12345', '1f6feb', '#1f6febff', '']) {
       expect(() => colourTokens(bad, 'light')).toThrow(InvalidAccentColour);
       expect(() => colourTokens(bad, 'light')).toThrow(`"${bad}"`);
+    }
+  });
+});
+
+describe('statusTokens', () => {
+  it('computes the status tones the design canvas shows, the accent tone from the accent', () => {
+    const light = statusTokens('#1f6feb', 'light');
+    const dark = statusTokens('#1f6feb', 'dark');
+    const tone = (tokens: Record<string, string>, name: string) =>
+      ['bg', 'fg', 'dot'].map((part) => tokens[`--twes-status-${name}-${part}`]);
+
+    expect(tone(light, 'green')).toEqual(['#ddf4d9', '#135224', '#488450']);
+    expect(tone(light, 'amber')).toEqual(['#ffead7', '#653e00', '#a66a0b']);
+    expect(tone(light, 'neutral')).toEqual(['#f6ece4', '#4b4640', '#7d766f']);
+    expect(tone(dark, 'red')).toEqual(['#4b2d29', '#ffd3cd', '#ff897d']);
+    expect(tone(light, 'accent')).toEqual(['#e9edff', '#004299', '#2471ed']);
+    expect(tone(dark, 'accent')).toEqual(['#2c3449', '#d1dcff', '#84aaff']);
+    expect(tone(statusTokens('#d93025', 'light'), 'accent')).not.toEqual(tone(light, 'accent'));
+    expect(tone(statusTokens('#d93025', 'light'), 'green')).toEqual(tone(light, 'green'));
+  });
+
+  it('keeps a status label readable on its badge in both schemes, whatever the accent', () => {
+    for (const accent of ['#1f6feb', '#ffd400', '#0b7a3b', '#d93025', '#000000']) {
+      for (const scheme of ['light', 'dark'] as const) {
+        const tokens = statusTokens(accent, scheme);
+        expect(Object.keys(tokens)).toHaveLength(STATUS_TONES.length * 3);
+        for (const tone of STATUS_TONES) {
+          expect(
+            contrast(tokens[`--twes-status-${tone}-fg`], tokens[`--twes-status-${tone}-bg`]),
+            `${accent} ${scheme} ${tone}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
     }
   });
 });

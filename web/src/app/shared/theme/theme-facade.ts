@@ -8,6 +8,7 @@ import {
   assertAccentColour,
   type ColourScheme,
   colourTokens,
+  statusTokens,
 } from './accent-theme';
 
 export { DEFAULT_ACCENT, type Density } from '../settings/settings-registry';
@@ -29,7 +30,10 @@ export class ThemeFacade {
   constructor() {
     effect(() => {
       const scheme = this.scheme();
-      applyColourTokens(this.root, colourTokens(this.accent(), scheme));
+      applyColourTokens(this.root, {
+        ...colourTokens(this.accent(), scheme),
+        ...statusTokens(this.accent(), scheme),
+      });
       this.root.classList.toggle('theme-dark', scheme === 'dark');
       this.root.classList.toggle('density-compact', this.density() === 'compact');
     });

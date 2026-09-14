@@ -7,12 +7,15 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { StatusTone } from '../shared/theme/accent-theme';
+import { StatusBadge } from '../shared/ui/status-badge';
 import {
   DELIVERY_NOTES_LIST,
   type DeliveryNoteListRow,
   deliveryNoteListRows,
 } from './delivery-note-forms';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
+import { DELIVERY_NOTE_STATUS_TONES, type DeliveryNoteStatus } from './delivery-notes-types';
 
 /** The delivery notes of the company being worked in. */
 @Component({
@@ -26,6 +29,7 @@ import { DeliveryNotesFacade } from './delivery-notes-facade';
     DataList,
     DataListCell,
     DataListRowActions,
+    StatusBadge,
   ],
   templateUrl: './delivery-notes-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -35,6 +39,9 @@ export class DeliveryNotesPage implements OnInit {
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = DELIVERY_NOTES_LIST;
+  /** A list cell's row is untyped, so the tone is looked up through a typed function. */
+  protected readonly toneOf = (status: DeliveryNoteStatus): StatusTone =>
+    DELIVERY_NOTE_STATUS_TONES[status];
   protected readonly rows = computed(() =>
     deliveryNoteListRows(this.facade.notes(), this.facade.options()),
   );

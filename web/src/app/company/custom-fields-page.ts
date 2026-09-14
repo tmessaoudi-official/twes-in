@@ -21,6 +21,7 @@ import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { StatusBadge } from '../shared/ui/status-badge';
 import {
   DEFINITIONS_LIST,
   definitionForm,
@@ -40,6 +41,7 @@ import { CustomFieldsFacade } from './custom-fields-facade';
     DataListCell,
     DataListRowActions,
     DescriptorForm,
+    StatusBadge,
   ],
   templateUrl: './custom-fields-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

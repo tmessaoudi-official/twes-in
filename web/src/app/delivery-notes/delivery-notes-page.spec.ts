@@ -132,6 +132,9 @@ describe('DeliveryNotesPage', () => {
     const draft = q('delivery-note-n2')?.textContent ?? '';
     expect(draft).toContain('Brouillon');
     expect(draft).toContain('Carthage');
+    const tone = (testId: string) =>
+      q(testId)?.querySelector('app-status-badge')?.getAttribute('data-tone');
+    expect([tone('delivery-note-n1'), tone('delivery-note-n2')]).toEqual(['accent', 'neutral']);
   });
 
   it('offers a new note to a writer only', async () => {

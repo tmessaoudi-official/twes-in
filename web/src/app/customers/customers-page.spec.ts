@@ -119,6 +119,9 @@ describe('CustomersPage', () => {
     expect(row).toContain('Grossistes');
     expect(row).toContain('Particulier');
     expect(row).toContain('Inactif');
+    expect(
+      q('customer-CLI-0001')?.querySelector('app-status-badge')?.getAttribute('data-tone'),
+    ).toBe('neutral');
     expect(q('customer-open-CLI-0001')?.getAttribute('href')).toBe('/customers/k1');
   });
 

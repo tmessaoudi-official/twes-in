@@ -6,13 +6,22 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { StatusBadge } from '../shared/ui/status-badge';
 import { type CustomerListRow, customerListRows, customersList } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
 
 /** The customers of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
   selector: 'app-customers-page',
-  imports: [MatButtonModule, RouterLink, TranslatePipe, DataList, DataListCell, DataListRowActions],
+  imports: [
+    MatButtonModule,
+    RouterLink,
+    TranslatePipe,
+    DataList,
+    DataListCell,
+    DataListRowActions,
+    StatusBadge,
+  ],
   templateUrl: './customers-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

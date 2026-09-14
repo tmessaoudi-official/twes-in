@@ -9,8 +9,13 @@
         }
       </h1>
       @if (current(); as note) {
-        <p class="text-sm opacity-80" data-testid="delivery-note-status">
-          {{ 'delivery_notes.statuses.' + note.status | translate }}
+        <p
+          class="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant"
+          data-testid="delivery-note-status"
+        >
+          <app-status-badge [tone]="tones[note.status]">
+            {{ 'delivery_notes.statuses.' + note.status | translate }}
+          </app-status-badge>
           @if (note.issueDate) {
             · {{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate | day }}
           }

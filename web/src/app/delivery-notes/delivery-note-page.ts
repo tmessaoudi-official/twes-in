@@ -20,6 +20,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
+import { StatusBadge } from '../shared/ui/status-badge';
 import {
   deliveryNoteForm,
   deliveryNoteInput,
@@ -28,7 +29,11 @@ import {
 } from './delivery-note-forms';
 import { DeliveryNoteLines } from './delivery-note-lines';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
-import type { DeliveryNoteInput, TaxFamily } from './delivery-notes-types';
+import {
+  DELIVERY_NOTE_STATUS_TONES,
+  type DeliveryNoteInput,
+  type TaxFamily,
+} from './delivery-notes-types';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -47,6 +52,7 @@ import type { DeliveryNoteInput, TaxFamily } from './delivery-notes-types';
     DayPipe,
     DescriptorForm,
     DeliveryNoteLines,
+    StatusBadge,
   ],
   templateUrl: './delivery-note-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -61,6 +67,7 @@ export class DeliveryNotePage {
 
   protected readonly id = computed(() => this.deliveryNoteId() ?? null);
   protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
+  protected readonly tones = DELIVERY_NOTE_STATUS_TONES;
   protected readonly options = this.facade.options;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

@@ -36,7 +36,9 @@
       {{ 'products.kinds.' + row.kind | translate }}
     </ng-template>
     <ng-template appDataListCell="status" let-row>
-      {{ 'products.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+      <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+        {{ 'products.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+      </app-status-badge>
     </ng-template>
     <ng-template appDataListCell="price" let-row>
       {{ row.unitPriceNet | amount: scale() }}

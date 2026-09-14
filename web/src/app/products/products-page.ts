@@ -7,6 +7,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { StatusBadge } from '../shared/ui/status-badge';
 import { type ProductListRow, productListRows, productsList } from './product-forms';
 import { ProductsFacade } from './products-facade';
 
@@ -21,6 +22,7 @@ import { ProductsFacade } from './products-facade';
     DataList,
     DataListCell,
     DataListRowActions,
+    StatusBadge,
   ],
   templateUrl: './products-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { StatusTone } from '../shared/theme/accent-theme';
+
 /** Why the API refused, as the delivery notes screens translate it. */
 export type DeliveryNotesError = 'network' | 'not_found' | 'conflict' | 'invalid';
 
@@ -11,6 +13,18 @@ export const DELIVERY_NOTE_STATUSES: readonly DeliveryNoteStatus[] = [
   'cancelled',
   'invoiced',
 ];
+
+/**
+ * A status's colour on its badge: a draft is quiet, a validated note under way, a delivered one waits to be invoiced,
+ * an invoiced one is done and a cancelled one withdrawn.
+ */
+export const DELIVERY_NOTE_STATUS_TONES: Readonly<Record<DeliveryNoteStatus, StatusTone>> = {
+  draft: 'neutral',
+  validated: 'accent',
+  delivered: 'amber',
+  invoiced: 'green',
+  cancelled: 'red',
+};
 
 export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';
 

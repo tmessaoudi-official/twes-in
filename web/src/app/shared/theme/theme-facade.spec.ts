@@ -4,7 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../../auth/auth-facade';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
-import { colourTokens, InvalidAccentColour } from './accent-theme';
+import { colourTokens, InvalidAccentColour, statusTokens } from './accent-theme';
 import { DEFAULT_ACCENT, ThemeFacade } from './theme-facade';
 
 describe('ThemeFacade', () => {
@@ -38,6 +38,17 @@ describe('ThemeFacade', () => {
     start();
     expect(primary()).toBe(colourTokens(DEFAULT_ACCENT, 'light')['--mat-sys-primary']);
     expect(root.classList.contains('theme-dark')).toBe(false);
+  });
+
+  it('applies the status tones of the scheme beside the system colours', () => {
+    const facade = start();
+    const green = () => root.style.getPropertyValue('--twes-status-green-fg');
+    expect(green()).toBe(statusTokens(DEFAULT_ACCENT, 'light')['--twes-status-green-fg']);
+
+    facade.setScheme('dark');
+    TestBed.tick();
+
+    expect(green()).toBe(statusTokens(DEFAULT_ACCENT, 'dark')['--twes-status-green-fg']);
   });
 
   it('switches to the dark scheme: the class for color-scheme and the dark tokens', () => {

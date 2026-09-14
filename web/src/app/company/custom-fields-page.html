@@ -99,7 +99,9 @@
       {{ (row.required ? 'company.custom_fields.yes' : 'company.custom_fields.no') | translate }}
     </ng-template>
     <ng-template appDataListCell="status" let-row>
-      {{ 'company.custom_fields.statuses.' + (row.isActive ? 'active' : 'retired') | translate }}
+      <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+        {{ 'company.custom_fields.statuses.' + (row.isActive ? 'active' : 'retired') | translate }}
+      </app-status-badge>
     </ng-template>
     @if (mayManage()) {
       <ng-template appDataListRowActions let-row>

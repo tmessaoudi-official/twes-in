@@ -36,7 +36,9 @@
       {{ 'customers.kinds.' + row.kind | translate }}
     </ng-template>
     <ng-template appDataListCell="status" let-row>
-      {{ 'customers.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+      <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+        {{ 'customers.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+      </app-status-badge>
     </ng-template>
     <ng-template appDataListRowActions let-row>
       <a
