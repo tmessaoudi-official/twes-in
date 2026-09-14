@@ -78,12 +78,28 @@ export class CustomerPage {
       ? null
       : customerForm(options, this.facade.groups(), this.facade.customFields());
   });
-  protected readonly form = computed(() => {
+  /**
+   * What the form is of: the customer and the fields shown. Reading the customer again yields new objects with the
+   * same content, and must not rebuild the form over what is being typed; another customer or other fields must.
+   */
+  private readonly formKey = computed(() => {
     const descriptor = this.descriptor();
-    const options = this.facade.options();
     const current = this.current();
-    if (descriptor === null || options === null || current === undefined) return null;
-    return buildFormGroup(descriptor, customerValues(current, options, this.facade.customFields()));
+    if (descriptor === null || current === undefined) return null;
+    return `${current?.id ?? 'new'}|${JSON.stringify(descriptor)}`;
+  });
+  protected readonly form = computed(() => {
+    if (this.formKey() === null) return null;
+    return untracked(() => {
+      const descriptor = this.descriptor();
+      const options = this.facade.options();
+      const current = this.current();
+      if (descriptor === null || options === null || current === undefined) return null;
+      return buildFormGroup(
+        descriptor,
+        customerValues(current, options, this.facade.customFields()),
+      );
+    });
   });
 
   /** The subject of the defaults panel: the customer once it exists. */

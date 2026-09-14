@@ -146,3 +146,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - An entity's property default must be a literal, never another class's constant (`= Other::X`): the class then needs
   its defaults resolved at runtime, Doctrine's lazy ghosts skip that, and the local debug PHP aborts the whole PHPUnit
   run in `zend_lazy_object_init` (CI's release PHP does not assert, so only the local gate shows it). 2026-09-13.
+- A `FormGroup` built in a `computed` over facade signals is rebuilt by any reload that returns equal data as new
+  objects, discarding what was typed (2026-09-14: revising a product right after creating it saved the old price and
+  said "saved"). Key the form on the record's id and the descriptor's content, and read its inputs `untracked`.
+- A PUT body that echoes a read row with its `id` answers 400 ("Cannot find object to populate"). An e2e cleanup that
+  never checks its `fetch` status hides that, and leaks rows into the shared database: throw on `!response.ok`.

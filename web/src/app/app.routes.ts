@@ -4,6 +4,7 @@ import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 import { anonymousGuard, authGuard } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
+import { PRODUCTS_MODULE } from './products/products-nav';
 import { moduleGuard } from './shell/module-guard';
 
 export const routes: Routes = [
@@ -50,6 +51,28 @@ export const routes: Routes = [
         path: 'customers/:customerId',
         canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
+      },
+      {
+        path: 'products',
+        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        loadComponent: () => import('./products/products-page').then((m) => m.ProductsPage),
+      },
+      {
+        // Before ':productId', which would otherwise take "new" and "categories" for identifiers.
+        path: 'products/new',
+        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
+      },
+      {
+        path: 'products/categories',
+        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        loadComponent: () =>
+          import('./products/product-categories-page').then((m) => m.ProductCategoriesPage),
+      },
+      {
+        path: 'products/:productId',
+        canActivate: [moduleGuard(PRODUCTS_MODULE)],
+        loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
       },
       {
         path: 'members',

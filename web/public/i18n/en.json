@@ -186,7 +186,7 @@
     },
     "custom_fields": {
       "title": "Custom fields",
-      "intro": "Fields your company adds to its customers. A field's key and type are fixed once declared; retire a field rather than delete it, and the values customers hold for it stay.",
+      "intro": "The fields your company adds to its customers and products. A field's key and type are fixed once declared; retire a field rather than delete it, and the values are kept.",
       "add": "Add a field",
       "section": "Field",
       "save": "Save",
@@ -218,13 +218,18 @@
         "required": "Required",
         "sortOrder": "Position",
         "isActive": "Active",
-        "isActive_hint": "A retired field is no longer shown; the values customers hold for it stay."
+        "isActive_hint": "A retired field is no longer shown; the values are kept."
       },
       "errors": {
         "network": "The server could not be reached. Try again.",
         "not_found": "This field no longer exists.",
         "key_taken": "Another field already has this key.",
         "invalid": "The field was refused. Check its label, choices and position."
+      },
+      "entity_label": "Kind of record",
+      "entities": {
+        "customer": "Customers",
+        "product": "Products"
       }
     },
     "modules": {
@@ -242,7 +247,8 @@
     }
   },
   "modules": {
-    "customers": "Customers"
+    "customers": "Customers",
+    "products": "Products"
   },
   "nav": {
     "home": "Home",
@@ -261,7 +267,9 @@
     "numbering": "Document numbering",
     "customers": "Customers",
     "customer_groups": "Customer groups",
-    "custom_fields": "Custom fields"
+    "custom_fields": "Custom fields",
+    "products": "Products",
+    "product_categories": "Product categories"
   },
   "shell": {
     "skip": "Skip to content",
@@ -627,6 +635,91 @@
         "invalid": "The values were refused. Check the limits shown.",
         "not_found": "Not found.",
         "network": "The server could not be reached."
+      }
+    }
+  },
+  "products": {
+    "title": "Products",
+    "add": "New product",
+    "open": "Open {{name}}",
+    "open_short": "Open",
+    "none": "No products yet.",
+    "no_company": "Choose a company first.",
+    "new_title": "New product",
+    "back": "Back to products",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "saved": "The product was saved.",
+    "read_only": "You can read products but not change them.",
+    "kinds": {
+      "goods": "Goods",
+      "service": "Service"
+    },
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "sections": {
+      "identity": "Identity",
+      "pricing": "Unit and prices",
+      "taxes": "Default taxes",
+      "description": "Description",
+      "custom": "Custom fields"
+    },
+    "fields": {
+      "reference": "Reference",
+      "name": "Name",
+      "kind": "Kind",
+      "categoryId": "Category",
+      "isActive": "Active",
+      "barcode": "Barcode",
+      "unitId": "Unit",
+      "unit": "Unit",
+      "unitPriceNet": "Net unit price",
+      "price": "Net unit price",
+      "costPrice": "Cost price",
+      "description": "Description"
+    },
+    "form": {
+      "no_category": "No category",
+      "reference_hint": "Letters, digits and . _ / -, up to 32 characters, unique in the company.",
+      "active_hint": "An inactive product stays on its documents but is no longer offered for new ones.",
+      "barcode_hint": "Up to 64 characters without spaces, such as an EAN-13.",
+      "price_hint": "In the company's currency, with up to four decimals.",
+      "cost_hint": "What one unit costs you; never printed.",
+      "description_hint": "Offered as the text of a new document line."
+    },
+    "errors": {
+      "network": "The server could not be reached.",
+      "not_found": "Product not found.",
+      "reference_taken": "Another product already has this reference.",
+      "name_taken": "Another category already has this name.",
+      "in_use": "The category still holds subcategories or products.",
+      "invalid": "The change was refused. Check the unit, the prices and the taxes."
+    },
+    "categories": {
+      "title": "Product categories",
+      "intro": "Categories file products in a tree. A category that still holds subcategories or products cannot be deleted.",
+      "add": "Add a category",
+      "delete": "Delete",
+      "delete_named": "Delete {{name}}",
+      "saved": "The category was saved.",
+      "none": "No category yet.",
+      "section": "Category",
+      "top_level": "At the top",
+      "fields": {
+        "name": "Name",
+        "parentId": "Under",
+        "productCount": "Products",
+        "childCount": "Subcategories"
+      },
+      "errors": {
+        "network": "The server could not be reached.",
+        "not_found": "Category not found.",
+        "name_taken": "Another category already has this name.",
+        "in_use": "This category still holds subcategories or products. Move them first.",
+        "invalid": "The category was refused. A category cannot sit under itself or one of its subcategories."
       }
     }
   }

@@ -111,8 +111,28 @@ describe('CustomFieldsPage', () => {
     await settle();
   });
 
+  it('switches to the fields of products and declares one for them', async () => {
+    expect(q('custom-fields-entity-customer')?.getAttribute('aria-pressed')).toBe('true');
+    q('custom-fields-entity-product')!.click();
+    await settle();
+    expect(facade.load).toHaveBeenLastCalledWith('c1', 'product');
+    expect(q('custom-fields-entity-product')?.getAttribute('aria-pressed')).toBe('true');
+
+    q('custom-field-add')!.click();
+    await settle();
+    type('field-key', 'warranty');
+    type('field-label', 'Garantie');
+    q('custom-field-save')!.click();
+    await vi.waitFor(() =>
+      expect(facade.create).toHaveBeenCalledWith(
+        'c1',
+        expect.objectContaining({ entity: 'product', key: 'warranty' }),
+      ),
+    );
+  });
+
   it("loads and shows the company's custom fields", () => {
-    expect(facade.load).toHaveBeenCalledWith('c1');
+    expect(facade.load).toHaveBeenCalledWith('c1', 'customer');
     expect(q('custom-field-sector')?.textContent).toContain('Secteur');
     expect(q('custom-field-sector')?.textContent).toContain('Actif');
   });

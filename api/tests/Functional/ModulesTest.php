@@ -50,9 +50,10 @@ final class ModulesTest extends ApiTestCase
         self::assertSame([
             ['key' => 'customers', 'labelKey' => 'modules.customers', 'dependencies' => [], 'permissions' => ['customer.read', 'customer.write'], 'enabled' => true],
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],
+            ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write'], 'enabled' => true],
         ], $this->jsonList());
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'fixture_ledger'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'fixture_ledger', 'products'], $this->arrayAt($this->json(), 'modules'));
     }
 
     public function testSwitchingAModuleOffHidesItsResourcesAndKeepsItsData(): void
@@ -94,7 +95,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/customer-groups', ['name' => 'Export', 'description' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame([], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['products'], $this->arrayAt($this->json(), 'modules'), 'products needs no customers and stays on');
         self::assertSame(['module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
 
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => true]);
@@ -179,12 +180,42 @@ final class ModulesTest extends ApiTestCase
         foreach ([CustomerResource::class, CustomerGroupResource::class, ContactResource::class, CustomerOptionsResource::class] as $resource) {
             self::assertSame('customers', $ownership->ownerOf($resource), $resource);
         }
+        foreach ([
+            \App\Module\Products\Infrastructure\ApiPlatform\ProductResource::class,
+            \App\Module\Products\Infrastructure\ApiPlatform\ProductCategoryResource::class,
+            \App\Module\Products\Infrastructure\ApiPlatform\ProductOptionsResource::class,
+        ] as $resource) {
+            self::assertSame('products', $ownership->ownerOf($resource), $resource);
+        }
         self::assertNull($ownership->ownerOf(CustomFieldResource::class), 'the core belongs to no module');
         $directories = glob(\dirname(__DIR__, 2).'/src/Module/*', \GLOB_ONLYDIR) ?: [];
         self::assertNotEmpty($directories);
         foreach ($directories as $directory) {
             self::assertNotNull($ownership->ownerOf('App\\Module\\'.basename($directory).'\\Infrastructure\\ApiPlatform\\SomeResource'), basename($directory).' declares its module');
         }
+    }
+
+    public function testSwitchingProductsOffHidesProductsCategoriesAndTheirOptions(): void
+    {
+        $this->signedIn(['company.read', 'company.settings', 'product.read', 'product.write']);
+        $this->postJson($this->companyPath().'/product-categories', ['name' => 'Matériel']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->sendJson('PUT', $this->path('products'), ['enabled' => false]);
+        self::assertResponseIsSuccessful();
+
+        foreach (['/products', '/product-categories', '/product-options'] as $hidden) {
+            $this->getJson($this->companyPath().$hidden);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, $hidden);
+        }
+        $this->postJson($this->companyPath().'/product-categories', ['name' => 'Logiciel']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson('/api/auth/me');
+        self::assertSame(['customers', 'fixture_ledger'], $this->arrayAt($this->json(), 'modules'));
+
+        $this->sendJson('PUT', $this->path('products'), ['enabled' => true]);
+        $this->getJson($this->companyPath().'/product-categories');
+        self::assertSame(['Matériel'], array_column($this->jsonList(), 'name'), 'the data was kept');
     }
 
     private function companyPath(): string

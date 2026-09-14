@@ -76,7 +76,9 @@ final readonly class ManageCustomFields
     public function revise(Company $company, Uuid $id, CustomFieldInput $input, ?Uuid $actorUserId): CustomFieldDefinition
     {
         $field = $this->fields->ofIdInCompany($id, $company->getId()) ?? throw new CustomFieldNotFound();
-        // Customers are the only kind of record with fields yet: the second one brings the entity into this comparison.
+        if ($input->entity !== $field->getEntity()) {
+            throw new InvalidCustomFieldDefinition('entity', "A field's kind of record never changes: declare another field.");
+        }
         if ($input->key !== $field->getKey()) {
             throw new InvalidCustomFieldDefinition('key', "A field's key never changes: declare another field.");
         }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/** The kinds of record a company may add fields to; products and documents join with their goals. */
-export type CustomFieldEntity = 'customer';
+/** The kinds of record a company may add fields to; documents join with their goals. */
+export type CustomFieldEntity = 'customer' | 'product';
+export const CUSTOM_FIELD_ENTITIES: readonly CustomFieldEntity[] = ['customer', 'product'];
 
 export type CustomFieldType = 'text' | 'number' | 'date' | 'bool' | 'choice';
 export const CUSTOM_FIELD_TYPES: readonly CustomFieldType[] = [

@@ -21,8 +21,6 @@ final class InMemoryCustomFieldDefinitions implements CustomFieldDefinitionRepos
 
     public function ofCompanyAndEntity(Uuid $companyId, CustomFieldEntity $entity): array
     {
-        // One kind of record today; the comparison is what keeps products' and documents' fields apart when they come.
-        // @phpstan-ignore identical.alwaysTrue
         $mine = array_values(array_filter($this->fields, static fn (CustomFieldDefinition $f) => $f->getCompany()->getId()->equals($companyId) && $f->getEntity() === $entity));
         usort($mine, static fn (CustomFieldDefinition $a, CustomFieldDefinition $b) => [$a->getSortOrder(), $a->getKey()] <=> [$b->getSortOrder(), $b->getKey()]);
 

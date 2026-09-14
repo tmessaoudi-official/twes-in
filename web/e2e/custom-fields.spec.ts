@@ -37,12 +37,15 @@ async function retire(page: Page, key: string, number: string): Promise<void> {
         number: string;
       }[];
       const customer = customers.find((row) => row.number === customerNumber);
+      // The write shapes have no id: a body naming one is refused.
       if (customer) {
-        await fetch(`${base}/customers/${customer.id}`, {
+        const { id, ...values } = customer;
+        const revised = await fetch(`${base}/customers/${id}`, {
           method: 'PUT',
           headers,
-          body: JSON.stringify({ ...customer, isActive: false }),
+          body: JSON.stringify({ ...values, isActive: false }),
         });
+        if (!revised.ok) throw new Error(`retiring ${customerNumber} answered ${revised.status}`);
       }
       const fields = (await (await fetch(`${base}/custom-fields?entity=customer`)).json()) as {
         id: string;
@@ -50,11 +53,13 @@ async function retire(page: Page, key: string, number: string): Promise<void> {
       }[];
       const field = fields.find((row) => row.key === fieldKey);
       if (field) {
-        await fetch(`${base}/custom-fields/${field.id}`, {
+        const { id, ...declaration } = field;
+        const retired = await fetch(`${base}/custom-fields/${id}`, {
           method: 'PUT',
           headers,
-          body: JSON.stringify({ ...field, isActive: false }),
+          body: JSON.stringify({ ...declaration, isActive: false }),
         });
+        if (!retired.ok) throw new Error(`retiring ${fieldKey} answered ${retired.status}`);
       }
     },
     [CSRF, key, number] as const,

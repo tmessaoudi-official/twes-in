@@ -5,6 +5,7 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { CustomFieldCustomFieldRead, CustomFieldCustomFieldWrite } from '../../api/types.gen';
 import {
+  CUSTOM_FIELD_ENTITIES,
   CUSTOM_FIELD_TYPES,
   type CustomFieldDefinition,
   type CustomFieldEntity,
@@ -95,7 +96,7 @@ const path = (companyId: string): string =>
 function toDefinition(raw: CustomFieldCustomFieldRead): CustomFieldDefinition {
   return {
     id: raw.id ?? '',
-    entity: 'customer',
+    entity: CUSTOM_FIELD_ENTITIES.find((entity) => entity === raw.entity) ?? 'customer',
     key: raw.key ?? '',
     label: raw.label ?? '',
     type: CUSTOM_FIELD_TYPES.find((type) => type === raw.type) ?? 'text',

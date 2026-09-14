@@ -87,8 +87,9 @@ describe('CustomerPage', () => {
   const error = signal<CustomersError | null>(null);
   const customer = signal<CustomerRow | null>(null);
   const customFields = signal<readonly CustomFieldDefinition[]>([]);
+  const optionsSignal = signal<CustomerOptions | null>(options);
   const facade = {
-    options: signal<CustomerOptions | null>(options).asReadonly(),
+    options: optionsSignal.asReadonly(),
     groups: signal<readonly CustomerGroupRow[]>([]).asReadonly(),
     customer: customer.asReadonly(),
     contacts: signal<readonly ContactRow[]>([leila]).asReadonly(),
@@ -145,6 +146,7 @@ describe('CustomerPage', () => {
     error.set(null);
     customer.set(null);
     customFields.set([]);
+    optionsSignal.set(options);
     facade.loadCustomer.mockReset().mockResolvedValue(undefined);
     facade.createCustomer.mockReset().mockResolvedValue({ ...carthage, id: 'k9' });
     facade.reviseCustomer.mockReset().mockResolvedValue(carthage);
@@ -284,6 +286,37 @@ describe('CustomerPage', () => {
     q('contact-remove-p1')!.click();
     await settle();
     await vi.waitFor(() => expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1'));
+  });
+
+  it('keeps what was typed when the customer and its options are read again', async () => {
+    customer.set(carthage);
+    await open('k1');
+    type('field-email', 'compta@carthage.tn');
+
+    // What reading a customer again gives: the same customer and options, as new objects.
+    customer.set({ ...carthage });
+    optionsSignal.set({ ...options, regimes: [...options.regimes], taxes: [...options.taxes] });
+    await settle();
+    q('customer-save')!.click();
+    await settle();
+
+    expect(facade.reviseCustomer).toHaveBeenCalledWith(
+      'c1',
+      'k1',
+      expect.objectContaining({ email: 'compta@carthage.tn' }),
+    );
+  });
+
+  it('shows another customer when another one is opened', async () => {
+    customer.set(carthage);
+    await open('k1');
+    type('field-email', 'compta@carthage.tn');
+
+    customer.set({ ...carthage, id: 'k2', number: 'CLI-0002', email: 'contact@hannibal.tn' });
+    fixture.componentRef.setInput('customerId', 'k2');
+    await settle();
+
+    expect((q('field-email') as HTMLInputElement).value).toBe('contact@hannibal.tn');
   });
 
   it('says why the API refused', async () => {

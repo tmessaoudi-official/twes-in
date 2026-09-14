@@ -31,12 +31,22 @@ describe('CustomFieldsFacade', () => {
     facade = TestBed.inject(CustomFieldsFacade);
   });
 
-  it("reads the company's fields for customers", async () => {
-    await facade.load('c1');
+  it("reads the company's fields for one kind of record", async () => {
+    await facade.load('c1', 'customer');
 
     expect(api.list).toHaveBeenCalledWith('c1', 'customer');
     expect(facade.fields()).toEqual([sector]);
     expect(facade.error()).toBeNull();
+
+    await facade.load('c1', 'product');
+    expect(api.list).toHaveBeenLastCalledWith('c1', 'product');
+  });
+
+  it('reads again the fields of the kind of record a change was for', async () => {
+    api.create.mockResolvedValueOnce(sector);
+    await facade.create('c1', { ...input, entity: 'product' });
+
+    expect(api.list).toHaveBeenCalledWith('c1', 'product');
   });
 
   it('reads the fields again after a change, and says why the API refused one', async () => {

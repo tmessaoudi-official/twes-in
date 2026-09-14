@@ -11,6 +11,35 @@
   </div>
   <p class="max-w-prose">{{ 'company.custom_fields.intro' | translate }}</p>
 
+  <div
+    class="flex flex-wrap gap-2"
+    role="group"
+    [attr.aria-label]="'company.custom_fields.entity_label' | translate"
+  >
+    @for (each of entities; track each) {
+      @if (entity() === each) {
+        <button
+          mat-flat-button
+          type="button"
+          aria-pressed="true"
+          [attr.data-testid]="'custom-fields-entity-' + each"
+        >
+          {{ 'company.custom_fields.entities.' + each | translate }}
+        </button>
+      } @else {
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="show(each)"
+          aria-pressed="false"
+          [attr.data-testid]="'custom-fields-entity-' + each"
+        >
+          {{ 'company.custom_fields.entities.' + each | translate }}
+        </button>
+      }
+    }
+  </div>
+
   @if (!company()) {
     <p data-testid="custom-fields-no-company">
       {{ 'company.custom_fields.no_company' | translate }}

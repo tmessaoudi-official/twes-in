@@ -12,7 +12,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
+import {
+  CUSTOM_FIELD_ENTITIES,
+  type CustomFieldDefinition,
+  type CustomFieldEntity,
+} from '../shared/custom-fields/custom-fields-types';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
@@ -52,6 +56,9 @@ export class CustomFieldsPage implements OnInit {
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly rowTestId = (row: CustomFieldDefinition): string => `custom-field-${row.key}`;
 
+  protected readonly entities = CUSTOM_FIELD_ENTITIES;
+  /** The kind of record whose fields are shown and declared. */
+  protected readonly entity = signal<CustomFieldEntity>('customer');
   protected readonly editing = signal<CustomFieldDefinition | 'new' | null>(null);
   protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
@@ -70,7 +77,18 @@ export class CustomFieldsPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
-      await this.facade.load(companyId);
+      await this.facade.load(companyId, this.entity());
+    }
+  }
+
+  protected async show(entity: CustomFieldEntity): Promise<void> {
+    const companyId = this.company()?.id;
+    this.editing.set(null);
+    this.saved.set(false);
+    this.facade.clearError();
+    this.entity.set(entity);
+    if (companyId) {
+      await this.facade.load(companyId, entity);
     }
   }
 
@@ -92,7 +110,7 @@ export class CustomFieldsPage implements OnInit {
     const editing = this.editing();
     if (!companyId || editing === null || this.busy()) return;
     const declared = editing === 'new' ? null : editing;
-    const input = definitionInput(values, declared);
+    const input = definitionInput(values, declared, this.entity());
     const accepted =
       declared === null
         ? await this.facade.create(companyId, input)

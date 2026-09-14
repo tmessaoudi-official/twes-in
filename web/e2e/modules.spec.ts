@@ -37,11 +37,13 @@ async function switchCustomersOn(page: Page): Promise<void> {
   await page.evaluate(
     async ([csrf]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      await fetch(`/api/companies/${me.company.id}/modules/customers`, {
+      const switched = await fetch(`/api/companies/${me.company.id}/modules/customers`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', 'csrf-token': csrf },
         body: JSON.stringify({ enabled: true }),
       });
+      // Left off, every later customers scenario would fail for a reason that is not its own.
+      if (!switched.ok) throw new Error(`switching customers on answered ${switched.status}`);
     },
     [CSRF] as const,
   );

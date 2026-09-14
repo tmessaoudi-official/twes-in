@@ -80,18 +80,32 @@ final class ManageCustomFieldsTest extends TestCase
         self::assertSame([ManageCustomFields::REVISED, ['fields' => ['label', 'isActive']]], [$this->audit->entries[1]->action, $this->audit->entries[1]->changes]);
     }
 
-    public function testAKeyOrATypeNeverChanges(): void
+    public function testAKeyATypeOrAKindOfRecordNeverChanges(): void
     {
         $field = $this->manage->create($this->company, self::sector(), null);
 
-        foreach ([self::sector(key: 'activity'), self::sector(type: CustomFieldType::Text, choices: [])] as $input) {
+        foreach ([
+            'key' => self::sector(key: 'activity'),
+            'type' => self::sector(type: CustomFieldType::Text, choices: []),
+            'entity' => self::sector(entity: CustomFieldEntity::Product),
+        ] as $expected => $input) {
             try {
                 $this->manage->revise($this->company, $field->getId(), $input, null);
-                self::fail('The field was changed.');
+                self::fail('The field was changed: '.$expected);
             } catch (InvalidCustomFieldDefinition $refused) {
-                self::assertContains($refused->field, ['key', 'type']);
+                self::assertSame($expected, $refused->field);
             }
         }
+        self::assertSame(CustomFieldEntity::Customer, $field->getEntity());
+    }
+
+    public function testCustomersAndProductsEachHaveTheirOwnFields(): void
+    {
+        $this->manage->create($this->company, self::sector(), null);
+        $products = $this->manage->create($this->company, self::sector(entity: CustomFieldEntity::Product), null);
+
+        self::assertSame([$products], $this->manage->list($this->company, CustomFieldEntity::Product));
+        self::assertCount(1, $this->manage->list($this->company, CustomFieldEntity::Customer));
     }
 
     public function testAnotherCompanysFieldIsNotFound(): void
@@ -115,8 +129,8 @@ final class ManageCustomFieldsTest extends TestCase
     }
 
     /** @param list<string> $choices */
-    private static function sector(string $key = 'sector', string $label = 'Secteur', CustomFieldType $type = CustomFieldType::Choice, array $choices = ['retail', 'wholesale'], bool $isActive = true): CustomFieldInput
+    private static function sector(string $key = 'sector', string $label = 'Secteur', CustomFieldType $type = CustomFieldType::Choice, array $choices = ['retail', 'wholesale'], bool $isActive = true, CustomFieldEntity $entity = CustomFieldEntity::Customer): CustomFieldInput
     {
-        return new CustomFieldInput(CustomFieldEntity::Customer, $key, $label, $type, true, $choices, 0, $isActive);
+        return new CustomFieldInput($entity, $key, $label, $type, true, $choices, 0, $isActive);
     }
 }

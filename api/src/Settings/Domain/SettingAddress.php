@@ -45,6 +45,12 @@ final readonly class SettingAddress
         return new self(SettingLevel::CustomerGroup, $company->getId()->toRfc4122().'/'.$groupId->toRfc4122(), $company);
     }
 
+    /** A product category's default, for the products filed in it; the company leads the id, as for a group. */
+    public static function productCategory(Company $company, Uuid $categoryId): self
+    {
+        return new self(SettingLevel::ProductCategory, $company->getId()->toRfc4122().'/'.$categoryId->toRfc4122(), $company);
+    }
+
     public static function customer(Company $company, Uuid $customerId): self
     {
         return new self(SettingLevel::Customer, $company->getId()->toRfc4122().'/'.$customerId->toRfc4122(), $company);

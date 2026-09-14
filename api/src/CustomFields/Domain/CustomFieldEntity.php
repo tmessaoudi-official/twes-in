@@ -9,8 +9,9 @@ declare(strict_types=1);
 
 namespace App\CustomFields\Domain;
 
-/** The kinds of record a company may add fields to; products and documents join with their goals. */
+/** The kinds of record a company may add fields to; documents join with their goals. */
 enum CustomFieldEntity: string
 {
     case Customer = 'customer';
+    case Product = 'product';
 }

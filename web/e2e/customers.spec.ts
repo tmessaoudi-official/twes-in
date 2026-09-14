@@ -38,11 +38,14 @@ async function retire(page: Page, number: string, groupName: string): Promise<vo
       }[];
       const customer = customers.find((row) => row.number === customerNumber);
       if (customer) {
-        await fetch(`${base}/customers/${customer.id}`, {
+        // The write shape has no id: a body naming one is refused, and the group could then not be deleted.
+        const { id, ...fields } = customer;
+        const revised = await fetch(`${base}/customers/${id}`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-          body: JSON.stringify({ ...customer, customerGroupId: null, isActive: false }),
+          body: JSON.stringify({ ...fields, customerGroupId: null, isActive: false }),
         });
+        if (!revised.ok) throw new Error(`retiring ${customerNumber} answered ${revised.status}`);
       }
       const groups = (await (await fetch(`${base}/customer-groups`)).json()) as {
         id: string;
@@ -50,10 +53,11 @@ async function retire(page: Page, number: string, groupName: string): Promise<vo
       }[];
       const found = groups.find((row) => row.name === group);
       if (found) {
-        await fetch(`${base}/customer-groups/${found.id}`, {
+        const deleted = await fetch(`${base}/customer-groups/${found.id}`, {
           method: 'DELETE',
           headers: { 'csrf-token': csrf },
         });
+        if (!deleted.ok) throw new Error(`deleting ${group} answered ${deleted.status}`);
       }
     },
     [CSRF, number, groupName] as const,

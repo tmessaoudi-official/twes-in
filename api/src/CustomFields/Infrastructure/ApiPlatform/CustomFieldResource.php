@@ -36,7 +36,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             normalizationContext: ['groups' => [self::READ]],
             openapi: new OpenApiOperation(parameters: [
-                new Parameter('entity', 'query', 'The kind of record the fields belong to.', false, schema: ['type' => 'string', 'enum' => ['customer'], 'default' => 'customer']),
+                new Parameter('entity', 'query', 'The kind of record the fields belong to.', false, schema: ['type' => 'string', 'enum' => ['customer', 'product'], 'default' => 'customer']),
             ]),
         ),
         new Post(
@@ -69,7 +69,7 @@ final class CustomFieldResource
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['customer']])]
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => ['customer', 'product']])]
     #[Assert\Choice(callback: [self::class, 'entities'], groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $entity = 'customer';

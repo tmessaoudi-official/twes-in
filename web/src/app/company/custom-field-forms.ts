@@ -3,6 +3,7 @@
 import {
   CUSTOM_FIELD_TYPES,
   type CustomFieldDefinition,
+  type CustomFieldEntity,
   type CustomFieldInput,
   type CustomFieldType,
 } from '../shared/custom-fields/custom-fields-types';
@@ -137,11 +138,12 @@ export function definitionFormValues(definition: CustomFieldDefinition | null): 
 export function definitionInput(
   values: FormValues,
   definition: CustomFieldDefinition | null,
+  entity: CustomFieldEntity = 'customer',
 ): CustomFieldInput {
   const type: CustomFieldType =
     definition?.type ?? CUSTOM_FIELD_TYPES.find((each) => each === values['type']) ?? 'text';
   return {
-    entity: definition?.entity ?? 'customer',
+    entity: definition?.entity ?? entity,
     key: definition?.key ?? String(values['key'] ?? '').trim(),
     label: String(values['label'] ?? '').trim(),
     type,

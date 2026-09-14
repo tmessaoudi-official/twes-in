@@ -8,10 +8,11 @@ import {
 } from '../shared/custom-fields/custom-fields-api';
 import type {
   CustomFieldDefinition,
+  CustomFieldEntity,
   CustomFieldInput,
 } from '../shared/custom-fields/custom-fields-types';
 
-/** The custom fields the company being worked in adds to its customers, retired ones included. */
+/** The custom fields the company being worked in adds to one kind of record, retired ones included. */
 @Injectable({ providedIn: 'root' })
 export class CustomFieldsFacade {
   private readonly api = inject(CustomFieldsApi);
@@ -23,10 +24,10 @@ export class CustomFieldsFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  async load(companyId: string): Promise<void> {
+  async load(companyId: string, entity: CustomFieldEntity): Promise<void> {
     this.busySignal.set(true);
     try {
-      this.fieldsSignal.set(await this.api.list(companyId, 'customer'));
+      this.fieldsSignal.set(await this.api.list(companyId, entity));
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -35,25 +36,29 @@ export class CustomFieldsFacade {
     }
   }
 
-  /** True when the API accepted it; the fields are read again. */
+  /** True when the API accepted it; the fields of its kind of record are read again. */
   async create(companyId: string, input: CustomFieldInput): Promise<boolean> {
-    return this.write(companyId, () => this.api.create(companyId, input));
+    return this.write(companyId, input.entity, () => this.api.create(companyId, input));
   }
 
   async revise(companyId: string, id: string, input: CustomFieldInput): Promise<boolean> {
-    return this.write(companyId, () => this.api.revise(companyId, id, input));
+    return this.write(companyId, input.entity, () => this.api.revise(companyId, id, input));
   }
 
   clearError(): void {
     this.errorSignal.set(null);
   }
 
-  private async write(companyId: string, call: () => Promise<unknown>): Promise<boolean> {
+  private async write(
+    companyId: string,
+    entity: CustomFieldEntity,
+    call: () => Promise<unknown>,
+  ): Promise<boolean> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {
       await call();
-      this.fieldsSignal.set(await this.api.list(companyId, 'customer'));
+      this.fieldsSignal.set(await this.api.list(companyId, entity));
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
