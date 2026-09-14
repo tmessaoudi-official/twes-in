@@ -31,7 +31,7 @@ final class OpenApiTest extends KernelTestCase
         self::assertNotNull($paths->getPath('/api/auth/me')?->getGet());
         self::assertNotNull($paths->getPath('/api/health')?->getGet());
 
-        self::assertSame(['user', 'company', 'permissions', 'mfa'], $this->required($schemas['Me']));
+        self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules'], $this->required($schemas['Me']));
         self::assertSame(['enrolled', 'required'], $this->required($schemas['MeMfa']));
         self::assertSame(['id', 'email', 'displayName', 'locale', 'isPlatformOperator'], $this->required($schemas['MeUser']));
         self::assertSame(['id', 'name', 'countryCode', 'currency', 'locale', 'timezone', 'status', 'role'], $this->required($schemas['MeCompany']));

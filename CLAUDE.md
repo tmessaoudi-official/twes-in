@@ -79,7 +79,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
   centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
-  `DeclaresSettings` service, the three chains, `ReadSetting`), `Shared` (docs/SPEC.md § 3
+  `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
+  `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources), `CustomFields`,
+  and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
   "Architecture style"). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
   repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),

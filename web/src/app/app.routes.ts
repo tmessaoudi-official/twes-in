@@ -3,6 +3,8 @@
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 import { anonymousGuard, authGuard } from './auth/auth-guard';
+import { CUSTOMERS_MODULE } from './customers/customers-nav';
+import { moduleGuard } from './shell/module-guard';
 
 export const routes: Routes = [
   {
@@ -29,20 +31,24 @@ export const routes: Routes = [
       },
       {
         path: 'customers',
+        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customers-page').then((m) => m.CustomersPage),
       },
       {
         // Before ':customerId', which would otherwise take "new" and "groups" for identifiers.
         path: 'customers/new',
+        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
         path: 'customers/groups',
+        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () =>
           import('./customers/customer-groups-page').then((m) => m.CustomerGroupsPage),
       },
       {
         path: 'customers/:customerId',
+        canActivate: [moduleGuard(CUSTOMERS_MODULE)],
         loadComponent: () => import('./customers/customer-page').then((m) => m.CustomerPage),
       },
       {
@@ -78,6 +84,10 @@ export const routes: Routes = [
       {
         path: 'company/custom-fields',
         loadComponent: () => import('./company/custom-fields-page').then((m) => m.CustomFieldsPage),
+      },
+      {
+        path: 'company/modules',
+        loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
       },
       {
         // The G2b design checkpoint's fixture screens. canMatch keeps them out of a production build's router

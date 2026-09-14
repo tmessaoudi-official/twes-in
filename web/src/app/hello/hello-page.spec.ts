@@ -50,6 +50,7 @@ const owner: SignedInState = {
     role: 'owner',
   },
   permissions: ['*'],
+  modules: ['customers'],
 };
 
 describe('HelloPage', () => {

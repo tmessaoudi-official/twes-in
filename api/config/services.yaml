@@ -51,6 +51,9 @@ services:
         # Every module's settings reach the one catalogue (docs/SPEC.md § 3 Settings).
         App\Settings\Application\DeclaresSettings:
             tags: ['app.settings.declarations']
+        # Every module's manifest reaches the one catalogue (docs/SPEC.md § 3 Modules).
+        App\ModuleRegistry\Application\DeclaresModule:
+            tags: ['app.modules.declarations']
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -64,6 +67,12 @@ services:
     App\Settings\Application\SettingCatalog:
         arguments:
             $declarations: !tagged_iterator app.settings.declarations
+    App\ModuleRegistry\Application\ModuleCatalog:
+        arguments:
+            $declarations: !tagged_iterator app.modules.declarations
+    App\ModuleRegistry\Infrastructure\ApiPlatform\ModuleOwnership:
+        arguments:
+            $declarations: !tagged_iterator app.modules.declarations
     App\Identity\Application\Login\RecordFailedLogin:
         arguments:
             $lockAfterFailures: '%app.auth.lock_after_failures%'
@@ -120,6 +129,9 @@ when@test:
         # its port with a fake that returns each of the three answers.
         app.password.breach_check_enabled: false
     services:
+        # A module only the tests declare, needing customers: the dependency refusals go through the API with it.
+        App\Tests\Support\Module\LedgerFixtureModule:
+            tags: ['app.modules.declarations']
         # FrameworkBundle hardcodes MOCKSESSID for the mock file session storage; the functional tests assert the
         # cookie the browser will actually see, name included, so the test factory carries the real name.
         session.storage.factory.mock_file:

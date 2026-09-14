@@ -51,6 +51,8 @@ export interface SignedInState {
   company: WorkingCompany | null;
   /** permission strings held in the working company; ["*"] for an owner */
   permissions: string[];
+  /** keys of the modules the working company has on */
+  modules: string[];
 }
 
 export type LoginOutcome = { ok: true; state: SignedInState } | { ok: false; error: LoginError };

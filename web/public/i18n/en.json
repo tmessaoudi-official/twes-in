@@ -226,10 +226,27 @@
         "key_taken": "Another field already has this key.",
         "invalid": "The field was refused. Check its label, choices and position."
       }
+    },
+    "modules": {
+      "title": "Modules",
+      "intro": "The modules your company uses. A module switched off leaves the menu and its pages no longer open; its data is kept and comes back when you switch it on again.",
+      "depends_on": "Needs:",
+      "no_company": "Choose a company to manage its modules.",
+      "errors": {
+        "network": "The server could not be reached. Try again.",
+        "not_found": "This module does not exist.",
+        "needs_modules": "Switch these on first:",
+        "still_needed": "These modules still need it:",
+        "invalid": "The change was refused."
+      }
     }
+  },
+  "modules": {
+    "customers": "Customers"
   },
   "nav": {
     "home": "Home",
+    "modules": "Modules",
     "members": "Members",
     "sections": {
       "main": "General",

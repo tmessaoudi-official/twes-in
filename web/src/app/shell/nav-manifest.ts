@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { CUSTOMERS_NAV } from '../customers/customers-nav';
+
 /**
- * What the sidebar offers. G2a declares the entry shape and the core entries; from G5 the module registry supplies
- * entries of the same shape for each enabled module, and the shell does not change (docs/SPEC.md § 3 Modules).
+ * What the sidebar offers: the core entries, then each module's entries, declared by the module's web feature beside
+ * its routes and shown while the working company has the module on (docs/SPEC.md § 3 Modules).
  */
 export type NavSection = 'main' | 'admin';
 
@@ -17,6 +19,8 @@ export interface NavEntry {
   readonly permission?: string;
   /** Present in development builds only, such as the design checkpoint screens. */
   readonly devOnly?: boolean;
+  /** The module the entry belongs to: shown only while the working company has that module on. */
+  readonly module?: string;
 }
 
 export interface NavGroup {
@@ -28,22 +32,6 @@ const SECTION_ORDER: readonly NavSection[] = ['main', 'admin'];
 
 export const CORE_NAV: readonly NavEntry[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
-  {
-    key: 'customers',
-    labelKey: 'nav.customers',
-    icon: 'contacts',
-    route: '/customers',
-    section: 'main',
-    permission: 'customer.read',
-  },
-  {
-    key: 'customer-groups',
-    labelKey: 'nav.customer_groups',
-    icon: 'folder_shared',
-    route: '/customers/groups',
-    section: 'main',
-    permission: 'customer.read',
-  },
   {
     key: 'members',
     labelKey: 'nav.members',
@@ -108,6 +96,14 @@ export const CORE_NAV: readonly NavEntry[] = [
     section: 'admin',
     permission: 'company.settings',
   },
+  {
+    key: 'modules',
+    labelKey: 'nav.modules',
+    icon: 'extension',
+    route: '/company/modules',
+    section: 'admin',
+    permission: 'company.settings',
+  },
   // The design checkpoint's fixture screens: a development build only, never shipped.
   {
     key: 'design',
@@ -119,16 +115,24 @@ export const CORE_NAV: readonly NavEntry[] = [
   },
 ];
 
-/** The entries this user may see in this build. Hiding is a courtesy; the API refuses what the voter refuses. */
+/** Every module's entries, each declared by its module's web feature. */
+export const MODULE_NAV: readonly NavEntry[] = [...CUSTOMERS_NAV];
+
+/**
+ * The entries this user may see in this build, in the working company. Hiding is a courtesy: the API refuses what
+ * the voter refuses, and answers 404 for a module the company has off.
+ */
 export function visibleEntries(
   entries: readonly NavEntry[],
   can: (permission: string) => boolean,
   developmentBuild: boolean,
+  enabled: (module: string) => boolean,
 ): readonly NavEntry[] {
   return entries.filter(
     (entry) =>
       (entry.devOnly !== true || developmentBuild) &&
-      (entry.permission === undefined || can(entry.permission)),
+      (entry.permission === undefined || can(entry.permission)) &&
+      (entry.module === undefined || enabled(entry.module)),
   );
 }
 

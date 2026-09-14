@@ -64,6 +64,7 @@ function toState(me: Me): SignedInState {
             role: me.company.role,
           },
     permissions: [...me.permissions],
+    modules: [...me.modules],
   };
 }
 

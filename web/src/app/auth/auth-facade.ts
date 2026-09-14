@@ -55,6 +55,11 @@ export class AuthFacade {
     return permissions.includes('*') || permissions.includes(permission);
   }
 
+  /** Whether the working company has the module on: its navigation and pages are offered only then. */
+  hasModule(module: string): boolean {
+    return this.stateSignal()?.modules.includes(module) ?? false;
+  }
+
   private signedIn(state: SignedInState): void {
     this.stateSignal.set(state);
     this.statusSignal.set('authenticated');

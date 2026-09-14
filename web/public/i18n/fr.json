@@ -226,10 +226,27 @@
         "key_taken": "Un autre champ porte déjà cette clé.",
         "invalid": "Le champ a été refusé. Vérifiez son libellé, ses choix et sa position."
       }
+    },
+    "modules": {
+      "title": "Modules",
+      "intro": "Les modules que votre société utilise. Un module désactivé quitte le menu et ses pages ne s'ouvrent plus ; ses données sont conservées et reviennent quand vous le réactivez.",
+      "depends_on": "Nécessite :",
+      "no_company": "Choisissez une société pour gérer ses modules.",
+      "errors": {
+        "network": "Le serveur est injoignable. Réessayez.",
+        "not_found": "Ce module n'existe pas.",
+        "needs_modules": "Activez d'abord :",
+        "still_needed": "Ces modules en ont encore besoin :",
+        "invalid": "Le changement a été refusé."
+      }
     }
+  },
+  "modules": {
+    "customers": "Clients"
   },
   "nav": {
     "home": "Accueil",
+    "modules": "Modules",
     "members": "Membres",
     "sections": {
       "main": "Général",

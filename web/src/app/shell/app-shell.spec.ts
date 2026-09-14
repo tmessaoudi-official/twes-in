@@ -25,6 +25,7 @@ class StaticLoader implements TranslateLoader {
       nav: {
         home: 'Accueil',
         members: 'Membres',
+        customers: 'Clients',
         design: 'Design',
         sections: { main: 'Général', admin: 'Administration' },
       },
@@ -59,15 +60,18 @@ const owner: SignedInState = {
     role: 'owner',
   },
   permissions: ['*'],
+  modules: ['customers'],
 };
 
 describe('AppShell', () => {
   const me = signal<SignedInState | null>(owner);
   const permissions = signal<readonly string[]>(['user.read']);
+  const modules = signal<readonly string[]>(['customers']);
   const auth = {
     me: me.asReadonly(),
     logout: vi.fn(async () => undefined),
     hasPermission: (permission: string) => permissions().includes(permission),
+    hasModule: (module: string) => modules().includes(module),
   };
   const companies = {
     companies: signal([]).asReadonly(),
@@ -88,6 +92,7 @@ describe('AppShell', () => {
   beforeEach(async () => {
     me.set(owner);
     permissions.set(['user.read']);
+    modules.set(['customers']);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [AppShell],
@@ -161,6 +166,19 @@ describe('AppShell', () => {
     const { byTestId } = await render();
     expect(byTestId('nav-home')).not.toBeNull();
     expect(byTestId('nav-members')).toBeNull();
+  });
+
+  it("shows a module's entries only while the company has the module on", async () => {
+    permissions.set(['customer.read']);
+    const { fixture, byTestId } = await render();
+    expect(byTestId('nav-customers')?.textContent).toContain('Clients');
+
+    modules.set([]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('nav-customers')).toBeNull();
+    expect(byTestId('nav-home')).not.toBeNull();
   });
 
   it('names the signed-in user on the account menu', async () => {

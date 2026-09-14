@@ -24,6 +24,7 @@ const owner: SignedInState = {
     role: 'owner',
   },
   permissions: ['*'],
+  modules: ['customers'],
 };
 
 describe('AuthFacade', () => {
@@ -88,5 +89,13 @@ describe('AuthFacade', () => {
     api.me.mockResolvedValue(owner);
     await facade.load();
     expect(facade.hasPermission('anything.at_all')).toBe(true);
+  });
+
+  it('hasModule() names only the modules the working company has on', async () => {
+    expect(facade.hasModule('customers')).toBe(false);
+    api.me.mockResolvedValue(owner);
+    await facade.load();
+    expect(facade.hasModule('customers')).toBe(true);
+    expect(facade.hasModule('products')).toBe(false);
   });
 });

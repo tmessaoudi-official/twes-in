@@ -1,0 +1,56 @@
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="modules-title">
+    {{ 'company.modules.title' | translate }}
+  </h1>
+  <p class="max-w-prose">{{ 'company.modules.intro' | translate }}</p>
+
+  @if (!company()) {
+    <p data-testid="modules-no-company">{{ 'company.modules.no_company' | translate }}</p>
+  }
+
+  @if (error(); as code) {
+    <div role="alert" data-testid="modules-error" class="text-error">
+      <p>{{ 'company.modules.errors.' + code | translate }}</p>
+      @if (blockers().length > 0) {
+        <ul class="list-disc pl-6">
+          @for (blocker of blockers(); track blocker.key) {
+            <li>{{ blocker.labelKey | translate }}</li>
+          }
+        </ul>
+      }
+    </div>
+  }
+
+  <ul class="flex flex-col gap-2" data-testid="modules-list">
+    @for (row of modules(); track row.key) {
+      <li
+        class="flex flex-wrap items-center justify-between gap-4 py-2"
+        [attr.data-testid]="'module-' + row.key"
+      >
+        <div class="flex flex-col">
+          <span class="font-medium" [id]="'module-label-' + row.key">
+            {{ row.labelKey | translate }}
+          </span>
+          @if (row.dependencies.length > 0) {
+            <span class="text-sm" [attr.data-testid]="'module-' + row.key + '-needs'">
+              {{ 'company.modules.depends_on' | translate }}
+              @for (dependency of row.dependencies; track dependency; let last = $last) {
+                <span>{{ labelOf(dependency) | translate }}</span>
+                @if (!last) {
+                  <span>, </span>
+                }
+              }
+            </span>
+          }
+        </div>
+        <mat-slide-toggle
+          [checked]="row.enabled"
+          [disabled]="!mayManage()"
+          [aria-labelledby]="'module-label-' + row.key"
+          (change)="toggle(row, $event)"
+          [attr.data-testid]="'module-toggle-' + row.key"
+        ></mat-slide-toggle>
+      </li>
+    }
+  </ul>
+</section>

@@ -25,7 +25,7 @@ import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { LanguageFacade, SUPPORTED_LANGUAGES } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
-import { CORE_NAV, navSections, visibleEntries } from './nav-manifest';
+import { CORE_NAV, MODULE_NAV, navSections, visibleEntries } from './nav-manifest';
 
 /** Below this width the navigation becomes a drawer over the page instead of a column beside it. */
 const HANDSET = '(max-width: 959.98px)';
@@ -82,7 +82,12 @@ export class AppShell {
   );
   protected readonly sections = computed(() =>
     navSections(
-      visibleEntries(CORE_NAV, (permission) => this.auth.hasPermission(permission), isDevMode()),
+      visibleEntries(
+        [...CORE_NAV, ...MODULE_NAV],
+        (permission) => this.auth.hasPermission(permission),
+        isDevMode(),
+        (module) => this.auth.hasModule(module),
+      ),
     ),
   );
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));

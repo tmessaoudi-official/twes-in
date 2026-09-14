@@ -50,6 +50,7 @@ const me: Me = {
   company: null,
   permissions: [],
   mfa: { enrolled: false, required: false },
+  modules: [],
 };
 
 describe('LoginPage', () => {

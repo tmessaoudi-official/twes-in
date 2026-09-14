@@ -46,6 +46,7 @@ const inCompany = (id: string): SignedInState =>
       role: 'owner',
     },
     permissions: ['*'],
+    modules: ['customers'],
   }) satisfies SignedInState;
 
 const unreadEntry: InboxEntry = {
