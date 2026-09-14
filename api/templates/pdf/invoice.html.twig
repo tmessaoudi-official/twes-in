@@ -1,0 +1,172 @@
+{# An invoice or a credit note on A4, rendered by Gotenberg's Chromium. Everything it says comes from translations/pdf and
+   fiscal in the document's language; amounts go through the decimal filter, never through a float. Nothing here runs a
+   script. An issued document prints what issuing kept: its figures, its customer, its mentions and its texts. #}
+{%- set t = 'pdf' -%}
+{%- set dateFormat = 'format.date'|trans({}, t, locale) -%}
+{%- set title = (invoice.type.value == 'credit_note' ? 'invoice.credit_note_title' : 'invoice.title')|trans({}, t, locale) -%}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+  <meta charset="utf-8">
+  <title>{{ title }} {{ invoice.number }}</title>
+  <style>
+    @page { size: A4; margin: 0; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "Inter", "Helvetica Neue", Arial, sans-serif; font-size: 10pt; line-height: 1.4; color: #1f2328; }
+    .parties { display: flex; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .party { width: 48%; }
+    .party h2 { margin: 0 0 4px; font-size: 9pt; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #57606a; }
+    .company-name { font-size: 14pt; font-weight: 700; }
+    .title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #1f2328; padding-bottom: 6px; margin-bottom: 12px; }
+    .title h1 { margin: 0; font-size: 18pt; }
+    .facts { display: grid; grid-template-columns: repeat(4, auto); gap: 4px 16px; margin-bottom: 16px; }
+    .facts dt { font-size: 8pt; color: #57606a; }
+    .facts dd { margin: 0; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; }
+    th { text-align: left; font-size: 8pt; text-transform: uppercase; letter-spacing: .04em; color: #57606a; border-bottom: 1px solid #d0d7de; padding: 4px; }
+    td { padding: 6px 4px; border-bottom: 1px solid #eaeef2; vertical-align: top; }
+    .number { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .totals { margin-left: auto; margin-top: 12px; width: 55%; }
+    .totals td { border: 0; padding: 2px 4px; }
+    .totals .grand td { border-top: 2px solid #1f2328; font-weight: 700; padding-top: 6px; }
+    .totals .due td { font-size: 12pt; font-weight: 700; padding-top: 6px; }
+    .mention, .remarks { margin-top: 16px; }
+    .footer { margin-top: 32px; padding-top: 8px; border-top: 1px solid #d0d7de; font-size: 8pt; color: #57606a; text-align: center; }
+    .muted { color: #57606a; }
+    .watermark { position: fixed; top: 45%; left: 0; right: 0; text-align: center; transform: rotate(-30deg); font-size: 96pt; font-weight: 800; color: rgba(207, 34, 46, .14); letter-spacing: .1em; }
+  </style>
+</head>
+<body>
+  {%- if page.watermark %}
+    <div class="watermark">{{ ('watermark.' ~ page.watermark)|trans({}, t, locale) }}</div>
+  {%- endif %}
+
+  <div class="parties">
+    <div class="party">
+      <div class="company-name">{{ profile.legalName ?? company.name }}{% if profile.legalForm %} {{ profile.legalForm }}{% endif %}</div>
+      {%- for key, value in profile.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- if establishment.addressLine1 %}
+        <div>{{ establishment.addressLine1 }}</div>
+        {% if establishment.addressLine2 %}<div>{{ establishment.addressLine2 }}</div>{% endif %}
+        <div>{{ establishment.postalCode }} {{ establishment.city }}</div>
+      {%- elseif profile.addressLine1 %}
+        <div>{{ profile.addressLine1 }}</div>
+        {% if profile.addressLine2 %}<div>{{ profile.addressLine2 }}</div>{% endif %}
+        <div>{{ profile.postalCode }} {{ profile.city }}</div>
+      {%- endif %}
+      {%- set phone = establishment.phone ?? profile.phone -%}
+      {%- set email = establishment.email ?? profile.email -%}
+      {% if phone %}<div>{{ 'company.phone'|trans({}, t, locale) }} {{ phone }}</div>{% endif %}
+      {% if email %}<div>{{ 'company.email'|trans({}, t, locale) }} {{ email }}</div>{% endif %}
+    </div>
+    <div class="party">
+      <h2>{{ 'invoice.customer'|trans({}, t, locale) }}</h2>
+      <div class="company-name">{{ customer.legalName ?? customer.name }}</div>
+      {% if customer.legalName %}<div>{{ customer.name }}</div>{% endif %}
+      <div class="muted">{{ 'invoice.customer_number'|trans({}, t, locale) }} {{ customer.number }}</div>
+      {%- for key, value in customer.identifiers %}
+        <div>{{ ('fiscal.identifier.' ~ country ~ '.' ~ key)|trans({}, 'fiscal', locale) }} : {{ value }}</div>
+      {%- endfor %}
+      {%- set billing = customer.billingAddress %}
+      {% if billing.line1 %}<div>{{ billing.line1 }}</div>{% endif %}
+      {% if billing.line2 %}<div>{{ billing.line2 }}</div>{% endif %}
+      {% if billing.postalCode or billing.city %}<div>{{ billing.postalCode }} {{ billing.city }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="title">
+    <h1>{{ title }}</h1>
+    {% if invoice.number %}<strong>{{ invoice.number }}</strong>{% endif %}
+  </div>
+  {%- if invoice.correctedInvoice and invoice.correctedInvoice.number %}
+    <p class="muted">{{ 'invoice.corrects'|trans({'%number%': invoice.correctedInvoice.number}, t, locale) }}</p>
+  {%- endif %}
+
+  <dl class="facts">
+    {% if invoice.issueDate %}<div><dt>{{ 'invoice.issue_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.issueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if invoice.dueDate %}<div><dt>{{ 'invoice.due_date'|trans({}, t, locale) }}</dt><dd>{{ invoice.dueDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if header.supplyDate %}<div><dt>{{ 'invoice.supply_date'|trans({}, t, locale) }}</dt><dd>{{ header.supplyDate|date(dateFormat, 'UTC') }}</dd></div>{% endif %}
+    {% if header.customerReference %}<div><dt>{{ 'invoice.customer_reference'|trans({}, t, locale) }}</dt><dd>{{ header.customerReference }}</dd></div>{% endif %}
+    {% if header.paymentTermsDays is not null %}<div><dt>{{ 'invoice.payment'|trans({}, t, locale) }}</dt><dd>{{ 'invoice.payment_terms'|trans({'%days%': header.paymentTermsDays}, t, locale) }}</dd></div>{% endif %}
+  </dl>
+
+  <table>
+    <thead>
+      <tr>
+        <th>{{ 'line.description'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.quantity'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.unit'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.unit_price'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.discount'|trans({}, t, locale) }}</th>
+        <th>{{ 'line.taxes'|trans({}, t, locale) }}</th>
+        <th class="number">{{ 'line.net'|trans({}, t, locale) }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      {%- for line in invoice.lines %}
+        <tr>
+          <td>{{ line.description|nl2br }}</td>
+          <td class="number">{{ line.quantity|decimal(line.unit.decimals, locale) }}</td>
+          <td>{{ line.unit.code }}</td>
+          <td class="number">{{ line.unitPriceNet|decimal(scale, locale) }}</td>
+          <td class="number">{% if line.discountRate %}{{ line.discountRate|decimal(0, locale) }} %{% endif %}</td>
+          <td>{{ line.taxes|map(tax => tax.code)|join(', ') }}</td>
+          <td class="number">{{ figures.lines[loop.index0].net|decimal(scale, locale) }}</td>
+        </tr>
+      {%- endfor %}
+    </tbody>
+  </table>
+
+  <table class="totals">
+    <tr><td>{{ 'totals.subtotal'|trans({}, t, locale) }}</td><td class="number">{{ figures.subtotalNet|decimal(scale, locale) }}</td></tr>
+    {%- if header.discountAmount %}
+      <tr><td>{{ 'totals.document_discount'|trans({}, t, locale) }}</td><td class="number">−{{ figures.documentDiscount|decimal(scale, locale) }}</td></tr>
+      <tr><td>{{ 'totals.total_net'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalNet|decimal(scale, locale) }}</td></tr>
+    {%- endif %}
+    {%- for tax in figures.taxes %}
+      <tr>
+        <td>{{ tax.code }} {{ tax.rate|decimal(0, locale) }} % <span class="muted">({{ tax.base|decimal(scale, locale) }})</span></td>
+        <td class="number">{{ tax.amount|decimal(scale, locale) }}</td>
+      </tr>
+    {%- endfor %}
+    <tr><td>{{ 'totals.total_tax'|trans({}, t, locale) }}</td><td class="number">{{ figures.totalTax|decimal(scale, locale) }}</td></tr>
+    {%- for charge in figures.fixedTaxes %}
+      <tr><td>{{ charge.code }}</td><td class="number">{{ charge.amount|decimal(scale, locale) }}</td></tr>
+    {%- endfor %}
+    <tr class="grand"><td>{{ 'totals.total'|trans({}, t, locale) }}</td><td class="number">{{ figures.total|decimal(scale, locale) }}</td></tr>
+    {%- for withholding in figures.withholdings %}
+      <tr>
+        <td>{{ 'totals.withheld'|trans({}, t, locale) }} {{ withholding.code }} <span class="muted">({{ withholding.base|decimal(scale, locale) }})</span></td>
+        <td class="number">−{{ withholding.amount|decimal(scale, locale) }}</td>
+      </tr>
+    {%- endfor %}
+    <tr class="due"><td>{{ 'totals.amount_due'|trans({}, t, locale) }}</td><td class="number">{{ figures.amountDue|decimal(scale, locale) }}</td></tr>
+  </table>
+  <p class="muted">{{ 'totals.currency'|trans({'%currency%': company.currency}, t, locale) }}</p>
+
+  {%- for key in page.mentionKeys %}
+    {%- set mention = key|trans({}, 'fiscal', locale) %}
+    {#- A mention still waiting for its parameters (a legal reference) is not printed half-written. #}
+    {%- if '%' not in mention %}
+      <p class="mention">{{ mention }}</p>
+    {%- endif %}
+  {%- endfor %}
+  {%- if page.latePenaltyText %}
+    <p class="mention">{{ page.latePenaltyText|nl2br }}</p>
+  {%- endif %}
+
+  {%- if header.notesPrinted or page.printedNotes %}
+    <div class="remarks">
+      <h2 class="muted" style="font-size: 9pt; margin: 0 0 4px;">{{ 'invoice.remarks'|trans({}, t, locale) }}</h2>
+      {% if header.notesPrinted %}<p style="margin: 0;">{{ header.notesPrinted|nl2br }}</p>{% endif %}
+      {% if page.printedNotes %}<p style="margin: 4px 0 0;">{{ page.printedNotes|nl2br }}</p>{% endif %}
+    </div>
+  {%- endif %}
+
+  {%- if page.footer %}
+    <div class="footer">{{ page.footer|nl2br }}</div>
+  {%- endif %}
+</body>
+</html>

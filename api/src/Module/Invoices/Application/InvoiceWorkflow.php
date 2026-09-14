@@ -11,8 +11,6 @@ namespace App\Module\Invoices\Application;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Fiscal\Application\Preset\FiscalPresets;
-use App\Module\Customers\Domain\Customer;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
@@ -44,7 +42,7 @@ final readonly class InvoiceWorkflow
         private AllocateNumber $numbers,
         private Transactions $transactions,
         private InvoiceTotals $totals,
-        private FiscalPresets $presets,
+        private InvoiceMentions $mentions,
         private ReadSetting $settings,
         private DomainEvents $events,
         private AuditTrail $audit,
@@ -81,7 +79,7 @@ final readonly class InvoiceWorkflow
                     $allocated->issueDate,
                     \is_int($terms) ? $terms : 0,
                     \is_string($language) ? $language : 'fr',
-                    $this->mentionKeys($company, $customer),
+                    $this->mentions->keys($company, $customer),
                     $profile->latePenaltyText,
                     $profile->invoiceFooterText,
                     $actorUserId,
@@ -97,22 +95,5 @@ final readonly class InvoiceWorkflow
         $this->events->publish(...$invoice->releaseEvents());
 
         return $invoice;
-    }
-
-    /**
-     * The customer's regime mention, the company VAT regime's mention and the preset's invoice mentions, each once.
-     *
-     * @return list<string>
-     */
-    private function mentionKeys(Company $company, Customer $customer): array
-    {
-        $preset = $this->presets->get($company->getFiscalPreset());
-        $vatRegime = $company->getProfile()->vatRegime;
-        $companyRegime = array_find($preset->companyVatRegimes, static fn ($regime): bool => $regime->code === $vatRegime);
-
-        return array_values(array_unique(array_filter(
-            [$customer->getTaxRegime()->getMentionKey(), $companyRegime?->mentionKey, ...$preset->invoiceMentions],
-            static fn (?string $key): bool => null !== $key,
-        )));
     }
 }

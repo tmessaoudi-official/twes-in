@@ -15,6 +15,7 @@ use App\Fiscal\Domain\TaxFamily;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
+use App\Module\Invoices\Application\InvoiceMentions;
 use App\Module\Invoices\Application\InvoiceNotFound;
 use App\Module\Invoices\Application\InvoiceTotals;
 use App\Module\Invoices\Application\InvoiceWorkflow;
@@ -89,7 +90,7 @@ final class InvoiceWorkflowTest extends TestCase
             new AllocateNumber($this->series, $this->transactions, $this->clock),
             $this->transactions,
             new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),
-            ShippedFiscalPresets::presets(),
+            new InvoiceMentions(ShippedFiscalPresets::presets()),
             new ReadSetting($resolve),
             $this->events,
             $this->audit,

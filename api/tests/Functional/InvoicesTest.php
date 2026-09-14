@@ -237,6 +237,48 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame(['draft', null, null, null], [$this->json()['status'], $this->json()['number'], $this->json()['dueDate'], $this->json()['customerSnapshot']]);
     }
 
+    public function testADraftPrintsOnRequestAndAnIssuedInvoicePrintsAsItWasIssued(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame('application/pdf', $response->headers->get('content-type'));
+        self::assertStringContainsString('invoice-'.$id.'.pdf', (string) $response->headers->get('content-disposition'));
+        $draft = (string) $response->getContent();
+        self::assertStringStartsWith('%PDF-', $draft);
+        self::assertStringContainsString('BROUILLON', $draft);
+        self::assertStringContainsString("1\u{a0}250,000", $draft);
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'a draft is never stored');
+
+        $this->postJson($this->path($id).'/issue', null);
+        self::assertResponseIsSuccessful();
+        $number = $this->stringAt($this->json(), 'number');
+        $stored = $this->em()->getConnection()->fetchAssociative('SELECT f.original_name, f.mime, f.sha256 FROM file f JOIN invoice i ON i.pdf_file_id = f.id WHERE i.id = ?', [$id]);
+        self::assertIsArray($stored, 'issuing stores the PDF as it was issued');
+        self::assertSame([$number.'.pdf', 'application/pdf'], [$stored['original_name'], $stored['mime']]);
+
+        $this->client->request('GET', $this->path($id).'/pdf');
+
+        self::assertResponseIsSuccessful();
+        $issued = (string) $this->client->getResponse()->getContent();
+        self::assertSame($stored['sha256'], hash('sha256', $issued), 'the download is the stored file');
+        self::assertStringContainsString($number, $issued);
+        self::assertStringContainsString('Carthage Conseil', $issued);
+        self::assertStringContainsString('Facture', $issued);
+        self::assertStringNotContainsString('BROUILLON', $issued);
+
+        $this->client->request('GET', $this->path(self::ABSENT).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->client->request('GET', $this->path($id).'/pdf');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
     public function testAReaderOnlyReadsAndAnotherCompanysInvoiceIsNotFound(): void
     {
         $globex = $this->createCompany('Globex');

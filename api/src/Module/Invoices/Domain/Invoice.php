@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain;
 
+use App\Files\Domain\StoredFile;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Customers\Domain\Customer;
@@ -33,6 +34,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_establishment', columns: ['establishment_id'])]
 #[ORM\Index(name: 'idx_invoice_customer', columns: ['customer_id'])]
 #[ORM\Index(name: 'idx_invoice_corrects', columns: ['corrects_invoice_id'])]
+#[ORM\Index(name: 'idx_invoice_pdf_file', columns: ['pdf_file_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
 class Invoice
 {
@@ -147,6 +149,11 @@ class Invoice
 
     #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
     private ?string $amountDue = null;
+
+    /** The PDF as the document was issued; null until it is stored. */
+    #[ORM\ManyToOne(targetEntity: StoredFile::class)]
+    #[ORM\JoinColumn(name: 'pdf_file_id', nullable: true)]
+    private ?StoredFile $pdfFile = null;
 
     /** @var list<DomainEvent> recorded since they were last released; never stored */
     private array $events = [];
@@ -316,6 +323,26 @@ class Invoice
         }
         $this->status = InvoiceStatus::Cancelled;
         $this->updatedAt = $now;
+    }
+
+    /** Keeps the PDF a numbered document was issued with; a document keeps one, and never replaces it. */
+    public function attachPdf(StoredFile $file): void
+    {
+        if (null === $this->number) {
+            throw new \LogicException('Only a numbered invoice keeps the PDF it was issued with.');
+        }
+        if (null !== $this->pdfFile) {
+            throw new \LogicException(\sprintf('The invoice %s already keeps the PDF it was issued with.', $this->number));
+        }
+        if (!$file->getCompany()->getId()->equals($this->company->getId())) {
+            throw new \LogicException('An invoice keeps a file of its own company.');
+        }
+        $this->pdfFile = $file;
+    }
+
+    public function getPdfFile(): ?StoredFile
+    {
+        return $this->pdfFile;
     }
 
     /** @return list<DomainEvent> what happened since the last call, each once */
