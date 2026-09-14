@@ -26,7 +26,7 @@
             {{ 'company.numbering.document_types.' + row.documentType | translate }}
           </h2>
           <app-descriptor-form
-            [descriptor]="descriptor"
+            [descriptor]="descriptor()"
             [form]="form"
             testId="series-form"
             (submitted)="save($event)"

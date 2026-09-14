@@ -48,12 +48,14 @@ const deliveryNotes: NumberingSeriesRow = {
   nextNumber: 1,
   resetPeriod: 'yearly',
   isDefault: true,
+  numbered: false,
   preview: 'BL-2026-00001',
 };
 
 describe('NumberingPage', () => {
+  const series = signal<readonly NumberingSeriesRow[]>([deliveryNotes]);
   const facade = {
-    series: signal<readonly NumberingSeriesRow[]>([deliveryNotes]).asReadonly(),
+    series: series.asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<string | null>(null).asReadonly(),
     loadSeries: vi.fn(),
@@ -82,6 +84,7 @@ describe('NumberingPage', () => {
   }
 
   beforeEach(async () => {
+    series.set([deliveryNotes]);
     facade.loadSeries.mockReset().mockResolvedValue(undefined);
     facade.reviseSeries.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -128,6 +131,25 @@ describe('NumberingPage', () => {
     await settle();
 
     expect(q('series-preview')?.textContent).toContain('Format invalide');
+  });
+
+  it('keeps where the sequence resumes once documents carry its numbers', async () => {
+    series.set([{ ...deliveryNotes, nextNumber: 8, numbered: true, preview: 'BL-2026-00008' }]);
+    await settle();
+    q('series-edit-000-delivery_note')!.click();
+    await settle();
+
+    expect((q('field-nextNumber') as HTMLInputElement).disabled).toBe(true);
+
+    type('field-format', 'BL-{EST}-{SEQ:4}');
+    q('series-save')!.click();
+    await settle();
+
+    expect(facade.reviseSeries).toHaveBeenCalledWith('c1', 's1', {
+      format: 'BL-{EST}-{SEQ:4}',
+      nextNumber: 8,
+      resetPeriod: 'yearly',
+    });
   });
 
   it('revises the series with what was typed', async () => {

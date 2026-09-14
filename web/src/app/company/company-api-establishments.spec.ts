@@ -51,6 +51,7 @@ describe('CompanyApi establishments and numbering', () => {
         email: null,
         isDefault: true,
         codePattern: '^[0-9]{3}$',
+        codeLocked: false,
       },
     ]);
   });
@@ -87,10 +88,11 @@ describe('CompanyApi establishments and numbering', () => {
       documentType: 'invoice',
       ...changes,
       isDefault: true,
+      numbered: true,
       preview: 'F-000-0012',
     });
 
-    expect((await pending).preview).toBe('F-000-0012');
+    expect(await pending).toMatchObject({ preview: 'F-000-0012', numbered: true });
   });
 
   it('keeps a reset period it does not know from reaching the page', async () => {

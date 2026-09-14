@@ -38,6 +38,7 @@ final class NumberingSeriesTest extends ApiTestCase
         self::assertSame(1, $invoice['nextNumber']);
         self::assertSame('yearly', $invoice['resetPeriod']);
         self::assertTrue($invoice['isDefault']);
+        self::assertFalse($invoice['numbered']);
         self::assertSame('000', $invoice['establishmentCode']);
         self::assertMatchesRegularExpression('/^FAC-\d{4}-00001$/', $this->stringAt($invoice, 'preview'));
     }
@@ -105,6 +106,35 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->sendJson('PUT', $this->path().'/'.$theirs->getId()->toRfc4122(), ['format' => 'X-{SEQ}', 'nextNumber' => 1, 'resetPeriod' => 'never']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testOnceADocumentCarriesANumberTheSequenceIsFrozenButTheFormatIsNot(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->numberedOnce('delivery_note');
+        $id = $this->idOf('delivery_note');
+
+        $this->getJson($this->path());
+        $row = array_find($this->jsonList(), static fn (array $row): bool => 'delivery_note' === $row['documentType']) ?? self::fail('no delivery note series');
+        self::assertTrue($row['numbered']);
+        self::assertSame(2, $row['nextNumber']);
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('nextNumber', $this->stringAt($this->json(), 'detail'));
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['format' => 'BL-{YY}-{SEQ:5}', 'nextNumber' => 2, 'resetPeriod' => 'yearly']);
+        self::assertResponseIsSuccessful();
+        self::assertMatchesRegularExpression('/^BL-\d{2}-00002$/', $this->stringAt($this->json(), 'preview'));
+    }
+
+    /** What a first numbered document leaves behind: the period it was numbered in, and the sequence moved on. */
+    private function numberedOnce(string $documentType): void
+    {
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE numbering_series SET last_reset_year = 2026, last_reset_month = 9, next_number = 2 WHERE company_id = ? AND document_type = ?',
+            [$this->company->getId()->toRfc4122(), $documentType],
+        );
     }
 
     /** @param list<string> $permissions */

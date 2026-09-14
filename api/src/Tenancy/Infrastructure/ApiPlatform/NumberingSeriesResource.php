@@ -83,6 +83,11 @@ final class NumberingSeriesResource
     #[Groups([self::READ])]
     public bool $isDefault = false;
 
+    /** Whether documents carry numbers from this series; where it resumes then no longer changes. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $numbered = false;
+
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public string $preview = '';
@@ -98,6 +103,7 @@ final class NumberingSeriesResource
         $resource->nextNumber = $series->getNextNumber();
         $resource->resetPeriod = $series->getResetPeriod()->value;
         $resource->isDefault = $series->isDefault();
+        $resource->numbered = $series->isNumbered();
         $resource->preview = $series->preview($today);
 
         return $resource;

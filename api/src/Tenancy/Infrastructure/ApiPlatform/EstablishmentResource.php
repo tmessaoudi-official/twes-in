@@ -104,7 +104,12 @@ final class EstablishmentResource
     #[Groups([self::READ])]
     public string $codePattern = '';
 
-    public static function of(Establishment $establishment, string $codePattern): self
+    /** Whether numbered documents carry the code, which then no longer changes. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public bool $codeLocked = false;
+
+    public static function of(Establishment $establishment, string $codePattern, bool $codeLocked): self
     {
         $resource = new self();
         $resource->id = $establishment->getId()->toRfc4122();
@@ -118,6 +123,7 @@ final class EstablishmentResource
         $resource->email = $establishment->getEmail();
         $resource->isDefault = $establishment->isDefault();
         $resource->codePattern = $codePattern;
+        $resource->codeLocked = $codeLocked;
 
         return $resource;
     }

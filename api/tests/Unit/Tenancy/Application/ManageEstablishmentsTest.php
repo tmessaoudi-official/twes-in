@@ -105,6 +105,26 @@ final class ManageEstablishmentsTest extends TestCase
         self::assertFalse($head->isDefault());
     }
 
+    public function testACodeFreezesOnceADocumentCarriesANumberFromTheEstablishment(): void
+    {
+        $head = $this->manage->list($this->company)[0];
+        self::assertFalse($this->manage->isCodeLocked($this->company, $head));
+
+        $this->seriesOf($head, 'delivery_note')->allocate(new \DateTimeImmutable('2026-09-13'), new \DateTimeImmutable());
+
+        self::assertTrue($this->manage->isCodeLocked($this->company, $head));
+        try {
+            $this->manage->revise($this->company, $head->getId(), self::details('002', 'Acme', isDefault: true), null);
+            self::fail('The code printed on a numbered document was changed.');
+        } catch (InvalidEstablishment $refused) {
+            self::assertSame('code', $refused->field);
+        }
+        self::assertSame('000', $head->getCode());
+
+        $this->manage->revise($this->company, $head->getId(), self::details('000', 'Siège social', isDefault: true), null);
+        self::assertSame('Siège social', $head->getName());
+    }
+
     public function testTheDefaultCannotStepDownWithoutASuccessor(): void
     {
         $head = $this->manage->list($this->company)[0];

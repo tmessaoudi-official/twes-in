@@ -54,9 +54,13 @@ export class EstablishmentsPage implements OnInit {
 
   protected readonly editing = signal<EstablishmentRow | 'new' | null>(null);
   protected readonly saved = signal(false);
-  protected readonly descriptor = computed(() =>
-    establishmentForm(this.establishments()[0]?.codePattern ?? ''),
-  );
+  protected readonly descriptor = computed(() => {
+    const editing = this.editing();
+    return establishmentForm(
+      this.establishments()[0]?.codePattern ?? '',
+      editing !== null && editing !== 'new' && editing.codeLocked,
+    );
+  });
   protected readonly form = computed(() => {
     const editing = this.editing();
     if (editing === null) return null;

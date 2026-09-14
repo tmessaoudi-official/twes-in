@@ -7,7 +7,7 @@ import {
   establishmentFormValues,
   establishmentInput,
   seriesChanges,
-  SERIES_FORM,
+  seriesForm,
 } from './establishment-forms';
 
 const head: EstablishmentRow = {
@@ -22,7 +22,11 @@ const head: EstablishmentRow = {
   email: null,
   isDefault: true,
   codePattern: '^[0-9]{3}$',
+  codeLocked: false,
 };
+
+const fieldOf = (descriptor: ReturnType<typeof seriesForm>, id: string) =>
+  descriptor.sections[0]!.fields.find((field) => field.id === id);
 
 describe('establishment forms', () => {
   it("checks a code against the shape the company's preset gives it", () => {
@@ -56,8 +60,24 @@ describe('establishment forms', () => {
     });
   });
 
+  it('shows a code numbered documents carry without letting it change', () => {
+    const locked = fieldOf(establishmentForm(head.codePattern, true), 'code');
+
+    expect(locked?.readOnly).toBe(true);
+    expect(locked?.hint).toBe('company.establishments.fields.code_locked_hint');
+    expect(fieldOf(establishmentForm(head.codePattern), 'code')?.readOnly).toBeFalsy();
+  });
+
+  it('keeps where a sequence resumes once documents carry its numbers', () => {
+    const frozen = fieldOf(seriesForm(true), 'nextNumber');
+
+    expect(frozen?.readOnly).toBe(true);
+    expect(frozen?.hint).toBe('company.numbering.fields.nextNumber_frozen_hint');
+    expect(fieldOf(seriesForm(false), 'nextNumber')?.readOnly).toBeFalsy();
+  });
+
   it('offers the three reset periods and never sends one the API does not know', () => {
-    const reset = SERIES_FORM.sections[0]!.fields.find((field) => field.id === 'resetPeriod');
+    const reset = fieldOf(seriesForm(false), 'resetPeriod');
 
     expect(reset?.options?.map((option) => option.value)).toEqual(['yearly', 'monthly', 'never']);
     expect(seriesChanges({ format: 'F-{SEQ}', nextNumber: '12', resetPeriod: 'weekly' })).toEqual({

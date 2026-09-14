@@ -37,6 +37,7 @@ final class EstablishmentsTest extends ApiTestCase
         self::assertSame('Acme', $rows[0]['name']);
         self::assertTrue($rows[0]['isDefault']);
         self::assertSame('^[0-9]{3}$', $rows[0]['codePattern']);
+        self::assertFalse($rows[0]['codeLocked']);
     }
 
     public function testAnAdministratorAddsAnEstablishmentThatNumbersItsOwnDocuments(): void
@@ -110,6 +111,28 @@ final class EstablishmentsTest extends ApiTestCase
         self::assertSame('002', $body['code']);
         self::assertSame('Siège social', $body['name']);
         self::assertSame('1000', $body['postalCode']);
+    }
+
+    public function testACodeNumberedDocumentsCarryCannotChangeButTheRestCan(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+        $this->em()->getConnection()->executeStatement(
+            "UPDATE numbering_series SET last_reset_year = 2026, last_reset_month = 9, next_number = 2 WHERE company_id = ? AND document_type = 'delivery_note'",
+            [$this->company->getId()->toRfc4122()],
+        );
+        $id = $this->idOf('000');
+
+        $this->getJson($this->path());
+        self::assertTrue($this->jsonList()[0]['codeLocked']);
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['code' => '002', 'name' => 'Acme', 'isDefault' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('code', $this->stringAt($this->json(), 'detail'));
+
+        $this->sendJson('PUT', $this->path().'/'.$id, ['code' => '000', 'name' => 'Siège social', 'isDefault' => true]);
+        self::assertResponseIsSuccessful();
+        self::assertSame('Siège social', $this->json()['name']);
+        self::assertTrue($this->json()['codeLocked']);
     }
 
     public function testAReaderMayNotAddAnEstablishment(): void

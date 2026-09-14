@@ -49,8 +49,11 @@ export const ESTABLISHMENT_LIST: ListDescriptor<EstablishmentRow> = {
   ],
 };
 
-/** The code is checked against the shape the company's preset gives it, once the API has said what that is. */
-export function establishmentForm(codePattern: string): FormDescriptor {
+/**
+ * The code is checked against the shape the company's preset gives it, once the API has said what that is, and
+ * shown without being editable once numbered documents carry it.
+ */
+export function establishmentForm(codePattern: string, codeLocked = false): FormDescriptor {
   return {
     id: 'establishment',
     sections: [
@@ -65,7 +68,8 @@ export function establishmentForm(codePattern: string): FormDescriptor {
             required: true,
             maxLength: 16,
             ...(codePattern === '' ? {} : { pattern: codePattern }),
-            hint: `${FIELDS}.code_hint`,
+            hint: codeLocked ? `${FIELDS}.code_locked_hint` : `${FIELDS}.code_hint`,
+            ...(codeLocked ? { readOnly: true } : {}),
           },
           { id: 'name', label: `${FIELDS}.name`, kind: 'text', required: true, maxLength: 120 },
           {
@@ -180,44 +184,50 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
   ],
 };
 
-export const SERIES_FORM: FormDescriptor = {
-  id: 'numbering-series',
-  sections: [
-    {
-      id: 'series',
-      title: 'company.numbering.section',
-      fields: [
-        {
-          id: 'format',
-          label: 'company.numbering.fields.format',
-          kind: 'text',
-          required: true,
-          maxLength: NUMBER_FORMAT_MAX_LENGTH,
-          hint: 'company.numbering.fields.format_hint',
-          span: 2,
-        },
-        {
-          id: 'nextNumber',
-          label: 'company.numbering.fields.nextNumber',
-          kind: 'number',
-          required: true,
-          min: 1,
-          hint: 'company.numbering.fields.nextNumber_hint',
-        },
-        {
-          id: 'resetPeriod',
-          label: 'company.numbering.fields.resetPeriod',
-          kind: 'select',
-          required: true,
-          options: RESET_PERIODS.map((period) => ({
-            value: period,
-            label: `company.numbering.reset.${period}`,
-          })),
-        },
-      ],
-    },
-  ],
-};
+/** Where the sequence resumes is shown without being editable once documents carry its numbers. */
+export function seriesForm(numbered: boolean): FormDescriptor {
+  return {
+    id: 'numbering-series',
+    sections: [
+      {
+        id: 'series',
+        title: 'company.numbering.section',
+        fields: [
+          {
+            id: 'format',
+            label: 'company.numbering.fields.format',
+            kind: 'text',
+            required: true,
+            maxLength: NUMBER_FORMAT_MAX_LENGTH,
+            hint: 'company.numbering.fields.format_hint',
+            span: 2,
+          },
+          {
+            id: 'nextNumber',
+            label: 'company.numbering.fields.nextNumber',
+            kind: 'number',
+            required: true,
+            min: 1,
+            hint: numbered
+              ? 'company.numbering.fields.nextNumber_frozen_hint'
+              : 'company.numbering.fields.nextNumber_hint',
+            ...(numbered ? { readOnly: true } : {}),
+          },
+          {
+            id: 'resetPeriod',
+            label: 'company.numbering.fields.resetPeriod',
+            kind: 'select',
+            required: true,
+            options: RESET_PERIODS.map((period) => ({
+              value: period,
+              label: `company.numbering.reset.${period}`,
+            })),
+          },
+        ],
+      },
+    ],
+  };
+}
 
 export function seriesFormValues(row: NumberingSeriesRow): FormValues {
   return { format: row.format, nextNumber: row.nextNumber, resetPeriod: row.resetPeriod };

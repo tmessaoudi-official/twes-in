@@ -19,5 +19,11 @@ interface NumberingSeriesRepository
     /** Null for a series that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?NumberingSeries;
 
+    /**
+     * The default series an establishment numbers a document type from, read fresh and locked until the current
+     * transaction ends, so a second one waits for it; null when the establishment numbers no such document.
+     */
+    public function lockedDefaultFor(Uuid $establishmentId, string $documentType): ?NumberingSeries;
+
     public function save(NumberingSeries $series): void;
 }

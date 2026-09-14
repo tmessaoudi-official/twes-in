@@ -17,6 +17,7 @@ const head: EstablishmentRow = {
   email: null,
   isDefault: true,
   codePattern: '^[0-9]{3}$',
+  codeLocked: false,
 };
 const sfax: EstablishmentInput = { ...head, code: '001', name: 'Agence de Sfax', isDefault: false };
 const invoices: NumberingSeriesRow = {
@@ -28,6 +29,7 @@ const invoices: NumberingSeriesRow = {
   nextNumber: 1,
   resetPeriod: 'yearly',
   isDefault: true,
+  numbered: false,
   preview: 'FAC-2026-00001',
 };
 

@@ -92,10 +92,12 @@ export interface EstablishmentRow {
   readonly isDefault: boolean;
   /** A regular expression the whole code matches: the shape the company's fiscal preset gives a code. */
   readonly codePattern: string;
+  /** Whether numbered documents carry the code, which then no longer changes. */
+  readonly codeLocked: boolean;
 }
 
 /** What a person writes about an establishment; setting isDefault hands the role over from the current default. */
-export type EstablishmentInput = Omit<EstablishmentRow, 'id' | 'codePattern'>;
+export type EstablishmentInput = Omit<EstablishmentRow, 'id' | 'codePattern' | 'codeLocked'>;
 
 export type ResetPeriod = 'yearly' | 'monthly' | 'never';
 
@@ -111,6 +113,8 @@ export interface NumberingSeriesRow {
   readonly nextNumber: number;
   readonly resetPeriod: ResetPeriod;
   readonly isDefault: boolean;
+  /** Whether documents carry numbers from this series; where it resumes then no longer changes. */
+  readonly numbered: boolean;
   readonly preview: string;
 }
 

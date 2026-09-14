@@ -56,6 +56,8 @@ export interface FormField {
    * VAT rate has a rate. A hidden field keeps what was typed in it, in case the person switches back.
    */
   visibleWhen?: FieldCondition;
+  /** Shown and submitted as it stands, never changed here: a code numbered documents already carry. */
+  readOnly?: boolean;
 }
 
 export interface FormSection {

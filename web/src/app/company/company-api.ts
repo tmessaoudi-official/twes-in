@@ -303,6 +303,7 @@ function toEstablishment(row: EstablishmentEstablishmentRead): EstablishmentRow 
     email: row.email ?? null,
     isDefault: row.isDefault ?? false,
     codePattern: row.codePattern ?? '',
+    codeLocked: row.codeLocked ?? false,
   };
 }
 
@@ -316,6 +317,7 @@ function toSeries(row: NumberingSeriesNumberingSeriesRead): NumberingSeriesRow {
     nextNumber: row.nextNumber ?? 1,
     resetPeriod: RESET_PERIODS.find((period) => period === row.resetPeriod) ?? 'yearly',
     isDefault: row.isDefault ?? false,
+    numbered: row.numbered ?? false,
     preview: row.preview ?? '',
   };
 }

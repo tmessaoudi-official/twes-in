@@ -43,6 +43,29 @@ const tax: FormDescriptor = {
 };
 
 describe('form visibility', () => {
+  it('keeps a read-only field disabled and still hands its value over', () => {
+    const establishment: FormDescriptor = {
+      id: 'establishment',
+      sections: [
+        {
+          id: 'main',
+          title: 't.main',
+          fields: [
+            { id: 'code', label: 't.code', kind: 'text', required: true, readOnly: true },
+            { id: 'name', label: 't.name', kind: 'text', required: true },
+          ],
+        },
+      ],
+    };
+    const form = buildFormGroup(establishment, { code: '000', name: 'Siège' });
+
+    applyVisibility(establishment, form);
+
+    expect(form.controls['code'].disabled).toBe(true);
+    expect(form.controls['name'].enabled).toBe(true);
+    expect(applicableValues(establishment, form)).toEqual({ code: '000', name: 'Siège' });
+  });
+
   it('applies a field without a condition always, and a conditional one only for its values', () => {
     const [family, rate, amount] = tax.sections[0].fields;
     expect(fieldApplies(family, {})).toBe(true);

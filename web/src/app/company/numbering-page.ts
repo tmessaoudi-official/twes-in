@@ -18,7 +18,7 @@ import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
 import type { NumberingSeriesRow } from './company-types';
-import { SERIES_FORM, SERIES_LIST, seriesChanges, seriesFormValues } from './establishment-forms';
+import { SERIES_LIST, seriesChanges, seriesForm, seriesFormValues } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
 import { renderNumber } from './number-format';
 
@@ -42,7 +42,8 @@ export class NumberingPage implements OnInit {
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = SERIES_LIST;
-  protected readonly descriptor = SERIES_FORM;
+  protected readonly editing = signal<NumberingSeriesRow | null>(null);
+  protected readonly descriptor = computed(() => seriesForm(this.editing()?.numbered ?? false));
   protected readonly series = this.facade.series;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -51,11 +52,10 @@ export class NumberingPage implements OnInit {
   protected readonly rowTestId = (row: NumberingSeriesRow): string =>
     `series-${row.establishmentCode}-${row.documentType}`;
 
-  protected readonly editing = signal<NumberingSeriesRow | null>(null);
   protected readonly saved = signal(false);
   protected readonly form = computed(() => {
     const editing = this.editing();
-    return editing === null ? null : buildFormGroup(SERIES_FORM, seriesFormValues(editing));
+    return editing === null ? null : buildFormGroup(this.descriptor(), seriesFormValues(editing));
   });
   private readonly draft = signal<FormValues | null>(null);
   protected readonly preview = computed(() => {

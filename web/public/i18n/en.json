@@ -124,6 +124,7 @@
       "fields": {
         "code": "Code",
         "code_hint": "The shape the registration numbers of the company's country give it.",
+        "code_locked_hint": "Numbered documents carry this code, so it no longer changes.",
         "name": "Name",
         "addressLine1": "Address",
         "addressLine2": "Address line 2",
@@ -166,6 +167,7 @@
         "format_hint": "Text around {YYYY}, {YY}, {MM}, {EST} (the establishment's code) and one sequence, {SEQ} or {SEQ:5} padded to five digits.",
         "nextNumber": "Resume at",
         "nextNumber_hint": "A company moving from another tool continues where it stopped.",
+        "nextNumber_frozen_hint": "Documents already carry numbers from this series: it continues from here, so no number is skipped or used twice.",
         "resetPeriod": "Starts again"
       },
       "document_types": {

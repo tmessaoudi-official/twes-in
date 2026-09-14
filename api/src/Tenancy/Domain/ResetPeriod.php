@@ -9,7 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
-/** When a series' sequence starts again at one; the allocation that applies it arrives with the first numbered document (G6). */
+/** When a series' sequence starts again at one: on the first number of a new year, of a new month, or never. */
 enum ResetPeriod: string
 {
     case Yearly = 'yearly';

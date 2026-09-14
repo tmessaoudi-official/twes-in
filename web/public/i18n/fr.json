@@ -124,6 +124,7 @@
       "fields": {
         "code": "Code",
         "code_hint": "La forme que lui donnent les numéros d'immatriculation du pays de la société.",
+        "code_locked_hint": "Des documents numérotés portent ce code : il ne change plus.",
         "name": "Nom",
         "addressLine1": "Adresse",
         "addressLine2": "Complément d'adresse",
@@ -166,6 +167,7 @@
         "format_hint": "Du texte autour de {YYYY}, {YY}, {MM}, {EST} (le code de l'établissement) et d'une séquence, {SEQ} ou {SEQ:5} sur cinq chiffres.",
         "nextNumber": "Reprendre à",
         "nextNumber_hint": "Une société venant d'un autre outil continue là où elle s'était arrêtée.",
+        "nextNumber_frozen_hint": "Des documents portent déjà des numéros de cette série : elle continue d'ici, sans sauter ni répéter un numéro.",
         "resetPeriod": "Redémarre"
       },
       "document_types": {

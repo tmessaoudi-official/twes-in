@@ -3,9 +3,11 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 
 // G3b through the real stack: the seeded Tunisian company starts with its default establishment, coded the way its
-// preset says, and a numbering series per document type on it. The owner renumbers delivery notes, sees the next
-// number before saving, and finds it after a reload. One database is shared by the whole suite, so the series is put
-// back as it was found; no establishment is added, because an establishment cannot be removed.
+// preset says, and a numbering series per document type on it. The owner renumbers invoices, sees the next number
+// before saving, and finds it after a reload. Invoices, because nothing numbers them before G7: once a document
+// carries a number from a series, where it resumes no longer changes, and the delivery notes scenario numbers them.
+// One database is shared by the whole suite, so the series is put back as it was found; no establishment is added,
+// because an establishment cannot be removed.
 const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -34,14 +36,14 @@ async function wcagViolations(page: Page): Promise<string[]> {
   return axe.violations.map((violation) => violation.id);
 }
 
-async function deliveryNotes(page: Page): Promise<Series> {
+async function invoices(page: Page): Promise<Series> {
   return page.evaluate(async () => {
     const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
     const rows = (await (
       await fetch(`/api/companies/${me.company.id}/numbering-series`)
     ).json()) as Series[];
-    const found = rows.find((row) => row.documentType === 'delivery_note');
-    if (!found) throw new Error('no delivery note series');
+    const found = rows.find((row) => row.documentType === 'invoice');
+    if (!found) throw new Error('no invoice series');
     return found;
   });
 }
@@ -66,11 +68,9 @@ async function putSeries(page: Page, series: Series): Promise<void> {
   expect(status).toBe(200);
 }
 
-test('the owner renumbers delivery notes and sees the next number before saving', async ({
-  page,
-}) => {
+test('the owner renumbers invoices and sees the next number before saving', async ({ page }) => {
   await signIn(page);
-  const original = await deliveryNotes(page);
+  const original = await invoices(page);
   const code = original.establishmentCode;
   try {
     await page.goto('/company/establishments');
@@ -78,11 +78,11 @@ test('the owner renumbers delivery notes and sees the next number before saving'
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/company/numbering');
-    await page.getByTestId(`series-edit-${code}-delivery_note`).click();
-    await page.getByTestId('field-format').fill('BL-{EST}-{YY}-{SEQ:4}');
+    await page.getByTestId(`series-edit-${code}-invoice`).click();
+    await page.getByTestId('field-format').fill('FAC-{EST}-{YY}-{SEQ:4}');
     await page.getByTestId('field-nextNumber').fill('12');
     await expect(page.getByTestId('series-preview')).toContainText(
-      new RegExp(`BL-${code}-\\d{2}-0012`),
+      new RegExp(`FAC-${code}-\\d{2}-0012`),
     );
     expect(await wcagViolations(page)).toEqual([]);
 
@@ -90,8 +90,8 @@ test('the owner renumbers delivery notes and sees the next number before saving'
     await expect(page.getByTestId('series-saved')).toBeVisible();
 
     await page.reload();
-    await expect(page.getByTestId(`series-${code}-delivery_note`)).toContainText(
-      new RegExp(`BL-${code}-\\d{2}-0012`),
+    await expect(page.getByTestId(`series-${code}-invoice`)).toContainText(
+      new RegExp(`FAC-${code}-\\d{2}-0012`),
     );
   } finally {
     await putSeries(page, original);

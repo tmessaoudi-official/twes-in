@@ -13,8 +13,9 @@ export function fieldApplies(field: FormField, values: FormValues): boolean {
 
 /**
  * Enables the controls of the fields that apply and disables the others, so a hidden field is neither validated
- * nor submitted; a read-only form keeps every control disabled. Runs without emitting, so calling it from a
- * value-change subscription does not loop.
+ * nor submitted; a read-only form keeps every control disabled, and a read-only field keeps its own control disabled
+ * while its value is still submitted. Runs without emitting, so calling it from a value-change subscription does not
+ * loop.
  */
 export function applyVisibility(
   descriptor: FormDescriptor,
@@ -25,7 +26,7 @@ export function applyVisibility(
   for (const field of descriptor.sections.flatMap((section) => section.fields)) {
     const control = form.controls[field.id];
     if (!control) continue;
-    const applies = !readOnly && fieldApplies(field, values);
+    const applies = !readOnly && field.readOnly !== true && fieldApplies(field, values);
     if (applies && control.disabled) control.enable({ emitEvent: false });
     if (!applies && control.enabled) control.disable({ emitEvent: false });
   }

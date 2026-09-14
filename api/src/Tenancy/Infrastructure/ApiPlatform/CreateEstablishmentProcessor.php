@@ -37,6 +37,6 @@ final readonly class CreateEstablishmentProcessor implements ProcessorInterface
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);
         }
 
-        return EstablishmentResource::of($establishment, $this->manage->codePattern($company));
+        return EstablishmentResource::of($establishment, $this->manage->codePattern($company), false);
     }
 }

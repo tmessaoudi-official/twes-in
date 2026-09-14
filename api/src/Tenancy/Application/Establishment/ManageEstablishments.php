@@ -25,7 +25,7 @@ use Symfony\Component\Uid\Uuid;
 
 /**
  * A company's establishments: listed, added and revised, each change audited. A code has the shape the company's fiscal
- * preset gives it and is unique in the company; it stays revisable until documents carry it (G6). A company keeps
+ * preset gives it and is unique in the company; it stays revisable until a numbered document carries it. A company keeps
  * exactly one default: another establishment takes the role, the default never just steps down. A new establishment
  * numbers each document type the way the default establishment does, from one.
  */
@@ -97,6 +97,9 @@ final readonly class ManageEstablishments
         if (null !== $holder && !$holder->getId()->equals($establishment->getId())) {
             throw new EstablishmentCodeTaken(\sprintf('The company already has an establishment coded %s.', $code));
         }
+        if ($code !== $establishment->getCode() && $this->isCodeLocked($company, $establishment)) {
+            throw new InvalidEstablishment('code', \sprintf('Numbered documents carry the code %s: it no longer changes.', $establishment->getCode()));
+        }
         if ($establishment->isDefault() && !$details->isDefault) {
             throw new InvalidEstablishment('isDefault', 'A company keeps one default establishment: make another one the default instead.');
         }
@@ -116,6 +119,18 @@ final readonly class ManageEstablishments
         }
 
         return $establishment;
+    }
+
+    /** Whether a document carries the establishment's code: once one of its series has numbered a document. */
+    public function isCodeLocked(Company $company, Establishment $establishment): bool
+    {
+        foreach ($this->series->ofCompany($company->getId()) as $series) {
+            if ($series->isNumbered() && $series->getEstablishment()->getId()->equals($establishment->getId())) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function checkedCode(Company $company, string $code): string

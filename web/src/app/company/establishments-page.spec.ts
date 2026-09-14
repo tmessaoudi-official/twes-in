@@ -50,12 +50,14 @@ const head: EstablishmentRow = {
   email: null,
   isDefault: true,
   codePattern: '^[0-9]{3}$',
+  codeLocked: false,
 };
 
 describe('EstablishmentsPage', () => {
   const error = signal<CompanyError | null>(null);
+  const establishments = signal<readonly EstablishmentRow[]>([head]);
   const facade = {
-    establishments: signal<readonly EstablishmentRow[]>([head]).asReadonly(),
+    establishments: establishments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadEstablishments: vi.fn(),
@@ -86,6 +88,7 @@ describe('EstablishmentsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    establishments.set([head]);
     facade.loadEstablishments.mockReset().mockResolvedValue(undefined);
     facade.createEstablishment.mockReset().mockResolvedValue(true);
     facade.reviseEstablishment.mockReset().mockResolvedValue(true);
@@ -155,6 +158,25 @@ describe('EstablishmentsPage', () => {
       'c1',
       'e1',
       expect.objectContaining({ code: '000', name: 'Siège social', isDefault: true }),
+    );
+  });
+
+  it('revises an establishment whose code numbered documents carry, keeping the code', async () => {
+    establishments.set([{ ...head, codeLocked: true }]);
+    await settle();
+    q('establishment-edit-000')!.click();
+    await settle();
+
+    expect((q('field-code') as HTMLInputElement).disabled).toBe(true);
+
+    type('field-name', 'Siège social');
+    q('establishment-save')!.click();
+    await settle();
+
+    expect(facade.reviseEstablishment).toHaveBeenCalledWith(
+      'c1',
+      'e1',
+      expect.objectContaining({ code: '000', name: 'Siège social' }),
     );
   });
 

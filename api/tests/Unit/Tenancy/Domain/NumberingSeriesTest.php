@@ -61,6 +61,85 @@ final class NumberingSeriesTest extends TestCase
         Establishment::create($company, 'A B', 'Siège', true, new \DateTimeImmutable());
     }
 
+    public function testAllocatingResumesWhereTheCompanyLeftTheSequenceAndMovesOn(): void
+    {
+        $series = self::series();
+        $series->revise(new NumberFormat('FAC-{YYYY}-{SEQ:5}'), ResetPeriod::Yearly, 41, new \DateTimeImmutable());
+        self::assertFalse($series->isNumbered());
+
+        self::assertSame('FAC-2026-00041', $series->allocate(new \DateTimeImmutable('2026-09-14'), new \DateTimeImmutable()));
+        self::assertSame('FAC-2026-00042', $series->allocate(new \DateTimeImmutable('2026-12-31'), new \DateTimeImmutable()));
+
+        self::assertTrue($series->isNumbered());
+        self::assertSame(43, $series->getNextNumber());
+    }
+
+    public function testAYearlySequenceStartsAgainAtOneInANewYear(): void
+    {
+        $series = self::series();
+
+        self::assertSame('FAC-2026-00001', $series->allocate(new \DateTimeImmutable('2026-12-31'), new \DateTimeImmutable()));
+        self::assertSame('FAC-2026-00002', $series->allocate(new \DateTimeImmutable('2026-12-31'), new \DateTimeImmutable()));
+        self::assertSame('FAC-2027-00001', $series->allocate(new \DateTimeImmutable('2027-01-01'), new \DateTimeImmutable()));
+        self::assertSame('FAC-2027-00002', $series->allocate(new \DateTimeImmutable('2027-06-01'), new \DateTimeImmutable()));
+    }
+
+    public function testAMonthlySequenceStartsAgainAtOneInANewMonthOfAnyYear(): void
+    {
+        $series = self::series();
+        $series->revise(new NumberFormat('F{YY}{MM}-{SEQ:3}'), ResetPeriod::Monthly, 1, new \DateTimeImmutable());
+
+        self::assertSame('F2609-001', $series->allocate(new \DateTimeImmutable('2026-09-30'), new \DateTimeImmutable()));
+        self::assertSame('F2609-002', $series->allocate(new \DateTimeImmutable('2026-09-30'), new \DateTimeImmutable()));
+        self::assertSame('F2610-001', $series->allocate(new \DateTimeImmutable('2026-10-01'), new \DateTimeImmutable()));
+        self::assertSame('F2710-001', $series->allocate(new \DateTimeImmutable('2027-10-01'), new \DateTimeImmutable()));
+    }
+
+    public function testASequenceThatNeverStartsAgainKeepsCountingAcrossYears(): void
+    {
+        $series = self::series();
+        $series->revise(new NumberFormat('FAC-{SEQ:4}'), ResetPeriod::Never, 1, new \DateTimeImmutable());
+
+        self::assertSame('FAC-0001', $series->allocate(new \DateTimeImmutable('2026-12-31'), new \DateTimeImmutable()));
+        self::assertSame('FAC-0002', $series->allocate(new \DateTimeImmutable('2027-01-01'), new \DateTimeImmutable()));
+    }
+
+    public function testANumberIsNeverIssuedOnADayBeforeTheLastOne(): void
+    {
+        $series = self::series();
+        $series->allocate(new \DateTimeImmutable('2027-01-01'), new \DateTimeImmutable());
+
+        try {
+            $series->allocate(new \DateTimeImmutable('2026-12-31'), new \DateTimeImmutable());
+            self::fail('A number was issued in a year the sequence had already left.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('issueDate', $refused->field);
+        }
+        self::assertSame(2, $series->getNextNumber());
+    }
+
+    public function testOnceADocumentCarriesANumberTheSequenceIsFrozenButItsFormatIsNot(): void
+    {
+        $series = self::series();
+        $series->allocate(new \DateTimeImmutable('2026-09-14'), new \DateTimeImmutable());
+
+        try {
+            $series->revise(new NumberFormat('FAC-{YYYY}-{SEQ:5}'), ResetPeriod::Yearly, 1, new \DateTimeImmutable());
+            self::fail('The sequence was moved back after a document carried a number.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('nextNumber', $refused->field);
+        }
+        try {
+            $series->revise(new NumberFormat('FAC-{YYYY}-{SEQ:5}'), ResetPeriod::Yearly, 9, new \DateTimeImmutable());
+            self::fail('The sequence skipped numbers after a document carried a number.');
+        } catch (InvalidNumbering $refused) {
+            self::assertSame('nextNumber', $refused->field);
+        }
+
+        self::assertTrue($series->revise(new NumberFormat('F{YY}-{SEQ:4}'), ResetPeriod::Yearly, 2, new \DateTimeImmutable()));
+        self::assertSame('F26-0002', $series->preview(new \DateTimeImmutable('2026-09-14')));
+    }
+
     private static function series(): NumberingSeries
     {
         $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
