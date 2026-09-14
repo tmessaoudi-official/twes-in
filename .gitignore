@@ -30,3 +30,4 @@
 *.keystore
 .npmrc
 service-account*.json
+/.playwright-mcp/
