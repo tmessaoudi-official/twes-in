@@ -250,6 +250,7 @@
   },
   "modules": {
     "customers": "Customers",
+    "delivery_notes": "Delivery notes",
     "products": "Products"
   },
   "nav": {

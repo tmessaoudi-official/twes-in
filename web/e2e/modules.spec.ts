@@ -4,8 +4,9 @@ import { expect, type Page, test } from '@playwright/test';
 
 // G5 module registry through the real stack: in the seeded company, the owner switches the customers module off,
 // its entries leave the navigation, its page sends them home and its API answers 404; switching it back on brings
-// all of it back. The suite shares one database and runs serially, and the module is switched on again whatever
-// happens, so no other scenario ever finds customers off.
+// all of it back. Delivery notes need customers, so they are switched off first and back on last. The suite shares
+// one database and runs serially, and both modules are switched on again whatever happens, so no other scenario
+// ever finds either off.
 const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -33,19 +34,20 @@ async function customersStatus(page: Page): Promise<number> {
   });
 }
 
-async function switchCustomersOn(page: Page): Promise<void> {
+async function switchModule(page: Page, key: string, enabled: boolean): Promise<void> {
   await page.evaluate(
-    async ([csrf]) => {
+    async ([csrf, moduleKey, on]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
-      const switched = await fetch(`/api/companies/${me.company.id}/modules/customers`, {
+      const switched = await fetch(`/api/companies/${me.company.id}/modules/${moduleKey}`, {
         method: 'PUT',
         headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-        body: JSON.stringify({ enabled: true }),
+        body: JSON.stringify({ enabled: on }),
       });
-      // Left off, every later customers scenario would fail for a reason that is not its own.
-      if (!switched.ok) throw new Error(`switching customers on answered ${switched.status}`);
+      // Left off, every later scenario of that module would fail for a reason that is not its own.
+      if (!switched.ok)
+        throw new Error(`switching ${moduleKey} to ${on} answered ${switched.status}`);
     },
-    [CSRF] as const,
+    [CSRF, key, enabled] as const,
   );
 }
 
@@ -54,6 +56,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
 }) => {
   await signIn(page);
   try {
+    await switchModule(page, 'delivery_notes', false);
     await page.goto('/company/modules');
     await expect(page.getByTestId('nav-customers')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
@@ -69,6 +72,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
     await expect(page.getByTestId('nav-customers')).toBeVisible();
     expect(await customersStatus(page)).toBe(200);
   } finally {
-    await switchCustomersOn(page);
+    await switchModule(page, 'customers', true);
+    await switchModule(page, 'delivery_notes', true);
   }
 });

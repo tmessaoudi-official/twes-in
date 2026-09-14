@@ -26,6 +26,7 @@ final class LayerDependenciesTest extends TestCase
         'Symfony\Component\Uid\\',
         'Doctrine\ORM\Mapping',
         'Doctrine\DBAL\Types\Types',
+        'Doctrine\Common\Collections\\',
     ];
 
     /** What an Application file may name on top of every Domain and every Application. */

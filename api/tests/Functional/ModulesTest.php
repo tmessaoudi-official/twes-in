@@ -26,9 +26,9 @@ use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The module registry through the API (docs/SPEC.md § 3 Modules). Customers is the one real module; the test
- * environment also declares `fixture_ledger`, which needs customers, so the dependency refusals are exercised end to
- * end before G6 brings the first real dependency.
+ * The module registry through the API (docs/SPEC.md § 3 Modules). Customers, products and delivery notes are the real
+ * modules, delivery notes needing the other two; the test environment also declares `fixture_ledger`, which needs
+ * customers, so a dependency refusal is exercised on a module nothing else touches.
  */
 final class ModulesTest extends ApiTestCase
 {
@@ -49,11 +49,12 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseIsSuccessful();
         self::assertSame([
             ['key' => 'customers', 'labelKey' => 'modules.customers', 'dependencies' => [], 'permissions' => ['customer.read', 'customer.write'], 'enabled' => true],
+            ['key' => 'delivery_notes', 'labelKey' => 'modules.delivery_notes', 'dependencies' => ['customers', 'products'], 'permissions' => ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate'], 'enabled' => true],
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],
             ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write'], 'enabled' => true],
         ], $this->jsonList());
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'fixture_ledger', 'products'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'delivery_notes', 'fixture_ledger', 'products'], $this->arrayAt($this->json(), 'modules'));
     }
 
     public function testSwitchingAModuleOffHidesItsResourcesAndKeepsItsData(): void
@@ -82,6 +83,8 @@ final class ModulesTest extends ApiTestCase
             self::assertResponseIsSuccessful("$read before");
         }
 
+        $this->sendJson('PUT', $this->path('delivery_notes'), ['enabled' => false]);
+        self::assertResponseIsSuccessful();
         $this->sendJson('PUT', $this->path('fixture_ledger'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => false]);
@@ -96,7 +99,7 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
         self::assertSame(['products'], $this->arrayAt($this->json(), 'modules'), 'products needs no customers and stays on');
-        self::assertSame(['module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
+        self::assertSame(['module.disabled', 'module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
 
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => true]);
         self::assertResponseIsSuccessful();
@@ -112,8 +115,10 @@ final class ModulesTest extends ApiTestCase
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => false]);
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
         self::assertStringContainsString('fixture_ledger', (string) $this->client->getResponse()->getContent());
+        self::assertStringContainsString('delivery_notes', (string) $this->client->getResponse()->getContent());
 
         $this->sendJson('PUT', $this->path('fixture_ledger'), ['enabled' => false]);
+        $this->sendJson('PUT', $this->path('delivery_notes'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
 
@@ -204,6 +209,9 @@ final class ModulesTest extends ApiTestCase
         $this->getJson($this->companyPath().$categorySettings);
         self::assertResponseIsSuccessful();
 
+        $this->sendJson('PUT', $this->path('products'), ['enabled' => false]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'delivery notes need products');
+        $this->sendJson('PUT', $this->path('delivery_notes'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('products'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
 
