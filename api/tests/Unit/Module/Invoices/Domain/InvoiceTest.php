@@ -301,6 +301,106 @@ final class InvoiceTest extends TestCase
         }
     }
 
+    public function testACreditNoteCopiesAnIssuedInvoiceAndChargesTheTaxesItsInvoiceCharged(): void
+    {
+        [$vat, $vat13, $stamp] = [$this->tax('TVA19'), $this->tax('TVA13'), $this->tax('TIMBRE')];
+        $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(new \DateTimeImmutable('2026-09-10'), 30, 'PO-77', 'Merci', 'VIP', '1'), [
+            new InvoiceLineDetails($this->product($this->company), 'Portable 14"', '2', $this->unit('C62'), '1250', '10', [$this->tax('FODEC'), $vat]),
+        ], [$stamp, $this->tax('RS1')], $this->now);
+        $invoice->issue(new \App\Module\Invoices\Domain\InvoiceIssue('FAC-2026-00001', $this->now, 30, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures(), $this->now);
+        $vat->revise($vat->getName(), '7', null, null, false, $vat->isDefault(), true, null, $vat->getSortOrder(), 3, $this->now);
+
+        $credit = Invoice::creditNoteFor($invoice, $this->now);
+
+        self::assertSame([InvoiceType::CreditNote, InvoiceStatus::Draft, null, $invoice, $invoice->getCustomer(), $invoice->getEstablishment()], [$credit->getType(), $credit->getStatus(), $credit->getNumber(), $credit->getCorrectedInvoice(), $credit->getCustomer(), $credit->getEstablishment()]);
+        self::assertEquals($invoice->getHeader(), $credit->getHeader());
+        self::assertSame(array_map(static fn ($line): array => $line->values(), $invoice->getLines()), array_map(static fn ($line): array => $line->values(), $credit->getLines()));
+        self::assertSame([['FODEC', '1.000'], ['TVA19', '19.000']], $this->rates($credit)[0], 'the VAT its invoice charged, not the rate changed since');
+        self::assertSame(['TIMBRE', 'RS1'], array_map(static fn (InvoiceTax $tax): string => $tax->getCode(), $credit->getDocumentTaxes()));
+        self::assertNull($credit->getIssuedFigures());
+
+        $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), [
+            new InvoiceLineDetails(null, 'Portable 14"', '1', $this->unit('C62'), '1250', '10', [$this->tax('FODEC'), $vat]),
+            new InvoiceLineDetails(null, 'Pose', '1', $this->unit('C62'), '40', null, [$vat13]),
+        ], [$stamp], $this->now);
+        $vat13->revise($vat13->getName(), '12', null, null, false, $vat13->isDefault(), true, null, $vat13->getSortOrder(), 3, $this->now);
+        $stamp->revise($stamp->getName(), null, '2', null, false, $stamp->isDefault(), true, null, $stamp->getSortOrder(), 3, $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900', lines: 2), $this->now);
+
+        self::assertSame([[['FODEC', '1.000'], ['TVA19', '19.000']], [['TVA13', '12.000']]], $this->rates($credit), 'issuing charges what the invoice charged, and a tax it did not carry as it stands that day');
+        self::assertSame([['TIMBRE', '1.000']], array_map(static fn (InvoiceTax $tax): array => [$tax->getCode(), $tax->getAmount()], $credit->getDocumentTaxes()));
+    }
+
+    public function testOnlyAnIssuedInvoiceIsCreditedAndACreditNoteStaysWithItsCustomerAndIsNeverPaid(): void
+    {
+        $today = new \DateTimeImmutable('2026-09-20');
+        $draft = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
+        $invoice = $this->issued('12.900', '0.000', '12.900');
+        $credit = Invoice::creditNoteFor($invoice, $this->now);
+
+        $this->assertRefused('customerId', fn () => $credit->revise($this->establishment(), $this->customer($this->company, 'CLI-0002'), new InvoiceHeader(), [$this->pieceLine()], [], $this->now));
+        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures('-12.900', '0.000', '-12.900'), $this->now);
+
+        foreach ([
+            'a draft credited' => fn () => Invoice::creditNoteFor($draft, $this->now),
+            'a credit note credited' => fn () => Invoice::creditNoteFor($credit, $this->now),
+            'a credit note paid' => fn () => $credit->recordPayment(new PaymentDetails($today, '1', PaymentMethod::Cash), $today, 3, null, $this->now),
+        ] as $case => $attempt) {
+            try {
+                $attempt();
+                self::fail("$case");
+            } catch (InvoiceTransitionRefused) {
+            }
+        }
+        self::assertSame([], $credit->getPayments());
+    }
+
+    public function testACreditTakesItsAmountOffWhatItsInvoiceStillHasDueAtMostAllOfIt(): void
+    {
+        $invoice = $this->issued(total: '1190.000', withheld: '11.900', due: '1178.100');
+        $today = new \DateTimeImmutable('2026-09-20');
+
+        $invoice->credit($this->issuedCreditNote($invoice, '-178.100'), $this->now);
+
+        self::assertSame([InvoiceStatus::PartiallyPaid, '0.000', '1000.000', '178.100'], $this->settlement($invoice), 'credited is no longer only issued');
+        foreach ([
+            'a draft credit note' => Invoice::creditNoteFor($invoice, $this->now),
+            'another invoice\'s credit note' => $this->issuedCreditNote($this->issued('1190.000', '0.000', '1190.000'), '-0.001'),
+            'an invoice' => $this->issued('0.001', '0.000', '0.001'),
+        ] as $case => $wrong) {
+            try {
+                $invoice->credit($wrong, $this->now);
+                self::fail("$case was credited");
+            } catch (\LogicException $refused) {
+                self::assertNotInstanceOf(InvalidInvoice::class, $refused, "$case is refused for what it is, not for its amount");
+            }
+        }
+        self::assertSame([InvoiceStatus::PartiallyPaid, '0.000', '1000.000', '178.100'], $this->settlement($invoice));
+        $payment = $invoice->recordPayment(new PaymentDetails($today, '1000', PaymentMethod::Transfer), $today, 3, null, $this->now);
+        self::assertSame([InvoiceStatus::Paid, '1000.000', '0.000', '178.100'], $this->settlement($invoice));
+        $invoice->removePayment($payment, $this->now);
+        self::assertSame([InvoiceStatus::PartiallyPaid, '0.000', '1000.000', '178.100'], $this->settlement($invoice), 'deleting a payment keeps what was credited');
+
+        $this->assertRefused('amountDue', fn () => $invoice->credit($this->issuedCreditNote($invoice, '-1000.001'), $this->now));
+        self::assertSame([InvoiceStatus::PartiallyPaid, '0.000', '1000.000', '178.100'], $this->settlement($invoice));
+        $invoice->credit($this->issuedCreditNote($invoice, '-1000.000'), $this->now);
+        self::assertSame([InvoiceStatus::Paid, '0.000', '0.000', '1178.100'], $this->settlement($invoice), 'a credit up to what is due settles the invoice');
+    }
+
+    private function issuedCreditNote(Invoice $invoice, string $due): Invoice
+    {
+        $credit = Invoice::creditNoteFor($invoice, $this->now);
+        $credit->issue(new \App\Module\Invoices\Domain\InvoiceIssue('AV-2026-00001', $this->now, 0, 'fr', [], null, null, null), fn (Invoice $i) => $this->figures($due, '0.000', $due), $this->now);
+
+        return $credit;
+    }
+
+    /** @return list<list<array{string, string}>> each line's taxes, code and rate */
+    private function rates(Invoice $invoice): array
+    {
+        return array_map(static fn ($line): array => array_map(static fn ($tax): array => [$tax->getCode(), $tax->getRate()], $line->getTaxes()), $invoice->getLines());
+    }
+
     private function issued(string $total, string $withheld, string $due): Invoice
     {
         $invoice = Invoice::create($this->company, $this->establishment(), $this->customer($this->company), new InvoiceHeader(), [$this->pieceLine()], [], $this->now);
@@ -318,7 +418,7 @@ final class InvoiceTest extends TestCase
         return [$invoice->getStatus(), $figures->amountPaid, $figures->amountDue, $figures->amountCredited];
     }
 
-    private function figures(string $total = '12.900', string $withheld = '0.000', string $due = '12.900'): \App\Module\Invoices\Domain\InvoiceFigures
+    private function figures(string $total = '12.900', string $withheld = '0.000', string $due = '12.900', int $lines = 1): \App\Module\Invoices\Domain\InvoiceFigures
     {
         return new \App\Module\Invoices\Domain\InvoiceFigures(
             subtotalNet: '10.000',
@@ -331,7 +431,7 @@ final class InvoiceTest extends TestCase
             withholdings: '0.000' === $withheld ? [] : [['code' => 'RS1', 'rate' => '1.000', 'base' => $total, 'amount' => $withheld]],
             withholdingAmount: $withheld,
             amountDue: $due,
-            lines: [['net' => '10.000', 'tax' => '1.900', 'gross' => '11.900']],
+            lines: array_fill(0, $lines, ['net' => '10.000', 'tax' => '1.900', 'gross' => '11.900']),
         );
     }
 

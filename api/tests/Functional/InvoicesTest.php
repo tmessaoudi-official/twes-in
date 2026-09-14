@@ -338,6 +338,79 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
     }
 
+    public function testACreditNoteTakesWhatItCorrectsOffWhatItsInvoiceStillHasDue(): void
+    {
+        $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $number = static fn (int $sequence): string => \sprintf('AV-%s-%05d', substr($today, 0, 4), $sequence);
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '2']]]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        $invoice = $this->json();
+        $due = $this->stringAt($invoice, 'amountDue');
+        self::assertIsNumeric($due);
+
+        $this->postJson($this->path($id).'/credit-notes', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $credit = $this->json();
+        $creditId = $this->stringAt($credit, 'id');
+        self::assertSame(['credit_note', 'draft', null, $id, $this->customerId], [$credit['type'], $credit['status'], $credit['number'], $credit['correctsInvoiceId'], $credit['customerId']]);
+        self::assertSame(['-'.$this->stringAt($invoice, 'total'), $invoice['documentTaxComponentIds'], ['2.000']], [$this->stringAt($credit, 'total'), $credit['documentTaxComponentIds'], array_column($this->arrayAt($credit, 'lines'), 'quantity')], 'a credit note starts as the whole invoice, negative');
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'invoice.created' AND entity_id = ?", [$creditId]));
+
+        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['customerId' => $other, 'lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'a credit note goes to its invoice\'s customer');
+        self::assertStringContainsString('customerId', (string) $this->client->getResponse()->getContent());
+        $this->sendJson('PUT', $this->path($creditId), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        self::assertResponseIsSuccessful();
+
+        $this->postJson($this->path($creditId).'/issue', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame(['issued', $number(1)], [$this->json()['status'], $this->json()['number']]);
+        $credited = $this->stringAt($this->json(), 'amountDue');
+        self::assertStringStartsWith('-', $credited);
+        $credited = ltrim($credited, '-');
+        self::assertIsNumeric($credited);
+        $remaining = bcsub($due, $credited, 3);
+        $this->getJson($this->path($id));
+        self::assertSame(['partially_paid', '0.000', $credited, $remaining], [$this->json()['status'], $this->json()['amountPaid'], $this->json()['amountCredited'], $this->json()['amountDue']]);
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'invoice.credited'");
+        self::assertIsString($changes);
+        self::assertEquals(['creditNoteId' => $creditId, 'number' => $number(1), 'amount' => $credited], json_decode($changes, true));
+
+        $this->postJson($this->path($id).'/credit-notes', null);
+        $secondId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($secondId).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'the whole invoice again is more than it still has due');
+        self::assertStringContainsString('amountDue', (string) $this->client->getResponse()->getContent());
+        $this->getJson($this->path($id));
+        self::assertSame([$credited, $remaining], [$this->json()['amountCredited'], $this->json()['amountDue']]);
+
+        $this->sendJson('PUT', $this->path($secondId), $this->invoice(['documentTaxComponentIds' => [], 'lines' => [['description' => 'Geste commercial', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '100', 'taxComponentIds' => []]]]));
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path($secondId).'/issue', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_OK);
+        self::assertSame([$number(2), '-100.000'], [$this->json()['number'], $this->json()['amountDue']], 'the refused issue gave its number back');
+        $remaining = bcsub($remaining, '100', 3);
+        $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => $remaining, 'method' => 'transfer']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->getJson($this->path($id));
+        self::assertSame(['paid', '0.000', bcadd($credited, '100', 3)], [$this->json()['status'], $this->json()['amountDue'], $this->json()['amountCredited']], 'credits and payments settle an invoice together');
+
+        $this->postJson($this->path($creditId).'/credit-notes', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note is not credited');
+        $this->postJson($this->path($creditId).'/payments', ['date' => $today, 'amount' => '1', 'method' => 'cash']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note is not paid');
+        $this->postJson($this->path(), $this->invoice(['lines' => [['productId' => $this->productId, 'quantity' => '1']]]));
+        $this->postJson($this->path($this->stringAt($this->json(), 'id')).'/credit-notes', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not credited');
+        $this->postJson($this->path(self::ABSENT).'/credit-notes', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testPaymentsNeedPaymentWriteAndStayInTheirCompany(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);

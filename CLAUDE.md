@@ -143,6 +143,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   stored as a JSON object. A writable list property carries `#[Assert\Type('list')]` (2026-09-14: `choices` and
   `defaultTaxComponentIds` both accepted `{"first": …}` with 201).
 - Never name a PHPUnit helper `run()`: `TestCase::run()` is final and the whole file fails to load.
+- `\DomainException` extends `\LogicException`, so a test catching `\LogicException` also passes on every domain refusal
+  (`InvalidInvoice` and the like): assert the refusal is not the domain one, or the guard under test can vanish unseen
+  (2026-09-15: a credit note of another invoice looked refused while only its amount was).
 - BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
   as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign
   Referer, and a "no origin at all" request needs `getHistory()->clear()` as well as empty server parameters.

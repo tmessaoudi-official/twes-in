@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\Module\Invoices\Application;
 
+use App\Audit\Application\AuditEntry;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Fiscal\Domain\TaxFamily;
@@ -127,6 +128,38 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertSame([false], $this->events->whileInTransaction, 'published once the transaction is over');
 
         self::assertSame('FAC-2026-00002', $this->workflow->issue($this->company, $this->draft($customer)->getId(), null)->getNumber());
+    }
+
+    public function testIssuingACreditNoteNumbersItInItsOwnSeriesAndTakesItOffItsInvoiceInTheSameTransaction(): void
+    {
+        $invoice = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
+        self::assertSame('12.900', $invoice->getIssuedFigures()?->amountDue);
+        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $this->invoices->save($credit);
+        $actor = Uuid::v7();
+
+        self::assertSame($credit, $this->workflow->issue($this->company, $credit->getId(), $actor));
+
+        self::assertSame([InvoiceStatus::Issued, 'AV-2026-00001', '-12.900'], [$credit->getStatus(), $credit->getNumber(), $credit->getIssuedFigures()?->amountDue]);
+        self::assertSame([InvoiceStatus::Paid, '12.900', '0.000'], [$invoice->getStatus(), $invoice->getIssuedFigures()->amountCredited, $invoice->getIssuedFigures()->amountDue]);
+        self::assertSame(2, $this->transactions->committed);
+        self::assertSame([
+            ['invoice', $credit->getId(), 'invoice.issued', $actor, ['number' => 'AV-2026-00001'], $this->company->getId()],
+            ['invoice', $invoice->getId(), 'invoice.credited', $actor, ['creditNoteId' => $credit->getId()->toRfc4122(), 'number' => 'AV-2026-00001', 'amount' => '12.900'], $this->company->getId()],
+        ], array_map(static fn (AuditEntry $entry): array => [$entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $entry->companyId], \array_slice($this->audit->entries, 1)));
+        $event = $this->events->published[1];
+        self::assertInstanceOf(InvoiceIssued::class, $event);
+        self::assertSame([$credit->getId(), InvoiceType::CreditNote, 'AV-2026-00001'], [$event->invoiceId, $event->type, $event->number]);
+
+        $again = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $this->invoices->save($again);
+        try {
+            $this->workflow->issue($this->company, $again->getId(), $actor);
+            self::fail('a credit note above what its invoice still has due was issued');
+        } catch (InvalidInvoice $refused) {
+            self::assertSame('amountDue', $refused->field);
+        }
+        self::assertSame([InvoiceStatus::Draft, null, '12.900', 3, 2], [$again->getStatus(), $again->getNumber(), $invoice->getIssuedFigures()->amountCredited, \count($this->audit->entries), \count($this->events->published)]);
     }
 
     public function testTermsTheDraftStatesWinOverTheCustomersAndAStandardCustomerPrintsNoMention(): void

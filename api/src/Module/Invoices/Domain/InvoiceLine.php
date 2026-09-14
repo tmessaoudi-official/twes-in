@@ -89,14 +89,6 @@ class InvoiceLine
         }
     }
 
-    /** @internal issuing takes each tax's code, rate and VAT base behaviour again, as they stand on the issue day */
-    public function retakeTaxes(): void
-    {
-        foreach ($this->taxes as $tax) {
-            $tax->retake();
-        }
-    }
-
     /**
      * @internal issuing writes what the line comes to, never recomputed afterwards
      *

@@ -68,6 +68,19 @@ class InvoiceLineTax
         $this->entersVatBase = $this->taxComponent->entersVatBase();
     }
 
+    /** @internal the code, rate and VAT base behaviour another line tax charged; with none, its component's now */
+    public function retakeFrom(?self $charged): void
+    {
+        if (null === $charged) {
+            $this->retake();
+
+            return;
+        }
+        $this->code = $charged->code;
+        $this->rate = $charged->rate;
+        $this->entersVatBase = $charged->entersVatBase;
+    }
+
     public function getLine(): InvoiceLine
     {
         return $this->line;

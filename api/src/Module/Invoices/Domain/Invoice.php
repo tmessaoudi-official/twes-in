@@ -18,6 +18,7 @@ use App\Module\Customers\Domain\CustomerSnapshot;
 use App\Shared\Domain\DomainEvent;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
+use BcMath\Number;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -51,7 +52,7 @@ class Invoice
     private Company $company;
 
     #[ORM\Column(length: 16, enumType: InvoiceType::class)]
-    private InvoiceType $documentType = InvoiceType::Invoice;
+    private InvoiceType $documentType;
 
     #[ORM\ManyToOne(targetEntity: self::class)]
     #[ORM\JoinColumn(name: 'corrects_invoice_id', nullable: true)]
@@ -66,7 +67,7 @@ class Invoice
     private Customer $customer;
 
     #[ORM\Column(length: 16, enumType: InvoiceStatus::class)]
-    private InvoiceStatus $status = InvoiceStatus::Draft;
+    private InvoiceStatus $status;
 
     #[ORM\Column(length: 64, nullable: true)]
     private ?string $number = null;
@@ -186,6 +187,10 @@ class Invoice
     {
         $this->id = Uuid::v7();
         $this->company = $company;
+        // Set here, not as property defaults: a default naming an enum case leaves the class's defaults to resolve at
+        // runtime, which Doctrine's lazy ghost of a corrected invoice skips (the local debug PHP aborts on it).
+        $this->documentType = InvoiceType::Invoice;
+        $this->status = InvoiceStatus::Draft;
         $this->lines = new ArrayCollection();
         $this->documentTaxes = new ArrayCollection();
         $this->payments = new ArrayCollection();
@@ -212,6 +217,39 @@ class Invoice
     }
 
     /**
+     * A credit note drafted for an issued invoice (docs/SPEC.md § 7, 2026-09-14): the invoice's establishment, customer,
+     * header, lines and document taxes, each tax charged as the invoice charged it. Its figures are the negative of
+     * what it copies until it is revised.
+     *
+     * @throws InvoiceTransitionRefused when the document is not an issued invoice
+     */
+    public static function creditNoteFor(self $invoice, \DateTimeImmutable $now): self
+    {
+        if (InvoiceType::Invoice !== $invoice->documentType || !$invoice->isIssued()) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is corrected by a credit note.', $invoice->documentType->value, $invoice->reference(), $invoice->status->value));
+        }
+        $credit = new self($invoice->company, $now);
+        $credit->documentType = InvoiceType::CreditNote;
+        $credit->correctsInvoice = $invoice;
+        $credit->establishment = $invoice->establishment;
+        $credit->customer = $invoice->customer;
+        $credit->apply($invoice->getHeader());
+        $credit->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
+            $line->getProduct(),
+            $line->getDescription(),
+            $line->getQuantity(),
+            $line->getUnit(),
+            $line->getUnitPriceNet(),
+            $line->getDiscountRate(),
+            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+        ), $invoice->getLines()));
+        $credit->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
+        $credit->retakeTaxes();
+
+        return $credit;
+    }
+
+    /**
      * @param list<InvoiceLineDetails> $lines
      * @param list<TaxComponent>       $documentTaxes
      *
@@ -225,6 +263,9 @@ class Invoice
         $this->assertDraft('changes');
         $establishment = $this->establishmentOfThisCompany($establishment);
         $customer = $this->customerOfThisCompany($customer);
+        if (null !== $this->correctsInvoice && !$customer->getId()->equals($this->correctsInvoice->getCustomer()->getId())) {
+            throw new InvalidInvoice('customerId', 'A credit note goes to the customer of the invoice it corrects.');
+        }
         $lines = $this->linesOfThisCompany($lines);
         $documentTaxes = $this->documentTaxesOfThisCompany($documentTaxes);
 
@@ -257,6 +298,9 @@ class Invoice
         if ($linesChanged) {
             $this->writeLines($lines);
         }
+        if (null !== $this->correctsInvoice) {
+            $this->retakeTaxes();
+        }
         $this->updatedAt = $now;
 
         return $changed;
@@ -280,12 +324,7 @@ class Invoice
             throw new InvalidInvoice('lines', 'An invoice is issued with at least one line.');
         }
 
-        foreach ($this->getLines() as $line) {
-            $line->retakeTaxes();
-        }
-        foreach ($this->getDocumentTaxes() as $tax) {
-            $tax->retake();
-        }
+        $this->retakeTaxes();
         $fixed = $figures($this);
         $lines = $this->getLines();
         if (\count($fixed->lines) !== \count($lines)) {
@@ -347,8 +386,8 @@ class Invoice
      */
     public function recordPayment(PaymentDetails $details, \DateTimeImmutable $today, int $scale, ?Uuid $recordedBy, \DateTimeImmutable $now): Payment
     {
-        if (!\in_array($this->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true) || null === $this->issueDate) {
-            throw new InvoiceTransitionRefused(\sprintf('The invoice %s is %s: only an issued invoice is paid.', $this->reference(), $this->status->value));
+        if (InvoiceType::Invoice !== $this->documentType || !$this->isIssued() || null === $this->issueDate) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s is %s: only an issued invoice is paid.', $this->documentType->value, $this->reference(), $this->status->value));
         }
         $amount = Decimal::of($details->amount);
         if (0 !== Decimal::round($amount, $scale)->compare($amount)) {
@@ -371,6 +410,36 @@ class Invoice
         $this->settle($now);
 
         return $payment;
+    }
+
+    /**
+     * Takes an issued credit note of this invoice off what it still has due (docs/SPEC.md § 7, 2026-09-14): what the
+     * credit note comes to is added to what was credited, and the status follows.
+     *
+     * @throws InvalidInvoice on `amountDue` when the credit note comes to more than the invoice still has due
+     */
+    public function credit(self $creditNote, \DateTimeImmutable $now): void
+    {
+        $figures = $creditNote->getIssuedFigures();
+        if (InvoiceType::CreditNote !== $creditNote->documentType || InvoiceStatus::Issued !== $creditNote->status || null === $figures
+            || !($creditNote->correctsInvoice?->getId()->equals($this->id) ?? false)) {
+            throw new \LogicException(\sprintf('The invoice %s is credited by an issued credit note of its own.', $this->reference()));
+        }
+        $amount = $this->creditThatFits($figures->amountDue);
+        $this->amountCredited = Decimal::format(Decimal::of($this->amountCredited)->add($amount), self::STORED_SCALE);
+        $this->settle($now);
+    }
+
+    /**
+     * The figures of a credit note of this invoice, once they fit what the invoice still has due.
+     *
+     * @throws InvalidInvoice on `amountDue`
+     */
+    public function fitsCredit(InvoiceFigures $figures): InvoiceFigures
+    {
+        $this->creditThatFits($figures->amountDue);
+
+        return $figures;
     }
 
     /** One of its payments; null when it has none of this id. */
@@ -548,6 +617,63 @@ class Invoice
             default => InvoiceStatus::PartiallyPaid,
         };
         $this->updatedAt = $now;
+    }
+
+    private function isIssued(): bool
+    {
+        return \in_array($this->status, [InvoiceStatus::Issued, InvoiceStatus::PartiallyPaid, InvoiceStatus::Paid], true);
+    }
+
+    private function creditThatFits(string $creditNoteAmountDue): Number
+    {
+        $amount = Decimal::absolute(Decimal::of($creditNoteAmountDue));
+        $due = Decimal::of($this->amountDue ?? '0');
+        if ($amount->compare($due) > 0) {
+            throw new InvalidInvoice('amountDue', \sprintf('A credit note takes at most what the invoice %s still has due, %s.', $this->reference(), Decimal::format($due, self::STORED_SCALE)));
+        }
+
+        return $amount;
+    }
+
+    /**
+     * Each tax's code, rate, amount and threshold as its component has them now; on a credit note, a tax its invoice
+     * charged is charged as the invoice charged it, so a correction never disagrees with what it corrects.
+     */
+    private function retakeTaxes(): void
+    {
+        $corrected = $this->correctsInvoice;
+        foreach ($this->getLines() as $line) {
+            foreach ($line->getTaxes() as $tax) {
+                $tax->retakeFrom($corrected?->lineTaxCharged($tax->getTaxComponent()));
+            }
+        }
+        foreach ($this->getDocumentTaxes() as $tax) {
+            $tax->retakeFrom($corrected?->documentTaxCharged($tax->getTaxComponent()));
+        }
+    }
+
+    private function lineTaxCharged(TaxComponent $component): ?InvoiceLineTax
+    {
+        foreach ($this->getLines() as $line) {
+            foreach ($line->getTaxes() as $tax) {
+                if ($tax->getTaxComponent()->getId()->equals($component->getId())) {
+                    return $tax;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function documentTaxCharged(TaxComponent $component): ?InvoiceTax
+    {
+        foreach ($this->getDocumentTaxes() as $tax) {
+            if ($tax->getTaxComponent()->getId()->equals($component->getId())) {
+                return $tax;
+            }
+        }
+
+        return null;
     }
 
     private function apply(InvoiceHeader $header): void

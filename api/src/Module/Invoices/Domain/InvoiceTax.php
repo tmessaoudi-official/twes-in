@@ -77,6 +77,21 @@ class InvoiceTax
         $this->threshold = self::decimal($this->taxComponent->getThreshold());
     }
 
+    /** @internal the code, kind, rate, amount and threshold another document tax charged; with none, its component's now */
+    public function retakeFrom(?self $charged): void
+    {
+        if (null === $charged) {
+            $this->retake();
+
+            return;
+        }
+        $this->code = $charged->code;
+        $this->kind = $charged->kind;
+        $this->rate = $charged->rate;
+        $this->amount = $charged->amount;
+        $this->threshold = $charged->threshold;
+    }
+
     private static function decimal(?string $value): ?string
     {
         return null === $value ? null : Decimal::format(Decimal::of($value), 3);

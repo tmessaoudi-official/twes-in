@@ -83,6 +83,24 @@ final readonly class ManageInvoices
     }
 
     /**
+     * A credit note drafted from an issued invoice (docs/SPEC.md § 7, 2026-09-14), audited as created with the invoice it
+     * corrects.
+     *
+     * @throws InvoiceNotFound
+     * @throws InvoiceTransitionRefused when the document is not an issued invoice
+     * @throws InvalidInvoice
+     */
+    public function draftCreditNote(Company $company, Uuid $invoiceId, ?Uuid $actorUserId): Invoice
+    {
+        $credit = Invoice::creditNoteFor($this->get($company, $invoiceId), $this->clock->now());
+        $this->totals->checked($credit);
+        $this->invoices->save($credit);
+        $this->record($company, $credit->getId(), self::CREATED, ['correctsInvoiceId' => $invoiceId->toRfc4122()], $actorUserId);
+
+        return $credit;
+    }
+
+    /**
      * @throws InvoiceNotFound
      * @throws InvoiceNotDraft
      * @throws InvalidInvoice
