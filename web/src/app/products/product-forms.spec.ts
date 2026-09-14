@@ -6,7 +6,6 @@ import {
   categoryInput,
   categoryLabels,
   categoryValues,
-  displayPrice,
   productForm,
   productInput,
   productListRows,
@@ -76,14 +75,6 @@ const warranty: CustomFieldDefinition = {
 };
 
 describe('product forms', () => {
-  it('shows a price at the currency scale, keeping the finer decimals a unit price may carry', () => {
-    expect(displayPrice('1250.5000', 3)).toBe('1250.500');
-    expect(displayPrice('0.0045', 3)).toBe('0.0045');
-    expect(displayPrice('12.0000', 2)).toBe('12.00');
-    expect(displayPrice('7.0000', 0)).toBe('7');
-    expect(displayPrice('7.5000', 0)).toBe('7.5');
-  });
-
   it('names each category by its path in the tree', () => {
     expect(categoryLabels([gaming, laptops, hardware])).toEqual(
       new Map([
@@ -94,12 +85,12 @@ describe('product forms', () => {
     );
   });
 
-  it('lists products with their category path, unit code and price at the currency scale', () => {
+  it('lists products with their category path and unit code, sorting the price as the API wrote it', () => {
     expect(productListRows([laptop], [hardware, laptops], options)).toEqual([
-      { ...laptop, categoryName: 'Matériel › Portables', unitCode: 'C62', price: '1250.500' },
+      { ...laptop, categoryName: 'Matériel › Portables', unitCode: 'C62' },
     ]);
     expect(productListRows([{ ...laptop, categoryId: null }], [], null)[0]).toEqual(
-      expect.objectContaining({ categoryName: null, unitCode: '', price: '1250.5000' }),
+      expect.objectContaining({ categoryName: null, unitCode: '' }),
     );
     const list = productsList([warranty]);
     expect(list.columns.map((column) => column.id)).toEqual([

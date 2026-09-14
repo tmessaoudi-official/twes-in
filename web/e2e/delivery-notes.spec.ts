@@ -133,7 +133,7 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.getByTestId('delivery-note-save').click();
 
     await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
-    await expect(page.getByTestId('delivery-note-totals')).toContainText('2975.000');
+    await expect(page.getByTestId('delivery-note-totals')).toContainText('2 975,000');
     const draftPdf = await download(
       page,
       (await page.getByTestId('delivery-note-pdf').getAttribute('href')) ?? '',

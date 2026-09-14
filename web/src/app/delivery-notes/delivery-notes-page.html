@@ -33,6 +33,15 @@
     <ng-template appDataListCell="status" let-row>
       {{ 'delivery_notes.statuses.' + row.status | translate }}
     </ng-template>
+    <ng-template appDataListCell="issueDate" let-row>
+      {{ row.issueDate | day }}
+    </ng-template>
+    <ng-template appDataListCell="deliveryDate" let-row>
+      {{ row.deliveryDate | day }}
+    </ng-template>
+    <ng-template appDataListCell="total" let-row>
+      {{ row.total | amount: scale() }}
+    </ng-template>
     <ng-template appDataListRowActions let-row>
       <a
         mat-button

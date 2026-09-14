@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { atScale } from '../shared/i18n/format';
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor } from '../shared/list/list-types';
@@ -21,25 +22,13 @@ const QUANTITY_PATTERN = /^(0|[1-9][0-9]{0,9})([.][0-9]{1,3})?$/;
 /** A price as the API takes it: at most ten digits, then at most four decimals. */
 const PRICE_PATTERN = /^(0|[1-9][0-9]{0,9})([.][0-9]{1,4})?$/;
 
-/**
- * An amount as the screens show it: at the currency's scale, and finer only when the value itself is ("0.0045" per
- * unit). Nothing is rounded here; the API computes every figure, and trailing zeros past the scale are dropped.
- */
-export function atScale(value: string, scale: number): string {
-  const [units = '', decimals = ''] = value.split('.');
-  const significant = decimals.replace(/0+$/, '');
-  const shown =
-    significant.length > scale ? significant : decimals.slice(0, scale).padEnd(scale, '0');
-  return shown === '' ? units : `${units}.${shown}`;
-}
-
 /** A quantity without the zeros the API pads it with, "2.000" as "2", so a unit counting none accepts it back. */
 function plainQuantity(value: string): string {
   return value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value;
 }
 
-/** A note as the list shows it: with its customer's name and its total at the currency scale. */
-export type DeliveryNoteListRow = DeliveryNoteRow & { customer: string; totalShown: string };
+/** A note as the list shows it: with its customer's name. */
+export type DeliveryNoteListRow = DeliveryNoteRow & { customer: string };
 
 /** A validated note names the customer it was issued to; a draft names the customer as the company has it today. */
 export function deliveryNoteListRows(
@@ -52,7 +41,6 @@ export function deliveryNoteListRows(
   return notes.map((note) => ({
     ...note,
     customer: note.customerName ?? customers.get(note.customerId) ?? '',
-    totalShown: options === null ? note.total : atScale(note.total, options.currencyScale),
   }));
 }
 
@@ -103,7 +91,7 @@ export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {
     {
       id: 'total',
       label: `${FIELDS}.total`,
-      value: (row) => row.totalShown,
+      value: (row) => row.total,
       align: 'end',
       width: 160,
     },

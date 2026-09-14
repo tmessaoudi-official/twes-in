@@ -19,8 +19,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import {
-  atScale,
   deliveryNoteForm,
   deliveryNoteInput,
   deliveryNoteValues,
@@ -43,6 +43,8 @@ import type { DeliveryNoteInput, TaxFamily } from './delivery-notes-types';
     MatInputModule,
     RouterLink,
     TranslatePipe,
+    AmountPipe,
+    DayPipe,
     DescriptorForm,
     DeliveryNoteLines,
   ],
@@ -58,6 +60,7 @@ export class DeliveryNotePage {
   readonly deliveryNoteId = input<string | undefined>(undefined);
 
   protected readonly id = computed(() => this.deliveryNoteId() ?? null);
+  protected readonly scale = computed(() => this.options()?.currencyScale ?? null);
   protected readonly options = this.facade.options;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -172,10 +175,6 @@ export class DeliveryNotePage {
       );
       onCleanup(() => subscription.unsubscribe());
     });
-  }
-
-  protected amount(value: string): string {
-    return atScale(value, this.options()?.currencyScale ?? 2);
   }
 
   protected onDeliveredOn(event: Event): void {

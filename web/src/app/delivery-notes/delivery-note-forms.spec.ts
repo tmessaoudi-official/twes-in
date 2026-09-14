@@ -2,7 +2,7 @@
 
 import {
   applyProduct,
-  atScale,
+  DELIVERY_NOTES_LIST,
   deliveryNoteForm,
   deliveryNoteInput,
   deliveryNoteListRows,
@@ -81,14 +81,7 @@ const validated: DeliveryNoteRow = {
 };
 
 describe('delivery note forms', () => {
-  it('shows an amount at the currency scale, and finer only when it is', () => {
-    expect(atScale('2525', 3)).toBe('2525.000');
-    expect(atScale('2.5000', 3)).toBe('2.500');
-    expect(atScale('12.3456', 3)).toBe('12.3456');
-    expect(atScale('7', 0)).toBe('7');
-  });
-
-  it('lists a note with the customer it was validated with, else today’s, and its total at scale', () => {
+  it('lists a note with the customer it was validated with, else today’s', () => {
     const draft: DeliveryNoteRow = {
       ...validated,
       id: 'n2',
@@ -100,10 +93,13 @@ describe('delivery note forms', () => {
 
     const rows = deliveryNoteListRows([validated, draft], options);
 
-    expect(rows.map((row) => [row.id, row.customer, row.totalShown])).toEqual([
-      ['n1', 'Ancien client', '23.800'],
-      ['n2', 'Carthage', '23.800'],
+    expect(rows.map((row) => [row.id, row.customer, row.total])).toEqual([
+      ['n1', 'Ancien client', '23.8'],
+      ['n2', 'Carthage', '23.8'],
     ]);
+    expect(
+      DELIVERY_NOTES_LIST.columns.find((column) => column.id === 'total')?.value(rows[0]!),
+    ).toBe('23.8');
   });
 
   it('offers the company’s customers and establishments, keeping a customer it no longer offers', () => {

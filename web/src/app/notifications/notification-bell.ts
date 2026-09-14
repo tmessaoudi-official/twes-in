@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { DatePipe } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -16,6 +15,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { MomentPipe } from '../shared/i18n/format-pipes';
 import { NotificationsFacade } from './notifications-facade';
 import { type InboxEntry, notificationKey } from './notifications-types';
 
@@ -25,7 +25,14 @@ import { type InboxEntry, notificationKey } from './notifications-types';
  */
 @Component({
   selector: 'app-notification-bell',
-  imports: [DatePipe, MatBadgeModule, MatButtonModule, MatIconModule, MatMenuModule, TranslatePipe],
+  imports: [
+    MatBadgeModule,
+    MatButtonModule,
+    MatIconModule,
+    MatMenuModule,
+    MomentPipe,
+    TranslatePipe,
+  ],
   templateUrl: './notification-bell.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

@@ -111,7 +111,7 @@ test('a product is filed in a category, priced at the currency scale and revised
 
     await page.goto('/products');
     await expect(page.getByTestId(`product-${reference}`)).toContainText(categoryName);
-    await expect(page.getByTestId(`product-${reference}`)).toContainText('135.000');
+    await expect(page.getByTestId(`product-${reference}`)).toContainText('135,000');
     await expect(page.getByTestId(`product-${reference}`)).toContainText('HUR');
   } finally {
     await retire(page, reference, categoryName);

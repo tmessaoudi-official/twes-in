@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { atScale } from '../shared/i18n/format';
 import {
   customFieldInput,
   customFieldValues,
@@ -32,18 +33,6 @@ const TAX_PREFIX = 'tax__';
 /** The API's shape of a price, anchored by the form: at most ten digits, then at most four decimals. */
 const PRICE_PATTERN = '(0|[1-9][0-9]{0,9})([.][0-9]{1,4})?';
 
-/**
- * A price as the screens show it: at the currency's scale, and finer only when the unit price itself is ("0.0045"
- * per unit). The API keeps four decimals; nothing is rounded here, trailing zeros past the scale are dropped.
- */
-export function displayPrice(price: string, scale: number): string {
-  const [units, decimals = ''] = price.split('.');
-  const significant = decimals.replace(/0+$/, '');
-  const shown =
-    significant.length > scale ? significant : decimals.slice(0, scale).padEnd(scale, '0');
-  return shown === '' ? (units ?? '') : `${units}.${shown}`;
-}
-
 /** Each category's path from the top of the tree, "Matériel › Portables", ordered by path. */
 export function categoryLabels(categories: readonly ProductCategoryRow[]): Map<string, string> {
   const byId = new Map(categories.map((category) => [category.id, category]));
@@ -64,11 +53,10 @@ export function categoryLabels(categories: readonly ProductCategoryRow[]): Map<s
   return new Map(labels);
 }
 
-/** A product as the list shows it: its category's path, its unit's code and its price at the currency scale. */
+/** A product as the list shows it: its category's path and its unit's code. */
 export type ProductListRow = ProductRow & {
   categoryName: string | null;
   unitCode: string;
-  price: string;
 };
 
 export function productListRows(
@@ -82,8 +70,6 @@ export function productListRows(
     ...row,
     categoryName: row.categoryId === null ? null : (labels.get(row.categoryId) ?? null),
     unitCode: units.get(row.unitId) ?? '',
-    price:
-      options === null ? row.unitPriceNet : displayPrice(row.unitPriceNet, options.currencyScale),
   }));
 }
 
@@ -122,7 +108,7 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
     {
       id: 'price',
       label: `${FIELDS}.price`,
-      value: (row) => row.price,
+      value: (row) => row.unitPriceNet,
       align: 'end',
       width: 160,
     },
@@ -305,11 +291,9 @@ export function productValues(
     barcode: row?.barcode ?? '',
     isActive: row?.isActive ?? true,
     unitId: row?.unitId ?? unit?.id ?? '',
-    unitPriceNet: row === null ? '' : displayPrice(row.unitPriceNet, options.currencyScale),
+    unitPriceNet: row === null ? '' : atScale(row.unitPriceNet, options.currencyScale),
     costPrice:
-      row?.costPrice === null || row === null
-        ? ''
-        : displayPrice(row.costPrice, options.currencyScale),
+      row?.costPrice === null || row === null ? '' : atScale(row.costPrice, options.currencyScale),
     description: row?.description ?? '',
   };
   for (const tax of options.taxes) {

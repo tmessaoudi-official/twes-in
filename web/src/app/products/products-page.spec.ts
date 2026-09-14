@@ -117,12 +117,12 @@ describe('ProductsPage', () => {
 
   it('lists the products with their kind, category, unit and price at the currency scale', () => {
     expect(facade.loadList).toHaveBeenCalledWith('c1');
-    const row = q('product-ART-001')?.textContent ?? '';
+    const row = (q('product-ART-001')?.textContent ?? '').replace(/\s/g, ' ');
     expect(row).toContain('Portable 14"');
     expect(row).toContain('Bien');
     expect(row).toContain('Matériel');
     expect(row).toContain('C62');
-    expect(row).toContain('1250.500');
+    expect(row).toContain('1 250,500');
     expect(row).toContain('Actif');
     expect(q('product-open-ART-001')?.getAttribute('href')).toBe('/products/p1');
   });

@@ -121,11 +121,12 @@ describe('DeliveryNotesPage', () => {
 
   it('lists the notes with their number, status, customer and total at the currency scale', () => {
     expect(facade.loadList).toHaveBeenCalledWith('c1');
-    const row = q('delivery-note-n1')?.textContent ?? '';
+    const row = (q('delivery-note-n1')?.textContent ?? '').replace(/\s/g, ' ');
     expect(row).toContain('BL-2026-00001');
     expect(row).toContain('Validé');
     expect(row).toContain('Carthage Conseil');
-    expect(row).toContain('2500.000');
+    expect(row).toContain('2 500,000');
+    expect(row).toContain('15/09/2026');
     expect(q('delivery-note-open-n1')?.getAttribute('href')).toBe('/delivery-notes/n1');
 
     const draft = q('delivery-note-n2')?.textContent ?? '';

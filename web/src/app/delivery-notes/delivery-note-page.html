@@ -12,10 +12,10 @@
         <p class="text-sm opacity-80" data-testid="delivery-note-status">
           {{ 'delivery_notes.statuses.' + note.status | translate }}
           @if (note.issueDate) {
-            · {{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate }}
+            · {{ 'delivery_notes.fields.issueDate' | translate }} {{ note.issueDate | day }}
           }
           @if (note.deliveryDate && (note.status === 'delivered' || note.status === 'invoiced')) {
-            · {{ 'delivery_notes.fields.deliveryDate' | translate }} {{ note.deliveryDate }}
+            · {{ 'delivery_notes.fields.deliveryDate' | translate }} {{ note.deliveryDate | day }}
           }
         </p>
       }
@@ -102,15 +102,15 @@
         <h2 class="text-xl font-semibold">{{ 'delivery_notes.totals.title' | translate }}</h2>
         <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
           <dt>{{ 'delivery_notes.totals.subtotal' | translate }}</dt>
-          <dd class="text-end">{{ amount(note.subtotalNet) }}</dd>
+          <dd class="text-end">{{ note.subtotalNet | amount: scale() }}</dd>
           @for (tax of note.taxes; track tax.code + '|' + tax.rate) {
             <dt>{{ tax.code }} {{ tax.rate }} %</dt>
-            <dd class="text-end">{{ amount(tax.amount) }}</dd>
+            <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
           }
           <dt>{{ 'delivery_notes.totals.total_tax' | translate }}</dt>
-          <dd class="text-end">{{ amount(note.totalTax) }}</dd>
+          <dd class="text-end">{{ note.totalTax | amount: scale() }}</dd>
           <dt class="font-semibold">{{ 'delivery_notes.totals.total' | translate }}</dt>
-          <dd class="text-end font-semibold">{{ amount(note.total) }}</dd>
+          <dd class="text-end font-semibold">{{ note.total | amount: scale() }}</dd>
         </dl>
         <p class="text-xs opacity-70">
           {{ 'delivery_notes.totals.as_saved' | translate: { currency: options()?.currency } }}
