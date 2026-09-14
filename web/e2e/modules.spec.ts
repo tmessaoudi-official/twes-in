@@ -56,6 +56,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
 }) => {
   await signIn(page);
   try {
+    await switchModule(page, 'invoices', false);
     await switchModule(page, 'delivery_notes', false);
     await page.goto('/company/modules');
     await expect(page.getByTestId('nav-customers')).toBeVisible();
