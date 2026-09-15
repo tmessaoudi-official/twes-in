@@ -659,7 +659,11 @@
     "back": "Back to delivery notes",
     "saved": "The draft was saved.",
     "read_only": "You can read delivery notes but not change them.",
-    "fixed": "This note is numbered and no longer changes; it can still be delivered, cancelled and printed.",
+    "fixed_notes": {
+      "validated": "This note is numbered and no longer changes; it can still be delivered, cancelled and printed.",
+      "delivered": "This note is delivered and no longer changes; it waits for its invoice and can still be printed.",
+      "cancelled": "This note is cancelled and no longer changes; it can still be printed."
+    },
     "invoiced_note": "This note is on an issued invoice: it is neither delivered nor cancelled any more, and can still be printed.",
     "statuses": {
       "draft": "Draft",

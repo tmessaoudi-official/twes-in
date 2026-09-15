@@ -659,7 +659,11 @@
     "back": "Retour aux bons de livraison",
     "saved": "Le brouillon a été enregistré.",
     "read_only": "Vous pouvez consulter les bons de livraison, pas les modifier.",
-    "fixed": "Ce bon est numéroté et ne change plus ; il peut encore être livré, annulé et imprimé.",
+    "fixed_notes": {
+      "validated": "Ce bon est numéroté et ne change plus ; il peut encore être livré, annulé et imprimé.",
+      "delivered": "Ce bon est livré et ne change plus ; il attend sa facture et peut encore être imprimé.",
+      "cancelled": "Ce bon est annulé et ne change plus ; il peut encore être imprimé."
+    },
     "invoiced_note": "Ce bon figure sur une facture émise : il n’est plus ni livré ni annulé, et peut encore être imprimé.",
     "statuses": {
       "draft": "Brouillon",

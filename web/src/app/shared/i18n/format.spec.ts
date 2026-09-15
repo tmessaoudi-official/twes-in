@@ -34,6 +34,21 @@ describe('formatAmount', () => {
     expect(formatAmount('1250.5000', null, 'en')).toBe('1,250.5000');
   });
 
+  it('builds the locale’s number format once, however many amounts a list writes', () => {
+    const Real = Intl.NumberFormat;
+    const built = vi.spyOn(Intl, 'NumberFormat').mockImplementation(function (
+      ...args: ConstructorParameters<typeof Intl.NumberFormat>
+    ) {
+      return new Real(...args);
+    });
+    try {
+      for (let row = 0; row < 50; row++) formatAmount(`${row}.5`, 3, 'ar-TN');
+      expect(built.mock.calls.length).toBeLessThanOrEqual(1);
+    } finally {
+      built.mockRestore();
+    }
+  });
+
   it('signs a negative amount', () => {
     expect(spaced(formatAmount('-1250.5', 3, 'fr-TN'))).toBe('-1 250,500');
   });

@@ -53,8 +53,12 @@
     <p data-testid="delivery-note-read-only">{{ 'delivery_notes.read_only' | translate }}</p>
   } @else if (current()?.status === 'invoiced') {
     <p data-testid="delivery-note-invoiced">{{ 'delivery_notes.invoiced_note' | translate }}</p>
-  } @else if (current() && current()?.status !== 'draft') {
-    <p data-testid="delivery-note-fixed">{{ 'delivery_notes.fixed' | translate }}</p>
+  } @else if (current(); as note) {
+    @if (note.status !== 'draft') {
+      <p data-testid="delivery-note-fixed">
+        {{ 'delivery_notes.fixed_notes.' + note.status | translate }}
+      </p>
+    }
   }
   @if (noCustomers()) {
     <p data-testid="delivery-note-no-customers">

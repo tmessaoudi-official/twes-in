@@ -30,12 +30,33 @@ export function formatAmount(value: string, scale: number | null, locale: string
   const [integer = '0', fraction] = (scale === null ? unsigned : atScale(unsigned, scale)).split(
     '.',
   );
-  const numbers = new Intl.NumberFormat(locale);
-  const parts = numbers.formatToParts(-1.5);
-  const decimal = parts.find((part) => part.type === 'decimal')?.value ?? '.';
-  const minus = parts.find((part) => part.type === 'minusSign')?.value ?? '-';
+  const { numbers, decimal, minus } = numberFormat(locale);
   const shown = `${numbers.format(BigInt(integer))}${fraction === undefined ? '' : decimal + fraction}`;
   return negative ? `${minus}${shown}` : shown;
+}
+
+interface NumberFormat {
+  numbers: Intl.NumberFormat;
+  decimal: string;
+  minus: string;
+}
+
+const numberFormats = new Map<string, NumberFormat>();
+
+/** A locale's number format and its glyphs, built once: a list re-renders every amount on each change detection. */
+function numberFormat(locale: string): NumberFormat {
+  let known = numberFormats.get(locale);
+  if (known === undefined) {
+    const numbers = new Intl.NumberFormat(locale);
+    const parts = numbers.formatToParts(-1.5);
+    known = {
+      numbers,
+      decimal: parts.find((part) => part.type === 'decimal')?.value ?? '.',
+      minus: parts.find((part) => part.type === 'minusSign')?.value ?? '-',
+    };
+    numberFormats.set(locale, known);
+  }
+  return known;
 }
 
 /** A calendar day ("2026-09-05") as the locale writes it, "05/09/2026" in French; what is not a day shows as it came. */

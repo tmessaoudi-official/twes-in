@@ -33,7 +33,11 @@ class StaticLoader implements TranslateLoader {
       delivery_notes: {
         errors: { conflict: 'La note a changé d’état entre-temps.' },
         statuses: { draft: 'Brouillon', validated: 'Validé', invoiced: 'Facturé' },
-        fixed: 'Numéroté, il peut encore être livré.',
+        fixed_notes: {
+          validated: 'Numéroté, il peut encore être livré.',
+          delivered: 'Livré, il attend sa facture.',
+          cancelled: 'Annulé, il peut encore être imprimé.',
+        },
         invoiced_note: 'Ce bon est sur une facture.',
       },
     });
@@ -284,6 +288,7 @@ describe('DeliveryNotePage', () => {
 
     expect(q('delivery-note-title')?.textContent).toContain('BL-2026-00001');
     expect(q('delivery-note-status')?.textContent).toContain('Validé');
+    expect(q('delivery-note-fixed')?.textContent).toContain('peut encore être livré');
     expect((q('line-0-quantity') as HTMLInputElement).disabled).toBe(true);
     expect(q('delivery-note-save')).toBeNull();
     expect(q('delivery-note-validate')).toBeNull();
@@ -318,6 +323,20 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-delivered-on')).toBeNull();
     expect(q('delivery-note-cancel')).toBeNull();
     expect(q('delivery-note-pdf')).not.toBeNull();
+  });
+
+  it('tells a delivered or a cancelled note only what it can still become', async () => {
+    note.set({ ...validated, status: 'delivered', deliveryDate: '2026-09-20' });
+    await open('n1');
+    expect(q('delivery-note-fixed')?.textContent).toContain('attend sa facture');
+    expect(q('delivery-note-fixed')?.textContent).not.toContain('livré.');
+    expect(q('delivery-note-cancel')).toBeNull();
+
+    note.set({ ...validated, status: 'cancelled' });
+    await settle();
+    expect(q('delivery-note-fixed')?.textContent).toContain('Annulé, il peut encore être imprimé');
+    expect(q('delivery-note-deliver')).toBeNull();
+    expect(q('delivery-note-cancel')).toBeNull();
   });
 
   it('shows a reader the note and its PDF without a way to change it', async () => {
