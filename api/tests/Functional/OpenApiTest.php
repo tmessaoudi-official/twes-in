@@ -36,6 +36,11 @@ final class OpenApiTest extends KernelTestCase
         self::assertNotNull($paths->getPath('/api/auth/mfa/recovery-codes/passkey/options')?->getPost());
         self::assertNotNull($paths->getPath('/api/platform/settings')?->getGet());
         self::assertNotNull($paths->getPath('/api/platform/settings/{key}')?->getPut());
+        $signup = $paths->getPath('/api/signup');
+        self::assertNotNull($signup?->getGet());
+        self::assertNotNull($signup->getPost());
+        self::assertNotNull($paths->getPath('/api/signup/{token}')?->getGet());
+        self::assertNotNull($paths->getPath('/api/signup/{token}/complete')?->getPost());
         self::assertNotNull($paths->getPath('/api/auth/mfa/recovery-codes/passkey')?->getPost());
 
         self::assertSame(['user', 'company', 'permissions', 'mfa', 'modules'], $this->required($schemas['Me']));

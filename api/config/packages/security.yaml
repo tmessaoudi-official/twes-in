@@ -54,6 +54,9 @@ security:
         - { path: ^/api/auth/mfa/verify$, roles: PUBLIC_ACCESS }
         # The same half of a login, paid with a passkey instead of a code.
         - { path: ^/api/auth/mfa/passkey-login(/options)?$, roles: PUBLIC_ACCESS }
+        # Public signup: asked for from the sign-in page and finished from a mailed link, both with no session by design.
+        # Closed until an operator opens it (signup.enabled), rate limited, and answered the same whatever the address.
+        - { path: ^/api/signup, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

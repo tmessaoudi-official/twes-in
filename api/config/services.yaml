@@ -17,6 +17,9 @@ parameters:
     # origin the SPA is served from, because the link is opened from a mail client with no session.
     app.invitation.valid_for: 'P7D'
     app.invitation.accept_url: '%env(DEFAULT_URI)%/invitations/{token}'
+    app.signup.link_url: '%env(DEFAULT_URI)%/signup/{token}'
+    app.signup.login_url: '%env(DEFAULT_URI)%/login'
+    app.signup.valid_for: 'PT24H'
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
     app.product_name: 'twes-in'
@@ -95,6 +98,15 @@ services:
             $acceptUrlTemplate: '%app.invitation.accept_url%'
             $validFor: '%app.invitation.valid_for%'
     App\Tenancy\Infrastructure\Mail\SymfonyInvitationMailer:
+        arguments:
+            $sender: '%app.mail.sender%'
+            $productName: '%app.product_name%'
+    App\Tenancy\Application\Signup\RequestSignup:
+        arguments:
+            $linkUrlTemplate: '%app.signup.link_url%'
+            $loginUrl: '%app.signup.login_url%'
+            $validFor: '%app.signup.valid_for%'
+    App\Tenancy\Infrastructure\Mail\SymfonySignupMailer:
         arguments:
             $sender: '%app.mail.sender%'
             $productName: '%app.product_name%'

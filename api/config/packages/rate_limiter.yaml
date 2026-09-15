@@ -7,3 +7,13 @@ framework:
             policy: 'fixed_window'
             limit: 5
             interval: '5 minutes'
+        # Public signup mails whoever asks, so both ends are budgeted. Per client, five asks an hour answer 429 past that;
+        # per address, one mail in fifteen minutes, and a second ask gets the same 202 with nothing sent.
+        signup_client:
+            policy: 'fixed_window'
+            limit: 5
+            interval: '1 hour'
+        signup_address:
+            policy: 'fixed_window'
+            limit: 1
+            interval: '15 minutes'

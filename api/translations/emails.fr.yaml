@@ -7,3 +7,16 @@ invitation:
     call_to_action: 'Accepter l''invitation'
     expires: 'Ce lien expire le %date%.'
     ignore: "Si vous n'attendiez pas cette invitation, ignorez ce message."
+signup:
+    subject: 'Créez votre compte %product%'
+    heading: 'Terminez votre inscription'
+    intro: "Quelqu'un, sans doute vous, a demandé à ouvrir un compte %product% avec cette adresse."
+    call_to_action: "Terminer l'inscription"
+    expires: "Ce lien est valable %hours% heures et ne sert qu'une fois."
+    ignore: "Si vous n'avez rien demandé, ignorez ce message : aucun compte n'est créé."
+    account_exists:
+        subject: 'Votre compte %product%'
+        heading: 'Vous avez déjà un compte'
+        intro: "Quelqu'un a demandé à ouvrir un compte %product% avec cette adresse, qui en a déjà un."
+        call_to_action: 'Se connecter'
+        ignore: "Si ce n'était pas vous, ignorez ce message : rien n'a changé."

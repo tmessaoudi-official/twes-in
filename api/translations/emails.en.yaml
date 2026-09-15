@@ -6,3 +6,16 @@ invitation:
     call_to_action: 'Accept the invitation'
     expires: 'This link expires on %date%.'
     ignore: "If you were not expecting this invitation, ignore this message."
+signup:
+    subject: 'Create your %product% account'
+    heading: 'Finish signing up'
+    intro: 'Someone, most likely you, asked to open a %product% account with this address.'
+    call_to_action: 'Finish signing up'
+    expires: 'This link is valid for %hours% hours and works once.'
+    ignore: 'If you did not ask for this, ignore this message: no account is created.'
+    account_exists:
+        subject: 'Your %product% account'
+        heading: 'You already have an account'
+        intro: 'Someone asked to open a %product% account with this address, which already has one.'
+        call_to_action: 'Sign in'
+        ignore: 'If that was not you, ignore this message: nothing has changed.'

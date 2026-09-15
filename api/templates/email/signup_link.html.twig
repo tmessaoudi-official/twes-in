@@ -1,0 +1,16 @@
+{# The signup link mail. Plain, inline-styled HTML: mail clients strip stylesheets, and this has one job. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('fr') }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <h1 style="font-size: 20px;">{{ 'signup.heading'|trans({}, 'emails') }}</h1>
+    <p>{{ 'signup.intro'|trans({'%product%': productName}, 'emails') }}</p>
+    <p>
+      <a href="{{ linkUrl }}" style="display: inline-block; padding: 10px 16px; background: #1a56db; color: #fff; text-decoration: none; border-radius: 6px;">
+        {{ 'signup.call_to_action'|trans({}, 'emails') }}
+      </a>
+    </p>
+    <p style="font-size: 13px; color: #555;">{{ 'signup.expires'|trans({'%hours%': validForHours}, 'emails') }}</p>
+    <p style="font-size: 13px; color: #555;">{{ 'signup.ignore'|trans({}, 'emails') }}</p>
+    <p style="font-size: 12px; color: #888;">{{ productName }}</p>
+  </body>
+</html>
