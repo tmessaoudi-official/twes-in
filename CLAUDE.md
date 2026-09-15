@@ -166,3 +166,5 @@ tables, essay gotchas) was retired with the reset. What applies here:
   inset, which read as "Gotenberg ignores its margins". What was wrong was a template's `@page { margin: 0 }`, which
   overrides the renderer's margin fields in Chromium: every delivery note and invoice printed flush to the paper's edge
   (2026-09-14; `PdfTemplateMarginsTest` pins it).
+- Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
+  it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).

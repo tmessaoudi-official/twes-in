@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import AxeBuilder from '@axe-core/playwright';
 import { Browser, expect, Page, test } from '@playwright/test';
 import { mailTo, signupTokenFor } from './mailpit';
 
@@ -34,6 +35,18 @@ async function setSwitch(page: Page, testId: string, on: boolean): Promise<void>
   await expect(toggle).toHaveAttribute('aria-checked', String(on));
 }
 
+/** Each new screen meets the design system's bar: axe's WCAG 2.1 A and AA rules. */
+async function expectAccessible(page: Page, screen: string): Promise<void> {
+  const results = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  const violations = results.violations.map(
+    (violation) =>
+      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
+  );
+  expect(violations, screen).toEqual([]);
+}
+
 async function newPage(browser: Browser): Promise<Page> {
   return (await browser.newContext()).newPage();
 }
@@ -64,6 +77,7 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await expect(visitor).toHaveURL(/\/signup$/);
     await visitor.getByTestId('signup-email').fill(email);
     await visitor.screenshot({ path: `${SHOTS}/signup-1-request.png` });
+    await expectAccessible(visitor, 'signup');
     await visitor.getByTestId('signup-submit').click();
     await expect(visitor.getByTestId('signup-sent')).toBeVisible();
 
@@ -77,6 +91,7 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await visitor.getByTestId('signup-country').click();
     await visitor.getByTestId('signup-country-TN').click();
     await visitor.screenshot({ path: `${SHOTS}/signup-2-finish.png` });
+    await expectAccessible(visitor, 'finish signup');
     await visitor.getByTestId('signup-finish-submit').click();
     await expect(visitor.getByTestId('signup-completed-pending')).toContainText(company);
 
@@ -85,12 +100,14 @@ test('somebody signs up, their company waits, an operator approves it, and the o
     await expect(visitor).toHaveURL(/\/awaiting-approval$/);
     await expect(visitor.getByTestId('awaiting-pending')).toContainText(company);
     await visitor.screenshot({ path: `${SHOTS}/signup-3-awaiting.png` });
+    await expectAccessible(visitor, 'awaiting approval');
 
     // The operator sees it waiting and approves it.
     await page.reload();
     const line = page.getByTestId(`waiting-${company}`);
     await expect(line).toContainText(email);
     await page.screenshot({ path: `${SHOTS}/signup-4-platform.png` });
+    await expectAccessible(page, 'platform');
     await page.getByTestId(`approve-${company}`).click();
     await expect(line).toHaveCount(0);
 
