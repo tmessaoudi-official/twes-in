@@ -43,6 +43,7 @@ test('the shell, the home page and the members page are accessible in light and 
   await expect(page.getByTestId('greeting')).toBeVisible();
   await expectAccessible(page, 'home, light');
 
+  await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();
   await expect(page.getByTestId('members-title')).toBeVisible();
   await expectAccessible(page, 'members, light');
@@ -56,28 +57,43 @@ test('the shell, the home page and the members page are accessible in light and 
 });
 
 test('the shell keeps its content in landmarks, each named once', async ({ page }) => {
+  const expectLandmarks = async (screen: string) => {
+    const results = await new AxeBuilder({ page })
+      .withRules(['region', 'landmark-unique', 'duplicate-id-aria'])
+      .analyze();
+    expect(
+      results.violations.map(
+        (violation) =>
+          `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
+      ),
+      screen,
+    ).toEqual([]);
+  };
+
   await signIn(page);
   await expect(page.getByTestId('greeting')).toBeVisible();
+  await expectLandmarks('home');
 
-  const results = await new AxeBuilder({ page }).withRules(['region', 'landmark-unique']).analyze();
-
-  expect(
-    results.violations.map(
-      (violation) =>
-        `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
-    ),
-  ).toEqual([]);
+  // The settings area adds a second navigation beside the sidebar's.
+  await page.getByTestId('settings-gear').click();
+  await expect(page.getByTestId('settings-nav')).toBeVisible();
+  await expectLandmarks('settings');
 });
 
 test('at phone width the navigation is a drawer behind the menu button', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page);
+  await page.goto('/members');
+  await expect(page.getByTestId('members-title')).toBeVisible();
+  // The settings navigation is one row above the page, not a column that pushes it off the screen.
+  expect((await page.getByTestId('members-title').boundingBox())?.y ?? Infinity).toBeLessThan(300);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
-  await expect(page.getByTestId('nav-members')).toBeHidden();
+  await expect(page.getByTestId('nav-home')).toBeHidden();
   await page.getByTestId('menu-toggle').click();
-  await page.getByTestId('nav-members').click();
-  await expect(page).toHaveURL(/\/members$/);
-  await expect(page.getByTestId('nav-members')).toBeHidden();
+  await page.getByTestId('nav-home').click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId('nav-home')).toBeHidden();
 });
 
 test('the language switch translates the shell and the page', async ({ page }) => {
@@ -101,6 +117,7 @@ test('using the shell raises no Content Security Policy violation', async ({ pag
   });
 
   await signIn(page);
+  await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();
   await page.getByTestId('user-menu').click();
   await page.getByTestId('theme-toggle').click();

@@ -5,10 +5,11 @@ import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 
 /**
- * What the sidebar offers: the core entries, then each module's entries, declared by the module's web feature beside
- * its routes and shown while the working company has the module on (docs/SPEC.md § 3 Modules).
+ * What the shell offers. The sidebar keeps the daily entries: the core ones, then each module's, declared by the
+ * module's web feature beside its routes and shown while the working company has the module on (docs/SPEC.md § 3
+ * Modules). The company settings sit behind the gear in the top bar, grouped in their own area.
  */
-export type NavSection = 'main' | 'admin';
+export type NavSection = 'main' | 'company' | 'fiscal' | 'team' | 'customisation';
 
 export interface NavEntry {
   readonly key: string;
@@ -30,48 +31,26 @@ export interface NavGroup {
   readonly entries: readonly NavEntry[];
 }
 
-const SECTION_ORDER: readonly NavSection[] = ['main', 'admin'];
+export const SIDEBAR_SECTIONS: readonly NavSection[] = ['main'];
+export const SETTINGS_SECTIONS: readonly NavSection[] = [
+  'company',
+  'fiscal',
+  'team',
+  'customisation',
+];
 
 export const CORE_NAV: readonly NavEntry[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
-  {
-    key: 'members',
-    labelKey: 'nav.members',
-    icon: 'group',
-    route: '/members',
-    section: 'admin',
-    permission: 'user.read',
-  },
-  {
-    key: 'taxes',
-    labelKey: 'nav.taxes',
-    icon: 'percent',
-    route: '/fiscal/taxes',
-    section: 'admin',
-    permission: 'fiscal.read',
-  },
-  {
-    key: 'units',
-    labelKey: 'nav.units',
-    icon: 'straighten',
-    route: '/fiscal/units',
-    section: 'admin',
-    permission: 'fiscal.read',
-  },
-  {
-    key: 'settings',
-    labelKey: 'nav.settings',
-    icon: 'tune',
-    route: '/settings',
-    section: 'admin',
-    permission: 'company.settings',
-  },
+];
+
+/** The company settings, in the order of the settings area's groups; each needs a permission. */
+export const SETTINGS_NAV: readonly NavEntry[] = [
   {
     key: 'company-profile',
     labelKey: 'nav.company_profile',
     icon: 'business',
     route: '/company/profile',
-    section: 'admin',
+    section: 'company',
     permission: 'company.settings',
   },
   {
@@ -79,7 +58,7 @@ export const CORE_NAV: readonly NavEntry[] = [
     labelKey: 'nav.establishments',
     icon: 'store',
     route: '/company/establishments',
-    section: 'admin',
+    section: 'company',
     permission: 'company.settings',
   },
   {
@@ -87,15 +66,47 @@ export const CORE_NAV: readonly NavEntry[] = [
     labelKey: 'nav.numbering',
     icon: 'format_list_numbered',
     route: '/company/numbering',
-    section: 'admin',
+    section: 'company',
     permission: 'company.settings',
+  },
+  {
+    key: 'settings',
+    labelKey: 'nav.settings',
+    icon: 'tune',
+    route: '/settings',
+    section: 'company',
+    permission: 'company.settings',
+  },
+  {
+    key: 'taxes',
+    labelKey: 'nav.taxes',
+    icon: 'percent',
+    route: '/fiscal/taxes',
+    section: 'fiscal',
+    permission: 'fiscal.read',
+  },
+  {
+    key: 'units',
+    labelKey: 'nav.units',
+    icon: 'straighten',
+    route: '/fiscal/units',
+    section: 'fiscal',
+    permission: 'fiscal.read',
+  },
+  {
+    key: 'members',
+    labelKey: 'nav.members',
+    icon: 'group',
+    route: '/members',
+    section: 'team',
+    permission: 'user.read',
   },
   {
     key: 'custom-fields',
     labelKey: 'nav.custom_fields',
     icon: 'dynamic_form',
     route: '/company/custom-fields',
-    section: 'admin',
+    section: 'customisation',
     permission: 'company.settings',
   },
   {
@@ -103,16 +114,19 @@ export const CORE_NAV: readonly NavEntry[] = [
     labelKey: 'nav.modules',
     icon: 'extension',
     route: '/company/modules',
-    section: 'admin',
+    section: 'customisation',
     permission: 'company.settings',
   },
-  // The design checkpoint's fixture screens: a development build only, never shipped.
+];
+
+/** The design checkpoint's fixture screens: a development build only, never shipped, last in the sidebar. */
+export const DEV_NAV: readonly NavEntry[] = [
   {
     key: 'design',
     labelKey: 'nav.design',
     icon: 'palette',
     route: '/design',
-    section: 'admin',
+    section: 'main',
     devOnly: true,
   },
 ];
@@ -142,9 +156,14 @@ export function visibleEntries(
   );
 }
 
-export function navSections(entries: readonly NavEntry[]): readonly NavGroup[] {
-  return SECTION_ORDER.map((section) => ({
-    section,
-    entries: entries.filter((entry) => entry.section === section),
-  })).filter((group) => group.entries.length > 0);
+export function navSections(
+  entries: readonly NavEntry[],
+  order: readonly NavSection[],
+): readonly NavGroup[] {
+  return order
+    .map((section) => ({
+      section,
+      entries: entries.filter((entry) => entry.section === section),
+    }))
+    .filter((group) => group.entries.length > 0);
 }

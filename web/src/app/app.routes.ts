@@ -95,42 +95,53 @@ export const routes: Routes = [
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
       },
       {
-        path: 'members',
-        loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
-      },
-      {
-        path: 'fiscal/taxes',
-        loadComponent: () => import('./fiscal/fiscal-taxes-page').then((m) => m.FiscalTaxesPage),
-      },
-      {
-        path: 'fiscal/units',
-        loadComponent: () => import('./fiscal/fiscal-units-page').then((m) => m.FiscalUnitsPage),
-      },
-      {
-        path: 'settings',
-        loadComponent: () => import('./settings/settings-page').then((m) => m.SettingsPage),
-      },
-      {
-        path: 'company/profile',
-        loadComponent: () =>
-          import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
-      },
-      {
-        path: 'company/establishments',
-        loadComponent: () =>
-          import('./company/establishments-page').then((m) => m.EstablishmentsPage),
-      },
-      {
-        path: 'company/numbering',
-        loadComponent: () => import('./company/numbering-page').then((m) => m.NumberingPage),
-      },
-      {
-        path: 'company/custom-fields',
-        loadComponent: () => import('./company/custom-fields-page').then((m) => m.CustomFieldsPage),
-      },
-      {
-        path: 'company/modules',
-        loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
+        // The company settings, reached from the gear: a layout route with no path of its own, so the grouped
+        // settings navigation sits beside each page and every page keeps its address.
+        path: '',
+        loadComponent: () => import('./shell/settings-area').then((m) => m.SettingsArea),
+        children: [
+          {
+            path: 'members',
+            loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
+          },
+          {
+            path: 'fiscal/taxes',
+            loadComponent: () =>
+              import('./fiscal/fiscal-taxes-page').then((m) => m.FiscalTaxesPage),
+          },
+          {
+            path: 'fiscal/units',
+            loadComponent: () =>
+              import('./fiscal/fiscal-units-page').then((m) => m.FiscalUnitsPage),
+          },
+          {
+            path: 'settings',
+            loadComponent: () => import('./settings/settings-page').then((m) => m.SettingsPage),
+          },
+          {
+            path: 'company/profile',
+            loadComponent: () =>
+              import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
+          },
+          {
+            path: 'company/establishments',
+            loadComponent: () =>
+              import('./company/establishments-page').then((m) => m.EstablishmentsPage),
+          },
+          {
+            path: 'company/numbering',
+            loadComponent: () => import('./company/numbering-page').then((m) => m.NumberingPage),
+          },
+          {
+            path: 'company/custom-fields',
+            loadComponent: () =>
+              import('./company/custom-fields-page').then((m) => m.CustomFieldsPage),
+          },
+          {
+            path: 'company/modules',
+            loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
+          },
+        ],
       },
       {
         // The G2b design checkpoint's fixture screens. canMatch keeps them out of a production build's router

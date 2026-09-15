@@ -97,6 +97,16 @@
         <span class="flex-1"></span>
         <app-company-switcher />
         <app-notification-bell />
+        @if (settingsRoute(); as route) {
+          <a
+            mat-icon-button
+            [routerLink]="route"
+            [attr.aria-label]="'shell.settings' | translate"
+            data-testid="settings-gear"
+          >
+            <mat-icon aria-hidden="true">settings</mat-icon>
+          </a>
+        }
 
         @if (me(); as me) {
           <button

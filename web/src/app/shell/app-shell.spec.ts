@@ -27,7 +27,7 @@ class StaticLoader implements TranslateLoader {
         members: 'Membres',
         customers: 'Clients',
         design: 'Design',
-        sections: { main: 'Général', admin: 'Administration' },
+        sections: { main: 'Général', team: 'Équipe' },
       },
       shell: {
         menu: 'Menu',
@@ -37,6 +37,7 @@ class StaticLoader implements TranslateLoader {
         dark_off: 'Mode clair',
         collapse_menu: 'Réduire le menu',
         expand_menu: 'Déployer le menu',
+        settings: 'Paramètres',
       },
       languages: { fr: 'Français', en: 'English' },
     });
@@ -150,7 +151,20 @@ describe('AppShell', () => {
     const { el, byTestId } = await render();
     expect(el.querySelector('[data-testid="brand"]')?.textContent).toContain('twes-in');
     expect(byTestId('nav-home')?.textContent).toContain('Accueil');
-    expect(byTestId('nav-members')?.textContent).toContain('Membres');
+    // The company settings live behind the gear, not in the sidebar.
+    expect(byTestId('nav-members')).toBeNull();
+  });
+
+  it('opens the settings from a gear, on the first settings page the user may see', async () => {
+    const { fixture, byTestId } = await render();
+    expect(byTestId('settings-gear')?.getAttribute('aria-label')).toBe('Paramètres');
+    expect(byTestId('settings-gear')?.closest('header')).not.toBeNull();
+    expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/members');
+
+    permissions.set(['user.read', 'company.settings']);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/company/profile');
   });
 
   it('keeps every part of the shell inside a landmark, each named once', async () => {
@@ -163,14 +177,14 @@ describe('AppShell', () => {
     const names = lists.map((list) =>
       el.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
     );
-    expect(names).toEqual(['Général', 'Administration']);
+    expect(names).toEqual(['Général']);
   });
 
   it('hides an entry whose permission the user lacks', async () => {
     permissions.set([]);
     const { byTestId } = await render();
     expect(byTestId('nav-home')).not.toBeNull();
-    expect(byTestId('nav-members')).toBeNull();
+    expect(byTestId('settings-gear')).toBeNull();
   });
 
   it("shows a module's entries only while the company has the module on", async () => {
@@ -221,9 +235,10 @@ describe('AppShell', () => {
     input.remove();
     expect(theme.toggleSidebar).toHaveBeenCalledTimes(1);
 
-    // AltGr, which types [ on a French keyboard, reports Ctrl and Alt together.
+    // AltGr types [ on a French PC keyboard and reports Ctrl and Alt together; Option does on a French Mac, Alt alone.
     press(document.body, { ctrlKey: true, altKey: true });
-    expect(theme.toggleSidebar).toHaveBeenCalledTimes(2);
+    press(document.body, { altKey: true });
+    expect(theme.toggleSidebar).toHaveBeenCalledTimes(3);
   });
 
   it('names the signed-in user on the account menu', async () => {

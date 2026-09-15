@@ -1,0 +1,41 @@
+<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+  <!-- On a narrow screen the groups become one row that scrolls sideways, so the page stays in view. -->
+  <nav
+    [attr.aria-label]="'shell.settings_navigation' | translate"
+    class="flex shrink-0 overflow-x-auto rounded-xl border border-outline-variant py-2 lg:sticky lg:top-20 lg:block lg:w-60 lg:overflow-visible"
+    data-testid="settings-nav"
+  >
+    @for (group of sections(); track group.section) {
+      <h2
+        [id]="'settings-section-' + group.section"
+        class="px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-on-surface-variant max-lg:sr-only"
+      >
+        {{ 'nav.sections.' + group.section | translate }}
+      </h2>
+      <mat-nav-list
+        class="!px-2 !py-0 max-lg:!flex max-lg:shrink-0"
+        [attr.aria-labelledby]="'settings-section-' + group.section"
+      >
+        @for (entry of group.entries; track entry.key) {
+          <a
+            mat-list-item
+            class="max-lg:!w-auto max-lg:shrink-0"
+            [routerLink]="entry.route"
+            routerLinkActive
+            #active="routerLinkActive"
+            [activated]="active.isActive"
+            [attr.aria-current]="active.isActive ? 'page' : null"
+            [attr.data-testid]="'nav-' + entry.key"
+          >
+            <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
+            <span matListItemTitle>{{ entry.labelKey | translate }}</span>
+          </a>
+        }
+      </mat-nav-list>
+    }
+  </nav>
+
+  <div class="min-w-0 flex-1">
+    <router-outlet />
+  </div>
+</div>

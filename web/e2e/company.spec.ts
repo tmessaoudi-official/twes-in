@@ -96,6 +96,7 @@ test('the switcher moves the session to another company, and it survives a reloa
 test('the members page lists the company members', async ({ page }) => {
   await signIn(page);
 
+  await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
   await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('Operator');

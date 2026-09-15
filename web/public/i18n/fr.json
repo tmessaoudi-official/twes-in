@@ -259,12 +259,15 @@
     "members": "Membres",
     "sections": {
       "main": "Général",
-      "admin": "Administration"
+      "company": "Société",
+      "fiscal": "Fiscalité",
+      "team": "Équipe",
+      "customisation": "Personnalisation"
     },
     "design": "Maquettes",
     "taxes": "Taxes",
     "units": "Unités",
-    "settings": "Paramètres",
+    "settings": "Valeurs par défaut",
     "company_profile": "Profil de la société",
     "establishments": "Établissements",
     "numbering": "Numérotation des documents",
@@ -286,7 +289,9 @@
     "density_compact": "Affichage compact",
     "density_comfortable": "Affichage confortable",
     "collapse_menu": "Réduire le menu",
-    "expand_menu": "Déployer le menu"
+    "expand_menu": "Déployer le menu",
+    "settings": "Paramètres",
+    "settings_navigation": "Paramètres de la société"
   },
   "languages": {
     "fr": "Français",

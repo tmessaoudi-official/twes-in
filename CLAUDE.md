@@ -93,7 +93,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature (`auth`,
   `company`, `hello`, `health`, `invitation`, `design` — the G2b checkpoint's fixture screens, development builds only, `notifications` — the bell, the centre and the Centrifugo connection behind
-  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout, its nav manifest and account menu; every
+  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout, its nav manifest, account menu and the settings area behind the gear; every
   signed-in route is a child of it), `shared/` for what several features use (`theme/`: runtime accent colour tokens and
   `ThemeFacade`; `i18n/`: `LanguageFacade`; `settings/`: the `SettingsFacade` port, its API adapter
   `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry

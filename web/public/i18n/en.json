@@ -259,12 +259,15 @@
     "members": "Members",
     "sections": {
       "main": "General",
-      "admin": "Administration"
+      "company": "Company",
+      "fiscal": "Tax",
+      "team": "Team",
+      "customisation": "Customisation"
     },
     "design": "Design",
     "taxes": "Taxes",
     "units": "Units",
-    "settings": "Settings",
+    "settings": "Defaults",
     "company_profile": "Company profile",
     "establishments": "Establishments",
     "numbering": "Document numbering",
@@ -286,7 +289,9 @@
     "density_compact": "Compact density",
     "density_comfortable": "Comfortable density",
     "collapse_menu": "Collapse the menu",
-    "expand_menu": "Expand the menu"
+    "expand_menu": "Expand the menu",
+    "settings": "Settings",
+    "settings_navigation": "Company settings"
   },
   "languages": {
     "fr": "Français",

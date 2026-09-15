@@ -26,7 +26,16 @@ import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { LanguageFacade, SUPPORTED_LANGUAGES } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
-import { CORE_NAV, MODULE_NAV, navSections, visibleEntries } from './nav-manifest';
+import {
+  CORE_NAV,
+  DEV_NAV,
+  MODULE_NAV,
+  type NavEntry,
+  navSections,
+  SETTINGS_NAV,
+  SIDEBAR_SECTIONS,
+  visibleEntries,
+} from './nav-manifest';
 
 /** Below this width the navigation becomes a drawer over the page instead of a column beside it. */
 const HANDSET = '(max-width: 959.98px)';
@@ -84,27 +93,22 @@ export class AppShell {
     { initialValue: false },
   );
   protected readonly sections = computed(() =>
-    navSections(
-      visibleEntries(
-        [...CORE_NAV, ...MODULE_NAV],
-        (permission) => this.auth.hasPermission(permission),
-        isDevMode(),
-        (module) => this.auth.hasModule(module),
-      ),
-    ),
+    navSections(this.visible([...CORE_NAV, ...MODULE_NAV, ...DEV_NAV]), SIDEBAR_SECTIONS),
   );
+  /** The gear opens the first settings page this user may see, and is absent when there is none. */
+  protected readonly settingsRoute = computed(() => this.visible(SETTINGS_NAV)[0]?.route ?? null);
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
   /** On a wide screen the sidebar may be a rail of icons; a phone always gets the full drawer. */
   protected readonly rail = computed(() => !this.handset() && this.theme.sidebar() === 'rail');
 
   /**
    * `[` collapses or expands the sidebar, unless someone is typing, a menu or dialog is open, or another shortcut
-   * is meant. AltGr, which types `[` on a French keyboard, may report Ctrl and Alt together, so only one of them
-   * alone counts as a shortcut.
+   * is meant. The key already says a `[` was typed, however the keyboard types it: AltGr on a French PC reports Ctrl
+   * and Alt together, Option on a French Mac reports Alt alone. Only Meta, or Ctrl without Alt, is a shortcut.
    */
   protected onKeydown(event: KeyboardEvent): void {
     if (event.key !== '[' || event.defaultPrevented || event.metaKey) return;
-    if (event.ctrlKey !== event.altKey || this.handset()) return;
+    if ((event.ctrlKey && !event.altKey) || this.handset()) return;
     const target = event.target;
     if (
       target instanceof Element &&
@@ -114,6 +118,15 @@ export class AppShell {
     }
     event.preventDefault();
     this.theme.toggleSidebar();
+  }
+
+  private visible(entries: readonly NavEntry[]): readonly NavEntry[] {
+    return visibleEntries(
+      entries,
+      (permission) => this.auth.hasPermission(permission),
+      isDevMode(),
+      (module) => this.auth.hasModule(module),
+    );
   }
 
   protected async logout(): Promise<void> {

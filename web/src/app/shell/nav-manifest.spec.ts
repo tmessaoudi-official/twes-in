@@ -5,7 +5,17 @@ import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
-import { CORE_NAV, MODULE_NAV, type NavEntry, navSections, visibleEntries } from './nav-manifest';
+import {
+  CORE_NAV,
+  DEV_NAV,
+  MODULE_NAV,
+  type NavEntry,
+  navSections,
+  SETTINGS_NAV,
+  SETTINGS_SECTIONS,
+  SIDEBAR_SECTIONS,
+  visibleEntries,
+} from './nav-manifest';
 
 const entries: readonly NavEntry[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home', route: '/', section: 'main' },
@@ -23,7 +33,7 @@ const entries: readonly NavEntry[] = [
     labelKey: 'nav.members',
     icon: 'group',
     route: '/members',
-    section: 'admin',
+    section: 'team',
     permission: 'user.read',
   },
   {
@@ -31,7 +41,7 @@ const entries: readonly NavEntry[] = [
     labelKey: 'nav.design',
     icon: 'palette',
     route: '/design',
-    section: 'admin',
+    section: 'main',
     devOnly: true,
   },
 ];
@@ -91,17 +101,20 @@ describe('visibleEntries', () => {
 });
 
 describe('navSections', () => {
-  it('groups entries by section in manifest order and drops empty sections', () => {
-    expect(navSections(entries).map((s) => [s.section, keys(s.entries)])).toEqual([
-      ['main', ['home', 'customers']],
-      ['admin', ['members', 'design']],
+  it('groups entries by section in the given order and drops empty sections', () => {
+    expect(
+      navSections(entries, ['main', 'company', 'team']).map((s) => [s.section, keys(s.entries)]),
+    ).toEqual([
+      ['main', ['home', 'customers', 'design']],
+      ['team', ['members']],
     ]);
-    expect(navSections([entries[0]]).map((s) => s.section)).toEqual(['main']);
+    expect(navSections(entries, ['team']).map((s) => s.section)).toEqual(['team']);
   });
 });
 
 describe('the navigation manifest', () => {
-  const all = [...CORE_NAV, ...MODULE_NAV];
+  const sidebar = [...CORE_NAV, ...MODULE_NAV, ...DEV_NAV];
+  const all = [...sidebar, ...SETTINGS_NAV];
 
   it('has unique keys and routes across the core and the modules', () => {
     expect(new Set(keys(all)).size).toBe(all.length);
@@ -117,8 +130,27 @@ describe('the navigation manifest', () => {
     }
   });
 
+  it('keeps the daily entries in the sidebar and the company settings behind the gear', () => {
+    expect(sidebar.filter((entry) => !SIDEBAR_SECTIONS.includes(entry.section))).toEqual([]);
+    expect(
+      navSections(SETTINGS_NAV, SETTINGS_SECTIONS).map((group) => [
+        group.section,
+        keys(group.entries),
+      ]),
+    ).toEqual([
+      ['company', ['company-profile', 'establishments', 'numbering', 'settings']],
+      ['fiscal', ['taxes', 'units']],
+      ['team', ['members']],
+      ['customisation', ['custom-fields', 'modules']],
+    ]);
+    expect(SETTINGS_NAV.every((entry) => entry.permission !== undefined)).toBe(true);
+    expect(DEV_NAV.every((entry) => entry.devOnly === true)).toBe(true);
+  });
+
   it('ties every module entry to its module and no core entry to one', () => {
-    expect(CORE_NAV.filter((entry) => entry.module !== undefined)).toEqual([]);
+    expect(
+      [...CORE_NAV, ...SETTINGS_NAV, ...DEV_NAV].filter((entry) => entry.module !== undefined),
+    ).toEqual([]);
     expect(CUSTOMERS_NAV.map((entry) => [entry.key, entry.module])).toEqual([
       ['customers', 'customers'],
       ['customer-groups', 'customers'],
@@ -135,12 +167,12 @@ describe('the navigation manifest', () => {
   });
 
   it('offers the modules screen to whoever may change the company settings', () => {
-    expect(CORE_NAV.find((entry) => entry.key === 'modules')).toEqual({
+    expect(SETTINGS_NAV.find((entry) => entry.key === 'modules')).toEqual({
       key: 'modules',
       labelKey: 'nav.modules',
       icon: 'extension',
       route: '/company/modules',
-      section: 'admin',
+      section: 'customisation',
       permission: 'company.settings',
     });
   });
