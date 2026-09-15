@@ -48,6 +48,15 @@ final readonly class TaxInput
         return new self($code, TaxKind::WithholdingTotal, $rate, null, $threshold, false);
     }
 
+    /**
+     * A withholding already charged by the document being corrected: it applies whatever this document's own total
+     * comes to, so the corrections of a document add up to it (docs/SPEC.md § 7, 2026-09-15).
+     */
+    public static function withholdingAsCharged(string $code, Rate $rate): self
+    {
+        return new self($code, TaxKind::WithholdingTotal, $rate, null, '0', false);
+    }
+
     public function sameAs(self $other): bool
     {
         return $this->kind === $other->kind

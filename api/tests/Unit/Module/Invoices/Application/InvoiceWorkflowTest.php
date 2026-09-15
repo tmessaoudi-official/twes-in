@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Module\Invoices\Application;
 use App\Audit\Application\AuditEntry;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxFamily;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
@@ -25,8 +26,10 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssued;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Module\Invoices\Domain\InvoiceLineTax;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
+use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Settings\Application\BusinessDefaultSettings;
 use App\Settings\Application\ChangeSettings;
@@ -163,6 +166,50 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertSame([InvoiceStatus::Draft, null, '12.900', 3, 2], [$again->getStatus(), $again->getNumber(), $invoice->getIssuedFigures()->amountCredited, \count($this->audit->entries), \count($this->events->published)]);
     }
 
+    public function testACreditNoteOfAnInvoiceThatWithheldWithholdsAtItsRateWhateverItsOwnTotal(): void
+    {
+        // 1000 net, VAT 190: 1190 reaches the RS1 threshold, so 11.900 is withheld; the stamp adds 1.000 outside it.
+        $invoice = $this->workflow->issue($this->company, $this->withholdingDraft(['500', '500'])->getId(), null);
+        self::assertSame(['1191.000', '11.900', '1179.100'], [$invoice->getIssuedFigures()?->total, $invoice->getIssuedFigures()?->withholdingAmount, $invoice->getIssuedFigures()?->amountDue]);
+
+        // 595 of its own is under the threshold; the credit note withholds because its invoice did.
+        $first = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 0, true)->getId(), null);
+        self::assertSame([[['RS1', '-5.950']], '-590.050'], [array_map(static fn (array $held): array => [$held['code'], $held['amount']], $first->getIssuedFigures()->withholdings ?? []), $first->getIssuedFigures()?->amountDue]);
+        self::assertSame([InvoiceStatus::PartiallyPaid, '589.050'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue]);
+
+        // The second leaves the stamp out, which every partial credit note copies (docs/SPEC.md § 8, known issues).
+        $second = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 1, false)->getId(), null);
+        self::assertSame('-589.050', $second->getIssuedFigures()?->amountDue);
+        self::assertSame([InvoiceStatus::Paid, '0.000'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue], 'a credit note of every line closes the invoice');
+    }
+
+    public function testEachCreditNoteRoundsItsOwnWithholdingSoTwoHalvesCanLeaveAThousandthDue(): void
+    {
+        // 1010 net, VAT 191.900: 1 % of 1201.900 is 12.019, while each half withholds 6.0095, rounded away to 6.010.
+        $invoice = $this->workflow->issue($this->company, $this->withholdingDraft(['505', '505'])->getId(), null);
+        self::assertSame('1190.881', $invoice->getIssuedFigures()?->amountDue);
+
+        $this->workflow->issue($this->company, $this->creditKeeping($invoice, 0, true)->getId(), null);
+        $this->workflow->issue($this->company, $this->creditKeeping($invoice, 1, false)->getId(), null);
+
+        self::assertSame([InvoiceStatus::PartiallyPaid, '0.001'], [$invoice->getStatus(), $invoice->getIssuedFigures()->amountDue], 'the rounding of each withholding is left due (docs/SPEC.md § 8, known issues)');
+    }
+
+    public function testACreditNoteOfAnInvoiceThatWithheldNothingWithholdsNothing(): void
+    {
+        $invoice = $this->workflow->issue($this->company, $this->withholdingDraft(['100'])->getId(), null);
+        self::assertSame([], $invoice->getIssuedFigures()?->withholdings, '119 is under the threshold');
+
+        // A credit note takes lines of its own: above the threshold alone, it still withholds as its invoice did, not at all.
+        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $line = $invoice->getLines()[0];
+        $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), [
+            new InvoiceLineDetails(null, 'Pièce', '1', $line->getUnit(), '2000', null, array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes())),
+        ], array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $credit->getDocumentTaxes()), $this->clock->now());
+
+        self::assertSame([], new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales())->of($credit)->withholdings);
+    }
+
     public function testARequestThatReadTheDraftBeforeAnotherIssuedItIsRefusedOnceItHoldsTheInvoice(): void
     {
         $draft = $this->draft($this->customer('standard', null));
@@ -247,6 +294,45 @@ final class InvoiceWorkflowTest extends TestCase
         $this->invoices->save($invoice);
 
         return $invoice;
+    }
+
+    /**
+     * A draft of one line at each price, VAT 19 %, carrying the stamp and the withholding.
+     *
+     * @param list<string> $prices
+     */
+    private function withholdingDraft(array $prices): Invoice
+    {
+        $unit = $this->units->ofCodeInCompany('C62', $this->company->getId());
+        $vat = $this->taxes->ofCodeInCompany('TVA19', $this->company->getId());
+        $stamp = $this->taxes->ofCodeInCompany('TIMBRE', $this->company->getId());
+        $withholding = $this->taxes->ofCodeInCompany('RS1', $this->company->getId());
+        self::assertNotNull($unit);
+        self::assertNotNull($vat);
+        self::assertNotNull($stamp);
+        self::assertNotNull($withholding);
+        $lines = array_map(static fn (string $price): InvoiceLineDetails => new InvoiceLineDetails(null, 'Pièce', '1', $unit, $price, null, [$vat]), $prices);
+        $invoice = Invoice::create($this->company, $this->establishments->ofCompany($this->company->getId())[0], $this->customer('standard', null), new InvoiceHeader(), $lines, [$stamp, $withholding], $this->clock->now());
+        $this->invoices->save($invoice);
+
+        return $invoice;
+    }
+
+    /** A draft credit note of one of its invoice's lines, keeping the stamp or leaving it out. */
+    private function creditKeeping(Invoice $invoice, int $index, bool $stamp): Invoice
+    {
+        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $line = $invoice->getLines()[$index];
+        $taxes = array_values(array_filter(
+            array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $credit->getDocumentTaxes()),
+            static fn (TaxComponent $tax): bool => $stamp || 'TIMBRE' !== $tax->getCode(),
+        ));
+        $credit->revise($credit->getEstablishment(), $credit->getCustomer(), $credit->getHeader(), [
+            new InvoiceLineDetails($line->getProduct(), $line->getDescription(), $line->getQuantity(), $line->getUnit(), $line->getUnitPriceNet(), $line->getDiscountRate(), array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes())),
+        ], $taxes, $this->clock->now());
+        $this->invoices->save($credit);
+
+        return $credit;
     }
 
     private function customer(string $regime, ?string $mentionKey): Customer

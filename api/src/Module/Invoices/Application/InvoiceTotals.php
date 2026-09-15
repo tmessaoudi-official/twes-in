@@ -27,7 +27,6 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceFigures;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceLineTax;
-use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceType;
 
 /**
@@ -114,9 +113,24 @@ final readonly class InvoiceTotals
             $line->getDiscountRate(),
             array_map(static fn (InvoiceLineTax $tax): TaxInput => TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate()), $tax->entersVatBase()), $line->getTaxes()),
         ), $invoice->getLines());
-        $documentTaxes = array_map(static fn (InvoiceTax $tax): TaxInput => TaxKind::FixedDocument === $tax->getKind()
-            ? TaxInput::fixed($tax->getCode(), $tax->getAmount() ?? '0')
-            : TaxInput::withholding($tax->getCode(), Rate::fromPercentage($tax->getRate() ?? '0'), $tax->getThreshold() ?? '0'), $invoice->getDocumentTaxes());
+        $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
+        $withheld = null === $corrected ? null : array_column($corrected->getIssuedFigures()->withholdings ?? [], 'code');
+        $documentTaxes = [];
+        foreach ($invoice->getDocumentTaxes() as $tax) {
+            if (TaxKind::FixedDocument === $tax->getKind()) {
+                $documentTaxes[] = TaxInput::fixed($tax->getCode(), $tax->getAmount() ?? '0');
+                continue;
+            }
+            $rate = Rate::fromPercentage($tax->getRate() ?? '0');
+            if (null === $withheld) {
+                $documentTaxes[] = TaxInput::withholding($tax->getCode(), $rate, $tax->getThreshold() ?? '0');
+                continue;
+            }
+            // A credit note withholds what its invoice withheld, whatever its own total: its own threshold never decides.
+            if (\in_array($tax->getCode(), $withheld, true)) {
+                $documentTaxes[] = TaxInput::withholdingAsCharged($tax->getCode(), $rate);
+            }
+        }
 
         return new DocumentCalculator()->calculate(new DocumentInput(
             $this->scales->of($company->getCurrency()),
