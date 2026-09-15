@@ -7,11 +7,13 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 91 runtime, 51 dev
+## api (Composer) — 94 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
 | api-platform/core | 4.3.19 | MIT | runtime |
+| async-aws/core | 1.30.0 | MIT | runtime |
+| async-aws/s3 | 3.5.0 | MIT | runtime |
 | clue/ndjson-react | 1.3.0 | MIT | dev |
 | composer/pcre | 3.4.0 | MIT | dev |
 | composer/semver | 3.4.4 | MIT | runtime |
@@ -36,6 +38,7 @@ not compiled into what we distribute, and are not listed here.
 | fidry/cpu-core-counter | 1.3.0 | MIT | dev |
 | friendsofphp/php-cs-fixer | 3.95.25 | MIT | dev |
 | league/flysystem | 3.36.0 | MIT | runtime |
+| league/flysystem-async-aws-s3 | 3.31.0 | MIT | runtime |
 | league/flysystem-local | 3.35.3 | MIT | runtime |
 | league/mime-type-detection | 1.17.0 | MIT | runtime |
 | monolog/monolog | 3.12.0 | MIT | runtime |

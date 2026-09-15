@@ -42,7 +42,7 @@ parameters:
     app.inbox.page_size: 50
     # PDFs are rendered by a Gotenberg container (docs/SPEC.md § 2 PDF).
     app.pdf.gotenberg_url: '%env(GOTENBERG_URL)%'
-    # Files live on a local volume through Flysystem (docs/SPEC.md § 2 Files); S3-compatible storage swaps the adapter.
+    # Files live on a local volume through Flysystem, or in an S3-compatible bucket when FILES_STORAGE=s3 (docs/SPEC.md § 2 Files).
     app.files.directory: '%env(resolve:FILES_DIRECTORY)%'
     # What a person may attach to a record (docs/SPEC.md § 7, 2026-09-15): a document or a picture of one, read from its
     # bytes. nginx's client_max_body_size and PHP's upload_max_filesize/post_max_size sit just above the size.
@@ -131,11 +131,18 @@ services:
         arguments:
             $pageSize: '%app.inbox.page_size%'
 
-    League\Flysystem\Local\LocalFilesystemAdapter:
-        arguments: ['%app.files.directory%']
     League\Flysystem\FilesystemOperator:
-        class: League\Flysystem\Filesystem
-        arguments: ['@League\Flysystem\Local\LocalFilesystemAdapter']
+        factory: ['App\Files\Infrastructure\Flysystem\FilesystemFactory', 'create']
+        arguments:
+            $driver: '%env(FILES_STORAGE)%'
+            $directory: '%app.files.directory%'
+            $bucket: '%env(FILES_S3_BUCKET)%'
+            $endpoint: '%env(FILES_S3_ENDPOINT)%'
+            $region: '%env(FILES_S3_REGION)%'
+            $accessKey: '%env(FILES_S3_ACCESS_KEY)%'
+            $secretKey: '%env(FILES_S3_SECRET_KEY)%'
+            $pathStyle: '%env(bool:FILES_S3_PATH_STYLE)%'
+            $httpClient: '@Symfony\Contracts\HttpClient\HttpClientInterface'
 
     App\Shared\Infrastructure\Pdf\GotenbergPdfRenderer:
         arguments:
