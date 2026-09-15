@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Domain;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
+use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -22,6 +23,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'invoice_line_tax')]
 #[ORM\Index(name: 'idx_invoice_line_tax_line', columns: ['line_id'])]
+#[ORM\Index(name: 'idx_invoice_line_tax_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_invoice_line_tax_component', columns: ['tax_component_id'])]
 class InvoiceLineTax
 {
@@ -32,6 +34,10 @@ class InvoiceLineTax
     #[ORM\ManyToOne(targetEntity: InvoiceLine::class, inversedBy: 'taxes')]
     #[ORM\JoinColumn(name: 'line_id', nullable: false, onDelete: 'CASCADE')]
     private InvoiceLine $line;
+
+    #[ORM\ManyToOne(targetEntity: Company::class)]
+    #[ORM\JoinColumn(name: 'company_id', nullable: false, onDelete: 'CASCADE')]
+    private Company $company;
 
     #[ORM\Column]
     private int $position;
@@ -54,6 +60,7 @@ class InvoiceLineTax
     {
         $this->id = Uuid::v7();
         $this->line = $line;
+        $this->company = $line->getCompany();
         $this->position = $position;
         $this->taxComponent = $taxComponent;
         $this->retake();

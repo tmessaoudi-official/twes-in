@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Invoices\Domain;
 
 use App\Shared\Domain\PaymentMethod;
+use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -18,6 +19,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'payment')]
 #[ORM\Index(name: 'idx_payment_invoice', columns: ['invoice_id'])]
+#[ORM\Index(name: 'idx_payment_company', columns: ['company_id'])]
 class Payment
 {
     #[ORM\Id]
@@ -27,6 +29,10 @@ class Payment
     #[ORM\ManyToOne(targetEntity: Invoice::class, inversedBy: 'payments')]
     #[ORM\JoinColumn(name: 'invoice_id', nullable: false, onDelete: 'CASCADE')]
     private Invoice $invoice;
+
+    #[ORM\ManyToOne(targetEntity: Company::class)]
+    #[ORM\JoinColumn(name: 'company_id', nullable: false, onDelete: 'CASCADE')]
+    private Company $company;
 
     #[ORM\Column(name: 'payment_date', type: Types::DATE_IMMUTABLE)]
     private \DateTimeImmutable $date;
@@ -54,6 +60,7 @@ class Payment
     {
         $this->id = Uuid::v7();
         $this->invoice = $invoice;
+        $this->company = $invoice->getCompany();
         $this->date = $details->date;
         $this->amount = $details->amount;
         $this->method = $details->method;

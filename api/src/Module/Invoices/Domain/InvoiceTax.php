@@ -12,6 +12,7 @@ namespace App\Module\Invoices\Domain;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
+use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -24,6 +25,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'invoice_tax')]
 #[ORM\Index(name: 'idx_invoice_tax_invoice', columns: ['invoice_id'])]
+#[ORM\Index(name: 'idx_invoice_tax_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_invoice_tax_component', columns: ['tax_component_id'])]
 class InvoiceTax
 {
@@ -34,6 +36,10 @@ class InvoiceTax
     #[ORM\ManyToOne(targetEntity: Invoice::class, inversedBy: 'documentTaxes')]
     #[ORM\JoinColumn(name: 'invoice_id', nullable: false, onDelete: 'CASCADE')]
     private Invoice $invoice;
+
+    #[ORM\ManyToOne(targetEntity: Company::class)]
+    #[ORM\JoinColumn(name: 'company_id', nullable: false, onDelete: 'CASCADE')]
+    private Company $company;
 
     #[ORM\Column]
     private int $position;
@@ -62,6 +68,7 @@ class InvoiceTax
     {
         $this->id = Uuid::v7();
         $this->invoice = $invoice;
+        $this->company = $invoice->getCompany();
         $this->position = $position;
         $this->taxComponent = $taxComponent;
         $this->retake();

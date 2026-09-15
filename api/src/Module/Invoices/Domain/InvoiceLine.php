@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Domain;
 
 use App\Fiscal\Domain\Unit;
 use App\Module\Products\Domain\Product;
+use App\Tenancy\Domain\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -21,6 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'invoice_line')]
 #[ORM\Index(name: 'idx_invoice_line_invoice', columns: ['invoice_id'])]
+#[ORM\Index(name: 'idx_invoice_line_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_invoice_line_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_invoice_line_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_invoice_line_source_delivery_note_line', columns: ['source_delivery_note_line_id'])]
@@ -33,6 +35,10 @@ class InvoiceLine
     #[ORM\ManyToOne(targetEntity: Invoice::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(name: 'invoice_id', nullable: false, onDelete: 'CASCADE')]
     private Invoice $invoice;
+
+    #[ORM\ManyToOne(targetEntity: Company::class)]
+    #[ORM\JoinColumn(name: 'company_id', nullable: false, onDelete: 'CASCADE')]
+    private Company $company;
 
     #[ORM\Column]
     private int $position;
@@ -81,6 +87,7 @@ class InvoiceLine
     {
         $this->id = Uuid::v7();
         $this->invoice = $invoice;
+        $this->company = $invoice->getCompany();
         $this->position = $position;
         $this->product = $details->product;
         $this->description = $details->description;
@@ -188,5 +195,10 @@ class InvoiceLine
     public function getTaxes(): array
     {
         return array_values($this->taxes->toArray());
+    }
+
+    public function getCompany(): Company
+    {
+        return $this->company;
     }
 }

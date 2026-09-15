@@ -11,6 +11,7 @@ namespace App\Module\DeliveryNotes\Domain;
 
 use App\Fiscal\Domain\Unit;
 use App\Module\Products\Domain\Product;
+use App\Tenancy\Domain\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -21,6 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'delivery_note_line')]
 #[ORM\Index(name: 'idx_delivery_note_line_note', columns: ['delivery_note_id'])]
+#[ORM\Index(name: 'idx_delivery_note_line_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_delivery_note_line_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_delivery_note_line_unit', columns: ['unit_id'])]
 class DeliveryNoteLine
@@ -32,6 +34,10 @@ class DeliveryNoteLine
     #[ORM\ManyToOne(targetEntity: DeliveryNote::class, inversedBy: 'lines')]
     #[ORM\JoinColumn(name: 'delivery_note_id', nullable: false, onDelete: 'CASCADE')]
     private DeliveryNote $deliveryNote;
+
+    #[ORM\ManyToOne(targetEntity: Company::class)]
+    #[ORM\JoinColumn(name: 'company_id', nullable: false, onDelete: 'CASCADE')]
+    private Company $company;
 
     #[ORM\Column]
     private int $position;
@@ -63,6 +69,7 @@ class DeliveryNoteLine
     {
         $this->id = Uuid::v7();
         $this->deliveryNote = $deliveryNote;
+        $this->company = $deliveryNote->getCompany();
         $this->position = $position;
         $this->product = $details->product;
         $this->description = $details->description;
@@ -140,5 +147,10 @@ class DeliveryNoteLine
     public function getTaxes(): array
     {
         return array_values($this->taxes->toArray());
+    }
+
+    public function getCompany(): Company
+    {
+        return $this->company;
     }
 }
