@@ -53,8 +53,15 @@ final readonly class SettingAccess
         return $this->guard->companyForActing($companyId, self::READ);
     }
 
+    /** @throws UnprocessableEntityHttpException for the platform level, which belongs to the platform's operators */
     public function companyToWrite(Uuid $companyId, SettingLevel $level): Company
     {
+        // A company's own context reaches the platform address like any chain does, so a company endpoint must refuse
+        // that level outright, or anyone who may set a company default could set one for every company at once.
+        if (SettingLevel::Platform === $level) {
+            throw new UnprocessableEntityHttpException('level: the platform level is set by the platform\'s operators.');
+        }
+
         return $this->guard->companyForActing($companyId, match ($level) {
             SettingLevel::User => self::READ,
             SettingLevel::CustomerGroup, SettingLevel::Customer => self::PARTIES_WRITE,

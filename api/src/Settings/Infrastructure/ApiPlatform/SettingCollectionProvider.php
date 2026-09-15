@@ -61,12 +61,14 @@ final readonly class SettingCollectionProvider implements ProviderInterface
         $filters = $context['filters'] ?? [];
         $chain = \is_array($filters) ? ($filters['chain'] ?? null) : null;
         if (null === $chain) {
-            return SettingChain::cases();
+            return SettingChain::ofCompanies();
         }
-        if (!\is_string($chain) || null === SettingChain::tryFrom($chain)) {
+        // The platform chain is its operators' (/api/platform/settings), so a company asking for it asked for nothing.
+        $known = \is_string($chain) ? SettingChain::tryFrom($chain) : null;
+        if (null === $known || !\in_array($known, SettingChain::ofCompanies(), true)) {
             throw new BadRequestHttpException('chain: expected presentation, parties or articles.');
         }
 
-        return [SettingChain::from($chain)];
+        return [$known];
     }
 }

@@ -66,12 +66,33 @@ use Symfony\Component\Validator\Constraints as Assert;
                 new Parameter('productCategoryId', 'query', 'The product category, at the product category level', false, schema: ['type' => 'string', 'format' => 'uuid']),
             ]),
         ),
+        // The platform chain, which belongs to the platform's operators (docs/SPEC.md § 3 Settings).
+        new GetCollection(
+            uriTemplate: '/platform/settings',
+            name: 'platform_settings',
+            provider: PlatformSettingCollectionProvider::class,
+            security: 'is_granted("platform.settings")',
+            normalizationContext: ['groups' => [self::READ]],
+        ),
+        new Put(
+            uriTemplate: '/platform/settings/{key}',
+            name: 'platform_setting_change',
+            requirements: ['key' => self::KEY],
+            processor: ChangePlatformSettingProcessor::class,
+            security: 'is_granted("platform.settings")',
+            read: false,
+            normalizationContext: ['groups' => [self::READ]],
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::PLATFORM_WRITE]],
+        ),
     ],
 )]
 final class SettingResource
 {
     public const string READ = 'setting:read';
     public const string WRITE = 'setting:write';
+    /** A platform value names no level: the platform is the only one there is. */
+    public const string PLATFORM_WRITE = 'setting:platform_write';
     private const string KEY = '[a-z][a-z0-9_.-]*';
     /** A setting's value is any JSON value its type allows; the contract says so rather than "string". */
     private const array ANY_VALUE = ['anyOf' => [['type' => 'string'], ['type' => 'number'], ['type' => 'boolean'], ['type' => 'array'], ['type' => 'object', 'additionalProperties' => true], ['type' => 'null']]];
