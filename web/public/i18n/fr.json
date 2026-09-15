@@ -19,7 +19,8 @@
       "password": "Mot de passe",
       "password_required": "Le mot de passe est obligatoire.",
       "submit": "Se connecter",
-      "submitting": "Connexion…"
+      "submitting": "Connexion…",
+      "signup": "Créer un compte"
     },
     "logout": "Se déconnecter",
     "errors": {
@@ -85,6 +86,12 @@
       "passkey_remove": "Supprimer",
       "passkey_remove_label": "Supprimer la clé d’accès {{name}}",
       "passkey_recovery": "Obtenir de nouveaux codes de secours avec une clé d’accès"
+    },
+    "awaiting": {
+      "title": "Presque prêt",
+      "pending": "{{company}} attend l'approbation de l'équipe de la plateforme. Vous recevrez un e-mail dès qu'elle sera approuvée.",
+      "suspended": "{{company}} est suspendue. Contactez l'équipe de la plateforme pour en savoir plus.",
+      "sign_out": "Se déconnecter"
     }
   },
   "hello": {
@@ -1196,6 +1203,45 @@
       "invalid": "La modification a été refusée. Vérifiez le fournisseur, la catégorie, la taxe et le montant.",
       "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et la dépense compte au plus 10 fichiers.",
       "file_too_large": "Le fichier dépasse 10 Mo."
+    }
+  },
+  "signup": {
+    "back_to_login": "Retour à la connexion",
+    "request": {
+      "title": "Créer un compte",
+      "intro": "Saisissez votre adresse e-mail : nous vous enverrons un lien pour terminer l'inscription.",
+      "email": "Adresse e-mail",
+      "email_invalid": "Cette adresse e-mail n'est pas valide.",
+      "submit": "Recevoir le lien",
+      "sent": "Consultez votre boîte de réception : si cette adresse peut servir à s'inscrire, un lien pour terminer est en route. Il est valable 24 heures.",
+      "closed": "Les inscriptions ne sont pas ouvertes pour l'instant.",
+      "errors": {
+        "too_many": "Trop de demandes depuis ici. Réessayez dans un moment.",
+        "refused": "Cette adresse e-mail n'est pas valide.",
+        "not_usable": "Les inscriptions ne sont pas ouvertes pour l'instant.",
+        "network": "Le serveur est injoignable."
+      }
+    },
+    "finish": {
+      "title": "Terminer l'inscription",
+      "display_name": "Votre nom",
+      "password": "Choisissez un mot de passe",
+      "password_hint": "12 caractères au moins.",
+      "password_too_short": "Le mot de passe doit contenir au moins 12 caractères.",
+      "company_name": "Nom de l'entreprise",
+      "country": "Pays",
+      "timezone": "Fuseau horaire",
+      "required": "Ce champ est obligatoire.",
+      "submit": "Créer mon compte",
+      "ready": "Votre compte est prêt.",
+      "pending": "{{company}} sera disponible dès que l'équipe de la plateforme l'aura approuvée. Vous pouvez déjà vous connecter.",
+      "active": "{{company}} est prête. Connectez-vous pour commencer.",
+      "errors": {
+        "not_usable": "Ce lien n'est plus valable. Demandez-en un nouveau depuis la page d'inscription.",
+        "refused": "Refusé : le nom de l'entreprise est peut-être déjà pris, ou le mot de passe est apparu dans une fuite de données.",
+        "too_many": "Trop de demandes. Réessayez dans un moment.",
+        "network": "Le serveur est injoignable."
+      }
     }
   }
 }

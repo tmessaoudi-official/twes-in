@@ -19,7 +19,8 @@
       "password": "Password",
       "password_required": "The password is required.",
       "submit": "Sign in",
-      "submitting": "Signing in…"
+      "submitting": "Signing in…",
+      "signup": "Create an account"
     },
     "logout": "Sign out",
     "errors": {
@@ -85,6 +86,12 @@
       "passkey_remove": "Remove",
       "passkey_remove_label": "Remove the passkey {{name}}",
       "passkey_recovery": "Get new recovery codes with a passkey"
+    },
+    "awaiting": {
+      "title": "Almost there",
+      "pending": "{{company}} is waiting for approval by the platform's team. You will receive an email as soon as it is approved.",
+      "suspended": "{{company}} is suspended. Contact the platform's team to find out more.",
+      "sign_out": "Sign out"
     }
   },
   "hello": {
@@ -1196,6 +1203,45 @@
       "invalid": "The change was refused. Check the vendor, the category, the tax and the amount.",
       "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image of up to 10 MB, not empty, and the expense may hold at most 10 files.",
       "file_too_large": "The file is larger than 10 MB."
+    }
+  },
+  "signup": {
+    "back_to_login": "Back to sign in",
+    "request": {
+      "title": "Create an account",
+      "intro": "Enter your email address and we will send you a link to finish signing up.",
+      "email": "Email address",
+      "email_invalid": "This email address is not valid.",
+      "submit": "Send me a link",
+      "sent": "Check your inbox: if this address can be used to sign up, a link to finish is on its way. It is valid for 24 hours.",
+      "closed": "Signing up is not open at the moment.",
+      "errors": {
+        "too_many": "Too many requests from here. Try again in a while.",
+        "refused": "This email address is not valid.",
+        "not_usable": "Signing up is not open at the moment.",
+        "network": "The server could not be reached."
+      }
+    },
+    "finish": {
+      "title": "Finish signing up",
+      "display_name": "Your name",
+      "password": "Choose a password",
+      "password_hint": "At least 12 characters.",
+      "password_too_short": "The password must be at least 12 characters.",
+      "company_name": "Company name",
+      "country": "Country",
+      "timezone": "Time zone",
+      "required": "This field is required.",
+      "submit": "Create my account",
+      "ready": "Your account is ready.",
+      "pending": "{{company}} will be available once the platform's team approves it. You can already sign in.",
+      "active": "{{company}} is ready. Sign in to start.",
+      "errors": {
+        "not_usable": "That link is no longer valid. Ask for a new one from the sign-up page.",
+        "refused": "That was refused: the company name may already be taken, or the password has appeared in a data breach.",
+        "too_many": "Too many requests. Try again in a while.",
+        "network": "The server could not be reached."
+      }
     }
   }
 }

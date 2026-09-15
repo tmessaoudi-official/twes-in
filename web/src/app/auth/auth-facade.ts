@@ -35,6 +35,14 @@ export class AuthFacade {
     const mfa = this.stateSignal()?.mfa;
     return mfa !== undefined && mfa.required && !mfa.enrolled;
   });
+  /**
+   * The working company is not active, pending an operator's approval or suspended by one: the API refuses its members
+   * everything in it, so the application shows why instead. An operator is not held back, since approving is their job.
+   */
+  readonly companyClosed = computed(() => {
+    const state = this.stateSignal();
+    return !!state?.company && state.company.status !== 'active' && !state.user.isPlatformOperator;
+  });
 
   /** Asks the API who the session belongs to. Any failure means "nobody": the guard sends the user to sign in. */
   async load(): Promise<SignedInState | null> {

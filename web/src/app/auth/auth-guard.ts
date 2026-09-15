@@ -21,7 +21,20 @@ export const authGuard: CanActivateFn = async () => {
   if (!(await resolveStatus(auth))) {
     return router.createUrlTree(['/login']);
   }
-  return auth.needsEnrolment() ? router.createUrlTree(['/two-factor']) : true;
+  if (auth.needsEnrolment()) {
+    return router.createUrlTree(['/two-factor']);
+  }
+  return auth.companyClosed() ? router.createUrlTree(['/awaiting-approval']) : true;
+};
+
+/** The page that says a company is not active yet: only for a signed-in member of one, and nobody else. */
+export const awaitingApprovalGuard: CanActivateFn = async () => {
+  const auth = inject(AuthFacade);
+  const router = inject(Router);
+  if (!(await resolveStatus(auth))) {
+    return router.createUrlTree(['/login']);
+  }
+  return auth.companyClosed() ? true : router.createUrlTree(['/']);
 };
 
 /** The two-step verification page: any signed-in account, including one the enrolment requirement holds back. */

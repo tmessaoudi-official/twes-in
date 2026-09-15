@@ -114,6 +114,23 @@ describe('AuthFacade', () => {
     expect(facade.isAuthenticated()).toBe(true);
   });
 
+  it('companyClosed() holds only for a member whose working company is not active', async () => {
+    const pending = { ...owner, company: { ...owner.company!, status: 'pending' } };
+    const operator = { ...pending, user: { ...owner.user, isPlatformOperator: true } };
+    const cases: [SignedInState, boolean][] = [
+      [owner, false],
+      [pending, true],
+      [{ ...owner, company: { ...owner.company!, status: 'suspended' } }, true],
+      [operator, false],
+      [{ ...owner, company: null }, false],
+    ];
+    for (const [state, closed] of cases) {
+      api.me.mockResolvedValue(state);
+      await facade.load();
+      expect(facade.companyClosed()).toBe(closed);
+    }
+  });
+
   it('needsEnrolment() holds only for an account required to enrol that has not', async () => {
     expect(facade.needsEnrolment()).toBe(false);
     api.me.mockResolvedValue({

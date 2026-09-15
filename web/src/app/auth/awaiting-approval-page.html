@@ -1,0 +1,19 @@
+<main class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-6">
+  <h1 class="text-3xl font-semibold">{{ 'auth.awaiting.title' | translate }}</h1>
+
+  @if (company(); as company) {
+    @if (company.status === 'suspended') {
+      <p data-testid="awaiting-suspended">
+        {{ 'auth.awaiting.suspended' | translate: { company: company.name } }}
+      </p>
+    } @else {
+      <p data-testid="awaiting-pending">
+        {{ 'auth.awaiting.pending' | translate: { company: company.name } }}
+      </p>
+    }
+  }
+
+  <button mat-stroked-button type="button" (click)="signOut()" data-testid="awaiting-sign-out">
+    {{ 'auth.awaiting.sign_out' | translate }}
+  </button>
+</main>

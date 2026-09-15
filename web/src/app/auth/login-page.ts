@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { HealthFacade } from '../health/health-facade';
+import { SignupFacade } from '../signup/signup-facade';
 import { AuthFacade } from './auth-facade';
 import type { LoginError } from './auth-types';
 import { PasskeyClient } from './passkey-client';
@@ -21,6 +22,7 @@ import { PasskeyClient } from './passkey-client';
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
+    RouterLink,
     TranslatePipe,
   ],
   templateUrl: './login-page.html',
@@ -47,6 +49,13 @@ export class LoginPage {
   protected readonly apiStatus = inject(HealthFacade).status;
   /** Offered only where the browser can answer with a passkey at all. */
   protected readonly passkeysSupported = inject(PasskeyClient).supported();
+  private readonly signup = inject(SignupFacade);
+  /** Offered only while the platform's operators have opened signup. */
+  protected readonly signupOpen = computed(() => this.signup.availability()?.enabled === true);
+
+  constructor() {
+    void this.signup.loadAvailability();
+  }
 
   protected async submit(): Promise<void> {
     if (this.form.invalid || this.submitting()) {

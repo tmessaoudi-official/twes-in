@@ -10,13 +10,18 @@ import {
   UrlTree,
 } from '@angular/router';
 import { AuthFacade } from './auth-facade';
-import { anonymousGuard, authGuard, twoFactorGuard } from './auth-guard';
+import { anonymousGuard, authGuard, awaitingApprovalGuard, twoFactorGuard } from './auth-guard';
 
-function facade(status: 'anonymous' | 'authenticated', needsEnrolment = false) {
+function facade(
+  status: 'anonymous' | 'authenticated',
+  needsEnrolment = false,
+  companyClosed = false,
+) {
   return {
     status: () => status,
     isAuthenticated: () => status === 'authenticated',
     needsEnrolment: () => needsEnrolment,
+    companyClosed: () => companyClosed,
     load: vi.fn(),
   };
 }
@@ -48,6 +53,13 @@ describe('auth guards', () => {
     expect(await run(twoFactorGuard, facade('authenticated', true))).toBe(true);
     expect(await run(twoFactorGuard, facade('authenticated', false))).toBe(true);
     expect(await run(twoFactorGuard, facade('anonymous'))).toBe('/login');
+  });
+
+  it('sends a member of a company that is not active to the page that says why, and nowhere else', async () => {
+    expect(await run(authGuard, facade('authenticated', false, true))).toBe('/awaiting-approval');
+    expect(await run(awaitingApprovalGuard, facade('authenticated', false, true))).toBe(true);
+    expect(await run(awaitingApprovalGuard, facade('authenticated', false, false))).toBe('/');
+    expect(await run(awaitingApprovalGuard, facade('anonymous'))).toBe('/login');
   });
 
   it('keeps a signed-in account off the login page', async () => {

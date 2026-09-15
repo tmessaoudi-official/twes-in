@@ -122,6 +122,12 @@
     </mat-card-content>
   </mat-card>
 
+  @if (signupOpen() && step() === 'password') {
+    <p class="text-sm">
+      <a routerLink="/signup" data-testid="login-signup">{{ 'auth.login.signup' | translate }}</a>
+    </p>
+  }
+
   <p data-testid="api-status" class="font-mono text-sm opacity-70">
     {{ 'health.api' | translate }} : {{ 'health.' + apiStatus() | translate }}
   </p>

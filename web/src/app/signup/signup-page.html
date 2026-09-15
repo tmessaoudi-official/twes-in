@@ -1,0 +1,60 @@
+<main class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-6">
+  <header class="flex flex-col gap-1">
+    <h1 class="text-3xl font-semibold" data-testid="signup-title">
+      {{ 'signup.request.title' | translate }}
+    </h1>
+  </header>
+
+  @if (availability(); as open) {
+    @if (!open.enabled) {
+      <p data-testid="signup-closed">{{ 'signup.request.closed' | translate }}</p>
+    } @else if (requested()) {
+      <mat-card appearance="outlined">
+        <mat-card-content>
+          <p role="status" data-testid="signup-sent">{{ 'signup.request.sent' | translate }}</p>
+        </mat-card-content>
+      </mat-card>
+    } @else {
+      <mat-card appearance="outlined">
+        <mat-card-content>
+          <p class="mb-4 opacity-80">{{ 'signup.request.intro' | translate }}</p>
+          <form
+            [formGroup]="form"
+            (ngSubmit)="submit()"
+            class="flex flex-col gap-2"
+            novalidate
+            data-testid="signup-form"
+          >
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'signup.request.email' | translate }}</mat-label>
+              <input
+                matInput
+                type="email"
+                formControlName="email"
+                autocomplete="email"
+                data-testid="signup-email"
+              />
+              @if (form.controls.email.touched && form.controls.email.invalid) {
+                <mat-error>{{ 'signup.request.email_invalid' | translate }}</mat-error>
+              }
+            </mat-form-field>
+
+            @if (error(); as code) {
+              <p role="alert" class="text-sm text-red-700" data-testid="signup-error">
+                {{ 'signup.request.errors.' + code | translate }}
+              </p>
+            }
+
+            <button mat-flat-button type="submit" [disabled]="busy()" data-testid="signup-submit">
+              {{ 'signup.request.submit' | translate }}
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  <p>
+    <a routerLink="/login" data-testid="signup-back">{{ 'signup.back_to_login' | translate }}</a>
+  </p>
+</main>

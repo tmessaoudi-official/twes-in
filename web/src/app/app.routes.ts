@@ -2,7 +2,12 @@
 
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
-import { anonymousGuard, authGuard, twoFactorGuard } from './auth/auth-guard';
+import {
+  anonymousGuard,
+  authGuard,
+  awaitingApprovalGuard,
+  twoFactorGuard,
+} from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
@@ -29,6 +34,24 @@ export const routes: Routes = [
     path: 'invitations/:token',
     loadComponent: () =>
       import('./invitation/accept-invitation-page').then((m) => m.AcceptInvitationPage),
+  },
+  {
+    // Asking for a signup link is for somebody not signed in.
+    path: 'signup',
+    canActivate: [anonymousGuard],
+    loadComponent: () => import('./signup/signup-page').then((m) => m.SignupPage),
+  },
+  {
+    // The far end of a signup link, opened from a mail client with no session: outside both guards, like an invitation.
+    path: 'signup/:token',
+    loadComponent: () => import('./signup/finish-signup-page').then((m) => m.FinishSignupPage),
+  },
+  {
+    // A member of a company that is not active, pending approval or suspended: outside the shell, which could not load.
+    path: 'awaiting-approval',
+    canActivate: [awaitingApprovalGuard],
+    loadComponent: () =>
+      import('./auth/awaiting-approval-page').then((m) => m.AwaitingApprovalPage),
   },
   {
     // Every signed-in page is a child of the shell, which carries the navigation and the account menu.

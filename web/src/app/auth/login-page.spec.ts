@@ -29,6 +29,7 @@ class StaticLoader implements TranslateLoader {
           password_required: 'Mot de passe obligatoire',
           submit: 'Se connecter',
           submitting: 'Connexion…',
+          signup: 'Créer un compte',
         },
         mfa: {
           title: 'Vérification en deux étapes',
@@ -90,11 +91,16 @@ describe('LoginPage', () => {
 
   afterEach(() => TestBed.inject(HttpTestingController).verify());
 
-  async function render() {
+  async function render(signupOpen = false) {
     const fixture = TestBed.createComponent(LoginPage);
-    // The health probe is issued at construction; whenStable() would wait for it, so answer it first.
+    // The health probe and the signup availability are asked at construction; whenStable() would wait for them.
     const http = TestBed.inject(HttpTestingController);
     http.expectOne('/api/health').flush({ status: 'ok', database: 'ok' });
+    http
+      .expectOne('/api/signup')
+      .flush({ enabled: signupOpen, countries: signupOpen ? ['TN'] : [] });
+    await fixture.whenStable();
+    await new Promise((resolve) => setTimeout(resolve, 0));
     await fixture.whenStable();
     const el = fixture.nativeElement as HTMLElement;
     const query = <T extends HTMLElement>(id: string) =>
@@ -120,6 +126,19 @@ describe('LoginPage', () => {
     expect(query('email')).not.toBeNull();
     expect(query('password')).not.toBeNull();
     expect(query('api-status')?.textContent).toContain('opérationnelle');
+  });
+
+  it('offers to create an account while signup is open', async () => {
+    const { query } = await render(true);
+
+    expect(query<HTMLAnchorElement>('login-signup')?.getAttribute('href')).toBe('/signup');
+    expect(query('login-signup')?.textContent).toContain('Créer un compte');
+  });
+
+  it('offers no account creation while signup is closed', async () => {
+    const { query } = await render(false);
+
+    expect(query('login-signup')).toBeNull();
   });
 
   it('refuses an empty submission without calling the API', async () => {
