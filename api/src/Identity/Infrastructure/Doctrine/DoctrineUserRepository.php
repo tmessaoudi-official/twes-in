@@ -31,6 +31,22 @@ final readonly class DoctrineUserRepository implements UserRepository
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
     }
 
+    public function search(string $text, int $limit): array
+    {
+        /** @var list<User> $users */
+        $users = $this->entityManager->createQueryBuilder()
+            ->select('u')
+            ->from(User::class, 'u')
+            ->where('LOWER(u.email) LIKE :text OR LOWER(u.displayName) LIKE :text')
+            ->setParameter('text', '%'.addcslashes(mb_strtolower(trim($text)), '%_\\').'%')
+            ->orderBy('u.email', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+
+        return $users;
+    }
+
     public function save(User $user): void
     {
         $this->entityManager->persist($user);

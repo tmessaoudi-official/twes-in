@@ -29,6 +29,18 @@ final class UserTest extends TestCase
         self::assertSame($now, $user->getUpdatedAt());
     }
 
+    public function testANewPasswordForcesEverySessionOutAndARehashDoesNot(): void
+    {
+        $user = new User(Email::fromString('u@example.test'), 'U');
+        $stamp = $user->getSecurityStamp();
+
+        $user->upgradePasswordHash('same-password-newer-parameters');
+        self::assertSame($stamp, $user->getSecurityStamp());
+
+        $user->setPasswordHash('a-new-password', new \DateTimeImmutable('2026-09-15 12:00:00'));
+        self::assertNotSame($stamp, $user->getSecurityStamp());
+    }
+
     public function testTheAccountLocksOnTheNthConsecutiveFailureAndOnlyUntilTheDeadline(): void
     {
         $now = new \DateTimeImmutable('2026-09-09 12:00:00');

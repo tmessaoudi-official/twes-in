@@ -9,6 +9,15 @@ describe('PlatformApi', () => {
   let api: PlatformApi;
   let http: HttpTestingController;
 
+  const account = {
+    id: 'u1',
+    email: 'nadia@acme.test',
+    displayName: 'Nadia',
+    active: true,
+    platformOperator: false,
+    createdAt: '2026-09-15T10:00:00+00:00',
+  };
+
   const waiting = {
     id: 'c1',
     name: 'Nouvelle Société',
@@ -27,6 +36,37 @@ describe('PlatformApi', () => {
   });
 
   afterEach(() => http.verify());
+
+  it('finds accounts by a piece of their address or name', async () => {
+    const found = api.accounts('acme & co');
+
+    const request = http.expectOne((candidate) => candidate.url === '/api/platform/accounts');
+    expect(request.request.method).toBe('GET');
+    expect(request.request.params.get('q')).toBe('acme & co');
+    request.flush([account]);
+
+    expect(await found).toEqual([account]);
+  });
+
+  it('acts on an account by its identifier and answers it as the platform holds it', async () => {
+    const done = api.actOnAccount('u/1', 'deactivate');
+
+    const request = http.expectOne('/api/platform/accounts/u%2F1/deactivate');
+    expect(request.request.method).toBe('POST');
+    request.flush({ ...account, active: false });
+
+    expect((await done).active).toBe(false);
+  });
+
+  it("names the refusal to deactivate one's own account", async () => {
+    const done = api.actOnAccount('u1', 'deactivate');
+
+    http
+      .expectOne('/api/platform/accounts/u1/deactivate')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+
+    await expect(done).rejects.toMatchObject({ code: 'own_account' });
+  });
 
   it('lists the companies waiting for approval', async () => {
     const rows = api.waitingCompanies();

@@ -73,4 +73,85 @@
       <p data-testid="platform-waiting-empty">{{ 'platform.waiting.none' | translate }}</p>
     }
   </section>
+
+  <section class="flex flex-col gap-3">
+    <h2 class="text-xl font-semibold">{{ 'platform.accounts.title' | translate }}</h2>
+    <div class="flex flex-wrap items-center gap-3">
+      <mat-form-field class="min-w-0 flex-1" subscriptSizing="dynamic">
+        <mat-label>{{ 'platform.accounts.search' | translate }}</mat-label>
+        <input
+          matInput
+          type="search"
+          [value]="search()"
+          (input)="search.set(typed($event))"
+          (keydown.enter)="find()"
+          data-testid="platform-account-search"
+        />
+      </mat-form-field>
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="find()"
+        [disabled]="busy()"
+        data-testid="platform-account-find"
+      >
+        {{ 'platform.accounts.find' | translate }}
+      </button>
+    </div>
+    @for (account of accounts(); track account.id) {
+      <mat-card appearance="outlined" [attr.data-testid]="'account-' + account.email">
+        <mat-card-content>
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="flex min-w-0 flex-col">
+              <span class="font-medium">{{ account.displayName }}</span>
+              <span class="text-sm break-all text-on-surface-variant">{{ account.email }}</span>
+              <span class="text-sm">
+                {{
+                  (account.active ? 'platform.accounts.active' : 'platform.accounts.inactive')
+                    | translate
+                }}
+                @if (account.platformOperator) {
+                  · {{ 'platform.accounts.operator' | translate }}
+                }
+              </span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              @if (account.active) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="act(account.id, 'end-sessions')"
+                  [disabled]="busy()"
+                  [attr.data-testid]="'end-sessions-' + account.email"
+                >
+                  {{ 'platform.accounts.end_sessions' | translate }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="act(account.id, 'deactivate')"
+                  [disabled]="busy()"
+                  [attr.data-testid]="'deactivate-' + account.email"
+                >
+                  {{ 'platform.accounts.deactivate' | translate }}
+                </button>
+              } @else {
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="act(account.id, 'reactivate')"
+                  [disabled]="busy()"
+                  [attr.data-testid]="'reactivate-' + account.email"
+                >
+                  {{ 'platform.accounts.reactivate' | translate }}
+                </button>
+              }
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    } @empty {
+      <p data-testid="platform-accounts-empty">{{ 'platform.accounts.none' | translate }}</p>
+    }
+  </section>
 </section>

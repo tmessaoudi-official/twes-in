@@ -17,6 +17,9 @@ interface UserRepository
 
     public function ofEmail(Email $email): ?User;
 
+    /** @return list<User> the users whose address or display name holds that text, whatever its case, in address order */
+    public function search(string $text, int $limit): array;
+
     /** Makes the user and every change to it durable. */
     public function save(User $user): void;
 }

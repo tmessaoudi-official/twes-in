@@ -3,8 +3,14 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { PlatformCompanyPlatformCompanyRead, SettingSettingRead } from '../api/types.gen';
 import type {
+  PlatformAccountPlatformAccountRead,
+  PlatformCompanyPlatformCompanyRead,
+  SettingSettingRead,
+} from '../api/types.gen';
+import type {
+  AccountAction,
+  PlatformAccountRow,
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
@@ -76,6 +82,32 @@ export class PlatformApi {
     );
   }
 
+  /** Accounts whose address or name holds that text, a few at most; an empty text lists the first of them all. */
+  accounts(text: string): Promise<PlatformAccountRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<PlatformAccountPlatformAccountRead[]>('/api/platform/accounts', {
+            params: { q: text },
+          }),
+        )
+      ).map(toAccount),
+    );
+  }
+
+  actOnAccount(userId: string, action: AccountAction): Promise<PlatformAccountRow> {
+    return this.guard(async () =>
+      toAccount(
+        await firstValueFrom(
+          this.http.post<PlatformAccountPlatformAccountRead>(
+            `/api/platform/accounts/${encodeURIComponent(userId)}/${action}`,
+            {},
+          ),
+        ),
+      ),
+    );
+  }
+
   private async guard<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();
@@ -96,9 +128,23 @@ function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
   };
 }
 
+function toAccount(read: PlatformAccountPlatformAccountRead): PlatformAccountRow {
+  return {
+    id: read.id ?? '',
+    email: read.email ?? '',
+    displayName: read.displayName ?? '',
+    active: read.active ?? false,
+    platformOperator: read.platformOperator ?? false,
+    createdAt: read.createdAt ?? '',
+  };
+}
+
 function codeOf(error: unknown): PlatformError {
   if (!(error instanceof HttpErrorResponse) || error.status === 0) {
     return 'network';
+  }
+  if (error.status === 409) {
+    return 'own_account';
   }
   return error.status === 404 ? 'not_found' : 'refused';
 }

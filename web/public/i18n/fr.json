@@ -1266,9 +1266,22 @@
       "approve": "Approuver",
       "reject": "Refuser"
     },
+    "accounts": {
+      "title": "Comptes",
+      "search": "Adresse ou nom",
+      "find": "Rechercher",
+      "none": "Aucun compte trouvé.",
+      "active": "Actif",
+      "inactive": "Désactivé",
+      "operator": "Opérateur",
+      "end_sessions": "Terminer les sessions",
+      "deactivate": "Désactiver",
+      "reactivate": "Réactiver"
+    },
     "errors": {
       "not_found": "Cette entreprise n'existe plus.",
       "refused": "La plateforme a refusé.",
+      "own_account": "Vous ne pouvez pas désactiver votre propre compte.",
       "network": "Le serveur est injoignable."
     }
   }

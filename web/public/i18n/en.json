@@ -1266,9 +1266,22 @@
       "approve": "Approve",
       "reject": "Reject"
     },
+    "accounts": {
+      "title": "Accounts",
+      "search": "Address or name",
+      "find": "Search",
+      "none": "No account found.",
+      "active": "Active",
+      "inactive": "Deactivated",
+      "operator": "Operator",
+      "end_sessions": "End sessions",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate"
+    },
     "errors": {
       "not_found": "That company no longer exists.",
       "refused": "The platform refused that.",
+      "own_account": "You cannot deactivate your own account.",
       "network": "The server could not be reached."
     }
   }

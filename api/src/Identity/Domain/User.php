@@ -187,11 +187,15 @@ class User
         return $this->passwordChangedAt;
     }
 
-    /** A new password: the hash is dated, and later policies (expiry, reuse) read that date. */
+    /**
+     * A new password: the hash is dated, and later policies (expiry, reuse) read that date. Every session opened
+     * with the old one ends, which is what a password changed after a compromise is for.
+     */
     public function setPasswordHash(string $hash, \DateTimeImmutable $now): void
     {
         $this->passwordHash = $hash;
         $this->passwordChangedAt = $now;
+        $this->securityStamp = bin2hex(random_bytes(16));
         $this->touch($now);
     }
 

@@ -10,7 +10,12 @@ import {
 import { of } from 'rxjs';
 import { PlatformFacade } from './platform-facade';
 import { PlatformPage } from './platform-page';
-import type { PlatformCompanyRow, PlatformError, PlatformSignup } from './platform-types';
+import type {
+  PlatformAccountRow,
+  PlatformCompanyRow,
+  PlatformError,
+  PlatformSignup,
+} from './platform-types';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -29,11 +34,37 @@ class StaticLoader implements TranslateLoader {
           approve: 'Approuver',
           reject: 'Refuser',
         },
-        errors: { not_found: 'Introuvable', refused: 'Refusé', network: 'Injoignable' },
+        accounts: {
+          title: 'Comptes',
+          search: 'Adresse ou nom',
+          find: 'Rechercher',
+          none: 'Aucun compte trouvé.',
+          active: 'Actif',
+          inactive: 'Désactivé',
+          operator: 'Opérateur',
+          end_sessions: 'Terminer les sessions',
+          deactivate: 'Désactiver',
+          reactivate: 'Réactiver',
+        },
+        errors: {
+          not_found: 'Introuvable',
+          refused: 'Refusé',
+          network: 'Injoignable',
+          own_account: 'Pas le vôtre',
+        },
       },
     });
   }
 }
+
+const account: PlatformAccountRow = {
+  id: 'u1',
+  email: 'nadia@acme.test',
+  displayName: 'Nadia',
+  active: true,
+  platformOperator: false,
+  createdAt: '2026-09-15T10:00:00+00:00',
+};
 
 const row: PlatformCompanyRow = {
   id: 'c1',
@@ -49,8 +80,10 @@ describe('PlatformPage', () => {
   const signup = signal<PlatformSignup | null>({ enabled: false, approvalRequired: true });
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
+  const accounts = signal<readonly PlatformAccountRow[]>([account]);
   const facade = {
     waiting,
+    accounts,
     signup,
     busy,
     error,
@@ -58,12 +91,15 @@ describe('PlatformPage', () => {
     approve: vi.fn(),
     reject: vi.fn(),
     setSignup: vi.fn(),
+    findAccounts: vi.fn(),
+    actOnAccount: vi.fn(),
   };
 
   beforeEach(async () => {
     waiting.set([row]);
     signup.set({ enabled: false, approvalRequired: true });
     error.set(null);
+    accounts.set([account]);
     Object.values(facade)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -137,6 +173,48 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.setSignup).toHaveBeenCalledWith('signup.enabled', true);
+  });
+
+  it('finds accounts from what the operator typed', async () => {
+    const { fixture, query } = await render();
+
+    const search = query<HTMLInputElement>('platform-account-search')!;
+    search.value = 'acme';
+    search.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-account-find')!.click();
+    await fixture.whenStable();
+
+    expect(facade.findAccounts).toHaveBeenCalledWith('acme');
+  });
+
+  it('ends the sessions of an active account or deactivates it', async () => {
+    const { fixture, query } = await render();
+
+    const line = query('account-nadia@acme.test')!;
+    expect(line.textContent).toContain('Nadia');
+    expect(line.textContent).toContain('Actif');
+    expect(query('reactivate-nadia@acme.test')).toBeNull();
+
+    query<HTMLButtonElement>('end-sessions-nadia@acme.test')!.click();
+    await fixture.whenStable();
+    expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'end-sessions');
+
+    query<HTMLButtonElement>('deactivate-nadia@acme.test')!.click();
+    await fixture.whenStable();
+    expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'deactivate');
+  });
+
+  it('only reactivates a deactivated account, which has no session left to end', async () => {
+    accounts.set([{ ...account, active: false }]);
+
+    const { fixture, query } = await render();
+
+    expect(query('account-nadia@acme.test')!.textContent).toContain('Désactivé');
+    expect(query('deactivate-nadia@acme.test')).toBeNull();
+    expect(query('end-sessions-nadia@acme.test')).toBeNull();
+    query<HTMLButtonElement>('reactivate-nadia@acme.test')!.click();
+    await fixture.whenStable();
+    expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'reactivate');
   });
 
   it('names a refusal', async () => {

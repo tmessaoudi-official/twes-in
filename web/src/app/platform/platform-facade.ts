@@ -3,13 +3,15 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import type {
+  AccountAction,
+  PlatformAccountRow,
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
   SignupSwitch,
 } from './platform-types';
 
-/** What an operator runs the platform with: who may sign up, and the companies waiting for a decision. */
+/** What an operator runs the platform with: who may sign up, the companies waiting for a decision, and accounts. */
 @Injectable({ providedIn: 'root' })
 export class PlatformFacade {
   private readonly api = inject(PlatformApi);
@@ -18,7 +20,10 @@ export class PlatformFacade {
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<PlatformError | null>(null);
 
+  private readonly accountsSignal = signal<readonly PlatformAccountRow[]>([]);
+
   readonly waiting = this.waitingSignal.asReadonly();
+  readonly accounts = this.accountsSignal.asReadonly();
   /** Null until read. */
   readonly signup = this.signupSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
@@ -27,12 +32,48 @@ export class PlatformFacade {
   async load(): Promise<void> {
     this.busySignal.set(true);
     try {
-      const [waiting, signup] = await Promise.all([this.api.waitingCompanies(), this.api.signup()]);
+      const [waiting, signup, accounts] = await Promise.all([
+        this.api.waitingCompanies(),
+        this.api.signup(),
+        this.api.accounts(''),
+      ]);
       this.waitingSignal.set(waiting);
       this.signupSignal.set(signup);
+      this.accountsSignal.set(accounts);
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
+  /** The accounts whose address or name holds that text; the page opens on the first of them all. */
+  async findAccounts(text: string): Promise<void> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      this.accountsSignal.set(await this.api.accounts(text));
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
+  /** The account is shown as the platform answers it, so a refused action leaves it as it was. */
+  async actOnAccount(userId: string, action: AccountAction): Promise<boolean> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      const updated = await this.api.actOnAccount(userId, action);
+      this.accountsSignal.update((rows) =>
+        rows.map((row) => (row.id === updated.id ? updated : row)),
+      );
+      return true;
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return false;
     } finally {
       this.busySignal.set(false);
     }

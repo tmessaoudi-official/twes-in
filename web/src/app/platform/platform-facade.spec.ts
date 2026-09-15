@@ -3,7 +3,16 @@
 import { TestBed } from '@angular/core/testing';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import { PlatformFacade } from './platform-facade';
-import type { PlatformCompanyRow } from './platform-types';
+import type { PlatformAccountRow, PlatformCompanyRow } from './platform-types';
+
+const account: PlatformAccountRow = {
+  id: 'u1',
+  email: 'nadia@acme.test',
+  displayName: 'Nadia',
+  active: true,
+  platformOperator: false,
+  createdAt: '2026-09-15T10:00:00+00:00',
+};
 
 const row: PlatformCompanyRow = {
   id: 'c1',
@@ -21,6 +30,8 @@ describe('PlatformFacade', () => {
     reject: vi.fn(),
     signup: vi.fn(),
     setSignup: vi.fn(),
+    accounts: vi.fn(),
+    actOnAccount: vi.fn(),
   };
   let facade: PlatformFacade;
 
@@ -28,8 +39,32 @@ describe('PlatformFacade', () => {
     Object.values(api).forEach((fn) => fn.mockReset());
     api.waitingCompanies.mockResolvedValue([row]);
     api.signup.mockResolvedValue({ enabled: false, approvalRequired: true });
+    api.accounts.mockResolvedValue([account]);
     TestBed.configureTestingModule({ providers: [{ provide: PlatformApi, useValue: api }] });
     facade = TestBed.inject(PlatformFacade);
+  });
+
+  it('finds accounts, and shows an account as the platform answers it after an action', async () => {
+    await facade.findAccounts('acme');
+    expect(api.accounts).toHaveBeenCalledWith('acme');
+    expect(facade.accounts()).toEqual([account]);
+
+    api.actOnAccount.mockResolvedValue({ ...account, active: false });
+    expect(await facade.actOnAccount('u1', 'deactivate')).toBe(true);
+
+    expect(api.actOnAccount).toHaveBeenCalledWith('u1', 'deactivate');
+    expect(facade.accounts()).toEqual([{ ...account, active: false }]);
+  });
+
+  it('keeps an account as it was when the platform refuses', async () => {
+    await facade.findAccounts('acme');
+    api.actOnAccount.mockRejectedValue(new PlatformRefused('own_account'));
+
+    expect(await facade.actOnAccount('u1', 'deactivate')).toBe(false);
+
+    expect(facade.accounts()).toEqual([account]);
+    expect(facade.error()).toBe('own_account');
+    expect(facade.busy()).toBe(false);
   });
 
   it('loads the waiting companies and the signup switches together', async () => {
@@ -37,6 +72,8 @@ describe('PlatformFacade', () => {
 
     expect(facade.waiting()).toEqual([row]);
     expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
+    expect(api.accounts).toHaveBeenCalledWith('');
+    expect(facade.accounts()).toEqual([account]);
     expect(facade.error()).toBeNull();
   });
 

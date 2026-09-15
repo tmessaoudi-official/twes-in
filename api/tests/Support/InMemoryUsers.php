@@ -35,6 +35,18 @@ final class InMemoryUsers implements UserRepository
         return null;
     }
 
+    public function search(string $text, int $limit): array
+    {
+        $needle = mb_strtolower(trim($text));
+        $found = array_values(array_filter(
+            $this->users,
+            static fn (User $u) => str_contains($u->getEmail()->value, $needle) || str_contains(mb_strtolower($u->getDisplayName()), $needle),
+        ));
+        usort($found, static fn (User $a, User $b) => strcmp($a->getEmail()->value, $b->getEmail()->value));
+
+        return \array_slice($found, 0, $limit);
+    }
+
     public function save(User $user): void
     {
         $this->users[$user->getId()->toRfc4122()] = $user;
