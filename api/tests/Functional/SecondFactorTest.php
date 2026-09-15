@@ -137,6 +137,38 @@ final class SecondFactorTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    public function testAnotherAccountSigningInClosesTheSecondFactorTheFirstOwed(): void
+    {
+        $this->enrolledUser('someone@twes.local');
+        $this->createUser('other@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
+
+        // Same browser, a different account signs in: the first account's half-login must not survive it.
+        $this->login('other@twes.local', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+
+        $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('mfa_not_pending', $this->stringAt($this->json(), 'error'));
+    }
+
+    public function testAFailedPasswordAttemptClosesTheSecondFactorAnEarlierOneOwed(): void
+    {
+        $this->enrolledUser('someone@twes.local');
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
+
+        $this->login('someone@twes.local', 'not-the-password');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+
+        $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('mfa_not_pending', $this->stringAt($this->json(), 'error'));
+    }
+
     /**
      * Enrols a user the way the use cases will, and hands back the raw recovery codes.
      *

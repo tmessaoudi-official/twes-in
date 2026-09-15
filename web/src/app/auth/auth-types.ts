@@ -14,11 +14,12 @@ export type LoginError =
   | 'authentication_required'
   | 'csrf_token_missing'
   | 'csrf_token_invalid'
-  // The second factor's own refusals: no password step to finish, a wrong code, or an account that must
-  // enrol before it may do anything (G1c).
+  // The second factor's own refusals: no password step to finish, a wrong code, an account that must
+  // enrol before it may do anything, or an enrolment started over an authenticator already in force (G1c).
   | 'mfa_not_pending'
   | 'invalid_code'
   | 'mfa_enrolment_required'
+  | 'mfa_already_enrolled'
   | 'network';
 
 export interface Credentials {

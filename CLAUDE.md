@@ -127,6 +127,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Use `git grep`, not `grep -rn`, for completeness sweeps; use `git --no-pager -c core.pager=cat diff --no-ext-diff`
   for programmatic diff reading (the external diff driver strips `+`/`-`). `docker compose config -q`, always `-q`.
 - Back a file up before applying a mutant and restore from the backup; `git restore` reverts the uncommitted fix with it.
+  Restore with a plain copy, never `cp -p` or `shutil.copy2`: the backup's older mtime makes Symfony keep the mutant's
+  compiled container, so a mutated attribute (a listener priority) stays live in the next clean run (2026-09-15).
 - A Bash `cd api` or `cd web` drifts the persistent cwd and re-arms every project-scoped gate hook; use absolute paths
   or a subshell. Symfony's test client reboots the kernel between requests: re-find an entity after a request
   instead of `refresh()`. Angular's `whenStable()` covers pending HTTP, not the microtask after a flushed response.

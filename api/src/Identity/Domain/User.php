@@ -229,9 +229,16 @@ class User
         $this->updatedAt = $now ?? new \DateTimeImmutable();
     }
 
-    /** Stores a freshly generated secret as pending. Any factor already on stops counting until this one is confirmed. */
+    /**
+     * Stores a freshly generated secret as pending, replacing an earlier pending one. Refused while an authenticator
+     * is in force: starting over would switch it off, and a session is all it takes to start.
+     */
     public function beginTotpEnrolment(string $cipherSecret, ?\DateTimeImmutable $now = null): void
     {
+        if ($this->hasTotp()) {
+            throw new \DomainException('An authenticator is already in force; it has to be removed before another is enrolled.');
+        }
+
         $this->totpSecret = $cipherSecret;
         $this->totpConfirmedAt = null;
         $this->totpLastTimestep = null;

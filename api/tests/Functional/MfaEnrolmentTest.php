@@ -90,6 +90,26 @@ final class MfaEnrolmentTest extends ApiTestCase
         self::assertArrayNotHasKey('mfaRequired', $this->json());
     }
 
+    public function testAnAuthenticatorInForceCannotBeReplacedByStartingAgain(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        $secret = $this->stringAt($this->json(), 'secret');
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+        self::assertResponseIsSuccessful();
+
+        // A session is all this endpoint asks for, so a forgotten or stolen one must not be able to turn the factor off.
+        $this->postJson('/api/auth/mfa/enrolment', []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertSame('mfa_already_enrolled', $this->stringAt($this->json(), 'error'));
+
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
+    }
+
     public function testEnrolmentNeedsASession(): void
     {
         $this->postJson('/api/auth/mfa/enrolment', []);

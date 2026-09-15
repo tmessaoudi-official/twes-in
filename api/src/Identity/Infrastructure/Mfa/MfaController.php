@@ -11,6 +11,7 @@ namespace App\Identity\Infrastructure\Mfa;
 
 use App\Identity\Application\Mfa\BeginTotpEnrolment;
 use App\Identity\Application\Mfa\ConfirmTotpEnrolment;
+use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
@@ -75,7 +76,11 @@ final readonly class MfaController
     #[Route('/api/auth/mfa/enrolment', name: 'api_auth_mfa_enrolment', methods: ['POST'])]
     public function begin(): JsonResponse
     {
-        $enrolment = $this->beginEnrolment->handle($this->currentUserId());
+        try {
+            $enrolment = $this->beginEnrolment->handle($this->currentUserId());
+        } catch (SecondFactorAlreadyEnrolled) {
+            return new JsonResponse(['error' => 'mfa_already_enrolled'], Response::HTTP_CONFLICT);
+        }
 
         return new JsonResponse(['secret' => $enrolment->secret, 'provisioningUri' => $enrolment->provisioningUri]);
     }

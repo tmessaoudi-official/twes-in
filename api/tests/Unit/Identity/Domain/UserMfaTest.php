@@ -106,15 +106,30 @@ final class UserMfaTest extends TestCase
         self::assertNull($this->user->getTotpLastTimestep());
     }
 
-    public function testReEnrollingReplacesTheSecretAndStartsPendingAgain(): void
+    public function testStartingAgainBeforeConfirmingReplacesThePendingSecret(): void
+    {
+        $this->user->beginTotpEnrolment('first');
+
+        $this->user->beginTotpEnrolment('second');
+
+        self::assertFalse($this->user->hasTotp());
+        self::assertSame('second', $this->user->getTotpSecret());
+    }
+
+    public function testAnAuthenticatorInForceIsNotSwitchedOffByStartingAnotherEnrolment(): void
     {
         $this->user->beginTotpEnrolment('first');
         $this->user->confirmTotpEnrolment(58582080);
 
-        $this->user->beginTotpEnrolment('second');
+        try {
+            $this->user->beginTotpEnrolment('second');
+            self::fail('starting an enrolment over a confirmed authenticator must be refused');
+        } catch (\DomainException) {
+        }
 
-        self::assertFalse($this->user->hasTotp(), 'the old factor stops counting the moment a new one is begun');
-        self::assertSame('second', $this->user->getTotpSecret());
-        self::assertNull($this->user->getTotpLastTimestep());
+        // The whole point: one request from a live session must not drop the account back to a password alone.
+        self::assertTrue($this->user->hasTotp());
+        self::assertSame('first', $this->user->getTotpSecret());
+        self::assertSame(58582080, $this->user->getTotpLastTimestep());
     }
 }

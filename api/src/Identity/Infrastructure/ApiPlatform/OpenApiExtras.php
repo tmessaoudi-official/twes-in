@@ -50,7 +50,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             'properties' => [
                 'error' => [
                     'type' => 'string',
-                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required'],
+                    'enum' => ['invalid_credentials', 'account_locked', 'account_disabled', 'too_many_attempts', 'authentication_required', 'csrf_token_missing', 'csrf_token_invalid', 'mfa_not_pending', 'invalid_code', 'mfa_enrolment_required', 'mfa_already_enrolled'],
                 ],
             ],
         ]);
@@ -139,6 +139,7 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             responses: [
                 '200' => $jsonOf('MfaEnrolment', 'A pending secret; not in force until confirmed'),
                 '401' => $errorResponse('Not signed in'),
+                '409' => $errorResponse('An authenticator is already in force'),
             ],
             summary: 'Start enrolling an authenticator',
         )));

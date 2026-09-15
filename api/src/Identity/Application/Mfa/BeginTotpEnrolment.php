@@ -19,7 +19,7 @@ use Symfony\Component\Uid\Uuid;
  *
  * It is not a second factor yet. Nothing about the account changes until a real code proves the authenticator
  * read the secret correctly, which is what keeps a mis-scanned QR code from enabling a factor nobody can
- * satisfy. Starting again simply replaces the pending secret.
+ * satisfy. Starting again replaces a pending secret, never one already in force.
  */
 final readonly class BeginTotpEnrolment
 {
@@ -37,6 +37,10 @@ final readonly class BeginTotpEnrolment
 
         if (null === $user) {
             throw new \DomainException('No such user.');
+        }
+
+        if ($user->hasTotp()) {
+            throw new SecondFactorAlreadyEnrolled();
         }
 
         $secret = $this->totp->generateSecret();
