@@ -180,15 +180,16 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
-    public function testAnOperatorReachesACompanyTheyAreNotAMemberOf(): void
+    public function testAnOperatorDoesNotReachTheMembersOfACompanyTheyAreNotAMemberOf(): void
     {
         $this->createUser('op@twes.local', 'password-1234', operator: true);
         $this->login('op@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
 
         $this->getJson($this->path());
 
-        // The operator opens a company and adds its first owner, so they are never a member of it yet.
-        self::assertResponseIsSuccessful();
+        // Operators hold the platform scope and nothing more (docs/SPEC.md § 7, 2026-09-15, S3): a company answers them as a stranger.
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     public function testTheLastOwnerCannotBeRemoved(): void

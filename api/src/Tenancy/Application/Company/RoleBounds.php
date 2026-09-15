@@ -50,7 +50,7 @@ final readonly class RoleBounds
 
     /**
      * The acting member's rank, or null when nothing bounds them here: the platform itself (no actor), or an account
-     * with no membership in the company, which only an operator's reaches (docs/SPEC.md § 8 row 19 narrows those).
+     * with no membership in the company, which only an operator inviting an owner from the platform is.
      */
     private function actorRank(Uuid $companyId, ?Uuid $actorUserId): ?int
     {
