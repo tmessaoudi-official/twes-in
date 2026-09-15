@@ -1,0 +1,89 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+import AxeBuilder from '@axe-core/playwright';
+import { expect, type Page, test } from '@playwright/test';
+
+// G8 through the real stack: in the seeded Tunisian company, the owner adds a vendor without any registration number,
+// with its bank account and payment terms, revises it and finds it in the list. One database is shared by the whole
+// suite, so the number is unique to the run and the vendor is deactivated at the end (vendors are never deleted).
+const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
+const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
+const CSRF = '0123456789abcdef0123456789abcdef';
+
+async function signIn(page: Page): Promise<void> {
+  await page.goto('/login');
+  await page.getByTestId('email').fill(EMAIL);
+  await page.getByTestId('password').fill(PASSWORD);
+  await page.getByTestId('submit').click();
+  await expect(page).toHaveURL(/\/$/);
+}
+
+async function wcagViolations(page: Page): Promise<string[]> {
+  const axe = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  return axe.violations.map((violation) => violation.id);
+}
+
+/** Deactivates the run's vendor. */
+async function retire(page: Page, number: string): Promise<void> {
+  await page.evaluate(
+    async ([csrf, vendorNumber]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}`;
+      const vendors = (await (await fetch(`${base}/vendors`)).json()) as {
+        id: string;
+        number: string;
+      }[];
+      const vendor = vendors.find((row) => row.number === vendorNumber);
+      if (vendor) {
+        // The write shape has no id: a body naming one is refused.
+        const { id, ...fields } = vendor;
+        const revised = await fetch(`${base}/vendors/${id}`, {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+          body: JSON.stringify({ ...fields, isActive: false }),
+        });
+        if (!revised.ok) throw new Error(`retiring ${vendorNumber} answered ${revised.status}`);
+      }
+    },
+    [CSRF, number] as const,
+  );
+}
+
+test('a vendor is added with its bank account and terms, then revised', async ({ page }) => {
+  const run = Date.now().toString(36).toUpperCase();
+  const number = `E2E-${run}`;
+  const name = `Sotumag ${run}`;
+  await signIn(page);
+  try {
+    await page.goto('/vendors');
+    await page.getByTestId('vendor-add').click();
+    await expect(page).toHaveURL(/\/vendors\/new$/);
+    await page.getByTestId('field-number').fill(number);
+    await page.getByTestId('field-name').fill(name);
+    await page.getByTestId('field-city').fill('Ben Arous');
+    await page.getByTestId('field-iban').fill('tn59 1000 6035 1835 9847 8831');
+    await page.getByTestId('field-paymentTermsDays').fill('30');
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.getByTestId('vendor-save').click();
+
+    await expect(page).toHaveURL(/\/vendors\/[0-9a-f-]{36}$/);
+    await expect(page.getByTestId('vendor-title')).toContainText(number);
+    await expect(page.getByTestId('field-iban')).toHaveValue('TN5910006035183598478831');
+    await expect(page.getByTestId('field-countryCode')).toHaveValue('TN');
+
+    await page.getByTestId('field-email').fill('compta@sotumag.tn');
+    await page.getByTestId('vendor-save').click();
+    await expect(page.getByTestId('vendor-saved')).toBeVisible();
+    expect(await wcagViolations(page)).toEqual([]);
+
+    await page.goto('/vendors');
+    const row = page.getByTestId(`vendor-${number}`);
+    await expect(row).toContainText(name);
+    await expect(row).toContainText('Ben Arous');
+    await expect(row).toContainText('30');
+    expect(await wcagViolations(page)).toEqual([]);
+  } finally {
+    await retire(page, number);
+  }
+});

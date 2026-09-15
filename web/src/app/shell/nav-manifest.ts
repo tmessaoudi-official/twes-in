@@ -4,6 +4,7 @@ import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
+import { VENDORS_NAV } from '../vendors/vendors-nav';
 
 /**
  * What the shell offers. The sidebar keeps the daily entries: the core ones, then each module's, declared by the
@@ -138,6 +139,7 @@ export const MODULE_NAV: readonly NavEntry[] = [
   ...PRODUCTS_NAV,
   ...DELIVERY_NOTES_NAV,
   ...INVENTORY_NAV,
+  ...VENDORS_NAV,
 ];
 
 /**

@@ -252,7 +252,8 @@
     "customers": "Clients",
     "delivery_notes": "Bons de livraison",
     "products": "Produits",
-    "inventory": "Stock"
+    "inventory": "Stock",
+    "vendors": "Fournisseurs"
   },
   "nav": {
     "home": "Accueil",
@@ -280,7 +281,8 @@
     "delivery_notes": "Bons de livraison",
     "stock": "Stock",
     "stock_movements": "Mouvements de stock",
-    "stock_locations": "Emplacements"
+    "stock_locations": "Emplacements",
+    "vendors": "Fournisseurs"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -962,6 +964,63 @@
         "childCount": "Sous-emplacements",
         "movementCount": "Mouvements"
       }
+    }
+  },
+  "vendors": {
+    "title": "Fournisseurs",
+    "add": "Nouveau fournisseur",
+    "open": "Ouvrir {{name}}",
+    "open_short": "Ouvrir",
+    "none": "Aucun fournisseur pour l’instant.",
+    "no_company": "Choisissez d’abord une entreprise.",
+    "new_title": "Nouveau fournisseur",
+    "back": "Retour aux fournisseurs",
+    "save": "Enregistrer",
+    "saved": "Le fournisseur a été enregistré.",
+    "read_only": "Vous pouvez consulter les fournisseurs mais pas les modifier.",
+    "statuses": {
+      "active": "Actif",
+      "inactive": "Inactif"
+    },
+    "sections": {
+      "identity": "Identité",
+      "identifiers": "Numéros d’immatriculation",
+      "contact": "Coordonnées",
+      "address": "Adresse",
+      "payment": "Paiement",
+      "notes": "Notes"
+    },
+    "fields": {
+      "number": "Numéro fournisseur",
+      "name": "Nom",
+      "legalName": "Raison sociale",
+      "isActive": "Actif",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "website": "Site web",
+      "addressLine1": "Adresse",
+      "addressLine2": "Complément d’adresse",
+      "postalCode": "Code postal",
+      "city": "Ville",
+      "countryCode": "Code pays",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "paymentTermsDays": "Délai de paiement (jours)",
+      "notes": "Notes"
+    },
+    "form": {
+      "number_hint": "Lettres, chiffres et . _ / -, 32 caractères au plus, unique dans l’entreprise.",
+      "active_hint": "Un fournisseur inactif reste sur ses dépenses mais n’est plus proposé pour les nouvelles.",
+      "country_hint": "Deux lettres, comme TN ou FR. Laissé vide, le pays de l’entreprise.",
+      "iban_hint": "Le compte sur lequel le fournisseur est payé ; les espaces sont retirés.",
+      "terms_hint": "Jours après la facture du fournisseur avant que son paiement soit dû, de 0 à 365.",
+      "notes_hint": "Pour votre équipe uniquement."
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Fournisseur introuvable.",
+      "number_taken": "Un autre fournisseur porte déjà ce numéro.",
+      "invalid": "La modification a été refusée. Vérifiez les numéros d’immatriculation, l’IBAN et le BIC."
     }
   }
 }

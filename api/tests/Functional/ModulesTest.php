@@ -54,9 +54,10 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'inventory', 'labelKey' => 'modules.inventory', 'dependencies' => ['products'], 'permissions' => ['stock.read', 'stock.write'], 'enabled' => true],
             ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'enabled' => true],
             ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write'], 'enabled' => true],
+            ['key' => 'vendors', 'labelKey' => 'modules.vendors', 'dependencies' => [], 'permissions' => ['vendor.read', 'vendor.write'], 'enabled' => true],
         ], $this->jsonList());
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'delivery_notes', 'fixture_ledger', 'inventory', 'invoices', 'products'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'delivery_notes', 'fixture_ledger', 'inventory', 'invoices', 'products', 'vendors'], $this->arrayAt($this->json(), 'modules'));
     }
 
     public function testSwitchingAModuleOffHidesItsResourcesAndKeepsItsData(): void
@@ -102,7 +103,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/customer-groups', ['name' => 'Export', 'description' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame(['inventory', 'products'], $this->arrayAt($this->json(), 'modules'), 'products and inventory need no customers and stay on');
+        self::assertSame(['inventory', 'products', 'vendors'], $this->arrayAt($this->json(), 'modules'), 'products, inventory and vendors need no customers and stay on');
         self::assertSame(['module.disabled', 'module.disabled', 'module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
 
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => true]);
@@ -163,7 +164,7 @@ final class ModulesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path('vendors'), ['enabled' => true]);
+        $this->sendJson('PUT', $this->path('payroll'), ['enabled' => true]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
         $this->sendJson('PUT', $this->path('fixture_ledger'), ['enabled' => null]);
@@ -232,7 +233,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/product-categories', ['name' => 'Logiciel']);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'fixture_ledger'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'fixture_ledger', 'vendors'], $this->arrayAt($this->json(), 'modules'));
 
         $this->sendJson('PUT', $this->path('products'), ['enabled' => true]);
         $this->getJson($this->companyPath().'/product-categories');

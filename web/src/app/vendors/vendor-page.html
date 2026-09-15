@@ -1,0 +1,51 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="vendor-title">
+      @if (current(); as vendor) {
+        {{ vendor.number }} · {{ vendor.name }}
+      } @else {
+        {{ 'vendors.new_title' | translate }}
+      }
+    </h1>
+    <a mat-button routerLink="/vendors">{{ 'vendors.back' | translate }}</a>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="vendor-no-company">{{ 'vendors.no_company' | translate }}</p>
+  }
+  @if (!mayWrite()) {
+    <p data-testid="vendor-read-only">{{ 'vendors.read_only' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="vendor-error" class="text-error">
+      {{ 'vendors.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="vendor-saved">{{ 'vendors.saved' | translate }}</p>
+  }
+
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="vendor-form"
+            [readOnly]="!mayWrite()"
+            (submitted)="save($event)"
+          >
+            @if (mayWrite()) {
+              <div class="flex flex-wrap justify-end gap-2">
+                <button mat-flat-button type="submit" [disabled]="busy()" data-testid="vendor-save">
+                  {{ 'vendors.save' | translate }}
+                </button>
+              </div>
+            }
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+</section>

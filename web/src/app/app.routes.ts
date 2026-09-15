@@ -7,6 +7,7 @@ import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
+import { VENDORS_MODULE } from './vendors/vendors-nav';
 import { moduleGuard } from './shell/module-guard';
 
 export const routes: Routes = [
@@ -111,6 +112,21 @@ export const routes: Routes = [
         canActivate: [moduleGuard(INVENTORY_MODULE)],
         loadComponent: () =>
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
+      },
+      {
+        path: 'vendors',
+        canActivate: [moduleGuard(VENDORS_MODULE)],
+        loadComponent: () => import('./vendors/vendors-page').then((m) => m.VendorsPage),
+      },
+      {
+        path: 'vendors/new',
+        canActivate: [moduleGuard(VENDORS_MODULE)],
+        loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
+      },
+      {
+        path: 'vendors/:vendorId',
+        canActivate: [moduleGuard(VENDORS_MODULE)],
+        loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
       },
       {
         // The company settings, reached from the gear: a layout route with no path of its own, so the grouped

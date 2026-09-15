@@ -6,6 +6,7 @@ import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
+import { VENDORS_NAV } from '../vendors/vendors-nav';
 import {
   CORE_NAV,
   DEV_NAV,
@@ -166,11 +167,15 @@ describe('the navigation manifest', () => {
     expect(
       INVENTORY_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['stock', 'inventory', 'stock.read', '/stock']]);
+    expect(
+      VENDORS_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['vendors', 'vendors', 'vendor.read', '/vendors']]);
     expect(MODULE_NAV).toEqual([
       ...CUSTOMERS_NAV,
       ...PRODUCTS_NAV,
       ...DELIVERY_NOTES_NAV,
       ...INVENTORY_NAV,
+      ...VENDORS_NAV,
     ]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);
   });

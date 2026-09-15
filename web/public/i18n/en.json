@@ -252,7 +252,8 @@
     "customers": "Customers",
     "delivery_notes": "Delivery notes",
     "products": "Products",
-    "inventory": "Inventory"
+    "inventory": "Inventory",
+    "vendors": "Vendors"
   },
   "nav": {
     "home": "Home",
@@ -280,7 +281,8 @@
     "delivery_notes": "Delivery notes",
     "stock": "Stock",
     "stock_movements": "Stock movements",
-    "stock_locations": "Locations"
+    "stock_locations": "Locations",
+    "vendors": "Vendors"
   },
   "shell": {
     "skip": "Skip to content",
@@ -962,6 +964,63 @@
         "childCount": "Locations under it",
         "movementCount": "Movements"
       }
+    }
+  },
+  "vendors": {
+    "title": "Vendors",
+    "add": "New vendor",
+    "open": "Open {{name}}",
+    "open_short": "Open",
+    "none": "No vendors yet.",
+    "no_company": "Choose a company first.",
+    "new_title": "New vendor",
+    "back": "Back to vendors",
+    "save": "Save",
+    "saved": "The vendor was saved.",
+    "read_only": "You can read vendors but not change them.",
+    "statuses": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "sections": {
+      "identity": "Identity",
+      "identifiers": "Registration numbers",
+      "contact": "Contact details",
+      "address": "Address",
+      "payment": "Payment",
+      "notes": "Notes"
+    },
+    "fields": {
+      "number": "Vendor number",
+      "name": "Name",
+      "legalName": "Legal name",
+      "isActive": "Active",
+      "email": "Email",
+      "phone": "Phone",
+      "website": "Website",
+      "addressLine1": "Address",
+      "addressLine2": "Address line 2",
+      "postalCode": "Postal code",
+      "city": "City",
+      "countryCode": "Country code",
+      "iban": "IBAN",
+      "bic": "BIC",
+      "paymentTermsDays": "Payment terms (days)",
+      "notes": "Notes"
+    },
+    "form": {
+      "number_hint": "Letters, digits and . _ / -, up to 32 characters, unique in the company.",
+      "active_hint": "An inactive vendor stays on its expenses but is no longer offered for new ones.",
+      "country_hint": "Two letters, such as TN or FR. Left empty, the company's country.",
+      "iban_hint": "The account the vendor is paid on; spaces are removed.",
+      "terms_hint": "Days after the vendor's invoice its payment is due, from 0 to 365.",
+      "notes_hint": "For your team only."
+    },
+    "errors": {
+      "network": "The server could not be reached.",
+      "not_found": "Vendor not found.",
+      "number_taken": "Another vendor already has this number.",
+      "invalid": "The change was refused. Check the registration numbers, the IBAN and the BIC."
     }
   }
 }

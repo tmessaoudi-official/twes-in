@@ -1,0 +1,46 @@
+<section class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="vendors-title">
+      {{ 'vendors.title' | translate }}
+    </h1>
+    @if (mayWrite() && company()) {
+      <a mat-flat-button routerLink="/vendors/new" data-testid="vendor-add">
+        {{ 'vendors.add' | translate }}
+      </a>
+    }
+  </div>
+
+  @if (!company()) {
+    <p data-testid="vendors-no-company">{{ 'vendors.no_company' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="vendors-error" class="text-error">
+      {{ 'vendors.errors.' + code | translate }}
+    </p>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows()"
+    testId="vendors-table"
+    [rowTestId]="rowTestId"
+    emptyKey="vendors.none"
+    emptyTestId="vendors-empty"
+  >
+    <ng-template appDataListCell="status" let-row>
+      <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+        {{ 'vendors.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+      </app-status-badge>
+    </ng-template>
+    <ng-template appDataListRowActions let-row>
+      <a
+        mat-button
+        [routerLink]="['/vendors', row.id]"
+        [attr.data-testid]="'vendor-open-' + row.number"
+        [attr.aria-label]="'vendors.open' | translate: { name: row.name }"
+      >
+        {{ 'vendors.open_short' | translate }}
+      </a>
+    </ng-template>
+  </app-data-list>
+</section>
