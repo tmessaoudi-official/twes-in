@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
 use App\Tenancy\Application\Invitation\AcceptRequest;
+use App\Tenancy\Application\Invitation\AccountDetailsRequired;
 use App\Tenancy\Application\Invitation\InvitationNotUsable;
 use App\Tenancy\Application\Invitation\PasswordBreached;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -36,6 +37,8 @@ final readonly class AcceptInvitationProcessor implements ProcessorInterface
             $outcome = $this->accept->handle(new AcceptRequest($token, $data->displayName, $data->password));
         } catch (InvitationNotUsable $unusable) {
             throw new NotFoundHttpException('That invitation cannot be used.', $unusable);
+        } catch (AccountDetailsRequired $missing) {
+            throw new UnprocessableEntityHttpException($missing->getMessage(), $missing);
         } catch (PasswordBreached $breached) {
             throw new UnprocessableEntityHttpException($breached->getMessage(), $breached);
         }

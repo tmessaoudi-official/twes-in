@@ -24,7 +24,8 @@ import { MembersFacade } from './members-facade';
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
   id: 'members',
-  rowId: (row) => row.userId,
+  // An open invitation names nobody yet, so its address identifies the row.
+  rowId: (row) => (row.status === 'invited' ? `invited:${row.email}` : row.userId),
   pageSizes: [25, 50, 100],
   columns: [
     {
@@ -85,7 +86,7 @@ export class MembersPage implements OnInit {
   protected readonly rows = this.members.members;
   protected readonly busy = this.members.busy;
   protected readonly error = this.members.error;
-  protected readonly outcome = signal<'joined' | 'invited' | null>(null);
+  protected readonly outcome = signal<'invited' | null>(null);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
 
@@ -115,7 +116,8 @@ export class MembersPage implements OnInit {
     const row = await this.members.add(companyId, email, role);
     if (row !== null) {
       this.form.reset({ email: '', role: 'member' });
-      this.outcome.set(row.status);
+      // Every address is invited, one with an account included: nobody is a member until they accept.
+      this.outcome.set('invited');
     }
   }
 

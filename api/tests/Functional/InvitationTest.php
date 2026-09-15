@@ -13,6 +13,7 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Invitation;
+use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mime\Email as MimeEmail;
@@ -47,6 +48,61 @@ final class InvitationTest extends ApiTestCase
         self::assertSame('stranger@twes.local', $body['email']);
         self::assertSame('Acme', $body['companyName']);
         self::assertSame(Role::MEMBER, $body['roleName']);
+        self::assertFalse($body['hasAccount']);
+    }
+
+    public function testTheLinkOfAnAddressWithAnAccountSaysSo(): void
+    {
+        $this->createUser('stranger@twes.local', 'their-own-password');
+        $token = $this->inviteAndReadTheToken();
+        $this->signOut();
+
+        $this->getJson('/api/invitations/'.$token);
+
+        self::assertResponseIsSuccessful();
+        self::assertTrue($this->json()['hasAccount']);
+    }
+
+    public function testAnExistingAccountAcceptsWithNothingFilledInAndKeepsItsPassword(): void
+    {
+        $existing = $this->createUser('stranger@twes.local', 'their-own-password');
+        $token = $this->inviteAndReadTheToken();
+        $this->signOut();
+
+        // Whatever the body says, a link never names or re-keys an account that exists.
+        $this->postJson('/api/invitations/'.$token.'/accept', ['displayName' => 'Impostor', 'password' => 'an-attacker-password']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        self::assertSame($existing->getId()->toRfc4122(), $this->json()['userId']);
+        self::assertNotNull($this->em()->getRepository(Membership::class)->findOneBy(['user' => $existing->getId(), 'company' => $this->company->getId()]));
+        $this->login('stranger@twes.local', 'an-attacker-password');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        $this->login('stranger@twes.local', 'their-own-password');
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testAnExistingAccountNeedsNoBodyAtAll(): void
+    {
+        $this->createUser('stranger@twes.local', 'their-own-password');
+        $token = $this->inviteAndReadTheToken();
+        $this->signOut();
+
+        $this->postJson('/api/invitations/'.$token.'/accept', []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+    }
+
+    public function testANewAddressAcceptingWithNothingFilledInIsRefusedAndTheLinkStillWorks(): void
+    {
+        $token = $this->inviteAndReadTheToken();
+        $this->signOut();
+
+        $this->postJson('/api/invitations/'.$token.'/accept', []);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertNull($this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString('stranger@twes.local')]));
+        $this->getJson('/api/invitations/'.$token);
+        self::assertResponseIsSuccessful();
     }
 
     public function testAnUnknownLinkIsNotFound(): void

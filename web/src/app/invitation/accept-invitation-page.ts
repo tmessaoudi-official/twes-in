@@ -65,4 +65,14 @@ export class AcceptInvitationPage implements OnInit {
       await this.router.navigateByUrl('/login');
     }
   }
+
+  /** The address already has an account: nothing to fill in, and signing in stays a separate step. */
+  protected async join(): Promise<void> {
+    if (this.busy()) {
+      return;
+    }
+    if (await this.invitation.accept(this.token())) {
+      await this.router.navigateByUrl('/login');
+    }
+  }
 }

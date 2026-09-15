@@ -11,7 +11,7 @@ namespace App\Tests\Unit\Tenancy\Application;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
-use App\Tenancy\Application\Company\AddMember;
+use App\Tenancy\Application\Company\AlreadyAMember;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\RoleBounds;
 use App\Tenancy\Application\Company\RoleNotManageable;
@@ -65,14 +65,13 @@ final class InviteToCompanyTest extends TestCase
         $this->roles = $roles;
         $clock = new MockClock('2026-09-09 10:00:00');
 
-        $addMember = new AddMember($this->companies, $this->users, $this->memberships, $roles, $this->audit, $clock);
         $this->invite = new InviteToCompany(
             $this->companies,
             $this->users,
             $roles,
             new RoleBounds($this->memberships),
             $this->invitations,
-            $addMember,
+            $this->memberships,
             $this->mailer,
             $this->notifications,
             $this->audit,
@@ -85,20 +84,20 @@ final class InviteToCompanyTest extends TestCase
         $this->companies->save($this->company);
     }
 
-    public function testAnAddressThatAlreadyHasAnAccountJoinsWithNoMailAndNoInvitation(): void
+    public function testAnAddressThatAlreadyHasAnAccountIsInvitedByMailAndJoinsNothingYet(): void
     {
         $user = new User(Email::fromString('joiner@twes.local'), 'Joiner');
         $this->users->save($user);
 
-        $outcome = $this->invite->handle($this->request('joiner@twes.local'), null);
+        $this->invite->handle($this->request('joiner@twes.local'), null);
 
-        self::assertTrue($outcome->joined);
-        self::assertSame([], $this->invitations->invitations);
-        self::assertSame([], $this->mailer->sent);
-        self::assertNotNull($this->memberships->ofUserInCompany($user->getId(), $this->company->getId()));
+        self::assertCount(1, $this->invitations->invitations);
+        self::assertCount(1, $this->mailer->sent);
+        self::assertSame('joiner@twes.local', $this->mailer->sent[0]->to);
+        self::assertNull($this->memberships->ofUserInCompany($user->getId(), $this->company->getId()));
     }
 
-    public function testSomeoneWhoJoinedDirectlyIsToldAboutIt(): void
+    public function testAnExistingAccountIsToldOfTheInvitationWithoutTheLink(): void
     {
         $user = new User(Email::fromString('joiner@twes.local'), 'Joiner');
         $this->users->save($user);
@@ -106,15 +105,39 @@ final class InviteToCompanyTest extends TestCase
         $this->invite->handle($this->request('joiner@twes.local'), null);
 
         self::assertCount(1, $this->notifications->published);
-        self::assertSame('user:'.$user->getId()->toRfc4122(), $this->notifications->published[0]->channel);
-        self::assertSame('membership.added', $this->notifications->published[0]->type);
+        $notification = $this->notifications->published[0];
+        self::assertSame('user:'.$user->getId()->toRfc4122(), $notification->channel);
+        self::assertSame(InviteToCompany::RECEIVED, $notification->type);
+        self::assertSame(['company_id' => $this->company->getId()->toRfc4122(), 'company' => 'Acme', 'role' => Role::MEMBER], $notification->payload);
+        // The notification is stored and read by whoever holds the session; the token belongs to the mail alone.
+        $raw = substr($this->mailer->sent[0]->acceptUrl, strrpos($this->mailer->sent[0]->acceptUrl, '/') + 1);
+        self::assertStringNotContainsString($raw, json_encode($notification->payload, \JSON_THROW_ON_ERROR));
+    }
+
+    public function testAnAddressWithNoAccountHasNobodyToNotify(): void
+    {
+        $this->invite->handle($this->request('stranger@twes.local'), null);
+
+        self::assertSame([], $this->notifications->published);
+    }
+
+    public function testSomeoneAlreadyInTheCompanyIsRefusedBeforeAnythingIsSent(): void
+    {
+        $this->memberOfTheCompany('joiner@twes.local', Role::MEMBER);
+
+        try {
+            $this->invite->handle($this->request('joiner@twes.local'), null);
+            self::fail('expected AlreadyAMember');
+        } catch (AlreadyAMember) {
+        }
+
+        self::assertSame([[], [], []], [$this->mailer->sent, $this->invitations->invitations, $this->notifications->published]);
     }
 
     public function testAnAddressWithNoAccountIsInvitedByMail(): void
     {
-        $outcome = $this->invite->handle($this->request('stranger@twes.local'), null);
+        $this->invite->handle($this->request('stranger@twes.local'), null);
 
-        self::assertFalse($outcome->joined);
         self::assertCount(1, $this->invitations->invitations);
         self::assertCount(1, $this->mailer->sent);
         self::assertSame('stranger@twes.local', $this->mailer->sent[0]->to);

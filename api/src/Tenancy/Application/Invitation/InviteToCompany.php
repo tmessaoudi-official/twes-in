@@ -15,8 +15,7 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
-use App\Tenancy\Application\Company\AddMember;
-use App\Tenancy\Application\Company\AddMemberRequest;
+use App\Tenancy\Application\Company\AlreadyAMember;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\RoleBounds;
 use App\Tenancy\Application\Company\RoleNotManageable;
@@ -25,19 +24,21 @@ use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\InvitationRepository;
 use App\Tenancy\Domain\InvitationToken;
+use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\RoleRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * The one way somebody is offered a place in a company. An address that already has an account joins
- * straight away, with no acceptance step and no password to set, because they proved that address when the
- * account was made; anything else is a mailed invitation (docs/SPEC.md § 7, 2026-09-09).
+ * The one way somebody is offered a place in a company: a mailed invitation, whether or not the address already
+ * has an account. Nobody is a member of the company, nor held by its MFA requirement, until they accept the link;
+ * an address that has an account is also told in the application (docs/SPEC.md § 7, 2026-09-15).
  */
 final readonly class InviteToCompany
 {
     public const string ENTITY_TYPE = 'invitation';
     public const string SENT = 'invitation.sent';
+    public const string RECEIVED = 'invitation.received';
 
     public function __construct(
         private CompanyRepository $companies,
@@ -45,7 +46,7 @@ final readonly class InviteToCompany
         private RoleRepository $roles,
         private RoleBounds $bounds,
         private InvitationRepository $invitations,
-        private AddMember $addMember,
+        private MembershipRepository $memberships,
         private InvitationMailer $mailer,
         private Notifications $notifications,
         private AuditTrail $audit,
@@ -55,7 +56,7 @@ final readonly class InviteToCompany
     ) {
     }
 
-    /** @throws CompanyNotFound|UnknownRole|RoleNotManageable */
+    /** @throws CompanyNotFound|UnknownRole|RoleNotManageable|AlreadyAMember */
     public function handle(InviteRequest $request, ?Uuid $actorUserId): InviteOutcome
     {
         $company = $this->companies->ofId($request->companyId)
@@ -68,21 +69,10 @@ final readonly class InviteToCompany
 
         $email = Email::fromString($request->email);
         $existing = $this->users->ofEmail($email);
-        $now = $this->clock->now();
-
-        if (null !== $existing) {
-            $membership = $this->addMember->handle(
-                new AddMemberRequest($company->getId(), $email->value, $request->roleName),
-                $actorUserId,
-            );
-            $this->notifications->publish(new Notification(
-                'user:'.$existing->getId()->toRfc4122(),
-                AddMember::ADDED,
-                ['company_id' => $company->getId()->toRfc4122(), 'company' => $company->getName(), 'role' => $request->roleName],
-            ));
-
-            return new InviteOutcome(true, $email->value, $membership->getRole()->getName(), $existing->getId()->toRfc4122());
+        if (null !== $existing && null !== $this->memberships->ofUserInCompany($existing->getId(), $company->getId())) {
+            throw new AlreadyAMember(\sprintf('%s already belongs to %s.', $email->value, $company->getName()));
         }
+        $now = $this->clock->now();
 
         // Inviting again replaces the open invitation: two live tokens for one address is one more than anybody needs.
         $open = $this->invitations->pendingFor($company->getId(), $email->value);
@@ -123,6 +113,15 @@ final readonly class InviteToCompany
             $company->getId(),
         ));
 
-        return new InviteOutcome(false, $email->value, $request->roleName);
+        // The link stays in the mail: a notification is stored and shown to whoever holds the session later.
+        if (null !== $existing) {
+            $this->notifications->publish(new Notification(
+                'user:'.$existing->getId()->toRfc4122(),
+                self::RECEIVED,
+                ['company_id' => $company->getId()->toRfc4122(), 'company' => $company->getName(), 'role' => $request->roleName],
+            ));
+        }
+
+        return new InviteOutcome($email->value, $request->roleName);
     }
 }

@@ -3,7 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import type { InvitationInvitationRead } from '../api/types.gen';
+import type { InvitationInvitationRead, InvitationInvitationWrite } from '../api/types.gen';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 
 export class InvitationRefused extends Error {
@@ -27,17 +27,25 @@ export class InvitationApi {
         companyName: body.companyName ?? '',
         roleName: body.roleName ?? '',
         expiresAt: body.expiresAt ?? '',
+        hasAccount: body.hasAccount ?? false,
       };
     });
   }
 
   /** Creates the account and the membership; the person still has to sign in afterwards. */
-  async accept(token: string, displayName: string, password: string): Promise<string> {
+  async accept(
+    token: string,
+    displayName: string | null,
+    password: string | null,
+  ): Promise<string> {
+    // An existing account sends nothing: the API never names nor re-keys an account from a mailed link.
+    const details: InvitationInvitationWrite =
+      displayName === null || password === null ? {} : { displayName, password };
     return this.guard(async () => {
       const body = await firstValueFrom(
         this.http.post<InvitationInvitationRead>(
           `/api/invitations/${encodeURIComponent(token)}/accept`,
-          { displayName, password },
+          details,
         ),
       );
       return body.companyName ?? '';

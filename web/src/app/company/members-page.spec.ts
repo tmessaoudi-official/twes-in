@@ -36,6 +36,7 @@ class StaticLoader implements TranslateLoader {
         role: 'Rôle',
         actions: 'Actions',
         add: 'Ajouter',
+        invited_row: 'Invitation en attente',
         added: 'Membre ajouté.',
         remove: 'Retirer',
         none: 'Aucun membre.',
@@ -136,6 +137,29 @@ describe('MembersPage', () => {
     await component.add();
 
     expect(members.add).toHaveBeenCalledWith('c1', 'joiner@example.test', 'admin');
+  });
+
+  it('lists an open invitation as waiting, with nothing to remove', () => {
+    rows.set([
+      owner,
+      {
+        userId: '',
+        email: 'invited@example.test',
+        displayName: '',
+        role: 'member',
+        joinedAt: '',
+        status: 'invited',
+      },
+    ]);
+    fixture.detectChanges();
+
+    expect(text('member-invited@example.test')).toContain('Invitation en attente');
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="remove-invited@example.test"]'),
+    ).toBeNull();
+    expect(
+      fixture.nativeElement.querySelector('[data-testid="remove-owner@example.test"]'),
+    ).not.toBeNull();
   });
 
   it('says so when the API refused', async () => {

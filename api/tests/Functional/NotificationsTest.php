@@ -33,7 +33,7 @@ final class NotificationsTest extends ApiTestCase
         $this->owner = $this->createUser('owner@twes.local', 'password-1234', $this->company);
     }
 
-    public function testSomeoneAddedToACompanyFindsItInTheirCentre(): void
+    public function testSomeoneWithAnAccountInvitedToACompanyFindsItInTheirCentre(): void
     {
         $this->createUser('joiner@twes.local', 'password-1234');
         $this->login('owner@twes.local', 'password-1234');
@@ -50,7 +50,7 @@ final class NotificationsTest extends ApiTestCase
         $items = $this->arrayAt($body, 'items');
         self::assertCount(1, $items);
         self::assertIsArray($items[0]);
-        self::assertSame('membership.added', $items[0]['type']);
+        self::assertSame('invitation.received', $items[0]['type']);
         self::assertSame(['company_id' => $this->company->getId()->toRfc4122(), 'company' => 'Acme', 'role' => Role::MEMBER], $items[0]['payload']);
         self::assertNull($items[0]['readAt']);
         self::assertNull($items[0]['companyId']);

@@ -11,8 +11,7 @@ namespace App\Tenancy\Application\Invitation;
 
 use Symfony\Component\Uid\Uuid;
 
-/** Offer one address a place in one company. Whether that becomes a membership or a mailed invitation
- *  depends on whether the address already has an account, and the caller does not decide that. */
+/** Offer one address a place in one company: a mailed invitation, whether or not the address has an account. */
 final readonly class InviteRequest
 {
     public function __construct(

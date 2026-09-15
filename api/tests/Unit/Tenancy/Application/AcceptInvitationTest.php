@@ -14,6 +14,7 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Tenancy\Application\Invitation\AcceptInvitation;
 use App\Tenancy\Application\Invitation\AcceptRequest;
+use App\Tenancy\Application\Invitation\AccountDetailsRequired;
 use App\Tenancy\Application\Invitation\InvitationNotUsable;
 use App\Tenancy\Application\Invitation\PasswordBreached;
 use App\Tenancy\Domain\Company;
@@ -184,6 +185,36 @@ final class AcceptInvitationTest extends TestCase
         self::assertSame('Already Here', $existing->getDisplayName());
         self::assertFalse($outcome->passwordSet);
         self::assertNotNull($this->memberships->ofUserInCompany($existing->getId(), $this->company->getId()));
+    }
+
+    public function testAnExistingAccountAcceptsWithNothingFilledIn(): void
+    {
+        $token = $this->openInvitation(Role::MEMBER);
+        $existing = new User(Email::fromString('stranger@twes.local'), 'Already Here');
+        $existing->setPasswordHash('their-own-hash', new \DateTimeImmutable(self::NOW));
+        $this->users->save($existing);
+
+        $outcome = $this->accept()->handle(new AcceptRequest($token->raw, null, null));
+
+        self::assertSame($existing->getId()->toRfc4122(), $outcome->userId);
+        self::assertSame('their-own-hash', $existing->getPasswordHash());
+        self::assertNotNull($this->memberships->ofUserInCompany($existing->getId(), $this->company->getId()));
+    }
+
+    public function testANewAccountStillNeedsANameAndAPasswordAndNothingIsUsedUpWithout(): void
+    {
+        $token = $this->openInvitation(Role::MEMBER);
+
+        foreach ([[null, self::PASSWORD], ['New Person', null]] as [$name, $password]) {
+            try {
+                $this->accept()->handle(new AcceptRequest($token->raw, $name, $password));
+                self::fail('an account was made without a name and a password');
+            } catch (AccountDetailsRequired) {
+            }
+        }
+
+        self::assertNull($this->users->ofEmail(Email::fromString('stranger@twes.local')));
+        self::assertNull($this->invitations->invitations[0]->getAcceptedAt());
     }
 
     public function testAcceptingIsAudited(): void

@@ -12,42 +12,66 @@
     </p>
     <p class="text-sm opacity-70" data-testid="invitation-email">{{ offer.email }}</p>
 
-    <mat-card>
-      <mat-card-content>
-        <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
-          <mat-form-field>
-            <mat-label>{{ 'invitation.display_name' | translate }}</mat-label>
-            <input matInput formControlName="displayName" data-testid="invitation-name" />
-            @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
-              <mat-error data-testid="invitation-name-error">
-                {{ 'invitation.display_name_required' | translate }}
-              </mat-error>
-            }
-          </mat-form-field>
+    @if (offer.hasAccount) {
+      <mat-card>
+        <mat-card-content>
+          <div class="flex flex-col gap-4">
+            <p data-testid="invitation-has-account">{{ 'invitation.has_account' | translate }}</p>
+            <button
+              mat-flat-button
+              type="button"
+              (click)="join()"
+              [disabled]="busy()"
+              data-testid="invitation-join"
+            >
+              {{ 'invitation.join' | translate }}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    } @else {
+      <mat-card>
+        <mat-card-content>
+          <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+            <mat-form-field>
+              <mat-label>{{ 'invitation.display_name' | translate }}</mat-label>
+              <input matInput formControlName="displayName" data-testid="invitation-name" />
+              @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+                <mat-error data-testid="invitation-name-error">
+                  {{ 'invitation.display_name_required' | translate }}
+                </mat-error>
+              }
+            </mat-form-field>
 
-          <mat-form-field>
-            <mat-label>{{ 'invitation.password' | translate }}</mat-label>
-            <input
-              matInput
-              type="password"
-              formControlName="password"
-              autocomplete="new-password"
-              data-testid="invitation-password"
-            />
-            <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
-            @if (form.controls.password.touched && form.controls.password.invalid) {
-              <mat-error data-testid="invitation-password-error">
-                {{ 'invitation.password_too_short' | translate }}
-              </mat-error>
-            }
-          </mat-form-field>
+            <mat-form-field>
+              <mat-label>{{ 'invitation.password' | translate }}</mat-label>
+              <input
+                matInput
+                type="password"
+                formControlName="password"
+                autocomplete="new-password"
+                data-testid="invitation-password"
+              />
+              <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
+              @if (form.controls.password.touched && form.controls.password.invalid) {
+                <mat-error data-testid="invitation-password-error">
+                  {{ 'invitation.password_too_short' | translate }}
+                </mat-error>
+              }
+            </mat-form-field>
 
-          <button mat-flat-button type="submit" [disabled]="busy()" data-testid="invitation-submit">
-            {{ 'invitation.submit' | translate }}
-          </button>
-        </form>
-      </mat-card-content>
-    </mat-card>
+            <button
+              mat-flat-button
+              type="submit"
+              [disabled]="busy()"
+              data-testid="invitation-submit"
+            >
+              {{ 'invitation.submit' | translate }}
+            </button>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    }
   } @else if (!busy()) {
     <p role="alert" data-testid="invitation-error">
       {{ 'invitation.errors.' + (error() ?? 'not_usable') | translate }}

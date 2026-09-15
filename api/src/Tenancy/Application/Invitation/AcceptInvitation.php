@@ -32,7 +32,7 @@ use Psr\Clock\ClockInterface;
  * The far end of an invitation link, reached logged out: it makes the account, joins the company and uses
  * the invitation up. Two rules are worth stating because they are security, not behaviour:
  *
- * - a link whose address has since gained an account joins that account and does NOT touch its password.
+ * - a link whose address has an account joins that account, asks for nothing and does NOT touch its password.
  *   A mailed link that could set an existing account's password is an account takeover, not a convenience.
  * - a breached password is refused, and a breach service that cannot be reached accepts the password and
  *   records the skip, so the gap is visible afterwards (docs/SPEC.md § 7, 2026-09-09).
@@ -57,7 +57,7 @@ final readonly class AcceptInvitation
     ) {
     }
 
-    /** @throws InvitationNotUsable|PasswordBreached|UnknownRole */
+    /** @throws InvitationNotUsable|AccountDetailsRequired|PasswordBreached|UnknownRole */
     public function handle(AcceptRequest $request): AcceptOutcome
     {
         $invitation = $this->usable($request->rawToken);
@@ -70,6 +70,9 @@ final readonly class AcceptInvitation
         $passwordSet = null === $user;
 
         if (null === $user) {
+            if (null === $request->displayName || null === $request->plainPassword) {
+                throw new AccountDetailsRequired('A new account needs a name and a password.');
+            }
             $this->refuseABreachedPassword($request->plainPassword, $invitation);
             $user = new User($invitation->getEmail(), $request->displayName, $company->getLocale(), $now);
             $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);

@@ -26,20 +26,29 @@
     emptyKey="members.none"
     emptyTestId="members-empty"
   >
+    <ng-template appDataListCell="name" let-row>
+      @if (row.status === 'invited') {
+        <span class="opacity-70">{{ 'members.invited_row' | translate }}</span>
+      } @else {
+        {{ row.displayName }}
+      }
+    </ng-template>
     <ng-template appDataListCell="role" let-row>
       {{ 'roles.' + row.role | translate }}
     </ng-template>
     @if (mayManage()) {
       <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="remove(row.userId)"
-          [disabled]="busy()"
-          [attr.data-testid]="'remove-' + row.email"
-        >
-          {{ 'members.remove' | translate }}
-        </button>
+        @if (row.status === 'joined') {
+          <button
+            mat-button
+            type="button"
+            (click)="remove(row.userId)"
+            [disabled]="busy()"
+            [attr.data-testid]="'remove-' + row.email"
+          >
+            {{ 'members.remove' | translate }}
+          </button>
+        }
       </ng-template>
     }
   </app-data-list>

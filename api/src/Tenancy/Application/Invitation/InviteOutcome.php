@@ -9,14 +9,12 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Invitation;
 
-/** What happened: they were already known and simply joined, or an invitation went out. */
+/** What inviting an address did: always an invitation, which names nobody until it is accepted. */
 final readonly class InviteOutcome
 {
     public function __construct(
-        public bool $joined,
         public string $email,
         public string $roleName,
-        public ?string $userId = null,
     ) {
     }
 }

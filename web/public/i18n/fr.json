@@ -129,8 +129,8 @@
       "network": "Impossible de joindre le serveur."
     },
     "no_company": "Choisissez d'abord une entreprise.",
-    "joined": "Le membre a été ajouté.",
-    "invited": "L'invitation a été envoyée par e-mail."
+    "invited": "L'invitation a été envoyée par e-mail.",
+    "invited_row": "Invitation en attente"
   },
   "company": {
     "choose": "Choisir une entreprise",
@@ -400,12 +400,15 @@
     "types": {
       "membership_added": "Vous avez été ajouté à {{company}}.",
       "invitation_accepted": "{{display_name}} a rejoint l'entreprise.",
+      "invitation_received": "Une invitation à rejoindre {{company}} vous attend dans votre messagerie.",
       "unknown": "Nouvelle notification."
     }
   },
   "invitation": {
     "title": "Rejoindre une entreprise",
     "offer": "Vous êtes invité à rejoindre {{company}} en tant que {{role}}.",
+    "has_account": "Cette adresse a déjà un compte : accepter y ajoute l'entreprise, et vous vous connectez comme d'habitude pour y travailler.",
+    "join": "Rejoindre l'entreprise",
     "display_name": "Votre nom",
     "display_name_required": "Votre nom est obligatoire.",
     "password": "Choisissez un mot de passe",

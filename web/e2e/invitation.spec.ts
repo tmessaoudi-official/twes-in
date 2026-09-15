@@ -8,6 +8,7 @@ import { invitationTokenFor } from './mailpit';
 const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
 const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const NEW_PASSWORD = 'a-long-enough-password';
+const CSRF = '0123456789abcdef0123456789abcdef';
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
@@ -52,6 +53,82 @@ test('an invited address sets a password from the mailed link and then signs in'
   await signIn(page, invited, NEW_PASSWORD);
   await expect(page.getByTestId('greeting')).toContainText('Invited Person');
   await expect(page.getByTestId('company-name')).toHaveText('Demo');
+});
+
+test('an address that already has an account joins from the mailed link with nothing to fill in', async ({
+  page,
+  browser,
+  request,
+}) => {
+  test.setTimeout(90_000);
+  const existing = `existing-${Date.now()}@twes.local`;
+
+  // The account comes first: the owner of a company of its own, invited the way an operator opens one.
+  await signIn(page, EMAIL, PASSWORD);
+  const opened = await page.evaluate(
+    async ([companyName, csrf, email]) => {
+      const headers = { 'content-type': 'application/json', 'csrf-token': csrf };
+      const created = await fetch('/api/companies', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          name: companyName,
+          countryCode: 'TN',
+          currency: 'TND',
+          locale: 'fr',
+          timezone: 'Africa/Tunis',
+        }),
+      });
+      const company = (await created.json()) as { id: string };
+      const invited = await fetch(`/api/companies/${company.id}/members`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email, role: 'owner' }),
+      });
+      return [created.status, invited.status];
+    },
+    [`Initech ${Date.now()}`, CSRF, existing] as const,
+  );
+  expect(opened).toEqual([201, 201]);
+  const theirs = await browser.newContext();
+  const theirPage = await theirs.newPage();
+  await theirPage.goto(`/invitations/${await invitationTokenFor(request, existing)}`);
+  await theirPage.getByTestId('invitation-name').fill('Existing Person');
+  await theirPage.getByTestId('invitation-password').fill(NEW_PASSWORD);
+  await theirPage.getByTestId('invitation-submit').click();
+  await expect(theirPage).toHaveURL(/\/login$/);
+
+  // Inviting that address into Demo is inviting any address: until the link is used it is not a member.
+  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-members').click();
+  await page.getByTestId('member-email').fill(existing);
+  await page.getByTestId('member-add').click();
+  await expect(page.getByTestId('members-added')).toContainText('invitation');
+  // Every scenario adds people to Demo, so the row is found by filtering rather than by the page it lands on.
+  await page.getByTestId('list-filter').fill(existing);
+  await expect(page.getByTestId(`member-${existing}`)).toContainText('Invitation en attente');
+  await expect(page.getByTestId(`remove-${existing}`)).toHaveCount(0);
+  await page.screenshot({
+    path: test.info().outputPath('members-invitation-pending.png'),
+    fullPage: true,
+  });
+
+  await theirPage.goto(`/invitations/${await invitationTokenFor(request, existing)}`);
+  await expect(theirPage.getByTestId('invitation-has-account')).toBeVisible();
+  await expect(theirPage.getByTestId('invitation-name')).toHaveCount(0);
+  await expect(theirPage.getByTestId('invitation-password')).toHaveCount(0);
+  await theirPage.screenshot({
+    path: test.info().outputPath('invitation-existing-account.png'),
+    fullPage: true,
+  });
+  await theirPage.getByTestId('invitation-join').click();
+  await expect(theirPage).toHaveURL(/\/login$/);
+
+  // Their own password still works, and Demo is now one of their companies.
+  await signIn(theirPage, existing, NEW_PASSWORD);
+  await theirPage.getByTestId('company-switcher').click();
+  await expect(theirPage.getByTestId('company-option-Demo')).toBeVisible();
+  await theirs.close();
 });
 
 test('a link that has already been used is refused', async ({ page }) => {

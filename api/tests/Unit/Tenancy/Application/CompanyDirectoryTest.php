@@ -14,12 +14,16 @@ use App\Identity\Domain\User;
 use App\Tenancy\Application\Company\ListCompaniesOfUser;
 use App\Tenancy\Application\Company\ListMembers;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Invitation;
+use App\Tenancy\Domain\InvitationToken;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
+use App\Tests\Support\InMemoryInvitations;
 use App\Tests\Support\InMemoryMemberships;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
 
 #[CoversClass(ListCompaniesOfUser::class)]
@@ -27,11 +31,13 @@ use Symfony\Component\Uid\Uuid;
 final class CompanyDirectoryTest extends TestCase
 {
     private InMemoryMemberships $memberships;
+    private InMemoryInvitations $invitations;
     private Role $owner;
 
     protected function setUp(): void
     {
         $this->memberships = new InMemoryMemberships();
+        $this->invitations = new InMemoryInvitations();
         $this->owner = new Role(Role::OWNER, [Permission::WILDCARD]);
     }
 
@@ -74,7 +80,7 @@ final class CompanyDirectoryTest extends TestCase
         $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One'), $company, $this->owner));
         $this->memberships->save(new Membership(new User(Email::fromString('two@twes.local'), 'Two'), $company, $this->owner));
 
-        $members = (new ListMembers($this->memberships))->for($company->getId());
+        $members = $this->listMembers()->for($company->getId());
 
         self::assertCount(2, $members);
         self::assertSame(['one@twes.local', 'two@twes.local'], array_map(static fn ($m) => $m->email, $members));
@@ -88,10 +94,42 @@ final class CompanyDirectoryTest extends TestCase
         $this->memberships->save(new Membership(new User(Email::fromString('mine@twes.local'), 'Mine'), $mine, $this->owner));
         $this->memberships->save(new Membership(new User(Email::fromString('theirs@twes.local'), 'Theirs'), $theirs, $this->owner));
 
-        $members = (new ListMembers($this->memberships))->for($mine->getId());
+        $members = $this->listMembers()->for($mine->getId());
 
         self::assertCount(1, $members);
         self::assertSame('mine@twes.local', $members[0]->email);
+    }
+
+    public function testAnOpenInvitationIsListedWithoutANameUntilItIsAccepted(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->memberships->save(new Membership(new User(Email::fromString('one@twes.local'), 'One'), $company, $this->owner));
+        $this->invite($company, 'open@twes.local', '2026-09-09 09:00:00');
+        $this->invite($company, 'expired@twes.local', '2026-08-01 09:00:00');
+        $this->invite($company, 'used@twes.local', '2026-09-09 09:00:00')->accept(new \DateTimeImmutable('2026-09-09 09:30:00'));
+        $this->invite(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), 'theirs@twes.local', '2026-09-09 09:00:00');
+
+        $members = $this->listMembers()->for($company->getId());
+
+        self::assertSame(['one@twes.local', 'open@twes.local'], array_map(static fn ($m) => $m->email, $members));
+        self::assertSame(['joined', 'invited'], array_map(static fn ($m) => $m->status, $members));
+        self::assertNull($members[1]->userId);
+        self::assertNull($members[1]->displayName);
+        self::assertNull($members[1]->joinedAt);
+        self::assertSame(Role::MEMBER, $members[1]->role);
+    }
+
+    private function invite(Company $company, string $email, string $at): Invitation
+    {
+        $invitation = new Invitation($company, Email::fromString($email), Role::MEMBER, InvitationToken::generate(), new \DateTimeImmutable($at), new \DateInterval('P7D'), null);
+        $this->invitations->save($invitation);
+
+        return $invitation;
+    }
+
+    private function listMembers(): ListMembers
+    {
+        return new ListMembers($this->memberships, $this->invitations, new MockClock('2026-09-09 10:00:00'));
     }
 
     private function join(User $user, string $name): Company

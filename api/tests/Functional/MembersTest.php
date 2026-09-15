@@ -40,7 +40,7 @@ final class MembersTest extends ApiTestCase
         self::assertSame('admin@twes.local', $rows[0]['email']);
     }
 
-    public function testAnAdminAddsSomeoneWhoAlreadyHasAnAccount(): void
+    public function testAnAddressThatAlreadyHasAnAccountIsInvitedLikeAnyOther(): void
     {
         $this->adminSignedIn();
         $this->createUser('joiner@twes.local', 'password-1234');
@@ -51,6 +51,14 @@ final class MembersTest extends ApiTestCase
         $body = $this->json();
         self::assertSame('joiner@twes.local', $body['email']);
         self::assertSame(Role::MEMBER, $body['role']);
+        self::assertSame('invited', $body['status']);
+        self::assertNull($body['userId']);
+        self::assertEmailCount(1);
+        // Not a member until they accept: the list shows the invitation, naming nobody.
+        $this->getJson($this->path());
+        $rows = $this->jsonList();
+        self::assertCount(2, $rows);
+        self::assertSame(['joiner@twes.local', 'invited', null, null], [$rows[1]['email'], $rows[1]['status'], $rows[1]['userId'] ?? null, $rows[1]['displayName'] ?? null]);
     }
 
     public function testAnAddressWithNoAccountIsInvitedInstead(): void
@@ -66,16 +74,20 @@ final class MembersTest extends ApiTestCase
         self::assertEmailCount(1);
     }
 
-    public function testSomeoneWhoAlreadyHasAnAccountJoinsWithNoMail(): void
+    public function testAnInvitationThatExpiredOrWasUsedIsNoLongerListed(): void
     {
         $this->adminSignedIn();
-        $this->createUser('joiner@twes.local', 'password-1234');
+        foreach (['expired@twes.local', 'used@twes.local'] as $address) {
+            $this->postJson($this->path(), ['email' => $address, 'role' => Role::MEMBER]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+        $connection = $this->em()->getConnection();
+        $connection->executeStatement("UPDATE invitation SET expires_at = '2020-01-01 00:00:00' WHERE email = 'expired@twes.local'");
+        $connection->executeStatement("UPDATE invitation SET accepted_at = NOW() WHERE email = 'used@twes.local'");
 
-        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
+        $this->getJson($this->path());
 
-        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        self::assertSame('joined', $this->json()['status']);
-        self::assertEmailCount(0);
+        self::assertSame(['admin@twes.local'], array_map(static fn (array $row) => $row['email'], $this->jsonList()));
     }
 
     public function testAMalformedAddressIsRefused(): void
@@ -100,21 +112,18 @@ final class MembersTest extends ApiTestCase
     public function testTheSamePersonIsNotAddedTwice(): void
     {
         $this->adminSignedIn();
-        $this->createUser('joiner@twes.local', 'password-1234');
-        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
-        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->createUser('joiner@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
 
         $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
 
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertEmailCount(0);
     }
 
     public function testAMemberIsRemoved(): void
     {
         $this->adminSignedIn();
-        $joiner = $this->createUser('joiner@twes.local', 'password-1234');
-        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => Role::MEMBER]);
-        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $joiner = $this->createUser('joiner@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
 
         $this->sendJson('DELETE', $this->path().'/'.$joiner->getId()->toRfc4122());
 

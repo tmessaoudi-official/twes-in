@@ -139,7 +139,7 @@ abstract class ApiTestCase extends WebTestCase
         return $out;
     }
 
-    /** AddMember resolves a role through RoleRepository::builtIn, which only ever returns a company-less role. */
+    /** An invitation and its acceptance resolve a role through RoleRepository::builtIn, which only ever returns a company-less role. */
     protected function seedBuiltInRoles(): void
     {
         $em = $this->em();

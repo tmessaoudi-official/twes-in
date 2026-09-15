@@ -24,7 +24,11 @@ export interface InboxPage {
 }
 
 /** The types this client has words for; anything newer is shown with a generic line until it does. */
-export const KNOWN_NOTIFICATION_TYPES = ['membership.added', 'invitation.accepted'] as const;
+export const KNOWN_NOTIFICATION_TYPES = [
+  'membership.added',
+  'invitation.received',
+  'invitation.accepted',
+] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
 export function notificationKey(type: string): string {
@@ -45,6 +49,8 @@ export interface NotificationRecord {
 const RECORDS = new Map<string, NotificationRecord>([
   // Being added to a company is news about another company: nothing here to open.
   ['membership.added', { icon: 'add_business', route: null, permission: null }],
+  // An invitation is to another company, and its link is in the mail alone: nothing here to open either.
+  ['invitation.received', { icon: 'mail', route: null, permission: null }],
   ['invitation.accepted', { icon: 'group_add', route: '/members', permission: 'user.read' }],
 ]);
 

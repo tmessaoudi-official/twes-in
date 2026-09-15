@@ -12,12 +12,16 @@ namespace App\Tenancy\Application\Company;
 /** One member of a company, as the member list shows them. */
 final readonly class MemberView
 {
+    public const string JOINED = 'joined';
+    public const string INVITED = 'invited';
+
     public function __construct(
-        public string $userId,
+        public ?string $userId,
         public string $email,
-        public string $displayName,
+        public ?string $displayName,
         public string $role,
-        public string $joinedAt,
+        public ?string $joinedAt,
+        public string $status = self::JOINED,
     ) {
     }
 }

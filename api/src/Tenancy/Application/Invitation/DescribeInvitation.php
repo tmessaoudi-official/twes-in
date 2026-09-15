@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Invitation;
 
+use App\Identity\Domain\UserRepository;
 use App\Tenancy\Domain\InvitationRepository;
 use App\Tenancy\Domain\InvitationToken;
 use Psr\Clock\ClockInterface;
@@ -21,6 +22,7 @@ final readonly class DescribeInvitation
 {
     public function __construct(
         private InvitationRepository $invitations,
+        private UserRepository $users,
         private ClockInterface $clock,
     ) {
     }
@@ -43,6 +45,7 @@ final readonly class DescribeInvitation
             $invitation->getCompany()->getName(),
             $invitation->getRoleName(),
             $invitation->getExpiresAt()->format(\DATE_ATOM),
+            null !== $this->users->ofEmail($invitation->getEmail()),
         );
     }
 }

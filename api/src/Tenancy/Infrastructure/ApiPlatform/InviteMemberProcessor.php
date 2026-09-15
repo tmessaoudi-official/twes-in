@@ -21,8 +21,8 @@ use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 /**
- * One endpoint for "put this address in this company". Whether that is a membership or a mailed invitation
- * is decided by whether the address already has an account, and the caller never has to know which.
+ * One endpoint for "put this address in this company", and it always sends an invitation: nobody becomes a member
+ * until they accept the mailed link, whether or not the address has an account (docs/SPEC.md § 7, 2026-09-15).
  *
  * @implements ProcessorInterface<MemberResource, MemberResource>
  */
@@ -50,10 +50,9 @@ final readonly class InviteMemberProcessor implements ProcessorInterface
         }
 
         $resource = new MemberResource();
-        $resource->userId = $outcome->userId;
         $resource->email = $outcome->email;
         $resource->role = $outcome->roleName;
-        $resource->status = $outcome->joined ? MemberResource::JOINED : MemberResource::INVITED;
+        $resource->status = MemberResource::INVITED;
 
         return $resource;
     }

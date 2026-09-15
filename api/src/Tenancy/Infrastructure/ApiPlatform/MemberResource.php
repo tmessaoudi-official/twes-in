@@ -84,7 +84,7 @@ final class MemberResource
     #[Groups([self::READ])]
     public ?string $joinedAt = null;
 
-    /** Whether that address is now a member, or has been sent an invitation because it has no account yet. */
+    /** Whether that person is a member, or an address that was invited and has not accepted; the latter names nobody. */
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [self::JOINED, self::INVITED]])]
     #[Groups([self::READ])]
     public string $status = self::JOINED;
@@ -97,7 +97,7 @@ final class MemberResource
         $resource->displayName = $view->displayName;
         $resource->role = $view->role;
         $resource->joinedAt = $view->joinedAt;
-        $resource->status = self::JOINED;
+        $resource->status = $view->status;
 
         return $resource;
     }

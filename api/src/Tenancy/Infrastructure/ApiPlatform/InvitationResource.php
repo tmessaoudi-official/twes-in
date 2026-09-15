@@ -60,19 +60,25 @@ final class InvitationResource
     #[Groups([self::READ])]
     public ?string $expiresAt = null;
 
-    #[Assert\NotBlank(groups: ['accept'])]
+    /** Whether the address already has an account: accepting then asks for nothing, and never sets a password. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?bool $hasAccount = null;
+
+    /** Needed only to make an account; an address that has one sends none, and one sent is ignored. */
+    #[Assert\NotBlank(allowNull: true, groups: ['accept'])]
     #[Assert\Length(min: 1, max: 120, groups: ['accept'])]
     #[Groups([self::WRITE])]
-    public string $displayName = '';
+    public ?string $displayName = null;
 
     /**
-     * Twelve characters is the floor; everything else about the password is judged by the breached-password
-     * check, which asks whether this exact password is already known to attackers.
+     * Needed only to make an account. Twelve characters is the floor; everything else about the password is
+     * judged by the breached-password check, which asks whether this exact password is already known to attackers.
      */
-    #[Assert\NotBlank(groups: ['accept'])]
+    #[Assert\NotBlank(allowNull: true, groups: ['accept'])]
     #[Assert\Length(min: 12, max: 4096, groups: ['accept'])]
     #[Groups([self::WRITE])]
-    public string $password = '';
+    public ?string $password = null;
 
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
@@ -85,6 +91,7 @@ final class InvitationResource
         $resource->companyName = $summary->companyName;
         $resource->roleName = $summary->roleName;
         $resource->expiresAt = $summary->expiresAt;
+        $resource->hasAccount = $summary->hasAccount;
 
         return $resource;
     }

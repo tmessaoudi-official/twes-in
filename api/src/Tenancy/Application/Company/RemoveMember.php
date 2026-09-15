@@ -20,6 +20,7 @@ use Symfony\Component\Uid\Uuid;
 /** Takes someone out of a company, never the last owner: a company nobody owns can never be administered again. */
 final readonly class RemoveMember
 {
+    public const string ENTITY_TYPE = 'membership';
     public const string REMOVED = 'membership.removed';
 
     public function __construct(
@@ -44,7 +45,7 @@ final readonly class RemoveMember
         $this->memberships->remove($membership);
 
         $this->audit->record(new AuditEntry(
-            AddMember::ENTITY_TYPE,
+            self::ENTITY_TYPE,
             $membership->getId(),
             self::REMOVED,
             $actorUserId,

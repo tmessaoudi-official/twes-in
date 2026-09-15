@@ -34,7 +34,12 @@ export class InvitationFacade {
     }
   }
 
-  async accept(token: string, displayName: string, password: string): Promise<boolean> {
+  /** An address that has an account accepts with neither a name nor a password: the link proves the address. */
+  async accept(
+    token: string,
+    displayName: string | null = null,
+    password: string | null = null,
+  ): Promise<boolean> {
     this.busySignal.set(true);
     this.errorSignal.set(null);
     try {

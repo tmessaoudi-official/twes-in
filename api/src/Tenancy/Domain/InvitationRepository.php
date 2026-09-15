@@ -19,6 +19,9 @@ interface InvitationRepository
     /** The invitation still open for that address in that company, if any. */
     public function pendingFor(Uuid $companyId, string $email): ?Invitation;
 
+    /** @return list<Invitation> the company's invitations nobody has used and that have not expired, oldest first */
+    public function openOfCompany(Uuid $companyId, \DateTimeImmutable $now): array;
+
     public function save(Invitation $invitation): void;
 
     /** Inviting the same address again replaces the open invitation, so exactly one token ever works. */

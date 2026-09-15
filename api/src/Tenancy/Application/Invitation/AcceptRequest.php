@@ -14,8 +14,8 @@ final readonly class AcceptRequest
 {
     public function __construct(
         public string $rawToken,
-        public string $displayName,
-        public string $plainPassword,
+        public ?string $displayName,
+        public ?string $plainPassword,
     ) {
     }
 }

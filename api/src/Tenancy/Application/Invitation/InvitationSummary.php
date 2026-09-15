@@ -17,6 +17,7 @@ final readonly class InvitationSummary
         public string $companyName,
         public string $roleName,
         public string $expiresAt,
+        public bool $hasAccount = false,
     ) {
     }
 }

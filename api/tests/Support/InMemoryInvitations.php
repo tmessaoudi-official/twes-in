@@ -42,6 +42,14 @@ final class InMemoryInvitations implements InvitationRepository
         return null;
     }
 
+    public function openOfCompany(Uuid $companyId, \DateTimeImmutable $now): array
+    {
+        return array_values(array_filter(
+            $this->invitations,
+            static fn (Invitation $i) => $i->getCompany()->getId()->equals($companyId) && $i->isUsableAt($now),
+        ));
+    }
+
     public function save(Invitation $invitation): void
     {
         if (!\in_array($invitation, $this->invitations, true)) {

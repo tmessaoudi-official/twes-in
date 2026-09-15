@@ -10,6 +10,7 @@ const offer: InvitationOffer = {
   companyName: 'Acme',
   roleName: 'member',
   expiresAt: '2026-09-16T10:00:00+00:00',
+  hasAccount: false,
 };
 
 describe('InvitationFacade', () => {
@@ -49,6 +50,15 @@ describe('InvitationFacade', () => {
     expect(accepted).toBe(true);
     expect(facade.accepted()).toBe(true);
     expect(api.accept).toHaveBeenCalledWith('a-token', 'New Person', 'a-long-enough-password');
+  });
+
+  it('accepts for an address that has an account without any name or password', async () => {
+    api.accept.mockResolvedValue('Acme');
+
+    const accepted = await facade.accept('a-token');
+
+    expect(accepted).toBe(true);
+    expect(api.accept).toHaveBeenCalledWith('a-token', null, null);
   });
 
   it('reports a breached password without claiming the account was made', async () => {

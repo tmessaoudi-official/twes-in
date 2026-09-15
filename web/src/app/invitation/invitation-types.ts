@@ -6,6 +6,8 @@ export interface InvitationOffer {
   readonly companyName: string;
   readonly roleName: string;
   readonly expiresAt: string;
+  /** The address already has an account: accepting then asks for nothing, and never sets a password. */
+  readonly hasAccount: boolean;
 }
 
 /**

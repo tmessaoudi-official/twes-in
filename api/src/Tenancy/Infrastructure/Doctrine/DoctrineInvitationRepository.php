@@ -11,6 +11,7 @@ namespace App\Tenancy\Infrastructure\Doctrine;
 
 use App\Tenancy\Domain\Invitation;
 use App\Tenancy\Domain\InvitationRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -29,6 +30,24 @@ final readonly class DoctrineInvitationRepository implements InvitationRepositor
     {
         return $this->entityManager->getRepository(Invitation::class)
             ->findOneBy(['company' => $companyId, 'email' => $email, 'acceptedAt' => null]);
+    }
+
+    public function openOfCompany(Uuid $companyId, \DateTimeImmutable $now): array
+    {
+        /** @var list<Invitation> $open */
+        $open = $this->entityManager->createQueryBuilder()
+            ->select('i')
+            ->from(Invitation::class, 'i')
+            ->where('i.company = :company')
+            ->andWhere('i.acceptedAt IS NULL')
+            ->andWhere('i.expiresAt >= :now')
+            ->orderBy('i.createdAt', 'ASC')
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('now', $now, Types::DATETIME_IMMUTABLE)
+            ->getQuery()
+            ->getResult();
+
+        return $open;
     }
 
     public function save(Invitation $invitation): void

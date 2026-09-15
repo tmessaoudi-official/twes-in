@@ -67,7 +67,7 @@ describe('MembersFacade', () => {
     expect(api.members).not.toHaveBeenCalled();
   });
 
-  it('reports that an address with no account was invited instead of added', async () => {
+  it('reports that the address was invited', async () => {
     api.addMember.mockResolvedValue({ ...owner, status: 'invited' });
     api.members.mockResolvedValue([owner]);
 

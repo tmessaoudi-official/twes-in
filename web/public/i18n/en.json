@@ -129,8 +129,8 @@
       "network": "The server could not be reached."
     },
     "no_company": "Choose a company first.",
-    "joined": "The member was added.",
-    "invited": "The invitation was sent by email."
+    "invited": "The invitation was sent by email.",
+    "invited_row": "Invitation pending"
   },
   "company": {
     "choose": "Choose a company",
@@ -400,12 +400,15 @@
     "types": {
       "membership_added": "You were added to {{company}}.",
       "invitation_accepted": "{{display_name}} joined the company.",
+      "invitation_received": "An invitation to join {{company}} is waiting in your email.",
       "unknown": "New notification."
     }
   },
   "invitation": {
     "title": "Join a company",
     "offer": "You are invited to join {{company}} as {{role}}.",
+    "has_account": "This address already has an account: accepting adds the company to it, and you sign in as usual to work in it.",
+    "join": "Join the company",
     "display_name": "Your name",
     "display_name_required": "Your name is required.",
     "password": "Choose a password",
