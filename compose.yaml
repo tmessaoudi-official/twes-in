@@ -12,7 +12,7 @@ services:
       - postgres-data:/var/lib/postgresql
       - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U twes -d twes"]
       interval: 3s
@@ -87,7 +87,7 @@ services:
   gotenberg:
     image: gotenberg/gotenberg:8.37.0
     ports:
-      - "${GOTENBERG_PORT:-8094}:3000"
+      - "127.0.0.1:${GOTENBERG_PORT:-8094}:3000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1:3000/health"]
       interval: 3s
@@ -97,8 +97,8 @@ services:
   mailpit:
     image: axllent/mailpit:v1.31.1
     ports:
-      - "${MAILPIT_UI_PORT:-8092}:8025"
-      - "${MAILPIT_SMTP_PORT:-8093}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-8093}:1025"
 
 volumes:
   postgres-data:
