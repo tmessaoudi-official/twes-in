@@ -1,6 +1,6 @@
 # Developer entry points. Everything here is also what CI runs (.github/workflows/ci.yml).
 SHELL := /bin/sh
-.PHONY: up down logs migrate seed api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
+.PHONY: up down logs migrate seed operator-code api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
 
 up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094), then seed
 	docker compose up -d --build --wait
@@ -11,6 +11,9 @@ migrate:       ## apply pending migrations inside a running api container (the i
 
 seed:          ## built-in roles, the operator (operator@twes.local) with a known authenticator and the Demo company; idempotent. Dev secrets only.
 	docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
+
+operator-code: ## the seeded operator's authenticator code right now, for signing in by hand (a wrong or reused one spends the 5-per-5-minutes budget e2e also spends)
+	docker compose exec -T api php -r 'require "vendor/autoload.php"; echo (new App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", new DateTimeImmutable()), PHP_EOL;'
 
 api-openapi:   ## export the OpenAPI document the TypeScript types are generated from
 	cd api && bin/console api:openapi:export --output=var/openapi.json

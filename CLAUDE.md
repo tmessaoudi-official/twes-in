@@ -110,7 +110,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `PostToolUse` hook (`.claude/hooks/lint-on-write.sh`) running `php -l` / `bash -n` on writes.
 - `Makefile` — `make up` (compose, web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094; the api image migrates at
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
-  `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`; Playwright signs the operator in once, `web/e2e/session.ts`), `make gate` (licences + `composer gate`
+  `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`), `make gate` (licences + `composer gate`
   + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),
   `make e2e` (Playwright against the running stack).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
