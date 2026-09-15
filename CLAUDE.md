@@ -83,7 +83,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources and plain controllers),
   `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, a local volume),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
-  "Architecture style"). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
+  "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
+  scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
   repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),
   API Platform resources (`Me`) and the OpenAPI decorator, the console command, the session handler. Every port has one
@@ -170,6 +171,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Create source files with the Write tool, never `printf`/heredoc in Bash: the lint-on-write `php -l` hook sees only
   tool writes, and shell quote splicing turned two PHP string literals into bare words, so every functional test died at
   kernel boot (2026-09-15). Never run a sabotage batch in the same parallel block as a gate: it mutates what the gate reads.
+- A red `expenses.spec.ts` between 00:00 and 01:00 Paris time is the browser's day running ahead of a Tunis company's
+  (SPEC § 8 row 24), not a regression: rerun after 01:00 before digging.
 - Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
   it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
 - A mutated migration mutates its `down()` too: migrate the test database down before applying the mutant, and down with the

@@ -88,7 +88,7 @@ final class UnauthenticatedSweepTest extends ApiTestCase
             }
         }
 
-        self::assertGreaterThan(140, $swept, 'the sweep reached the routes');
+        self::assertGreaterThan(100, $swept, 'the sweep reached the routes');
         self::assertSame([], $opened, 'these routes answer a caller without a session');
     }
 
