@@ -187,6 +187,11 @@ export const routes: Routes = [
               import('./company/company-profile-page').then((m) => m.CompanyProfilePage),
           },
           {
+            path: 'company/security',
+            loadComponent: () =>
+              import('./company/company-security-page').then((m) => m.CompanySecurityPage),
+          },
+          {
             path: 'company/establishments',
             loadComponent: () =>
               import('./company/establishments-page').then((m) => m.EstablishmentsPage),

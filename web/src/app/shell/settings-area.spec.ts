@@ -21,6 +21,7 @@ class StaticLoader implements TranslateLoader {
         units: 'Unités',
         settings: 'Valeurs par défaut',
         company_profile: 'Profil de la société',
+        company_security: 'Sécurité',
         establishments: 'Établissements',
         numbering: 'Numérotation',
         custom_fields: 'Champs personnalisés',
@@ -90,7 +91,13 @@ describe('SettingsArea', () => {
       [
         'settings-section-company',
         'Société',
-        ['nav-company-profile', 'nav-establishments', 'nav-numbering', 'nav-settings'],
+        [
+          'nav-company-profile',
+          'nav-company-security',
+          'nav-establishments',
+          'nav-numbering',
+          'nav-settings',
+        ],
       ],
       ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units']],
       ['settings-section-team', 'Équipe', ['nav-members']],

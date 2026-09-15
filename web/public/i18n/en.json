@@ -275,6 +275,18 @@
         "still_needed": "These modules still need it:",
         "invalid": "The change was refused."
       }
+    },
+    "security": {
+      "title": "Security",
+      "no_company": "Choose a company to manage how its members sign in.",
+      "mfa_required": "Require two-step verification",
+      "mfa_required_hint": "Every member signs in with a code from an authenticator app as well as their password. Members without one, you included, set it up before they can continue.",
+      "saved": "Saved.",
+      "errors": {
+        "network": "The server could not be reached. Try again.",
+        "not_found": "This company could not be found.",
+        "invalid": "The change was refused."
+      }
     }
   },
   "modules": {
@@ -313,7 +325,8 @@
     "stock_locations": "Locations",
     "vendors": "Vendors",
     "expenses": "Expenses",
-    "expense_categories": "Expense categories"
+    "expense_categories": "Expense categories",
+    "company_security": "Security"
   },
   "shell": {
     "skip": "Skip to content",

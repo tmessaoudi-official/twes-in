@@ -275,6 +275,18 @@
         "still_needed": "Ces modules en ont encore besoin :",
         "invalid": "Le changement a été refusé."
       }
+    },
+    "security": {
+      "title": "Sécurité",
+      "no_company": "Choisissez une entreprise pour gérer la connexion de ses membres.",
+      "mfa_required": "Exiger la vérification en deux étapes",
+      "mfa_required_hint": "Chaque membre se connecte avec son mot de passe et un code d’une application d’authentification. Les membres qui n’en ont pas, vous compris, l’activent avant de pouvoir continuer.",
+      "saved": "Enregistré.",
+      "errors": {
+        "network": "Impossible de joindre le serveur. Réessayez.",
+        "not_found": "Cette entreprise est introuvable.",
+        "invalid": "La modification a été refusée."
+      }
     }
   },
   "modules": {
@@ -313,7 +325,8 @@
     "stock_locations": "Emplacements",
     "vendors": "Fournisseurs",
     "expenses": "Dépenses",
-    "expense_categories": "Catégories de dépenses"
+    "expense_categories": "Catégories de dépenses",
+    "company_security": "Sécurité"
   },
   "shell": {
     "skip": "Aller au contenu",

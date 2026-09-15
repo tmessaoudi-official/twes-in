@@ -1,0 +1,42 @@
+<section class="flex max-w-3xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="security-title">
+    {{ 'company.security.title' | translate }}
+  </h1>
+
+  @if (!company()) {
+    <p data-testid="security-no-company">{{ 'company.security.no_company' | translate }}</p>
+  } @else {
+    @if (error(); as code) {
+      <p role="alert" data-testid="security-error" class="text-error">
+        {{ 'company.security.errors.' + code | translate }}
+      </p>
+    }
+    @if (saved()) {
+      <p role="status" data-testid="security-saved">{{ 'company.security.saved' | translate }}</p>
+    }
+
+    @if (security(); as current) {
+      <div
+        class="flex flex-wrap items-center justify-between gap-4 py-2"
+        data-testid="security-mfa"
+      >
+        <div class="flex max-w-prose flex-col gap-1">
+          <span class="font-medium" id="security-mfa-label">
+            {{ 'company.security.mfa_required' | translate }}
+          </span>
+          <span class="text-sm" id="security-mfa-hint">
+            {{ 'company.security.mfa_required_hint' | translate }}
+          </span>
+        </div>
+        <mat-slide-toggle
+          [checked]="current.mfaRequired"
+          [disabled]="!current.writable || busy()"
+          aria-labelledby="security-mfa-label"
+          aria-describedby="security-mfa-hint"
+          (change)="toggle($event)"
+          data-testid="security-mfa-toggle"
+        ></mat-slide-toggle>
+      </div>
+    }
+  }
+</section>

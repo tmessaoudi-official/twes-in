@@ -57,6 +57,14 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'company.settings',
   },
   {
+    key: 'company-security',
+    labelKey: 'nav.company_security',
+    icon: 'shield',
+    route: '/company/security',
+    section: 'company',
+    permission: 'company.settings',
+  },
+  {
     key: 'establishments',
     labelKey: 'nav.establishments',
     icon: 'store',

@@ -141,7 +141,10 @@ describe('the navigation manifest', () => {
         keys(group.entries),
       ]),
     ).toEqual([
-      ['company', ['company-profile', 'establishments', 'numbering', 'settings']],
+      [
+        'company',
+        ['company-profile', 'company-security', 'establishments', 'numbering', 'settings'],
+      ],
       ['fiscal', ['taxes', 'units']],
       ['team', ['members']],
       ['customisation', ['custom-fields', 'modules']],
