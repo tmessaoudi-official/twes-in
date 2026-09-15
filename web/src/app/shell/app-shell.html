@@ -184,6 +184,10 @@
               }}</span>
             </button>
             <mat-divider />
+            <a mat-menu-item routerLink="/two-factor" data-testid="two-factor-link">
+              <mat-icon aria-hidden="true">security</mat-icon>
+              <span>{{ 'auth.two_factor.menu' | translate }}</span>
+            </a>
             <button
               mat-menu-item
               type="button"

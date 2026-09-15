@@ -64,6 +64,7 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
+  mfa: { enrolled: false, required: false },
 };
 
 describe('AppShell', () => {

@@ -11,8 +11,21 @@ async function resolveStatus(auth: AuthFacade): Promise<boolean> {
   return auth.isAuthenticated();
 }
 
-/** Signed-in pages: anyone else is sent to the login page. */
+/**
+ * Signed-in pages: anyone else is sent to the login page, and an account a company requires to enrol is sent
+ * to set up its second factor first, because the API refuses it everything else until then.
+ */
 export const authGuard: CanActivateFn = async () => {
+  const auth = inject(AuthFacade);
+  const router = inject(Router);
+  if (!(await resolveStatus(auth))) {
+    return router.createUrlTree(['/login']);
+  }
+  return auth.needsEnrolment() ? router.createUrlTree(['/two-factor']) : true;
+};
+
+/** The two-step verification page: any signed-in account, including one the enrolment requirement holds back. */
+export const twoFactorGuard: CanActivateFn = async () => {
   const auth = inject(AuthFacade);
   const router = inject(Router);
   return (await resolveStatus(auth)) ? true : router.createUrlTree(['/login']);

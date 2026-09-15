@@ -157,7 +157,7 @@ not compiled into what we distribute, and are not listed here.
 | twig/twig | 3.28.0 | BSD-3-Clause | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
-## web (npm) — 33 runtime, 624 dev
+## web (npm) — 34 runtime, 624 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -637,6 +637,7 @@ not compiled into what we distribute, and are not listed here.
 | json5 | 2.2.3 | MIT | dev |
 | jsonc-parser | 3.3.1 | MIT | dev |
 | keyv | 5.6.0 | MIT | dev |
+| lean-qr | 2.7.4 | MIT | runtime |
 | levn | 0.4.1 | MIT | dev |
 | lightningcss | 1.32.0 | MPL-2.0 | dev |
 | lightningcss-android-arm64 | 1.32.0 | MPL-2.0 | dev |

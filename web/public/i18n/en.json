@@ -30,7 +30,36 @@
       "authentication_required": "Please sign in.",
       "csrf_token_missing": "The page has expired; reload it and try again.",
       "csrf_token_invalid": "The page has expired; reload it and try again.",
-      "network": "The server cannot be reached."
+      "network": "The server cannot be reached.",
+      "mfa_not_pending": "That sign-in has expired. Enter your password again.",
+      "invalid_code": "This code is not valid. Check the time on your device and try again.",
+      "mfa_enrolment_required": "A company you belong to requires two-step verification. Set it up to continue.",
+      "mfa_already_enrolled": "Two-step verification is already on for this account."
+    },
+    "mfa": {
+      "title": "Two-step verification",
+      "intro": "Enter the six-digit code from your authenticator app, or one of your recovery codes.",
+      "code": "Code",
+      "code_required": "The code is required.",
+      "submit": "Verify",
+      "submitting": "Verifying…",
+      "back": "Back to sign in"
+    },
+    "two_factor": {
+      "title": "Two-step verification",
+      "menu": "Two-step verification",
+      "required": "A company you belong to requires two-step verification. Set it up to continue.",
+      "scan": "Scan this QR code with an authenticator app, then enter the six-digit code it shows.",
+      "qr_label": "QR code that adds this account to an authenticator app",
+      "secret_label": "Cannot scan it? Type this key into the app instead:",
+      "code": "Six-digit code",
+      "code_required": "The code is required.",
+      "confirm": "Turn on",
+      "confirming": "Turning on…",
+      "recovery_title": "Your recovery codes",
+      "recovery_intro": "Keep these codes somewhere safe. Each one signs you in once if you lose your device. They will not be shown again.",
+      "continue": "Continue",
+      "enabled": "Two-step verification is on for this account."
     }
   },
   "hello": {

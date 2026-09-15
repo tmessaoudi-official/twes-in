@@ -25,16 +25,22 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
+  mfa: { enrolled: true, required: false },
 };
 
 describe('AuthFacade', () => {
-  const api = { me: vi.fn(), login: vi.fn(), logout: vi.fn() };
+  const api = {
+    me: vi.fn(),
+    login: vi.fn(),
+    logout: vi.fn(),
+    verifySecondFactor: vi.fn(),
+    beginTotpEnrolment: vi.fn(),
+    confirmTotpEnrolment: vi.fn(),
+  };
   let facade: AuthFacade;
 
   beforeEach(() => {
-    api.me.mockReset();
-    api.login.mockReset();
-    api.logout.mockReset();
+    Object.values(api).forEach((fn) => fn.mockReset());
     TestBed.configureTestingModule({ providers: [{ provide: AuthApi, useValue: api }] });
     facade = TestBed.inject(AuthFacade);
   });
@@ -57,17 +63,73 @@ describe('AuthFacade', () => {
   it('login() keeps the signed-in state, or reports the API error code', async () => {
     api.login.mockResolvedValue(owner);
     expect(await facade.login({ email: 'owner@example.test', password: 'pw' })).toEqual({
-      ok: true,
+      status: 'signed_in',
       state: owner,
     });
     expect(facade.isAuthenticated()).toBe(true);
 
     api.login.mockRejectedValue(new AuthRefused('account_locked'));
     expect(await facade.login({ email: 'owner@example.test', password: 'wrong' })).toEqual({
-      ok: false,
+      status: 'refused',
       error: 'account_locked',
     });
     expect(facade.status()).toBe('anonymous');
+  });
+
+  it('login() reports a second factor owed without signing in, and the code then signs in', async () => {
+    api.login.mockResolvedValue('second_factor');
+    expect(await facade.login({ email: 'owner@example.test', password: 'pw' })).toEqual({
+      status: 'second_factor',
+    });
+    expect(facade.isAuthenticated()).toBe(false);
+
+    api.verifySecondFactor.mockRejectedValue(new AuthRefused('invalid_code'));
+    expect(await facade.verifySecondFactor('000000')).toEqual({
+      status: 'refused',
+      error: 'invalid_code',
+    });
+    expect(facade.isAuthenticated()).toBe(false);
+
+    api.verifySecondFactor.mockResolvedValue(owner);
+    expect(await facade.verifySecondFactor('123456')).toEqual({
+      status: 'signed_in',
+      state: owner,
+    });
+    expect(facade.isAuthenticated()).toBe(true);
+  });
+
+  it('needsEnrolment() holds only for an account required to enrol that has not', async () => {
+    expect(facade.needsEnrolment()).toBe(false);
+    api.me.mockResolvedValue({ ...owner, mfa: { enrolled: false, required: true } });
+    await facade.load();
+    expect(facade.needsEnrolment()).toBe(true);
+
+    api.me.mockResolvedValue({ ...owner, mfa: { enrolled: false, required: false } });
+    await facade.load();
+    expect(facade.needsEnrolment()).toBe(false);
+  });
+
+  it('confirming an enrolment hands back the recovery codes and marks the account enrolled', async () => {
+    api.me.mockResolvedValue({ ...owner, mfa: { enrolled: false, required: true } });
+    await facade.load();
+    const enrolment = { secret: 'JBSWY3DPEHPK3PXP', provisioningUri: 'otpauth://totp/x' };
+    api.beginTotpEnrolment.mockResolvedValue(enrolment);
+    expect(await facade.beginTotpEnrolment()).toEqual({ ok: true, enrolment });
+
+    api.confirmTotpEnrolment.mockRejectedValue(new AuthRefused('invalid_code'));
+    expect(await facade.confirmTotpEnrolment('000000')).toEqual({
+      ok: false,
+      error: 'invalid_code',
+    });
+    expect(facade.needsEnrolment()).toBe(true);
+
+    api.confirmTotpEnrolment.mockResolvedValue(['aaaa-bbbb']);
+    expect(await facade.confirmTotpEnrolment('123456')).toEqual({
+      ok: true,
+      recoveryCodes: ['aaaa-bbbb'],
+    });
+    expect(facade.me()?.mfa.enrolled).toBe(true);
+    expect(facade.needsEnrolment()).toBe(false);
   });
 
   it('logout() forgets the session even if the API fails', async () => {

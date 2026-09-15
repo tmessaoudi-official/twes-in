@@ -1,0 +1,102 @@
+<main class="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-6 p-6">
+  <header class="flex flex-col gap-1">
+    <h1 class="text-3xl font-semibold">{{ 'app.name' | translate }}</h1>
+  </header>
+
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>{{ 'auth.two_factor.title' | translate }}</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="mt-4 flex flex-col gap-4">
+      @if (alreadyEnrolled) {
+        <p data-testid="two-factor-enabled">{{ 'auth.two_factor.enabled' | translate }}</p>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="continue()"
+          data-testid="two-factor-continue"
+        >
+          {{ 'auth.two_factor.continue' | translate }}
+        </button>
+      } @else if (recoveryCodes(); as codes) {
+        <h2 class="text-lg font-medium">{{ 'auth.two_factor.recovery_title' | translate }}</h2>
+        <p>{{ 'auth.two_factor.recovery_intro' | translate }}</p>
+        <ul class="grid grid-cols-2 gap-2 font-mono" data-testid="two-factor-recovery-codes">
+          @for (code of codes; track code) {
+            <li>{{ code }}</li>
+          }
+        </ul>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="continue()"
+          data-testid="two-factor-continue"
+        >
+          {{ 'auth.two_factor.continue' | translate }}
+        </button>
+      } @else {
+        @if (required) {
+          <p data-testid="two-factor-required">{{ 'auth.two_factor.required' | translate }}</p>
+        }
+        @if (enrolment(); as pending) {
+          <p>{{ 'auth.two_factor.scan' | translate }}</p>
+          <div class="mx-auto w-56" data-testid="two-factor-qr">
+            <app-qr-code
+              [value]="pending.provisioningUri"
+              [label]="'auth.two_factor.qr_label' | translate"
+            />
+          </div>
+          <p class="text-sm">{{ 'auth.two_factor.secret_label' | translate }}</p>
+          <p class="text-center font-mono text-lg tracking-wider" data-testid="two-factor-secret">
+            {{ groupedSecret() }}
+          </p>
+          <form
+            [formGroup]="form"
+            (ngSubmit)="confirm()"
+            class="flex flex-col gap-2"
+            novalidate
+            data-testid="two-factor-form"
+          >
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'auth.two_factor.code' | translate }}</mat-label>
+              <input
+                matInput
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                formControlName="code"
+                data-testid="two-factor-code"
+              />
+              @if (form.controls.code.hasError('required')) {
+                <mat-error>{{ 'auth.two_factor.code_required' | translate }}</mat-error>
+              }
+            </mat-form-field>
+            @if (error(); as errorCode) {
+              <p role="alert" class="text-sm text-red-700" data-testid="two-factor-error">
+                {{ 'auth.errors.' + errorCode | translate }}
+              </p>
+            }
+            <button
+              mat-flat-button
+              type="submit"
+              [disabled]="submitting()"
+              data-testid="two-factor-submit"
+            >
+              {{
+                (submitting() ? 'auth.two_factor.confirming' : 'auth.two_factor.confirm')
+                  | translate
+              }}
+            </button>
+          </form>
+        } @else if (error(); as errorCode) {
+          <p role="alert" class="text-sm text-red-700" data-testid="two-factor-error">
+            {{ 'auth.errors.' + errorCode | translate }}
+          </p>
+        }
+        <button mat-button type="button" (click)="signOut()" data-testid="two-factor-logout">
+          {{ 'auth.logout' | translate }}
+        </button>
+      }
+    </mat-card-content>
+  </mat-card>
+</main>

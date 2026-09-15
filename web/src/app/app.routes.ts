@@ -2,7 +2,7 @@
 
 import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
-import { anonymousGuard, authGuard } from './auth/auth-guard';
+import { anonymousGuard, authGuard, twoFactorGuard } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
@@ -16,6 +16,13 @@ export const routes: Routes = [
     path: 'login',
     canActivate: [anonymousGuard],
     loadComponent: () => import('./auth/login-page').then((m) => m.LoginPage),
+  },
+  {
+    // Setting up a second factor. Outside the shell: an account a company requires to enrol is refused by every
+    // other endpoint until it has, so the shell could not load.
+    path: 'two-factor',
+    canActivate: [twoFactorGuard],
+    loadComponent: () => import('./auth/two-factor-page').then((m) => m.TwoFactorPage),
   },
   {
     // Opened from a mail client, with no session: deliberately outside both guards and outside the shell.

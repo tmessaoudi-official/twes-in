@@ -30,7 +30,36 @@
       "authentication_required": "Veuillez vous connecter.",
       "csrf_token_missing": "La page a expiré, rechargez-la puis réessayez.",
       "csrf_token_invalid": "La page a expiré, rechargez-la puis réessayez.",
-      "network": "Impossible de joindre le serveur."
+      "network": "Impossible de joindre le serveur.",
+      "mfa_not_pending": "Cette connexion a expiré. Saisissez de nouveau votre mot de passe.",
+      "invalid_code": "Ce code n’est pas valide. Vérifiez l’heure de votre appareil et réessayez.",
+      "mfa_enrolment_required": "Une entreprise dont vous êtes membre exige la vérification en deux étapes. Activez-la pour continuer.",
+      "mfa_already_enrolled": "La vérification en deux étapes est déjà activée pour ce compte."
+    },
+    "mfa": {
+      "title": "Vérification en deux étapes",
+      "intro": "Saisissez le code à six chiffres de votre application d’authentification, ou l’un de vos codes de secours.",
+      "code": "Code",
+      "code_required": "Le code est obligatoire.",
+      "submit": "Vérifier",
+      "submitting": "Vérification…",
+      "back": "Retour à la connexion"
+    },
+    "two_factor": {
+      "title": "Vérification en deux étapes",
+      "menu": "Vérification en deux étapes",
+      "required": "Une entreprise dont vous êtes membre exige la vérification en deux étapes. Activez-la pour continuer.",
+      "scan": "Scannez ce code QR avec une application d’authentification, puis saisissez le code à six chiffres qu’elle affiche.",
+      "qr_label": "Code QR qui ajoute ce compte à une application d’authentification",
+      "secret_label": "Impossible de le scanner ? Saisissez plutôt cette clé dans l’application :",
+      "code": "Code à six chiffres",
+      "code_required": "Le code est obligatoire.",
+      "confirm": "Activer",
+      "confirming": "Activation…",
+      "recovery_title": "Vos codes de secours",
+      "recovery_intro": "Conservez ces codes en lieu sûr. Chacun permet de vous connecter une fois si vous perdez votre appareil. Ils ne seront plus affichés.",
+      "continue": "Continuer",
+      "enabled": "La vérification en deux étapes est activée pour ce compte."
     }
   },
   "hello": {

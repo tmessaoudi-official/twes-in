@@ -47,6 +47,12 @@ export interface WorkingCompany {
   role: string;
 }
 
+/** Whether the account has a second factor in force, and whether a company it belongs to requires one. */
+export interface MfaStatus {
+  enrolled: boolean;
+  required: boolean;
+}
+
 export interface SignedInState {
   user: SignedInUser;
   company: WorkingCompany | null;
@@ -54,6 +60,23 @@ export interface SignedInState {
   permissions: string[];
   /** keys of the modules the working company has on */
   modules: string[];
+  mfa: MfaStatus;
 }
 
-export type LoginOutcome = { ok: true; state: SignedInState } | { ok: false; error: LoginError };
+/** A pending authenticator: the secret to type in by hand, and the otpauth:// URI its QR code carries. */
+export interface TotpEnrolment {
+  secret: string;
+  provisioningUri: string;
+}
+
+/** A login signs in, still owes a second factor (no session exists yet), or is refused. */
+export type LoginOutcome =
+  | { status: 'signed_in'; state: SignedInState }
+  | { status: 'second_factor' }
+  | { status: 'refused'; error: LoginError };
+
+export type EnrolmentOutcome =
+  { ok: true; enrolment: TotpEnrolment } | { ok: false; error: LoginError };
+
+export type ConfirmationOutcome =
+  { ok: true; recoveryCodes: string[] } | { ok: false; error: LoginError };

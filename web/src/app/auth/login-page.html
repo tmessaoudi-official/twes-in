@@ -6,62 +6,108 @@
 
   <mat-card appearance="outlined">
     <mat-card-header>
-      <mat-card-title>{{ 'auth.login.title' | translate }}</mat-card-title>
+      <mat-card-title>{{
+        (step() === 'password' ? 'auth.login.title' : 'auth.mfa.title') | translate
+      }}</mat-card-title>
     </mat-card-header>
     <mat-card-content>
-      <form
-        [formGroup]="form"
-        (ngSubmit)="submit()"
-        class="mt-4 flex flex-col gap-2"
-        novalidate
-        data-testid="login-form"
-      >
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'auth.login.email' | translate }}</mat-label>
-          <input
-            matInput
-            type="email"
-            formControlName="email"
-            autocomplete="username"
-            data-testid="email"
-          />
-          @if (form.controls.email.hasError('required')) {
-            <mat-error>{{ 'auth.login.email_required' | translate }}</mat-error>
-          } @else if (form.controls.email.hasError('email')) {
-            <mat-error>{{ 'auth.login.email_invalid' | translate }}</mat-error>
-          }
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
-          <mat-label>{{ 'auth.login.password' | translate }}</mat-label>
-          <input
-            matInput
-            type="password"
-            formControlName="password"
-            autocomplete="current-password"
-            data-testid="password"
-          />
-          @if (form.controls.password.hasError('required')) {
-            <mat-error>{{ 'auth.login.password_required' | translate }}</mat-error>
-          }
-        </mat-form-field>
-
-        @if (error(); as code) {
-          <p role="alert" class="text-sm text-red-700" data-testid="login-error">
-            {{ 'auth.errors.' + code | translate }}
-          </p>
-        }
-
-        <button
-          mat-flat-button
-          type="submit"
-          [disabled]="submitting()"
-          class="mt-2"
-          data-testid="submit"
+      @if (step() === 'password') {
+        <form
+          [formGroup]="form"
+          (ngSubmit)="submit()"
+          class="mt-4 flex flex-col gap-2"
+          novalidate
+          data-testid="login-form"
         >
-          {{ (submitting() ? 'auth.login.submitting' : 'auth.login.submit') | translate }}
-        </button>
-      </form>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.login.email' | translate }}</mat-label>
+            <input
+              matInput
+              type="email"
+              formControlName="email"
+              autocomplete="username"
+              data-testid="email"
+            />
+            @if (form.controls.email.hasError('required')) {
+              <mat-error>{{ 'auth.login.email_required' | translate }}</mat-error>
+            } @else if (form.controls.email.hasError('email')) {
+              <mat-error>{{ 'auth.login.email_invalid' | translate }}</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.login.password' | translate }}</mat-label>
+            <input
+              matInput
+              type="password"
+              formControlName="password"
+              autocomplete="current-password"
+              data-testid="password"
+            />
+            @if (form.controls.password.hasError('required')) {
+              <mat-error>{{ 'auth.login.password_required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+
+          @if (error(); as code) {
+            <p role="alert" class="text-sm text-red-700" data-testid="login-error">
+              {{ 'auth.errors.' + code | translate }}
+            </p>
+          }
+
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="submitting()"
+            class="mt-2"
+            data-testid="submit"
+          >
+            {{ (submitting() ? 'auth.login.submitting' : 'auth.login.submit') | translate }}
+          </button>
+        </form>
+      } @else {
+        <form
+          [formGroup]="codeForm"
+          (ngSubmit)="submitCode()"
+          class="mt-4 flex flex-col gap-2"
+          novalidate
+          data-testid="mfa-form"
+        >
+          <p class="mb-2 text-sm opacity-80">{{ 'auth.mfa.intro' | translate }}</p>
+          <mat-form-field appearance="outline">
+            <mat-label>{{ 'auth.mfa.code' | translate }}</mat-label>
+            <input
+              matInput
+              type="text"
+              formControlName="code"
+              autocomplete="one-time-code"
+              data-testid="mfa-code"
+            />
+            @if (codeForm.controls.code.hasError('required')) {
+              <mat-error>{{ 'auth.mfa.code_required' | translate }}</mat-error>
+            }
+          </mat-form-field>
+
+          @if (error(); as code) {
+            <p role="alert" class="text-sm text-red-700" data-testid="login-error">
+              {{ 'auth.errors.' + code | translate }}
+            </p>
+          }
+
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="submitting()"
+            class="mt-2"
+            data-testid="mfa-submit"
+          >
+            {{ (submitting() ? 'auth.mfa.submitting' : 'auth.mfa.submit') | translate }}
+          </button>
+          <button mat-button type="button" (click)="backToPassword()" data-testid="mfa-back">
+            {{ 'auth.mfa.back' | translate }}
+          </button>
+        </form>
+      }
     </mat-card-content>
   </mat-card>
 

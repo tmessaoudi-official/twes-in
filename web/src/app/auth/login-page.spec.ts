@@ -29,9 +29,20 @@ class StaticLoader implements TranslateLoader {
           submit: 'Se connecter',
           submitting: 'Connexion…',
         },
+        mfa: {
+          title: 'Vérification en deux étapes',
+          intro: 'Saisissez le code de votre application',
+          code: 'Code',
+          code_required: 'Code obligatoire',
+          submit: 'Vérifier',
+          submitting: 'Vérification…',
+          back: 'Retour',
+        },
         errors: {
           invalid_credentials: 'Identifiants incorrects',
           account_locked: 'Compte verrouillé',
+          invalid_code: 'Code incorrect',
+          mfa_not_pending: 'Reconnectez-vous',
           network: 'Serveur injoignable',
         },
       },
@@ -157,5 +168,79 @@ describe('LoginPage', () => {
     expect(query('login-error')?.textContent).toContain('Compte verrouillé');
     expect(query<HTMLInputElement>('password')?.value).toBe('');
     expect(query<HTMLInputElement>('email')?.value).toBe('owner@example.test');
+  });
+
+  async function passThePassword(rendered: Awaited<ReturnType<typeof render>>) {
+    const { fixture, http, query } = rendered;
+    type(query<HTMLInputElement>('email')!, 'owner@example.test');
+    type(query<HTMLInputElement>('password')!, 'pw');
+    query<HTMLFormElement>('login-form')?.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+    http.expectOne('/api/auth/login').flush({ mfaRequired: true });
+    await settle(fixture);
+  }
+
+  async function submitCode(rendered: Awaited<ReturnType<typeof render>>, code: string) {
+    const { fixture, query } = rendered;
+    type(query<HTMLInputElement>('mfa-code')!, code);
+    query<HTMLFormElement>('mfa-form')?.dispatchEvent(new Event('submit'));
+    await fixture.whenStable();
+  }
+
+  it('asks for a code when the password was right but a second factor is owed', async () => {
+    const rendered = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    await passThePassword(rendered);
+
+    expect(rendered.query('login-form')).toBeNull();
+    expect(rendered.query('mfa-form')).not.toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
+
+    await submitCode(rendered, '123456');
+    const request = rendered.http.expectOne({ method: 'POST', url: '/api/auth/mfa/verify' });
+    expect(request.request.body).toEqual({ code: '123456' });
+    request.flush(me);
+    await settle(rendered.fixture);
+
+    expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('shows a refused code, clears it and keeps asking', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+    await submitCode(rendered, '000000');
+    rendered.http
+      .expectOne('/api/auth/mfa/verify')
+      .flush({ error: 'invalid_code' }, { status: 401, statusText: 'Unauthorized' });
+    await settle(rendered.fixture);
+
+    expect(rendered.query('login-error')?.textContent).toContain('Code incorrect');
+    expect(rendered.query<HTMLInputElement>('mfa-code')?.value).toBe('');
+    expect(rendered.query('mfa-form')).not.toBeNull();
+  });
+
+  it('goes back to the password when the half-finished login has expired', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+    await submitCode(rendered, '123456');
+    rendered.http
+      .expectOne('/api/auth/mfa/verify')
+      .flush({ error: 'mfa_not_pending' }, { status: 401, statusText: 'Unauthorized' });
+    await settle(rendered.fixture);
+
+    expect(rendered.query('mfa-form')).toBeNull();
+    expect(rendered.query('login-form')).not.toBeNull();
+    expect(rendered.query('login-error')?.textContent).toContain('Reconnectez-vous');
+  });
+
+  it('lets the person go back to the password step', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+
+    rendered.query<HTMLButtonElement>('mfa-back')?.click();
+    await settle(rendered.fixture);
+
+    expect(rendered.query('login-form')).not.toBeNull();
+    expect(rendered.query<HTMLInputElement>('password')?.value).toBe('');
   });
 });
