@@ -32,3 +32,22 @@ export function notificationKey(type: string): string {
     ? `notifications.types.${type.replaceAll('.', '_')}`
     : 'notifications.types.unknown';
 }
+
+/** Where a notification leads: its icon, and the screen of its record in this company with the permission it takes. */
+export interface NotificationRecord {
+  readonly icon: string;
+  /** null when there is nothing in this company to open */
+  readonly route: string | null;
+  readonly permission: string | null;
+}
+
+// The money and document events (invoice paid, overdue, payment recorded, delivery note delivered) add their rows here.
+const RECORDS = new Map<string, NotificationRecord>([
+  // Being added to a company is news about another company: nothing here to open.
+  ['membership.added', { icon: 'add_business', route: null, permission: null }],
+  ['invitation.accepted', { icon: 'group_add', route: '/members', permission: 'user.read' }],
+]);
+
+export function notificationRecord(type: string): NotificationRecord {
+  return RECORDS.get(type) ?? { icon: 'notifications', route: null, permission: null };
+}

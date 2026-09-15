@@ -1,0 +1,116 @@
+<header class="flex items-center gap-2 border-b border-outline-variant py-2 pl-6 pr-2">
+  <h2 mat-dialog-title class="flex-1 text-lg font-medium text-on-surface">
+    {{ 'notifications.title' | translate }}
+  </h2>
+  @if (unread() > 0) {
+    <button mat-button type="button" (click)="readAll()" data-testid="notifications-read-all">
+      {{ 'notifications.mark_all' | translate }}
+    </button>
+  }
+  <button
+    mat-icon-button
+    type="button"
+    mat-dialog-close
+    [attr.aria-label]="'notifications.close' | translate"
+    data-testid="notifications-close"
+  >
+    <mat-icon aria-hidden="true">close</mat-icon>
+  </button>
+</header>
+
+<div
+  role="tablist"
+  [attr.aria-label]="'notifications.filter' | translate"
+  class="flex gap-2 px-6 pb-1 pt-3"
+>
+  @for (option of filters; track option) {
+    <button
+      type="button"
+      role="tab"
+      aria-controls="notification-list"
+      [attr.aria-selected]="filter() === option"
+      (click)="filter.set(option)"
+      class="cursor-pointer rounded-full border border-outline-variant px-3 py-1 text-sm font-medium"
+      [class.bg-secondary-container]="filter() === option"
+      [class.text-on-secondary-container]="filter() === option"
+      [class.bg-transparent]="filter() !== option"
+      [class.text-on-surface-variant]="filter() !== option"
+      [attr.data-testid]="'notifications-filter-' + option"
+    >
+      {{ 'notifications.filter_' + option | translate }}
+    </button>
+  }
+</div>
+
+<div id="notification-list" role="tabpanel" class="min-h-0 flex-1 overflow-y-auto pb-4">
+  @for (group of groups(); track group.key) {
+    <section [attr.aria-labelledby]="'notifications-day-' + group.key">
+      <h3
+        [id]="'notifications-day-' + group.key"
+        class="px-6 pb-1 pt-4 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+        data-testid="notifications-day"
+      >
+        {{ group.labelKey === null ? group.day : (group.labelKey | translate) }}
+      </h3>
+      <ul class="m-0 list-none p-0">
+        @for (row of group.rows; track row.entry.id) {
+          <li>
+            @if (row.route; as route) {
+              <a
+                [routerLink]="route"
+                (click)="follow(row.entry)"
+                class="flex w-full items-start gap-3 px-6 py-3 text-left text-inherit no-underline hover:bg-surface-container focus-visible:bg-surface-container"
+                data-testid="notification-item"
+              >
+                <ng-container *ngTemplateOutlet="body; context: { $implicit: row }" />
+              </a>
+            } @else {
+              <button
+                type="button"
+                (click)="read(row.entry)"
+                class="flex w-full cursor-pointer items-start gap-3 bg-transparent px-6 py-3 text-left hover:bg-surface-container focus-visible:bg-surface-container"
+                data-testid="notification-item"
+              >
+                <ng-container *ngTemplateOutlet="body; context: { $implicit: row }" />
+              </button>
+            }
+          </li>
+        }
+      </ul>
+    </section>
+  } @empty {
+    <p class="px-6 py-8 text-center text-on-surface-variant" data-testid="notifications-empty">
+      {{
+        (filter() === 'unread' ? 'notifications.empty_unread' : 'notifications.empty') | translate
+      }}
+    </p>
+  }
+</div>
+
+<ng-template #body let-row>
+  <span
+    class="grid size-10 shrink-0 place-items-center rounded-full bg-surface-container-high text-on-surface-variant"
+  >
+    <mat-icon aria-hidden="true" data-testid="notification-icon">{{ row.icon }}</mat-icon>
+  </span>
+  <span class="min-w-0 flex-1">
+    <span
+      class="block text-on-surface"
+      [class.font-semibold]="row.entry.readAt === null"
+      data-testid="notification-text"
+      >{{ row.textKey | translate: row.entry.payload }}</span
+    >
+    <time
+      class="block text-xs text-on-surface-variant"
+      [attr.datetime]="row.entry.createdAt"
+      [attr.title]="row.at"
+      data-testid="notification-time"
+      >{{ row.ago }}</time
+    >
+  </span>
+  @if (row.entry.readAt === null) {
+    <span class="mt-2 size-2.5 shrink-0 rounded-full bg-primary" data-testid="notification-unread"
+      ><span class="sr-only">{{ 'notifications.unread' | translate }}</span></span
+    >
+  }
+</ng-template>

@@ -81,3 +81,20 @@ body {
     'GRAD' 0,
     'opsz' 24;
 }
+
+// The notification centre (notifications/notification-bell.ts): a full-height panel against the right edge, square
+// where it meets the screen, its title laid out by the panel's own header.
+.notification-panel {
+  .mat-mdc-dialog-surface {
+    border-radius: 0;
+  }
+
+  .mat-mdc-dialog-title {
+    margin: 0;
+    padding: 0;
+
+    &::before {
+      display: none;
+    }
+  }
+}

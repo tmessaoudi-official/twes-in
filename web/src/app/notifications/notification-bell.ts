@@ -11,37 +11,30 @@ import {
 } from '@angular/core';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog, type MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
-import { MatMenuModule } from '@angular/material/menu';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { MomentPipe } from '../shared/i18n/format-pipes';
+import { NotificationPanel } from './notification-panel';
 import { NotificationsFacade } from './notifications-facade';
-import { type InboxEntry, notificationKey } from './notifications-types';
 
 /**
- * The bell in the shell's toolbar and the centre it opens. It owns the realtime connection's lifetime: open while
- * the shell is on screen, reopened whenever the session moves to another company, closed when the shell goes.
+ * The bell in the shell's toolbar and the centre it opens as a panel. It owns the realtime connection's lifetime:
+ * open while the shell is on screen, reopened whenever the session moves to another company, closed when the shell
+ * goes, taking an open panel with it.
  */
 @Component({
   selector: 'app-notification-bell',
-  imports: [
-    MatBadgeModule,
-    MatButtonModule,
-    MatIconModule,
-    MatMenuModule,
-    MomentPipe,
-    TranslatePipe,
-  ],
+  imports: [MatBadgeModule, MatButtonModule, MatIconModule, TranslatePipe],
   templateUrl: './notification-bell.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class NotificationBell {
   private readonly facade = inject(NotificationsFacade);
+  private readonly dialog = inject(MatDialog);
+  private panel: MatDialogRef<NotificationPanel> | null = null;
 
-  protected readonly items = this.facade.items;
   protected readonly unread = this.facade.unread;
-  protected readonly keyOf = notificationKey;
 
   constructor() {
     const auth = inject(AuthFacade);
@@ -53,16 +46,22 @@ export class NotificationBell {
         void this.facade.refresh();
       });
     });
-    inject(DestroyRef).onDestroy(() => this.facade.disconnect());
+    inject(DestroyRef).onDestroy(() => {
+      this.panel?.close();
+      this.facade.disconnect();
+    });
   }
 
-  protected read(entry: InboxEntry): void {
-    if (entry.readAt === null) {
-      void this.facade.markRead(entry.id);
-    }
-  }
-
-  protected readAll(): void {
-    void this.facade.markAllRead();
+  protected open(): void {
+    if (this.panel !== null) return;
+    const panel = this.dialog.open(NotificationPanel, {
+      position: { top: '0', right: '0' },
+      height: '100dvh',
+      width: 'min(26rem, 100vw)',
+      maxWidth: '100vw',
+      panelClass: 'notification-panel',
+    });
+    this.panel = panel;
+    panel.afterClosed().subscribe(() => (this.panel = null));
   }
 }
