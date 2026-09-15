@@ -168,3 +168,5 @@ tables, essay gotchas) was retired with the reset. What applies here:
   (2026-09-14; `PdfTemplateMarginsTest` pins it).
 - Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
   it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
+- A mutated migration mutates its `down()` too: migrate the test database down before applying the mutant, and down with the
+  mutant before restoring it, or what the mutant removed never leaves the schema (2026-09-15: a dropped CHECK stayed, and read green).
