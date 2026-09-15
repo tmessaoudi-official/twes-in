@@ -85,6 +85,7 @@ class NumberingSeries
     /** @throws InvalidNumbering */
     public static function create(Company $company, Establishment $establishment, string $documentType, NumberFormat $format, ResetPeriod $resetPeriod, bool $isDefault, \DateTimeImmutable $now): self
     {
+        self::assertPrintsItsPeriod($format, $resetPeriod);
         $series = new self($company, $establishment, $documentType, $now);
         $series->format = $format->pattern;
         $series->resetPeriod = $resetPeriod;
@@ -106,6 +107,7 @@ class NumberingSeries
         if ($nextNumber < 1) {
             throw new InvalidNumbering('nextNumber', 'A sequence resumes at one or above.');
         }
+        self::assertPrintsItsPeriod($format, $resetPeriod);
         if ($this->isNumbered() && $nextNumber !== $this->nextNumber) {
             throw new InvalidNumbering('nextNumber', \sprintf('Documents already carry numbers from this series: it resumes at %d, so no number is skipped or issued twice.', $this->nextNumber));
         }
@@ -151,6 +153,24 @@ class NumberingSeries
         $this->updatedAt = $now;
 
         return $number;
+    }
+
+    /**
+     * A sequence that starts again at one prints the period it starts again in: otherwise the first number of a new
+     * year or month is a number the series already gave, and every document of that period is refused as taken.
+     *
+     * @throws InvalidNumbering
+     */
+    private static function assertPrintsItsPeriod(NumberFormat $format, ResetPeriod $resetPeriod): void
+    {
+        $message = match ($resetPeriod) {
+            ResetPeriod::Yearly => $format->printsYear() ? null : 'A series that starts again each year prints the year, {YYYY} or {YY}: otherwise the first number of a new year is one it already gave.',
+            ResetPeriod::Monthly => $format->printsYear() && $format->printsMonth() ? null : 'A series that starts again each month prints the month and the year, {MM} with {YYYY} or {YY}: otherwise the first number of a new month is one it already gave.',
+            ResetPeriod::Never => null,
+        };
+        if (null !== $message) {
+            throw new InvalidNumbering('format', $message);
+        }
     }
 
     /** Whether a document carries a number from this series. */

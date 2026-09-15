@@ -47,14 +47,14 @@ final class NumberingSeriesTest extends ApiTestCase
     {
         $this->signedIn(['company.read', 'company.settings']);
 
-        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'F{YY}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'F{YY}{MM}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
 
         self::assertResponseIsSuccessful();
         $body = $this->json();
-        self::assertSame('F{YY}-{SEQ:4}', $body['format']);
+        self::assertSame('F{YY}{MM}-{SEQ:4}', $body['format']);
         self::assertSame(120, $body['nextNumber']);
         self::assertSame('monthly', $body['resetPeriod']);
-        self::assertMatchesRegularExpression('/^F\d{2}-0120$/', $this->stringAt($body, 'preview'));
+        self::assertMatchesRegularExpression('/^F\d{4}-0120$/', $this->stringAt($body, 'preview'));
         $count = $this->em()->getConnection()->fetchOne("SELECT COUNT(*) FROM audit_log WHERE action = 'numbering_series.revised'");
         self::assertEquals(1, $count);
     }
@@ -64,6 +64,15 @@ final class NumberingSeriesTest extends ApiTestCase
         $this->signedIn(['company.read', 'company.settings']);
 
         $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'FAC-{YYYY}', 'nextNumber' => 1, 'resetPeriod' => 'yearly']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    public function testAResetWhosePeriodTheFormatDoesNotPrintIsUnprocessable(): void
+    {
+        $this->signedIn(['company.read', 'company.settings']);
+
+        $this->sendJson('PUT', $this->path().'/'.$this->idOf('invoice'), ['format' => 'F{YY}-{SEQ:4}', 'nextNumber' => 120, 'resetPeriod' => 'monthly']);
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }

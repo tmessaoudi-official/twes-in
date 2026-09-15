@@ -50,14 +50,14 @@ final class ManageNumberingSeriesTest extends TestCase
         $invoices = $this->invoices($this->company);
 
         $this->manage->revise($this->company, $invoices->getId(), new NumberingChanges($invoices->getFormat(), 1, 'yearly'), null);
-        $this->manage->revise($this->company, $invoices->getId(), new NumberingChanges('F{YY}-{SEQ:4}', 120, 'monthly'), null);
+        $this->manage->revise($this->company, $invoices->getId(), new NumberingChanges('F{YY}{MM}-{SEQ:4}', 120, 'monthly'), null);
 
-        self::assertSame('F{YY}-{SEQ:4}', $invoices->getFormat());
+        self::assertSame('F{YY}{MM}-{SEQ:4}', $invoices->getFormat());
         self::assertSame(120, $invoices->getNextNumber());
         self::assertSame(ResetPeriod::Monthly, $invoices->getResetPeriod());
         self::assertCount(1, $this->audit->entries);
         self::assertSame('numbering_series.revised', $this->audit->entries[0]->action);
-        self::assertSame(['format' => 'F{YY}-{SEQ:4}', 'next_number' => 120, 'reset_period' => 'monthly'], $this->audit->entries[0]->changes);
+        self::assertSame(['format' => 'F{YY}{MM}-{SEQ:4}', 'next_number' => 120, 'reset_period' => 'monthly'], $this->audit->entries[0]->changes);
     }
 
     public function testAResetPeriodThatDoesNotExistIsRefused(): void

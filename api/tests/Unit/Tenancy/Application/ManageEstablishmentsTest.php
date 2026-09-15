@@ -65,7 +65,7 @@ final class ManageEstablishmentsTest extends TestCase
     {
         $default = $this->manage->list($this->company)[0];
         $invoices = $this->seriesOf($default, 'invoice');
-        $invoices->revise(new \App\Tenancy\Domain\NumberFormat('F{EST}-{SEQ:4}'), $invoices->getResetPeriod(), 40, new \DateTimeImmutable());
+        $invoices->revise(new \App\Tenancy\Domain\NumberFormat('F{EST}{YY}-{SEQ:4}'), $invoices->getResetPeriod(), 40, new \DateTimeImmutable());
 
         $sfax = $this->manage->create($this->company, self::details('001', 'Agence de Sfax', city: 'Sfax'), null);
 
@@ -73,10 +73,10 @@ final class ManageEstablishmentsTest extends TestCase
         self::assertSame('Sfax', $sfax->getCity());
         self::assertSame(['credit_note', 'delivery_note', 'invoice'], array_map(static fn (NumberingSeries $s): string => $s->getDocumentType(), $this->seriesOfEstablishment($sfax)));
         $copy = $this->seriesOf($sfax, 'invoice');
-        self::assertSame('F{EST}-{SEQ:4}', $copy->getFormat());
+        self::assertSame('F{EST}{YY}-{SEQ:4}', $copy->getFormat());
         self::assertSame(1, $copy->getNextNumber());
         self::assertTrue($copy->isDefault());
-        self::assertSame('F001-0001', $copy->preview(new \DateTimeImmutable('2026-09-13')));
+        self::assertSame('F00126-0001', $copy->preview(new \DateTimeImmutable('2026-09-13')));
         self::assertSame('establishment.created', $this->audit->entries[0]->action);
     }
 

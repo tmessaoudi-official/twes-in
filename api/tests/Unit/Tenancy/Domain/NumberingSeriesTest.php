@@ -140,6 +140,36 @@ final class NumberingSeriesTest extends TestCase
         self::assertSame('F26-0002', $series->preview(new \DateTimeImmutable('2026-09-14')));
     }
 
+    public function testASeriesThatStartsAgainPrintsThePeriodItStartsAgainIn(): void
+    {
+        $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $establishment = Establishment::create($company, '000', 'Siège', true, new \DateTimeImmutable());
+        foreach ([
+            'a yearly reset without the year' => ['FAC-{SEQ:5}', ResetPeriod::Yearly],
+            'a monthly reset without the month' => ['F{YYYY}-{SEQ}', ResetPeriod::Monthly],
+            'a monthly reset without the year' => ['F{MM}-{SEQ}', ResetPeriod::Monthly],
+        ] as $case => [$pattern, $reset]) {
+            try {
+                NumberingSeries::create($company, $establishment, 'invoice', new NumberFormat($pattern), $reset, true, new \DateTimeImmutable());
+                self::fail("a series was created with $case, whose first number of the new period is the old period's first");
+            } catch (InvalidNumbering $refused) {
+                self::assertSame('format', $refused->field, $case);
+            }
+            $series = self::series();
+            try {
+                $series->revise(new NumberFormat($pattern), $reset, 1, new \DateTimeImmutable());
+                self::fail("a series was revised to $case");
+            } catch (InvalidNumbering $refused) {
+                self::assertSame('format', $refused->field, $case);
+            }
+            self::assertSame('FAC-{YYYY}-{SEQ:5}', $series->getFormat(), $case);
+        }
+
+        self::assertTrue(self::series()->revise(new NumberFormat('F{MM}{YY}-{SEQ}'), ResetPeriod::Monthly, 1, new \DateTimeImmutable()));
+        self::assertTrue(self::series()->revise(new NumberFormat('F{YY}-{SEQ}'), ResetPeriod::Yearly, 1, new \DateTimeImmutable()));
+        self::assertTrue(self::series()->revise(new NumberFormat('FAC-{SEQ}'), ResetPeriod::Never, 1, new \DateTimeImmutable()));
+    }
+
     private static function series(): NumberingSeries
     {
         $company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');

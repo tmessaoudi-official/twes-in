@@ -63,6 +63,18 @@ final readonly class NumberFormat
         $this->pattern = $pattern;
     }
 
+    /** Whether a number printed with this format names its year, `{YYYY}` or `{YY}`. */
+    public function printsYear(): bool
+    {
+        return [] !== array_intersect(['{YYYY}', '{YY}'], self::parts($this->pattern));
+    }
+
+    /** Whether a number printed with this format names its month, `{MM}`. */
+    public function printsMonth(): bool
+    {
+        return \in_array('{MM}', self::parts($this->pattern), true);
+    }
+
     public function render(int $number, \DateTimeImmutable $date, string $establishmentCode): string
     {
         $out = '';
