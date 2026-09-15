@@ -9,8 +9,12 @@ import type {
   EnrolmentOutcome,
   LoginError,
   LoginOutcome,
+  PasskeyAdded,
+  PasskeyRemoved,
+  PasskeysOutcome,
   SignedInState,
 } from './auth-types';
+import { PasskeyClient } from './passkey-client';
 
 /**
  * The signed-in state, as signals. The session itself is a cookie the browser keeps; this facade only knows
@@ -19,6 +23,7 @@ import type {
 @Injectable({ providedIn: 'root' })
 export class AuthFacade {
   private readonly api = inject(AuthApi);
+  private readonly passkeyClient = inject(PasskeyClient);
   private readonly stateSignal = signal<SignedInState | null>(null);
   private readonly statusSignal = signal<AuthStatus>('unknown');
 
@@ -82,7 +87,7 @@ export class AuthFacade {
       const recoveryCodes = await this.api.confirmTotpEnrolment(code);
       // The factor is in force from now on; the state says so without another round trip.
       this.stateSignal.update(
-        (state) => state && { ...state, mfa: { ...state.mfa, enrolled: true } },
+        (state) => state && { ...state, mfa: { ...state.mfa, enrolled: true, totp: true } },
       );
       return { ok: true, recoveryCodes };
     } catch (error) {
@@ -95,6 +100,65 @@ export class AuthFacade {
       return { ok: true, recoveryCodes: await this.api.regenerateRecoveryCodes(code) };
     } catch (error) {
       return { ok: false, error: codeOf(error) };
+    }
+  }
+
+  async listPasskeys(): Promise<PasskeysOutcome> {
+    try {
+      return { ok: true, passkeys: await this.api.listPasskeys() };
+    } catch (error) {
+      return { ok: false, error: codeOf(error) };
+    }
+  }
+
+  /** Asks the browser for a new passkey against the API's options, then registers it as a factor. */
+  async addPasskey(name: string): Promise<PasskeyAdded> {
+    try {
+      const options = await this.api.passkeyRegistrationOptions();
+      const credential = await fromBrowser(() => this.passkeyClient.create(options));
+      const added = await this.api.registerPasskey(name, credential);
+      this.stateSignal.update(
+        (state) =>
+          state && {
+            ...state,
+            mfa: { ...state.mfa, enrolled: true, passkeys: state.mfa.passkeys + 1 },
+          },
+      );
+      return { ok: true, ...added };
+    } catch (error) {
+      return { ok: false, error: codeOf(error) };
+    }
+  }
+
+  async removePasskey(id: string): Promise<PasskeyRemoved> {
+    try {
+      await this.api.removePasskey(id);
+      this.stateSignal.update((state) => {
+        if (state === null) {
+          return state;
+        }
+        const passkeys = Math.max(0, state.mfa.passkeys - 1);
+        return {
+          ...state,
+          mfa: { ...state.mfa, passkeys, enrolled: state.mfa.totp || passkeys > 0 },
+        };
+      });
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: codeOf(error) };
+    }
+  }
+
+  /** The second half of a login with a passkey instead of a code. */
+  async signInWithPasskey(): Promise<LoginOutcome> {
+    try {
+      const options = await this.api.passkeyLoginOptions();
+      const credential = await fromBrowser(() => this.passkeyClient.get(options));
+      const state = await this.api.finishPasskeyLogin(credential);
+      this.signedIn(state);
+      return { status: 'signed_in', state };
+    } catch (error) {
+      return { status: 'refused', error: codeOf(error) };
     }
   }
 
@@ -125,6 +189,22 @@ export class AuthFacade {
   private signedOut(): void {
     this.stateSignal.set(null);
     this.statusSignal.set('anonymous');
+  }
+}
+
+/**
+ * The browser's refusals come down to two things a person can act on: this device already holds a passkey for the
+ * account (WebAuthn's excludeCredentials, reported as InvalidStateError), or no passkey was used at all.
+ */
+async function fromBrowser<T>(ceremony: () => Promise<T>): Promise<T> {
+  try {
+    return await ceremony();
+  } catch (error) {
+    throw new AuthRefused(
+      error instanceof DOMException && error.name === 'InvalidStateError'
+        ? 'passkey_already_registered'
+        : 'passkey_cancelled',
+    );
   }
 }
 

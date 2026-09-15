@@ -12,6 +12,7 @@ import {
 import { of } from 'rxjs';
 import type { Me } from '../api/types.gen';
 import { LoginPage } from './login-page';
+import { PasskeyClient } from './passkey-client';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -37,6 +38,7 @@ class StaticLoader implements TranslateLoader {
           submit: 'Vérifier',
           submitting: 'Vérification…',
           back: 'Retour',
+          passkey: 'Utiliser une clé d’accès',
         },
         errors: {
           invalid_credentials: 'Identifiants incorrects',
@@ -44,6 +46,7 @@ class StaticLoader implements TranslateLoader {
           invalid_code: 'Code incorrect',
           mfa_not_pending: 'Reconnectez-vous',
           network: 'Serveur injoignable',
+          invalid_passkey: 'Clé refusée',
         },
       },
     });
@@ -65,13 +68,17 @@ const me: Me = {
 };
 
 describe('LoginPage', () => {
+  const passkeyClient = { supported: () => true, get: vi.fn() };
+
   beforeEach(async () => {
+    passkeyClient.get.mockReset();
     await TestBed.configureTestingModule({
       imports: [LoginPage],
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: PasskeyClient, useValue: passkeyClient },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -242,5 +249,44 @@ describe('LoginPage', () => {
 
     expect(rendered.query('login-form')).not.toBeNull();
     expect(rendered.query<HTMLInputElement>('password')?.value).toBe('');
+  });
+
+  async function usePasskey(rendered: Awaited<ReturnType<typeof render>>) {
+    passkeyClient.get.mockResolvedValue({ id: 'cred' });
+    rendered.query<HTMLButtonElement>('mfa-passkey')?.click();
+    await rendered.fixture.whenStable();
+    rendered.http
+      .expectOne({ method: 'POST', url: '/api/auth/mfa/passkey-login/options' })
+      .flush({ challenge: 'xyz' });
+    await settle(rendered.fixture);
+    expect(passkeyClient.get).toHaveBeenCalledWith({ challenge: 'xyz' });
+    const request = rendered.http.expectOne({ method: 'POST', url: '/api/auth/mfa/passkey-login' });
+    expect(request.request.body).toEqual({ credential: { id: 'cred' } });
+    return request;
+  }
+
+  it('finishes the second step with a passkey instead of a code', async () => {
+    const rendered = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+    await passThePassword(rendered);
+
+    (await usePasskey(rendered)).flush(me);
+    await settle(rendered.fixture);
+
+    expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('shows a refused passkey and stays on the second step', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+
+    (await usePasskey(rendered)).flush(
+      { error: 'invalid_passkey' },
+      { status: 401, statusText: 'Unauthorized' },
+    );
+    await settle(rendered.fixture);
+
+    expect(rendered.query('login-error')?.textContent).toContain('Clé refusée');
+    expect(rendered.query('mfa-form')).not.toBeNull();
   });
 });

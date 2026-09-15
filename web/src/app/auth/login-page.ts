@@ -11,6 +11,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { HealthFacade } from '../health/health-facade';
 import { AuthFacade } from './auth-facade';
 import type { LoginError } from './auth-types';
+import { PasskeyClient } from './passkey-client';
 
 @Component({
   selector: 'app-login-page',
@@ -44,6 +45,8 @@ export class LoginPage {
   protected readonly submitting = signal(false);
   protected readonly error = signal<LoginError | null>(null);
   protected readonly apiStatus = inject(HealthFacade).status;
+  /** Offered only where the browser can answer with a passkey at all. */
+  protected readonly passkeysSupported = inject(PasskeyClient).supported();
 
   protected async submit(): Promise<void> {
     if (this.form.invalid || this.submitting()) {
@@ -84,6 +87,27 @@ export class LoginPage {
     if (outcome.status === 'refused') {
       this.error.set(outcome.error);
       // An expired or missing half-login cannot be finished with any code: the password is needed again.
+      if (outcome.error === 'mfa_not_pending') {
+        this.step.set('password');
+      }
+    }
+  }
+
+  /** The same second step, answered with a passkey instead of a code. */
+  protected async usePasskey(): Promise<void> {
+    if (this.submitting()) {
+      return;
+    }
+    this.submitting.set(true);
+    this.error.set(null);
+    const outcome = await this.auth.signInWithPasskey();
+    this.submitting.set(false);
+    if (outcome.status === 'signed_in') {
+      await this.router.navigateByUrl('/');
+      return;
+    }
+    if (outcome.status === 'refused') {
+      this.error.set(outcome.error);
       if (outcome.error === 'mfa_not_pending') {
         this.step.set('password');
       }

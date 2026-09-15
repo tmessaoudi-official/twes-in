@@ -37,7 +37,9 @@
       "mfa_already_enrolled": "Two-step verification is already on for this account.",
       "invalid_passkey": "That passkey could not be verified. Try again, or use another way to sign in.",
       "mfa_last_factor": "A company you belong to requires two-step verification, so your last way to verify cannot be removed.",
-      "passkey_not_found": "That passkey no longer exists."
+      "passkey_not_found": "That passkey no longer exists.",
+      "passkey_cancelled": "No passkey was used. Try again, and follow what your device asks.",
+      "passkey_already_registered": "This device already holds a passkey for this account."
     },
     "mfa": {
       "title": "Two-step verification",
@@ -46,7 +48,8 @@
       "code_required": "The code is required.",
       "submit": "Verify",
       "submitting": "Verifying…",
-      "back": "Back to sign in"
+      "back": "Back to sign in",
+      "passkey": "Use a passkey"
     },
     "two_factor": {
       "title": "Two-step verification",
@@ -66,7 +69,21 @@
       "regenerate_title": "Recovery codes",
       "regenerate_intro": "Used or lost your recovery codes? Enter a code from your authenticator app to get a new set. The old codes stop working.",
       "regenerate": "Get new recovery codes",
-      "regenerating": "Generating…"
+      "regenerating": "Generating…",
+      "app_title": "Authenticator app",
+      "app_intro": "Add an authenticator app as another way to verify, for when your passkey is not at hand.",
+      "app_start": "Set up an authenticator app",
+      "passkeys_title": "Passkeys",
+      "passkeys_intro": "A passkey confirms it is you with your fingerprint, face or device PIN, instead of a code.",
+      "passkeys_none": "No passkey yet.",
+      "passkeys_unsupported": "This browser cannot use passkeys.",
+      "passkey_name": "Name",
+      "passkey_name_hint": "So you can tell your devices apart, for example Work laptop.",
+      "passkey_name_required": "Give the passkey a name.",
+      "passkey_add": "Add a passkey",
+      "passkey_adding": "Waiting for your device…",
+      "passkey_remove": "Remove",
+      "passkey_remove_label": "Remove the passkey {{name}}"
     }
   },
   "hello": {

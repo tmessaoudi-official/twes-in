@@ -103,6 +103,17 @@
           >
             {{ (submitting() ? 'auth.mfa.submitting' : 'auth.mfa.submit') | translate }}
           </button>
+          @if (passkeysSupported) {
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="usePasskey()"
+              [disabled]="submitting()"
+              data-testid="mfa-passkey"
+            >
+              {{ 'auth.mfa.passkey' | translate }}
+            </button>
+          }
           <button mat-button type="button" (click)="backToPassword()" data-testid="mfa-back">
             {{ 'auth.mfa.back' | translate }}
           </button>

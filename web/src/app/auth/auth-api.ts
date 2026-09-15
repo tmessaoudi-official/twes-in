@@ -11,8 +11,22 @@ import type {
   MfaEnrolment,
   MfaPending,
   MfaRecoveryCodes,
+  Passkey,
+  PasskeyAssertion,
+  PasskeyList,
+  PasskeyRegistered,
+  PasskeyRegistration,
+  PublicKeyCredentialOptionsJson,
 } from '../api/types.gen';
-import type { Credentials, LoginError, SignedInState, TotpEnrolment } from './auth-types';
+import type {
+  Credentials,
+  LoginError,
+  PasskeyCredential,
+  PasskeyOptions,
+  PasskeySummary,
+  SignedInState,
+  TotpEnrolment,
+} from './auth-types';
 
 /** Thrown by the adapter when the API refuses; carries the stable error code the API answered with. */
 export class AuthRefused extends Error {
@@ -67,6 +81,49 @@ export class AuthApi {
     return [...answer.recoveryCodes];
   }
 
+  /** Creation options for a new passkey; the API keeps them to verify the answer against, once. */
+  async passkeyRegistrationOptions(): Promise<PasskeyOptions> {
+    return {
+      ...(await send(
+        this.http.post<PublicKeyCredentialOptionsJson>('/api/auth/mfa/passkeys/options', {}),
+      )),
+    };
+  }
+
+  /** Registers what the browser created; recovery codes come back only when it is the account's first factor. */
+  async registerPasskey(
+    name: string,
+    credential: PasskeyCredential,
+  ): Promise<{ passkey: PasskeySummary; recoveryCodes: string[] }> {
+    const body: PasskeyRegistration = { name, credential };
+    const answer = await send(this.http.post<PasskeyRegistered>('/api/auth/mfa/passkeys', body));
+    return { passkey: toPasskey(answer.passkey), recoveryCodes: [...answer.recoveryCodes] };
+  }
+
+  async listPasskeys(): Promise<PasskeySummary[]> {
+    const answer = await send(this.http.get<PasskeyList>('/api/auth/mfa/passkeys'));
+    return answer.passkeys.map(toPasskey);
+  }
+
+  async removePasskey(id: string): Promise<void> {
+    await send(this.http.delete(`/api/auth/mfa/passkeys/${encodeURIComponent(id)}`));
+  }
+
+  /** Request options for the account whose password was just accepted. */
+  async passkeyLoginOptions(): Promise<PasskeyOptions> {
+    return {
+      ...(await send(
+        this.http.post<PublicKeyCredentialOptionsJson>('/api/auth/mfa/passkey-login/options', {}),
+      )),
+    };
+  }
+
+  /** The second half of a login, paid with a passkey instead of a code. */
+  async finishPasskeyLogin(credential: PasskeyCredential): Promise<SignedInState> {
+    const body: PasskeyAssertion = { credential };
+    return toState(await send(this.http.post<Me>('/api/auth/mfa/passkey-login', body)));
+  }
+
   async logout(): Promise<void> {
     await firstValueFrom(this.http.post('/api/auth/logout', null));
   }
@@ -104,7 +161,21 @@ function toState(me: Me): SignedInState {
           },
     permissions: [...me.permissions],
     modules: [...me.modules],
-    mfa: { enrolled: me.mfa.enrolled, required: me.mfa.required },
+    mfa: {
+      enrolled: me.mfa.enrolled,
+      required: me.mfa.required,
+      totp: me.mfa.totp,
+      passkeys: me.mfa.passkeys,
+    },
+  };
+}
+
+function toPasskey(passkey: Passkey): PasskeySummary {
+  return {
+    id: passkey.id,
+    name: passkey.name,
+    createdAt: passkey.createdAt,
+    lastUsedAt: passkey.lastUsedAt,
   };
 }
 

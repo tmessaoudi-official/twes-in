@@ -75,8 +75,15 @@ describe('AuthApi', () => {
 
   it('carries the second-factor status of the account', async () => {
     const pending = api.me();
-    http.expectOne('/api/auth/me').flush({ ...owner, mfa: { enrolled: false, required: true } });
-    expect((await pending).mfa).toEqual({ enrolled: false, required: true });
+    http
+      .expectOne('/api/auth/me')
+      .flush({ ...owner, mfa: { enrolled: true, required: true, totp: false, passkeys: 2 } });
+    expect((await pending).mfa).toEqual({
+      enrolled: true,
+      required: true,
+      totp: false,
+      passkeys: 2,
+    });
   });
 
   it('answers second_factor when the password was right but a code is still owed', async () => {
@@ -133,5 +140,64 @@ describe('AuthApi', () => {
       .expectOne('/api/auth/mfa/recovery-codes')
       .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
     await expect(refused).rejects.toEqual(new AuthRefused('invalid_code'));
+  });
+
+  const passkey = {
+    id: '0190e6f5-0000-7000-8000-000000000001',
+    name: 'Work laptop',
+    createdAt: '2026-09-15T10:00:00+00:00',
+    lastUsedAt: null,
+  };
+
+  it('fetches creation options, registers the credential and lists the passkeys', async () => {
+    const options = api.passkeyRegistrationOptions();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/mfa/passkeys/options' })
+      .flush({ challenge: 'abc' });
+    expect(await options).toEqual({ challenge: 'abc' });
+
+    const registered = api.registerPasskey('Work laptop', { id: 'cred' });
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/mfa/passkeys' });
+    expect(request.request.body).toEqual({ name: 'Work laptop', credential: { id: 'cred' } });
+    request.flush({ passkey, recoveryCodes: ['aaaaa-bbbbb'] });
+    expect(await registered).toEqual({ passkey, recoveryCodes: ['aaaaa-bbbbb'] });
+
+    const listed = api.listPasskeys();
+    http.expectOne({ method: 'GET', url: '/api/auth/mfa/passkeys' }).flush({ passkeys: [passkey] });
+    expect(await listed).toEqual([passkey]);
+  });
+
+  it('removes a passkey, or reports why it stays', async () => {
+    const removed = api.removePasskey(passkey.id);
+    http
+      .expectOne({ method: 'DELETE', url: `/api/auth/mfa/passkeys/${passkey.id}` })
+      .flush(null, { status: 204, statusText: 'No Content' });
+    await expect(removed).resolves.toBeUndefined();
+
+    const kept = api.removePasskey(passkey.id);
+    http
+      .expectOne(`/api/auth/mfa/passkeys/${passkey.id}`)
+      .flush({ error: 'mfa_last_factor' }, { status: 409, statusText: 'Conflict' });
+    await expect(kept).rejects.toEqual(new AuthRefused('mfa_last_factor'));
+  });
+
+  it('answers a pending login with a passkey', async () => {
+    const options = api.passkeyLoginOptions();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/mfa/passkey-login/options' })
+      .flush({ challenge: 'xyz' });
+    expect(await options).toEqual({ challenge: 'xyz' });
+
+    const signedIn = api.finishPasskeyLogin({ id: 'cred' });
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/mfa/passkey-login' });
+    expect(request.request.body).toEqual({ credential: { id: 'cred' } });
+    request.flush(owner);
+    expect((await signedIn).user.email).toBe('owner@example.test');
+
+    const refused = api.finishPasskeyLogin({ id: 'other' });
+    http
+      .expectOne('/api/auth/mfa/passkey-login')
+      .flush({ error: 'invalid_passkey' }, { status: 401, statusText: 'Unauthorized' });
+    await expect(refused).rejects.toEqual(new AuthRefused('invalid_passkey'));
   });
 });

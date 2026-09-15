@@ -51,7 +51,7 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
-  mfa: { enrolled: false, required: false },
+  mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
 };
 
 describe('HelloPage', () => {

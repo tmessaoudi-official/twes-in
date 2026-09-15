@@ -24,6 +24,10 @@ export type LoginError =
   | 'invalid_passkey'
   | 'mfa_last_factor'
   | 'passkey_not_found'
+  // The browser produced no passkey: cancelled, timed out, or no authenticator to answer. Never sent by the API.
+  | 'passkey_cancelled'
+  // The browser refused because this device already holds a passkey for the account. Never sent by the API.
+  | 'passkey_already_registered'
   | 'network';
 
 export interface Credentials {
@@ -55,6 +59,10 @@ export interface WorkingCompany {
 export interface MfaStatus {
   enrolled: boolean;
   required: boolean;
+  /** an authenticator app is in force */
+  totp: boolean;
+  /** how many passkeys the account has */
+  passkeys: number;
 }
 
 export interface SignedInState {
@@ -84,3 +92,28 @@ export type EnrolmentOutcome =
 
 export type ConfirmationOutcome =
   { ok: true; recoveryCodes: string[] } | { ok: false; error: LoginError };
+
+/** The options of a passkey ceremony as the API sends them: WebAuthn's own JSON, which the browser parses. */
+export interface PasskeyOptions {
+  challenge: string;
+  [key: string]: unknown;
+}
+
+/** What the browser's `PublicKeyCredential.toJSON()` produced, posted back to the API unread. */
+export type PasskeyCredential = Record<string, unknown>;
+
+export interface PasskeySummary {
+  id: string;
+  name: string;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
+export type PasskeysOutcome =
+  { ok: true; passkeys: PasskeySummary[] } | { ok: false; error: LoginError };
+
+/** A registered passkey, with the recovery codes it issued when it was the account's first factor. */
+export type PasskeyAdded =
+  { ok: true; passkey: PasskeySummary; recoveryCodes: string[] } | { ok: false; error: LoginError };
+
+export type PasskeyRemoved = { ok: true } | { ok: false; error: LoginError };

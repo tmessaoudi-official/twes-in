@@ -3,6 +3,7 @@
 import { TestBed } from '@angular/core/testing';
 import { AuthApi, AuthRefused } from './auth-api';
 import { AuthFacade } from './auth-facade';
+import { PasskeyClient } from './passkey-client';
 import type { SignedInState } from './auth-types';
 
 const owner: SignedInState = {
@@ -25,7 +26,7 @@ const owner: SignedInState = {
   },
   permissions: ['*'],
   modules: ['customers'],
-  mfa: { enrolled: true, required: false },
+  mfa: { enrolled: true, required: false, totp: true, passkeys: 0 },
 };
 
 describe('AuthFacade', () => {
@@ -37,12 +38,24 @@ describe('AuthFacade', () => {
     beginTotpEnrolment: vi.fn(),
     confirmTotpEnrolment: vi.fn(),
     regenerateRecoveryCodes: vi.fn(),
+    passkeyRegistrationOptions: vi.fn(),
+    registerPasskey: vi.fn(),
+    listPasskeys: vi.fn(),
+    removePasskey: vi.fn(),
+    passkeyLoginOptions: vi.fn(),
+    finishPasskeyLogin: vi.fn(),
   };
+  const client = { supported: vi.fn(), create: vi.fn(), get: vi.fn() };
   let facade: AuthFacade;
 
   beforeEach(() => {
-    Object.values(api).forEach((fn) => fn.mockReset());
-    TestBed.configureTestingModule({ providers: [{ provide: AuthApi, useValue: api }] });
+    [...Object.values(api), ...Object.values(client)].forEach((fn) => fn.mockReset());
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: AuthApi, useValue: api },
+        { provide: PasskeyClient, useValue: client },
+      ],
+    });
     facade = TestBed.inject(AuthFacade);
   });
 
@@ -101,17 +114,26 @@ describe('AuthFacade', () => {
 
   it('needsEnrolment() holds only for an account required to enrol that has not', async () => {
     expect(facade.needsEnrolment()).toBe(false);
-    api.me.mockResolvedValue({ ...owner, mfa: { enrolled: false, required: true } });
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: false, required: true, totp: false, passkeys: 0 },
+    });
     await facade.load();
     expect(facade.needsEnrolment()).toBe(true);
 
-    api.me.mockResolvedValue({ ...owner, mfa: { enrolled: false, required: false } });
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
+    });
     await facade.load();
     expect(facade.needsEnrolment()).toBe(false);
   });
 
   it('confirming an enrolment hands back the recovery codes and marks the account enrolled', async () => {
-    api.me.mockResolvedValue({ ...owner, mfa: { enrolled: false, required: true } });
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: false, required: true, totp: false, passkeys: 0 },
+    });
     await facade.load();
     const enrolment = { secret: 'JBSWY3DPEHPK3PXP', provisioningUri: 'otpauth://totp/x' };
     api.beginTotpEnrolment.mockResolvedValue(enrolment);
@@ -145,6 +167,96 @@ describe('AuthFacade', () => {
       ok: false,
       error: 'invalid_code',
     });
+  });
+
+  const laptop = {
+    id: 'p1',
+    name: 'Work laptop',
+    createdAt: '2026-09-15T10:00:00+00:00',
+    lastUsedAt: null,
+  };
+
+  it('lists the passkeys, or the refusal', async () => {
+    api.listPasskeys.mockResolvedValue([laptop]);
+    expect(await facade.listPasskeys()).toEqual({ ok: true, passkeys: [laptop] });
+
+    api.listPasskeys.mockRejectedValue(new AuthRefused('authentication_required'));
+    expect(await facade.listPasskeys()).toEqual({ ok: false, error: 'authentication_required' });
+  });
+
+  it('adds a passkey the browser creates against the API options, and counts it as a factor', async () => {
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: false, required: true, totp: false, passkeys: 0 },
+    });
+    await facade.load();
+    api.passkeyRegistrationOptions.mockResolvedValue({ challenge: 'abc' });
+    client.create.mockResolvedValue({ id: 'cred' });
+    api.registerPasskey.mockResolvedValue({ passkey: laptop, recoveryCodes: ['aaaaa-bbbbb'] });
+
+    expect(await facade.addPasskey('Work laptop')).toEqual({
+      ok: true,
+      passkey: laptop,
+      recoveryCodes: ['aaaaa-bbbbb'],
+    });
+    expect(client.create).toHaveBeenCalledWith({ challenge: 'abc' });
+    expect(api.registerPasskey).toHaveBeenCalledWith('Work laptop', { id: 'cred' });
+    expect(facade.me()?.mfa).toEqual({ enrolled: true, required: true, totp: false, passkeys: 1 });
+    expect(facade.needsEnrolment()).toBe(false);
+  });
+
+  it('reports a passkey the browser did not produce as cancelled, and registers nothing', async () => {
+    api.passkeyRegistrationOptions.mockResolvedValue({ challenge: 'abc' });
+    client.create.mockRejectedValue(new DOMException('Not allowed.', 'NotAllowedError'));
+
+    expect(await facade.addPasskey('Work laptop')).toEqual({
+      ok: false,
+      error: 'passkey_cancelled',
+    });
+    expect(api.registerPasskey).not.toHaveBeenCalled();
+
+    client.create.mockRejectedValue(new DOMException('Already registered.', 'InvalidStateError'));
+    expect(await facade.addPasskey('Work laptop')).toEqual({
+      ok: false,
+      error: 'passkey_already_registered',
+    });
+  });
+
+  it('removes a passkey and stops counting it, or says why it stays', async () => {
+    api.me.mockResolvedValue({
+      ...owner,
+      mfa: { enrolled: true, required: false, totp: false, passkeys: 1 },
+    });
+    await facade.load();
+    api.removePasskey.mockRejectedValueOnce(new AuthRefused('mfa_last_factor'));
+    expect(await facade.removePasskey('p1')).toEqual({ ok: false, error: 'mfa_last_factor' });
+    expect(facade.me()?.mfa.passkeys).toBe(1);
+
+    api.removePasskey.mockResolvedValue(undefined);
+    expect(await facade.removePasskey('p1')).toEqual({ ok: true });
+    expect(facade.me()?.mfa).toEqual({
+      enrolled: false,
+      required: false,
+      totp: false,
+      passkeys: 0,
+    });
+  });
+
+  it('finishes a pending login with a passkey, or reports the refusal', async () => {
+    api.passkeyLoginOptions.mockResolvedValue({ challenge: 'xyz' });
+    client.get.mockResolvedValue({ id: 'cred' });
+    api.finishPasskeyLogin.mockRejectedValueOnce(new AuthRefused('invalid_passkey'));
+    expect(await facade.signInWithPasskey()).toEqual({
+      status: 'refused',
+      error: 'invalid_passkey',
+    });
+    expect(facade.isAuthenticated()).toBe(false);
+
+    api.finishPasskeyLogin.mockResolvedValue(owner);
+    expect(await facade.signInWithPasskey()).toEqual({ status: 'signed_in', state: owner });
+    expect(client.get).toHaveBeenCalledWith({ challenge: 'xyz' });
+    expect(api.finishPasskeyLogin).toHaveBeenCalledWith({ id: 'cred' });
+    expect(facade.isAuthenticated()).toBe(true);
   });
 
   it('logout() forgets the session even if the API fails', async () => {

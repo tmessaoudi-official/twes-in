@@ -37,7 +37,9 @@
       "mfa_already_enrolled": "La vérification en deux étapes est déjà activée pour ce compte.",
       "invalid_passkey": "Cette clé d’accès n’a pas pu être vérifiée. Réessayez ou utilisez un autre moyen de connexion.",
       "mfa_last_factor": "Une entreprise dont vous êtes membre exige la vérification en deux étapes : votre dernier moyen de vérification ne peut pas être supprimé.",
-      "passkey_not_found": "Cette clé d’accès n’existe plus."
+      "passkey_not_found": "Cette clé d’accès n’existe plus.",
+      "passkey_cancelled": "Aucune clé d’accès n’a été utilisée. Réessayez en suivant les indications de votre appareil.",
+      "passkey_already_registered": "Cet appareil contient déjà une clé d’accès pour ce compte."
     },
     "mfa": {
       "title": "Vérification en deux étapes",
@@ -46,7 +48,8 @@
       "code_required": "Le code est obligatoire.",
       "submit": "Vérifier",
       "submitting": "Vérification…",
-      "back": "Retour à la connexion"
+      "back": "Retour à la connexion",
+      "passkey": "Utiliser une clé d’accès"
     },
     "two_factor": {
       "title": "Vérification en deux étapes",
@@ -66,7 +69,21 @@
       "regenerate_title": "Codes de secours",
       "regenerate_intro": "Codes de secours utilisés ou perdus ? Saisissez un code de votre application d’authentification pour en obtenir de nouveaux. Les anciens codes ne fonctionneront plus.",
       "regenerate": "Obtenir de nouveaux codes de secours",
-      "regenerating": "Génération…"
+      "regenerating": "Génération…",
+      "app_title": "Application d’authentification",
+      "app_intro": "Ajoutez une application d’authentification comme autre moyen de vérification, pour quand votre clé d’accès n’est pas à portée de main.",
+      "app_start": "Configurer une application d’authentification",
+      "passkeys_title": "Clés d’accès",
+      "passkeys_intro": "Une clé d’accès confirme que c’est bien vous grâce à votre empreinte, votre visage ou le code de votre appareil, au lieu d’un code.",
+      "passkeys_none": "Aucune clé d’accès pour le moment.",
+      "passkeys_unsupported": "Ce navigateur ne peut pas utiliser de clés d’accès.",
+      "passkey_name": "Nom",
+      "passkey_name_hint": "Pour distinguer vos appareils, par exemple Ordinateur du bureau.",
+      "passkey_name_required": "Donnez un nom à la clé d’accès.",
+      "passkey_add": "Ajouter une clé d’accès",
+      "passkey_adding": "En attente de votre appareil…",
+      "passkey_remove": "Supprimer",
+      "passkey_remove_label": "Supprimer la clé d’accès {{name}}"
     }
   },
   "hello": {
