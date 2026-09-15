@@ -1127,7 +1127,7 @@
       "not_draft": "Only a draft expense can be changed, deleted or have a receipt removed.",
       "name_taken": "Another category under the same parent already has this name.",
       "invalid": "The change was refused. Check the vendor, the category, the tax and the amount.",
-      "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image, not empty, and the expense may hold at most 10 files.",
+      "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image of up to 10 MB, not empty, and the expense may hold at most 10 files.",
       "file_too_large": "The file is larger than 10 MB."
     }
   }

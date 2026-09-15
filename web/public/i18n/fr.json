@@ -1127,7 +1127,7 @@
       "not_draft": "Seule une dépense en brouillon peut être modifiée, supprimée ou perdre un justificatif.",
       "name_taken": "Une autre catégorie sous le même parent porte déjà ce nom.",
       "invalid": "La modification a été refusée. Vérifiez le fournisseur, la catégorie, la taxe et le montant.",
-      "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP, non vide, et la dépense compte au plus 10 fichiers.",
+      "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP d’au plus 10 Mo, non vide, et la dépense compte au plus 10 fichiers.",
       "file_too_large": "Le fichier dépasse 10 Mo."
     }
   }
