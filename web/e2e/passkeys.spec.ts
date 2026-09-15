@@ -100,7 +100,7 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   await page.getByTestId('mfa-passkey').click();
   await expect(page.getByTestId('greeting')).toContainText('Passkey Owner');
 
-  // The page again: the passkey is listed, and replacing the codes, which takes an authenticator code, is not offered.
+  // The page again: the passkey is listed, and the codes are replaced against it, not against an authenticator code.
   await page.getByTestId('user-menu').click();
   await page.getByTestId('two-factor-link').click();
   await expect(page.getByTestId('two-factor-enabled')).toBeVisible();
@@ -112,6 +112,13 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
     path: test.info().outputPath('two-factor-passkeys.png'),
     fullPage: true,
   });
+  await page.getByTestId('two-factor-passkey-recovery').click();
+  await expect(page.getByTestId('two-factor-recovery-codes').locator('li')).toHaveCount(10);
+  await page.getByTestId('two-factor-continue').click();
+  await expect(page.getByTestId('greeting')).toBeVisible();
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('two-factor-link').click();
+  await expect(page.getByTestId('two-factor-passkey-name-label')).toHaveText(['Work laptop']);
 
   // This device already holds a passkey for the account, and says so rather than making a second one.
   await page.getByTestId('two-factor-passkey-name').fill('Same laptop');

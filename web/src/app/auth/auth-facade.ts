@@ -103,6 +103,20 @@ export class AuthFacade {
     }
   }
 
+  /** Asks the browser for one of the account's passkeys against the API's options, and replaces the codes with it. */
+  async regenerateRecoveryCodesWithPasskey(): Promise<ConfirmationOutcome> {
+    try {
+      const options = await this.api.recoveryCodesPasskeyOptions();
+      const credential = await fromBrowser(() => this.passkeyClient.get(options));
+      return {
+        ok: true,
+        recoveryCodes: await this.api.regenerateRecoveryCodesWithPasskey(credential),
+      };
+    } catch (error) {
+      return { ok: false, error: codeOf(error) };
+    }
+  }
+
   async listPasskeys(): Promise<PasskeysOutcome> {
     try {
       return { ok: true, passkeys: await this.api.listPasskeys() };

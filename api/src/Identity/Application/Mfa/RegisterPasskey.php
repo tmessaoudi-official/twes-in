@@ -14,9 +14,6 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Domain\Passkey;
 use App\Identity\Domain\PasskeyRepository;
-use App\Identity\Domain\RecoveryCode;
-use App\Identity\Domain\RecoveryCodeEntry;
-use App\Identity\Domain\RecoveryCodeRepository;
 use App\Identity\Domain\UserRepository;
 use Symfony\Component\Uid\Uuid;
 
@@ -34,7 +31,7 @@ final readonly class RegisterPasskey
     public function __construct(
         private UserRepository $users,
         private PasskeyRepository $passkeys,
-        private RecoveryCodeRepository $recoveryCodes,
+        private IssueRecoveryCodes $issueRecoveryCodes,
         private PasskeyCeremonies $ceremonies,
         private SecondFactors $secondFactors,
         private AuditTrail $audit,
@@ -56,15 +53,7 @@ final readonly class RegisterPasskey
         $passkey = new Passkey($user, $verified->credentialId, $verified->record, $name, $now);
         $this->passkeys->save($passkey);
 
-        $codes = [];
-        if ($first) {
-            $set = RecoveryCode::generateSet();
-            $this->recoveryCodes->replaceAll($user, array_map(
-                static fn (RecoveryCode $c): RecoveryCodeEntry => new RecoveryCodeEntry($user, $c->hash(), $now),
-                $set,
-            ));
-            $codes = array_map(static fn (RecoveryCode $c): string => $c->raw, $set);
-        }
+        $codes = $first ? $this->issueRecoveryCodes->handle($user, $now) : [];
 
         $this->audit->record(new AuditEntry('user', $user->getId(), self::REGISTERED, $user->getId(), [
             'passkey' => $passkey->getId()->toRfc4122(),

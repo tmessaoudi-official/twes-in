@@ -13,9 +13,6 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
-use App\Identity\Domain\RecoveryCode;
-use App\Identity\Domain\RecoveryCodeEntry;
-use App\Identity\Domain\RecoveryCodeRepository;
 use App\Identity\Domain\UserRepository;
 use Symfony\Component\Uid\Uuid;
 
@@ -31,7 +28,7 @@ final readonly class ConfirmTotpEnrolment
 
     public function __construct(
         private UserRepository $users,
-        private RecoveryCodeRepository $recoveryCodes,
+        private IssueRecoveryCodes $issueRecoveryCodes,
         private TotpCodes $totp,
         private SecretCipher $cipher,
         private AuditTrail $audit,
@@ -64,14 +61,10 @@ final readonly class ConfirmTotpEnrolment
         $user->confirmTotpEnrolment($timestep, $now);
         $this->users->save($user);
 
-        $codes = RecoveryCode::generateSet();
-        $this->recoveryCodes->replaceAll($user, array_map(
-            static fn (RecoveryCode $c): RecoveryCodeEntry => new RecoveryCodeEntry($user, $c->hash(), $now),
-            $codes,
-        ));
+        $codes = $this->issueRecoveryCodes->handle($user, $now);
 
         $this->audit->record(new AuditEntry('user', $user->getId(), self::ENROLLED, $user->getId(), ['method' => 'totp']));
 
-        return array_map(static fn (RecoveryCode $c): string => $c->raw, $codes);
+        return $codes;
     }
 }

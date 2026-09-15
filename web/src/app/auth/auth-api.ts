@@ -81,6 +81,27 @@ export class AuthApi {
     return [...answer.recoveryCodes];
   }
 
+  /** Request options naming the account's passkeys, to replace the recovery codes against one. */
+  async recoveryCodesPasskeyOptions(): Promise<PasskeyOptions> {
+    return {
+      ...(await send(
+        this.http.post<PublicKeyCredentialOptionsJson>(
+          '/api/auth/mfa/recovery-codes/passkey/options',
+          {},
+        ),
+      )),
+    };
+  }
+
+  /** A new set of recovery codes, proven by one of the account's passkeys; every earlier code stops working. */
+  async regenerateRecoveryCodesWithPasskey(credential: PasskeyCredential): Promise<string[]> {
+    const body: PasskeyAssertion = { credential };
+    const answer = await send(
+      this.http.post<MfaRecoveryCodes>('/api/auth/mfa/recovery-codes/passkey', body),
+    );
+    return [...answer.recoveryCodes];
+  }
+
   /** Creation options for a new passkey; the API keeps them to verify the answer against, once. */
   async passkeyRegistrationOptions(): Promise<PasskeyOptions> {
     return {

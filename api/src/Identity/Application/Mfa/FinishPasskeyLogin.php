@@ -11,24 +11,19 @@ namespace App\Identity\Application\Mfa;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
-use App\Identity\Application\PasskeyCeremonies;
-use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Completes a login that owed a second factor with a passkey instead of a code.
- *
- * The credential is looked up among the pending account's own passkeys only, so someone else's passkey fails exactly as
- * an unknown one does. The record saved after a success carries the new signature counter.
+ * Completes a login that owed a second factor with a passkey instead of a code. What makes a passkey proof is
+ * PasskeyAssertions; this records the outcome the way a code's is recorded.
  */
 final readonly class FinishPasskeyLogin
 {
     public function __construct(
         private UserRepository $users,
-        private PasskeyRepository $passkeys,
-        private PasskeyCeremonies $ceremonies,
+        private PasskeyAssertions $assertions,
         private AuditTrail $audit,
     ) {
     }
@@ -45,25 +40,14 @@ final readonly class FinishPasskeyLogin
             throw new PasskeyRefused();
         }
 
-        $credentialId = $this->ceremonies->credentialIdOf($credentialJson);
-        $passkey = null === $credentialId ? null : $this->passkeys->ofUserAndCredentialId($user, $credentialId);
-
-        if (null === $passkey) {
-            $this->audit->record(new AuditEntry('user', $user->getId(), VerifySecondFactor::FAILED, $user->getId(), ['reason' => 'unknown_passkey']));
-
-            throw new PasskeyRefused();
-        }
-
         try {
-            $record = $this->ceremonies->verifyAssertion($optionsJson, $credentialJson, $passkey->getRecord(), $user->getId()->toRfc4122());
+            $this->assertions->verify($user, $optionsJson, $credentialJson, $now);
         } catch (PasskeyRefused $refused) {
-            $this->audit->record(new AuditEntry('user', $user->getId(), VerifySecondFactor::FAILED, $user->getId(), ['reason' => 'bad_assertion']));
+            $this->audit->record(new AuditEntry('user', $user->getId(), VerifySecondFactor::FAILED, $user->getId(), ['reason' => $refused->reason()]));
 
             throw $refused;
         }
 
-        $passkey->recordUse($record, $now);
-        $this->passkeys->save($passkey);
         $this->audit->record(new AuditEntry('user', $user->getId(), VerifySecondFactor::VERIFIED, $user->getId(), ['method' => 'passkey']));
 
         return $user;

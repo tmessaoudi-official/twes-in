@@ -282,6 +282,28 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Finish a login that owes a second factor with a passkey',
             requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
         )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/recovery-codes/passkey/options', new PathItem(post: new Operation(
+            operationId: 'recoveryCodesPasskeyOptions',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('PublicKeyCredentialOptionsJson', "Request options naming the account's passkeys"),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse('The account has no passkey'),
+            ],
+            summary: 'Start replacing the recovery codes against a passkey',
+        )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/recovery-codes/passkey', new PathItem(post: new Operation(
+            operationId: 'regenerateRecoveryCodesWithPasskey',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('MfaRecoveryCodes', 'A new set; every earlier code stops working'),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse("No options to answer, or the passkey is not one of the account's or does not verify"),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Replace the recovery codes, proven by a passkey',
+            requestBody: $bodyOf('PasskeyAssertion', 'The assertion'),
+        )));
 
         $health = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Health']))]));
         $openApi->getPaths()->addPath('/api/health', new PathItem(get: new Operation(

@@ -83,7 +83,8 @@
       "passkey_add": "Ajouter une clé d’accès",
       "passkey_adding": "En attente de votre appareil…",
       "passkey_remove": "Supprimer",
-      "passkey_remove_label": "Supprimer la clé d’accès {{name}}"
+      "passkey_remove_label": "Supprimer la clé d’accès {{name}}",
+      "passkey_recovery": "Obtenir de nouveaux codes de secours avec une clé d’accès"
     }
   },
   "hello": {

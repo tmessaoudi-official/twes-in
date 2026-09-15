@@ -180,6 +180,17 @@
                   </li>
                 }
               </ul>
+              @if (passkeysSupported) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="regenerateWithPasskey()"
+                  [disabled]="submitting()"
+                  data-testid="two-factor-passkey-recovery"
+                >
+                  {{ 'auth.two_factor.passkey_recovery' | translate }}
+                </button>
+              }
             } @else {
               <p class="text-sm opacity-80" data-testid="two-factor-passkeys-none">
                 {{ 'auth.two_factor.passkeys_none' | translate }}

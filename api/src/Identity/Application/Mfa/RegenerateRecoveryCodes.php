@@ -13,9 +13,6 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
-use App\Identity\Domain\RecoveryCode;
-use App\Identity\Domain\RecoveryCodeEntry;
-use App\Identity\Domain\RecoveryCodeRepository;
 use App\Identity\Domain\UserRepository;
 use Symfony\Component\Uid\Uuid;
 
@@ -24,7 +21,8 @@ use Symfony\Component\Uid\Uuid;
  *
  * The proof is a current authenticator code and never a recovery code: otherwise one leaked code would be enough to
  * replace all ten, and with them the only way back into an account whose authenticator is gone. The code is spent like
- * a login code, so it cannot be replayed for a second set inside its window.
+ * a login code, so it cannot be replayed for a second set inside its window. An account with a passkey can use that
+ * instead (RegenerateRecoveryCodesWithPasskey).
  */
 final readonly class RegenerateRecoveryCodes
 {
@@ -32,7 +30,7 @@ final readonly class RegenerateRecoveryCodes
 
     public function __construct(
         private UserRepository $users,
-        private RecoveryCodeRepository $recoveryCodes,
+        private IssueRecoveryCodes $issueRecoveryCodes,
         private TotpCodes $totp,
         private SecretCipher $cipher,
         private AuditTrail $audit,
@@ -69,14 +67,10 @@ final readonly class RegenerateRecoveryCodes
 
         $this->users->save($user);
 
-        $codes = RecoveryCode::generateSet();
-        $this->recoveryCodes->replaceAll($user, array_map(
-            static fn (RecoveryCode $c): RecoveryCodeEntry => new RecoveryCodeEntry($user, $c->hash(), $now),
-            $codes,
-        ));
+        $codes = $this->issueRecoveryCodes->handle($user, $now);
 
-        $this->audit->record(new AuditEntry('user', $user->getId(), self::REGENERATED, $user->getId(), ['count' => \count($codes)]));
+        $this->audit->record(new AuditEntry('user', $user->getId(), self::REGENERATED, $user->getId(), ['count' => \count($codes), 'method' => 'totp']));
 
-        return array_map(static fn (RecoveryCode $c): string => $c->raw, $codes);
+        return $codes;
     }
 }

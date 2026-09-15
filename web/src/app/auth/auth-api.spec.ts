@@ -142,6 +142,26 @@ describe('AuthApi', () => {
     await expect(refused).rejects.toEqual(new AuthRefused('invalid_code'));
   });
 
+  it('replaces the recovery codes against a passkey', async () => {
+    const options = api.recoveryCodesPasskeyOptions();
+    http
+      .expectOne({ method: 'POST', url: '/api/auth/mfa/recovery-codes/passkey/options' })
+      .flush({ challenge: 'rst' });
+    expect(await options).toEqual({ challenge: 'rst' });
+
+    const replaced = api.regenerateRecoveryCodesWithPasskey({ id: 'cred' });
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/mfa/recovery-codes/passkey' });
+    expect(request.request.body).toEqual({ credential: { id: 'cred' } });
+    request.flush({ recoveryCodes: ['eeeee-fffff'] });
+    expect(await replaced).toEqual(['eeeee-fffff']);
+
+    const refused = api.regenerateRecoveryCodesWithPasskey({ id: 'other' });
+    http
+      .expectOne('/api/auth/mfa/recovery-codes/passkey')
+      .flush({ error: 'invalid_passkey' }, { status: 422, statusText: 'Unprocessable Content' });
+    await expect(refused).rejects.toEqual(new AuthRefused('invalid_passkey'));
+  });
+
   const passkey = {
     id: '0190e6f5-0000-7000-8000-000000000001',
     name: 'Work laptop',

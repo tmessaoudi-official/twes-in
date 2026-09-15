@@ -9,12 +9,13 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Passkey;
 
-use App\Identity\Application\Mfa\BeginPasskeyLogin;
+use App\Identity\Application\Mfa\BeginPasskeyAssertion;
 use App\Identity\Application\Mfa\BeginPasskeyRegistration;
 use App\Identity\Application\Mfa\FinishPasskeyLogin;
 use App\Identity\Application\Mfa\LastSecondFactor;
 use App\Identity\Application\Mfa\PasskeyNotFound;
 use App\Identity\Application\Mfa\PasskeyRefused;
+use App\Identity\Application\Mfa\RegenerateRecoveryCodesWithPasskey;
 use App\Identity\Application\Mfa\RegisterPasskey;
 use App\Identity\Application\Mfa\RemovePasskey;
 use App\Identity\Domain\Passkey;
@@ -33,16 +34,18 @@ use Symfony\Component\Routing\Requirement\Requirement;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Passkeys: managing them from a signed-in session, and answering the second half of a login with one.
+ * Passkeys: managing them from a signed-in session, answering the second half of a login with one, and replacing the
+ * recovery codes against one.
  *
  * The two login endpoints are public in `access_control` for the reason /api/auth/mfa/verify is: no session exists yet,
- * and what authorises them is the pending marker the password step left. The login shares that endpoint's budget of
- * five attempts, since it is the same step paid another way.
+ * and what authorises them is the pending marker the password step left. The login and the replacement of the codes
+ * share that endpoint's budget of five attempts, since each is the same proof paid another way.
  */
 final readonly class PasskeyController
 {
     private const string REGISTRATION = 'registration';
     private const string LOGIN = 'login';
+    private const string RECOVERY = 'recovery';
 
     public function __construct(
         private Security $security,
@@ -54,8 +57,9 @@ final readonly class PasskeyController
         private BeginPasskeyRegistration $beginRegistration,
         private RegisterPasskey $registerPasskey,
         private RemovePasskey $removePasskey,
-        private BeginPasskeyLogin $beginLogin,
+        private BeginPasskeyAssertion $beginAssertion,
         private FinishPasskeyLogin $finishLogin,
+        private RegenerateRecoveryCodesWithPasskey $regenerateRecoveryCodes,
         private SecondFactorLogin $secondFactorLogin,
     ) {
     }
@@ -130,7 +134,7 @@ final readonly class PasskeyController
         }
 
         try {
-            $options = $this->beginLogin->handle($userId);
+            $options = $this->beginAssertion->handle($userId);
         } catch (PasskeyRefused) {
             return self::refused(Response::HTTP_UNAUTHORIZED);
         }
@@ -167,6 +171,47 @@ final readonly class PasskeyController
         }
 
         return $this->secondFactorLogin->complete($user);
+    }
+
+    #[Route('/api/auth/mfa/recovery-codes/passkey/options', name: 'api_auth_mfa_recovery_codes_passkey_options', methods: ['POST'])]
+    public function recoveryOptions(): Response
+    {
+        $userId = $this->currentUserId();
+
+        try {
+            $options = $this->beginAssertion->handle($userId);
+        } catch (PasskeyRefused) {
+            return self::refused(Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $this->challenges->remember(self::RECOVERY, $userId, $options);
+
+        return self::json($options);
+    }
+
+    #[Route('/api/auth/mfa/recovery-codes/passkey', name: 'api_auth_mfa_recovery_codes_passkey', methods: ['POST'])]
+    public function regenerateRecoveryCodes(Request $request): JsonResponse
+    {
+        $userId = $this->currentUserId();
+
+        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
+        $options = $this->challenges->take(self::RECOVERY, $userId);
+        $credential = self::credentialIn(self::body($request));
+
+        if (null === $options || null === $credential) {
+            return self::refused(Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        try {
+            $codes = $this->regenerateRecoveryCodes->handle($userId, $options, $credential);
+        } catch (PasskeyRefused) {
+            return self::refused(Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new JsonResponse(['recoveryCodes' => $codes]);
     }
 
     private function currentUserId(): Uuid

@@ -83,7 +83,8 @@
       "passkey_add": "Add a passkey",
       "passkey_adding": "Waiting for your device…",
       "passkey_remove": "Remove",
-      "passkey_remove_label": "Remove the passkey {{name}}"
+      "passkey_remove_label": "Remove the passkey {{name}}",
+      "passkey_recovery": "Get new recovery codes with a passkey"
     }
   },
   "hello": {

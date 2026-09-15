@@ -20,6 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 final class PasskeyTest extends ApiTestCase
 {
     private const string PASSWORD = 'a-long-enough-password';
+    private const string RECOVERY = '/api/auth/mfa/recovery-codes/passkey';
 
     protected function setUp(): void
     {
@@ -246,12 +247,80 @@ final class PasskeyTest extends ApiTestCase
         self::assertSame('mfa_last_factor', $this->stringAt($this->json(), 'error'));
     }
 
+    public function testAPasskeyReplacesTheRecoveryCodesOfAnAccountWhoseOnlyFactorItIs(): void
+    {
+        $authenticator = new FakeAuthenticator();
+        $first = $this->withPasskey('someone@twes.local', $authenticator);
+
+        $request = $this->recoveryOptions();
+        self::assertSame([$authenticator->id()], array_map(static fn (mixed $c): mixed => \is_array($c) ? $c['id'] ?? null : null, $this->arrayAt($request, 'allowCredentials')));
+        $this->postJson(self::RECOVERY, ['credential' => $authenticator->assert($request)]);
+
+        self::assertResponseIsSuccessful();
+        $codes = array_values(array_filter($this->arrayAt($this->json(), 'recoveryCodes'), 'is_string'));
+        self::assertCount(10, $codes);
+        self::assertSame([], array_values(array_intersect($codes, $first)));
+        self::assertSame(1, $this->audited('auth.recovery_codes_regenerated'));
+
+        // An old code no longer finishes a login; a new one does.
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->postJson('/api/auth/mfa/verify', ['code' => $first[0]]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        $this->postJson('/api/auth/mfa/verify', ['code' => $codes[0]]);
+        self::assertResponseIsSuccessful();
+    }
+
+    public function testReplacingTheCodesWithAPasskeyRefusesAStaleOrForeignAssertionOnTheBudgetOfFiveAttempts(): void
+    {
+        $theirs = new FakeAuthenticator();
+        $this->withPasskey('other@twes.local', $theirs);
+        $this->signOut();
+        $authenticator = new FakeAuthenticator();
+        $this->withPasskey('someone@twes.local', $authenticator);
+
+        // The challenge is spent by the first attempt, even a failed one, as the login's is.
+        $request = $this->recoveryOptions();
+        $this->postJson(self::RECOVERY, ['credential' => $authenticator->assert($request, challenge: FakeAuthenticator::base64Url(random_bytes(32)))]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('invalid_passkey', $this->stringAt($this->json(), 'error'));
+        $this->postJson(self::RECOVERY, ['credential' => $authenticator->assert($request)]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        // Another account's passkey proves nothing about this one.
+        $this->postJson(self::RECOVERY, ['credential' => $theirs->assert($this->recoveryOptions())]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->postJson(self::RECOVERY, ['credential' => (new FakeAuthenticator())->assert($this->recoveryOptions())]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->postJson(self::RECOVERY, ['credential' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        // The sixth attempt is refused unread, however good; and none of the five replaced anything.
+        $this->postJson(self::RECOVERY, ['credential' => $authenticator->assert($this->recoveryOptions())]);
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
+    }
+
+    public function testReplacingTheCodesWithAPasskeyNeedsASessionAndAPasskey(): void
+    {
+        $this->postJson(self::RECOVERY.'/options', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        $this->postJson(self::RECOVERY, ['credential' => []]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+
+        $this->createUser('plain@twes.local', self::PASSWORD);
+        $this->login('plain@twes.local', self::PASSWORD);
+        $this->postJson(self::RECOVERY.'/options', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('invalid_passkey', $this->stringAt($this->json(), 'error'));
+    }
+
     public function testEveryPasskeyEndpointThatChangesSomethingWantsTheCsrfHeader(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
         $this->login('someone@twes.local', self::PASSWORD);
 
-        foreach (['/api/auth/mfa/passkeys/options', '/api/auth/mfa/passkeys', '/api/auth/mfa/passkey-login/options', '/api/auth/mfa/passkey-login'] as $path) {
+        foreach (['/api/auth/mfa/passkeys/options', '/api/auth/mfa/passkeys', '/api/auth/mfa/passkey-login/options', '/api/auth/mfa/passkey-login', self::RECOVERY.'/options', self::RECOVERY] as $path) {
             $this->postJson($path, [], withCsrf: false);
             self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN, $path);
             self::assertSame('csrf_token_missing', $this->stringAt($this->json(), 'error'));
@@ -296,6 +365,15 @@ final class PasskeyTest extends ApiTestCase
     private function requestOptions(): array
     {
         $this->postJson('/api/auth/mfa/passkey-login/options', null);
+        self::assertResponseIsSuccessful();
+
+        return $this->json();
+    }
+
+    /** @return array<string, mixed> */
+    private function recoveryOptions(): array
+    {
+        $this->postJson(self::RECOVERY.'/options', null);
         self::assertResponseIsSuccessful();
 
         return $this->json();

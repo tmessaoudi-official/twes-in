@@ -54,6 +54,7 @@ describe('TwoFactorPage', () => {
     beginTotpEnrolment: ReturnType<typeof vi.fn>;
     confirmTotpEnrolment: ReturnType<typeof vi.fn>;
     regenerateRecoveryCodes: ReturnType<typeof vi.fn>;
+    regenerateRecoveryCodesWithPasskey: ReturnType<typeof vi.fn>;
     listPasskeys: ReturnType<typeof vi.fn>;
     addPasskey: ReturnType<typeof vi.fn>;
     removePasskey: ReturnType<typeof vi.fn>;
@@ -68,6 +69,7 @@ describe('TwoFactorPage', () => {
       }),
       confirmTotpEnrolment: vi.fn(),
       regenerateRecoveryCodes: vi.fn(),
+      regenerateRecoveryCodesWithPasskey: vi.fn(),
       listPasskeys: vi.fn().mockResolvedValue({ ok: true, passkeys }),
       addPasskey: vi.fn(),
       removePasskey: vi.fn(),
@@ -266,6 +268,38 @@ describe('TwoFactorPage', () => {
     await settle(rendered.fixture);
     expect(facade.beginTotpEnrolment).toHaveBeenCalledTimes(1);
     expect(rendered.query('two-factor-qr')).not.toBeNull();
+  });
+
+  it('gives an account with a passkey a new set of recovery codes against the passkey', async () => {
+    const rendered = await render({ enrolled: true, required: false, totp: false, passkeys: 1 }, [
+      laptop,
+    ]);
+    facade.regenerateRecoveryCodesWithPasskey.mockResolvedValueOnce({
+      ok: false,
+      error: 'passkey_cancelled',
+    });
+
+    rendered.query<HTMLButtonElement>('two-factor-passkey-recovery')?.click();
+    await settle(rendered.fixture);
+    expect(rendered.query('two-factor-passkey-error')?.textContent).toContain(
+      'Aucune clé utilisée',
+    );
+    expect(rendered.query('two-factor-recovery-codes')).toBeNull();
+
+    facade.regenerateRecoveryCodesWithPasskey.mockResolvedValue({
+      ok: true,
+      recoveryCodes: ['eeeee-fffff'],
+    });
+    rendered.query<HTMLButtonElement>('two-factor-passkey-recovery')?.click();
+    await settle(rendered.fixture);
+    const codes = [...(rendered.query('two-factor-recovery-codes')?.querySelectorAll('li') ?? [])];
+    expect(codes.map((item) => item.textContent?.trim())).toEqual(['eeeee-fffff']);
+  });
+
+  it('offers no passkey replacement of the codes to an account without a passkey', async () => {
+    const { query } = await render({ enrolled: true, required: false, totp: true, passkeys: 0 });
+
+    expect(query('two-factor-passkey-recovery')).toBeNull();
   });
 
   it('starts the authenticator set-up again once the last factor is removed', async () => {

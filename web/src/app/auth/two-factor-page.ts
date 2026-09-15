@@ -114,6 +114,22 @@ export class TwoFactorPage {
     }
   }
 
+  /** For an account with a passkey: using it buys a new set of recovery codes, no authenticator code needed. */
+  protected async regenerateWithPasskey(): Promise<void> {
+    if (this.submitting()) {
+      return;
+    }
+    this.submitting.set(true);
+    this.passkeyError.set(null);
+    const outcome = await this.auth.regenerateRecoveryCodesWithPasskey();
+    this.submitting.set(false);
+    if (outcome.ok) {
+      this.recoveryCodes.set(outcome.recoveryCodes);
+    } else {
+      this.passkeyError.set(outcome.error);
+    }
+  }
+
   /** For an account whose factors are passkeys only: an authenticator app is offered, never started unasked. */
   protected async startAuthenticator(): Promise<void> {
     await this.begin();

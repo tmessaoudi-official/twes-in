@@ -38,6 +38,8 @@ describe('AuthFacade', () => {
     beginTotpEnrolment: vi.fn(),
     confirmTotpEnrolment: vi.fn(),
     regenerateRecoveryCodes: vi.fn(),
+    recoveryCodesPasskeyOptions: vi.fn(),
+    regenerateRecoveryCodesWithPasskey: vi.fn(),
     passkeyRegistrationOptions: vi.fn(),
     registerPasskey: vi.fn(),
     listPasskeys: vi.fn(),
@@ -167,6 +169,25 @@ describe('AuthFacade', () => {
       ok: false,
       error: 'invalid_code',
     });
+  });
+
+  it('replaces the recovery codes against a passkey the browser produces, or says why not', async () => {
+    api.recoveryCodesPasskeyOptions.mockResolvedValue({ challenge: 'rst' });
+    client.get.mockRejectedValueOnce(new DOMException('Not allowed.', 'NotAllowedError'));
+    expect(await facade.regenerateRecoveryCodesWithPasskey()).toEqual({
+      ok: false,
+      error: 'passkey_cancelled',
+    });
+    expect(api.regenerateRecoveryCodesWithPasskey).not.toHaveBeenCalled();
+
+    client.get.mockResolvedValue({ id: 'cred' });
+    api.regenerateRecoveryCodesWithPasskey.mockResolvedValue(['eeeee-fffff']);
+    expect(await facade.regenerateRecoveryCodesWithPasskey()).toEqual({
+      ok: true,
+      recoveryCodes: ['eeeee-fffff'],
+    });
+    expect(client.get).toHaveBeenCalledWith({ challenge: 'rst' });
+    expect(api.regenerateRecoveryCodesWithPasskey).toHaveBeenCalledWith({ id: 'cred' });
   });
 
   const laptop = {

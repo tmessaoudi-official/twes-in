@@ -16,10 +16,11 @@ use App\Identity\Domain\UserRepository;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Request options for the account whose password was just accepted, naming only its own passkeys. It runs after the
- * password step, so saying that the account has no passkey tells nobody anything the password did not already prove.
+ * Request options naming only the account's own passkeys: for the second step of a login, and for replacing the recovery
+ * codes from a session. At a login it runs after the password step, so saying that the account has no passkey tells
+ * nobody anything the password did not already prove.
  */
-final readonly class BeginPasskeyLogin
+final readonly class BeginPasskeyAssertion
 {
     public function __construct(
         private UserRepository $users,
