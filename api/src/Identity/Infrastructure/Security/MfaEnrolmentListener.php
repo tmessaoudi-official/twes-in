@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Domain\UserRepository;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use Symfony\Bundle\SecurityBundle\Security;
@@ -43,6 +44,7 @@ final readonly class MfaEnrolmentListener
         private Security $security,
         private UserRepository $users,
         private MfaRequirement $requirement,
+        private SecondFactors $secondFactors,
     ) {
     }
 
@@ -71,7 +73,7 @@ final readonly class MfaEnrolmentListener
 
         $user = $this->users->ofId($account->getId());
 
-        if (null === $user || $user->hasTotp() || !$this->requirement->appliesTo($user)) {
+        if (null === $user || $this->secondFactors->has($user) || !$this->requirement->appliesTo($user)) {
             return;
         }
 

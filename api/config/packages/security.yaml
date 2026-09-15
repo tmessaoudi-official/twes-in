@@ -52,6 +52,8 @@ security:
         # authorises it is the pending marker the password step left in this same session, and the endpoint
         # is rate limited (ruling of 2026-09-10).
         - { path: ^/api/auth/mfa/verify$, roles: PUBLIC_ACCESS }
+        # The same half of a login, paid with a passkey instead of a code.
+        - { path: ^/api/auth/mfa/passkey-login(/options)?$, roles: PUBLIC_ACCESS }
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:

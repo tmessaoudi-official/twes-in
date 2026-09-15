@@ -35,7 +35,8 @@
     "symfony/twig-bundle": "8.1.*",
     "symfony/uid": "8.1.*",
     "symfony/validator": "8.1.*",
-    "symfony/yaml": "8.1.*"
+    "symfony/yaml": "8.1.*",
+    "web-auth/webauthn-lib": "^5.3.8"
   },
   "config": {
     "allow-plugins": {

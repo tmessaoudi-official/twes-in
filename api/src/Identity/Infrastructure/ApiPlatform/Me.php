@@ -39,13 +39,13 @@ final readonly class Me
     }
 
     /** @param list<string> $modules keys of the modules the working company has on, none without one */
-    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = []): self
+    public static function of(User $user, ?WorkingContext $context, bool $mfaRequired = false, array $modules = [], int $passkeys = 0): self
     {
         return new self(
             new MeUser($user->getId()->toRfc4122(), $user->getEmail()->value, $user->getDisplayName(), $user->getLocale(), $user->isPlatformOperator()),
             null === $context ? null : new MeCompany($context->companyId, $context->name, $context->countryCode, $context->currency, $context->locale, $context->timezone, $context->status, $context->role),
             null === $context ? [] : $context->permissions,
-            new MeMfa($user->hasTotp(), $mfaRequired),
+            new MeMfa($user->hasTotp() || $passkeys > 0, $mfaRequired, $user->hasTotp(), $passkeys),
             $modules,
         );
     }

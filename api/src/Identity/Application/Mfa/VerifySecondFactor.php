@@ -38,6 +38,7 @@ final readonly class VerifySecondFactor
         private TotpCodes $totp,
         private SecretCipher $cipher,
         private AuditTrail $audit,
+        private SecondFactors $secondFactors,
     ) {
     }
 
@@ -47,7 +48,7 @@ final readonly class VerifySecondFactor
         $now ??= new \DateTimeImmutable();
         $user = $this->users->ofId($userId);
 
-        if (null === $user || !$user->hasTotp()) {
+        if (null === $user || !$this->secondFactors->has($user)) {
             // Nothing to verify against. Audited without a user id, because there may not be one.
             $this->audit->record(new AuditEntry('user', $user?->getId(), self::FAILED, null, ['reason' => 'no_factor']));
 

@@ -34,7 +34,10 @@
       "mfa_not_pending": "Cette connexion a expiré. Saisissez de nouveau votre mot de passe.",
       "invalid_code": "Ce code n’est pas valide. Vérifiez l’heure de votre appareil et réessayez.",
       "mfa_enrolment_required": "Une entreprise dont vous êtes membre exige la vérification en deux étapes. Activez-la pour continuer.",
-      "mfa_already_enrolled": "La vérification en deux étapes est déjà activée pour ce compte."
+      "mfa_already_enrolled": "La vérification en deux étapes est déjà activée pour ce compte.",
+      "invalid_passkey": "Cette clé d’accès n’a pas pu être vérifiée. Réessayez ou utilisez un autre moyen de connexion.",
+      "mfa_last_factor": "Une entreprise dont vous êtes membre exige la vérification en deux étapes : votre dernier moyen de vérification ne peut pas être supprimé.",
+      "passkey_not_found": "Cette clé d’accès n’existe plus."
     },
     "mfa": {
       "title": "Vérification en deux étapes",

@@ -31,6 +31,8 @@ services:
       DEFAULT_URI: "http://localhost:${WEB_PORT:-8090}"
       # Development key. A deployment overrides it; see api/.env.
       APP_MFA_KEY: "${APP_MFA_KEY:-ojCIqjd0KzQ4JrX9wyEpy58LdtCAQ56MTwM8CWA0XOc=}"
+      APP_WEBAUTHN_RP_ID: "${APP_WEBAUTHN_RP_ID:-localhost}"
+      APP_WEBAUTHN_ORIGINS: "http://localhost:${WEB_PORT:-8090}"
       # Development realtime secrets, shared with the centrifugo service below; see api/.env.
       REALTIME_TOKEN_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
       REALTIME_API_URL: http://centrifugo:8000/api

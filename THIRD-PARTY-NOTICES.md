@@ -7,13 +7,14 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 94 runtime, 51 dev
+## api (Composer) — 104 runtime, 51 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
 | api-platform/core | 4.3.19 | MIT | runtime |
 | async-aws/core | 1.30.0 | MIT | runtime |
 | async-aws/s3 | 3.5.0 | MIT | runtime |
+| brick/math | 0.20.0 | MIT | runtime |
 | clue/ndjson-react | 1.3.0 | MIT | dev |
 | composer/pcre | 3.4.0 | MIT | dev |
 | composer/semver | 3.4.4 | MIT | runtime |
@@ -47,7 +48,11 @@ not compiled into what we distribute, and are not listed here.
 | paragonie/constant_time_encoding | 3.1.3 | MIT | runtime |
 | phar-io/manifest | 2.0.4 | BSD-3-Clause | dev |
 | phar-io/version | 3.2.1 | BSD-3-Clause | dev |
+| phpdocumentor/reflection-common | 2.2.0 | MIT | runtime |
+| phpdocumentor/reflection-docblock | 6.0.3 | MIT | runtime |
+| phpdocumentor/type-resolver | 2.0.0 | MIT | runtime |
 | phpstan/extension-installer | 1.4.3 | MIT | dev |
+| phpstan/phpdoc-parser | 2.3.5 | MIT | runtime |
 | phpstan/phpstan | 2.2.14 | MIT | dev |
 | phpstan/phpstan-doctrine | 2.0.28 | MIT | dev |
 | phpstan/phpstan-symfony | 2.0.20 | MIT | dev |
@@ -85,7 +90,9 @@ not compiled into what we distribute, and are not listed here.
 | sebastian/recursion-context | 8.0.1 | BSD-3-Clause | dev |
 | sebastian/type | 7.0.2 | BSD-3-Clause | dev |
 | sebastian/version | 7.0.0 | BSD-3-Clause | dev |
+| spomky-labs/cbor-php | 3.4.2 | MIT | runtime |
 | spomky-labs/otphp | 11.5.0 | MIT | runtime |
+| spomky-labs/pki-framework | 1.6.3 | MIT | runtime |
 | staabm/side-effects-detector | 1.0.5 | MIT | dev |
 | symfony/asset | 8.1.0 | MIT | runtime |
 | symfony/browser-kit | 8.1.5 | MIT | dev |
@@ -155,6 +162,9 @@ not compiled into what we distribute, and are not listed here.
 | symfony/yaml | 8.1.6 | MIT | runtime |
 | theseer/tokenizer | 2.0.1 | BSD-3-Clause | dev |
 | twig/twig | 3.28.0 | BSD-3-Clause | runtime |
+| web-auth/cose-lib | 4.7.1 | MIT | runtime |
+| web-auth/webauthn-lib | 5.3.8 | MIT | runtime |
+| webmozart/assert | 2.4.1 | MIT | runtime |
 | willdurand/negotiation | 3.1.0 | MIT | runtime |
 
 ## web (npm) — 34 runtime, 624 dev

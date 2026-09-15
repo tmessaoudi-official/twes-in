@@ -60,7 +60,7 @@ const me: Me = {
   },
   company: null,
   permissions: [],
-  mfa: { enrolled: false, required: false },
+  mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
   modules: [],
 };
 

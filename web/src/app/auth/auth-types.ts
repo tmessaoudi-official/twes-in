@@ -20,6 +20,10 @@ export type LoginError =
   | 'invalid_code'
   | 'mfa_enrolment_required'
   | 'mfa_already_enrolled'
+  // Passkeys (G1c): one that does not verify, the last factor a company requires, and one already gone.
+  | 'invalid_passkey'
+  | 'mfa_last_factor'
+  | 'passkey_not_found'
   | 'network';
 
 export interface Credentials {

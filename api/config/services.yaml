@@ -30,6 +30,10 @@ parameters:
     app.mfa.pending_ttl: 'PT5M'
     # The issuer an authenticator app shows beside the account.
     app.mfa.issuer: '%app.product_name%'
+    # Passkeys are bound to a relying party: the registrable domain the SPA is served under, and every exact origin
+    # (scheme, host and port) it is served from. Never derived from the request's Host header.
+    app.webauthn.rp_id: '%env(APP_WEBAUTHN_RP_ID)%'
+    app.webauthn.origins: '%env(csv:APP_WEBAUTHN_ORIGINS)%'
     # Realtime notifications through Centrifugo (docs/SPEC.md § 7, 2026-09-13). The token key signs the browser's
     # connection token and is the same secret Centrifugo holds as client.token.hmac_secret_key; the API key
     # authorises publishing through its HTTP API. The token is short-lived: the browser asks for a new one.
@@ -109,6 +113,16 @@ services:
     App\Identity\Application\Mfa\BeginTotpEnrolment:
         arguments:
             $issuer: '%app.mfa.issuer%'
+
+    App\Identity\Infrastructure\Passkey\WebauthnPasskeyCeremonies:
+        arguments:
+            $rpId: '%app.webauthn.rp_id%'
+            $rpName: '%app.product_name%'
+            $origins: '%app.webauthn.origins%'
+
+    App\Identity\Infrastructure\Passkey\PasskeyChallenges:
+        arguments:
+            $ttl: '%app.mfa.pending_ttl%'
 
     App\Shared\Infrastructure\Realtime\CentrifugoTokens:
         arguments:

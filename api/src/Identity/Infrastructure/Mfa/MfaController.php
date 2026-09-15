@@ -16,6 +16,7 @@ use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
+use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -43,6 +44,7 @@ final readonly class MfaController
         private BeginTotpEnrolment $beginEnrolment,
         private ConfirmTotpEnrolment $confirmEnrolment,
         private RegenerateRecoveryCodes $regenerateRecoveryCodes,
+        private SecondFactorLogin $secondFactorLogin,
     ) {
     }
 
@@ -66,12 +68,7 @@ final readonly class MfaController
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         }
 
-        // Only now does a session exist. `login()` dispatches the success event, so the audit row and the
-        // session id rotation are the same ones an MFA-less login gets.
-        $this->pending->close();
-
-        return $this->security->login(SecurityUser::of($user), 'json_login')
-            ?? new JsonResponse(null, Response::HTTP_NO_CONTENT);
+        return $this->secondFactorLogin->complete($user);
     }
 
     /** Step one of enrolment. Needs a full session: this changes the account, so it is not part of signing in. */

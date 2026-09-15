@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Identity\Infrastructure\Security;
 
+use App\Identity\Application\Mfa\SecondFactors;
 use App\Identity\Domain\UserRepository;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\Security\Http\Event\CheckPassportEvent;
@@ -27,6 +28,7 @@ final readonly class SecondFactorListener
     public function __construct(
         private UserRepository $users,
         private PendingSecondFactor $pending,
+        private SecondFactors $secondFactors,
     ) {
     }
 
@@ -40,7 +42,7 @@ final readonly class SecondFactorListener
 
         $user = $this->users->ofId($account->getId());
 
-        if (null === $user || !$user->hasTotp()) {
+        if (null === $user || !$this->secondFactors->has($user)) {
             return;
         }
 
