@@ -1,0 +1,14 @@
+{# The mail an owner receives when an operator approves their company. Plain, inline-styled HTML. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('fr') }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <h1 style="font-size: 20px;">{{ 'company_approved.heading'|trans({'%company%': companyName}, 'emails') }}</h1>
+    <p>{{ 'company_approved.intro'|trans({'%company%': companyName, '%product%': productName}, 'emails') }}</p>
+    <p>
+      <a href="{{ loginUrl }}" style="display: inline-block; padding: 10px 16px; background: #1a56db; color: #fff; text-decoration: none; border-radius: 6px;">
+        {{ 'company_approved.call_to_action'|trans({}, 'emails') }}
+      </a>
+    </p>
+    <p style="font-size: 12px; color: #888;">{{ productName }}</p>
+  </body>
+</html>

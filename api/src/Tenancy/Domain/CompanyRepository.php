@@ -20,5 +20,8 @@ interface CompanyRepository
     /** @return list<Company> every company, by name */
     public function all(): array;
 
+    /** @return list<Company> the companies in that status, oldest first */
+    public function ofStatus(string $status): array;
+
     public function save(Company $company): void;
 }

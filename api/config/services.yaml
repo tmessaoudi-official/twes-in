@@ -110,6 +110,13 @@ services:
         arguments:
             $sender: '%app.mail.sender%'
             $productName: '%app.product_name%'
+    App\Tenancy\Application\Company\DecideCompanyApproval:
+        arguments:
+            $loginUrl: '%app.signup.login_url%'
+    App\Tenancy\Infrastructure\Mail\SymfonyCompanyApprovalMailer:
+        arguments:
+            $sender: '%app.mail.sender%'
+            $productName: '%app.product_name%'
     App\Identity\Infrastructure\Password\HibpBreachedPasswordCheck:
         arguments:
             $enabled: '%app.password.breach_check_enabled%'

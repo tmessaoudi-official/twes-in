@@ -35,6 +35,11 @@ final readonly class DoctrineCompanyRepository implements CompanyRepository
         return $this->entityManager->getRepository(Company::class)->findBy([], ['name' => 'ASC']);
     }
 
+    public function ofStatus(string $status): array
+    {
+        return $this->entityManager->getRepository(Company::class)->findBy(['status' => $status], ['createdAt' => 'ASC', 'name' => 'ASC']);
+    }
+
     public function save(Company $company): void
     {
         $this->entityManager->persist($company);

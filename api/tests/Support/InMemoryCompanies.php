@@ -44,6 +44,11 @@ final class InMemoryCompanies implements CompanyRepository
         return $this->companies;
     }
 
+    public function ofStatus(string $status): array
+    {
+        return array_values(array_filter($this->companies, static fn (Company $company) => $company->getStatus() === $status));
+    }
+
     public function save(Company $company): void
     {
         if (!\in_array($company, $this->companies, true)) {

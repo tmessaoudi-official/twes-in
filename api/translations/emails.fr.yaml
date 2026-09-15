@@ -20,3 +20,8 @@ signup:
         intro: "Quelqu'un a demandé à ouvrir un compte %product% avec cette adresse, qui en a déjà un."
         call_to_action: 'Se connecter'
         ignore: "Si ce n'était pas vous, ignorez ce message : rien n'a changé."
+company_approved:
+    subject: '%company% est ouverte sur %product%'
+    heading: '%company% est approuvée'
+    intro: "L'équipe %product% a approuvé %company%. Vous et votre équipe pouvez vous connecter et commencer."
+    call_to_action: 'Se connecter'

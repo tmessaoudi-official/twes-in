@@ -19,3 +19,8 @@ signup:
         intro: 'Someone asked to open a %product% account with this address, which already has one.'
         call_to_action: 'Sign in'
         ignore: 'If that was not you, ignore this message: nothing has changed.'
+company_approved:
+    subject: '%company% is open on %product%'
+    heading: '%company% is approved'
+    intro: 'The %product% team approved %company%. You and your team can sign in and start now.'
+    call_to_action: 'Sign in'
