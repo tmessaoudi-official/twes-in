@@ -35,7 +35,8 @@ final class SettingsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density'], array_column($rows, 'key'));
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar'], array_column($rows, 'key'));
+        self::assertSame('expanded', $rows[3]['value']);
         $accent = $rows[0];
         self::assertSame('#1f6feb', $accent['value']);
         self::assertSame('#1f6feb', $accent['default']);

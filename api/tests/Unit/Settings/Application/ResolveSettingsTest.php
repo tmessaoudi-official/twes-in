@@ -105,10 +105,10 @@ final class ResolveSettingsTest extends TestCase
         $resolved = $this->resolve->handle(SettingChain::Presentation, $this->context());
 
         self::assertSame(
-            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.list.members', 'presentation.list.members.views'],
+            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.list.members', 'presentation.list.members.views'],
             array_map(static fn (ResolvedSetting $setting) => $setting->key, $resolved),
         );
-        self::assertSame($layout, $resolved[3]->value);
+        self::assertSame($layout, $resolved[4]->value);
     }
 
     public function testASettingOutsideTheCatalogueCannotBeResolved(): void

@@ -5,17 +5,32 @@
   {{ 'shell.skip' | translate }}
 </a>
 
-<mat-sidenav-container class="min-h-full bg-surface">
+<!-- autosize: the container measures the sidebar again when it turns into a rail, not only when it opens. -->
+<mat-sidenav-container class="min-h-full bg-surface" autosize>
   <mat-sidenav
     #drawer
     [mode]="handset() ? 'over' : 'side'"
     [opened]="!handset()"
     class="w-64 border-r border-outline-variant bg-surface-container-low"
+    [style.width.px]="rail() ? 72 : null"
   >
-    <nav [attr.aria-label]="'shell.navigation' | translate" class="pb-4">
-      <div class="flex h-16 items-center gap-2 px-5">
+    <nav
+      [attr.aria-label]="'shell.navigation' | translate"
+      class="pb-4"
+      data-testid="shell-nav"
+      [attr.data-sidebar]="rail() ? 'rail' : 'expanded'"
+    >
+      <div
+        class="flex h-16 items-center gap-2"
+        [class.px-5]="!rail()"
+        [class.justify-center]="rail()"
+      >
         <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
-        <span class="text-lg font-semibold tracking-tight" data-testid="brand">
+        <span
+          class="text-lg font-semibold tracking-tight"
+          [class.sr-only]="rail()"
+          data-testid="brand"
+        >
           {{ 'app.name' | translate }}
         </span>
       </div>
@@ -23,6 +38,7 @@
         <h2
           [id]="'nav-section-' + group.section"
           class="px-6 pb-1 pt-4 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+          [class.sr-only]="rail()"
         >
           {{ 'nav.sections.' + group.section | translate }}
         </h2>
@@ -37,10 +53,15 @@
               [activated]="active.isActive"
               [attr.aria-current]="active.isActive ? 'page' : null"
               [attr.data-testid]="'nav-' + entry.key"
+              [matTooltip]="entry.labelKey | translate"
+              matTooltipPosition="right"
+              [matTooltipDisabled]="!rail()"
               (click)="handset() && drawer.close()"
             >
               <mat-icon matListItemIcon aria-hidden="true">{{ entry.icon }}</mat-icon>
-              <span matListItemTitle>{{ entry.labelKey | translate }}</span>
+              <span matListItemTitle [class.sr-only]="rail()">{{
+                entry.labelKey | translate
+              }}</span>
             </a>
           }
         </mat-nav-list>
@@ -60,6 +81,17 @@
             data-testid="menu-toggle"
           >
             <mat-icon aria-hidden="true">menu</mat-icon>
+          </button>
+        } @else {
+          <button
+            mat-icon-button
+            type="button"
+            (click)="theme.toggleSidebar()"
+            [attr.aria-label]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
+            [attr.aria-keyshortcuts]="'['"
+            data-testid="sidebar-toggle"
+          >
+            <mat-icon aria-hidden="true">{{ rail() ? 'menu' : 'menu_open' }}</mat-icon>
           </button>
         }
         <span class="flex-1"></span>

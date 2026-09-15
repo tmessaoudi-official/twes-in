@@ -107,6 +107,20 @@ describe('ThemeFacade', () => {
     expect(root.classList.contains('density-compact')).toBe(false);
   });
 
+  it('toggles the sidebar between expanded and a rail, and keeps it for the next page load', () => {
+    const facade = start();
+    expect(facade.sidebar()).toBe('expanded');
+    facade.toggleSidebar();
+    TestBed.tick();
+    expect(facade.sidebar()).toBe('rail');
+
+    const reloaded = start();
+    expect(reloaded.sidebar()).toBe('rail');
+    reloaded.toggleSidebar();
+    TestBed.tick();
+    expect(reloaded.sidebar()).toBe('expanded');
+  });
+
   it('keeps scheme, density and accent for the next page load', () => {
     const facade = start();
     facade.setScheme('dark');

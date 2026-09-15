@@ -35,6 +35,8 @@ class StaticLoader implements TranslateLoader {
         language: 'Langue',
         dark_on: 'Mode sombre',
         dark_off: 'Mode clair',
+        collapse_menu: 'Réduire le menu',
+        expand_menu: 'Déployer le menu',
       },
       languages: { fr: 'Français', en: 'English' },
     });
@@ -86,6 +88,8 @@ describe('AppShell', () => {
     toggleScheme: vi.fn(),
     density: signal<'comfortable' | 'compact'>('comfortable'),
     toggleDensity: vi.fn(),
+    sidebar: signal<'expanded' | 'rail'>('expanded'),
+    toggleSidebar: vi.fn(),
   };
   const language = { current: signal('fr'), use: vi.fn(async () => undefined) };
 
@@ -93,6 +97,7 @@ describe('AppShell', () => {
     me.set(owner);
     permissions.set(['user.read']);
     modules.set(['customers']);
+    theme.sidebar.set('expanded');
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [AppShell],
@@ -179,6 +184,46 @@ describe('AppShell', () => {
 
     expect(byTestId('nav-customers')).toBeNull();
     expect(byTestId('nav-home')).not.toBeNull();
+  });
+
+  it('collapses the sidebar to a rail from the top bar, every entry still named', async () => {
+    const { fixture, byTestId, click } = await render();
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+    expect(byTestId('sidebar-toggle')?.getAttribute('aria-label')).toBe('Réduire le menu');
+    expect(byTestId('nav-home')?.classList.contains('mat-mdc-tooltip-disabled')).toBe(true);
+
+    await click('sidebar-toggle');
+    expect(theme.toggleSidebar).toHaveBeenCalledTimes(1);
+
+    theme.sidebar.set('rail');
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+    expect(byTestId('sidebar-toggle')?.getAttribute('aria-label')).toBe('Déployer le menu');
+    expect(byTestId('nav-home')?.querySelector('.sr-only')?.textContent).toContain('Accueil');
+    expect(byTestId('nav-home')?.classList.contains('mat-mdc-tooltip-disabled')).toBe(false);
+  });
+
+  it('toggles the sidebar with the [ key, but not while typing or with a shortcut', async () => {
+    const { el } = await render();
+    const press = (target: EventTarget, init: KeyboardEventInit = {}) =>
+      target.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true, ...init }));
+
+    press(document.body);
+    expect(theme.toggleSidebar).toHaveBeenCalledTimes(1);
+
+    const input = document.createElement('input');
+    el.appendChild(input);
+    press(input);
+    press(document.body, { ctrlKey: true });
+    press(document.body, { metaKey: true });
+    input.remove();
+    expect(theme.toggleSidebar).toHaveBeenCalledTimes(1);
+
+    // AltGr, which types [ on a French keyboard, reports Ctrl and Alt together.
+    press(document.body, { ctrlKey: true, altKey: true });
+    expect(theme.toggleSidebar).toHaveBeenCalledTimes(2);
   });
 
   it('names the signed-in user on the account menu', async () => {

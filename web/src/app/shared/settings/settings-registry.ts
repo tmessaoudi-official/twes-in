@@ -6,6 +6,8 @@ import { NO_LIST_PREFERENCES } from '../list/list-types';
 import { type SettingDefinition, UnregisteredSetting } from './settings-facade';
 
 export type Density = 'comfortable' | 'compact';
+/** The sidebar on a wide screen: icons and labels, or icons alone with the labels as tooltips. */
+export type SidebarState = 'expanded' | 'rail';
 
 /**
  * The accent used until someone chooses one; the platform → company → role → user chain takes over at G3b
@@ -44,6 +46,11 @@ export const PRESENTATION = {
     'presentation.density',
     'comfortable',
     oneOf('comfortable', 'compact'),
+  ),
+  sidebar: defineSetting<SidebarState>(
+    'presentation.sidebar',
+    'expanded',
+    oneOf('expanded', 'rail'),
   ),
 } as const;
 

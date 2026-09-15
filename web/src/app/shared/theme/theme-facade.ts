@@ -26,6 +26,7 @@ export class ThemeFacade {
   readonly accent = this.settings.value(PRESENTATION.accent);
   readonly scheme = this.settings.value(PRESENTATION.scheme);
   readonly density = this.settings.value(PRESENTATION.density);
+  readonly sidebar = this.settings.value(PRESENTATION.sidebar);
 
   constructor() {
     effect(() => {
@@ -59,5 +60,9 @@ export class ThemeFacade {
 
   toggleDensity(): void {
     this.setDensity(this.density() === 'compact' ? 'comfortable' : 'compact');
+  }
+
+  toggleSidebar(): void {
+    this.settings.set(PRESENTATION.sidebar, this.sidebar() === 'rail' ? 'expanded' : 'rail');
   }
 }

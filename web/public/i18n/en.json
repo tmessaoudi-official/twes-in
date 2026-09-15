@@ -284,7 +284,9 @@
     "dark_on": "Dark mode",
     "dark_off": "Light mode",
     "density_compact": "Compact density",
-    "density_comfortable": "Comfortable density"
+    "density_comfortable": "Comfortable density",
+    "collapse_menu": "Collapse the menu",
+    "expand_menu": "Expand the menu"
   },
   "languages": {
     "fr": "Français",
@@ -487,7 +489,8 @@
     "presentation": {
       "accent": "Accent colour",
       "scheme": "Colour scheme",
-      "density": "Density"
+      "density": "Density",
+      "sidebar": "Sidebar"
     },
     "choices": {
       "document": {
@@ -504,6 +507,10 @@
         "density": {
           "comfortable": "Comfortable",
           "compact": "Compact"
+        },
+        "sidebar": {
+          "expanded": "Expanded",
+          "rail": "Icons only"
         }
       }
     },

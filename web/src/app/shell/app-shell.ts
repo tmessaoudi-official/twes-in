@@ -17,6 +17,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
@@ -58,11 +59,13 @@ export function initialsOf(displayName: string): string {
     MatButtonModule,
     MatMenuModule,
     MatDividerModule,
+    MatTooltipModule,
     TranslatePipe,
     CompanySwitcher,
     NotificationBell,
   ],
   templateUrl: './app-shell.html',
+  host: { '(document:keydown)': 'onKeydown($event)' },
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppShell {
@@ -91,6 +94,27 @@ export class AppShell {
     ),
   );
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
+  /** On a wide screen the sidebar may be a rail of icons; a phone always gets the full drawer. */
+  protected readonly rail = computed(() => !this.handset() && this.theme.sidebar() === 'rail');
+
+  /**
+   * `[` collapses or expands the sidebar, unless someone is typing, a menu or dialog is open, or another shortcut
+   * is meant. AltGr, which types `[` on a French keyboard, may report Ctrl and Alt together, so only one of them
+   * alone counts as a shortcut.
+   */
+  protected onKeydown(event: KeyboardEvent): void {
+    if (event.key !== '[' || event.defaultPrevented || event.metaKey) return;
+    if (event.ctrlKey !== event.altKey || this.handset()) return;
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest('input, textarea, select, [contenteditable], .cdk-overlay-container')
+    ) {
+      return;
+    }
+    event.preventDefault();
+    this.theme.toggleSidebar();
+  }
 
   protected async logout(): Promise<void> {
     this.signingOut.set(true);
