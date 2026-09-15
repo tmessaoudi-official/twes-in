@@ -25,6 +25,7 @@ use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Module\Products\Domain\ProductRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -48,6 +49,7 @@ final readonly class ManageInvoices
 
     public function __construct(
         private InvoiceRepository $invoices,
+        private Transactions $transactions,
         private CustomerRepository $customers,
         private ProductRepository $products,
         private UnitRepository $units,
@@ -69,6 +71,12 @@ final readonly class ManageInvoices
     public function get(Company $company, Uuid $id): Invoice
     {
         return $this->invoices->ofIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
+    }
+
+    /** Held until the transaction ends and read as it stands: a draft check on it cannot be overtaken by another request. */
+    private function locked(Company $company, Uuid $id): Invoice
+    {
+        return $this->invoices->lockedOfIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
     }
 
     /** @throws InvalidInvoice */
@@ -127,16 +135,18 @@ final readonly class ManageInvoices
      */
     public function revise(Company $company, Uuid $id, InvoiceInput $input, ?Uuid $actorUserId): Invoice
     {
-        $invoice = $this->get($company, $id);
-        [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, $invoice);
-        $changed = $invoice->revise($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
-        if ([] !== $changed) {
-            $this->totals->checked($invoice);
-            $this->invoices->save($invoice);
-            $this->record($company, $invoice->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Invoice {
+            $invoice = $this->locked($company, $id);
+            [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, $invoice);
+            $changed = $invoice->revise($establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
+            if ([] !== $changed) {
+                $this->totals->checked($invoice);
+                $this->invoices->save($invoice);
+                $this->record($company, $invoice->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $invoice;
+            return $invoice;
+        });
     }
 
     /**
@@ -145,12 +155,14 @@ final readonly class ManageInvoices
      */
     public function cancel(Company $company, Uuid $id, ?Uuid $actorUserId): Invoice
     {
-        $invoice = $this->get($company, $id);
-        $invoice->cancel($this->clock->now());
-        $this->invoices->save($invoice);
-        $this->record($company, $invoice->getId(), self::CANCELLED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $id, $actorUserId): Invoice {
+            $invoice = $this->locked($company, $id);
+            $invoice->cancel($this->clock->now());
+            $this->invoices->save($invoice);
+            $this->record($company, $invoice->getId(), self::CANCELLED, [], $actorUserId);
 
-        return $invoice;
+            return $invoice;
+        });
     }
 
     /**

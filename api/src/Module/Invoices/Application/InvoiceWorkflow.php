@@ -65,7 +65,10 @@ final readonly class InvoiceWorkflow
     public function issue(Company $company, Uuid $id, ?Uuid $actorUserId): Invoice
     {
         $invoice = $this->transactions->run(function () use ($company, $id, $actorUserId): Invoice {
-            $invoice = $this->invoices->ofIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
+            // Held until this transaction ends and read as it stands, before the series: a request that read the draft
+            // before another issued it is refused here, and takes no number.
+            $invoice = $this->invoices->lockedOfIdInCompany($id, $company->getId()) ?? throw new InvoiceNotFound();
+            $invoice->assertDraft('is issued');
             $type = $invoice->getType();
             $allocated = $this->numbers->allocate($company, $invoice->getEstablishment(), $type->value);
             if ($this->invoices->numberTaken($company->getId(), $type, $allocated->number)) {

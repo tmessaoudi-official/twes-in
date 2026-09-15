@@ -336,7 +336,7 @@ class DeliveryNote
         }
     }
 
-    private function assertDraft(string $what): void
+    public function assertDraft(string $what): void
     {
         if (DeliveryNoteStatus::Draft !== $this->status) {
             throw new DeliveryNoteNotDraft(\sprintf('The delivery note %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));

@@ -25,6 +25,14 @@ final class InMemoryInvoices implements InvoiceRepository
     /** When given, a lock is refused outside its transaction, as the database refuses one. */
     public ?Transactions $transactions = null;
 
+    /**
+     * What an unlocked read hands out instead of the stored invoice: a copy read before another request committed.
+     * A locked read waits for that commit and reads the row as it stands, as `FOR UPDATE` with a refresh does.
+     *
+     * @var array<string, Invoice>
+     */
+    public array $staleReads = [];
+
     public function ofCompany(Uuid $companyId): array
     {
         $mine = array_values(array_filter($this->invoices, static fn (Invoice $i) => $i->getCompany()->getId()->equals($companyId)));
@@ -34,6 +42,16 @@ final class InMemoryInvoices implements InvoiceRepository
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice
+    {
+        $stale = $this->staleReads[$id->toRfc4122()] ?? null;
+        if (null !== $stale && $stale->getCompany()->getId()->equals($companyId)) {
+            return $stale;
+        }
+
+        return $this->stored($id, $companyId);
+    }
+
+    private function stored(Uuid $id, Uuid $companyId): ?Invoice
     {
         foreach ($this->ofCompany($companyId) as $invoice) {
             if ($invoice->getId()->equals($id)) {
@@ -50,7 +68,7 @@ final class InMemoryInvoices implements InvoiceRepository
             throw new \LogicException('An invoice is locked inside a transaction.');
         }
 
-        return $this->ofIdInCompany($id, $companyId);
+        return $this->stored($id, $companyId);
     }
 
     public function carryingDeliveryNoteLines(Uuid $companyId, array $deliveryNoteLineIds): array

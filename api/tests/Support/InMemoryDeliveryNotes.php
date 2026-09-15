@@ -23,6 +23,14 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
     /** When given, a lock is refused outside its transaction, as the database refuses one. */
     public ?Transactions $transactions = null;
 
+    /**
+     * What an unlocked read hands out instead of the stored note: a copy read before another request committed. A
+     * locked read waits for that commit and reads the row as it stands, as `FOR UPDATE` with a refresh does.
+     *
+     * @var array<string, DeliveryNote>
+     */
+    public array $staleReads = [];
+
     public function ofCompany(Uuid $companyId): array
     {
         $mine = array_values(array_filter($this->notes, static fn (DeliveryNote $n) => $n->getCompany()->getId()->equals($companyId)));
@@ -33,6 +41,11 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote
     {
+        $stale = $this->staleReads[$id->toRfc4122()] ?? null;
+        if (null !== $stale && $stale->getCompany()->getId()->equals($companyId)) {
+            return $stale;
+        }
+
         foreach ($this->ofCompany($companyId) as $note) {
             if ($note->getId()->equals($id)) {
                 return $note;

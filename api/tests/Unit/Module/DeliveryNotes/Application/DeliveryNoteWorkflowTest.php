@@ -24,6 +24,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteCancelled;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteStatus;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteTransitionRefused;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteValidated;
@@ -206,6 +207,34 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
         $this->expectException(DeliveryNoteNotFound::class);
         $this->workflow->deliver($this->globex, $delivered->getId(), null, null);
+    }
+
+    public function testARequestThatReadTheNoteBeforeAnotherChangedItIsRefusedOnceItHoldsTheNote(): void
+    {
+        $note = $this->draft();
+        $readAsDraft = clone $note;
+        $this->workflow->validate($this->company, $note->getId(), null);
+        $this->notes->staleReads[$note->getId()->toRfc4122()] = $readAsDraft;
+        try {
+            $this->workflow->validate($this->company, $note->getId(), null);
+            self::fail('a validated note was validated again from a copy read while it was a draft');
+        } catch (DeliveryNoteNotDraft) {
+        }
+
+        $readAsValidated = clone $note;
+        $this->notes->staleReads = [];
+        $this->workflow->cancel($this->company, $note->getId(), null);
+        $this->notes->staleReads[$note->getId()->toRfc4122()] = $readAsValidated;
+        try {
+            $this->workflow->cancel($this->company, $note->getId(), null);
+            self::fail('a cancelled note was cancelled again from a copy read while it was validated');
+        } catch (DeliveryNoteTransitionRefused) {
+        }
+
+        self::assertSame([DeliveryNoteStatus::Cancelled, 'BL-2026-00001'], [$note->getStatus(), $note->getNumber()]);
+        self::assertSame(['delivery_note.validated', 'delivery_note.cancelled'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
+        self::assertCount(2, $this->events->published, 'the note was announced validated once and cancelled once, so its stock moved once each way');
+        self::assertSame('BL-2026-00002', $this->workflow->validate($this->company, $this->draft()->getId(), null)->getNumber(), 'the refused attempt took no number');
     }
 
     public function testANoteOnAnInvoiceThatIsNotCancelledIsNotCancelled(): void

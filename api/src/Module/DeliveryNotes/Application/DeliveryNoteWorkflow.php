@@ -62,7 +62,10 @@ final readonly class DeliveryNoteWorkflow
     public function validate(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
     {
         $note = $this->transactions->run(function () use ($company, $id, $actorUserId): DeliveryNote {
-            $note = $this->get($company, $id);
+            // Held until this transaction ends and read as it stands, before the series: a request that read the draft
+            // before another validated it is refused here, and takes no number.
+            $note = $this->locked($company, $id);
+            $note->assertDraft('is validated');
             $allocated = $this->numbers->allocate($company, $note->getEstablishment(), self::DOCUMENT_TYPE);
             if ($this->notes->numberTaken($company->getId(), $allocated->number)) {
                 throw new DeliveryNoteNumberTaken(\sprintf('The number %s is already on another delivery note of this company: give the delivery note series of establishment %s a format with {EST}, so that establishments number apart.', $allocated->number, $note->getEstablishment()->getCode()));
@@ -88,12 +91,16 @@ final readonly class DeliveryNoteWorkflow
      */
     public function deliver(Company $company, Uuid $id, ?\DateTimeImmutable $deliveredOn, ?Uuid $actorUserId): DeliveryNote
     {
-        $note = $this->get($company, $id);
-        $now = $this->clock->now();
-        $today = new \DateTimeImmutable($now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'), new \DateTimeZone('UTC'));
-        $note->deliver($deliveredOn ?? $today, $today, $now);
-        $this->notes->save($note);
-        $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
+        $note = $this->transactions->run(function () use ($company, $id, $deliveredOn, $actorUserId): DeliveryNote {
+            $note = $this->locked($company, $id);
+            $now = $this->clock->now();
+            $today = new \DateTimeImmutable($now->setTimezone(new \DateTimeZone($company->getTimezone()))->format('Y-m-d'), new \DateTimeZone('UTC'));
+            $note->deliver($deliveredOn ?? $today, $today, $now);
+            $this->notes->save($note);
+            $this->record($company, $note, self::DELIVERED, ['deliveryDate' => $note->getHeader()->deliveryDate?->format('Y-m-d')], $actorUserId);
+
+            return $note;
+        });
         $this->events->publish(...$note->releaseEvents());
 
         return $note;
@@ -105,23 +112,29 @@ final readonly class DeliveryNoteWorkflow
      */
     public function cancel(Company $company, Uuid $id, ?Uuid $actorUserId): DeliveryNote
     {
-        $note = $this->get($company, $id);
-        $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
-        $invoice = [] === $lines ? null : ($this->invoices->carryingDeliveryNoteLines($company->getId(), $lines)[0] ?? null);
-        if (null !== $invoice) {
-            throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s: cancel that draft first.', $note->getNumber() ?? $note->getId()->toRfc4122(), $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
-        }
-        $note->cancel($this->clock->now());
-        $this->notes->save($note);
-        $this->record($company, $note, self::CANCELLED, [], $actorUserId);
+        // The note is held while the invoices carrying it are read: a conversion that locks it waits, or is waited for.
+        $note = $this->transactions->run(function () use ($company, $id, $actorUserId): DeliveryNote {
+            $note = $this->locked($company, $id);
+            $lines = array_map(static fn (DeliveryNoteLine $line): Uuid => $line->getId(), $note->getLines());
+            $invoice = [] === $lines ? null : ($this->invoices->carryingDeliveryNoteLines($company->getId(), $lines)[0] ?? null);
+            if (null !== $invoice) {
+                throw new DeliveryNoteTransitionRefused(\sprintf('The delivery note %s is on the invoice %s: cancel that draft first.', $note->getNumber() ?? $note->getId()->toRfc4122(), $invoice->getNumber() ?? $invoice->getId()->toRfc4122()));
+            }
+            $note->cancel($this->clock->now());
+            $this->notes->save($note);
+            $this->record($company, $note, self::CANCELLED, [], $actorUserId);
+
+            return $note;
+        });
         $this->events->publish(...$note->releaseEvents());
 
         return $note;
     }
 
-    private function get(Company $company, Uuid $id): DeliveryNote
+    /** Held until the transaction ends and read as it stands: a status check on it cannot be overtaken by another request. */
+    private function locked(Company $company, Uuid $id): DeliveryNote
     {
-        return $this->notes->ofIdInCompany($id, $company->getId()) ?? throw new DeliveryNoteNotFound();
+        return $this->notes->lockedOfIdsInCompany([$id], $company->getId())[0] ?? throw new DeliveryNoteNotFound();
     }
 
     /** @param array<string, mixed> $changes */

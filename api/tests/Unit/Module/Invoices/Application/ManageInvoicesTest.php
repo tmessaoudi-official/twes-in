@@ -26,6 +26,7 @@ use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceLineTax;
+use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceTax;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
@@ -33,6 +34,7 @@ use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomers;
 use App\Tests\Support\InMemoryEstablishments;
@@ -57,6 +59,7 @@ final class ManageInvoicesTest extends TestCase
     private InMemoryAuditTrail $audit;
     private ProvisionCompany $provision;
     private ManageInvoices $manage;
+    private InMemoryInvoices $invoices;
     private InvoiceTotals $totals;
     private Company $company;
 
@@ -71,7 +74,9 @@ final class ManageInvoicesTest extends TestCase
         $this->products = new InMemoryProducts();
         $this->audit = new InMemoryAuditTrail();
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageInvoices(new InMemoryInvoices(), $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $transactions = new FakeTransactions();
+        $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
     }
@@ -174,6 +179,28 @@ final class ManageInvoicesTest extends TestCase
         self::assertSame(['fields' => ['paymentTermsDays']], $this->audit->entries[1]->changes);
         $this->expectException(InvoiceTransitionRefused::class);
         $this->manage->cancel($this->company, $invoice->getId(), null);
+    }
+
+    public function testARequestThatReadTheDraftBeforeAnotherCancelledItChangesNothing(): void
+    {
+        $customer = $this->customer();
+        $invoice = $this->manage->create($this->company, $this->input($customer, [], []), null);
+        $readAsDraft = clone $invoice;
+        $this->manage->cancel($this->company, $invoice->getId(), null);
+        $this->invoices->staleReads[$invoice->getId()->toRfc4122()] = $readAsDraft;
+
+        try {
+            $this->manage->revise($this->company, $invoice->getId(), $this->input($customer, [], [], new InvoiceHeader(paymentTermsDays: 60)), null);
+            self::fail('a cancelled invoice was revised from a copy read while it was a draft');
+        } catch (InvoiceNotDraft) {
+        }
+        try {
+            $this->manage->cancel($this->company, $invoice->getId(), null);
+            self::fail('a cancelled invoice was cancelled again from a copy read while it was a draft');
+        } catch (InvoiceTransitionRefused) {
+        }
+
+        self::assertSame(['invoice.created', 'invoice.cancelled'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
     }
 
     public function testADraftOfDeliveryNoteLinesKeepsWhereTheyCameFromAndALineClaimsNoOtherOne(): void

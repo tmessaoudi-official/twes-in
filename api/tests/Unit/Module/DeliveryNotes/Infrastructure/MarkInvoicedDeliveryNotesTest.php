@@ -56,7 +56,7 @@ final class MarkInvoicedDeliveryNotesTest extends TestCase
         $notes->transactions = $transactions;
         $invoices = new InMemoryInvoices();
         $audit = new InMemoryAuditTrail();
-        $manage = new ManageInvoices($invoices, new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock);
+        $manage = new ManageInvoices($invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $units, $taxes, $establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $audit, $clock);
         $now = $clock->now();
         $customer = Customer::create($company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthage Conseil'), null, new CustomerTaxRegime('TN', 'standard', 'fiscal.regime.standard', [], null, 0, $now), [], $now);
         $unit = $units->ofCodeInCompany('C62', $company->getId());

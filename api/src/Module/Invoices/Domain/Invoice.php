@@ -738,7 +738,7 @@ class Invoice
         return new \DateTimeImmutable($moment->format('Y-m-d'), new \DateTimeZone('UTC'));
     }
 
-    private function assertDraft(string $what): void
+    public function assertDraft(string $what): void
     {
         if (InvoiceStatus::Draft !== $this->status) {
             throw new InvoiceNotDraft(\sprintf('The invoice %s is %s: only a draft %s.', $this->reference(), $this->status->value, $what));

@@ -24,11 +24,13 @@ use App\Module\DeliveryNotes\Application\DeliveryNoteTotals;
 use App\Module\DeliveryNotes\Application\ManageDeliveryNotes;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteHeader;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineTax;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomers;
 use App\Tests\Support\InMemoryDeliveryNotes;
@@ -52,6 +54,7 @@ final class ManageDeliveryNotesTest extends TestCase
     private InMemoryProducts $products;
     private InMemoryAuditTrail $audit;
     private ManageDeliveryNotes $manage;
+    private InMemoryDeliveryNotes $notes;
     private DeliveryNoteTotals $totals;
     private Company $company;
     private Company $globex;
@@ -67,7 +70,8 @@ final class ManageDeliveryNotesTest extends TestCase
         $this->products = new InMemoryProducts();
         $this->audit = new InMemoryAuditTrail();
         $this->totals = new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageDeliveryNotes(new InMemoryDeliveryNotes(), $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions = new FakeTransactions(), $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $this->notes->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -183,6 +187,23 @@ final class ManageDeliveryNotesTest extends TestCase
 
         $this->expectException(DeliveryNoteNotFound::class);
         $this->manage->revise($this->globex, $note->getId(), $this->input($customer, []), null);
+    }
+
+    public function testARequestThatReadTheDraftBeforeAnotherCancelledItRevisesNothing(): void
+    {
+        $customer = $this->customer();
+        $note = $this->manage->create($this->company, $this->input($customer, [new DeliveryNoteLineInput($this->product()->getId(), null, '1')]), null);
+        $readAsDraft = clone $note;
+        $note->cancel($this->clock->now());
+        $this->notes->staleReads[$note->getId()->toRfc4122()] = $readAsDraft;
+
+        try {
+            $this->manage->revise($this->company, $note->getId(), $this->input($customer, [new DeliveryNoteLineInput($this->product()->getId(), null, '4')], header: new DeliveryNoteHeader(customerReference: 'PO-9')), null);
+            self::fail('a note that is no longer a draft was revised from a copy read while it was one');
+        } catch (DeliveryNoteNotDraft) {
+        }
+
+        self::assertSame(['delivery_note.created'], array_map(static fn ($entry): string => $entry->action, $this->audit->entries));
     }
 
     /** @param list<DeliveryNoteLineInput> $lines */

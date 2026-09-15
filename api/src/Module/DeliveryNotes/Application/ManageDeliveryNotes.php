@@ -22,6 +22,7 @@ use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Products\Domain\ProductRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -42,6 +43,7 @@ final readonly class ManageDeliveryNotes
 
     public function __construct(
         private DeliveryNoteRepository $notes,
+        private Transactions $transactions,
         private CustomerRepository $customers,
         private ProductRepository $products,
         private UnitRepository $units,
@@ -84,16 +86,19 @@ final readonly class ManageDeliveryNotes
      */
     public function revise(Company $company, Uuid $id, DeliveryNoteInput $input, ?Uuid $actorUserId): DeliveryNote
     {
-        $note = $this->get($company, $id);
-        [$establishment, $customer, $lines] = $this->checked($company, $input, $note);
-        $changed = $note->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
-        if ([] !== $changed) {
-            $this->totals->checked($note);
-            $this->notes->save($note);
-            $this->record($company, $note->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): DeliveryNote {
+            // Held until this transaction ends and read as it stands: a draft check on it cannot be overtaken.
+            $note = $this->notes->lockedOfIdsInCompany([$id], $company->getId())[0] ?? throw new DeliveryNoteNotFound();
+            [$establishment, $customer, $lines] = $this->checked($company, $input, $note);
+            $changed = $note->revise($establishment, $customer, $input->header, $lines, $this->clock->now());
+            if ([] !== $changed) {
+                $this->totals->checked($note);
+                $this->notes->save($note);
+                $this->record($company, $note->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $note;
+            return $note;
+        });
     }
 
     /**

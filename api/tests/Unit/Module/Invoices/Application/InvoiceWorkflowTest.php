@@ -25,6 +25,7 @@ use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceIssued;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
+use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
 use App\Settings\Application\BusinessDefaultSettings;
@@ -160,6 +161,43 @@ final class InvoiceWorkflowTest extends TestCase
             self::assertSame('amountDue', $refused->field);
         }
         self::assertSame([InvoiceStatus::Draft, null, '12.900', 3, 2], [$again->getStatus(), $again->getNumber(), $invoice->getIssuedFigures()->amountCredited, \count($this->audit->entries), \count($this->events->published)]);
+    }
+
+    public function testARequestThatReadTheDraftBeforeAnotherIssuedItIsRefusedOnceItHoldsTheInvoice(): void
+    {
+        $draft = $this->draft($this->customer('standard', null));
+        $readAsDraft = clone $draft;
+        $this->workflow->issue($this->company, $draft->getId(), null);
+        $this->invoices->staleReads[$draft->getId()->toRfc4122()] = $readAsDraft;
+
+        try {
+            $this->workflow->issue($this->company, $draft->getId(), null);
+            self::fail('an issued invoice was issued again from a copy read while it was a draft');
+        } catch (InvoiceNotDraft) {
+        }
+
+        self::assertSame([InvoiceStatus::Issued, 'FAC-2026-00001'], [$draft->getStatus(), $draft->getNumber()]);
+        self::assertSame([1, 1], [\count($this->audit->entries), \count($this->events->published)]);
+        $next = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
+        self::assertSame('FAC-2026-00002', $next->getNumber(), 'the refused attempt took no number');
+    }
+
+    public function testACreditNoteIssuedTwiceAtOnceCreditsItsInvoiceOnce(): void
+    {
+        $invoice = $this->workflow->issue($this->company, $this->draft($this->customer('standard', null))->getId(), null);
+        $credit = Invoice::creditNoteFor($invoice, $this->clock->now());
+        $this->invoices->save($credit);
+        $readAsDraft = clone $credit;
+        $this->workflow->issue($this->company, $credit->getId(), null);
+        $this->invoices->staleReads[$credit->getId()->toRfc4122()] = $readAsDraft;
+
+        try {
+            $this->workflow->issue($this->company, $credit->getId(), null);
+            self::fail('an issued credit note was issued again from a copy read while it was a draft');
+        } catch (InvoiceNotDraft) {
+        }
+
+        self::assertSame(['AV-2026-00001', '12.900', '0.000'], [$credit->getNumber(), $invoice->getIssuedFigures()?->amountCredited, $invoice->getIssuedFigures()?->amountDue]);
     }
 
     public function testTermsTheDraftStatesWinOverTheCustomersAndAStandardCustomerPrintsNoMention(): void
