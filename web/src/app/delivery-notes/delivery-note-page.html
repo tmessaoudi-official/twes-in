@@ -109,7 +109,7 @@
           <dt>{{ 'delivery_notes.totals.subtotal' | translate }}</dt>
           <dd class="text-end">{{ note.subtotalNet | amount: scale() }}</dd>
           @for (tax of note.taxes; track tax.code + '|' + tax.rate) {
-            <dt>{{ tax.code }} {{ tax.rate }} %</dt>
+            <dt>{{ tax.code }} {{ tax.rate | amount: 0 }} %</dt>
             <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
           }
           <dt>{{ 'delivery_notes.totals.total_tax' | translate }}</dt>
