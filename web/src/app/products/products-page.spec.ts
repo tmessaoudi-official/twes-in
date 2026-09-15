@@ -138,6 +138,12 @@ describe('ProductsPage', () => {
     expect(q('product-categories-link')).not.toBeNull();
   });
 
+  it('leads to the categories through the tabs of the products screens', () => {
+    expect(q('products-tab')?.getAttribute('href')).toBe('/products');
+    expect(q('product-categories-link')?.getAttribute('href')).toBe('/products/categories');
+    expect(q('product-categories-link')?.closest('nav')).not.toBeNull();
+  });
+
   it('says why the list could not be read', async () => {
     error.set('not_found');
     await settle();

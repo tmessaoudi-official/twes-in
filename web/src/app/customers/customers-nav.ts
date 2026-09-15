@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { NavEntry } from '../shell/nav-manifest';
+import type { PageTab } from '../shared/ui/page-tabs';
 
 /** The key the API's module registry knows the customers module by. */
 export const CUSTOMERS_MODULE = 'customers';
@@ -16,13 +17,10 @@ export const CUSTOMERS_NAV: readonly NavEntry[] = [
     permission: 'customer.read',
     module: CUSTOMERS_MODULE,
   },
-  {
-    key: 'customer-groups',
-    labelKey: 'nav.customer_groups',
-    icon: 'folder_shared',
-    route: '/customers/groups',
-    section: 'main',
-    permission: 'customer.read',
-    module: CUSTOMERS_MODULE,
-  },
+];
+
+/** The customers screens as tabs: the list and the groups, one sidebar entry between them (docs/SPEC.md § 7, 2026-09-14). */
+export const CUSTOMERS_TABS: readonly PageTab[] = [
+  { labelKey: 'nav.customers', route: '/customers', testId: 'customers-tab' },
+  { labelKey: 'nav.customer_groups', route: '/customers/groups', testId: 'customer-groups-link' },
 ];

@@ -9,11 +9,14 @@ import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-
 import { StatusBadge } from '../shared/ui/status-badge';
 import { type CustomerListRow, customerListRows, customersList } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
+import { PageTabs } from '../shared/ui/page-tabs';
+import { CUSTOMERS_TABS } from './customers-nav';
 
 /** The customers of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
   selector: 'app-customers-page',
   imports: [
+    PageTabs,
     MatButtonModule,
     RouterLink,
     TranslatePipe,
@@ -26,6 +29,7 @@ import { CustomersFacade } from './customers-facade';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomersPage implements OnInit {
+  protected readonly tabs = CUSTOMERS_TABS;
   private readonly facade = inject(CustomersFacade);
   private readonly auth = inject(AuthFacade);
 

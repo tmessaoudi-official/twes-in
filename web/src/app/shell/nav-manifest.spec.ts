@@ -151,13 +151,12 @@ describe('the navigation manifest', () => {
     expect(
       [...CORE_NAV, ...SETTINGS_NAV, ...DEV_NAV].filter((entry) => entry.module !== undefined),
     ).toEqual([]);
+    // Customer groups and product categories are tabs of their module's screen, not sidebar entries.
     expect(CUSTOMERS_NAV.map((entry) => [entry.key, entry.module])).toEqual([
       ['customers', 'customers'],
-      ['customer-groups', 'customers'],
     ]);
     expect(PRODUCTS_NAV.map((entry) => [entry.key, entry.module, entry.permission])).toEqual([
       ['products', 'products', 'product.read'],
-      ['product-categories', 'products', 'product.read'],
     ]);
     expect(
       DELIVERY_NOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),

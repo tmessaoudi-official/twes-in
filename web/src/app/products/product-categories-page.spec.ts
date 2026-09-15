@@ -146,6 +146,11 @@ describe('ProductCategoriesPage', () => {
     expect(facade.createCategory).toHaveBeenCalledWith('c1', { name: 'Services', parentId: null });
   });
 
+  it('leads back to the products through the tabs of the products screens', () => {
+    expect(q('products-tab')?.getAttribute('href')).toBe('/products');
+    expect(q('product-categories-link')?.closest('nav')).not.toBeNull();
+  });
+
   it('adds a category at the top of the tree', async () => {
     q('product-category-add')!.click();
     await settle();

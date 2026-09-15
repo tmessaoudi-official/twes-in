@@ -1,108 +1,109 @@
-<section class="flex max-w-4xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="product-categories-title">
-      {{ 'products.categories.title' | translate }}
-    </h1>
-    <div class="flex flex-wrap gap-2">
-      <a mat-button routerLink="/products">{{ 'products.back' | translate }}</a>
-      @if (mayWrite() && editing() === null && company()) {
-        <button
-          mat-flat-button
-          type="button"
-          (click)="open('new')"
-          data-testid="product-category-add"
-        >
-          {{ 'products.categories.add' | translate }}
-        </button>
-      }
+<app-page-tabs [tabs]="tabs" label="nav.products">
+  <section class="flex max-w-4xl flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="product-categories-title">
+        {{ 'products.categories.title' | translate }}
+      </h1>
+      <div class="flex flex-wrap gap-2">
+        @if (mayWrite() && editing() === null && company()) {
+          <button
+            mat-flat-button
+            type="button"
+            (click)="open('new')"
+            data-testid="product-category-add"
+          >
+            {{ 'products.categories.add' | translate }}
+          </button>
+        }
+      </div>
     </div>
-  </div>
-  <p class="max-w-prose">{{ 'products.categories.intro' | translate }}</p>
+    <p class="max-w-prose">{{ 'products.categories.intro' | translate }}</p>
 
-  @if (!company()) {
-    <p data-testid="product-categories-no-company">{{ 'products.no_company' | translate }}</p>
-  }
-  @if (error(); as code) {
-    <p role="alert" data-testid="product-categories-error" class="text-error">
-      {{ 'products.categories.errors.' + code | translate }}
-    </p>
-  }
-  @if (saved()) {
-    <p role="status" data-testid="product-category-saved">
-      {{ 'products.categories.saved' | translate }}
-    </p>
-  }
-
-  @if (form(); as form) {
-    <mat-card>
-      <mat-card-content>
-        <app-descriptor-form
-          [descriptor]="descriptor()"
-          [form]="form"
-          testId="product-category-form"
-          (submitted)="save($event)"
-        >
-          <div class="flex flex-wrap justify-end gap-2">
-            <button
-              mat-button
-              type="button"
-              (click)="cancel()"
-              data-testid="product-category-cancel"
-            >
-              {{ 'products.cancel' | translate }}
-            </button>
-            <button
-              mat-flat-button
-              type="submit"
-              [disabled]="busy()"
-              data-testid="product-category-save"
-            >
-              {{ 'products.save' | translate }}
-            </button>
-          </div>
-        </app-descriptor-form>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (defaultsSubject(); as subject) {
-    <mat-card>
-      <mat-card-content>
-        <app-article-defaults [subject]="subject" />
-      </mat-card-content>
-    </mat-card>
-  }
-
-  <app-data-list
-    [descriptor]="list"
-    [rows]="rows()"
-    testId="product-categories-table"
-    [rowTestId]="rowTestId"
-    emptyKey="products.categories.none"
-    emptyTestId="product-categories-empty"
-  >
-    @if (mayWrite()) {
-      <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="open(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'product-category-edit-' + row.name"
-        >
-          {{ 'products.edit' | translate }}
-        </button>
-        <button
-          mat-button
-          type="button"
-          (click)="remove(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'product-category-delete-' + row.name"
-          [attr.aria-label]="'products.categories.delete_named' | translate: { name: row.name }"
-        >
-          {{ 'products.categories.delete' | translate }}
-        </button>
-      </ng-template>
+    @if (!company()) {
+      <p data-testid="product-categories-no-company">{{ 'products.no_company' | translate }}</p>
     }
-  </app-data-list>
-</section>
+    @if (error(); as code) {
+      <p role="alert" data-testid="product-categories-error" class="text-error">
+        {{ 'products.categories.errors.' + code | translate }}
+      </p>
+    }
+    @if (saved()) {
+      <p role="status" data-testid="product-category-saved">
+        {{ 'products.categories.saved' | translate }}
+      </p>
+    }
+
+    @if (form(); as form) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor()"
+            [form]="form"
+            testId="product-category-form"
+            (submitted)="save($event)"
+          >
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                mat-button
+                type="button"
+                (click)="cancel()"
+                data-testid="product-category-cancel"
+              >
+                {{ 'products.cancel' | translate }}
+              </button>
+              <button
+                mat-flat-button
+                type="submit"
+                [disabled]="busy()"
+                data-testid="product-category-save"
+              >
+                {{ 'products.save' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    @if (defaultsSubject(); as subject) {
+      <mat-card>
+        <mat-card-content>
+          <app-article-defaults [subject]="subject" />
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <app-data-list
+      [descriptor]="list"
+      [rows]="rows()"
+      testId="product-categories-table"
+      [rowTestId]="rowTestId"
+      emptyKey="products.categories.none"
+      emptyTestId="product-categories-empty"
+    >
+      @if (mayWrite()) {
+        <ng-template appDataListRowActions let-row>
+          <button
+            mat-button
+            type="button"
+            (click)="open(row)"
+            [disabled]="busy()"
+            [attr.data-testid]="'product-category-edit-' + row.name"
+          >
+            {{ 'products.edit' | translate }}
+          </button>
+          <button
+            mat-button
+            type="button"
+            (click)="remove(row)"
+            [disabled]="busy()"
+            [attr.data-testid]="'product-category-delete-' + row.name"
+            [attr.aria-label]="'products.categories.delete_named' | translate: { name: row.name }"
+          >
+            {{ 'products.categories.delete' | translate }}
+          </button>
+        </ng-template>
+      }
+    </app-data-list>
+  </section>
+</app-page-tabs>

@@ -118,6 +118,11 @@ describe('CustomerGroupsPage', () => {
     expect(q('customer-group-Grossistes')?.textContent).toContain('3');
   });
 
+  it('leads back to the customers through the tabs of the customers screens', () => {
+    expect(q('customers-tab')?.getAttribute('href')).toBe('/customers');
+    expect(q('customer-groups-link')?.closest('nav')).not.toBeNull();
+  });
+
   it('adds a group', async () => {
     q('customer-group-add')!.click();
     await settle();

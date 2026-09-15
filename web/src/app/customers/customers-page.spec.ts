@@ -125,6 +125,12 @@ describe('CustomersPage', () => {
     expect(q('customer-open-CLI-0001')?.getAttribute('href')).toBe('/customers/k1');
   });
 
+  it('leads to the groups through the tabs of the customers screens', () => {
+    expect(q('customers-tab')?.getAttribute('href')).toBe('/customers');
+    expect(q('customer-groups-link')?.getAttribute('href')).toBe('/customers/groups');
+    expect(q('customer-groups-link')?.closest('nav')).not.toBeNull();
+  });
+
   it('offers a new customer to a writer only', async () => {
     expect(q('customer-add')?.getAttribute('href')).toBe('/customers/new');
 

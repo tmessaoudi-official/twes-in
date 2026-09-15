@@ -11,7 +11,6 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -29,14 +28,16 @@ import {
 } from './product-forms';
 import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow } from './products-types';
+import { PageTabs } from '../shared/ui/page-tabs';
+import { PRODUCTS_TABS } from './products-nav';
 
 /** The tree products are filed in: a category sits under another or at the top, and goes only once empty. */
 @Component({
   selector: 'app-product-categories-page',
   imports: [
+    PageTabs,
     MatButtonModule,
     MatCardModule,
-    RouterLink,
     TranslatePipe,
     DataList,
     DataListRowActions,
@@ -47,6 +48,7 @@ import type { ProductCategoryRow } from './products-types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductCategoriesPage implements OnInit {
+  protected readonly tabs = PRODUCTS_TABS;
   private readonly facade = inject(ProductsFacade);
   private readonly auth = inject(AuthFacade);
 

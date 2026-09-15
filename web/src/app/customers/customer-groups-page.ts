@@ -10,7 +10,6 @@ import {
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
-import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
@@ -21,14 +20,16 @@ import { GROUP_FORM, GROUPS_LIST, groupInput, groupValues } from './customer-for
 import { CustomersFacade } from './customers-facade';
 import { PartyDefaults } from './party-defaults';
 import type { CustomerGroupRow } from './customers-types';
+import { PageTabs } from '../shared/ui/page-tabs';
+import { CUSTOMERS_TABS } from './customers-nav';
 
 /** The groups customers are sorted into; a group's settings apply to every customer in it. */
 @Component({
   selector: 'app-customer-groups-page',
   imports: [
+    PageTabs,
     MatButtonModule,
     MatCardModule,
-    RouterLink,
     TranslatePipe,
     DataList,
     DataListRowActions,
@@ -39,6 +40,7 @@ import type { CustomerGroupRow } from './customers-types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CustomerGroupsPage implements OnInit {
+  protected readonly tabs = CUSTOMERS_TABS;
   private readonly facade = inject(CustomersFacade);
   private readonly auth = inject(AuthFacade);
 

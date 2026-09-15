@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { NavEntry } from '../shell/nav-manifest';
+import type { PageTab } from '../shared/ui/page-tabs';
 
 /** The key the API's module registry knows the products module by. */
 export const PRODUCTS_MODULE = 'products';
@@ -16,13 +17,14 @@ export const PRODUCTS_NAV: readonly NavEntry[] = [
     permission: 'product.read',
     module: PRODUCTS_MODULE,
   },
+];
+
+/** The products screens as tabs: the catalogue and the categories, one sidebar entry between them (docs/SPEC.md § 7, 2026-09-14). */
+export const PRODUCTS_TABS: readonly PageTab[] = [
+  { labelKey: 'nav.products', route: '/products', testId: 'products-tab' },
   {
-    key: 'product-categories',
     labelKey: 'nav.product_categories',
-    icon: 'category',
     route: '/products/categories',
-    section: 'main',
-    permission: 'product.read',
-    module: PRODUCTS_MODULE,
+    testId: 'product-categories-link',
   },
 ];

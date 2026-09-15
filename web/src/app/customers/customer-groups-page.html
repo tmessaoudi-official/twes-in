@@ -1,103 +1,109 @@
-<section class="flex max-w-4xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="customer-groups-title">
-      {{ 'customers.groups.title' | translate }}
-    </h1>
-    <div class="flex flex-wrap gap-2">
-      <a mat-button routerLink="/customers">{{ 'customers.back' | translate }}</a>
-      @if (mayWrite() && editing() === null && company()) {
-        <button
-          mat-flat-button
-          type="button"
-          (click)="open('new')"
-          data-testid="customer-group-add"
-        >
-          {{ 'customers.groups.add' | translate }}
-        </button>
-      }
+<app-page-tabs [tabs]="tabs" label="nav.customers">
+  <section class="flex max-w-4xl flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="customer-groups-title">
+        {{ 'customers.groups.title' | translate }}
+      </h1>
+      <div class="flex flex-wrap gap-2">
+        @if (mayWrite() && editing() === null && company()) {
+          <button
+            mat-flat-button
+            type="button"
+            (click)="open('new')"
+            data-testid="customer-group-add"
+          >
+            {{ 'customers.groups.add' | translate }}
+          </button>
+        }
+      </div>
     </div>
-  </div>
-  <p class="max-w-prose">{{ 'customers.groups.intro' | translate }}</p>
+    <p class="max-w-prose">{{ 'customers.groups.intro' | translate }}</p>
 
-  @if (!company()) {
-    <p data-testid="customer-groups-no-company">{{ 'customers.no_company' | translate }}</p>
-  }
-  @if (error(); as code) {
-    <p role="alert" data-testid="customer-groups-error" class="text-error">
-      {{ 'customers.groups.errors.' + code | translate }}
-    </p>
-  }
-  @if (saved()) {
-    <p role="status" data-testid="customer-group-saved">
-      {{ 'customers.groups.saved' | translate }}
-    </p>
-  }
-
-  @if (form(); as form) {
-    <mat-card>
-      <mat-card-content>
-        <app-descriptor-form
-          [descriptor]="descriptor"
-          [form]="form"
-          testId="customer-group-form"
-          (submitted)="save($event)"
-        >
-          <div class="flex flex-wrap justify-end gap-2">
-            <button mat-button type="button" (click)="cancel()" data-testid="customer-group-cancel">
-              {{ 'customers.cancel' | translate }}
-            </button>
-            <button
-              mat-flat-button
-              type="submit"
-              [disabled]="busy()"
-              data-testid="customer-group-save"
-            >
-              {{ 'customers.save' | translate }}
-            </button>
-          </div>
-        </app-descriptor-form>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (defaultsSubject(); as subject) {
-    <mat-card>
-      <mat-card-content>
-        <app-party-defaults [subject]="subject" />
-      </mat-card-content>
-    </mat-card>
-  }
-
-  <app-data-list
-    [descriptor]="list"
-    [rows]="groups()"
-    testId="customer-groups-table"
-    [rowTestId]="rowTestId"
-    emptyKey="customers.groups.none"
-    emptyTestId="customer-groups-empty"
-  >
-    @if (mayWrite()) {
-      <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="open(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'customer-group-edit-' + row.name"
-        >
-          {{ 'customers.edit' | translate }}
-        </button>
-        <button
-          mat-button
-          type="button"
-          (click)="remove(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'customer-group-delete-' + row.name"
-          [attr.aria-label]="'customers.groups.delete_named' | translate: { name: row.name }"
-        >
-          {{ 'customers.groups.delete' | translate }}
-        </button>
-      </ng-template>
+    @if (!company()) {
+      <p data-testid="customer-groups-no-company">{{ 'customers.no_company' | translate }}</p>
     }
-  </app-data-list>
-</section>
+    @if (error(); as code) {
+      <p role="alert" data-testid="customer-groups-error" class="text-error">
+        {{ 'customers.groups.errors.' + code | translate }}
+      </p>
+    }
+    @if (saved()) {
+      <p role="status" data-testid="customer-group-saved">
+        {{ 'customers.groups.saved' | translate }}
+      </p>
+    }
+
+    @if (form(); as form) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="customer-group-form"
+            (submitted)="save($event)"
+          >
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                mat-button
+                type="button"
+                (click)="cancel()"
+                data-testid="customer-group-cancel"
+              >
+                {{ 'customers.cancel' | translate }}
+              </button>
+              <button
+                mat-flat-button
+                type="submit"
+                [disabled]="busy()"
+                data-testid="customer-group-save"
+              >
+                {{ 'customers.save' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    @if (defaultsSubject(); as subject) {
+      <mat-card>
+        <mat-card-content>
+          <app-party-defaults [subject]="subject" />
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <app-data-list
+      [descriptor]="list"
+      [rows]="groups()"
+      testId="customer-groups-table"
+      [rowTestId]="rowTestId"
+      emptyKey="customers.groups.none"
+      emptyTestId="customer-groups-empty"
+    >
+      @if (mayWrite()) {
+        <ng-template appDataListRowActions let-row>
+          <button
+            mat-button
+            type="button"
+            (click)="open(row)"
+            [disabled]="busy()"
+            [attr.data-testid]="'customer-group-edit-' + row.name"
+          >
+            {{ 'customers.edit' | translate }}
+          </button>
+          <button
+            mat-button
+            type="button"
+            (click)="remove(row)"
+            [disabled]="busy()"
+            [attr.data-testid]="'customer-group-delete-' + row.name"
+            [attr.aria-label]="'customers.groups.delete_named' | translate: { name: row.name }"
+          >
+            {{ 'customers.groups.delete' | translate }}
+          </button>
+        </ng-template>
+      }
+    </app-data-list>
+  </section>
+</app-page-tabs>

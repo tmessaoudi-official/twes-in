@@ -10,11 +10,14 @@ import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-
 import { StatusBadge } from '../shared/ui/status-badge';
 import { type ProductListRow, productListRows, productsList } from './product-forms';
 import { ProductsFacade } from './products-facade';
+import { PageTabs } from '../shared/ui/page-tabs';
+import { PRODUCTS_TABS } from './products-nav';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
   selector: 'app-products-page',
   imports: [
+    PageTabs,
     MatButtonModule,
     RouterLink,
     TranslatePipe,
@@ -28,6 +31,7 @@ import { ProductsFacade } from './products-facade';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProductsPage implements OnInit {
+  protected readonly tabs = PRODUCTS_TABS;
   private readonly facade = inject(ProductsFacade);
   private readonly auth = inject(AuthFacade);
 
