@@ -23,6 +23,7 @@ class StaticLoader implements TranslateLoader {
         company: 'Vous travaillez dans {{company}} en tant que {{role}}.',
         no_company: 'Aucune entreprise.',
         operator: 'Opérateur de la plateforme.',
+        platform: 'Gérer la plateforme',
         permissions: 'Permissions',
         none: 'aucune',
       },
@@ -107,5 +108,17 @@ describe('HelloPage', () => {
     expect(text('company-line')).toBe('Aucune entreprise.');
     expect(text('operator-line')).toBe('Opérateur de la plateforme.');
     expect(text('permissions')).toContain('aucune');
+  });
+
+  it('offers the platform page to an operator, and to nobody else', async () => {
+    const asOwner = await render();
+    expect(asOwner.el.querySelector('[data-testid="hello-platform-link"]')).toBeNull();
+    asOwner.fixture.destroy();
+
+    me.set({ ...owner, user: { ...owner.user, isPlatformOperator: true } });
+    const asOperator = await render();
+    const link = asOperator.el.querySelector('[data-testid="hello-platform-link"]');
+    expect(link?.getAttribute('href')).toBe('/platform');
+    expect(link?.textContent?.trim()).toBe('Gérer la plateforme');
   });
 });

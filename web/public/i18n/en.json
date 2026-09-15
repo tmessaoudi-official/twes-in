@@ -100,7 +100,8 @@
     "no_company": "You are not a member of any company yet.",
     "operator": "You are a platform operator.",
     "permissions": "Permissions",
-    "none": "none"
+    "none": "none",
+    "platform": "Run the platform"
   },
   "roles": {
     "owner": "owner",
@@ -1242,6 +1243,26 @@
         "too_many": "Too many requests. Try again in a while.",
         "network": "The server could not be reached."
       }
+    }
+  },
+  "platform": {
+    "title": "Platform",
+    "signup": {
+      "title": "Signup",
+      "enabled": "Anyone may sign up",
+      "approval_required": "A company that signs up waits for approval"
+    },
+    "waiting": {
+      "title": "Waiting for approval",
+      "none": "No company is waiting for approval.",
+      "owners": "Owners: {{owners}}",
+      "approve": "Approve",
+      "reject": "Reject"
+    },
+    "errors": {
+      "not_found": "That company no longer exists.",
+      "refused": "The platform refused that.",
+      "network": "The server could not be reached."
     }
   }
 }

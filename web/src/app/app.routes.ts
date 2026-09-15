@@ -6,6 +6,7 @@ import {
   anonymousGuard,
   authGuard,
   awaitingApprovalGuard,
+  operatorGuard,
   twoFactorGuard,
 } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
@@ -179,6 +180,12 @@ export const routes: Routes = [
         path: 'expenses/:expenseId',
         canActivate: [moduleGuard(EXPENSES_MODULE)],
         loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
+      },
+      {
+        // The platform's operators run signup and decide on the companies waiting for approval here.
+        path: 'platform',
+        canActivate: [operatorGuard],
+        loadComponent: () => import('./platform/platform-page').then((m) => m.PlatformPage),
       },
       {
         // The company settings, reached from the gear: a layout route with no path of its own, so the grouped

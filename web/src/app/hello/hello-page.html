@@ -21,6 +21,11 @@
       <p data-testid="operator-line" class="text-sm text-on-surface-variant">
         {{ 'hello.operator' | translate }}
       </p>
+      <p>
+        <a mat-stroked-button routerLink="/platform" data-testid="hello-platform-link">{{
+          'hello.platform' | translate
+        }}</a>
+      </p>
     }
     <p class="text-sm text-on-surface-variant" data-testid="permissions">
       {{ 'hello.permissions' | translate }} :

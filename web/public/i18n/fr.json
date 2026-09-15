@@ -100,7 +100,8 @@
     "no_company": "Vous n'êtes membre d'aucune entreprise pour le moment.",
     "operator": "Vous êtes opérateur de la plateforme.",
     "permissions": "Permissions",
-    "none": "aucune"
+    "none": "aucune",
+    "platform": "Gérer la plateforme"
   },
   "roles": {
     "owner": "propriétaire",
@@ -1242,6 +1243,26 @@
         "too_many": "Trop de demandes. Réessayez dans un moment.",
         "network": "Le serveur est injoignable."
       }
+    }
+  },
+  "platform": {
+    "title": "Plateforme",
+    "signup": {
+      "title": "Inscriptions",
+      "enabled": "Tout le monde peut s'inscrire",
+      "approval_required": "Une entreprise inscrite attend l'approbation"
+    },
+    "waiting": {
+      "title": "En attente d'approbation",
+      "none": "Aucune entreprise n'attend d'approbation.",
+      "owners": "Propriétaires : {{owners}}",
+      "approve": "Approuver",
+      "reject": "Refuser"
+    },
+    "errors": {
+      "not_found": "Cette entreprise n'existe plus.",
+      "refused": "La plateforme a refusé.",
+      "network": "Le serveur est injoignable."
     }
   }
 }

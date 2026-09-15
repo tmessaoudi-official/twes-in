@@ -193,6 +193,11 @@ export class AuthFacade {
     this.signedOut();
   }
 
+  /** Whether the signed-in account runs the platform: operator scope sits outside every company's permissions. */
+  isPlatformOperator(): boolean {
+    return this.stateSignal()?.user.isPlatformOperator ?? false;
+  }
+
   hasPermission(permission: string): boolean {
     const permissions = this.stateSignal()?.permissions ?? [];
     return permissions.includes('*') || permissions.includes(permission);

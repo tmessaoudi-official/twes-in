@@ -318,6 +318,17 @@ describe('AuthFacade', () => {
     expect(facade.hasPermission('anything.at_all')).toBe(true);
   });
 
+  it('isPlatformOperator() holds only for a signed-in platform operator', async () => {
+    expect(facade.isPlatformOperator()).toBe(false);
+    api.me.mockResolvedValue(owner);
+    await facade.load();
+    expect(facade.isPlatformOperator()).toBe(false);
+
+    api.me.mockResolvedValue({ ...owner, user: { ...owner.user, isPlatformOperator: true } });
+    await facade.load();
+    expect(facade.isPlatformOperator()).toBe(true);
+  });
+
   it('hasModule() names only the modules the working company has on', async () => {
     expect(facade.hasModule('customers')).toBe(false);
     api.me.mockResolvedValue(owner);

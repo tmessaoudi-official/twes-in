@@ -1,0 +1,72 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="platform-title">
+    {{ 'platform.title' | translate }}
+  </h1>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="platform-error" class="text-error">
+      {{ 'platform.errors.' + code | translate }}
+    </p>
+  }
+
+  <mat-card appearance="outlined">
+    <mat-card-header>
+      <mat-card-title>{{ 'platform.signup.title' | translate }}</mat-card-title>
+    </mat-card-header>
+    <mat-card-content class="mt-4 flex flex-col gap-3">
+      <mat-slide-toggle
+        data-testid="platform-signup-enabled"
+        [checked]="signup()?.enabled ?? false"
+        [disabled]="signup() === null"
+        (change)="turn('signup.enabled', $event.checked)"
+        >{{ 'platform.signup.enabled' | translate }}</mat-slide-toggle
+      >
+      <mat-slide-toggle
+        data-testid="platform-approval-required"
+        [checked]="signup()?.approvalRequired ?? true"
+        [disabled]="signup() === null"
+        (change)="turn('signup.approval_required', $event.checked)"
+        >{{ 'platform.signup.approval_required' | translate }}</mat-slide-toggle
+      >
+    </mat-card-content>
+  </mat-card>
+
+  <section class="flex flex-col gap-3">
+    <h2 class="text-xl font-semibold">{{ 'platform.waiting.title' | translate }}</h2>
+    @for (company of waiting(); track company.id) {
+      <mat-card appearance="outlined" [attr.data-testid]="'waiting-' + company.name">
+        <mat-card-content class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex flex-col">
+            <span class="font-medium">{{ company.name }}</span>
+            <span class="text-sm text-on-surface-variant">
+              {{ company.countryCode }} ·
+              {{ 'platform.waiting.owners' | translate: { owners: company.owners.join(', ') } }}
+            </span>
+          </div>
+          <div class="flex gap-2">
+            <button
+              mat-flat-button
+              type="button"
+              (click)="approve(company.id)"
+              [disabled]="busy()"
+              [attr.data-testid]="'approve-' + company.name"
+            >
+              {{ 'platform.waiting.approve' | translate }}
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="reject(company.id)"
+              [disabled]="busy()"
+              [attr.data-testid]="'reject-' + company.name"
+            >
+              {{ 'platform.waiting.reject' | translate }}
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    } @empty {
+      <p data-testid="platform-waiting-empty">{{ 'platform.waiting.none' | translate }}</p>
+    }
+  </section>
+</section>

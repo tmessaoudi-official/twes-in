@@ -37,6 +37,16 @@ export const awaitingApprovalGuard: CanActivateFn = async () => {
   return auth.companyClosed() ? true : router.createUrlTree(['/']);
 };
 
+/** The platform page: its operators only; anybody else signed in lands on the home page. */
+export const operatorGuard: CanActivateFn = async () => {
+  const auth = inject(AuthFacade);
+  const router = inject(Router);
+  if (!(await resolveStatus(auth))) {
+    return router.createUrlTree(['/login']);
+  }
+  return auth.isPlatformOperator() ? true : router.createUrlTree(['/']);
+};
+
 /** The two-step verification page: any signed-in account, including one the enrolment requirement holds back. */
 export const twoFactorGuard: CanActivateFn = async () => {
   const auth = inject(AuthFacade);

@@ -10,18 +10,26 @@ import {
   UrlTree,
 } from '@angular/router';
 import { AuthFacade } from './auth-facade';
-import { anonymousGuard, authGuard, awaitingApprovalGuard, twoFactorGuard } from './auth-guard';
+import {
+  anonymousGuard,
+  authGuard,
+  awaitingApprovalGuard,
+  operatorGuard,
+  twoFactorGuard,
+} from './auth-guard';
 
 function facade(
   status: 'anonymous' | 'authenticated',
   needsEnrolment = false,
   companyClosed = false,
+  operator = false,
 ) {
   return {
     status: () => status,
     isAuthenticated: () => status === 'authenticated',
     needsEnrolment: () => needsEnrolment,
     companyClosed: () => companyClosed,
+    isPlatformOperator: () => operator,
     load: vi.fn(),
   };
 }
@@ -60,6 +68,12 @@ describe('auth guards', () => {
     expect(await run(awaitingApprovalGuard, facade('authenticated', false, true))).toBe(true);
     expect(await run(awaitingApprovalGuard, facade('authenticated', false, false))).toBe('/');
     expect(await run(awaitingApprovalGuard, facade('anonymous'))).toBe('/login');
+  });
+
+  it('opens the platform page to its operators only', async () => {
+    expect(await run(operatorGuard, facade('authenticated', false, false, true))).toBe(true);
+    expect(await run(operatorGuard, facade('authenticated', false, false, false))).toBe('/');
+    expect(await run(operatorGuard, facade('anonymous'))).toBe('/login');
   });
 
   it('keeps a signed-in account off the login page', async () => {
