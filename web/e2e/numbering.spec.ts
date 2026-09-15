@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G3b through the real stack: the seeded Tunisian company starts with its default establishment, coded the way its
 // preset says, and a numbering series per document type on it. The owner changes how invoices are numbered, sees the
@@ -8,8 +9,6 @@ import { expect, type Page, test } from '@playwright/test';
 // invoices, and once a document carries a number from a series, where it resumes no longer changes.
 // One database is shared by the whole suite, so the series is put back as it was found; no establishment is added,
 // because an establishment cannot be removed.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 interface Series {
@@ -19,14 +18,6 @@ interface Series {
   format: string;
   nextNumber: number;
   resetPeriod: string;
-}
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
 }
 
 async function wcagViolations(page: Page): Promise<string[]> {

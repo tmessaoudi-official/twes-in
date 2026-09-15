@@ -12,6 +12,10 @@ namespace App\Tests\Unit\Tenancy\Application;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Identity\Application\PasswordHasher;
+use App\Identity\Application\SecretCipher;
+use App\Identity\Domain\Email;
+use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
+use App\Tenancy\Application\Seed\InvalidOperatorTotpSecret;
 use App\Tenancy\Application\Seed\OperatorPasswordRequired;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Application\Seed\SeedRequest;
@@ -61,6 +65,18 @@ final class SeedPlatformTest extends TestCase
             $this->companies,
             $this->memberships,
             $hasher,
+            new class implements SecretCipher {
+                public function encrypt(string $plain): string
+                {
+                    return 'sealed:'.$plain;
+                }
+
+                public function decrypt(string $cipher): string
+                {
+                    return substr($cipher, \strlen('sealed:'));
+                }
+            },
+            new OtphpTotpCodes(),
             new SyncCustomerTaxRegimes($presets, $this->regimes, $clock),
             new ProvisionCompany($presets, $this->components, new InMemoryUnits(), $this->establishments, new \App\Tests\Support\InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock),
             $clock,
@@ -116,7 +132,7 @@ final class SeedPlatformTest extends TestCase
         ], $created);
         self::assertCount(3, $this->roles->roles);
         self::assertSame(['*'], $this->roles->builtIn(Role::OWNER)?->getPermissions());
-        $operator = $this->users->ofEmail(\App\Identity\Domain\Email::fromString('op@example.test'));
+        $operator = $this->users->ofEmail(Email::fromString('op@example.test'));
         self::assertNotNull($operator);
         self::assertTrue($operator->isPlatformOperator());
         self::assertSame('hashed:secret', $operator->getPasswordHash());
@@ -170,13 +186,61 @@ final class SeedPlatformTest extends TestCase
         } catch (OperatorPasswordRequired) {
         }
 
-        self::assertNull($this->users->ofEmail(\App\Identity\Domain\Email::fromString('op@example.test')));
+        self::assertNull($this->users->ofEmail(Email::fromString('op@example.test')));
         self::assertCount(0, $this->companies->companies);
         self::assertSame([], $this->regimes->regimes);
     }
 
-    private function request(?string $password): SeedRequest
+    public function testATotpSecretEnrolsTheOperatorsAuthenticatorWithACodeForNowStillUnspent(): void
     {
-        return new SeedRequest('op@example.test', $password, 'Op', 'Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $created = $this->seed->seed($this->request(password: 'secret', totpSecret: self::TOTP_SECRET));
+
+        self::assertContains('authenticator for op@example.test', $created);
+        $operator = $this->users->ofEmail(Email::fromString('op@example.test'));
+        self::assertNotNull($operator);
+        self::assertTrue($operator->hasTotp());
+        self::assertSame('sealed:'.self::TOTP_SECRET, $operator->getTotpSecret());
+        // Signing in right after the seed must work: the step the enrolment spent is older than the current one.
+        $now = new \DateTimeImmutable('2026-09-09 12:00:00');
+        $codes = new OtphpTotpCodes();
+        $operator->useTotpTimestep($codes->verify(self::TOTP_SECRET, $codes->codeAt(self::TOTP_SECRET, $now), $now) ?? self::fail('the code for now is refused'));
+    }
+
+    public function testAnOperatorWhoAlreadyHasAnAuthenticatorKeepsIt(): void
+    {
+        $this->seed->seed($this->request(password: 'secret', totpSecret: self::TOTP_SECRET));
+
+        $created = $this->seed->seed($this->request(password: null, totpSecret: 'MFRGGZDFMZTWQ2LKMFRGGZDFMZTWQ2LK'));
+
+        self::assertNotContains('authenticator for op@example.test', $created);
+        self::assertSame('sealed:'.self::TOTP_SECRET, $this->users->ofEmail(Email::fromString('op@example.test'))?->getTotpSecret());
+    }
+
+    public function testAnOperatorSeededEarlierWithoutOneGetsItOnTheNextRun(): void
+    {
+        $this->seed->seed($this->request(password: 'secret'));
+        self::assertFalse($this->users->ofEmail(Email::fromString('op@example.test'))?->hasTotp());
+
+        self::assertContains('authenticator for op@example.test', $this->seed->seed($this->request(password: null, totpSecret: self::TOTP_SECRET)));
+        self::assertTrue($this->users->ofEmail(Email::fromString('op@example.test'))?->hasTotp());
+    }
+
+    public function testAMalformedTotpSecretIsRefusedBeforeAnythingIsWritten(): void
+    {
+        try {
+            $this->seed->seed($this->request(password: 'secret', totpSecret: 'not-base32!'));
+            self::fail('a malformed secret was accepted');
+        } catch (InvalidOperatorTotpSecret) {
+        }
+
+        self::assertNull($this->users->ofEmail(Email::fromString('op@example.test')));
+        self::assertNull($this->roles->builtIn(Role::OWNER));
+    }
+
+    private const string TOTP_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+
+    private function request(?string $password, ?string $totpSecret = null): SeedRequest
+    {
+        return new SeedRequest('op@example.test', $password, 'Op', 'Seeded', 'TN', 'TND', 'fr', 'Africa/Tunis', $totpSecret);
     }
 }

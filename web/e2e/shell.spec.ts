@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // The sidebar's desktop state through the real stack: the [ key turns it into a rail of named icons, the choice is
 // the person's presentation setting and outlives a reload. One database is shared by the whole suite, so the
 // operator's own choice is forgotten before and after.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
 const SIDEBAR = 'presentation.sidebar';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function forgetSidebar(page: Page): Promise<void> {
   const status = await page.evaluate(

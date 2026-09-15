@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Domain\User;
+use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
@@ -52,6 +53,28 @@ final class SeedCommandTest extends ApiTestCase
         self::assertStringContainsString('Nothing to do', $tester->getDisplay());
         self::assertCount(1, $this->em()->getRepository(User::class)->findAll());
         self::assertCount(3, $this->em()->getRepository(Role::class)->findAll());
+    }
+
+    public function testAnOperatorTotpSecretMakesTheOperatorSignInWithACodeFromIt(): void
+    {
+        $tester = $this->seed(['--operator-email' => 'op@example.test', '--operator-password' => 'seeded-secret', '--operator-totp-secret' => 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP']);
+        self::assertSame(0, $tester->getStatusCode(), $tester->getDisplay());
+
+        $this->postJson('/api/auth/login', ['email' => 'op@example.test', 'password' => 'seeded-secret']);
+        self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
+
+        $this->postJson('/api/auth/mfa/verify', ['code' => (new OtphpTotpCodes())->codeAt('JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP', new \DateTimeImmutable())]);
+        self::assertResponseIsSuccessful();
+        self::assertSame('op@example.test', $this->stringAt($this->section($this->json(), 'user'), 'email'));
+    }
+
+    public function testAMalformedTotpSecretIsRefused(): void
+    {
+        $tester = $this->seed(['--operator-email' => 'op@example.test', '--operator-password' => 'seeded-secret', '--operator-totp-secret' => 'not base32']);
+
+        self::assertSame(2, $tester->getStatusCode());
+        self::assertStringContainsString('--operator-totp-secret', $tester->getDisplay());
+        self::assertCount(0, $this->em()->getRepository(User::class)->findAll());
     }
 
     public function testCreatingTheOperatorWithoutAPasswordIsRefused(): void

@@ -1,23 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
 // in it in hours with the 19 % VAT by default, finds its price at the currency's three decimals, revises it, and
 // finds it in the list under its category. One database is shared by the whole suite, so the names are unique to
 // the run, and the product is deactivated (products are never deleted) and taken out of the category before the
 // category is deleted.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function wcagViolations(page: Page): Promise<string[]> {
   const axe = await new AxeBuilder({ page })

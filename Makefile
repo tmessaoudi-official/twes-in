@@ -9,8 +9,8 @@ up:            ## build and start the whole stack (web :8090, api :8091, mailpit
 migrate:       ## apply pending migrations inside a running api container (the image entrypoint already did at start)
 	docker compose exec -T api bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
 
-seed:          ## built-in roles, the operator (operator@twes.local) and the Demo company; idempotent. Dev password only.
-	docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev
+seed:          ## built-in roles, the operator (operator@twes.local) with a known authenticator and the Demo company; idempotent. Dev secrets only.
+	docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
 
 api-openapi:   ## export the OpenAPI document the TypeScript types are generated from
 	cd api && bin/console api:openapi:export --output=var/openapi.json

@@ -1,28 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Locator, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G10 inventory through the real stack: in the seeded company, a product made for the run keeps stock; the owner
 // files a location under the default one of the company's default establishment, receives ten pieces there, a
 // delivery note of three validated through the API takes them out of that default location, and cancelling it puts
 // them back. One database is shared by the whole suite and movements are never deleted, so the product, the customer
 // and the location are unique to the run and retired afterwards.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 interface Fixture {
   productId: string;
   customerId: string;
   establishment: { id: string; code: string; name: string };
-}
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
 }
 
 async function wcagViolations(page: Page): Promise<string[]> {

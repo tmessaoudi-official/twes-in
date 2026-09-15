@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, test } from '@playwright/test';
+import {
+  enterOperatorCode,
+  OPERATOR_EMAIL as EMAIL,
+  OPERATOR_PASSWORD as PASSWORD,
+} from './session';
 
-// The G1a scenario, through the real bundle, nginx, FrankenPHP and PostgreSQL: the seeded operator signs in,
-// lands on the hello page with their company, signs out, and is back at the login page. The credentials are
-// the ones `make seed` and the CI e2e job pass to `app:seed`.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
+// The G1a scenario, through the real bundle, nginx, FrankenPHP and PostgreSQL: the seeded operator signs in with
+// their password and a code from their authenticator, lands on the hello page with their company, signs out, and is
+// back at the login page.
 
 test('an unauthenticated visitor is sent to the login page', async ({ page }) => {
   await page.goto('/');
@@ -14,10 +17,14 @@ test('an unauthenticated visitor is sent to the login page', async ({ page }) =>
 });
 
 test('login, hello page, logout', async ({ page }) => {
+  test.setTimeout(90_000);
   await page.goto('/login');
   await page.getByTestId('email').fill(EMAIL);
   await page.getByTestId('password').fill(PASSWORD);
   await page.getByTestId('submit').click();
+  // An operator must carry a second factor, so the password alone leads to the code step.
+  await expect(page).toHaveURL(/\/login$/);
+  await enterOperatorCode(page);
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId('greeting')).toContainText('Bonjour, Operator');

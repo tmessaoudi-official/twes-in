@@ -12,6 +12,8 @@ namespace App\Tenancy\Application\Seed;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Identity\Application\PasswordHasher;
+use App\Identity\Application\SecretCipher;
+use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
@@ -44,6 +46,8 @@ final readonly class SeedPlatform
         private CompanyRepository $companies,
         private MembershipRepository $memberships,
         private PasswordHasher $hasher,
+        private SecretCipher $cipher,
+        private TotpCodes $totp,
         private SyncCustomerTaxRegimes $regimes,
         private ProvisionCompany $provision,
         private ClockInterface $clock,
@@ -62,6 +66,10 @@ final readonly class SeedPlatform
         $operator = $this->users->ofEmail($email);
         if (null === $operator && (null === $request->operatorPassword || '' === $request->operatorPassword)) {
             throw new OperatorPasswordRequired('--operator-password is required to create the operator; none is built in.');
+        }
+        $totpSecret = $request->operatorTotpSecret;
+        if (null !== $totpSecret && 1 !== preg_match('/^[A-Z2-7]{16,}$/', $totpSecret)) {
+            throw new InvalidOperatorTotpSecret('--operator-totp-secret must be base32 (A-Z and 2-7), at least 16 characters.');
         }
 
         $created = [];
@@ -85,6 +93,19 @@ final readonly class SeedPlatform
             $operator->setPlatformOperator(true);
             $this->users->save($operator);
             $created[] = "operator $email";
+        }
+
+        // A known secret is for a development or CI stack, where a script computes the operator's codes. An operator
+        // seeded without one enrols their own authenticator at their first sign-in, as every operator must.
+        if (null !== $totpSecret && !$operator->hasTotp()) {
+            // Confirmed with a step already past, so a code for the moment the seed ends is still unspent.
+            $past = $now->sub(new \DateInterval('PT1M'));
+            $step = $this->totp->verify($totpSecret, $this->totp->codeAt($totpSecret, $past), $past)
+                ?? throw new \LogicException('A code computed from the secret was refused by the same secret.');
+            $operator->beginTotpEnrolment($this->cipher->encrypt($totpSecret), $now);
+            $operator->confirmTotpEnrolment($step, $now);
+            $this->users->save($operator);
+            $created[] = "authenticator for $email";
         }
 
         $company = $this->companies->ofName($request->companyName);

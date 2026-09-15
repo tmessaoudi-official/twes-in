@@ -17,9 +17,16 @@ export default defineConfig({
   },
   // CI downloads Playwright's own Chromium. A machine that cannot reach Playwright's browser CDN runs the same
   // engine through an installed Chrome instead: PLAYWRIGHT_CHANNEL=chrome npx playwright test.
+  // The setup project signs the operator in once, with a code, before any scenario runs (e2e/session.ts says why).
   projects: [
     {
+      name: 'setup',
+      testMatch: /\.setup\.ts$/,
+      use: { browserName: 'chromium', channel: process.env['PLAYWRIGHT_CHANNEL'] || undefined },
+    },
+    {
       name: 'chromium',
+      dependencies: ['setup'],
       use: { browserName: 'chromium', channel: process.env['PLAYWRIGHT_CHANNEL'] || undefined },
     },
   ],

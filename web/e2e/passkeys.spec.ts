@@ -2,6 +2,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
+import { signIn as signInAsOperator } from './session';
 
 // A passkey is bound to a domain, and Chromium refuses an IP address as one, so this file talks to the stack as
 // localhost whatever address the other files use. The API allows exactly that origin (APP_WEBAUTHN_ORIGINS).
@@ -9,8 +10,6 @@ test.use({
   baseURL: (process.env['BASE_URL'] ?? 'http://127.0.0.1:8090').replace('127.0.0.1', 'localhost'),
 });
 
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const NEW_PASSWORD = 'a-long-enough-password';
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
@@ -58,7 +57,7 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   await addVirtualAuthenticator(page);
   const invited = `passkey-${Date.now()}@twes.local`;
 
-  await signIn(page, EMAIL, PASSWORD);
+  await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
   await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();

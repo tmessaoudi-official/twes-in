@@ -2,6 +2,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { Browser, expect, Page, test } from '@playwright/test';
 import { mailTo, signupTokenFor } from './mailpit';
+import { signIn as signInAsOperator } from './session';
 
 // G1d through the real bundle, nginx, FrankenPHP, PostgreSQL and Mailpit: an operator opens signup, somebody signs up
 // from the login page, their company waits, the operator approves it, and the owner gets in. The operator closes
@@ -9,8 +10,6 @@ import { mailTo, signupTokenFor } from './mailpit';
 //
 // Each run creates one account and one company with unique names; neither can be deleted through the API. The
 // per-client signup limit is five requests an hour, which a local rerun loop can reach.
-const OPERATOR_EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const OPERATOR_PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const SHOTS = 'test-results/screenshots';
 
 async function signIn(page: Page, email: string, password: string): Promise<void> {
@@ -62,7 +61,7 @@ test('somebody signs up, their company waits, an operator approves it, and the o
   const company = `Signup Co ${stamp}`;
 
   // The operator opens signup, with approval required.
-  await signIn(page, OPERATOR_EMAIL, OPERATOR_PASSWORD);
+  await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
   await page.getByTestId('hello-platform-link').click();
   await expect(page).toHaveURL(/\/platform$/);

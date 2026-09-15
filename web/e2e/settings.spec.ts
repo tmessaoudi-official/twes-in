@@ -1,22 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G3b through the real stack: the seeded company's owner sets a business default on the settings page, it survives
 // a reload, and a reset returns it to the declared default. One database is shared by the whole suite, so the
 // company's value is forgotten before and after.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
 const TERMS = 'document.payment_terms_days';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function forgetCompanyTerms(page: Page): Promise<void> {
   const status = await page.evaluate(

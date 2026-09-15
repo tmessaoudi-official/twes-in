@@ -17,7 +17,8 @@ use App\Tenancy\Domain\MembershipRepository;
  *
  * The question is asked of every company the user belongs to, not of the one currently chosen: a member of a
  * strict company and a relaxed one must enrol either way, or the company switcher would be the way around it
- * (ruling of 2026-09-10).
+ * (ruling of 2026-09-10). A platform operator must carry one whatever their companies say (docs/SPEC.md § 7,
+ * 2026-09-15, S3): the platform scope reaches every company's approval and every account.
  */
 final readonly class MfaRequirement
 {
@@ -27,6 +28,6 @@ final readonly class MfaRequirement
 
     public function appliesTo(User $user): bool
     {
-        return $this->memberships->anyCompanyRequiresMfa($user->getId());
+        return $user->isPlatformOperator() || $this->memberships->anyCompanyRequiresMfa($user->getId());
     }
 }

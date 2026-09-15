@@ -1,23 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G5 module registry through the real stack: in the seeded company, the owner switches the customers module off,
 // its entries leave the navigation, its page sends them home and its API answers 404; switching it back on brings
 // all of it back. Delivery notes need customers, so they are switched off first and back on last. The suite shares
 // one database and runs serially, and both modules are switched on again whatever happens, so no other scenario
 // ever finds either off.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function wcagViolations(page: Page): Promise<string[]> {
   const axe = await new AxeBuilder({ page })

@@ -12,5 +12,6 @@ scripts
 **/e2e
 **/test-results
 **/playwright-report
+**/playwright
 # Generated in the web image from the api image's OpenAPI document; a local copy must never leak in.
 web/src/app/api

@@ -2,12 +2,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
+import { signIn as signInAsOperator } from './session';
 import { totp } from './totp';
 
 // Two-step verification through the real stack, for a freshly invited account. Never the shared operator: every
-// other scenario signs in as the operator with a password alone, and enrolling it would break them all.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
+// other scenario computes the operator's codes from the authenticator the seed gave them.
 const NEW_PASSWORD = 'a-long-enough-password';
 // The SPA sends one random token per page load as a header; any value of the right shape is accepted from the page.
 const CSRF = '0123456789abcdef0123456789abcdef';
@@ -48,7 +47,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   test.setTimeout(210_000);
   const invited = `two-factor-${Date.now()}@twes.local`;
 
-  await signIn(page, EMAIL, PASSWORD);
+  await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
   await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();
@@ -153,7 +152,7 @@ test('a company that requires two-step verification sends its owner to set it up
   const name = `Secure ${Date.now()}`;
 
   // A throwaway company, so the requirement never reaches Demo or the operator every other scenario signs in as.
-  await signIn(page, EMAIL, PASSWORD);
+  await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
   const invited = await page.evaluate(
     async ([companyName, csrf, email]) => {

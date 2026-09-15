@@ -1,20 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
+import { signIn } from './session';
 
 // The notification centre through the whole stack (docs/SPEC.md § 7, 2026-09-13): accepting an invitation
 // publishes to the company channel, the API keeps a row for every member and pushes through Centrifugo, and the
 // operator's open page hears it over the WebSocket that nginx proxies, with no reload. The row outlives the page.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function unreadOf(page: Page): Promise<number> {
   return Number(await page.getByTestId('notification-bell').getAttribute('data-unread'));

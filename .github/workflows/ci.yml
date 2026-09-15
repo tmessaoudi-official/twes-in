@@ -104,7 +104,8 @@ jobs:
       # The api image migrates at start (infra/api/docker-entrypoint.sh) and --wait holds until it is healthy;
       # the seed is data, not schema, so it stays a step: the operator the scenarios sign in as.
       - run: docker compose up -d --build --wait
-      - run: docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev
+      # The operator must carry a second factor; the scenarios compute its codes from this known dev secret.
+      - run: docker compose exec -T api bin/console app:seed --operator-password=twes-operator-dev --operator-totp-secret=JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP
       - uses: actions/setup-node@v7
         with:
           node-version-file: web/.nvmrc

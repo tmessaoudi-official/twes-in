@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
+import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
 
 // The G1b switcher, through the real bundle, nginx, FrankenPHP and PostgreSQL. The second company is opened by
 // the operator on /platform; what the owner and the operator then do between them goes through the API.
 //
 // The scenario puts the operator in a second company and has that company's owner take them out again at the
 // end. It has to: the seeded operator belongs to exactly one company, which is what the G1a scenario asserts,
-// and one database is shared by the whole suite.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
+// and one database is shared by the whole suite. The switch moves a session, so the operator signs in on one of
+// their own rather than the one every other scenario shares.
 
 // The SPA sends one random token per page load as a header; any value of the right shape is accepted, and
 // the origin proof comes from the request being made by the page itself.
 const CSRF = '0123456789abcdef0123456789abcdef';
 const OWNER_PASSWORD = 'a-long-enough-password';
 
-async function signIn(page: Page, email = EMAIL, password = PASSWORD): Promise<void> {
+async function signInAs(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(email);
   await page.getByTestId('password').fill(password);
@@ -29,8 +29,8 @@ test('an operator opens a company from the platform, and the switcher moves the 
   browser,
   request,
 }) => {
-  test.setTimeout(120_000);
-  await signIn(page);
+  test.setTimeout(150_000);
+  await signInWithCode(page);
   const name = `Globex ${Date.now()}`;
   const owner = `globex-owner-${Date.now()}@twes.local`;
 
@@ -54,7 +54,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
   await ownerPage.getByTestId('invitation-password').fill(OWNER_PASSWORD);
   await ownerPage.getByTestId('invitation-submit').click();
   await expect(ownerPage).toHaveURL(/\/login$/);
-  await signIn(ownerPage, owner, OWNER_PASSWORD);
+  await signInAs(ownerPage, owner, OWNER_PASSWORD);
   await expect(ownerPage.getByTestId('company-name')).toHaveText(name);
 
   // A membership is what opens a company, so the owner invites the operator as a plain member, and takes them out

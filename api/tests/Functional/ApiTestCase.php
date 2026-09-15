@@ -12,6 +12,8 @@ namespace App\Tests\Functional;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
+use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Identity\Infrastructure\Security\CsrfRequestListener;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
@@ -21,6 +23,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Functional tests talk to the API the way the SPA does: JSON bodies, a random csrf-token header on every
@@ -28,7 +31,14 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  */
 abstract class ApiTestCase extends WebTestCase
 {
+    /** The authenticator createUser enrols; .env.test's key encrypts it. */
+    protected const string AUTHENTICATOR_SECRET = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+    private const string MFA_TEST_KEY = 'Fh0hAlB8Q7xUq0mJ0zRz2s4vXn6yKbPd8eGtWc3AjQY=';
+
     protected KernelBrowser $client;
+
+    /** @var array<string, true> the addresses createUser enrolled, whose login() goes through the code step */
+    private array $enrolled = [];
 
     protected function setUp(): void
     {
@@ -44,14 +54,24 @@ abstract class ApiTestCase extends WebTestCase
         return static::getContainer()->get(EntityManagerInterface::class);
     }
 
-    /** @param list<string> $permissions */
-    protected function createUser(string $email, string $password, ?Company $company = null, array $permissions = ['*'], string $roleName = Role::OWNER, bool $operator = false, bool $active = true): User
+    /**
+     * An operator gets an authenticator unless `$authenticator` says otherwise: every operator must carry one
+     * (docs/SPEC.md § 7, 2026-09-15, S3), so a test of anything else signs them in the way they really sign in.
+     *
+     * @param list<string> $permissions
+     */
+    protected function createUser(string $email, string $password, ?Company $company = null, array $permissions = ['*'], string $roleName = Role::OWNER, bool $operator = false, bool $active = true, ?bool $authenticator = null): User
     {
         $em = $this->em();
         $user = new User(Email::fromString($email), ucfirst(strtok($email, '@') ?: 'User'));
         $user->setPasswordHash(static::getContainer()->get(PasswordHasher::class)->hash($password), new \DateTimeImmutable());
         $user->setPlatformOperator($operator);
         $user->setActive($active);
+        if ($authenticator ?? $operator) {
+            $user->beginTotpEnrolment((new SodiumSecretCipher(self::MFA_TEST_KEY))->encrypt(self::AUTHENTICATOR_SECRET));
+            $user->confirmTotpEnrolment(self::spentTimestep());
+            $this->enrolled[strtolower($email)] = true;
+        }
         $em->persist($user);
         if (null !== $company) {
             $role = new Role($roleName, $permissions, $company);
@@ -149,9 +169,26 @@ abstract class ApiTestCase extends WebTestCase
         $em->flush();
     }
 
+    /** Signs in; for an account createUser enrolled, the code step too, leaving the answer a one-step login gives. */
     protected function login(string $email, string $password): void
     {
         $this->postJson('/api/auth/login', ['email' => $email, 'password' => $password]);
+        if (!isset($this->enrolled[strtolower($email)]) || Response::HTTP_OK !== $this->client->getResponse()->getStatusCode() || true !== ($this->json()['mfaRequired'] ?? null)) {
+            return;
+        }
+
+        // The last spent step goes back into the past first, so signing in twice within thirty seconds is not a replay.
+        $user = $this->em()->getRepository(User::class)->findOneBy(['email' => Email::fromString($email)]);
+        self::assertNotNull($user);
+        $user->confirmTotpEnrolment(self::spentTimestep());
+        $this->em()->flush();
+        $this->postJson('/api/auth/mfa/verify', ['code' => (new OtphpTotpCodes())->codeAt(self::AUTHENTICATOR_SECRET, new \DateTimeImmutable())]);
+    }
+
+    /** A step a minute old: any code for now is newer than it. */
+    private static function spentTimestep(): int
+    {
+        return intdiv((new \DateTimeImmutable('-1 minute'))->getTimestamp(), 30);
     }
 
     /** @return array<string, mixed> */

@@ -1,21 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G8 through the real stack: in the seeded Tunisian company, the owner adds a vendor without any registration number,
 // with its bank account and payment terms, revises it and finds it in the list. One database is shared by the whole
 // suite, so the number is unique to the run and the vendor is deactivated at the end (vendors are never deleted).
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function wcagViolations(page: Page): Promise<string[]> {
   const axe = await new AxeBuilder({ page })

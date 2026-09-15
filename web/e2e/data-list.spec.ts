@@ -2,20 +2,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { forgetPresentationChoices } from './presentation';
+import { OPERATOR_EMAIL as EMAIL, signIn as logIn } from './session';
 
 // G2b and G3b: presentation preferences survive a reload, and a fresh browser, through the API's presentation
 // chain, and the list chrome every screen shares stays accessible with its column chooser open, at desktop and
 // phone width. The choices live in the shared database, so each scenario starts by forgetting the operator's own.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
-
-async function logIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function signIn(page: Page): Promise<void> {
   await logIn(page);

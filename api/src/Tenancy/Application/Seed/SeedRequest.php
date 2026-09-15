@@ -20,6 +20,7 @@ final readonly class SeedRequest
         public string $currency,
         public string $locale,
         public string $timezone,
+        public ?string $operatorTotpSecret = null,
     ) {
     }
 }

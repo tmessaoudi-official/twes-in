@@ -1,23 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G9 through the real stack: in the seeded Tunisian company, the owner files a category, adds an expense under it with
 // VAT at 19 %, attaches a receipt and reads it back, records the expense and pays it. One database is shared by the
 // whole suite, so the names are unique to the run; the category is deactivated at the end, and the paid expense stays,
 // as a paid expense does.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
 const PDF = '%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function wcagViolations(page: Page): Promise<string[]> {
   const axe = await new AxeBuilder({ page })

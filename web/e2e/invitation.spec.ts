@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
+import { signIn as signInAsOperator } from './session';
 
 // The whole invitation, through the real stack: an operator invites an address with no account, Mailpit
 // receives the mail, the link in it is opened with no session, an account is created, and that account signs
 // in. The mail is read through Mailpit's own API, which is what makes this end to end rather than a mock.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const NEW_PASSWORD = 'a-long-enough-password';
 const CSRF = '0123456789abcdef0123456789abcdef';
 
@@ -24,7 +23,7 @@ test('an invited address sets a password from the mailed link and then signs in'
 }) => {
   const invited = `invited-${Date.now()}@twes.local`;
 
-  await signIn(page, EMAIL, PASSWORD);
+  await signInAsOperator(page);
   await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
@@ -64,7 +63,7 @@ test('an address that already has an account joins from the mailed link with not
   const existing = `existing-${Date.now()}@twes.local`;
 
   // The account comes first: the owner of a company of its own, invited the way an operator opens one.
-  await signIn(page, EMAIL, PASSWORD);
+  await signInAsOperator(page);
   const opened = await page.evaluate(
     async ([companyName, csrf, email]) => {
       const headers = { 'content-type': 'application/json', 'csrf-token': csrf };

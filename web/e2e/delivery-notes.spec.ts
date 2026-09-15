@@ -1,22 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G6 delivery notes through the real stack: in the seeded Tunisian company, the owner drafts a note for a customer
 // made for the run, two laptops at 1250 under the 19 % VAT, validates it and finds it numbered, downloads its PDF
 // rendered by Gotenberg, marks it delivered and finds it in the list. One database is shared by the whole suite and
 // notes are never deleted, so the customer is unique to the run and deactivated afterwards.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 async function wcagViolations(page: Page): Promise<string[]> {
   const axe = await new AxeBuilder({ page })

@@ -1,19 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G3a through the real bundle, nginx, FrankenPHP and PostgreSQL: the seeded company carries its Tunisian preset's
 // taxes, units and customer regimes, and its owner revises one. The revision is undone at the end, because one
 // database is shared by the whole suite.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 /** The stamp's current name, read from the API so the test can put it back whatever an earlier run left. */
 async function stampName(page: Page): Promise<string> {

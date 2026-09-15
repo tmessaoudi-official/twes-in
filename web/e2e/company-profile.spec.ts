@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { signIn } from './session';
 
 // G3b through the real stack: the seeded Tunisian company's owner fills its profile, which asks for the matricule
 // fiscal its preset requires, and the profile survives a reload. One database is shared by the whole suite, so a
 // profile found filled at the start is put back at the end; the seed's empty profile cannot be, because the preset
 // requires the matricule fiscal, and nothing else in the suite reads the profile.
-const EMAIL = process.env['E2E_EMAIL'] ?? 'operator@twes.local';
-const PASSWORD = process.env['E2E_PASSWORD'] ?? 'twes-operator-dev';
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 const WRITABLE = [
@@ -27,14 +26,6 @@ const WRITABLE = [
   'invoiceFooterText',
   'latePenaltyText',
 ];
-
-async function signIn(page: Page): Promise<void> {
-  await page.goto('/login');
-  await page.getByTestId('email').fill(EMAIL);
-  await page.getByTestId('password').fill(PASSWORD);
-  await page.getByTestId('submit').click();
-  await expect(page).toHaveURL(/\/$/);
-}
 
 /** The profile as the API holds it, reduced to what a PUT accepts. */
 async function currentProfile(page: Page): Promise<Record<string, unknown>> {

@@ -29,6 +29,22 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->seedBuiltInRoles();
     }
 
+    public function testAnOperatorWithoutASecondFactorIsHeldUntilTheyEnrol(): void
+    {
+        // An operator account must carry a second factor, whatever company they belong to (docs/SPEC.md § 7, 2026-09-15, S3).
+        $this->createUser('op@twes.local', self::PASSWORD, operator: true, authenticator: false);
+        $this->login('op@twes.local', self::PASSWORD);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson('/api/platform/companies');
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        self::assertSame('mfa_enrolment_required', $this->stringAt($this->json(), 'error'));
+
+        $this->getJson('/api/auth/me');
+        self::assertResponseIsSuccessful();
+        self::assertTrue($this->boolAt($this->section($this->json(), 'mfa'), 'required'));
+    }
+
     public function testEnrolmentHandsBackASecretAndAUriAnAuthenticatorCanRead(): void
     {
         $this->createUser('someone@twes.local', self::PASSWORD);
