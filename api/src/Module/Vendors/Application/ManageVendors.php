@@ -23,7 +23,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A company's vendors. The registration numbers a vendor carries are those the company's preset knows, each in its
  * shape, and none is required: a supplier's number is recorded from its invoice, never demanded before buying.
- * Audited with the names of the fields a revision changed, never their values: a vendor may be a private person.
+ * Audited with the names of the fields a revision changed, never their values: a vendor may be a private person. A
+ * default expense category, when named, is an active one of the company; one that was deactivated since stays.
  */
 final readonly class ManageVendors
 {
@@ -36,6 +37,7 @@ final readonly class ManageVendors
         private FiscalPresets $presets,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private ExpenseCategoryDirectory $expenseCategories,
     ) {
     }
 
@@ -60,7 +62,7 @@ final readonly class ManageVendors
         if (null !== $this->vendors->ofNumberInCompany(trim($input->number), $company->getId())) {
             throw new VendorNumberTaken();
         }
-        $this->checkIdentifiers($company, $input);
+        $this->check($company, $input, null);
         $vendor = Vendor::create($company, $input->number, $input->profile, $this->clock->now());
         if (!$input->isActive) {
             $vendor->revise($input->number, $input->profile, false, $this->clock->now());
@@ -83,7 +85,7 @@ final readonly class ManageVendors
         if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {
             throw new VendorNumberTaken();
         }
-        $this->checkIdentifiers($company, $input);
+        $this->check($company, $input, $vendor);
 
         $changed = $vendor->revise($input->number, $input->profile, $input->isActive, $this->clock->now());
         if ([] !== $changed) {
@@ -94,11 +96,16 @@ final readonly class ManageVendors
         return $vendor;
     }
 
-    private function checkIdentifiers(Company $company, VendorInput $input): void
+    private function check(Company $company, VendorInput $input, ?Vendor $current): void
     {
         $refusal = IdentifierRules::refusal($this->presets->get($company->getFiscalPreset()), $input->profile->identifiers, '');
         if (null !== $refusal) {
             throw new InvalidVendor(...$refusal);
+        }
+        $category = $input->profile->defaultExpenseCategoryId;
+        $kept = null !== $category && null !== $current && true === $current->getProfile()->defaultExpenseCategoryId?->equals($category);
+        if (null !== $category && !$kept && !$this->expenseCategories->isActiveInCompany($category, $company->getId())) {
+            throw new InvalidVendor('defaultExpenseCategoryId', 'No active expense category of this company has this id.');
         }
     }
 

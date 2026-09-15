@@ -1,0 +1,242 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h1 class="text-3xl font-semibold" data-testid="expense-title">
+        @if (current(); as expense) {
+          {{ expense.description }}
+        } @else {
+          {{ 'expenses.new_title' | translate }}
+        }
+      </h1>
+      @if (current(); as expense) {
+        <p
+          class="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant"
+          data-testid="expense-status"
+        >
+          <app-status-badge [tone]="tones[expense.status]">
+            {{ 'expenses.statuses.' + expense.status | translate }}
+          </app-status-badge>
+          · {{ expense.date | day }}
+          @if (expense.vendorName) {
+            · {{ expense.vendorName }}
+          }
+        </p>
+      }
+    </div>
+    <a mat-button routerLink="/expenses">{{ 'expenses.back' | translate }}</a>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="expense-no-company">{{ 'expenses.no_company' | translate }}</p>
+  }
+  @if (!mayWrite()) {
+    <p data-testid="expense-read-only">{{ 'expenses.read_only' | translate }}</p>
+  } @else if (current(); as expense) {
+    @if (expense.status !== 'draft') {
+      <p data-testid="expense-fixed">{{ 'expenses.fixed_notes.' + expense.status | translate }}</p>
+    }
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="expense-error" class="text-error">
+      {{ 'expenses.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="expense-saved">{{ 'expenses.saved' | translate }}</p>
+  }
+
+  @if (current(); as expense) {
+    <mat-card>
+      <mat-card-content>
+        <dl class="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4" data-testid="expense-figures">
+          <div>
+            <dt class="text-sm text-on-surface-variant">
+              {{ 'expenses.fields.amountNet' | translate }}
+            </dt>
+            <dd class="tabular-nums">
+              {{ expense.amountNet | amount: options()?.currencyScale }} {{ expense.currency }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm text-on-surface-variant">
+              {{ 'expenses.fields.taxAmount' | translate }}
+              @if (expense.taxRate !== null) {
+                ({{ +expense.taxRate }} %)
+              }
+            </dt>
+            <dd class="tabular-nums" data-testid="expense-tax">
+              {{ expense.taxAmount | amount: options()?.currencyScale }}
+            </dd>
+          </div>
+          <div>
+            <dt class="text-sm text-on-surface-variant">
+              {{ 'expenses.fields.amountGross' | translate }}
+            </dt>
+            <dd class="font-semibold tabular-nums" data-testid="expense-gross">
+              {{ expense.amountGross | amount: options()?.currencyScale }} {{ expense.currency }}
+            </dd>
+          </div>
+          <div>
+            @if (expense.status === 'paid') {
+              <dt class="text-sm text-on-surface-variant">
+                {{ 'expenses.fields.paidOn' | translate }}
+              </dt>
+              <dd data-testid="expense-paid">
+                {{ expense.paidOn | day }} ·
+                {{ 'expenses.payment_methods.' + expense.paymentMethod | translate }}
+              </dd>
+            } @else {
+              <dt class="text-sm text-on-surface-variant">
+                {{ 'expenses.fields.dueDate' | translate }}
+              </dt>
+              <dd data-testid="expense-due">
+                {{ expense.dueDate ? (expense.dueDate | day) : '—' }}
+              </dd>
+            }
+          </div>
+        </dl>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="expense-form"
+            [readOnly]="!mayWrite() || !isDraft()"
+            (submitted)="save($event)"
+          >
+            @if (mayWrite() && isDraft()) {
+              <div class="flex flex-wrap justify-end gap-2">
+                @if (current()) {
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="remove()"
+                    [disabled]="busy()"
+                    data-testid="expense-delete"
+                  >
+                    {{
+                      (confirmingDelete()
+                        ? 'expenses.actions.delete_confirm'
+                        : 'expenses.actions.delete'
+                      ) | translate
+                    }}
+                  </button>
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    (click)="record()"
+                    [disabled]="busy()"
+                    data-testid="expense-record"
+                  >
+                    {{ 'expenses.actions.record' | translate }}
+                  </button>
+                }
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="busy()"
+                  data-testid="expense-save"
+                >
+                  {{ 'expenses.save' | translate }}
+                </button>
+              </div>
+            }
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (current()?.status === 'recorded' && mayWrite()) {
+    @if (paymentFormGroup(); as paymentGroup) {
+      @if (paymentDescriptor(); as paymentDescriptor) {
+        <mat-card>
+          <mat-card-content>
+            <app-descriptor-form
+              [descriptor]="paymentDescriptor"
+              [form]="paymentGroup"
+              testId="expense-payment-form"
+              (submitted)="pay($event)"
+            >
+              <div class="flex flex-wrap justify-end gap-2">
+                <button mat-flat-button type="submit" [disabled]="busy()" data-testid="expense-pay">
+                  {{ 'expenses.actions.pay' | translate }}
+                </button>
+              </div>
+            </app-descriptor-form>
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+  }
+
+  @if (current(); as expense) {
+    <mat-card>
+      <mat-card-content class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <h2 class="text-xl font-semibold">{{ 'expenses.attachments.title' | translate }}</h2>
+          @if (mayWrite()) {
+            <label class="flex flex-col gap-1 text-sm">
+              <span>{{ 'expenses.attachments.add' | translate }}</span>
+              <input
+                type="file"
+                accept="application/pdf,image/png,image/jpeg,image/webp"
+                (change)="upload($event)"
+                [disabled]="busy()"
+                data-testid="expense-attach"
+              />
+            </label>
+          }
+        </div>
+        <p class="text-sm text-on-surface-variant">{{ 'expenses.attachments.hint' | translate }}</p>
+        @if (attachments().length === 0) {
+          <p data-testid="expense-attachments-empty">
+            {{ 'expenses.attachments.none' | translate }}
+          </p>
+        } @else {
+          <ul class="flex flex-col gap-2" data-testid="expense-attachments">
+            @for (attachment of attachments(); track attachment.id) {
+              <li
+                class="flex flex-wrap items-center justify-between gap-2"
+                [attr.data-testid]="'expense-attachment-' + attachment.name"
+              >
+                <a
+                  [href]="attachmentUrl(attachment)"
+                  target="_blank"
+                  rel="noopener"
+                  class="underline"
+                  [attr.data-testid]="'expense-attachment-open-' + attachment.name"
+                >
+                  {{ attachment.name }}
+                </a>
+                <span class="text-sm text-on-surface-variant">
+                  {{ kilobytes(attachment.size) }} KB · {{ attachment.createdAt | moment }}
+                </span>
+                @if (mayWrite() && expense.status === 'draft') {
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="detach(attachment)"
+                    [disabled]="busy()"
+                    [attr.data-testid]="'expense-detach-' + attachment.name"
+                    [attr.aria-label]="
+                      'expenses.attachments.remove' | translate: { name: attachment.name }
+                    "
+                  >
+                    {{ 'expenses.attachments.remove_short' | translate }}
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</section>

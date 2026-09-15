@@ -44,6 +44,11 @@ parameters:
     app.pdf.gotenberg_url: '%env(GOTENBERG_URL)%'
     # Files live on a local volume through Flysystem (docs/SPEC.md § 2 Files); S3-compatible storage swaps the adapter.
     app.files.directory: '%env(resolve:FILES_DIRECTORY)%'
+    # What a person may attach to a record (docs/SPEC.md § 7, 2026-09-15): a document or a picture of one, read from its
+    # bytes. nginx's client_max_body_size and PHP's upload_max_filesize/post_max_size sit just above the size.
+    app.files.upload_max_bytes: 10485760
+    app.files.attachment_types: ['application/pdf', 'image/png', 'image/jpeg', 'image/webp']
+    app.files.attachments_per_subject: 10
 
 services:
     # default configuration for services in *this* file
@@ -115,6 +120,12 @@ services:
             $apiUrl: '%app.realtime.api_url%'
             $apiKey: '%app.realtime.api_key%'
             $enabled: '%app.realtime.push_enabled%'
+
+    App\Files\Application\Attachments:
+        arguments:
+            $maxBytes: '%app.files.upload_max_bytes%'
+            $allowedTypes: '%app.files.attachment_types%'
+            $perSubject: '%app.files.attachments_per_subject%'
 
     App\Inbox\Application\NotificationCentre:
         arguments:

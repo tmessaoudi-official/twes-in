@@ -1,0 +1,94 @@
+<app-page-tabs [tabs]="tabs" label="nav.expenses">
+  <section class="flex max-w-4xl flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="expense-categories-title">
+        {{ 'expenses.categories.title' | translate }}
+      </h1>
+      @if (mayWrite() && editing() === null && company()) {
+        <button
+          mat-flat-button
+          type="button"
+          (click)="open('new')"
+          data-testid="expense-category-add"
+        >
+          {{ 'expenses.categories.add' | translate }}
+        </button>
+      }
+    </div>
+    <p class="max-w-prose">{{ 'expenses.categories.intro' | translate }}</p>
+
+    @if (!company()) {
+      <p data-testid="expense-categories-no-company">{{ 'expenses.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="expense-categories-error" class="text-error">
+        {{ 'expenses.errors.' + code | translate }}
+      </p>
+    }
+    @if (saved()) {
+      <p role="status" data-testid="expense-category-saved">
+        {{ 'expenses.categories.saved' | translate }}
+      </p>
+    }
+
+    @if (form(); as form) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor()"
+            [form]="form"
+            testId="expense-category-form"
+            (submitted)="save($event)"
+          >
+            <div class="flex flex-wrap justify-end gap-2">
+              <button
+                mat-button
+                type="button"
+                (click)="cancel()"
+                data-testid="expense-category-cancel"
+              >
+                {{ 'expenses.cancel' | translate }}
+              </button>
+              <button
+                mat-flat-button
+                type="submit"
+                [disabled]="busy()"
+                data-testid="expense-category-save"
+              >
+                {{ 'expenses.save' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <app-data-list
+      [descriptor]="list"
+      [rows]="rows()"
+      testId="expense-categories-table"
+      [rowTestId]="rowTestId"
+      emptyKey="expenses.categories.none"
+      emptyTestId="expense-categories-empty"
+    >
+      <ng-template appDataListCell="status" let-row>
+        <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+          {{ 'expenses.categories.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
+        </app-status-badge>
+      </ng-template>
+      <ng-template appDataListRowActions let-row>
+        @if (mayWrite()) {
+          <button
+            mat-button
+            type="button"
+            (click)="open(row)"
+            [attr.data-testid]="'expense-category-edit-' + row.name"
+            [attr.aria-label]="'expenses.categories.edit' | translate: { name: row.name }"
+          >
+            {{ 'expenses.categories.edit_short' | translate }}
+          </button>
+        }
+      </ng-template>
+    </app-data-list>
+  </section>
+</app-page-tabs>

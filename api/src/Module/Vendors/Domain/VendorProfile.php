@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Vendors\Domain;
 
 use App\Shared\Domain\PostalAddress;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * What a company knows of a vendor (docs/SPEC.md § 4 vendor): names, registration numbers, contact, an address, the
@@ -52,6 +53,8 @@ final readonly class VendorProfile
         ?string $bic = null,
         ?int $paymentTermsDays = null,
         ?string $notes = null,
+        /** The expense category its expenses usually go to; checked against the company by the use case. */
+        public ?Uuid $defaultExpenseCategoryId = null,
     ) {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
@@ -103,6 +106,7 @@ final readonly class VendorProfile
             'bic' => $this->bic,
             'paymentTermsDays' => $this->paymentTermsDays,
             'notes' => $this->notes,
+            'defaultExpenseCategoryId' => $this->defaultExpenseCategoryId?->toRfc4122(),
         ];
     }
 

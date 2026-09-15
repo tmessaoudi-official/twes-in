@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain;
 
+use App\Shared\Domain\PaymentMethod;
+
 /**
  * What a payment says: its day, an amount above zero with at most three decimals, how it was paid, a reference and
  * notes. Whether the amount fits the currency and what is due, and whether the day fits the invoice, is the invoice's

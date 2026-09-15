@@ -282,7 +282,9 @@
     "stock": "Stock",
     "stock_movements": "Stock movements",
     "stock_locations": "Locations",
-    "vendors": "Vendors"
+    "vendors": "Vendors",
+    "expenses": "Expenses",
+    "expense_categories": "Expense categories"
   },
   "shell": {
     "skip": "Skip to content",
@@ -1021,6 +1023,112 @@
       "not_found": "Vendor not found.",
       "number_taken": "Another vendor already has this number.",
       "invalid": "The change was refused. Check the registration numbers, the IBAN and the BIC."
+    }
+  },
+  "expenses": {
+    "title": "Expenses",
+    "add": "New expense",
+    "open": "Open {{name}}",
+    "open_short": "Open",
+    "none": "No expenses yet.",
+    "no_company": "Choose a company first.",
+    "new_title": "New expense",
+    "back": "Back to expenses",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saved": "The expense was saved.",
+    "read_only": "You can read expenses but not change them.",
+    "statuses": {
+      "draft": "Draft",
+      "recorded": "Recorded",
+      "paid": "Paid"
+    },
+    "fixed_notes": {
+      "recorded": "This expense is recorded in the books: it can be paid, and a late receipt can still be attached, but it no longer changes.",
+      "paid": "This expense is paid and no longer changes; a late receipt can still be attached."
+    },
+    "sections": {
+      "expense": "Expense",
+      "amounts": "Amounts",
+      "notes": "Notes",
+      "payment": "Payment"
+    },
+    "fields": {
+      "date": "Date",
+      "reference": "Vendor's reference",
+      "description": "Description",
+      "vendorId": "Vendor",
+      "categoryId": "Category",
+      "amountNet": "Net amount",
+      "taxComponentId": "Tax",
+      "taxAmount": "Tax",
+      "amountGross": "Total",
+      "dueDate": "Due",
+      "status": "Status",
+      "paymentMethod": "Paid by",
+      "paidOn": "Paid on",
+      "notes": "Notes"
+    },
+    "form": {
+      "reference_hint": "The number on the vendor's invoice or receipt.",
+      "no_vendor": "No vendor",
+      "vendor_hint": "Only active vendors are offered. Choosing one fills an empty category with the vendor's usual one.",
+      "no_category": "No category",
+      "category_hint": "Only active categories are offered.",
+      "net_hint": "Before tax, with no more decimals than the currency has.",
+      "no_tax": "No tax",
+      "notes_hint": "For your team only."
+    },
+    "payment_methods": {
+      "transfer": "Bank transfer",
+      "cash": "Cash",
+      "check": "Check",
+      "card": "Card",
+      "other": "Other"
+    },
+    "actions": {
+      "record": "Record in the books",
+      "pay": "Mark as paid",
+      "delete": "Delete draft",
+      "delete_confirm": "Confirm deletion"
+    },
+    "attachments": {
+      "title": "Receipts",
+      "add": "Attach a file",
+      "hint": "PDF, PNG, JPEG or WebP, up to 10 MB and 10 files. The type is read from the file itself.",
+      "none": "No receipt attached yet.",
+      "remove": "Remove {{name}}",
+      "remove_short": "Remove"
+    },
+    "categories": {
+      "title": "Expense categories",
+      "add": "New category",
+      "intro": "Expenses are filed in a tree of categories. A category is deactivated rather than deleted, so the expenses already filed under it keep it.",
+      "saved": "The category was saved.",
+      "section": "Category",
+      "top_level": "At the top",
+      "active_hint": "An inactive category stays on its expenses but is no longer offered for new ones.",
+      "edit": "Edit {{name}}",
+      "edit_short": "Edit",
+      "none": "No categories yet.",
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Name",
+        "parentId": "Under",
+        "isActive": "Active"
+      }
+    },
+    "errors": {
+      "network": "The server could not be reached.",
+      "not_found": "Expense not found.",
+      "not_draft": "Only a draft expense can be changed, deleted or have a receipt removed.",
+      "name_taken": "Another category under the same parent already has this name.",
+      "invalid": "The change was refused. Check the vendor, the category, the tax and the amount.",
+      "file_refused": "The file was refused: it must be a PDF, PNG, JPEG or WebP image, not empty, and the expense may hold at most 10 files.",
+      "file_too_large": "The file is larger than 10 MB."
     }
   }
 }

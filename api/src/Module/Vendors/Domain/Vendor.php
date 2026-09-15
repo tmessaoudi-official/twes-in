@@ -72,6 +72,10 @@ class Vendor
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $notes = null;
 
+    /** An id rather than an association: vendors work without the expenses module, which depends on them. */
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?Uuid $defaultExpenseCategoryId = null;
+
     #[ORM\Column]
     private bool $isActive = true;
 
@@ -139,6 +143,7 @@ class Vendor
             $this->bic,
             $this->paymentTermsDays,
             $this->notes,
+            $this->defaultExpenseCategoryId,
         );
     }
 
@@ -155,6 +160,7 @@ class Vendor
         $this->bic = $profile->bic;
         $this->paymentTermsDays = $profile->paymentTermsDays;
         $this->notes = $profile->notes;
+        $this->defaultExpenseCategoryId = $profile->defaultExpenseCategoryId;
     }
 
     private static function number(string $number): string

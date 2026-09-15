@@ -1,0 +1,343 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tests\Functional;
+
+use App\Fiscal\Application\Company\ProvisionCompany;
+use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Domain\ExpenseDetails;
+use App\Module\Vendors\Domain\Vendor;
+use App\Module\Vendors\Domain\VendorProfile;
+use App\Tenancy\Domain\Company;
+use App\Tests\Unit\Files\Application\AttachmentsTest;
+use Symfony\Component\HttpFoundation\Response;
+
+final class ExpensesTest extends ApiTestCase
+{
+    private Company $company;
+    private Vendor $vendor;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->company = $this->createCompany('Acme');
+        static::getContainer()->get(ProvisionCompany::class)->handle($this->company);
+        $this->vendor = Vendor::create($this->company, 'FRN-0001', new VendorProfile('Sotumag', paymentTermsDays: 30), new \DateTimeImmutable());
+        $this->em()->persist($this->vendor);
+        $this->em()->flush();
+    }
+
+    public function testTheOptionsSayWhatAnExpenseAsksFor(): void
+    {
+        $this->signedIn(['expense.read']);
+
+        $this->getJson($this->companyPath().'/expense-options');
+
+        self::assertResponseIsSuccessful();
+        $options = $this->json();
+        self::assertSame(['TND', 3], [$options['currency'], $options['currencyScale']]);
+        self::assertSame(['transfer', 'cash', 'check', 'card', 'other'], $options['paymentMethods']);
+        $codes = array_column($this->arrayAt($options, 'taxes'), 'code');
+        self::assertContains('TVA19', $codes);
+        self::assertContains('FODEC', $codes);
+        self::assertNotContains('TIMBRE', $codes, 'only a rate on the net taxes an expense');
+        self::assertNotContains('RS1', $codes);
+        $vendor = $this->arrayAt($options, 'vendors')[0];
+        self::assertIsArray($vendor);
+        self::assertSame(['FRN-0001', 'Sotumag', 30, null], [$vendor['number'], $vendor['name'], $vendor['paymentTermsDays'], $vendor['defaultExpenseCategoryId']]);
+    }
+
+    public function testCategoriesFormATreeNamedOnceAndAreDeactivatedNeverDeleted(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+
+        $vehicles = $this->category('Véhicules');
+        $fuel = $this->category('Carburant', $vehicles);
+        $this->postJson($this->companyPath().'/expense-categories', ['name' => 'Carburant', 'parentId' => null, 'isActive' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+
+        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$vehicles, ['name' => 'Véhicules', 'parentId' => $fuel, 'isActive' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('parentId', (string) $this->client->getResponse()->getContent());
+
+        $this->sendJson('PUT', $this->companyPath().'/expense-categories/'.$fuel, ['name' => 'Carburant', 'parentId' => $vehicles, 'isActive' => false]);
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->companyPath().'/expense-categories');
+        self::assertSame([['Carburant', $vehicles, false], ['Véhicules', null, true]], array_map(static fn (array $row) => [$row['name'], $row['parentId'], $row['isActive']], $this->jsonList()));
+        $this->getJson($this->companyPath().'/expense-options');
+        self::assertSame(['Véhicules'], array_column($this->arrayAt($this->json(), 'categories'), 'name'), 'an inactive category is not offered');
+        $this->sendJson('DELETE', $this->companyPath().'/expense-categories/'.$fuel);
+        self::assertResponseStatusCodeSame(Response::HTTP_METHOD_NOT_ALLOWED);
+    }
+
+    public function testAWriterDraftsAnExpenseWhoseFiguresComeFromTheNetAndTheRate(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $fuel = $this->category('Carburant');
+
+        $this->postJson($this->path(), $this->expense(['categoryId' => $fuel]));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $created = $this->json();
+        self::assertSame(
+            ['draft', '2026-09-10', 'F-2026-118', 'Sotumag', 'Carburant', '100.005', '19.000', '19.001', '119.006', 'TND', '2026-10-10', null, null, 0],
+            [$created['status'], $created['date'], $created['reference'], $created['vendorName'], $created['categoryName'], $created['amountNet'], $created['taxRate'], $created['taxAmount'], $created['amountGross'], $created['currency'], $created['dueDate'], $created['paymentMethod'], $created['paidOn'], $created['attachmentCount']],
+        );
+        $this->getJson($this->path($this->stringAt($created, 'id')));
+        self::assertResponseIsSuccessful();
+        $this->getJson($this->path());
+        self::assertCount(1, $this->jsonList());
+        self::assertSame('[]', $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.created'"));
+    }
+
+    public function testWhatTheShapeOrTheCompanyRefusesAnswersUnprocessableNamingTheField(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $stamp = $this->taxId('TIMBRE');
+
+        foreach ([
+            'description' => ['description' => ''],
+            'amountNet' => ['amountNet' => '0'],
+            'amountNet ' => ['amountNet' => '1.2345'],
+            'date' => ['date' => '15/09/2026'],
+            'reference' => ['reference' => str_repeat('x', 65)],
+            'taxComponentId' => ['taxComponentId' => $stamp],
+            'categoryId' => ['categoryId' => '01920000-0000-7000-8000-000000000000'],
+            'vendorId' => ['vendorId' => '01920000-0000-7000-8000-000000000000'],
+        ] as $field => $change) {
+            $this->postJson($this->path(), $this->expense($change));
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString(trim($field), (string) $this->client->getResponse()->getContent(), $field);
+        }
+        $this->getJson($this->path());
+        self::assertCount(0, $this->jsonList());
+    }
+
+    public function testRecordingNeedsACategoryAndFreezesTheExpenseWhichIsThenPaidOnADayThatHappened(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $today = new \DateTimeImmutable('today', new \DateTimeZone($this->company->getTimezone()));
+        $this->postJson($this->path(), $this->expense(['date' => $today->modify('-10 days')->format('Y-m-d')]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path($id).'/record', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('categoryId', (string) $this->client->getResponse()->getContent());
+        $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $today->format('Y-m-d')]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
+
+        $this->sendJson('PUT', $this->path($id), $this->expense(['date' => $today->modify('-10 days')->format('Y-m-d'), 'categoryId' => $this->category('Carburant'), 'amountNet' => '200']));
+        self::assertResponseIsSuccessful();
+        $changes = $this->em()->getConnection()->fetchOne("SELECT changes::text FROM audit_log WHERE action = 'expense.revised'");
+        self::assertIsString($changes);
+        self::assertSame(['fields' => ['amountNet', 'categoryId']], json_decode($changes, true));
+        $this->postJson($this->path($id).'/record', null);
+        self::assertResponseIsSuccessful();
+        self::assertSame('recorded', $this->json()['status']);
+
+        $this->sendJson('PUT', $this->path($id), $this->expense(['categoryId' => null]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        foreach ([$today->modify('-11 days'), $today->modify('+1 day')] as $impossible) {
+            $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'cash', 'paidOn' => $impossible->format('Y-m-d')]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $impossible->format('Y-m-d'));
+            self::assertStringContainsString('paidOn', (string) $this->client->getResponse()->getContent());
+        }
+        $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'bitcoin', 'paidOn' => $today->format('Y-m-d')]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        $this->postJson($this->path($id).'/pay', ['paymentMethod' => 'transfer', 'paidOn' => $today->modify('-2 days')->format('Y-m-d')]);
+        self::assertResponseIsSuccessful();
+        self::assertSame(['paid', 'transfer', $today->modify('-2 days')->format('Y-m-d')], [$this->json()['status'], $this->json()['paymentMethod'], $this->json()['paidOn']]);
+        $this->sendJson('DELETE', $this->path($id));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'only a draft is deleted');
+        self::assertSame(['expense.created', 'expense.revised', 'expense.recorded', 'expense.paid'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
+    }
+
+    public function testAReceiptIsAttachedByItsBytesListedDownloadedAndDetachedWhileTheExpenseIsADraft(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense(['categoryId' => $this->category('Carburant')]));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->uploadFile($this->path($id).'/attachments', 'C:\\fakepath\\recu.pdf', AttachmentsTest::PDF);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $receipt = $this->json();
+        $receiptId = $this->stringAt($receipt, 'id');
+        self::assertSame(['recu.pdf', 'application/pdf', \strlen(AttachmentsTest::PDF)], [$receipt['name'], $receipt['mime'], $receipt['size']]);
+
+        foreach (['text named like a PDF' => ['facture.pdf', 'Bonjour'], 'nothing' => ['vide.pdf', '']] as $case => [$name, $contents]) {
+            $this->uploadFile($this->path($id).'/attachments', $name, $contents);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $case);
+            self::assertStringContainsString('file', (string) $this->client->getResponse()->getContent(), $case);
+        }
+        $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF, 'document');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, 'no part named file');
+
+        $this->getJson($this->path($id).'/attachments');
+        self::assertResponseIsSuccessful();
+        self::assertSame([$receiptId], array_column($this->jsonList(), 'id'));
+        $this->getJson($this->path($id));
+        self::assertSame(1, $this->json()['attachmentCount']);
+
+        $this->client->request('GET', $this->path($id).'/attachments/'.$receiptId.'/content');
+        self::assertResponseIsSuccessful();
+        $response = $this->client->getResponse();
+        self::assertSame(AttachmentsTest::PDF, $response->getContent());
+        self::assertSame(['application/pdf', 'nosniff'], [$response->headers->get('content-type'), $response->headers->get('x-content-type-options')]);
+        self::assertStringContainsString('recu.pdf', (string) $response->headers->get('content-disposition'));
+
+        $this->uploadFile($this->path($id).'/attachments', 'photo.png', (string) base64_decode(AttachmentsTest::PNG, true));
+        $photo = $this->stringAt($this->json(), 'id');
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$receiptId);
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        self::assertSame(2, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM file'), 'a detached file keeps its bytes');
+
+        $this->postJson($this->path($id).'/record', null);
+        $this->uploadFile($this->path($id).'/attachments', 'avoir.pdf', AttachmentsTest::PDF);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'a receipt arriving late is still attached');
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$photo);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'what a recorded expense rests on stays');
+    }
+
+    public function testADraftIsDeletedWithItsAttachments(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $this->postJson($this->path(), $this->expense());
+        $id = $this->stringAt($this->json(), 'id');
+        $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+
+        $this->sendJson('DELETE', $this->path($id));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->path($id));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        self::assertSame(0, $this->em()->getConnection()->fetchOne('SELECT COUNT(*) FROM attachment'));
+        self::assertSame(['expense.created', 'expense.attachment_added', 'expense.deleted'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'expense' ORDER BY at, id"));
+    }
+
+    public function testAVendorNamesTheCategoryItsExpensesUsuallyGoTo(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write', 'vendor.read', 'vendor.write']);
+        $fuel = $this->category('Carburant');
+        $vendorPath = $this->companyPath().'/vendors/'.$this->vendor->getId()->toRfc4122();
+        $body = ['number' => 'FRN-0001', 'name' => 'Sotumag', 'identifiers' => [], 'paymentTermsDays' => 30, 'isActive' => true];
+
+        $this->sendJson('PUT', $vendorPath, [...$body, 'defaultExpenseCategoryId' => '01920000-0000-7000-8000-000000000000']);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('defaultExpenseCategoryId', (string) $this->client->getResponse()->getContent());
+
+        $this->sendJson('PUT', $vendorPath, [...$body, 'defaultExpenseCategoryId' => $fuel]);
+        self::assertResponseIsSuccessful();
+        self::assertSame($fuel, $this->json()['defaultExpenseCategoryId']);
+        $this->getJson($this->companyPath().'/expense-options');
+        $vendor = $this->arrayAt($this->json(), 'vendors')[0] ?? null;
+        self::assertIsArray($vendor);
+        self::assertSame($fuel, $vendor['defaultExpenseCategoryId'] ?? null);
+    }
+
+    public function testAReaderOnlyReadsAnotherCompanySeesNothingAndASwitchedOffModuleAnswersNotFound(): void
+    {
+        $this->createUser('reader@twes.local', 'password-1234', $this->company, ['expense.read'], 'reader');
+        $this->signedIn(['expense.read', 'expense.write', 'company.read', 'company.settings']);
+        $this->postJson($this->path(), $this->expense());
+        $id = $this->stringAt($this->json(), 'id');
+        $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+        $attachment = $this->stringAt($this->json(), 'id');
+
+        // Made before the next request: the test client reboots the kernel, and with it the entity manager.
+        $globex = $this->createCompany('Globex');
+        $their = Expense::create($globex, new ExpenseDetails(new \DateTimeImmutable('2026-09-10'), 'Loyer', '500'), null, null, null, 3, new \DateTimeImmutable());
+        $this->em()->persist($their);
+        $this->em()->flush();
+        $theirs = '/api/companies/'.$globex->getId()->toRfc4122().'/expenses';
+        $this->getJson($theirs);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $theirId = $their->getId()->toRfc4122();
+        foreach (['GET' => $this->path($theirId), 'GET ' => $this->path($theirId).'/attachments', 'DELETE' => $this->path($theirId)] as $method => $through) {
+            $this->sendJson(trim($method), $through);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "$method another company's expense through this company");
+        }
+        $this->uploadFile($this->path($theirId).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, 'a file attached to another company’s expense');
+
+        $this->sendJson('PUT', $this->companyPath().'/modules/expenses', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
+        foreach (['', '/'.$id, '/'.$id.'/attachments', '/'.$id.'/attachments/'.$attachment.'/content'] as $hidden) {
+            $this->getJson($this->path().$hidden);
+            self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND, "expenses$hidden while the module is off");
+        }
+        $this->sendJson('PUT', $this->companyPath().'/modules/expenses', ['enabled' => true]);
+
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($this->path($id).'/attachments');
+        self::assertResponseIsSuccessful();
+        $this->client->request('GET', $this->path($id).'/attachments/'.$attachment.'/content');
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path(), $this->expense());
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->uploadFile($this->path($id).'/attachments', 'recu.pdf', AttachmentsTest::PDF);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->sendJson('DELETE', $this->path($id).'/attachments/'.$attachment);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    private function category(string $name, ?string $parentId = null): string
+    {
+        $this->postJson($this->companyPath().'/expense-categories', ['name' => $name, 'parentId' => $parentId, 'isActive' => true]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, $name);
+
+        return $this->stringAt($this->json(), 'id');
+    }
+
+    private function taxId(string $code): string
+    {
+        $id = $this->em()->getConnection()->fetchOne('SELECT id FROM tax_component WHERE company_id = ? AND code = ?', [$this->company->getId()->toRfc4122(), $code]);
+        self::assertIsString($id, $code);
+
+        return $id;
+    }
+
+    /**
+     * @param array<string, mixed> $changes
+     *
+     * @return array<string, mixed>
+     */
+    private function expense(array $changes = []): array
+    {
+        return [...[
+            'date' => '2026-09-10',
+            'reference' => 'F-2026-118',
+            'description' => 'Gasoil septembre',
+            'vendorId' => $this->vendor->getId()->toRfc4122(),
+            'categoryId' => null,
+            'amountNet' => '100.005',
+            'taxComponentId' => $this->taxId('TVA19'),
+            'notes' => null,
+        ], ...$changes];
+    }
+
+    /** @param list<string> $permissions */
+    private function signedIn(array $permissions): void
+    {
+        $this->createUser('buyer@twes.local', 'password-1234', $this->company, $permissions, 'member');
+        $this->login('buyer@twes.local', 'password-1234');
+        self::assertResponseIsSuccessful();
+    }
+
+    private function companyPath(): string
+    {
+        return '/api/companies/'.$this->company->getId()->toRfc4122();
+    }
+
+    private function path(?string $expenseId = null): string
+    {
+        return $this->companyPath().'/expenses'.(null === $expenseId ? '' : '/'.$expenseId);
+    }
+}

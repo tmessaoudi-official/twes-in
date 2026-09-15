@@ -5,6 +5,7 @@ import { Routes } from '@angular/router';
 import { anonymousGuard, authGuard } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
+import { EXPENSES_MODULE } from './expenses/expenses-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
 import { VENDORS_MODULE } from './vendors/vendors-nav';
@@ -127,6 +128,27 @@ export const routes: Routes = [
         path: 'vendors/:vendorId',
         canActivate: [moduleGuard(VENDORS_MODULE)],
         loadComponent: () => import('./vendors/vendor-page').then((m) => m.VendorPage),
+      },
+      {
+        path: 'expenses',
+        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        loadComponent: () => import('./expenses/expenses-page').then((m) => m.ExpensesPage),
+      },
+      {
+        path: 'expenses/categories',
+        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        loadComponent: () =>
+          import('./expenses/expense-categories-page').then((m) => m.ExpenseCategoriesPage),
+      },
+      {
+        path: 'expenses/new',
+        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
+      },
+      {
+        path: 'expenses/:expenseId',
+        canActivate: [moduleGuard(EXPENSES_MODULE)],
+        loadComponent: () => import('./expenses/expense-page').then((m) => m.ExpensePage),
       },
       {
         // The company settings, reached from the gear: a layout route with no path of its own, so the grouped

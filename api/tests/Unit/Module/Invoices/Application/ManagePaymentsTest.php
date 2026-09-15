@@ -26,7 +26,7 @@ use App\Module\Invoices\Domain\InvoiceIssue;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\PaymentDetails;
-use App\Module\Invoices\Domain\PaymentMethod;
+use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;

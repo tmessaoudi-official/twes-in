@@ -1,0 +1,53 @@
+<app-page-tabs [tabs]="tabs" label="nav.expenses">
+  <section class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="expenses-title">
+        {{ 'expenses.title' | translate }}
+      </h1>
+      @if (mayWrite() && company()) {
+        <a mat-flat-button routerLink="/expenses/new" data-testid="expense-add">
+          {{ 'expenses.add' | translate }}
+        </a>
+      }
+    </div>
+
+    @if (!company()) {
+      <p data-testid="expenses-no-company">{{ 'expenses.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="expenses-error" class="text-error">
+        {{ 'expenses.errors.' + code | translate }}
+      </p>
+    }
+
+    <app-data-list
+      [descriptor]="list"
+      [rows]="rows()"
+      testId="expenses-table"
+      [rowTestId]="rowTestId"
+      emptyKey="expenses.none"
+      emptyTestId="expenses-empty"
+    >
+      <ng-template appDataListCell="date" let-row>{{ row.date | day }}</ng-template>
+      <ng-template appDataListCell="dueDate" let-row>{{ row.dueDate | day }}</ng-template>
+      <ng-template appDataListCell="amountGross" let-row>
+        {{ row.amountGross | amount: null }} {{ row.currency }}
+      </ng-template>
+      <ng-template appDataListCell="status" let-row>
+        <app-status-badge [tone]="toneOf(row.status)">
+          {{ 'expenses.statuses.' + row.status | translate }}
+        </app-status-badge>
+      </ng-template>
+      <ng-template appDataListRowActions let-row>
+        <a
+          mat-button
+          [routerLink]="['/expenses', row.id]"
+          [attr.data-testid]="'expense-open-' + row.id"
+          [attr.aria-label]="'expenses.open' | translate: { name: row.description }"
+        >
+          {{ 'expenses.open_short' | translate }}
+        </a>
+      </ng-template>
+    </app-data-list>
+  </section>
+</app-page-tabs>

@@ -7,6 +7,7 @@ import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
+import { EXPENSES_NAV } from '../expenses/expenses-nav';
 import {
   CORE_NAV,
   DEV_NAV,
@@ -170,12 +171,17 @@ describe('the navigation manifest', () => {
     expect(
       VENDORS_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['vendors', 'vendors', 'vendor.read', '/vendors']]);
+    // Categories are a tab of the expenses screen.
+    expect(
+      EXPENSES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['expenses', 'expenses', 'expense.read', '/expenses']]);
     expect(MODULE_NAV).toEqual([
       ...CUSTOMERS_NAV,
       ...PRODUCTS_NAV,
       ...DELIVERY_NOTES_NAV,
       ...INVENTORY_NAV,
       ...VENDORS_NAV,
+      ...EXPENSES_NAV,
     ]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);
   });

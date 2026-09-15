@@ -24,6 +24,7 @@ use App\Tenancy\Domain\Company;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
+use Symfony\Component\Uid\Uuid;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -156,6 +157,11 @@ final class VendorResource
     #[Groups([self::READ, self::WRITE])]
     public bool $isActive = true;
 
+    /** The expense category this vendor's expenses usually go to. */
+    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?string $defaultExpenseCategoryId = null;
+
     public static function of(Vendor $vendor): self
     {
         $profile = $vendor->getProfile();
@@ -174,6 +180,7 @@ final class VendorResource
         $resource->paymentTermsDays = $profile->paymentTermsDays;
         $resource->notes = $profile->notes;
         $resource->isActive = $vendor->isActive();
+        $resource->defaultExpenseCategoryId = $profile->defaultExpenseCategoryId?->toRfc4122();
 
         return $resource;
     }
@@ -200,6 +207,7 @@ final class VendorResource
                 $this->bic,
                 $this->paymentTermsDays,
                 $this->notes,
+                null === $this->defaultExpenseCategoryId ? null : Uuid::fromString($this->defaultExpenseCategoryId),
             ),
             $this->isActive,
         );

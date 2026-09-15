@@ -282,7 +282,9 @@
     "stock": "Stock",
     "stock_movements": "Mouvements de stock",
     "stock_locations": "Emplacements",
-    "vendors": "Fournisseurs"
+    "vendors": "Fournisseurs",
+    "expenses": "Dépenses",
+    "expense_categories": "Catégories de dépenses"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -1021,6 +1023,112 @@
       "not_found": "Fournisseur introuvable.",
       "number_taken": "Un autre fournisseur porte déjà ce numéro.",
       "invalid": "La modification a été refusée. Vérifiez les numéros d’immatriculation, l’IBAN et le BIC."
+    }
+  },
+  "expenses": {
+    "title": "Dépenses",
+    "add": "Nouvelle dépense",
+    "open": "Ouvrir {{name}}",
+    "open_short": "Ouvrir",
+    "none": "Aucune dépense pour l’instant.",
+    "no_company": "Choisissez d’abord une société.",
+    "new_title": "Nouvelle dépense",
+    "back": "Retour aux dépenses",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "saved": "La dépense a été enregistrée.",
+    "read_only": "Vous pouvez consulter les dépenses mais pas les modifier.",
+    "statuses": {
+      "draft": "Brouillon",
+      "recorded": "Comptabilisée",
+      "paid": "Payée"
+    },
+    "fixed_notes": {
+      "recorded": "Cette dépense est comptabilisée : elle peut être payée, et un justificatif tardif peut encore être joint, mais elle ne change plus.",
+      "paid": "Cette dépense est payée et ne change plus ; un justificatif tardif peut encore être joint."
+    },
+    "sections": {
+      "expense": "Dépense",
+      "amounts": "Montants",
+      "notes": "Notes",
+      "payment": "Paiement"
+    },
+    "fields": {
+      "date": "Date",
+      "reference": "Référence du fournisseur",
+      "description": "Libellé",
+      "vendorId": "Fournisseur",
+      "categoryId": "Catégorie",
+      "amountNet": "Montant HT",
+      "taxComponentId": "Taxe",
+      "taxAmount": "Taxe",
+      "amountGross": "Total TTC",
+      "dueDate": "Échéance",
+      "status": "Statut",
+      "paymentMethod": "Réglée par",
+      "paidOn": "Payée le",
+      "notes": "Notes"
+    },
+    "form": {
+      "reference_hint": "Le numéro figurant sur la facture ou le reçu du fournisseur.",
+      "no_vendor": "Aucun fournisseur",
+      "vendor_hint": "Seuls les fournisseurs actifs sont proposés. En choisir un remplit une catégorie vide avec sa catégorie habituelle.",
+      "no_category": "Aucune catégorie",
+      "category_hint": "Seules les catégories actives sont proposées.",
+      "net_hint": "Hors taxes, sans plus de décimales que la devise n’en compte.",
+      "no_tax": "Aucune taxe",
+      "notes_hint": "Pour votre équipe uniquement."
+    },
+    "payment_methods": {
+      "transfer": "Virement",
+      "cash": "Espèces",
+      "check": "Chèque",
+      "card": "Carte",
+      "other": "Autre"
+    },
+    "actions": {
+      "record": "Comptabiliser",
+      "pay": "Marquer comme payée",
+      "delete": "Supprimer le brouillon",
+      "delete_confirm": "Confirmer la suppression"
+    },
+    "attachments": {
+      "title": "Justificatifs",
+      "add": "Joindre un fichier",
+      "hint": "PDF, PNG, JPEG ou WebP, jusqu’à 10 Mo et 10 fichiers. Le type est lu dans le fichier lui-même.",
+      "none": "Aucun justificatif joint pour l’instant.",
+      "remove": "Retirer {{name}}",
+      "remove_short": "Retirer"
+    },
+    "categories": {
+      "title": "Catégories de dépenses",
+      "add": "Nouvelle catégorie",
+      "intro": "Les dépenses sont classées dans une arborescence de catégories. Une catégorie est désactivée plutôt que supprimée, pour que les dépenses déjà classées la conservent.",
+      "saved": "La catégorie a été enregistrée.",
+      "section": "Catégorie",
+      "top_level": "Au premier niveau",
+      "active_hint": "Une catégorie inactive reste sur ses dépenses mais n’est plus proposée pour les nouvelles.",
+      "edit": "Modifier {{name}}",
+      "edit_short": "Modifier",
+      "none": "Aucune catégorie pour l’instant.",
+      "statuses": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "fields": {
+        "name": "Nom",
+        "parentId": "Sous",
+        "isActive": "Active"
+      }
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Dépense introuvable.",
+      "not_draft": "Seule une dépense en brouillon peut être modifiée, supprimée ou perdre un justificatif.",
+      "name_taken": "Une autre catégorie sous le même parent porte déjà ce nom.",
+      "invalid": "La modification a été refusée. Vérifiez le fournisseur, la catégorie, la taxe et le montant.",
+      "file_refused": "Le fichier a été refusé : il doit être un PDF ou une image PNG, JPEG ou WebP, non vide, et la dépense compte au plus 10 fichiers.",
+      "file_too_large": "Le fichier dépasse 10 Mo."
     }
   }
 }

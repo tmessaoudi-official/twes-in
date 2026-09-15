@@ -7,7 +7,7 @@
 
 declare(strict_types=1);
 
-namespace App\Module\Invoices\Domain;
+namespace App\Shared\Domain;
 
 /** How a customer paid (docs/SPEC.md § 7, 2026-09-14). */
 enum PaymentMethod: string

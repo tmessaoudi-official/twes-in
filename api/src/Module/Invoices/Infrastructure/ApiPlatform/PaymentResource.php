@@ -16,7 +16,7 @@ use ApiPlatform\Metadata\Post;
 use App\Module\Invoices\Domain\InvalidInvoice;
 use App\Module\Invoices\Domain\Payment;
 use App\Module\Invoices\Domain\PaymentDetails;
-use App\Module\Invoices\Domain\PaymentMethod;
+use App\Shared\Domain\PaymentMethod;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
