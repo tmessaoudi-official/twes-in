@@ -36,6 +36,7 @@ describe('AuthFacade', () => {
     verifySecondFactor: vi.fn(),
     beginTotpEnrolment: vi.fn(),
     confirmTotpEnrolment: vi.fn(),
+    regenerateRecoveryCodes: vi.fn(),
   };
   let facade: AuthFacade;
 
@@ -130,6 +131,20 @@ describe('AuthFacade', () => {
     });
     expect(facade.me()?.mfa.enrolled).toBe(true);
     expect(facade.needsEnrolment()).toBe(false);
+  });
+
+  it('regenerating the recovery codes hands the new set back, or the refusal', async () => {
+    api.regenerateRecoveryCodes.mockResolvedValue(['eeeee-fffff']);
+    expect(await facade.regenerateRecoveryCodes('123456')).toEqual({
+      ok: true,
+      recoveryCodes: ['eeeee-fffff'],
+    });
+
+    api.regenerateRecoveryCodes.mockRejectedValue(new AuthRefused('invalid_code'));
+    expect(await facade.regenerateRecoveryCodes('000000')).toEqual({
+      ok: false,
+      error: 'invalid_code',
+    });
   });
 
   it('logout() forgets the session even if the API fails', async () => {

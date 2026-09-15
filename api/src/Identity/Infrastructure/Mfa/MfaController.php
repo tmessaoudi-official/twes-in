@@ -11,6 +11,7 @@ namespace App\Identity\Infrastructure\Mfa;
 
 use App\Identity\Application\Mfa\BeginTotpEnrolment;
 use App\Identity\Application\Mfa\ConfirmTotpEnrolment;
+use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\VerifySecondFactor;
@@ -41,6 +42,7 @@ final readonly class MfaController
         private RateLimiterFactoryInterface $mfaVerifyLimiter,
         private BeginTotpEnrolment $beginEnrolment,
         private ConfirmTotpEnrolment $confirmEnrolment,
+        private RegenerateRecoveryCodes $regenerateRecoveryCodes,
     ) {
     }
 
@@ -91,6 +93,28 @@ final readonly class MfaController
     {
         try {
             $codes = $this->confirmEnrolment->handle($this->currentUserId(), self::codeIn($request));
+        } catch (SecondFactorRefused) {
+            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        return new JsonResponse(['recoveryCodes' => $codes]);
+    }
+
+    /**
+     * A new set of recovery codes against a current authenticator code. Throttled on the same budget as the login code,
+     * because it is the same six digits to guess, and a guess here that lands hands over all ten codes.
+     */
+    #[Route('/api/auth/mfa/recovery-codes', name: 'api_auth_mfa_recovery_codes', methods: ['POST'])]
+    public function regenerateRecoveryCodes(Request $request): JsonResponse
+    {
+        $userId = $this->currentUserId();
+
+        if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
+            return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
+        }
+
+        try {
+            $codes = $this->regenerateRecoveryCodes->handle($userId, self::codeIn($request));
         } catch (SecondFactorRefused) {
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }

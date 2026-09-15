@@ -10,8 +10,14 @@
     <mat-card-content>
       <!-- Material styles the card content itself, so the spacing lives on a wrapper of our own. -->
       <div class="mt-4 flex flex-col gap-4">
-        @if (alreadyEnrolled) {
-          <p data-testid="two-factor-enabled">{{ 'auth.two_factor.enabled' | translate }}</p>
+        @if (recoveryCodes(); as codes) {
+          <h2 class="text-lg font-medium">{{ 'auth.two_factor.recovery_title' | translate }}</h2>
+          <p>{{ 'auth.two_factor.recovery_intro' | translate }}</p>
+          <ul class="grid grid-cols-2 gap-2 font-mono" data-testid="two-factor-recovery-codes">
+            @for (code of codes; track code) {
+              <li>{{ code }}</li>
+            }
+          </ul>
           <button
             mat-flat-button
             type="button"
@@ -20,14 +26,48 @@
           >
             {{ 'auth.two_factor.continue' | translate }}
           </button>
-        } @else if (recoveryCodes(); as codes) {
-          <h2 class="text-lg font-medium">{{ 'auth.two_factor.recovery_title' | translate }}</h2>
-          <p>{{ 'auth.two_factor.recovery_intro' | translate }}</p>
-          <ul class="grid grid-cols-2 gap-2 font-mono" data-testid="two-factor-recovery-codes">
-            @for (code of codes; track code) {
-              <li>{{ code }}</li>
+        } @else if (alreadyEnrolled) {
+          <p data-testid="two-factor-enabled">{{ 'auth.two_factor.enabled' | translate }}</p>
+          <h2 class="text-lg font-medium">{{ 'auth.two_factor.regenerate_title' | translate }}</h2>
+          <p>{{ 'auth.two_factor.regenerate_intro' | translate }}</p>
+          <form
+            [formGroup]="regenerateForm"
+            (ngSubmit)="regenerate()"
+            class="flex flex-col gap-2"
+            novalidate
+            data-testid="two-factor-regenerate-form"
+          >
+            <mat-form-field appearance="outline">
+              <mat-label>{{ 'auth.two_factor.code' | translate }}</mat-label>
+              <input
+                matInput
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                formControlName="code"
+                data-testid="two-factor-regenerate-code"
+              />
+              @if (regenerateForm.controls.code.hasError('required')) {
+                <mat-error>{{ 'auth.two_factor.code_required' | translate }}</mat-error>
+              }
+            </mat-form-field>
+            @if (error(); as errorCode) {
+              <p role="alert" class="text-sm text-red-700" data-testid="two-factor-error">
+                {{ 'auth.errors.' + errorCode | translate }}
+              </p>
             }
-          </ul>
+            <button
+              mat-stroked-button
+              type="submit"
+              [disabled]="submitting()"
+              data-testid="two-factor-regenerate-submit"
+            >
+              {{
+                (submitting() ? 'auth.two_factor.regenerating' : 'auth.two_factor.regenerate')
+                  | translate
+              }}
+            </button>
+          </form>
           <button
             mat-flat-button
             type="button"

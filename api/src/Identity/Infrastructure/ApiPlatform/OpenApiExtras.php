@@ -154,6 +154,18 @@ final readonly class OpenApiExtras implements OpenApiFactoryInterface
             summary: 'Confirm the authenticator and receive the recovery codes',
             requestBody: $codeBody,
         )));
+        $openApi->getPaths()->addPath('/api/auth/mfa/recovery-codes', new PathItem(post: new Operation(
+            operationId: 'regenerateRecoveryCodes',
+            tags: ['Auth'],
+            responses: [
+                '200' => $jsonOf('MfaRecoveryCodes', 'A new set; every earlier code stops working'),
+                '401' => $errorResponse('Not signed in'),
+                '422' => $errorResponse('No authenticator, or the code is not a current authenticator code'),
+                '429' => $errorResponse('Too many attempts'),
+            ],
+            summary: 'Replace the recovery codes, proven by a current authenticator code',
+            requestBody: $codeBody,
+        )));
 
         $health = static fn (string $description): Response => new Response($description, new \ArrayObject(['application/json' => new MediaType(new \ArrayObject(['$ref' => '#/components/schemas/Health']))]));
         $openApi->getPaths()->addPath('/api/health', new PathItem(get: new Operation(

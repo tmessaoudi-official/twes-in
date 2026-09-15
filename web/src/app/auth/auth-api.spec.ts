@@ -120,4 +120,18 @@ describe('AuthApi', () => {
       .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
     await expect(wrong).rejects.toEqual(new AuthRefused('invalid_code'));
   });
+
+  it('replaces the recovery codes when given a current authenticator code', async () => {
+    const pending = api.regenerateRecoveryCodes('123456');
+    const request = http.expectOne({ method: 'POST', url: '/api/auth/mfa/recovery-codes' });
+    expect(request.request.body).toEqual({ code: '123456' });
+    request.flush({ recoveryCodes: ['eeeee-fffff'] });
+    expect(await pending).toEqual(['eeeee-fffff']);
+
+    const refused = api.regenerateRecoveryCodes('aaaaa-bbbbb');
+    http
+      .expectOne('/api/auth/mfa/recovery-codes')
+      .flush({ error: 'invalid_code' }, { status: 422, statusText: 'Unprocessable Content' });
+    await expect(refused).rejects.toEqual(new AuthRefused('invalid_code'));
+  });
 });

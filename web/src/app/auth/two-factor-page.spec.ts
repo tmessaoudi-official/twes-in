@@ -48,6 +48,7 @@ describe('TwoFactorPage', () => {
     me: ReturnType<typeof signal<SignedInState | null>>;
     beginTotpEnrolment: ReturnType<typeof vi.fn>;
     confirmTotpEnrolment: ReturnType<typeof vi.fn>;
+    regenerateRecoveryCodes: ReturnType<typeof vi.fn>;
   };
 
   async function render(mfa: { enrolled: boolean; required: boolean }) {
@@ -58,6 +59,7 @@ describe('TwoFactorPage', () => {
         enrolment: { secret: SECRET, provisioningUri: URI },
       }),
       confirmTotpEnrolment: vi.fn(),
+      regenerateRecoveryCodes: vi.fn(),
     };
     TestBed.configureTestingModule({
       imports: [TwoFactorPage],
@@ -139,5 +141,41 @@ describe('TwoFactorPage', () => {
     expect(query('two-factor-enabled')).not.toBeNull();
     expect(query('two-factor-form')).toBeNull();
     expect(facade.beginTotpEnrolment).not.toHaveBeenCalled();
+  });
+
+  async function regenerate(rendered: Awaited<ReturnType<typeof render>>, code: string) {
+    const input = rendered.query<HTMLInputElement>('two-factor-regenerate-code')!;
+    input.value = code;
+    input.dispatchEvent(new Event('input'));
+    rendered
+      .query<HTMLFormElement>('two-factor-regenerate-form')
+      ?.dispatchEvent(new Event('submit'));
+    await settle(rendered.fixture);
+  }
+
+  it('gives an account with an authenticator a new set of recovery codes against a current code', async () => {
+    const rendered = await render({ enrolled: true, required: false });
+    facade.regenerateRecoveryCodes.mockResolvedValue({
+      ok: true,
+      recoveryCodes: ['eeeee-fffff', 'ggggg-hhhhh'],
+    });
+
+    await regenerate(rendered, '123456');
+
+    expect(facade.regenerateRecoveryCodes).toHaveBeenCalledWith('123456');
+    const codes = [...(rendered.query('two-factor-recovery-codes')?.querySelectorAll('li') ?? [])];
+    expect(codes.map((item) => item.textContent?.trim())).toEqual(['eeeee-fffff', 'ggggg-hhhhh']);
+    expect(rendered.query('two-factor-regenerate-form')).toBeNull();
+  });
+
+  it('says why a regeneration was refused, clears the code and shows no codes', async () => {
+    const rendered = await render({ enrolled: true, required: false });
+    facade.regenerateRecoveryCodes.mockResolvedValue({ ok: false, error: 'invalid_code' });
+
+    await regenerate(rendered, '000000');
+
+    expect(rendered.query('two-factor-error')?.textContent).toContain('Code incorrect');
+    expect(rendered.query<HTMLInputElement>('two-factor-regenerate-code')?.value).toBe('');
+    expect(rendered.query('two-factor-recovery-codes')).toBeNull();
   });
 });

@@ -90,6 +90,14 @@ export class AuthFacade {
     }
   }
 
+  async regenerateRecoveryCodes(code: string): Promise<ConfirmationOutcome> {
+    try {
+      return { ok: true, recoveryCodes: await this.api.regenerateRecoveryCodes(code) };
+    } catch (error) {
+      return { ok: false, error: codeOf(error) };
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       await this.api.logout();

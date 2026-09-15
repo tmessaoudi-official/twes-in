@@ -59,7 +59,11 @@
       "recovery_title": "Your recovery codes",
       "recovery_intro": "Keep these codes somewhere safe. Each one signs you in once if you lose your device. They will not be shown again.",
       "continue": "Continue",
-      "enabled": "Two-step verification is on for this account."
+      "enabled": "Two-step verification is on for this account.",
+      "regenerate_title": "Recovery codes",
+      "regenerate_intro": "Used or lost your recovery codes? Enter a code from your authenticator app to get a new set. The old codes stop working.",
+      "regenerate": "Get new recovery codes",
+      "regenerating": "Generating…"
     }
   },
   "hello": {

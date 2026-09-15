@@ -59,7 +59,11 @@
       "recovery_title": "Vos codes de secours",
       "recovery_intro": "Conservez ces codes en lieu sûr. Chacun permet de vous connecter une fois si vous perdez votre appareil. Ils ne seront plus affichés.",
       "continue": "Continuer",
-      "enabled": "La vérification en deux étapes est activée pour ce compte."
+      "enabled": "La vérification en deux étapes est activée pour ce compte.",
+      "regenerate_title": "Codes de secours",
+      "regenerate_intro": "Codes de secours utilisés ou perdus ? Saisissez un code de votre application d’authentification pour en obtenir de nouveaux. Les anciens codes ne fonctionneront plus.",
+      "regenerate": "Obtenir de nouveaux codes de secours",
+      "regenerating": "Génération…"
     }
   },
   "hello": {

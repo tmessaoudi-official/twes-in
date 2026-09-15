@@ -41,11 +41,11 @@ async function nextStep(page: Page): Promise<void> {
   await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 1_000);
 }
 
-test('an account turns on two-step verification, then signs in with a code and with a recovery code', async ({
+test('an account turns on two-step verification, replaces its recovery codes, then signs in with a code and with a recovery code', async ({
   page,
   request,
 }) => {
-  test.setTimeout(150_000);
+  test.setTimeout(210_000);
   const invited = `two-factor-${Date.now()}@twes.local`;
 
   await signIn(page, EMAIL, PASSWORD);
@@ -79,10 +79,33 @@ test('an account turns on two-step verification, then signs in with a code and w
   await page.getByTestId('two-factor-submit').click();
   const recovery = page.getByTestId('two-factor-recovery-codes').locator('li');
   await expect(recovery).toHaveCount(10);
-  const codes = await recovery.allInnerTexts();
+  const firstCodes = await recovery.allInnerTexts();
   await expectAccessible(page, 'two-factor, recovery codes');
   await page.screenshot({
     path: test.info().outputPath('two-factor-recovery-codes.png'),
+    fullPage: true,
+  });
+  await page.getByTestId('two-factor-continue').click();
+  await expect(page.getByTestId('greeting')).toBeVisible();
+
+  // A new set of recovery codes, proven by a current authenticator code. Every attempt from here to the end counts
+  // against the five a user gets in five minutes, which is why this comes before the sign-ins and not after.
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('two-factor-link').click();
+  await expect(page.getByTestId('two-factor-enabled')).toBeVisible();
+  await expectAccessible(page, 'two-factor, already on');
+  await page.screenshot({
+    path: test.info().outputPath('two-factor-regenerate.png'),
+    fullPage: true,
+  });
+  await nextStep(page);
+  await page.getByTestId('two-factor-regenerate-code').fill(totp(secret));
+  await page.getByTestId('two-factor-regenerate-submit').click();
+  await expect(recovery).toHaveCount(10);
+  const codes = await recovery.allInnerTexts();
+  expect(codes.filter((code) => firstCodes.includes(code))).toEqual([]);
+  await page.screenshot({
+    path: test.info().outputPath('two-factor-new-recovery-codes.png'),
     fullPage: true,
   });
   await page.getByTestId('two-factor-continue').click();
@@ -110,6 +133,12 @@ test('an account turns on two-step verification, then signs in with a code and w
   await signOut(page);
   await signIn(page, invited, NEW_PASSWORD);
   await page.getByTestId('mfa-code').fill(codes[0]!);
+  await page.getByTestId('mfa-submit').click();
+  await expect(page.getByTestId('login-error')).toBeVisible();
+  await expect(page.getByTestId('mfa-form')).toBeVisible();
+
+  // A code from the replaced set is refused too: the fifth and last attempt this window allows.
+  await page.getByTestId('mfa-code').fill(firstCodes[1]!);
   await page.getByTestId('mfa-submit').click();
   await expect(page.getByTestId('login-error')).toBeVisible();
   await expect(page.getByTestId('mfa-form')).toBeVisible();

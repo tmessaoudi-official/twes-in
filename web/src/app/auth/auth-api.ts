@@ -58,6 +58,15 @@ export class AuthApi {
     return [...answer.recoveryCodes];
   }
 
+  /** A new set of recovery codes, proven by a current authenticator code; every earlier code stops working. */
+  async regenerateRecoveryCodes(code: string): Promise<string[]> {
+    const body: MfaCode = { code };
+    const answer = await send(
+      this.http.post<MfaRecoveryCodes>('/api/auth/mfa/recovery-codes', body),
+    );
+    return [...answer.recoveryCodes];
+  }
+
   async logout(): Promise<void> {
     await firstValueFrom(this.http.post('/api/auth/logout', null));
   }
