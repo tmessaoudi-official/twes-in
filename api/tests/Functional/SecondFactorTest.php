@@ -170,6 +170,33 @@ final class SecondFactorTest extends ApiTestCase
     }
 
     /**
+     * The limiter paces guesses, it never stops them: five a window, for as long as the attacker cares to wait.
+     * Wrong codes must lock the account itself, the way wrong passwords do (docs/SPEC.md § 8 row 22, review S6).
+     */
+    public function testWrongCodesLockTheAccountAsWrongPasswordsDo(): void
+    {
+        $this->enrolledUser('someone@twes.local');
+        $this->login('someone@twes.local', self::PASSWORD);
+
+        for ($i = 0; $i < 5; ++$i) {
+            $this->postJson('/api/auth/mfa/verify', ['code' => '000000']);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+            self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        }
+
+        // The right code now buys nothing, and what refuses it is the lock: a limiter would say too_many_attempts.
+        $this->postJson('/api/auth/mfa/verify', ['code' => $this->currentCode()]);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
+
+        // And the lock is the account's, not this session's: the password step refuses a fresh browser too.
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
+    }
+
+    /**
      * Enrols a user the way the use cases will, and hands back the raw recovery codes.
      *
      * @return list<string>

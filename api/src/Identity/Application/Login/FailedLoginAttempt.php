@@ -12,8 +12,9 @@ namespace App\Identity\Application\Login;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * @param bool $wrongPassword true only when the credentials were compared and did not match; a refusal for
- *                            another reason (locked, disabled, throttled, unknown account) is recorded but never counted
+ * @param bool $wrongCredential true only when a credential was compared and did not match — a password, or the
+ *                              second factor's code, which is the other half of the same login; a refusal for
+ *                              another reason (locked, disabled, throttled, unknown account) is recorded but never counted
  */
 final readonly class FailedLoginAttempt
 {
@@ -21,7 +22,7 @@ final readonly class FailedLoginAttempt
         public ?Uuid $userId,
         public ?string $email,
         public string $reason,
-        public bool $wrongPassword,
+        public bool $wrongCredential,
     ) {
     }
 }

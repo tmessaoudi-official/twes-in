@@ -15,9 +15,12 @@ use App\Identity\Domain\UserRepository;
 use Psr\Clock\ClockInterface;
 
 /**
- * The account lockout: consecutive wrong passwords lock the account for a while. Only a wrong password counts;
- * a refusal because the account is already locked (or disabled, or throttled) must not touch the counter,
- * otherwise retrying would extend the lock without end, which is a way to keep someone out of their own account.
+ * The account lockout: consecutive wrong credentials lock the account for a while. A wrong password counts, and
+ * so does a wrong second-factor code — both are guesses at the same login, and a code that could be guessed
+ * forever at the limiter's pace is guessed eventually (docs/SPEC.md § 8 row 22, review S6). Only a wrong
+ * credential counts: a refusal because the account is already locked (or disabled, or throttled) must not touch
+ * the counter, otherwise retrying would extend the lock without end, which is a way to keep someone out of
+ * their own account.
  */
 final readonly class RecordFailedLogin
 {
@@ -35,7 +38,7 @@ final readonly class RecordFailedLogin
         $user = null === $attempt->userId ? null : $this->users->ofId($attempt->userId);
         $changes = ['email' => $attempt->email, 'reason' => $attempt->reason];
 
-        if (null !== $user && $attempt->wrongPassword) {
+        if (null !== $user && $attempt->wrongCredential) {
             $now = $this->clock->now();
             $user->recordFailedLogin($now, $this->lockAfterFailures, new \DateInterval($this->lockDuration));
             $this->users->save($user);

@@ -13,6 +13,7 @@ use App\Identity\Application\Mfa\BeginTotpEnrolment;
 use App\Identity\Application\Mfa\ConfirmTotpEnrolment;
 use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
+use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Mfa\SecondFactorRefused;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
@@ -32,7 +33,9 @@ use Symfony\Component\Routing\Attribute\Route;
  *
  * Public in `access_control` because by design no session exists yet: what authorises it is the pending
  * marker the password step left in this very session, not a role. Throttled hard, because six digits with a
- * step of leeway is a small space to guess in.
+ * step of leeway is a small space to guess in — and throttling alone only paces an attacker, so wrong codes
+ * lock the account too, and a locked one is refused here rather than by `UserChecker`, which never runs on an
+ * endpoint that has no session yet (docs/SPEC.md § 8 row 22, review S6).
  */
 final readonly class MfaController
 {
@@ -41,6 +44,7 @@ final readonly class MfaController
         private VerifySecondFactor $verify,
         private Security $security,
         private RateLimiterFactoryInterface $mfaVerifyLimiter,
+        private SecondFactorLockout $lockout,
         private BeginTotpEnrolment $beginEnrolment,
         private ConfirmTotpEnrolment $confirmEnrolment,
         private RegenerateRecoveryCodes $regenerateRecoveryCodes,
@@ -58,6 +62,12 @@ final readonly class MfaController
             return new JsonResponse(['error' => 'mfa_not_pending'], Response::HTTP_UNAUTHORIZED);
         }
 
+        // Checked before the limiter, not after: both budgets are five, so a lock tested second would answer
+        // too_many_attempts on the very request that ought to say the account is locked.
+        if ($this->lockout->locked($userId)) {
+            return new JsonResponse(['error' => 'account_locked'], Response::HTTP_UNAUTHORIZED);
+        }
+
         if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
@@ -65,6 +75,8 @@ final readonly class MfaController
         try {
             $user = $this->verify->handle($userId, self::codeIn($request));
         } catch (SecondFactorRefused) {
+            $this->lockout->recordWrongCode($userId);
+
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         }
 
@@ -106,6 +118,12 @@ final readonly class MfaController
     {
         $userId = $this->currentUserId();
 
+        // The same six digits on the same budget, so the same lock: a guess that lands here hands over all ten
+        // recovery codes. A session already signed in is no exemption — the guesser may not be its owner.
+        if ($this->lockout->locked($userId)) {
+            return new JsonResponse(['error' => 'account_locked'], Response::HTTP_UNAUTHORIZED);
+        }
+
         if (!$this->mfaVerifyLimiter->create($userId->toRfc4122())->consume()->isAccepted()) {
             return new JsonResponse(['error' => 'too_many_attempts'], Response::HTTP_TOO_MANY_REQUESTS);
         }
@@ -113,6 +131,8 @@ final readonly class MfaController
         try {
             $codes = $this->regenerateRecoveryCodes->handle($userId, self::codeIn($request));
         } catch (SecondFactorRefused) {
+            $this->lockout->recordWrongCode($userId);
+
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

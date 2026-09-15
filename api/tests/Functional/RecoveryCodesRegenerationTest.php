@@ -87,7 +87,11 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
     }
 
-    public function testGuessingIsThrottledLikeTheLoginCode(): void
+    /**
+     * Guessing here is not merely paced, it is stopped, exactly as at login: these are the same six digits, and a
+     * guess that lands hands over all ten codes (docs/SPEC.md § 8 row 22, review S6).
+     */
+    public function testGuessingLocksTheAccountAsItDoesAtLogin(): void
     {
         $this->enrolledAndSignedIn();
 
@@ -97,7 +101,9 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         }
         $this->postJson(self::PATH, ['code' => $this->nextCode()]);
 
-        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        // The lock answers, not the limiter: once the account is locked even the right code buys nothing.
+        self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+        self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
         self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
     }
 

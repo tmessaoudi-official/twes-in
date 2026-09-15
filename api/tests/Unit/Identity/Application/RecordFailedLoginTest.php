@@ -39,7 +39,7 @@ final class RecordFailedLoginTest extends TestCase
         $user = new User(Email::fromString('u@example.test'), 'U');
         $this->users->save($user);
 
-        $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongPassword: true));
+        $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
 
         self::assertSame(1, $user->getFailedLoginCount());
         self::assertCount(1, $this->audit->entries);
@@ -57,7 +57,7 @@ final class RecordFailedLoginTest extends TestCase
         $this->users->save($user);
 
         for ($i = 0; $i < 5; ++$i) {
-            $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongPassword: true));
+            $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'BadCredentialsException', wrongCredential: true));
         }
 
         self::assertTrue($user->isLockedAt($this->clock->now()));
@@ -71,7 +71,7 @@ final class RecordFailedLoginTest extends TestCase
         $this->users->save($user);
 
         // Already locked, disabled, throttled: retrying must not extend the lock without end.
-        $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'CustomUserMessageAccountStatusException', wrongPassword: false));
+        $this->useCase->handle(new FailedLoginAttempt($user->getId(), 'u@example.test', 'CustomUserMessageAccountStatusException', wrongCredential: false));
 
         self::assertSame(0, $user->getFailedLoginCount());
         self::assertSame(['email' => 'u@example.test', 'reason' => 'CustomUserMessageAccountStatusException'], $this->audit->entries[0]->changes);
@@ -79,7 +79,7 @@ final class RecordFailedLoginTest extends TestCase
 
     public function testAnUnknownAccountIsAuditedWithNothingToPointAt(): void
     {
-        $this->useCase->handle(new FailedLoginAttempt(null, 'nobody@example.test', 'BadCredentialsException', wrongPassword: true));
+        $this->useCase->handle(new FailedLoginAttempt(null, 'nobody@example.test', 'BadCredentialsException', wrongCredential: true));
 
         $entry = $this->audit->entries[0];
         self::assertNull($entry->entityId);
