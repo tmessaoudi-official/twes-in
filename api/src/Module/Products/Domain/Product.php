@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Domain;
 
 use App\Fiscal\Domain\Unit;
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -26,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_product_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_product_category', columns: ['category_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_product_company_reference', columns: ['company_id', 'reference'])]
-class Product
+class Product implements CompanyOwned
 {
     public const string REFERENCE = '/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,31}$/';
 

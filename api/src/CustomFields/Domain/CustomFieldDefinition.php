@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\CustomFields\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'custom_field_definition')]
 #[ORM\Index(name: 'idx_custom_field_definition_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_custom_field_definition_key', columns: ['company_id', 'entity', 'field_key'])]
-class CustomFieldDefinition
+class CustomFieldDefinition implements CompanyOwned
 {
     public const string KEY = '/^[a-z][a-z0-9_]{0,39}$/';
     public const int LABEL_MAX = 80;

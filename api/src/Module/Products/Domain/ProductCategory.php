@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -24,7 +25,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_product_category_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_product_category_parent', columns: ['parent_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_product_category_company_name', columns: ['company_id', 'name'])]
-class ProductCategory
+class ProductCategory implements CompanyOwned
 {
     public const int NAME_MAX = 120;
 

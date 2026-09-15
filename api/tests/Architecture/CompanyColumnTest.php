@@ -9,11 +9,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Architecture;
 
+use App\Audit\Domain\AuditLog;
 use App\Fiscal\Domain\CustomerTaxRegime;
 use App\Identity\Domain\Passkey;
 use App\Identity\Domain\RecoveryCodeEntry;
 use App\Identity\Domain\User;
+use App\Inbox\Domain\InboxItem;
+use App\Settings\Domain\Setting;
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Membership;
+use App\Tenancy\Domain\Role;
 use App\Tenancy\Domain\Signup;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -36,6 +42,15 @@ final class CompanyColumnTest extends KernelTestCase
         CustomerTaxRegime::class => "a country preset's reference data, which no company edits",
     ];
 
+    /** What carries a company_id the company filter leaves alone, and why. */
+    private const array NOT_SCOPED = [
+        Membership::class => 'attaches an account to each of its companies, and is read across them: the switcher, the second-factor rule',
+        Role::class => 'company_id is null for the built-in roles every company shares',
+        Setting::class => 'company_id is null for platform settings',
+        AuditLog::class => "company_id is null for platform events and an account's own",
+        InboxItem::class => 'company_id is null for notifications that concern no company',
+    ];
+
     public function testEveryEntityCarriesACompanyIdUnlessItHasNoCompanyByDesign(): void
     {
         $missing = [];
@@ -48,6 +63,33 @@ final class CompanyColumnTest extends KernelTestCase
 
         self::assertGreaterThan(30, \count($all), 'the mapping lists the entities');
         self::assertSame([], $missing, 'these entities carry no company_id');
+    }
+
+    public function testEveryEntityWithItsOwnCompanyIsScopedByTheCompanyFilterUnlessNamed(): void
+    {
+        $unscoped = [];
+        $misMarked = [];
+        $scoped = 0;
+        foreach ($this->allMetadata() as $metadata) {
+            $class = $metadata->getName();
+            $named = \array_key_exists($class, self::NOT_SCOPED);
+            $nullable = self::companyColumnNullable($metadata);
+            $owned = is_a($class, CompanyOwned::class, true);
+            $scoped += $owned ? 1 : 0;
+            if ($owned && (false !== $nullable || $named)) {
+                $misMarked[] = $class;
+            }
+            if (!$owned && false === $nullable && !$named) {
+                $unscoped[] = $class;
+            }
+        }
+
+        self::assertSame([], $unscoped, 'these entities hold a company of their own and are not CompanyOwned');
+        self::assertSame([], $misMarked, 'these entities are CompanyOwned without a non-null company_id, or are named as not scoped');
+        self::assertGreaterThanOrEqual(27, $scoped, 'the business entities are CompanyOwned');
+        foreach (array_keys(self::NOT_SCOPED) as $class) {
+            self::assertTrue(class_exists($class), "$class is still a class");
+        }
     }
 
     public function testTheExemptionsAreEntitiesThatReallyHaveNoCompany(): void

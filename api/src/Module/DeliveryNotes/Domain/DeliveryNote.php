@@ -12,6 +12,7 @@ namespace App\Module\DeliveryNotes\Domain;
 use App\Files\Domain\StoredFile;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\DomainEvent;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
@@ -35,7 +36,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_delivery_note_pdf_file', columns: ['pdf_file_id'])]
 #[ORM\Index(name: 'idx_delivery_note_invoiced_by_invoice', columns: ['invoiced_by_invoice_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_delivery_note_company_number', columns: ['company_id', 'number'])]
-class DeliveryNote
+class DeliveryNote implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

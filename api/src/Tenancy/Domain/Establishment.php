@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -24,7 +25,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_establishment_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_establishment_company_code', columns: ['company_id', 'code'])]
 #[ORM\UniqueConstraint(name: 'uniq_establishment_default', columns: ['company_id'], options: ['where' => 'is_default'])]
-class Establishment
+class Establishment implements CompanyOwned
 {
     public const string CODE = '/^[A-Za-z0-9]{1,16}$/';
     private const int NAME_MAX = 120;

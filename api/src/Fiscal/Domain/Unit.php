@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -21,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'unit')]
 #[ORM\UniqueConstraint(name: 'uniq_unit_company_code', columns: ['company_id', 'code'])]
-class Unit
+class Unit implements CompanyOwned
 {
     public const string CODE = '/^[A-Z0-9]{2,3}$/';
     /** A quantity is NUMERIC(14,3). */

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -25,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_numbering_series_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_numbering_series_establishment', columns: ['establishment_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_numbering_series_default', columns: ['establishment_id', 'document_type'], options: ['where' => 'is_default'])]
-class NumberingSeries
+class NumberingSeries implements CompanyOwned
 {
     public const string DOCUMENT_TYPE = '/^[a-z][a-z_]{0,31}$/';
 

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\ModuleRegistry\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'module_state')]
 #[ORM\Index(name: 'idx_module_state_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_module_state_company_key', columns: ['company_id', 'module_key'])]
-class ModuleState
+class ModuleState implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

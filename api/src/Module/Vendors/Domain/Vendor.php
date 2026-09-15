@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Vendors\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'vendor')]
 #[ORM\Index(name: 'idx_vendor_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_vendor_company_number', columns: ['company_id', 'number'])]
-class Vendor
+class Vendor implements CompanyOwned
 {
     public const string NUMBER = '/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,31}$/';
 

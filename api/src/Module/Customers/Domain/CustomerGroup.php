@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -22,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'customer_group')]
 #[ORM\Index(name: 'idx_customer_group_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_customer_group_company_name', columns: ['company_id', 'name'])]
-class CustomerGroup
+class CustomerGroup implements CompanyOwned
 {
     public const int NAME_MAX = 120;
     public const int DESCRIPTION_MAX = 500;

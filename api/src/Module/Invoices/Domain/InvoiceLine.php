@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Domain;
 
 use App\Fiscal\Domain\Unit;
 use App\Module\Products\Domain\Product;
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -26,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_line_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_invoice_line_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_invoice_line_source_delivery_note_line', columns: ['source_delivery_note_line_id'])]
-class InvoiceLine
+class InvoiceLine implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

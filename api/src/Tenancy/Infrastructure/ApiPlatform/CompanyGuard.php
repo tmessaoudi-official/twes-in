@@ -10,9 +10,11 @@ declare(strict_types=1);
 namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Shared\Infrastructure\Doctrine\CompanyFilter;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\MembershipRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Security\Core\Exception\AccessDeniedException;
@@ -26,6 +28,9 @@ use Symfony\Component\Uid\Uuid;
  * A platform operator answers here as anyone else does, by membership (docs/SPEC.md § 7, 2026-09-15, S3): what an
  * operator does to a company they are not in, opening it, inviting its owners, deciding on it, goes through the
  * platform endpoints, never through a company's own.
+ *
+ * Once it has resolved the company, it scopes the rest of the request to it through the company filter (review S5):
+ * a query that forgets its own company condition still reaches no other company's rows.
  */
 final readonly class CompanyGuard
 {
@@ -33,6 +38,7 @@ final readonly class CompanyGuard
         private Security $security,
         private CompanyRepository $companies,
         private MembershipRepository $memberships,
+        private EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -43,6 +49,7 @@ final readonly class CompanyGuard
         if (null === $company || !$this->may($company, $permission)) {
             throw new NotFoundHttpException('No such company.');
         }
+        $this->entityManager->getFilters()->enable(CompanyFilter::NAME)->setParameter(CompanyFilter::COMPANY, $company->getId()->toRfc4122());
 
         return $company;
     }

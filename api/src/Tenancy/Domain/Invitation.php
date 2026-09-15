@@ -11,6 +11,7 @@ namespace App\Tenancy\Domain;
 
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Shared\Domain\CompanyOwned;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'invitation')]
 #[ORM\UniqueConstraint(name: 'uniq_invitation_token_hash', columns: ['token_hash'])]
 #[ORM\Index(name: 'idx_invitation_company', columns: ['company_id'])]
-class Invitation
+class Invitation implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

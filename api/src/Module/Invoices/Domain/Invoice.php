@@ -15,6 +15,7 @@ use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerSnapshot;
+use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\DomainEvent;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
@@ -38,7 +39,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_corrects', columns: ['corrects_invoice_id'])]
 #[ORM\Index(name: 'idx_invoice_pdf_file', columns: ['pdf_file_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_invoice_company_type_number', columns: ['company_id', 'document_type', 'number'])]
-class Invoice
+class Invoice implements CompanyOwned
 {
     /** The decimals of every stored amount column; the currency's scale is applied when the figures are read. */
     private const int STORED_SCALE = 3;

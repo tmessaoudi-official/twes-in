@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Invoices\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
@@ -20,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'payment')]
 #[ORM\Index(name: 'idx_payment_invoice', columns: ['invoice_id'])]
 #[ORM\Index(name: 'idx_payment_company', columns: ['company_id'])]
-class Payment
+class Payment implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

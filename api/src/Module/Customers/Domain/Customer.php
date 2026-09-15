@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Customers\Domain;
 
 use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
@@ -27,7 +28,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_customer_group', columns: ['customer_group_id'])]
 #[ORM\Index(name: 'idx_customer_tax_regime', columns: ['tax_regime_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_customer_company_number', columns: ['company_id', 'number'])]
-class Customer
+class Customer implements CompanyOwned
 {
     public const string NUMBER = '/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,31}$/';
 

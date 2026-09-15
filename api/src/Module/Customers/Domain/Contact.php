@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Customers\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_contact_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_contact_customer', columns: ['customer_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_contact_primary', columns: ['customer_id'], options: ['where' => 'is_primary'])]
-class Contact
+class Contact implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

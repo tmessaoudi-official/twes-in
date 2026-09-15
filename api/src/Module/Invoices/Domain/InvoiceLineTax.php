@@ -11,6 +11,7 @@ namespace App\Module\Invoices\Domain;
 
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -25,7 +26,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_invoice_line_tax_line', columns: ['line_id'])]
 #[ORM\Index(name: 'idx_invoice_line_tax_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_invoice_line_tax_component', columns: ['tax_component_id'])]
-class InvoiceLineTax
+class InvoiceLineTax implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

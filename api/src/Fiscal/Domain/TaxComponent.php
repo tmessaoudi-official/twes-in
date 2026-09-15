@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Fiscal\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Entity]
 #[ORM\Table(name: 'tax_component')]
 #[ORM\UniqueConstraint(name: 'uniq_tax_component_company_code', columns: ['company_id', 'code'])]
-class TaxComponent
+class TaxComponent implements CompanyOwned
 {
     public const string CODE = '/^[A-Z][A-Z0-9_]{0,31}$/';
     /** A percentage from 0 to 100 that fits NUMERIC(6,3). */

@@ -29,6 +29,11 @@ doctrine:
                 dir: '%kernel.project_dir%/src'
                 prefix: 'App'
                 alias: App
+        filters:
+            # docs/SPEC.md § 3 Tenancy: off until CompanyGuard acts for a company, lifted when the request ends.
+            company:
+                class: App\Shared\Infrastructure\Doctrine\CompanyFilter
+                enabled: false
 
 when@test:
     doctrine:

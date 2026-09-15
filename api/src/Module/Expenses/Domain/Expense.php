@@ -13,6 +13,7 @@ use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxKind;
 use App\Module\Vendors\Domain\Vendor;
+use App\Shared\Domain\CompanyOwned;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
@@ -31,7 +32,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_expense_vendor', columns: ['vendor_id'])]
 #[ORM\Index(name: 'idx_expense_category', columns: ['category_id'])]
 #[ORM\Index(name: 'idx_expense_tax_component', columns: ['tax_component_id'])]
-class Expense
+class Expense implements CompanyOwned
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid')]

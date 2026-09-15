@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Domain;
 
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use BcMath\Number;
 use Doctrine\DBAL\Types\Types;
@@ -30,7 +31,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_movement_product', columns: ['product_id'])]
 #[ORM\Index(name: 'idx_stock_movement_location', columns: ['location_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_movement_source', columns: ['source_type', 'source_id', 'product_id', 'location_id', 'kind'])]
-class StockMovement
+class StockMovement implements CompanyOwned
 {
     public const string SOURCE_RECEIPT = 'receipt';
     public const string SOURCE_COUNT = 'count';

@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use Doctrine\DBAL\Types\Types;
@@ -26,7 +27,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_stock_location_parent', columns: ['parent_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_location_establishment_code', columns: ['establishment_id', 'code'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_location_default', columns: ['establishment_id'], options: ['where' => 'is_default'])]
-class StockLocation
+class StockLocation implements CompanyOwned
 {
     public const int CODE_MAX = 32;
     public const int NAME_MAX = 120;

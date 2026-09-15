@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Files\Domain;
 
+use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -22,7 +23,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'file')]
 #[ORM\Index(name: 'idx_file_company', columns: ['company_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_file_storage_key', columns: ['storage_key'])]
-class StoredFile
+class StoredFile implements CompanyOwned
 {
     public const int NAME_MAX = 255;
 
