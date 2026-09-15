@@ -14,6 +14,8 @@ use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Company\LastOwner;
 use App\Tenancy\Application\Company\NotAMember;
 use App\Tenancy\Application\Company\RemoveMember;
+use App\Tenancy\Application\Company\RoleNotManageable;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\Uid\Uuid;
@@ -39,6 +41,8 @@ final readonly class RemoveMemberProcessor implements ProcessorInterface
             throw new NotFoundHttpException($absent->getMessage(), $absent);
         } catch (LastOwner $last) {
             throw new ConflictHttpException($last->getMessage(), $last);
+        } catch (RoleNotManageable $refused) {
+            throw new AccessDeniedHttpException($refused->getMessage(), $refused);
         }
 
         return null;

@@ -123,6 +123,7 @@
       "unknown_user": "Aucun compte ne porte cette adresse. L'invitation arrive bientôt.",
       "already_member": "Cette personne fait déjà partie de l'entreprise.",
       "last_owner": "Une entreprise garde au moins un propriétaire.",
+      "forbidden": "Votre rôle dans cette entreprise ne le permet pas.",
       "not_found": "Entreprise introuvable.",
       "invalid": "Demande invalide.",
       "network": "Impossible de joindre le serveur."
@@ -167,7 +168,8 @@
       "errors": {
         "invalid": "Le profil a été refusé. Vérifiez les identifiants, l'IBAN et le BIC.",
         "not_found": "Société introuvable.",
-        "network": "Le serveur est injoignable."
+        "network": "Le serveur est injoignable.",
+        "forbidden": "Votre rôle dans cette entreprise ne le permet pas."
       }
     },
     "establishments": {
@@ -201,7 +203,8 @@
         "code_taken": "Un autre établissement porte déjà ce code.",
         "invalid": "L'établissement a été refusé. Vérifiez son code et son e-mail.",
         "not_found": "Établissement introuvable.",
-        "network": "Le serveur est injoignable."
+        "network": "Le serveur est injoignable.",
+        "forbidden": "Votre rôle dans cette entreprise ne le permet pas."
       }
     },
     "numbering": {
@@ -245,7 +248,8 @@
       "errors": {
         "invalid": "La numérotation a été refusée. Vérifiez le format et le numéro de reprise.",
         "not_found": "Série de numérotation introuvable.",
-        "network": "Le serveur est injoignable."
+        "network": "Le serveur est injoignable.",
+        "forbidden": "Votre rôle dans cette entreprise ne le permet pas."
       }
     },
     "custom_fields": {

@@ -9,7 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\Identity\Domain\User;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Uid\Uuid;
@@ -224,6 +226,44 @@ final class MembersTest extends ApiTestCase
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
         self::assertStringContainsString('json', (string) $this->client->getResponse()->headers->get('Content-Type'));
+    }
+
+    public function testAnAdminMayNotGrantOwnerNorRemoveAnOwnerOrAnotherAdmin(): void
+    {
+        $owner = $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $member = $this->createUser('member@twes.local', 'password-1234', $this->company, ['company.read'], Role::MEMBER);
+        $this->adminSignedIn();
+        // A company holds one admin role, which the signed-in admin's creation made: the other admin joins it.
+        $em = $this->em();
+        $company = $em->find(Company::class, $this->company->getId());
+        $adminRole = $em->getRepository(Role::class)->findOneBy(['company' => $company, 'name' => Role::ADMIN]);
+        $otherAdmin = $this->createUser('other-admin@twes.local', 'password-1234');
+        $otherAdminUser = $em->find(User::class, $otherAdmin->getId());
+        self::assertNotNull($company);
+        self::assertNotNull($adminRole);
+        self::assertNotNull($otherAdminUser);
+        $em->persist(new Membership($otherAdminUser, $company, $adminRole));
+        $em->flush();
+
+        $this->postJson($this->path(), ['email' => 'next-owner@twes.local', 'role' => Role::OWNER]);
+        self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        foreach ([$owner, $otherAdmin] as $target) {
+            $this->sendJson('DELETE', $this->path().'/'.$target->getId()->toRfc4122());
+            self::assertResponseStatusCodeSame(Response::HTTP_FORBIDDEN);
+        }
+
+        $this->sendJson('DELETE', $this->path().'/'.$member->getId()->toRfc4122());
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+    }
+
+    public function testAnOwnerInvitesAnotherOwner(): void
+    {
+        $this->createUser('owner@twes.local', 'password-1234', $this->company, ['*'], Role::OWNER);
+        $this->login('owner@twes.local', 'password-1234');
+
+        $this->postJson($this->path(), ['email' => 'next-owner@twes.local', 'role' => Role::OWNER]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
     }
 
     private function path(): string

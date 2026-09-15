@@ -347,6 +347,8 @@ function codeOf(error: unknown): CompanyError {
     return 'network';
   }
   switch (error.status) {
+    case 403:
+      return 'forbidden';
     case 404:
       return 'not_found';
     case 409:

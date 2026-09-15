@@ -13,10 +13,13 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Tenancy\Application\Company\AddMember;
 use App\Tenancy\Application\Company\CompanyNotFound;
+use App\Tenancy\Application\Company\RoleBounds;
+use App\Tenancy\Application\Company\RoleNotManageable;
 use App\Tenancy\Application\Company\UnknownRole;
 use App\Tenancy\Application\Invitation\InviteRequest;
 use App\Tenancy\Application\Invitation\InviteToCompany;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
 use App\Tests\Support\InMemoryAuditTrail;
@@ -43,6 +46,7 @@ final class InviteToCompanyTest extends TestCase
     private InMemoryNotifications $notifications;
     private InMemoryAuditTrail $audit;
     private InviteToCompany $invite;
+    private InMemoryRoles $roles;
     private Company $company;
 
     protected function setUp(): void
@@ -57,6 +61,8 @@ final class InviteToCompanyTest extends TestCase
         $roles = new InMemoryRoles();
         $roles->save(new Role(Role::OWNER, [Permission::WILDCARD]));
         $roles->save(new Role(Role::MEMBER, ['company.read']));
+        $roles->save(new Role(Role::ADMIN, ['user.read', 'user.write']));
+        $this->roles = $roles;
         $clock = new MockClock('2026-09-09 10:00:00');
 
         $addMember = new AddMember($this->companies, $this->users, $this->memberships, $roles, $this->audit, $clock);
@@ -64,6 +70,7 @@ final class InviteToCompanyTest extends TestCase
             $this->companies,
             $this->users,
             $roles,
+            new RoleBounds($this->memberships),
             $this->invitations,
             $addMember,
             $this->mailer,
@@ -212,6 +219,35 @@ final class InviteToCompanyTest extends TestCase
         foreach ($this->audit->entries as $entry) {
             self::assertStringNotContainsString($raw, json_encode($entry->changes, \JSON_THROW_ON_ERROR));
         }
+    }
+
+    public function testAnAdminInvitesMembersAndAdminsButOnlyAnOwnerInvitesAnOwner(): void
+    {
+        $admin = $this->memberOfTheCompany('admin@twes.local', Role::ADMIN);
+        $owner = $this->memberOfTheCompany('owner@twes.local', Role::OWNER);
+
+        try {
+            $this->invite->handle(new InviteRequest($this->company->getId(), 'next-owner@twes.local', Role::OWNER), $admin->getId());
+            self::fail('an admin invited an owner');
+        } catch (RoleNotManageable) {
+        }
+        self::assertSame([[], []], [$this->mailer->sent, $this->audit->entries], 'a refused invitation leaves no trace');
+
+        $this->invite->handle(new InviteRequest($this->company->getId(), 'next-admin@twes.local', Role::ADMIN), $admin->getId());
+        $this->invite->handle(new InviteRequest($this->company->getId(), 'next-owner@twes.local', Role::OWNER), $owner->getId());
+
+        self::assertCount(2, $this->mailer->sent);
+    }
+
+    private function memberOfTheCompany(string $email, string $roleName): User
+    {
+        $user = new User(Email::fromString($email), 'Someone');
+        $this->users->save($user);
+        $role = $this->roles->builtIn($roleName);
+        self::assertNotNull($role);
+        $this->memberships->save(new Membership($user, $this->company, $role));
+
+        return $user;
     }
 
     private function request(string $email): InviteRequest

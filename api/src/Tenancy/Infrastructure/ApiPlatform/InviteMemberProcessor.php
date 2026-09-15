@@ -12,9 +12,11 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Tenancy\Application\Company\AlreadyAMember;
+use App\Tenancy\Application\Company\RoleNotManageable;
 use App\Tenancy\Application\Company\UnknownRole;
 use App\Tenancy\Application\Invitation\InviteRequest;
 use App\Tenancy\Application\Invitation\InviteToCompany;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
@@ -43,6 +45,8 @@ final readonly class InviteMemberProcessor implements ProcessorInterface
             throw new ConflictHttpException($already->getMessage(), $already);
         } catch (UnknownRole $refused) {
             throw new UnprocessableEntityHttpException($refused->getMessage(), $refused);
+        } catch (RoleNotManageable $refused) {
+            throw new AccessDeniedHttpException($refused->getMessage(), $refused);
         }
 
         $resource = new MemberResource();

@@ -161,11 +161,40 @@ final class NotificationsTest extends ApiTestCase
         self::assertIsString($body['expiresAt']);
     }
 
+    public function testSomeoneRemovedFromTheCompanyNoLongerHearsIt(): void
+    {
+        $this->login('owner@twes.local', 'password-1234');
+        $this->em()->getConnection()->executeStatement('DELETE FROM membership WHERE user_id = ? AND company_id = ?', [$this->owner->getId()->toRfc4122(), $this->company->getId()->toRfc4122()]);
+
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122()], $this->realtimeChannels());
+    }
+
+    public function testAMemberOfASuspendedCompanyNoLongerHearsIt(): void
+    {
+        $this->login('owner@twes.local', 'password-1234');
+        $this->em()->getConnection()->executeStatement("UPDATE company SET status = 'suspended' WHERE id = ?", [$this->company->getId()->toRfc4122()]);
+
+        self::assertSame(['user:'.$this->owner->getId()->toRfc4122()], $this->realtimeChannels());
+    }
+
     public function testNobodyGetsARealtimeTokenSignedOut(): void
     {
         $this->getJson('/api/me/realtime-token');
 
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
+    }
+
+    /** @return list<mixed> the channels the token issued now lists */
+    private function realtimeChannels(): array
+    {
+        $this->getJson('/api/me/realtime-token');
+        self::assertResponseIsSuccessful();
+        [, $payload] = explode('.', $this->stringAt($this->json(), 'token'));
+        $claims = json_decode(HmacJwt::base64UrlDecode($payload), true, 8, \JSON_THROW_ON_ERROR);
+        self::assertIsArray($claims);
+        self::assertIsList($claims['channels']);
+
+        return $claims['channels'];
     }
 
     private function item(User $recipient, string $type, string $at, ?Company $company = null): InboxItem

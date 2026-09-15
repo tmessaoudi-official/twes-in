@@ -18,6 +18,8 @@ use App\Shared\Application\Notifications;
 use App\Tenancy\Application\Company\AddMember;
 use App\Tenancy\Application\Company\AddMemberRequest;
 use App\Tenancy\Application\Company\CompanyNotFound;
+use App\Tenancy\Application\Company\RoleBounds;
+use App\Tenancy\Application\Company\RoleNotManageable;
 use App\Tenancy\Application\Company\UnknownRole;
 use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\Invitation;
@@ -41,6 +43,7 @@ final readonly class InviteToCompany
         private CompanyRepository $companies,
         private UserRepository $users,
         private RoleRepository $roles,
+        private RoleBounds $bounds,
         private InvitationRepository $invitations,
         private AddMember $addMember,
         private InvitationMailer $mailer,
@@ -52,7 +55,7 @@ final readonly class InviteToCompany
     ) {
     }
 
-    /** @throws CompanyNotFound|UnknownRole */
+    /** @throws CompanyNotFound|UnknownRole|RoleNotManageable */
     public function handle(InviteRequest $request, ?Uuid $actorUserId): InviteOutcome
     {
         $company = $this->companies->ofId($request->companyId)
@@ -61,6 +64,7 @@ final readonly class InviteToCompany
         // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
         $this->roles->builtIn($request->roleName)
             ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $request->roleName));
+        $this->bounds->assertMayGrant($company->getId(), $actorUserId, $request->roleName);
 
         $email = Email::fromString($request->email);
         $existing = $this->users->ofEmail($email);

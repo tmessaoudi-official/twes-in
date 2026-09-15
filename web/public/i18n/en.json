@@ -123,6 +123,7 @@
       "unknown_user": "No account holds that address. Invitations are coming.",
       "already_member": "That person already belongs to the company.",
       "last_owner": "A company keeps at least one owner.",
+      "forbidden": "Your role in this company does not allow that.",
       "not_found": "Company not found.",
       "invalid": "Invalid request.",
       "network": "The server could not be reached."
@@ -167,7 +168,8 @@
       "errors": {
         "invalid": "The profile was refused. Check the registration numbers, the IBAN and the BIC.",
         "not_found": "Company not found.",
-        "network": "The server could not be reached."
+        "network": "The server could not be reached.",
+        "forbidden": "Your role in this company does not allow that."
       }
     },
     "establishments": {
@@ -201,7 +203,8 @@
         "code_taken": "Another establishment already has this code.",
         "invalid": "The establishment was refused. Check its code and its email.",
         "not_found": "Establishment not found.",
-        "network": "The server could not be reached."
+        "network": "The server could not be reached.",
+        "forbidden": "Your role in this company does not allow that."
       }
     },
     "numbering": {
@@ -245,7 +248,8 @@
       "errors": {
         "invalid": "The numbering was refused. Check the format and the number it resumes at.",
         "not_found": "Numbering series not found.",
-        "network": "The server could not be reached."
+        "network": "The server could not be reached.",
+        "forbidden": "Your role in this company does not allow that."
       }
     },
     "custom_fields": {

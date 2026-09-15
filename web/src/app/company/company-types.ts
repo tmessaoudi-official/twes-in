@@ -73,6 +73,7 @@ export type CompanyError =
   | 'unknown_user'
   | 'already_member'
   | 'last_owner'
+  | 'forbidden'
   | 'code_taken'
   | 'not_found'
   | 'invalid'

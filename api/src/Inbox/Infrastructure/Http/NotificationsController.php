@@ -13,8 +13,9 @@ use App\Identity\Infrastructure\Security\SecurityUser;
 use App\Inbox\Application\InboxItemNotFound;
 use App\Inbox\Application\NotificationCentre;
 use App\Inbox\Domain\InboxItem;
-use App\Shared\Application\CurrentCompany;
 use App\Shared\Application\RealtimeTokens;
+use App\Tenancy\Application\Session\DescribeWorkingContext;
+use App\Tenancy\Domain\Company;
 use Symfony\Bundle\SecurityBundle\Security;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -32,7 +33,7 @@ final readonly class NotificationsController
     public function __construct(
         private NotificationCentre $centre,
         private RealtimeTokens $tokens,
-        private CurrentCompany $currentCompany,
+        private DescribeWorkingContext $workingContext,
         private Security $security,
     ) {
     }
@@ -72,7 +73,12 @@ final readonly class NotificationsController
     #[Route('/api/me/realtime-token', name: 'api_me_realtime_token', methods: ['GET'])]
     public function realtimeToken(): JsonResponse
     {
-        $token = $this->tokens->issue($this->currentUserId(), $this->currentCompany->id());
+        $userId = $this->currentUserId();
+        // The session only names a company: it is heard while the user is still its member and it is open to them, so
+        // someone removed from it, or a member of a company since suspended, renews a token without its channel.
+        $context = $this->workingContext->for($userId);
+        $companyId = null !== $context && Company::STATUS_ACTIVE === $context->status ? Uuid::fromString($context->companyId) : null;
+        $token = $this->tokens->issue($userId, $companyId);
 
         return new JsonResponse(['token' => $token->token, 'expiresAt' => $token->expiresAt->format(\DATE_ATOM)]);
     }

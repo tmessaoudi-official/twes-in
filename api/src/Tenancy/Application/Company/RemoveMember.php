@@ -24,16 +24,18 @@ final readonly class RemoveMember
 
     public function __construct(
         private MembershipRepository $memberships,
+        private RoleBounds $bounds,
         private AuditTrail $audit,
         private ClockInterface $clock,
     ) {
     }
 
-    /** @throws NotAMember|LastOwner */
+    /** @throws NotAMember|LastOwner|RoleNotManageable */
     public function handle(Uuid $companyId, Uuid $userId, ?Uuid $actorUserId): void
     {
         $membership = $this->memberships->ofUserInCompany($userId, $companyId)
             ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
+        $this->bounds->assertMayRemove($companyId, $actorUserId, $membership->getRole());
 
         if (Role::OWNER === $membership->getRole()->getName() && 1 === $this->countOwners($companyId)) {
             throw new LastOwner('A company keeps at least one owner.');

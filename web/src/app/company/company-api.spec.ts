@@ -72,3 +72,30 @@ describe('CompanyApi, the profile', () => {
     await expect(revising).rejects.toEqual(new CompanyRefused('invalid'));
   });
 });
+
+describe('CompanyApi, the members', () => {
+  let api: CompanyApi;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    api = TestBed.inject(CompanyApi);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  it('names a removal the actor role does not reach as forbidden, not as invalid', async () => {
+    const removing = api.removeMember('c1', 'u2');
+    http
+      .expectOne({ method: 'DELETE', url: '/api/companies/c1/members/u2' })
+      .flush(
+        { detail: 'Your role in this company does not remove an owner.' },
+        { status: 403, statusText: 'Forbidden' },
+      );
+
+    await expect(removing).rejects.toEqual(new CompanyRefused('forbidden'));
+  });
+});
