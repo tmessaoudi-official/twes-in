@@ -541,7 +541,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 13 | G10 inventory with stock locations | M | todo | - | |
 | 14 | G2b generic metadata list/form + presentation settings + design checkpoint | L | done | 900ac11 | web/src/app/shared/** web/src/app/design/** web/e2e/** |
 | 15 | G3b settings engine chains + settings page + establishments + numbering series + company profile | L | done | 703e06f | api/src/Settings/** api/src/Tenancy/** api/config/fiscal/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/settings/** web/e2e/** |
-| 16 | Restyle basics: accent fidelity + locale formatting + status badges + shell states + settings area + notification panel | L | doing | - | web/src/app/shared/** web/src/app/shell/** web/src/app/notifications/** web/public/i18n/** web/e2e/** |
+| 16 | Restyle basics: accent fidelity + locale formatting + status badges + shell states + settings area + notification panel | L | done | 15b332b | web/src/app/shared/** web/src/app/shell/** web/src/app/notifications/** web/public/i18n/** web/e2e/** |
 <!-- /progress-block -->
 
 ### Delivered
