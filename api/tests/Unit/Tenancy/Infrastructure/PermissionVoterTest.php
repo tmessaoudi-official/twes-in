@@ -59,6 +59,18 @@ final class PermissionVoterTest extends TestCase
         self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($user), null, ['company.delete']));
     }
 
+    public function testACompanyThatIsNotActiveGrantsItsMembersNothing(): void
+    {
+        $user = $this->member(new Role(Role::OWNER, ['*']));
+
+        $this->company->suspend();
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), null, ['invoice.read']));
+
+        $pending = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->memberships->save(new Membership($user, $pending, new Role(Role::OWNER, ['*'])));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), $pending, ['invoice.read']));
+    }
+
     public function testAUserWithoutAMembershipInTheCurrentCompanyIsDenied(): void
     {
         $user = new User(Email::fromString('x@example.test'), 'X');

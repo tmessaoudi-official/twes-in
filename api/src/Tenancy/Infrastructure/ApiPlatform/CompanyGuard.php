@@ -46,12 +46,19 @@ final readonly class CompanyGuard
         return $company;
     }
 
-    /** Whether the caller holds the permission in the company: what a response offers them. Enforcing is companyForActing's. */
+    /**
+     * Whether the caller holds the permission in the company: what a response offers them. Enforcing is companyForActing's.
+     * A company that is not active is closed to its members, pending an operator's approval or suspended by one, and
+     * answers them as it answers a stranger; the session still describes it, which is how the application explains why.
+     */
     public function may(Company $company, string $permission): bool
     {
         $account = $this->account();
         if ($account->isPlatformOperator()) {
             return true;
+        }
+        if (!$company->isActive()) {
+            return false;
         }
         $role = $this->memberships->ofUserInCompany($account->getId(), $company->getId())?->getRole();
 

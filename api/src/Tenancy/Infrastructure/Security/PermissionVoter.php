@@ -54,6 +54,9 @@ final class PermissionVoter extends Voter
             return false;
         }
 
-        return $this->memberships->ofUserInCompany($account->getId(), $companyId)?->getRole()->grants($permission->value) ?? false;
+        $membership = $this->memberships->ofUserInCompany($account->getId(), $companyId);
+
+        // A company that is not active grants its members nothing: pending an operator's approval, or suspended by one.
+        return null !== $membership && $membership->getCompany()->isActive() && $membership->getRole()->grants($permission->value);
     }
 }
