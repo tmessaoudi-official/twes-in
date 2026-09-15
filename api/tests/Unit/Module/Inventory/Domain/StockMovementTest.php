@@ -1,0 +1,130 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Tests\Unit\Module\Inventory\Domain;
+
+use App\Fiscal\Domain\Unit;
+use App\Module\Inventory\Domain\InvalidStockMovement;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockMovement;
+use App\Module\Inventory\Domain\StockMovementKind;
+use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductDetails;
+use App\Module\Products\Domain\ProductKind;
+use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Establishment;
+use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\TestCase;
+use Symfony\Component\Uid\Uuid;
+
+final class StockMovementTest extends TestCase
+{
+    private \DateTimeImmutable $now;
+    private Company $company;
+    private StockLocation $site;
+    private Product $laptop;
+    private Product $flour;
+    private Product $support;
+
+    protected function setUp(): void
+    {
+        $this->now = new \DateTimeImmutable('2026-09-15 09:00:00');
+        $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        $this->site = StockLocation::defaultOf(Establishment::create($this->company, '000', 'Siège', true, $this->now), $this->now);
+        $piece = Unit::create($this->company, 'C62', 'Pièce', 0, 1, $this->now);
+        $kilogram = Unit::create($this->company, 'KGM', 'Kilogramme', 3, 2, $this->now);
+        $this->laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable', null, ProductKind::Goods, '1250'), $piece, null, [], $this->now);
+        $this->flour = Product::create($this->company, 'ART-002', new ProductDetails('Farine', null, ProductKind::Goods, '2'), $kilogram, null, [], $this->now);
+        $this->support = Product::create($this->company, 'SRV-001', new ProductDetails('Assistance', null, ProductKind::Service, '50'), $piece, null, [], $this->now);
+    }
+
+    public function testAReceiptAddsGoodsInTheProductsUnitRecordingWhoReceivedThem(): void
+    {
+        $actor = Uuid::v7();
+
+        $received = StockMovement::receipt($this->laptop, $this->site, '12', $actor, $this->now);
+
+        self::assertSame([StockMovementKind::In, '12.000', StockMovement::SOURCE_RECEIPT, null, $actor], [$received->getKind(), $received->getQuantity(), $received->getSourceType(), $received->getSourceId(), $received->getRecordedBy()]);
+        self::assertSame([$this->laptop, $this->site, $this->now], [$received->getProduct(), $received->getLocation(), $received->getAt()]);
+        self::assertSame('2.500', StockMovement::receipt($this->flour, $this->site, '2.5', null, $this->now)->getQuantity());
+        self::assertSame('3.000', StockMovement::receipt($this->laptop, $this->site, '3.00', null, $this->now)->getQuantity(), 'trailing zeros are no finer than the unit');
+    }
+
+    /** @return iterable<string, array{string, string}> */
+    public static function refusedReceipts(): iterable
+    {
+        yield 'nothing' => ['ART-001', '0'];
+        yield 'a negative quantity' => ['ART-001', '-1'];
+        yield 'half a piece' => ['ART-001', '1.5'];
+        yield 'not a number' => ['ART-001', 'douze'];
+        yield 'an empty quantity' => ['ART-001', ''];
+        yield 'twelve integer digits' => ['ART-001', '100000000000'];
+        yield 'four decimals of a kilogram' => ['ART-002', '1.2345'];
+    }
+
+    #[DataProvider('refusedReceipts')]
+    public function testAReceiptOfNothingOrFinerThanItsUnitIsRefused(string $reference, string $quantity): void
+    {
+        $product = 'ART-001' === $reference ? $this->laptop : $this->flour;
+
+        try {
+            StockMovement::receipt($product, $this->site, $quantity, null, $this->now);
+            self::fail('The receipt was accepted.');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('quantity', $refused->field);
+        }
+    }
+
+    public function testACountRecordsTheDifferenceFromTheStockItExpectedEvenNone(): void
+    {
+        $actor = Uuid::v7();
+
+        $short = StockMovement::count($this->laptop, $this->site, '10', '12.000', $actor, $this->now);
+
+        self::assertSame([StockMovementKind::Adjustment, '-2.000', StockMovement::SOURCE_COUNT, $actor], [$short->getKind(), $short->getQuantity(), $short->getSourceType(), $short->getRecordedBy()]);
+        self::assertSame('0.000', StockMovement::count($this->laptop, $this->site, '12', '12.000', $actor, $this->now)->getQuantity());
+        self::assertSame('1.250', StockMovement::count($this->flour, $this->site, '1.25', '0.000', $actor, $this->now)->getQuantity());
+        self::assertSame('5.000', StockMovement::count($this->laptop, $this->site, '0', '-5.000', $actor, $this->now)->getQuantity(), 'a count of nothing sets a negative stock right');
+        foreach (['0.5', '-1'] as $counted) {
+            try {
+                StockMovement::count($this->laptop, $this->site, $counted, '0.000', $actor, $this->now);
+                self::fail(\sprintf('A count of %s pieces was accepted.', $counted));
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame('quantity', $refused->field);
+            }
+        }
+    }
+
+    public function testADeliveryTakesGoodsOutAndItsReturnBringsTheSameBack(): void
+    {
+        $noteId = Uuid::v7();
+
+        $out = StockMovement::delivery($this->laptop, $this->site, '3', $noteId, $this->now);
+        $back = StockMovement::returnOf($out, $this->now);
+
+        self::assertSame([StockMovementKind::Out, '-3.000', StockMovement::SOURCE_DELIVERY_NOTE, $noteId, null], [$out->getKind(), $out->getQuantity(), $out->getSourceType(), $out->getSourceId(), $out->getRecordedBy()]);
+        self::assertSame([StockMovementKind::In, '3.000', StockMovement::SOURCE_DELIVERY_NOTE, $noteId, $this->laptop, $this->site], [$back->getKind(), $back->getQuantity(), $back->getSourceType(), $back->getSourceId(), $back->getProduct(), $back->getLocation()]);
+        $this->expectException(\LogicException::class);
+        StockMovement::returnOf(StockMovement::receipt($this->laptop, $this->site, '1', null, $this->now), $this->now);
+    }
+
+    public function testOnlyGoodsMoveAndOnlyInALocationOfTheirCompany(): void
+    {
+        $theirs = StockLocation::defaultOf(Establishment::create(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), '000', 'Globex', true, $this->now), $this->now);
+
+        foreach ([[$this->support, $this->site, 'productId'], [$this->laptop, $theirs, 'locationId']] as [$product, $location, $field]) {
+            try {
+                StockMovement::receipt($product, $location, '1', null, $this->now);
+                self::fail('The goods moved.');
+            } catch (InvalidStockMovement $refused) {
+                self::assertSame($field, $refused->field);
+            }
+        }
+    }
+}

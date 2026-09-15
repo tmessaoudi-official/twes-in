@@ -1,0 +1,116 @@
+<app-page-tabs [tabs]="tabs" label="nav.stock">
+  <section class="flex max-w-4xl flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="stock-locations-title">
+        {{ 'inventory.locations.title' | translate }}
+      </h1>
+      @if (mayWrite() && editing() === null && company()) {
+        <button
+          mat-flat-button
+          type="button"
+          (click)="open('new')"
+          data-testid="stock-location-add"
+        >
+          {{ 'inventory.locations.add' | translate }}
+        </button>
+      }
+    </div>
+    <p class="max-w-prose">{{ 'inventory.locations.intro' | translate }}</p>
+
+    @if (!company()) {
+      <p data-testid="stock-locations-no-company">{{ 'inventory.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="stock-locations-error" class="text-error">
+        {{ 'inventory.errors.' + code | translate }}
+      </p>
+    }
+    @if (saved()) {
+      <p role="status" data-testid="stock-location-saved">
+        {{ 'inventory.locations.saved' | translate }}
+      </p>
+    }
+
+    @if (form(); as form) {
+      @if (descriptor(); as descriptor) {
+        <mat-card>
+          <mat-card-content>
+            <app-descriptor-form
+              [descriptor]="descriptor"
+              [form]="form"
+              testId="stock-location-form"
+              (submitted)="save($event)"
+            >
+              <div class="flex flex-wrap justify-end gap-2">
+                <button
+                  mat-button
+                  type="button"
+                  (click)="cancel()"
+                  data-testid="stock-location-cancel"
+                >
+                  {{ 'inventory.cancel' | translate }}
+                </button>
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="busy()"
+                  data-testid="stock-location-save"
+                >
+                  {{ 'inventory.save' | translate }}
+                </button>
+              </div>
+            </app-descriptor-form>
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    <app-data-list
+      [descriptor]="list"
+      [rows]="rows()"
+      testId="stock-locations-table"
+      [rowTestId]="rowTestId"
+      emptyKey="inventory.locations.none"
+      emptyTestId="stock-locations-empty"
+    >
+      <ng-template appDataListCell="path" let-row>
+        <span class="inline-flex flex-wrap items-center gap-2">
+          {{ row.path }}
+          @if (row.isDefault) {
+            <app-status-badge tone="neutral">
+              {{ 'inventory.locations.default' | translate }}
+            </app-status-badge>
+          }
+        </span>
+      </ng-template>
+      <ng-template appDataListCell="kind" let-row>
+        {{ 'inventory.kinds.' + row.kind | translate }}
+      </ng-template>
+      @if (mayWrite()) {
+        <ng-template appDataListRowActions let-row>
+          <button
+            mat-button
+            type="button"
+            (click)="open(row)"
+            [disabled]="busy()"
+            [attr.data-testid]="'stock-location-edit-' + row.code"
+          >
+            {{ 'inventory.edit' | translate }}
+          </button>
+          @if (!row.isDefault) {
+            <button
+              mat-button
+              type="button"
+              (click)="remove(row)"
+              [disabled]="busy()"
+              [attr.data-testid]="'stock-location-delete-' + row.code"
+              [attr.aria-label]="'inventory.delete_named' | translate: { name: row.path }"
+            >
+              {{ 'inventory.delete' | translate }}
+            </button>
+          }
+        </ng-template>
+      }
+    </app-data-list>
+  </section>
+</app-page-tabs>

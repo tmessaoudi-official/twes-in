@@ -1,0 +1,114 @@
+<?php
+
+/*
+ * SPDX-License-Identifier: AGPL-3.0-or-later
+ * SPDX-FileCopyrightText: Takieddine MESSAOUDI
+ */
+
+declare(strict_types=1);
+
+namespace App\Module\Inventory\Infrastructure\ApiPlatform;
+
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Post;
+use App\Module\Inventory\Domain\StockMovement;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Validator\Constraints as Assert;
+
+/**
+ * Stock movements, never changed once written. Listed newest first with stock.read, the latest of the company or, with
+ * `?productId=`, of one product. Written with stock.write by a person: `receive` adds the quantity at the location,
+ * `count` records the difference between the quantity found and the stock there, even none. Only goods whose stock is
+ * kept move; a refusal answers 422 naming the field.
+ */
+#[ApiResource(
+    shortName: 'StockMovement',
+    operations: [
+        new GetCollection(
+            uriTemplate: '/companies/{companyId}/stock-movements',
+            provider: StockMovementCollectionProvider::class,
+            security: 'is_granted("ROLE_USER")',
+            normalizationContext: ['groups' => [self::READ]],
+        ),
+        new Post(
+            uriTemplate: '/companies/{companyId}/stock-movements',
+            processor: RecordStockMovementProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            normalizationContext: ['groups' => [self::READ]],
+            denormalizationContext: ['groups' => [self::WRITE]],
+            validationContext: ['groups' => [self::WRITE]],
+        ),
+    ],
+)]
+final class StockMovementResource
+{
+    public const string READ = 'stock_movement:read';
+    public const string WRITE = 'stock_movement:write';
+    public const string RECEIVE = 'receive';
+    public const string COUNT = 'count';
+
+    #[ApiProperty(identifier: false, writable: false)]
+    #[Groups([self::READ])]
+    public ?string $id = null;
+
+    /** What a person records: goods received, or a count of what is there. */
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => [self::RECEIVE, self::COUNT]])]
+    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT], groups: [self::WRITE])]
+    #[Groups([self::WRITE])]
+    public string $operation = '';
+
+    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public string $productId = '';
+
+    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public string $locationId = '';
+
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']])]
+    #[Groups([self::READ])]
+    public string $kind = '';
+
+    /** Written: the quantity received or found, in the product's unit. Read: signed, with three decimals. */
+    #[Assert\NotBlank(groups: [self::WRITE])]
+    #[Groups([self::READ, self::WRITE])]
+    public string $quantity = '';
+
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_DELIVERY_NOTE]])]
+    #[Groups([self::READ])]
+    public string $sourceType = '';
+
+    /** The document that moved the goods: a delivery note's id; null for what a person recorded. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $sourceId = null;
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public ?string $recordedBy = null;
+
+    /** When it moved, ISO 8601. */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $at = '';
+
+    public static function of(StockMovement $movement): self
+    {
+        $resource = new self();
+        $resource->id = $movement->getId()->toRfc4122();
+        $resource->productId = $movement->getProduct()->getId()->toRfc4122();
+        $resource->locationId = $movement->getLocation()->getId()->toRfc4122();
+        $resource->kind = $movement->getKind()->value;
+        $resource->quantity = $movement->getQuantity();
+        $resource->sourceType = $movement->getSourceType();
+        $resource->sourceId = $movement->getSourceId()?->toRfc4122();
+        $resource->recordedBy = $movement->getRecordedBy()?->toRfc4122();
+        $resource->at = $movement->getAt()->format(\DATE_ATOM);
+
+        return $resource;
+    }
+}

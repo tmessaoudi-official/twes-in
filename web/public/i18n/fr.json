@@ -251,7 +251,8 @@
   "modules": {
     "customers": "Clients",
     "delivery_notes": "Bons de livraison",
-    "products": "Produits"
+    "products": "Produits",
+    "inventory": "Stock"
   },
   "nav": {
     "home": "Accueil",
@@ -276,7 +277,10 @@
     "custom_fields": "Champs personnalisés",
     "products": "Produits",
     "product_categories": "Catégories de produits",
-    "delivery_notes": "Bons de livraison"
+    "delivery_notes": "Bons de livraison",
+    "stock": "Stock",
+    "stock_movements": "Mouvements de stock",
+    "stock_locations": "Emplacements"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -866,6 +870,97 @@
         "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
         "not_found": "Introuvable.",
         "network": "Le serveur est injoignable."
+      }
+    }
+  },
+  "inventory": {
+    "no_company": "Choisissez d’abord une entreprise.",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "delete_named": "Supprimer {{name}}",
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Introuvable.",
+      "code_taken": "Un autre emplacement de cet établissement porte déjà ce code.",
+      "in_use": "Cet emplacement ne peut pas être supprimé : c’est l’emplacement par défaut, ou il contient encore des emplacements ou des mouvements.",
+      "invalid": "La saisie a été refusée. Vérifiez le produit, l’emplacement et la quantité."
+    },
+    "stock": {
+      "title": "Stock",
+      "intro": "Le stock d’un produit est la somme de ses mouvements. Un bon de livraison validé sort les marchandises de l’emplacement par défaut de son établissement ; son annulation les y remet.",
+      "receive": "Réceptionner",
+      "count": "Inventorier",
+      "recorded": "Le mouvement a été enregistré.",
+      "none": "Aucun stock pour l’instant.",
+      "negative": "Négatif",
+      "movements_short": "Mouvements",
+      "movements_of": "Mouvements de {{name}}",
+      "fields": {
+        "reference": "Référence",
+        "product": "Produit",
+        "location": "Emplacement",
+        "quantity": "Quantité",
+        "unit": "Unité",
+        "at": "Date",
+        "kind": "Nature",
+        "source": "Origine"
+      }
+    },
+    "movement": {
+      "receive": "Réception de marchandises",
+      "count": "Inventaire",
+      "quantity_hint": {
+        "receive": "La quantité reçue, dans l’unité du produit.",
+        "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul."
+      }
+    },
+    "movements": {
+      "title": "Mouvements de stock",
+      "none": "Aucun mouvement pour l’instant.",
+      "filtered": "Mouvements d’un seul produit.",
+      "all": "Voir tous les produits"
+    },
+    "movement_kinds": {
+      "in": "Entrée",
+      "out": "Sortie",
+      "adjustment": "Ajustement"
+    },
+    "sources": {
+      "receipt": "Réception",
+      "count": "Inventaire",
+      "delivery_note": "Bon de livraison"
+    },
+    "kinds": {
+      "site": "Site",
+      "building": "Bâtiment",
+      "floor": "Étage",
+      "zone": "Zone",
+      "rack": "Rayonnage",
+      "bin": "Casier"
+    },
+    "locations": {
+      "title": "Emplacements",
+      "intro": "Chaque établissement a un emplacement par défaut, en tête de son arborescence. Un emplacement ne se supprime qu’une fois vide de sous-emplacements et de mouvements.",
+      "add": "Ajouter un emplacement",
+      "saved": "L’emplacement a été enregistré.",
+      "none": "Aucun emplacement pour l’instant.",
+      "section": "Emplacement",
+      "default": "Par défaut",
+      "top_level": "En tête de l’établissement",
+      "under_default": "Sous l’emplacement par défaut",
+      "parent_hint": "Un emplacement se range sous un autre du même établissement.",
+      "code_hint": "Lettres, chiffres et . _ -, 32 caractères au plus, unique dans l’établissement.",
+      "fields": {
+        "path": "Emplacement",
+        "establishmentId": "Établissement",
+        "parentId": "Rangé sous",
+        "kind": "Nature",
+        "code": "Code",
+        "name": "Nom",
+        "childCount": "Sous-emplacements",
+        "movementCount": "Mouvements"
       }
     }
   }

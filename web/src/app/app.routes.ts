@@ -5,6 +5,7 @@ import { Routes } from '@angular/router';
 import { anonymousGuard, authGuard } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
+import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
 import { moduleGuard } from './shell/module-guard';
 
@@ -93,6 +94,23 @@ export const routes: Routes = [
         canActivate: [moduleGuard(DELIVERY_NOTES_MODULE)],
         loadComponent: () =>
           import('./delivery-notes/delivery-note-page').then((m) => m.DeliveryNotePage),
+      },
+      {
+        path: 'stock',
+        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        loadComponent: () => import('./inventory/stock-page').then((m) => m.StockPage),
+      },
+      {
+        path: 'stock/movements',
+        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        loadComponent: () =>
+          import('./inventory/stock-movements-page').then((m) => m.StockMovementsPage),
+      },
+      {
+        path: 'stock/locations',
+        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        loadComponent: () =>
+          import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
       {
         // The company settings, reached from the gear: a layout route with no path of its own, so the grouped

@@ -51,11 +51,12 @@ final class ModulesTest extends ApiTestCase
             ['key' => 'customers', 'labelKey' => 'modules.customers', 'dependencies' => [], 'permissions' => ['customer.read', 'customer.write'], 'enabled' => true],
             ['key' => 'delivery_notes', 'labelKey' => 'modules.delivery_notes', 'dependencies' => ['customers', 'products'], 'permissions' => ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate'], 'enabled' => true],
             ['key' => 'fixture_ledger', 'labelKey' => 'modules.fixture_ledger', 'dependencies' => ['customers'], 'permissions' => [], 'enabled' => true],
+            ['key' => 'inventory', 'labelKey' => 'modules.inventory', 'dependencies' => ['products'], 'permissions' => ['stock.read', 'stock.write'], 'enabled' => true],
             ['key' => 'invoices', 'labelKey' => 'modules.invoices', 'dependencies' => ['customers', 'products'], 'permissions' => ['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write'], 'enabled' => true],
             ['key' => 'products', 'labelKey' => 'modules.products', 'dependencies' => [], 'permissions' => ['product.read', 'product.write'], 'enabled' => true],
         ], $this->jsonList());
         $this->getJson('/api/auth/me');
-        self::assertSame(['customers', 'delivery_notes', 'fixture_ledger', 'invoices', 'products'], $this->arrayAt($this->json(), 'modules'));
+        self::assertSame(['customers', 'delivery_notes', 'fixture_ledger', 'inventory', 'invoices', 'products'], $this->arrayAt($this->json(), 'modules'));
     }
 
     public function testSwitchingAModuleOffHidesItsResourcesAndKeepsItsData(): void
@@ -101,7 +102,7 @@ final class ModulesTest extends ApiTestCase
         $this->postJson($this->companyPath().'/customer-groups', ['name' => 'Export', 'description' => null]);
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/auth/me');
-        self::assertSame(['products'], $this->arrayAt($this->json(), 'modules'), 'products needs no customers and stays on');
+        self::assertSame(['inventory', 'products'], $this->arrayAt($this->json(), 'modules'), 'products and inventory need no customers and stay on');
         self::assertSame(['module.disabled', 'module.disabled', 'module.disabled', 'module.disabled'], $this->em()->getConnection()->fetchFirstColumn("SELECT action FROM audit_log WHERE entity_type = 'module'"));
 
         $this->sendJson('PUT', $this->path('customers'), ['enabled' => true]);
@@ -218,6 +219,9 @@ final class ModulesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'delivery notes need products');
         $this->sendJson('PUT', $this->path('delivery_notes'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('invoices'), ['enabled' => false]);
+        $this->sendJson('PUT', $this->path('products'), ['enabled' => false]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'inventory needs products');
+        $this->sendJson('PUT', $this->path('inventory'), ['enabled' => false]);
         $this->sendJson('PUT', $this->path('products'), ['enabled' => false]);
         self::assertResponseIsSuccessful();
 

@@ -251,7 +251,8 @@
   "modules": {
     "customers": "Customers",
     "delivery_notes": "Delivery notes",
-    "products": "Products"
+    "products": "Products",
+    "inventory": "Inventory"
   },
   "nav": {
     "home": "Home",
@@ -276,7 +277,10 @@
     "custom_fields": "Custom fields",
     "products": "Products",
     "product_categories": "Product categories",
-    "delivery_notes": "Delivery notes"
+    "delivery_notes": "Delivery notes",
+    "stock": "Stock",
+    "stock_movements": "Stock movements",
+    "stock_locations": "Locations"
   },
   "shell": {
     "skip": "Skip to content",
@@ -866,6 +870,97 @@
         "invalid": "The values were refused. Check the limits shown.",
         "not_found": "Not found.",
         "network": "The server could not be reached."
+      }
+    }
+  },
+  "inventory": {
+    "no_company": "Choose a company first.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "delete_named": "Delete {{name}}",
+    "errors": {
+      "network": "The server cannot be reached.",
+      "not_found": "Not found.",
+      "code_taken": "Another location of this establishment already has this code.",
+      "in_use": "This location cannot be deleted: it is the default location, or it still holds locations or movements.",
+      "invalid": "This was refused. Check the product, the location and the quantity."
+    },
+    "stock": {
+      "title": "Stock",
+      "intro": "A product’s stock is the sum of its movements. A validated delivery note takes the goods out of its establishment’s default location; cancelling it puts them back.",
+      "receive": "Receive",
+      "count": "Count",
+      "recorded": "The movement was recorded.",
+      "none": "No stock yet.",
+      "negative": "Negative",
+      "movements_short": "Movements",
+      "movements_of": "Movements of {{name}}",
+      "fields": {
+        "reference": "Reference",
+        "product": "Product",
+        "location": "Location",
+        "quantity": "Quantity",
+        "unit": "Unit",
+        "at": "Date",
+        "kind": "Kind",
+        "source": "Source"
+      }
+    },
+    "movement": {
+      "receive": "Goods received",
+      "count": "Stock count",
+      "quantity_hint": {
+        "receive": "The quantity received, in the product’s unit.",
+        "count": "The quantity found; the difference from the stock is recorded, even when nil."
+      }
+    },
+    "movements": {
+      "title": "Stock movements",
+      "none": "No movements yet.",
+      "filtered": "Movements of one product.",
+      "all": "Show every product"
+    },
+    "movement_kinds": {
+      "in": "In",
+      "out": "Out",
+      "adjustment": "Adjustment"
+    },
+    "sources": {
+      "receipt": "Receipt",
+      "count": "Count",
+      "delivery_note": "Delivery note"
+    },
+    "kinds": {
+      "site": "Site",
+      "building": "Building",
+      "floor": "Floor",
+      "zone": "Zone",
+      "rack": "Rack",
+      "bin": "Bin"
+    },
+    "locations": {
+      "title": "Locations",
+      "intro": "Each establishment has a default location at the top of its tree. A location can be deleted only once it holds no locations and no movements.",
+      "add": "Add a location",
+      "saved": "The location was saved.",
+      "none": "No locations yet.",
+      "section": "Location",
+      "default": "Default",
+      "top_level": "At the top of the establishment",
+      "under_default": "Under the default location",
+      "parent_hint": "A location sits under another of the same establishment.",
+      "code_hint": "Letters, digits and . _ -, at most 32 characters, unique in the establishment.",
+      "fields": {
+        "path": "Location",
+        "establishmentId": "Establishment",
+        "parentId": "Sits under",
+        "kind": "Kind",
+        "code": "Code",
+        "name": "Name",
+        "childCount": "Locations under it",
+        "movementCount": "Movements"
       }
     }
   }

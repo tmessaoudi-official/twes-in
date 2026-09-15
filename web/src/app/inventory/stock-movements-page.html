@@ -1,0 +1,46 @@
+<app-page-tabs [tabs]="tabs" label="nav.stock">
+  <section class="flex flex-col gap-6">
+    <h1 class="text-3xl font-semibold" data-testid="stock-movements-title">
+      {{ 'inventory.movements.title' | translate }}
+    </h1>
+
+    @if (productId()) {
+      <p class="flex flex-wrap items-center gap-2" data-testid="stock-movements-filtered">
+        {{ 'inventory.movements.filtered' | translate }}
+        <a mat-button routerLink="/stock/movements" data-testid="stock-movements-all">
+          {{ 'inventory.movements.all' | translate }}
+        </a>
+      </p>
+    }
+    @if (!company()) {
+      <p data-testid="stock-movements-no-company">{{ 'inventory.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="stock-movements-error" class="text-error">
+        {{ 'inventory.errors.' + code | translate }}
+      </p>
+    }
+
+    <app-data-list
+      [descriptor]="list"
+      [rows]="rows()"
+      testId="stock-movements-table"
+      [rowTestId]="rowTestId"
+      emptyKey="inventory.movements.none"
+      emptyTestId="stock-movements-empty"
+    >
+      <ng-template appDataListCell="at" let-row>
+        {{ row.at | moment }}
+      </ng-template>
+      <ng-template appDataListCell="kind" let-row>
+        {{ 'inventory.movement_kinds.' + row.kind | translate }}
+      </ng-template>
+      <ng-template appDataListCell="quantity" let-row>
+        {{ row.quantity | amount: row.unitDecimals }}
+      </ng-template>
+      <ng-template appDataListCell="source" let-row>
+        {{ 'inventory.sources.' + row.sourceType | translate }}
+      </ng-template>
+    </app-data-list>
+  </section>
+</app-page-tabs>

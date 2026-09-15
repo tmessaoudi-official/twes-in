@@ -1,0 +1,97 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+/** Why the API refused, as the stock screens translate it. */
+export type InventoryError = 'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid';
+
+/** Where stock is kept, from the whole site down to one bin (docs/SPEC.md § 7, 2026-09-14). */
+export type StockLocationKind = 'site' | 'building' | 'floor' | 'zone' | 'rack' | 'bin';
+export const STOCK_LOCATION_KINDS: readonly StockLocationKind[] = [
+  'site',
+  'building',
+  'floor',
+  'zone',
+  'rack',
+  'bin',
+];
+
+export type StockMovementKind = 'in' | 'out' | 'adjustment';
+export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 'adjustment'];
+
+export type StockSourceType = 'receipt' | 'count' | 'delivery_note';
+export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = ['receipt', 'count', 'delivery_note'];
+
+/** What a person records: goods received, or what a count found on the shelf. */
+export type StockOperation = 'receive' | 'count';
+
+export interface StockLocationRow {
+  id: string;
+  establishmentId: string;
+  /** Null for an establishment's default location, which sits at the top of its tree. */
+  parentId: string | null;
+  kind: StockLocationKind;
+  code: string;
+  name: string;
+  isDefault: boolean;
+  childCount: number;
+  movementCount: number;
+}
+
+/** A null parent places a new location under its establishment's default one. */
+export type StockLocationInput = Pick<
+  StockLocationRow,
+  'establishmentId' | 'parentId' | 'kind' | 'code' | 'name'
+>;
+
+/** What is on hand of one product at one location: the sum of its movements, which may fall below zero. */
+export interface StockLevelRow {
+  productId: string;
+  productReference: string;
+  productName: string;
+  unitCode: string;
+  locationId: string;
+  locationCode: string;
+  locationName: string;
+  establishmentId: string;
+  /** A signed decimal string at three decimals, "-2.000". */
+  quantity: string;
+}
+
+export interface StockMovementRow {
+  id: string;
+  productId: string;
+  locationId: string;
+  kind: StockMovementKind;
+  /** Signed: what came in is positive, what left negative, a count's difference either. */
+  quantity: string;
+  sourceType: StockSourceType;
+  sourceId: string | null;
+  recordedBy: string | null;
+  at: string;
+}
+
+export interface StockMovementInput {
+  operation: StockOperation;
+  productId: string;
+  locationId: string;
+  quantity: string;
+}
+
+export interface StockProductOption {
+  id: string;
+  reference: string;
+  name: string;
+  unitCode: string;
+  unitDecimals: number;
+}
+
+export interface StockEstablishmentOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
+/** What the stock forms offer: the active products whose stock is kept, and the company's establishments. */
+export interface StockOptions {
+  products: StockProductOption[];
+  establishments: StockEstablishmentOption[];
+}

@@ -1,0 +1,131 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { TestBed } from '@angular/core/testing';
+import { InventoryApi, InventoryRefused } from './inventory-api';
+import { InventoryFacade } from './inventory-facade';
+import type {
+  StockLevelRow,
+  StockLocationInput,
+  StockLocationRow,
+  StockOptions,
+} from './inventory-types';
+
+const site: StockLocationRow = {
+  id: 'l1',
+  establishmentId: 'e1',
+  parentId: null,
+  kind: 'site',
+  code: '000',
+  name: 'Siège',
+  isDefault: true,
+  childCount: 0,
+  movementCount: 1,
+};
+const options: StockOptions = {
+  products: [{ id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 }],
+  establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
+};
+const level: StockLevelRow = {
+  productId: 'p1',
+  productReference: 'ART-1',
+  productName: 'Portable',
+  unitCode: 'C62',
+  locationId: 'l1',
+  locationCode: '000',
+  locationName: 'Siège',
+  establishmentId: 'e1',
+  quantity: '10.000',
+};
+const zone: StockLocationInput = {
+  establishmentId: 'e1',
+  parentId: null,
+  kind: 'zone',
+  code: 'Z1',
+  name: 'Zone froide',
+};
+
+describe('InventoryFacade', () => {
+  const api = {
+    options: vi.fn(),
+    levels: vi.fn(),
+    locations: vi.fn(),
+    movements: vi.fn(),
+    createLocation: vi.fn(),
+    reviseLocation: vi.fn(),
+    deleteLocation: vi.fn(),
+    record: vi.fn(),
+  };
+  let facade: InventoryFacade;
+
+  beforeEach(() => {
+    api.options.mockReset().mockResolvedValue(options);
+    api.levels.mockReset().mockResolvedValue([level]);
+    api.locations.mockReset().mockResolvedValue([site]);
+    api.movements.mockReset().mockResolvedValue([]);
+    api.createLocation.mockReset().mockResolvedValue(site);
+    api.reviseLocation.mockReset().mockResolvedValue(site);
+    api.deleteLocation.mockReset().mockResolvedValue(undefined);
+    api.record.mockReset().mockResolvedValue({});
+    TestBed.configureTestingModule({ providers: [{ provide: InventoryApi, useValue: api }] });
+    facade = TestBed.inject(InventoryFacade);
+  });
+
+  it('reads the stock with what it names: the options and the locations', async () => {
+    await facade.loadStock('c1');
+
+    expect([facade.levels(), facade.locations(), facade.options()]).toEqual([
+      [level],
+      [site],
+      options,
+    ]);
+    expect(facade.error()).toBeNull();
+  });
+
+  it("reads one product's movements", async () => {
+    await facade.loadMovements('c1', 'p1');
+
+    expect(api.movements).toHaveBeenCalledWith('c1', 'p1');
+    expect(facade.levels()).toEqual([level]);
+  });
+
+  it('records a receipt, then reads the stock again', async () => {
+    api.levels.mockResolvedValueOnce([]).mockResolvedValueOnce([level]);
+    await facade.loadStock('c1');
+
+    const input = {
+      operation: 'receive' as const,
+      productId: 'p1',
+      locationId: 'l1',
+      quantity: '10',
+    };
+    expect(await facade.record('c1', input)).toBe(true);
+
+    expect(api.record).toHaveBeenCalledWith('c1', input);
+    expect(facade.levels()).toEqual([level]);
+  });
+
+  it('says why a write was refused, and leaves what was read', async () => {
+    await facade.loadLocations('c1');
+    api.createLocation.mockRejectedValue(new InventoryRefused('code_taken'));
+    api.deleteLocation.mockRejectedValue(new Error('offline'));
+
+    expect(await facade.createLocation('c1', zone)).toBe(false);
+    expect(facade.error()).toBe('code_taken');
+    expect(await facade.deleteLocation('c1', 'l1')).toBe(false);
+    expect(facade.error()).toBe('network');
+    expect(facade.locations()).toEqual([site]);
+
+    facade.clearError();
+    expect(facade.error()).toBeNull();
+  });
+
+  it('reads the locations again after one is added, revised or deleted', async () => {
+    expect(await facade.createLocation('c1', zone)).toBe(true);
+    expect(await facade.reviseLocation('c1', 'l2', zone)).toBe(true);
+    expect(await facade.deleteLocation('c1', 'l2')).toBe(true);
+
+    expect(api.reviseLocation).toHaveBeenCalledWith('c1', 'l2', zone);
+    expect(api.deleteLocation).toHaveBeenCalledWith('c1', 'l2');
+    expect(api.locations).toHaveBeenCalledTimes(3);
+  });
+});

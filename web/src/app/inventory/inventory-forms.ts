@@ -1,0 +1,482 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
+import type { ListDescriptor } from '../shared/list/list-types';
+import {
+  STOCK_LOCATION_KINDS,
+  STOCK_MOVEMENT_KINDS,
+  STOCK_SOURCE_TYPES,
+  type StockLevelRow,
+  type StockLocationInput,
+  type StockLocationRow,
+  type StockMovementInput,
+  type StockMovementRow,
+  type StockOperation,
+  type StockOptions,
+} from './inventory-types';
+
+const LOCATION_FIELDS = 'inventory.locations.fields';
+const STOCK_FIELDS = 'inventory.stock.fields';
+/** The API's shape of a location code. */
+const CODE_PATTERN = '[A-Za-z0-9._\\-]{1,32}';
+/** A quantity as a person types it, with a point or a comma: at most eleven digits, then at most three decimals. */
+const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.,][0-9]{1,3})?';
+/** Decimals shown for a product the options no longer list (inactive, or no longer kept): the API's own three. */
+const API_DECIMALS = 3;
+
+/** Each location's path of codes from its establishment's default, then its name, ordered by that path. */
+export function locationLabels(locations: readonly StockLocationRow[]): Map<string, string> {
+  const byId = new Map(locations.map((location) => [location.id, location]));
+  const paths = locations.map((location): [StockLocationRow, string[]] => {
+    const codes = [location.code];
+    const seen = new Set([location.id]);
+    let parentId = location.parentId;
+    // The API refuses a cycle and an unknown parent; the guards keep a malformed answer from hanging the screen.
+    while (parentId !== null && !seen.has(parentId)) {
+      const parent = byId.get(parentId);
+      if (parent === undefined) break;
+      codes.unshift(parent.code);
+      seen.add(parent.id);
+      parentId = parent.parentId;
+    }
+    return [location, codes];
+  });
+  paths.sort(([, a], [, b]) => comparePaths(a, b));
+  return new Map(
+    paths.map(([location, codes]) => [location.id, `${codes.join(' › ')} — ${location.name}`]),
+  );
+}
+
+/** Segment by segment, so a location always follows the one it sits under. */
+function comparePaths(a: readonly string[], b: readonly string[]): number {
+  for (let i = 0; i < Math.min(a.length, b.length); i++) {
+    const order = (a[i] ?? '').localeCompare(b[i] ?? '');
+    if (order !== 0) return order;
+  }
+  return a.length - b.length;
+}
+
+/** What is on hand, as the list shows it: where, in how many decimals, and whether it fell below zero. */
+export type StockListRow = StockLevelRow & {
+  id: string;
+  locationLabel: string;
+  unitDecimals: number;
+  negative: boolean;
+};
+
+export function stockListRows(
+  levels: readonly StockLevelRow[],
+  options: StockOptions | null,
+  locations: readonly StockLocationRow[],
+): StockListRow[] {
+  const labels = locationLabels(locations);
+  const decimals = decimalsOf(options);
+  return levels.map((level) => ({
+    ...level,
+    id: `${level.productId}:${level.locationId}`,
+    locationLabel: labels.get(level.locationId) ?? `${level.locationCode} — ${level.locationName}`,
+    unitDecimals: decimals.get(level.productId) ?? API_DECIMALS,
+    negative: Number(level.quantity) < 0,
+  }));
+}
+
+export type StockLocationListRow = StockLocationRow & { path: string };
+
+export function locationListRows(locations: readonly StockLocationRow[]): StockLocationListRow[] {
+  return [...locationLabels(locations)].flatMap(([id, path]) => {
+    const location = locations.find((row) => row.id === id);
+    return location === undefined ? [] : [{ ...location, path }];
+  });
+}
+
+/** A movement as the list shows it: its product and location by name, its quantity in the product's decimals. */
+export type StockMovementListRow = StockMovementRow & {
+  productLabel: string;
+  locationLabel: string;
+  unitDecimals: number;
+};
+
+export function movementListRows(
+  movements: readonly StockMovementRow[],
+  levels: readonly StockLevelRow[],
+  locations: readonly StockLocationRow[],
+  options: StockOptions | null,
+): StockMovementListRow[] {
+  const labels = locationLabels(locations);
+  const decimals = decimalsOf(options);
+  const products = new Map<string, string>();
+  // A product no longer offered still has its movements: the stock levels name it too.
+  for (const level of levels) {
+    products.set(level.productId, `${level.productReference} — ${level.productName}`);
+  }
+  for (const product of options?.products ?? []) {
+    products.set(product.id, `${product.reference} — ${product.name}`);
+  }
+  return movements.map((movement) => ({
+    ...movement,
+    productLabel: products.get(movement.productId) ?? '',
+    locationLabel: labels.get(movement.locationId) ?? '',
+    unitDecimals: decimals.get(movement.productId) ?? API_DECIMALS,
+  }));
+}
+
+function decimalsOf(options: StockOptions | null): Map<string, number> {
+  return new Map((options?.products ?? []).map((product) => [product.id, product.unitDecimals]));
+}
+
+export const STOCK_LIST: ListDescriptor<StockListRow> = {
+  id: 'stock-levels',
+  rowId: (row) => row.id,
+  pageSizes: [25, 50, 100],
+  defaultSort: { column: 'reference', direction: 'asc' },
+  columns: [
+    {
+      id: 'reference',
+      label: `${STOCK_FIELDS}.reference`,
+      value: (row) => row.productReference,
+      sortable: true,
+      filterable: true,
+      hideable: false,
+      width: 140,
+    },
+    {
+      id: 'product',
+      label: `${STOCK_FIELDS}.product`,
+      value: (row) => row.productName,
+      sortable: true,
+      filterable: true,
+      hideable: false,
+    },
+    {
+      id: 'location',
+      label: `${STOCK_FIELDS}.location`,
+      value: (row) => row.locationLabel,
+      sortable: true,
+      filterable: true,
+    },
+    {
+      id: 'quantity',
+      label: `${STOCK_FIELDS}.quantity`,
+      value: (row) => Number(row.quantity),
+      sortable: true,
+      align: 'end',
+      width: 160,
+    },
+    { id: 'unit', label: `${STOCK_FIELDS}.unit`, value: (row) => row.unitCode, width: 100 },
+  ],
+};
+
+export const MOVEMENTS_LIST: ListDescriptor<StockMovementListRow> = {
+  id: 'stock-movements',
+  rowId: (row) => row.id,
+  pageSizes: [25, 50, 100],
+  defaultSort: { column: 'at', direction: 'desc' },
+  columns: [
+    {
+      id: 'at',
+      label: `${STOCK_FIELDS}.at`,
+      value: (row) => row.at,
+      sortable: true,
+      hideable: false,
+      width: 180,
+    },
+    {
+      id: 'product',
+      label: `${STOCK_FIELDS}.product`,
+      value: (row) => row.productLabel,
+      sortable: true,
+      filterable: true,
+      hideable: false,
+    },
+    {
+      id: 'location',
+      label: `${STOCK_FIELDS}.location`,
+      value: (row) => row.locationLabel,
+      sortable: true,
+      filterable: true,
+    },
+    {
+      id: 'kind',
+      label: `${STOCK_FIELDS}.kind`,
+      value: (row) => row.kind,
+      sortable: true,
+      width: 140,
+    },
+    {
+      id: 'quantity',
+      label: `${STOCK_FIELDS}.quantity`,
+      value: (row) => Number(row.quantity),
+      sortable: true,
+      align: 'end',
+      width: 140,
+    },
+    {
+      id: 'source',
+      label: `${STOCK_FIELDS}.source`,
+      value: (row) => row.sourceType,
+      sortable: true,
+      width: 180,
+    },
+  ],
+  filters: [
+    {
+      id: 'kind',
+      label: `${STOCK_FIELDS}.kind`,
+      value: (row) => row.kind,
+      options: STOCK_MOVEMENT_KINDS.map((kind) => ({
+        value: kind,
+        label: `inventory.movement_kinds.${kind}`,
+      })),
+    },
+    {
+      id: 'source',
+      label: `${STOCK_FIELDS}.source`,
+      value: (row) => row.sourceType,
+      options: STOCK_SOURCE_TYPES.map((type) => ({
+        value: type,
+        label: `inventory.sources.${type}`,
+      })),
+    },
+  ],
+};
+
+export const LOCATIONS_LIST: ListDescriptor<StockLocationListRow> = {
+  id: 'stock-locations',
+  rowId: (row) => row.id,
+  pageSizes: [25, 50, 100],
+  defaultSort: { column: 'path', direction: 'asc' },
+  columns: [
+    {
+      id: 'path',
+      label: `${LOCATION_FIELDS}.path`,
+      value: (row) => row.path,
+      sortable: true,
+      filterable: true,
+      hideable: false,
+    },
+    {
+      id: 'kind',
+      label: `${LOCATION_FIELDS}.kind`,
+      value: (row) => row.kind,
+      sortable: true,
+      width: 140,
+    },
+    {
+      id: 'children',
+      label: `${LOCATION_FIELDS}.childCount`,
+      value: (row) => row.childCount,
+      sortable: true,
+      align: 'end',
+      width: 150,
+    },
+    {
+      id: 'movements',
+      label: `${LOCATION_FIELDS}.movementCount`,
+      value: (row) => row.movementCount,
+      sortable: true,
+      align: 'end',
+      width: 150,
+    },
+  ],
+};
+
+/**
+ * The location form. An existing location stays in its establishment and never sits under itself or under one of its
+ * own locations; a default location stays at the top. A new one may name a parent of any establishment: the API
+ * refuses one of another establishment than the one chosen.
+ */
+export function locationForm(
+  options: StockOptions,
+  locations: readonly StockLocationRow[],
+  editing: StockLocationRow | null,
+): FormDescriptor {
+  const byId = new Map(locations.map((location) => [location.id, location]));
+  const under = (location: StockLocationRow): boolean => {
+    if (editing === null) return false;
+    const seen = new Set<string>();
+    let current: StockLocationRow | undefined = location;
+    while (current !== undefined && !seen.has(current.id)) {
+      if (current.id === editing.id) return true;
+      seen.add(current.id);
+      current = current.parentId === null ? undefined : byId.get(current.parentId);
+    }
+    return false;
+  };
+  const parents =
+    editing?.isDefault === true
+      ? []
+      : [...locationLabels(locations)]
+          .filter(([id]) => {
+            const location = byId.get(id);
+            return (
+              location !== undefined &&
+              !under(location) &&
+              (editing === null || location.establishmentId === editing.establishmentId)
+            );
+          })
+          .map(([id, label]) => ({ value: id, label }));
+
+  return {
+    id: 'stock-location',
+    sections: [
+      {
+        id: 'location',
+        title: 'inventory.locations.section',
+        fields: [
+          {
+            id: 'establishmentId',
+            label: `${LOCATION_FIELDS}.establishmentId`,
+            kind: 'select',
+            required: true,
+            readOnly: editing !== null,
+            options: options.establishments.map((establishment) => ({
+              value: establishment.id,
+              label: `${establishment.code} — ${establishment.name}`,
+            })),
+          },
+          {
+            id: 'parentId',
+            label: `${LOCATION_FIELDS}.parentId`,
+            kind: 'select',
+            readOnly: editing?.isDefault === true,
+            hint: 'inventory.locations.parent_hint',
+            options: [
+              {
+                value: '',
+                label:
+                  editing?.isDefault === true
+                    ? 'inventory.locations.top_level'
+                    : 'inventory.locations.under_default',
+              },
+              ...parents,
+            ],
+          },
+          {
+            id: 'kind',
+            label: `${LOCATION_FIELDS}.kind`,
+            kind: 'select',
+            required: true,
+            options: STOCK_LOCATION_KINDS.map((kind) => ({
+              value: kind,
+              label: `inventory.kinds.${kind}`,
+            })),
+          },
+          {
+            id: 'code',
+            label: `${LOCATION_FIELDS}.code`,
+            kind: 'text',
+            required: true,
+            maxLength: 32,
+            pattern: CODE_PATTERN,
+            hint: 'inventory.locations.code_hint',
+          },
+          {
+            id: 'name',
+            label: `${LOCATION_FIELDS}.name`,
+            kind: 'text',
+            required: true,
+            maxLength: 120,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+export function locationValues(row: StockLocationRow | null, options: StockOptions): FormValues {
+  const only = options.establishments.length === 1 ? (options.establishments[0]?.id ?? '') : '';
+  return {
+    establishmentId: row?.establishmentId ?? only,
+    parentId: row?.parentId ?? '',
+    kind: row?.kind ?? 'zone',
+    code: row?.code ?? '',
+    name: row?.name ?? '',
+  };
+}
+
+export function locationInput(values: FormValues): StockLocationInput {
+  const parentId = text(values['parentId']);
+  return {
+    establishmentId: text(values['establishmentId']),
+    parentId: parentId === '' ? null : parentId,
+    kind: STOCK_LOCATION_KINDS.find((kind) => kind === values['kind']) ?? 'zone',
+    code: text(values['code']),
+    name: text(values['name']),
+  };
+}
+
+/** Goods received, or what a count found: which product whose stock is kept, where, and how much. */
+export function movementForm(
+  operation: StockOperation,
+  options: StockOptions,
+  locations: readonly StockLocationRow[],
+): FormDescriptor {
+  return {
+    id: `stock-${operation}`,
+    sections: [
+      {
+        id: 'movement',
+        title: `inventory.movement.${operation}`,
+        fields: [
+          {
+            id: 'productId',
+            label: `${STOCK_FIELDS}.product`,
+            kind: 'select',
+            required: true,
+            span: 2,
+            options: options.products.map((product) => ({
+              value: product.id,
+              label: `${product.reference} — ${product.name}`,
+            })),
+          },
+          {
+            id: 'locationId',
+            label: `${STOCK_FIELDS}.location`,
+            kind: 'select',
+            required: true,
+            options: [...locationLabels(locations)].map(([id, label]) => ({ value: id, label })),
+          },
+          {
+            id: 'quantity',
+            label: `${STOCK_FIELDS}.quantity`,
+            kind: 'text',
+            required: true,
+            pattern: QUANTITY_PATTERN,
+            hint: `inventory.movement.quantity_hint.${operation}`,
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * A new movement starts at the first default location, the one goods go to when nothing else is said, and on the
+ * product when only one is offered.
+ */
+export function movementValues(
+  locations: readonly StockLocationRow[],
+  options: StockOptions | null,
+): FormValues {
+  const byId = new Map(locations.map((location) => [location.id, location]));
+  const first = [...locationLabels(locations).keys()].find((id) => byId.get(id)?.isDefault);
+  const products = options?.products ?? [];
+  return {
+    productId: products.length === 1 ? (products[0]?.id ?? '') : '',
+    locationId: first ?? '',
+    quantity: '',
+  };
+}
+
+export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {
+  return {
+    operation,
+    productId: text(values['productId']),
+    locationId: text(values['locationId']),
+    quantity: text(values['quantity']).replace(',', '.'),
+  };
+}
+
+function text(value: FieldValue | undefined): string {
+  return String(value ?? '').trim();
+}

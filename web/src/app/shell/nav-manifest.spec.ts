@@ -4,6 +4,7 @@ import en from '../../../public/i18n/en.json';
 import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
+import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import {
   CORE_NAV,
@@ -161,7 +162,16 @@ describe('the navigation manifest', () => {
     expect(
       DELIVERY_NOTES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['delivery-notes', 'delivery_notes', 'delivery_note.read', '/delivery-notes']]);
-    expect(MODULE_NAV).toEqual([...CUSTOMERS_NAV, ...PRODUCTS_NAV, ...DELIVERY_NOTES_NAV]);
+    // Movements and locations are tabs of the stock screen.
+    expect(
+      INVENTORY_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['stock', 'inventory', 'stock.read', '/stock']]);
+    expect(MODULE_NAV).toEqual([
+      ...CUSTOMERS_NAV,
+      ...PRODUCTS_NAV,
+      ...DELIVERY_NOTES_NAV,
+      ...INVENTORY_NAV,
+    ]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);
   });
 
