@@ -245,18 +245,27 @@ final class InvitationTest extends ApiTestCase
         return $company;
     }
 
-    /** Invites through the API as an operator and pulls the raw token out of the mail that went out. */
+    /**
+     * Invites through the API and pulls the raw token out of the mail that went out: an owner invitation the way an
+     * operator sends one from the platform, any other role the way the company's own owner does.
+     */
     private function inviteAndReadTheToken(?Company $company = null, string $role = Role::MEMBER): string
     {
         $company ??= $this->company;
-        $this->createUser('op@twes.local', 'password-1234', operator: true);
-        $this->login('op@twes.local', 'password-1234');
-        self::assertResponseIsSuccessful();
-
-        $this->postJson('/api/companies/'.$company->getId()->toRfc4122().'/members', [
-            'email' => 'stranger@twes.local',
-            'role' => $role,
-        ]);
+        if (Role::OWNER === $role) {
+            $this->createUser('op@twes.local', 'password-1234', operator: true);
+            $this->login('op@twes.local', 'password-1234');
+            self::assertResponseIsSuccessful();
+            $this->postJson('/api/platform/companies/'.$company->getId()->toRfc4122().'/owners', ['email' => 'stranger@twes.local']);
+        } else {
+            $this->createUser('owner@twes.local', 'password-1234', $company, ['*'], Role::OWNER);
+            $this->login('owner@twes.local', 'password-1234');
+            self::assertResponseIsSuccessful();
+            $this->postJson('/api/companies/'.$company->getId()->toRfc4122().'/members', [
+                'email' => 'stranger@twes.local',
+                'role' => $role,
+            ]);
+        }
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
         self::assertSame('invited', $this->json()['status']);
 

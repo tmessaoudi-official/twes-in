@@ -32,6 +32,9 @@ describe('PlatformFacade', () => {
     setSignup: vi.fn(),
     accounts: vi.fn(),
     actOnAccount: vi.fn(),
+    companies: vi.fn(),
+    createCompany: vi.fn(),
+    inviteOwner: vi.fn(),
   };
   let facade: PlatformFacade;
 
@@ -40,6 +43,7 @@ describe('PlatformFacade', () => {
     api.waitingCompanies.mockResolvedValue([row]);
     api.signup.mockResolvedValue({ enabled: false, approvalRequired: true });
     api.accounts.mockResolvedValue([account]);
+    api.companies.mockResolvedValue([row]);
     TestBed.configureTestingModule({ providers: [{ provide: PlatformApi, useValue: api }] });
     facade = TestBed.inject(PlatformFacade);
   });
@@ -67,6 +71,53 @@ describe('PlatformFacade', () => {
     expect(facade.busy()).toBe(false);
   });
 
+  it("opens a company with its country's currency, language and time zone, then invites its first owner", async () => {
+    await facade.load();
+    const opened = { ...row, id: 'c9', name: 'Globex' };
+    api.createCompany.mockResolvedValue('c9');
+    api.inviteOwner.mockResolvedValue(undefined);
+    api.companies.mockResolvedValue([row, opened]);
+    api.waitingCompanies.mockResolvedValue([row, opened]);
+
+    expect(await facade.openCompany('Globex', 'FR', 'nadia@example.test')).toBe(true);
+
+    expect(api.createCompany).toHaveBeenCalledWith({
+      name: 'Globex',
+      countryCode: 'FR',
+      currency: 'EUR',
+      locale: 'fr',
+      timezone: 'Europe/Paris',
+    });
+    expect(api.inviteOwner).toHaveBeenCalledWith('c9', 'nadia@example.test');
+    expect(facade.companies()).toEqual([row, opened]);
+    expect(facade.waiting()).toEqual([row, opened]);
+    expect(facade.busy()).toBe(false);
+  });
+
+  it('invites nobody when the company could not be opened', async () => {
+    await facade.load();
+    api.createCompany.mockRejectedValue(new PlatformRefused('name_taken'));
+
+    expect(await facade.openCompany('Globex', 'TN', 'nadia@example.test')).toBe(false);
+
+    expect(api.inviteOwner).not.toHaveBeenCalled();
+    expect(facade.error()).toBe('name_taken');
+    expect(facade.companies()).toEqual([row]);
+  });
+
+  it('invites an owner into a listed company and reads the companies again', async () => {
+    await facade.load();
+    api.inviteOwner.mockResolvedValue(undefined);
+
+    expect(await facade.inviteOwner('c1', 'nadia@example.test')).toBe(true);
+    expect(api.inviteOwner).toHaveBeenCalledWith('c1', 'nadia@example.test');
+    expect(api.companies).toHaveBeenCalledTimes(2);
+
+    api.inviteOwner.mockRejectedValue(new PlatformRefused('already_member'));
+    expect(await facade.inviteOwner('c1', 'nadia@example.test')).toBe(false);
+    expect(facade.error()).toBe('already_member');
+  });
+
   it('loads the waiting companies and the signup switches together', async () => {
     await facade.load();
 
@@ -74,6 +125,7 @@ describe('PlatformFacade', () => {
     expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
     expect(api.accounts).toHaveBeenCalledWith('');
     expect(facade.accounts()).toEqual([account]);
+    expect(facade.companies()).toEqual([row]);
     expect(facade.error()).toBeNull();
   });
 

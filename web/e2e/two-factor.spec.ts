@@ -170,10 +170,10 @@ test('a company that requires two-step verification sends its owner to set it up
         }),
       });
       const company = (await created.json()) as { id: string };
-      const member = await fetch(`/api/companies/${company.id}/members`, {
+      const member = await fetch(`/api/platform/companies/${company.id}/owners`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ email, role: 'owner' }),
+        body: JSON.stringify({ email }),
       });
       return [created.status, member.status];
     },

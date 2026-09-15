@@ -1266,6 +1266,25 @@
       "approve": "Approve",
       "reject": "Reject"
     },
+    "companies": {
+      "title": "Companies",
+      "name": "Company name",
+      "country": "Country",
+      "owner": "Owner's address",
+      "create": "Open the company",
+      "invite": "Invite an owner",
+      "invited": "Invitation sent to {{email}}.",
+      "none": "No company.",
+      "countries": {
+        "TN": "Tunisia",
+        "FR": "France"
+      },
+      "statuses": {
+        "pending": "Waiting",
+        "active": "Active",
+        "suspended": "Suspended"
+      }
+    },
     "accounts": {
       "title": "Accounts",
       "search": "Address or name",
@@ -1282,7 +1301,9 @@
       "not_found": "That company no longer exists.",
       "refused": "The platform refused that.",
       "own_account": "You cannot deactivate your own account.",
-      "network": "The server could not be reached."
+      "network": "The server could not be reached.",
+      "name_taken": "A company already has that name.",
+      "already_member": "That address already belongs to this company."
     }
   }
 }

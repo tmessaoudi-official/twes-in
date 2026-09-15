@@ -1266,6 +1266,25 @@
       "approve": "Approuver",
       "reject": "Refuser"
     },
+    "companies": {
+      "title": "Entreprises",
+      "name": "Nom de l'entreprise",
+      "country": "Pays",
+      "owner": "Adresse du propriétaire",
+      "create": "Ouvrir l'entreprise",
+      "invite": "Inviter un propriétaire",
+      "invited": "Invitation envoyée à {{email}}.",
+      "none": "Aucune entreprise.",
+      "countries": {
+        "TN": "Tunisie",
+        "FR": "France"
+      },
+      "statuses": {
+        "pending": "En attente",
+        "active": "Active",
+        "suspended": "Suspendue"
+      }
+    },
     "accounts": {
       "title": "Comptes",
       "search": "Adresse ou nom",
@@ -1282,7 +1301,9 @@
       "not_found": "Cette entreprise n'existe plus.",
       "refused": "La plateforme a refusé.",
       "own_account": "Vous ne pouvez pas désactiver votre propre compte.",
-      "network": "Le serveur est injoignable."
+      "network": "Le serveur est injoignable.",
+      "name_taken": "Une entreprise porte déjà ce nom.",
+      "already_member": "Cette adresse appartient déjà à cette entreprise."
     }
   }
 }

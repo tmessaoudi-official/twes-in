@@ -46,6 +46,18 @@ class StaticLoader implements TranslateLoader {
           deactivate: 'Désactiver',
           reactivate: 'Réactiver',
         },
+        companies: {
+          title: 'Entreprises',
+          name: 'Nom',
+          country: 'Pays',
+          owner: 'Adresse du propriétaire',
+          create: 'Ouvrir',
+          invite: 'Inviter',
+          invited: 'Invitation envoyée à {{email}}.',
+          none: 'Aucune entreprise.',
+          countries: { TN: 'Tunisie', FR: 'France' },
+          statuses: { pending: 'En attente', active: 'Active', suspended: 'Suspendue' },
+        },
         errors: {
           not_found: 'Introuvable',
           refused: 'Refusé',
@@ -81,8 +93,12 @@ describe('PlatformPage', () => {
   const busy = signal(false);
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
+  const companies = signal<readonly PlatformCompanyRow[]>([row]);
   const facade = {
     waiting,
+    companies,
+    openCompany: vi.fn(),
+    inviteOwner: vi.fn(),
     accounts,
     signup,
     busy,
@@ -100,6 +116,7 @@ describe('PlatformPage', () => {
     signup.set({ enabled: false, approvalRequired: true });
     error.set(null);
     accounts.set([account]);
+    companies.set([row]);
     Object.values(facade)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -215,6 +232,41 @@ describe('PlatformPage', () => {
     query<HTMLButtonElement>('reactivate-nadia@acme.test')!.click();
     await fixture.whenStable();
     expect(facade.actOnAccount).toHaveBeenCalledWith('u1', 'reactivate');
+  });
+
+  it('opens a company from its name, country and first owner, and says the invitation went out', async () => {
+    const { fixture, query } = await render();
+
+    const name = query<HTMLInputElement>('platform-company-name')!;
+    name.value = 'Globex';
+    name.dispatchEvent(new Event('input'));
+    const country = query<HTMLSelectElement>('platform-company-country')!;
+    country.value = 'FR';
+    country.dispatchEvent(new Event('change'));
+    const owner = query<HTMLInputElement>('platform-company-owner')!;
+    owner.value = 'nadia@example.test';
+    owner.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('platform-company-create')!.click();
+    await fixture.whenStable();
+
+    expect(facade.openCompany).toHaveBeenCalledWith('Globex', 'FR', 'nadia@example.test');
+    expect(query('platform-company-invited')?.textContent).toContain('nadia@example.test');
+  });
+
+  it('lists every company with its status and invites an owner into one', async () => {
+    const { fixture, query } = await render();
+
+    const line = query('company-Nouvelle Société')!;
+    expect(line.textContent).toContain('En attente');
+    expect(line.textContent).toContain('nadia@example.test');
+
+    const address = query<HTMLInputElement>('owner-email-Nouvelle Société')!;
+    address.value = 'karim@example.test';
+    address.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('invite-owner-Nouvelle Société')!.click();
+    await fixture.whenStable();
+
+    expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'karim@example.test');
   });
 
   it('names a refusal', async () => {

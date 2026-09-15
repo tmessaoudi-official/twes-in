@@ -33,8 +33,27 @@ export interface PlatformAccountRow {
 /** What an operator does about an account: every action ends its sessions except reactivating it. */
 export type AccountAction = 'end-sessions' | 'deactivate' | 'reactivate';
 
+/** What a company is opened with; the currency, language and time zone follow its country. */
+export interface NewCompany {
+  readonly name: string;
+  readonly countryCode: string;
+  readonly currency: string;
+  readonly locale: string;
+  readonly timezone: string;
+}
+
+/** The countries a company may be opened in: those with a fiscal preset, each with what a company there starts with. */
+export const COMPANY_COUNTRIES = {
+  TN: { currency: 'TND', locale: 'fr', timezone: 'Africa/Tunis' },
+  FR: { currency: 'EUR', locale: 'fr', timezone: 'Europe/Paris' },
+} as const;
+
+export type CompanyCountry = keyof typeof COMPANY_COUNTRIES;
+
 /**
- * Gone (the company or account no longer exists), an operator deactivating their own account, refused by the API,
- * or the API could not be reached.
+ * Gone (the company or account no longer exists), an operator deactivating their own account, a company name
+ * already taken, an address that already belongs to the company, refused by the API, or the API could not be
+ * reached.
  */
-export type PlatformError = 'not_found' | 'own_account' | 'refused' | 'network';
+export type PlatformError =
+  'not_found' | 'own_account' | 'name_taken' | 'already_member' | 'refused' | 'network';

@@ -80,10 +80,10 @@ test('an address that already has an account joins from the mailed link with not
         }),
       });
       const company = (await created.json()) as { id: string };
-      const invited = await fetch(`/api/companies/${company.id}/members`, {
+      const invited = await fetch(`/api/platform/companies/${company.id}/owners`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ email, role: 'owner' }),
+        body: JSON.stringify({ email }),
       });
       return [created.status, invited.status];
     },

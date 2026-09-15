@@ -68,6 +68,53 @@ describe('PlatformApi', () => {
     await expect(done).rejects.toMatchObject({ code: 'own_account' });
   });
 
+  it('lists every company, whatever its status', async () => {
+    const rows = api.companies();
+
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/platform/companies' && !candidate.params.has('status'),
+    );
+    expect(request.request.method).toBe('GET');
+    request.flush([waiting]);
+
+    expect(await rows).toEqual([waiting]);
+  });
+
+  it('opens a company and answers its identifier, or names a taken name', async () => {
+    const company = {
+      name: 'Globex',
+      countryCode: 'TN',
+      currency: 'TND',
+      locale: 'fr',
+      timezone: 'Africa/Tunis',
+    };
+    const opened = api.createCompany(company);
+    const request = http.expectOne('/api/companies');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual(company);
+    request.flush({ ...company, id: 'c9', status: 'pending' });
+    expect(await opened).toBe('c9');
+
+    const taken = api.createCompany(company);
+    http.expectOne('/api/companies').flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(taken).rejects.toMatchObject({ code: 'name_taken' });
+  });
+
+  it('invites the owner of a company by its identifier, or names an address already in it', async () => {
+    const invited = api.inviteOwner('c/1', 'nadia@example.test');
+    const request = http.expectOne('/api/platform/companies/c%2F1/owners');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ email: 'nadia@example.test' });
+    request.flush({ email: 'nadia@example.test', role: 'owner', status: 'invited' });
+    await invited;
+
+    const already = api.inviteOwner('c1', 'nadia@example.test');
+    http
+      .expectOne('/api/platform/companies/c1/owners')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(already).rejects.toMatchObject({ code: 'already_member' });
+  });
+
   it('lists the companies waiting for approval', async () => {
     const rows = api.waitingCompanies();
 

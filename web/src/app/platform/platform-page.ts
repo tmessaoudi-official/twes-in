@@ -8,11 +8,18 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { PlatformFacade } from './platform-facade';
-import type { AccountAction, SignupSwitch } from './platform-types';
+import {
+  COMPANY_COUNTRIES,
+  type AccountAction,
+  type CompanyCountry,
+  type SignupSwitch,
+} from './platform-types';
 
 /**
  * The operators' page: whether anyone may sign up, whether a company that signs up waits for approval, the
- * companies waiting for it, and accounts, whose sessions an operator ends and which they deactivate or reactivate. Reached from the home page by operators only (operatorGuard).
+ * companies waiting for it, every company, which an operator opens and invites owners into, and accounts, whose
+ * sessions an operator ends and which they deactivate or reactivate. Reached from the home page by operators only
+ * (operatorGuard).
  */
 @Component({
   selector: 'app-platform-page',
@@ -36,6 +43,15 @@ export class PlatformPage implements OnInit {
   protected readonly error = this.platform.error;
   protected readonly accounts = this.platform.accounts;
   protected readonly search = signal('');
+  protected readonly companies = this.platform.companies;
+  protected readonly countries = Object.keys(COMPANY_COUNTRIES) as CompanyCountry[];
+  protected readonly companyName = signal('');
+  protected readonly companyCountry = signal<CompanyCountry>('TN');
+  protected readonly ownerEmail = signal('');
+  /** The address the last invitation went to, once it went. */
+  protected readonly invitedTo = signal<string | null>(null);
+  /** What is typed in each company's owner field, by company. */
+  protected readonly ownerEmails = signal<Readonly<Record<string, string>>>({});
 
   async ngOnInit(): Promise<void> {
     await this.platform.load();
@@ -51,6 +67,35 @@ export class PlatformPage implements OnInit {
 
   protected async act(userId: string, action: AccountAction): Promise<void> {
     await this.platform.actOnAccount(userId, action);
+  }
+
+  protected async open(): Promise<void> {
+    const email = this.ownerEmail().trim();
+    this.invitedTo.set(null);
+    if (await this.platform.openCompany(this.companyName().trim(), this.companyCountry(), email)) {
+      this.invitedTo.set(email);
+      this.companyName.set('');
+      this.ownerEmail.set('');
+    }
+  }
+
+  protected async invite(companyId: string): Promise<void> {
+    const email = (this.ownerEmails()[companyId] ?? '').trim();
+    this.invitedTo.set(null);
+    if (await this.platform.inviteOwner(companyId, email)) {
+      this.invitedTo.set(email);
+      this.ownerEmails.update((typed) => ({ ...typed, [companyId]: '' }));
+    }
+  }
+
+  protected typedOwner(companyId: string, event: Event): void {
+    const value = this.typed(event);
+    this.ownerEmails.update((typed) => ({ ...typed, [companyId]: value }));
+  }
+
+  protected chosen(event: Event): CompanyCountry {
+    const value = (event.target as HTMLSelectElement).value;
+    return this.countries.find((code) => code === value) ?? 'TN';
   }
 
   protected typed(event: Event): string {
