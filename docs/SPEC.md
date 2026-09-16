@@ -619,7 +619,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 27 | The second-factor limiter is covered again: the lock answers every wrong code first, so only a run of correct codes reaches it | S | todo | - | api/tests/** |
 | 28 | The tab label's colour in the dark scheme: understood, then fixed or ruled correct — row 23 excluded it from the dark walk rather than guess | S | todo | - | web/src/styles.scss web/src/app/shared/ui/** web/e2e/accessibility.spec.ts |
 | 29 | A withholding prints one minus sign on a credit note, not two: the template prefixes a sign to an amount that is already negative, and the only test touching that template checks its margins | S | todo | - | api/templates/pdf/** api/tests/** |
-| 30 | Restyle to the approved design, part 1: tokens (status tones, accent and its ink, surfaces, motion) + responsive shell (bottom bar, rail, labelled rail) + Ctrl K command palette with module-registered commands | L | todo | - | web/src/styles.scss web/src/app/shared/** web/src/app/shell/** web/public/i18n/** web/e2e/** |
+| 30 | Restyle to the approved design, part 1: tokens (status tones, accent and its ink, surfaces, motion) + responsive shell (bottom bar, rail, labelled rail) + Ctrl K command palette with module-registered commands | L | done | b497568 | web/src/styles.scss web/src/app/shared/** web/src/app/shell/** web/public/i18n/** web/e2e/** |
 | 31 | Enrolling an authenticator whose pending secret the current key cannot read answers a refusal, not a 500: `ConfirmTotpEnrolment` decrypts unguarded as `VerifySecondFactor` did before row 26 | S | todo | - | api/src/Identity/** api/tests/** |
 <!-- /progress-block -->
 
