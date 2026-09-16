@@ -64,6 +64,8 @@ export interface FormSection {
   id: string;
   /** A translation key for declared sections. */
   title: string;
+  /** A translation key: what the section is for, shown beside its title. */
+  description?: string;
   fields: FormField[];
 }
 

@@ -27,6 +27,7 @@ const label = (id: string): string => `company.profile.fields.${id}`;
 const section = (id: string, fields: FormField[]): FormSection => ({
   id,
   title: `company.profile.sections.${id}`,
+  description: `company.profile.sections_about.${id}`,
   fields,
 });
 

@@ -17,12 +17,12 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
-import type { FormDescriptor, FormField, FormValues } from './form-types';
+import type { FormDescriptor, FormField, FormSection, FormValues } from './form-types';
 import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
 
 /**
- * Every form: the descriptor's sections as titled groups on a two-column grid (one column on a phone), each field
- * with its label, an "optional" hint, and its one message once it has been left. A field with a condition appears
+ * Every form: the descriptor's sections, each titled and explained beside a two-column grid of fields (stacked, one
+ * column, on a phone), each field with its label above it marked "optional" where it is, and its one message once it has been left. A field with a condition appears
  * only while it applies, and is neither validated nor submitted otherwise. The screen builds the group with
  * buildFormGroup and projects its own buttons; a valid submit emits the values of the fields that apply, an invalid
  * one shows every error and focuses the first invalid field.
@@ -76,6 +76,15 @@ export class DescriptorForm {
     this.revision();
     const control = this.form().controls[field.id];
     return control?.touched ? fieldError(control, field) : null;
+  }
+
+  /** Unique per form on the page, so two forms with the same field ids never share a label. */
+  protected controlId(field: FormField): string {
+    return `${this.testId()}-${field.id}`;
+  }
+
+  protected sectionId(section: FormSection): string {
+    return `${this.testId()}-section-${section.id}`;
   }
 
   protected spanClass(field: FormField): string {

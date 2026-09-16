@@ -7,6 +7,7 @@ import {
   provideAppInitializer,
   provideBrowserGlobalErrorListeners,
 } from '@angular/core';
+import { MAT_FORM_FIELD_DEFAULT_OPTIONS } from '@angular/material/form-field';
 import { MatIconRegistry } from '@angular/material/icon';
 import { MatPaginatorIntl } from '@angular/material/paginator';
 import { provideRouter, withComponentInputBinding } from '@angular/router';
@@ -39,6 +40,12 @@ export const appConfig: ApplicationConfig = {
     BrowserStorageSettings,
     // Every paginator's labels follow the chosen language.
     { provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl },
+    // The approved component sheet draws every field as an outlined box (styles.scss sets its size and corners),
+    // and a hint that wraps pushes the next field down instead of running into it.
+    {
+      provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
+      useValue: { appearance: 'outline', subscriptSizing: 'dynamic' },
+    },
     // Icons are Material Symbols ligatures (the material-symbols package), and the theme is applied before the
     // first page renders, so nothing paints in the compiled fallback colours for longer than a frame.
     provideAppInitializer(() => {

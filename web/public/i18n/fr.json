@@ -149,6 +149,14 @@
         "banking": "Banque",
         "documents": "Mentions sur les factures"
       },
+      "sections_about": {
+        "identity": "Le nom imprimé en tête de chaque document.",
+        "identifiers": "Exigés sur les factures dans le pays de la société.",
+        "address": "Le siège ; les établissements ont la leur.",
+        "contact": "Où les clients écrivent et appellent.",
+        "banking": "Où les clients paient, imprimé sous les totaux.",
+        "documents": "Ce que chaque facture imprime en pied de page."
+      },
       "fields": {
         "legalName": "Raison sociale",
         "legalForm": "Forme juridique",

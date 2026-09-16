@@ -149,6 +149,14 @@
         "banking": "Banking",
         "documents": "Printed on invoices"
       },
+      "sections_about": {
+        "identity": "The name printed at the head of every document.",
+        "identifiers": "Required on invoices in the company's country.",
+        "address": "The head office; establishments have their own.",
+        "contact": "Where customers write and call.",
+        "banking": "Where customers pay, printed below the totals.",
+        "documents": "What every invoice prints in its footer."
+      },
       "fields": {
         "legalName": "Legal name",
         "legalForm": "Legal form",

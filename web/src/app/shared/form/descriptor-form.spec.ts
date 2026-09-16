@@ -19,6 +19,7 @@ const customer: FormDescriptor = {
     {
       id: 'identity',
       title: 'c.identity',
+      description: 'c.identity_about',
       fields: [
         { id: 'name', label: 'c.name', kind: 'text', required: true, minLength: 2, span: 2 },
         { id: 'email', label: 'c.email', kind: 'email' },
@@ -71,6 +72,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       c: {
         identity: 'Identity',
+        identity_about: 'The name printed on every document.',
         billing: 'Billing',
         name: 'Name',
         email: 'Email',
@@ -141,7 +143,36 @@ describe('DescriptorForm', () => {
     expect(q('customer-form')?.tagName).toBe('FORM');
   });
 
+  it('explains a section beside its title, and describes the group with it', () => {
+    const [identity, billing] = Array.from(
+      fixture.nativeElement.querySelectorAll('fieldset') as NodeListOf<HTMLFieldSetElement>,
+    );
+    const describedBy = identity.getAttribute('aria-describedby');
+
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy!)?.textContent?.trim()).toBe(
+      'The name printed on every document.',
+    );
+    expect(billing.hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('puts each label above its field and ties it to the control', () => {
+    const name = q('field-name') as HTMLInputElement;
+    const notes = q('field-notes') as HTMLTextAreaElement;
+    const currency = q('field-currency')!;
+
+    expect(name.labels?.[0]?.textContent).toContain('Name');
+    expect(notes.labels?.[0]?.textContent).toContain('Notes');
+    const currencyName = (currency.getAttribute('aria-labelledby') ?? '')
+      .split(' ')
+      .map((id) => document.getElementById(id)?.textContent ?? '')
+      .join(' ');
+    expect(currencyName).toContain('Currency');
+    expect(q('field-wrapper-name')?.querySelector('mat-label')).toBeNull();
+  });
+
   it('says which fields are optional', () => {
+    expect((q('field-email') as HTMLInputElement).labels?.[0]?.textContent).toContain('optional');
     expect(text('field-wrapper-email')).toContain('optional');
     expect(text('field-wrapper-name')).not.toContain('optional');
   });

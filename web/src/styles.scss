@@ -55,6 +55,50 @@ html {
     color-scheme: dark;
   }
 
+  // The approved component sheet (docs/SPEC.md § 7): 40 px fields and 36 px buttons on a 10 px corner, a table
+  // whose header is a quiet label row and whose rows are separated by hairlines only.
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 10px,
+      container-height: 40px,
+      container-vertical-padding: 8px,
+    )
+  );
+  @include mat.button-overrides(
+    (
+      filled-container-shape: 10px,
+      outlined-container-shape: 10px,
+      text-container-shape: 10px,
+      tonal-container-shape: 10px,
+      protected-container-shape: 10px,
+      filled-container-height: 36px,
+      outlined-container-height: 36px,
+      text-container-height: 36px,
+      tonal-container-height: 36px,
+      protected-container-height: 36px,
+    )
+  );
+  // A card is a flat panel on the page, not a raised sheet: the page itself is already the lifted surface.
+  @include mat.card-overrides(
+    (
+      elevated-container-color: transparent,
+      elevated-container-elevation: none,
+      elevated-container-shape: 16px,
+      outlined-container-shape: 16px,
+      outlined-outline-color: var(--mat-sys-outline-variant),
+    )
+  );
+  @include mat.table-overrides(
+    (
+      background-color: transparent,
+      header-container-height: 44px,
+      header-headline-weight: 600,
+      header-headline-color: var(--mat-sys-on-surface-variant),
+      row-item-container-height: 52px,
+      row-item-outline-color: var(--mat-sys-outline-variant),
+    )
+  );
+
   // Presentation setting `ui.density`: tables and forms tighten, touch targets stay usable.
   &.density-compact {
     @include mat.theme(
@@ -62,6 +106,85 @@ html {
         density: -2,
       )
     );
+    @include mat.form-field-overrides(
+      (
+        container-height: 36px,
+        container-vertical-padding: 6px,
+      )
+    );
+    @include mat.table-overrides(
+      (
+        header-container-height: 36px,
+        row-item-container-height: 40px,
+      )
+    );
+  }
+}
+
+// A form (app/shared/form/descriptor-form.html), as on the approved settings page: each section's title and what it
+// is for in a narrow column, its fields on a two-column grid beside them, sections parted by a hairline. Below
+// 1024 px the explanation sits above the fields.
+.twes-form-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 0.25rem 2.5rem;
+  margin: 0;
+  padding: 1.5rem 0;
+  border: 0;
+  border-top: 1px solid var(--mat-sys-outline-variant);
+
+  &:first-of-type {
+    border-top: 0;
+    padding-top: 0.25rem;
+  }
+
+  > .twes-form-fields {
+    margin-top: 0.75rem;
+  }
+
+  @media (min-width: 1024px) {
+    grid-template-columns: 15rem minmax(0, 1fr);
+    grid-template-rows: auto 1fr;
+
+    > .twes-form-fields {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      margin-top: 0;
+    }
+  }
+}
+
+.twes-form-section-title {
+  margin: 0;
+  font: var(--mat-sys-title-small);
+  font-weight: 650;
+}
+
+.twes-form-section-about {
+  margin: 0;
+  max-width: 42ch;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.twes-field-label {
+  font: var(--mat-sys-label-large);
+  font-weight: 600;
+  color: var(--mat-sys-on-surface);
+}
+
+.twes-field-optional {
+  font-weight: 400;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+// A row answers the pointer with the accent's faintest tint, as on the approved list.
+.mat-mdc-row {
+  transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
+
+  &:hover {
+    background-color: color-mix(in oklch, var(--mat-sys-primary) 5%, transparent);
   }
 }
 

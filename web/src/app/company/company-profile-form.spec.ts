@@ -48,6 +48,14 @@ describe('profileForm', () => {
     expect(form.sections[0]?.title).toBe('company.profile.sections.identity');
   });
 
+  it('explains what each section is for', () => {
+    expect(profileForm(profile).sections.map((section) => section.description)).toEqual(
+      ['identity', 'identifiers', 'address', 'contact', 'banking', 'documents'].map(
+        (id) => `company.profile.sections_about.${id}`,
+      ),
+    );
+  });
+
   it("asks for the preset's identifiers with their shape, under the label the API gave", () => {
     const identifiers = profileForm(profile).sections.find((s) => s.id === 'identifiers');
 
