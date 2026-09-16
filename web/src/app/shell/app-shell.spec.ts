@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -8,7 +9,7 @@ import {
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
-import { of } from 'rxjs';
+import { BehaviorSubject, map, of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
@@ -26,6 +27,9 @@ class StaticLoader implements TranslateLoader {
         home: 'Accueil',
         members: 'Membres',
         customers: 'Clients',
+        products: 'Produits',
+        vendors: 'Fournisseurs',
+        expenses: 'Dépenses',
         design: 'Design',
         sections: { main: 'Général', team: 'Équipe' },
       },
@@ -35,6 +39,7 @@ class StaticLoader implements TranslateLoader {
         language: 'Langue',
         dark_on: 'Mode sombre',
         dark_off: 'Mode clair',
+        more: 'Plus',
         collapse_menu: 'Réduire le menu',
         expand_menu: 'Déployer le menu',
         settings: 'Paramètres',
@@ -67,7 +72,27 @@ const owner: SignedInState = {
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
 };
 
+/** A viewport of a given width: answers `(max-width: …)` and `(min-width: …)` queries as a browser would. */
+function viewport(width: BehaviorSubject<number>) {
+  const matches = (query: string, px: number) => {
+    const [, kind, value] = /\((max|min)-width:\s*([\d.]+)px\)/.exec(query) ?? [];
+    return kind === 'max' ? px <= Number(value) : px >= Number(value);
+  };
+  return {
+    observe: (queries: string | string[]) =>
+      width.pipe(
+        map((px) => {
+          const list = Array.isArray(queries) ? queries : [queries];
+          const breakpoints = Object.fromEntries(list.map((q) => [q, matches(q, px)]));
+          return { matches: Object.values(breakpoints).some(Boolean), breakpoints };
+        }),
+      ),
+    isMatched: (query: string) => matches(query, width.value),
+  };
+}
+
 describe('AppShell', () => {
+  const width = new BehaviorSubject(1280);
   const me = signal<SignedInState | null>(owner);
   const permissions = signal<readonly string[]>(['user.read']);
   const modules = signal<readonly string[]>(['customers']);
@@ -100,11 +125,13 @@ describe('AppShell', () => {
     permissions.set(['user.read']);
     modules.set(['customers']);
     theme.sidebar.set('expanded');
+    width.next(1280);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
       imports: [AppShell],
       providers: [
         provideRouter([]),
+        { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
         { provide: CompanyFacade, useValue: companies },
         { provide: ThemeFacade, useValue: theme },
@@ -240,6 +267,59 @@ describe('AppShell', () => {
     press(document.body, { ctrlKey: true, altKey: true });
     press(document.body, { altKey: true });
     expect(theme.toggleSidebar).toHaveBeenCalledTimes(3);
+  });
+
+  it('lays the navigation out by window width: labelled from 1200 px, a rail of named icons below', async () => {
+    const { fixture, byTestId } = await render();
+    expect(byTestId('shell-nav')?.getAttribute('data-window')).toBe('expanded');
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+    expect(byTestId('bottom-bar')).toBeNull();
+
+    width.next(900);
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(byTestId('shell-nav')?.getAttribute('data-window')).toBe('medium');
+    // The setting says expanded, but a medium window has no room for labels: the rail is not a choice there.
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+    expect(byTestId('nav-home')?.querySelector('.sr-only')?.textContent).toContain('Accueil');
+    expect(byTestId('sidebar-toggle')).toBeNull();
+    expect(byTestId('bottom-bar')).toBeNull();
+  });
+
+  it("ignores the [ key below 1200 px, where the rail is not the person's choice", async () => {
+    width.next(900);
+    await render();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
+    expect(theme.toggleSidebar).not.toHaveBeenCalled();
+  });
+
+  it('puts four destinations and a Plus button in a bar at the bottom of a phone', async () => {
+    permissions.set(['customer.read', 'product.read', 'vendor.read', 'expense.read']);
+    modules.set(['customers', 'products', 'vendors', 'expenses']);
+    width.next(390);
+    const { byTestId, click } = await render();
+
+    const bar = byTestId('bottom-bar');
+    expect(bar?.tagName).toBe('NAV');
+    const destinations = [...(bar?.querySelectorAll<HTMLAnchorElement>('a') ?? [])];
+    expect(destinations.map((link) => link.querySelector('span')?.textContent?.trim())).toEqual([
+      'Accueil',
+      'Clients',
+      'Produits',
+      'Fournisseurs',
+    ]);
+    expect(destinations[0].getAttribute('href')).toBe('/');
+    expect(byTestId('menu-toggle')?.textContent).toContain('Plus');
+    expect(byTestId('menu-toggle')?.closest('[data-testid="bottom-bar"]')).toBe(bar);
+    expect(byTestId('shell-nav')?.getAttribute('data-window')).toBe('compact');
+    expect(byTestId('sidebar-toggle')).toBeNull();
+
+    // Everything else is one tap away: Plus opens the full drawer.
+    await click('menu-toggle');
+    expect(document.querySelector('mat-sidenav')?.classList.contains('mat-drawer-opened')).toBe(
+      true,
+    );
   });
 
   it('names the signed-in user on the account menu', async () => {

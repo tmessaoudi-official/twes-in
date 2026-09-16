@@ -37,8 +37,16 @@ import {
   visibleEntries,
 } from './nav-manifest';
 
-/** Below this width the navigation becomes a drawer over the page instead of a column beside it. */
-const HANDSET = '(max-width: 959.98px)';
+/**
+ * The window classes of the approved design (docs/SPEC.md § 7, 2026-09-16), as Material 3 draws them: a phone gets a
+ * bar of destinations at the bottom and the rest in a drawer, a medium window a rail of icons, and only from 1200 px
+ * is there room for labels, which the person may still fold into the rail.
+ */
+export type WindowClass = 'compact' | 'medium' | 'expanded';
+const COMPACT = '(max-width: 599.98px)';
+const EXPANDED = '(min-width: 1200px)';
+/** How many destinations the phone's bottom bar holds before the Plus button. */
+const BOTTOM_BAR_DESTINATIONS = 4;
 
 /** "Amel Ben Salah" → "AS": the first and last word, which is how people recognise their own initials. */
 export function initialsOf(displayName: string): string {
@@ -86,29 +94,48 @@ export class AppShell {
   protected readonly languages = SUPPORTED_LANGUAGES;
   protected readonly me = this.auth.me;
   protected readonly signingOut = signal(false);
-  protected readonly handset = toSignal(
+  protected readonly windowClass = toSignal(
     inject(BreakpointObserver)
-      .observe(HANDSET)
-      .pipe(map((state) => state.matches)),
-    { initialValue: false },
+      .observe([COMPACT, EXPANDED])
+      .pipe(
+        map((state): WindowClass =>
+          state.breakpoints[COMPACT]
+            ? 'compact'
+            : state.breakpoints[EXPANDED]
+              ? 'expanded'
+              : 'medium',
+        ),
+      ),
+    { initialValue: 'expanded' as WindowClass },
   );
+  protected readonly handset = computed(() => this.windowClass() === 'compact');
   protected readonly sections = computed(() =>
     navSections(this.visible([...CORE_NAV, ...MODULE_NAV, ...DEV_NAV]), SIDEBAR_SECTIONS),
   );
   /** The gear opens the first settings page this user may see, and is absent when there is none. */
   protected readonly settingsRoute = computed(() => this.visible(SETTINGS_NAV)[0]?.route ?? null);
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
-  /** On a wide screen the sidebar may be a rail of icons; a phone always gets the full drawer. */
-  protected readonly rail = computed(() => !this.handset() && this.theme.sidebar() === 'rail');
+  /** The phone's bottom bar: the first destinations of the sidebar, in its order. */
+  protected readonly bottomBar = computed(() =>
+    this.sections()
+      .flatMap((group) => group.entries)
+      .slice(0, BOTTOM_BAR_DESTINATIONS),
+  );
+  /** A medium window always shows the rail; a wide one shows it when the person chose it; a phone the full drawer. */
+  protected readonly rail = computed(
+    () =>
+      this.windowClass() === 'medium' ||
+      (this.windowClass() === 'expanded' && this.theme.sidebar() === 'rail'),
+  );
 
   /**
-   * `[` collapses or expands the sidebar, unless someone is typing, a menu or dialog is open, or another shortcut
+   * `[` collapses or expands the sidebar in a window wide enough for labels, unless someone is typing, a menu or dialog is open, or another shortcut
    * is meant. The key already says a `[` was typed, however the keyboard types it: AltGr on a French PC reports Ctrl
    * and Alt together, Option on a French Mac reports Alt alone. Only Meta, or Ctrl without Alt, is a shortcut.
    */
   protected onKeydown(event: KeyboardEvent): void {
     if (event.key !== '[' || event.defaultPrevented || event.metaKey) return;
-    if ((event.ctrlKey && !event.altKey) || this.handset()) return;
+    if ((event.ctrlKey && !event.altKey) || this.windowClass() !== 'expanded') return;
     const target = event.target;
     if (
       target instanceof Element &&

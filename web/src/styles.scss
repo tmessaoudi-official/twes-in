@@ -131,3 +131,125 @@ body {
     }
   }
 }
+
+// The shell of the approved design (app/shell/app-shell.html). The navigation sits on a backdrop tinted by the
+// accent; the page is a surface panel lifted above it. On a phone the panel is the whole screen and the
+// destinations sit in a bar at the bottom, clear of the home indicator.
+.twes-shell.mat-drawer-container {
+  background:
+    radial-gradient(
+      900px 520px at 100% 0%,
+      color-mix(in oklch, var(--mat-sys-primary) 14%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      700px 500px at 0% 100%,
+      color-mix(in oklch, var(--mat-sys-primary) 7%, transparent),
+      transparent 70%
+    ),
+    var(--mat-sys-surface-container-low);
+}
+
+.twes-shell-nav.mat-drawer-side {
+  border-right: 0;
+  background: transparent;
+}
+
+// No width transition here: the container's autosize measures the drawer once per change, so an animated width is
+// read mid-flight and the page keeps a margin between the two widths.
+.twes-shell-nav {
+  .mdc-list-item {
+    border-radius: 9999px;
+  }
+
+  .mdc-list-item--activated {
+    background-color: color-mix(in oklch, var(--mat-sys-primary) 16%, var(--mat-sys-surface));
+
+    .mdc-list-item__primary-text,
+    .mat-icon {
+      color: var(--mat-sys-on-surface);
+      font-weight: 600;
+    }
+  }
+}
+
+.twes-shell-content[data-window='medium'],
+.twes-shell-content[data-window='expanded'] {
+  margin-block: 0.5rem;
+  margin-right: 0.5rem;
+  border-radius: 1.25rem;
+  background-color: var(--mat-sys-surface);
+  box-shadow: var(--twes-shadow-1);
+  min-height: calc(100vh - 1rem);
+}
+
+.twes-shell-content[data-window='compact'] {
+  background-color: var(--mat-sys-surface);
+}
+
+.twes-shell-bar.mat-toolbar {
+  background: transparent;
+  border-bottom: 1px solid var(--mat-sys-outline-variant);
+}
+
+.twes-shell-content > header {
+  border-radius: 1.25rem 1.25rem 0 0;
+  background-color: var(--mat-sys-surface);
+}
+
+.twes-bottom-bar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  padding: 0.375rem 0.5rem calc(0.375rem + env(safe-area-inset-bottom, 0px));
+  background-color: var(--mat-sys-surface-container);
+  box-shadow: var(--twes-shadow-2);
+
+  > a,
+  > button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.125rem;
+    min-height: 3.5rem;
+    padding-top: 0.25rem;
+    border: 0;
+    background: none;
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-label-medium);
+    text-decoration: none;
+    cursor: pointer;
+
+    .mat-icon {
+      width: 3.5rem;
+      border-radius: 9999px;
+      transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
+    }
+
+    span {
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--mat-sys-primary);
+      outline-offset: -2px;
+      border-radius: 0.75rem;
+    }
+  }
+
+  > a.is-active {
+    color: var(--mat-sys-on-surface);
+    font-weight: 600;
+
+    .mat-icon {
+      background-color: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
+    }
+  }
+}

@@ -55,3 +55,23 @@ test('the [ key collapses the sidebar to a rail of named icons, which outlives a
     await forgetSidebar(page);
   }
 });
+
+test('the navigation follows the window: a rail of icons on a tablet, a bottom bar on a phone', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 900, height: 800 });
+  await signIn(page);
+  const nav = page.getByTestId('shell-nav');
+  await expect(nav).toHaveAttribute('data-window', 'medium');
+  await expect(nav).toHaveAttribute('data-sidebar', 'rail');
+  await expect(page.getByTestId('sidebar-toggle')).toHaveCount(0);
+  await expect(page.getByTestId('bottom-bar')).toHaveCount(0);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bar = page.getByTestId('bottom-bar');
+  await expect(bar).toBeVisible();
+  await expect(page.getByTestId('bottom-nav-home')).toHaveAttribute('aria-current', 'page');
+  const box = await bar.boundingBox();
+  expect(box && box.y + box.height).toBeCloseTo(844, 0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});

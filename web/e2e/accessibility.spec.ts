@@ -75,7 +75,9 @@ test('the shell keeps its content in landmarks, each named once', async ({ page 
   await expectLandmarks('settings');
 });
 
-test('at phone width the navigation is a drawer behind the menu button', async ({ page }) => {
+test("at phone width the full navigation is a drawer behind the bottom bar's Plus button", async ({
+  page,
+}) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page);
   await page.goto('/members');

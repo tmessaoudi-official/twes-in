@@ -6,18 +6,19 @@
 </a>
 
 <!-- autosize: the container measures the sidebar again when it turns into a rail, not only when it opens. -->
-<mat-sidenav-container class="min-h-full bg-surface" autosize>
+<mat-sidenav-container class="twes-shell min-h-full" autosize>
   <mat-sidenav
     #drawer
     [mode]="handset() ? 'over' : 'side'"
     [opened]="!handset()"
-    class="w-64 border-r border-outline-variant bg-surface-container-low"
-    [style.width.px]="rail() ? 72 : null"
+    class="twes-shell-nav"
+    [style.width.px]="rail() ? 80 : 248"
   >
     <nav
       [attr.aria-label]="'shell.navigation' | translate"
       class="pb-4"
       data-testid="shell-nav"
+      [attr.data-window]="windowClass()"
       [attr.data-sidebar]="rail() ? 'rail' : 'expanded'"
     >
       <div
@@ -69,20 +70,16 @@
     </nav>
   </mat-sidenav>
 
-  <mat-sidenav-content class="flex min-h-screen flex-col">
+  <mat-sidenav-content
+    class="twes-shell-content flex min-h-screen flex-col"
+    [attr.data-window]="windowClass()"
+  >
     <header class="sticky top-0 z-10">
-      <mat-toolbar class="gap-2 border-b border-outline-variant !bg-surface">
+      <mat-toolbar class="twes-shell-bar gap-2">
         @if (handset()) {
-          <button
-            mat-icon-button
-            type="button"
-            (click)="drawer.toggle()"
-            [attr.aria-label]="'shell.menu' | translate"
-            data-testid="menu-toggle"
-          >
-            <mat-icon aria-hidden="true">menu</mat-icon>
-          </button>
-        } @else {
+          <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
+          <span class="text-base font-semibold tracking-tight">{{ 'app.name' | translate }}</span>
+        } @else if (windowClass() === 'expanded') {
           <button
             mat-icon-button
             type="button"
@@ -203,8 +200,44 @@
       </mat-toolbar>
     </header>
 
-    <main id="main-content" tabindex="-1" class="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8">
+    <main
+      id="main-content"
+      tabindex="-1"
+      class="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8"
+      [class.pb-28]="handset()"
+    >
       <router-outlet />
     </main>
+
+    @if (handset()) {
+      <nav
+        class="twes-bottom-bar"
+        [attr.aria-label]="'shell.bottom_navigation' | translate"
+        data-testid="bottom-bar"
+      >
+        @for (entry of bottomBar(); track entry.key) {
+          <a
+            [routerLink]="entry.route"
+            routerLinkActive="is-active"
+            #tab="routerLinkActive"
+            [routerLinkActiveOptions]="{ exact: entry.route === '/' }"
+            [attr.aria-current]="tab.isActive ? 'page' : null"
+            [attr.data-testid]="'bottom-nav-' + entry.key"
+          >
+            <mat-icon aria-hidden="true">{{ entry.icon }}</mat-icon>
+            <span>{{ entry.labelKey | translate }}</span>
+          </a>
+        }
+        <button
+          type="button"
+          (click)="drawer.toggle()"
+          [attr.aria-expanded]="drawer.opened"
+          data-testid="menu-toggle"
+        >
+          <mat-icon aria-hidden="true">menu</mat-icon>
+          <span>{{ 'shell.more' | translate }}</span>
+        </button>
+      </nav>
+    }
   </mat-sidenav-content>
 </mat-sidenav-container>

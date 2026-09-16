@@ -368,7 +368,8 @@
   "shell": {
     "skip": "Skip to content",
     "navigation": "Main navigation",
-    "menu": "Open the menu",
+    "more": "More",
+    "bottom_navigation": "Shortcuts",
     "user_menu": "Account",
     "language": "Language",
     "dark_on": "Dark mode",

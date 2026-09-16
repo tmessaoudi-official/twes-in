@@ -368,7 +368,8 @@
   "shell": {
     "skip": "Aller au contenu",
     "navigation": "Navigation principale",
-    "menu": "Ouvrir le menu",
+    "more": "Plus",
+    "bottom_navigation": "Raccourcis",
     "user_menu": "Compte",
     "language": "Langue",
     "dark_on": "Mode sombre",
