@@ -110,7 +110,15 @@ describe('ApiSettings', () => {
     facade.set(PRESENTATION.density, 'comfortable');
 
     expect(facade.value(PRESENTATION.density)()).toBe('comfortable');
-    expect(api.change).toHaveBeenCalledWith('c1', 'presentation.density', 'user', 'comfortable');
+    expect(api.change).toHaveBeenCalledWith(
+      'c1',
+      'presentation.density',
+      'user',
+      'comfortable',
+      undefined,
+      undefined,
+      true,
+    );
     expect(storage.getItem('twes.settings.u1.presentation.density')).toBeNull();
   });
 
@@ -130,7 +138,14 @@ describe('ApiSettings', () => {
     facade.reset(PRESENTATION.density);
 
     expect(facade.value(PRESENTATION.density)()).toBe('compact');
-    expect(api.reset).toHaveBeenCalledWith('c1', 'presentation.density', 'user');
+    expect(api.reset).toHaveBeenCalledWith(
+      'c1',
+      'presentation.density',
+      'user',
+      undefined,
+      undefined,
+      true,
+    );
     expect(api.chain).toHaveBeenCalledTimes(1);
   });
 

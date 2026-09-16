@@ -14,6 +14,7 @@ import type { Me } from '../api/types.gen';
 import { LoginPage } from './login-page';
 import { PasskeyClient } from './passkey-client';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -23,6 +24,7 @@ class StaticLoader implements TranslateLoader {
       auth: {
         login: {
           title: 'Connexion',
+          session_expired: 'Votre session a pris fin. Reconnectez-vous pour continuer.',
           email: 'Adresse e-mail',
           email_required: 'E-mail obligatoire',
           email_invalid: 'E-mail invalide',
@@ -83,6 +85,7 @@ describe('LoginPage', () => {
         provideRouter([]),
         { provide: PasskeyClient, useValue: passkeyClient },
         provideStillAppearance(),
+        provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -130,6 +133,17 @@ describe('LoginPage', () => {
     expect(query('email')).not.toBeNull();
     expect(query('password')).not.toBeNull();
     expect(query('api-status')?.textContent).toContain('opérationnelle');
+  });
+
+  it('says why the person is back on it when their session ended while a page was open', async () => {
+    const { fixture, query } = await render();
+    expect(query('login-expired')).toBeNull();
+
+    fixture.componentRef.setInput('expired', '1');
+    await fixture.whenStable();
+
+    expect(query('login-expired')?.getAttribute('role')).toBe('status');
+    expect(query('login-expired')?.textContent).toContain('Votre session a pris fin');
   });
 
   it('puts each label above its field and ties it to the control', async () => {

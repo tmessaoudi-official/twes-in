@@ -13,6 +13,7 @@ import { AcceptInvitationPage } from './accept-invitation-page';
 import { InvitationFacade } from './invitation-facade';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -62,6 +63,7 @@ describe('AcceptInvitationPage', () => {
       providers: [
         provideRouter([]),
         provideStillAppearance(),
+        provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

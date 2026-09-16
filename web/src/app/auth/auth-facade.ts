@@ -194,6 +194,11 @@ export class AuthFacade implements Session {
     this.signedOut();
   }
 
+  /** The API no longer knows the session (it expired, or was ended elsewhere): forget it here too, without asking. */
+  sessionEnded(): void {
+    this.signedOut();
+  }
+
   /** Whether the signed-in account runs the platform: operator scope sits outside every company's permissions. */
   isPlatformOperator(): boolean {
     return this.stateSignal()?.user.isPlatformOperator ?? false;

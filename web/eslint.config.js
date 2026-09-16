@@ -5,7 +5,7 @@ const tseslint = require('typescript-eslint');
 const angular = require('angular-eslint');
 
 /** Where HttpClient and the generated OpenAPI types may appear: the API adapters and the application's own wiring. */
-const HTTP_ALLOWED = ['**/*-api.ts', 'src/app/app.config.ts', 'src/app/auth/csrf-interceptor.ts'];
+const HTTP_ALLOWED = ['**/*-api.ts', '**/*-interceptor.ts', 'src/app/app.config.ts'];
 const HTTP_ONLY_IN_ADAPTERS = {
   group: ['@angular/common/http', '@angular/common/http/*'],
   message:

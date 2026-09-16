@@ -5,9 +5,11 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  effect,
   inject,
   isDevMode,
   signal,
+  untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
@@ -27,6 +29,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
+import { ActivityBar } from '../shared/feedback/activity-bar';
+import { RequestActivity } from '../shared/feedback/request-activity';
 import {
   LANGUAGE_NAMES,
   LanguageFacade,
@@ -94,6 +98,7 @@ export function initialsOf(displayName: string): string {
     Label,
     LanguageMenu,
     SchemeMenu,
+    ActivityBar,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },
@@ -104,6 +109,7 @@ export class AppShell {
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private paletteOpen = false;
+  private readonly activity = inject(RequestActivity);
   protected readonly theme = inject(ThemeFacade);
   protected readonly language = inject(LanguageFacade);
 
@@ -158,6 +164,19 @@ export class AppShell {
       this.windowClass() === 'medium' ||
       (this.windowClass() === 'expanded' && this.theme.sidebar() === 'rail'),
   );
+
+  constructor() {
+    // A session that ended while the page was open (expired, or ended from another device) sends the person back to
+    // sign in with a word of why, instead of leaving every screen failing one request at a time.
+    effect(() => {
+      if (!this.activity.sessionExpired()) return;
+      untracked(() => {
+        this.activity.acknowledgeExpiry();
+        this.auth.sessionEnded();
+        void this.router.navigateByUrl('/login?expired=1');
+      });
+    });
+  }
 
   /**
    * `[` collapses or expands the sidebar in a window wide enough for labels, unless someone is typing, a menu or dialog is open, or another shortcut

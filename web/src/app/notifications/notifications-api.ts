@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { NotificationItem, NotificationPage, RealtimeToken } from '../api/types.gen';
+import { SILENT } from '../shared/feedback/activity-interceptor';
 import type { InboxEntry, InboxPage } from './notifications-types';
+
+/** The bell refreshes on its own, in the background: nobody waits for it. */
+const BACKGROUND = () => new HttpContext().set(SILENT, true);
 
 /** The HTTP edge of the notification centre: the only code here that knows endpoints and generated types. */
 @Injectable({ providedIn: 'root' })
@@ -12,7 +16,9 @@ export class NotificationsApi {
   private readonly http = inject(HttpClient);
 
   async list(): Promise<InboxPage> {
-    const page = await firstValueFrom(this.http.get<NotificationPage>('/api/me/notifications'));
+    const page = await firstValueFrom(
+      this.http.get<NotificationPage>('/api/me/notifications', { context: BACKGROUND() }),
+    );
     return { items: page.items.map(toEntry), unread: page.unread };
   }
 
@@ -28,7 +34,11 @@ export class NotificationsApi {
 
   /** A fresh connection token; its channels are whatever the session may hear right now. */
   async realtimeToken(): Promise<string> {
-    return (await firstValueFrom(this.http.get<RealtimeToken>('/api/me/realtime-token'))).token;
+    return (
+      await firstValueFrom(
+        this.http.get<RealtimeToken>('/api/me/realtime-token', { context: BACKGROUND() }),
+      )
+    ).token;
   }
 }
 

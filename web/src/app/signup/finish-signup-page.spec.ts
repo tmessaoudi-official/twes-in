@@ -13,6 +13,7 @@ import { FinishSignupPage } from './finish-signup-page';
 import { SignupFacade } from './signup-facade';
 import type { SignupAvailability, SignupCompleted, SignupError } from './signup-types';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -84,6 +85,7 @@ describe('FinishSignupPage', () => {
         provideRouter([]),
         { provide: SignupFacade, useValue: facade },
         provideStillAppearance(),
+        provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type { SettingSettingRead } from '../../api/types.gen';
@@ -12,6 +12,10 @@ import type {
   SettingSubject,
   SettingType,
 } from './settings-types';
+import { SILENT } from '../feedback/activity-interceptor';
+
+/** A preference written as it is clicked is quiet: nobody waits for it, so it never shows the activity bar. */
+const quietly = (quiet: boolean) => new HttpContext().set(SILENT, quiet);
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class SettingsRefused extends Error {
@@ -49,6 +53,7 @@ export class SettingsApi {
     value: unknown,
     roleId?: string,
     subject?: SettingSubject,
+    quiet = false,
   ): Promise<SettingRow> {
     const body = { level, value, ...(roleId === undefined ? {} : { roleId }), ...subject };
     return this.guard(async () =>
@@ -57,6 +62,7 @@ export class SettingsApi {
           this.http.put<SettingSettingRead>(
             `${this.path(companyId)}/${encodeURIComponent(key)}`,
             body,
+            { context: quietly(quiet) },
           ),
         ),
       ),
@@ -69,6 +75,7 @@ export class SettingsApi {
     level: SettingLevel,
     roleId?: string,
     subject?: SettingSubject,
+    quiet = false,
   ): Promise<void> {
     const params: Record<string, string> = {
       level,
@@ -77,7 +84,10 @@ export class SettingsApi {
     };
     await this.guard(() =>
       firstValueFrom(
-        this.http.delete<null>(`${this.path(companyId)}/${encodeURIComponent(key)}`, { params }),
+        this.http.delete<null>(`${this.path(companyId)}/${encodeURIComponent(key)}`, {
+          params,
+          context: quietly(quiet),
+        }),
       ),
     );
   }

@@ -16,6 +16,7 @@ import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
 import { NotificationsFacade } from '../notifications/notifications-facade';
+import { RequestActivity } from '../shared/feedback/request-activity';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
@@ -107,6 +108,7 @@ describe('AppShell', () => {
   const auth = {
     me: me.asReadonly(),
     logout: vi.fn(async () => undefined),
+    sessionEnded: vi.fn(),
     hasPermission: (permission: string) => permissions().includes(permission),
     hasModule: (module: string) => modules().includes(module),
   };
@@ -128,12 +130,24 @@ describe('AppShell', () => {
     toggleSidebar: vi.fn(),
   };
   const language = { current: signal('fr'), use: vi.fn(async () => undefined) };
+  const sessionExpired = signal(false);
+  const activity = {
+    busy: signal(false),
+    slow: signal(false),
+    unavailable: signal(false),
+    retryIn: signal(null),
+    offline: signal(false),
+    sessionExpired,
+    retryNow: vi.fn(),
+    acknowledgeExpiry: vi.fn(() => sessionExpired.set(false)),
+  };
 
   beforeEach(async () => {
     me.set(owner);
     permissions.set(['user.read']);
     modules.set(['customers']);
     theme.sidebar.set('expanded');
+    sessionExpired.set(false);
     width.next(1280);
     vi.clearAllMocks();
     await TestBed.configureTestingModule({
@@ -146,6 +160,7 @@ describe('AppShell', () => {
         { provide: CompanyFacade, useValue: companies },
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },
+        { provide: RequestActivity, useValue: activity },
         {
           provide: NotificationsFacade,
           useValue: {
@@ -446,6 +461,18 @@ describe('AppShell', () => {
     await click('command-open');
 
     expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the person back to sign in, saying why, when their session ends while the page is open', async () => {
+    const { fixture } = await render();
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+    sessionExpired.set(true);
+    await fixture.whenStable();
+
+    expect(auth.sessionEnded).toHaveBeenCalledOnce();
+    expect(navigate).toHaveBeenCalledWith('/login?expired=1');
+    expect(activity.acknowledgeExpiry).toHaveBeenCalledOnce();
   });
 
   it('names the signed-in user on the account menu', async () => {

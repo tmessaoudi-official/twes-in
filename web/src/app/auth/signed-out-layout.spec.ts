@@ -10,6 +10,7 @@ import {
 import { of } from 'rxjs';
 import { Brand } from '../shared/brand/brand';
 import { LanguageFacade } from '../shared/i18n/language-facade';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { SignedOutLayout } from './signed-out-layout';
 
@@ -37,6 +38,7 @@ describe('SignedOutLayout', () => {
       imports: [Host],
       providers: [
         { provide: Brand, useValue: { name, tagline } },
+        provideQuietFeedback(),
         { provide: ThemeFacade, useValue: { preference: signal('auto'), setScheme: vi.fn() } },
         { provide: LanguageFacade, useValue: { current: signal('fr'), use: vi.fn() } },
         provideTranslateService({

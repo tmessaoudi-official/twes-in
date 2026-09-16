@@ -1117,3 +1117,92 @@ body {
 .twes-dot-danger {
   background: var(--twes-status-danger-dot);
 }
+
+/* Row 48: what the application waits for (shared/feedback/activity-bar) and what it did (toasts). */
+.twes-activity-progress {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  z-index: 1100;
+  height: 3px;
+}
+
+.twes-activity-notice {
+  position: fixed;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+  left: 50%;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  max-width: calc(100vw - 2rem);
+  padding: 0.5rem 0.5rem 0.5rem 0.875rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 9999px;
+  background-color: var(--mat-sys-surface-container-high);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-body-medium);
+  box-shadow: var(--twes-shadow-2);
+  transform: translateX(-50%);
+
+  .mat-icon {
+    flex-shrink: 0;
+    color: var(--mat-sys-on-surface-variant);
+  }
+
+  &:not(:has(button)) {
+    padding-inline-end: 1rem;
+  }
+}
+
+.twes-toast-panel .mat-mdc-snackbar-surface {
+  min-width: min(22rem, calc(100vw - 2rem));
+  padding: 0;
+  border-radius: 0.875rem;
+  background-color: var(--mat-sys-inverse-surface);
+  box-shadow: var(--twes-shadow-2);
+}
+
+.twes-toast {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.375rem 0.25rem 0.375rem 1rem;
+  color: var(--mat-sys-inverse-on-surface);
+  font: var(--mat-sys-body-medium);
+
+  .twes-toast-message {
+    flex: 1;
+  }
+
+  .mat-mdc-icon-button {
+    color: inherit;
+  }
+}
+
+.twes-toast-success .twes-toast-icon {
+  color: var(--mat-sys-inverse-primary);
+}
+
+.twes-toast-failure .twes-toast-icon {
+  color: var(--twes-status-danger-dot, var(--mat-sys-error));
+}
+
+.twes-auth-notice {
+  padding: 0.625rem 0.875rem;
+  border-radius: 0.625rem;
+  background-color: var(--mat-sys-secondary-container);
+  color: var(--mat-sys-on-secondary-container);
+  font: var(--mat-sys-body-medium);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* A still bar says "working" as well as a moving one, without the motion. */
+  .twes-activity-progress .mdc-linear-progress__bar {
+    animation: none;
+  }
+
+  .twes-activity-progress .mdc-linear-progress__primary-bar {
+    transform: scaleX(1);
+  }
+}

@@ -110,7 +110,8 @@ test('the top bar keeps every control clear of the next, down to the narrowest l
   page,
 }) => {
   await signIn(page);
-  for (const width of [1200, 1280, 900]) {
+  // The seeded operator's short name and company leave room a long one would not; CI met the overlap with both long.
+  for (const width of [1200, 1280, 1600, 900]) {
     await page.setViewportSize({ width, height: 800 });
     await expect(page.getByTestId('user-menu')).toBeVisible();
     // A control another one covers cannot be clicked: the account button once lay over the gear at 1280 px (CI, row 37).

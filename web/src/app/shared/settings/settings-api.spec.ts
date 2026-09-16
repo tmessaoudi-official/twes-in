@@ -3,6 +3,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { SILENT } from '../feedback/activity-interceptor';
 import { SettingsApi, SettingsRefused } from './settings-api';
 
 const density = {
@@ -74,6 +75,34 @@ describe('SettingsApi', () => {
     expect(request.request.body).toEqual({ level: 'user', value: 'compact' });
     request.flush({ ...density, source: 'user' });
     await expect(changed).resolves.toMatchObject({ source: 'user' });
+  });
+
+  it('writes a click-as-you-go preference quietly, and a settings form save where the activity shows', async () => {
+    const saved = api.change('c1', 'presentation.density', 'company', 'compact');
+    const form = http.expectOne('/api/companies/c1/settings/presentation.density');
+    expect(form.request.context.get(SILENT)).toBe(false);
+    form.flush(density);
+    await saved;
+
+    const clicked = api.change(
+      'c1',
+      'presentation.density',
+      'user',
+      'compact',
+      undefined,
+      undefined,
+      true,
+    );
+    const preference = http.expectOne('/api/companies/c1/settings/presentation.density');
+    expect(preference.request.context.get(SILENT)).toBe(true);
+    preference.flush(density);
+    await clicked;
+
+    const forgotten = api.reset('c1', 'presentation.density', 'user', undefined, undefined, true);
+    const reset = http.expectOne('/api/companies/c1/settings/presentation.density?level=user');
+    expect(reset.request.context.get(SILENT)).toBe(true);
+    reset.flush(null, { status: 204, statusText: 'No Content' });
+    await forgotten;
   });
 
   it('stores a role default for the role it names', async () => {

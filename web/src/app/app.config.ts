@@ -21,6 +21,10 @@ import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
 import { SettingsFacade } from './shared/settings/settings-facade';
 import { TranslatedPaginatorIntl } from './shared/list/translated-paginator-intl';
+import { activityInterceptor } from './shared/feedback/activity-interceptor';
+import { Feedback } from './shared/feedback/feedback';
+import { MaterialFeedback } from './shared/feedback/material-feedback';
+import { trackNavigation } from './shared/feedback/navigation-activity';
 import { LanguageFacade } from './shared/i18n/language-facade';
 import { ThemeFacade } from './shared/theme/theme-facade';
 
@@ -30,7 +34,10 @@ export const appConfig: ApplicationConfig = {
     // Route parameters arrive as component inputs; the invitation token is bound this way.
     provideRouter(routes, withComponentInputBinding()),
     // The API uses Symfony stateless CSRF (header only), not the cookie Angular built-in XSRF support echoes.
-    provideHttpClient(withInterceptors([csrfInterceptor]), withNoXsrfProtection()),
+    provideHttpClient(
+      withInterceptors([csrfInterceptor, activityInterceptor]),
+      withNoXsrfProtection(),
+    ),
     // French first (Tunisia, France); English second. Files live in public/i18n/<lang>.json.
     provideTranslateService({
       lang: 'fr',
@@ -42,6 +49,8 @@ export const appConfig: ApplicationConfig = {
     // Shared code reads the session through its port; the auth feature answers it.
     { provide: Session, useExisting: AuthFacade },
     { provide: SettingsFacade, useClass: ApiSettings },
+    // Outcomes are said in toasts; what the application waits for, in the activity bar (docs/SPEC.md § 8 row 48).
+    { provide: Feedback, useExisting: MaterialFeedback },
     BrowserStorageSettings,
     // Every paginator's labels follow the chosen language.
     { provide: MatPaginatorIntl, useClass: TranslatedPaginatorIntl },
@@ -58,6 +67,7 @@ export const appConfig: ApplicationConfig = {
       inject(ThemeFacade);
       // The remembered language is applied before any page, a signed-out one included.
       inject(LanguageFacade);
+      trackNavigation();
     }),
   ],
 };

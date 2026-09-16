@@ -20,7 +20,8 @@
       "submit": "Sign in",
       "submitting": "Signing in…",
       "signup": "Create an account",
-      "no_account": "No account yet?"
+      "no_account": "No account yet?",
+      "session_expired": "Your session has ended. Sign in again to continue."
     },
     "logout": "Sign out",
     "errors": {
@@ -1500,5 +1501,14 @@
       "light": "Light",
       "dark": "Dark"
     }
+  },
+  "feedback": {
+    "loading": "Loading",
+    "slow": "This is taking longer than usual…",
+    "unavailable": "The service cannot be reached right now. Trying again in {{seconds}} s.",
+    "retry": "Try again",
+    "offline": "You are offline: nothing can be saved for now.",
+    "restored": "Connection restored.",
+    "close": "Close"
   }
 }

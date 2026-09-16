@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -8,7 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { HealthFacade } from '../health/health-facade';
+import { HealthFacade } from '../shared/health/health-facade';
 import { SignupFacade } from '../signup/signup-facade';
 import { AuthFacade } from './auth-facade';
 import type { LoginError } from './auth-types';
@@ -45,6 +45,8 @@ export class LoginPage {
   protected readonly codeForm = new FormGroup({
     code: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
   });
+  /** `?expired=1`: the shell sent the person here because their session ended while a page was open. */
+  readonly expired = input<string>();
   protected readonly step = signal<'password' | 'code'>('password');
   protected readonly submitting = signal(false);
   protected readonly error = signal<LoginError | null>(null);

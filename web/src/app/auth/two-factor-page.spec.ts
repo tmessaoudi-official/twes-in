@@ -15,6 +15,7 @@ import type { MfaStatus, PasskeySummary, SignedInState } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { TwoFactorPage } from './two-factor-page';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -84,6 +85,7 @@ describe('TwoFactorPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: PasskeyClient, useValue: { supported: () => true } },
         provideStillAppearance(),
+        provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

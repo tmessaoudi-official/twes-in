@@ -4,6 +4,7 @@ import { booleanAttribute, ChangeDetectionStrategy, Component, inject, input } f
 import { MatIconModule } from '@angular/material/icon';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Brand } from '../shared/brand/brand';
+import { ActivityBar } from '../shared/feedback/activity-bar';
 import { BrandWordmark } from '../shared/brand/brand-wordmark';
 import { LanguageMenu } from '../shared/i18n/language-menu';
 import { SchemeMenu } from '../shared/theme/scheme-menu';
@@ -15,7 +16,7 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
  */
 @Component({
   selector: 'app-signed-out-layout',
-  imports: [BrandWordmark, LanguageMenu, MatIconModule, SchemeMenu, TranslatePipe],
+  imports: [ActivityBar, BrandWordmark, LanguageMenu, MatIconModule, SchemeMenu, TranslatePipe],
   templateUrl: './signed-out-layout.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

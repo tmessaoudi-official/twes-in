@@ -14,6 +14,7 @@ import { SignupFacade } from './signup-facade';
 import { SignupPage } from './signup-page';
 import type { SignupAvailability, SignupError } from './signup-types';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -68,6 +69,7 @@ describe('SignupPage', () => {
       providers: [
         // Before the page's own language, which the request is tested against.
         provideStillAppearance(),
+        provideQuietFeedback(),
         provideRouter([]),
         { provide: SignupFacade, useValue: facade },
         { provide: LanguageFacade, useValue: { current: signal('en') } },

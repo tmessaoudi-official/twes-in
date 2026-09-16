@@ -14,6 +14,7 @@ import { Session } from '../shared/session/session';
 import type { SignedInState } from './auth-types';
 import { AwaitingApprovalPage } from './awaiting-approval-page';
 import { provideStillAppearance } from '../shared/testing/appearance';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -69,6 +70,7 @@ describe('AwaitingApprovalPage', () => {
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         provideStillAppearance(),
+        provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

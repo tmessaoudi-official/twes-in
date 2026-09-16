@@ -3,7 +3,7 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { catchError, map, Observable, of } from 'rxjs';
-import type { Health } from '../api/types.gen';
+import type { Health } from '../../api/types.gen';
 
 export type ApiStatus = 'ok' | 'degraded' | 'unreachable';
 

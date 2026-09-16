@@ -89,9 +89,11 @@ export class ApiSettings extends SettingsFacade {
       return;
     }
     this.keep(scope, setting.key, value);
-    this.api.change(scope.companyId, setting.key, 'user', value).catch(() => {
-      // Refused or unreachable: the page keeps the choice until it is reloaded.
-    });
+    this.api
+      .change(scope.companyId, setting.key, 'user', value, undefined, undefined, true)
+      .catch(() => {
+        // Refused or unreachable: the page keeps the choice until it is reloaded.
+      });
   }
 
   reset<T>(setting: SettingDefinition<T>): void {
@@ -102,7 +104,7 @@ export class ApiSettings extends SettingsFacade {
       return;
     }
     this.keep(scope, setting.key, FORGOTTEN);
-    this.api.reset(scope.companyId, setting.key, 'user').catch(() => {
+    this.api.reset(scope.companyId, setting.key, 'user', undefined, undefined, true).catch(() => {
       // Same as set: the page already answers the level above.
     });
   }

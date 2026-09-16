@@ -20,7 +20,8 @@
       "submit": "Se connecter",
       "submitting": "Connexion…",
       "signup": "Créer un compte",
-      "no_account": "Pas encore de compte ?"
+      "no_account": "Pas encore de compte ?",
+      "session_expired": "Votre session a pris fin. Reconnectez-vous pour continuer."
     },
     "logout": "Se déconnecter",
     "errors": {
@@ -1500,5 +1501,14 @@
       "light": "Clair",
       "dark": "Sombre"
     }
+  },
+  "feedback": {
+    "loading": "Chargement",
+    "slow": "Cela prend plus de temps que d’habitude…",
+    "unavailable": "Le service est momentanément injoignable. Nouvelle tentative dans {{seconds}} s.",
+    "retry": "Réessayer",
+    "offline": "Vous êtes hors ligne : rien ne peut être enregistré pour l’instant.",
+    "restored": "Connexion rétablie.",
+    "close": "Fermer"
   }
 }
