@@ -73,6 +73,25 @@ describe('ThemeFacade', () => {
     expect(facade.scheme()).toBe('dark');
   });
 
+  it('changes the colours with every transition held for one frame, so nothing fades from the old scheme', () => {
+    const frames: FrameRequestCallback[] = [];
+    const requestFrame = vi
+      .spyOn(window, 'requestAnimationFrame')
+      .mockImplementation((callback) => frames.push(callback));
+    const facade = start();
+    frames.splice(0).forEach((frame) => frame(0));
+    expect(root.classList.contains('theme-changing')).toBe(false);
+
+    facade.setScheme('dark');
+    TestBed.tick();
+
+    expect(root.classList.contains('theme-dark')).toBe(true);
+    expect(root.classList.contains('theme-changing')).toBe(true);
+    frames.splice(0).forEach((frame) => frame(0));
+    expect(root.classList.contains('theme-changing')).toBe(false);
+    requestFrame.mockRestore();
+  });
+
   it('toggles between the two schemes', () => {
     const facade = start();
     facade.toggleScheme();

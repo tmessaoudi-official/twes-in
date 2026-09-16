@@ -136,18 +136,11 @@ async function walk(page: Page, scheme: string): Promise<void> {
       scheme === 'dark' ? /theme-dark/ : /^((?!theme-dark).)*$/,
     );
     await expect(page.getByRole('heading').first(), `${route} (${scheme})`).toBeVisible();
-    let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa']);
-    if (scheme === 'dark') {
-      // NAMED exclusion, not a disabled rule, and only the element it covers: the tab label's painted colour
-      // in dark is not understood. Measured on one route in one state it read 1.08:1, then 3.2:1, then
-      // 14.42:1 — three values for an identical configuration — and no stylesheet rule that can be
-      // enumerated from the page declares a colour for it at all. Five explanations were tried and each was
-      // refuted by measurement (a token override, specificity, the stored-scheme race, this test's timeout,
-      // and the 0.15s colour transition). It is real enough to keep a row open and too poorly understood to
-      // answer with a colour: § 8 row 28. Everything else on these screens is still checked in dark.
-      builder = builder.exclude('.mdc-tab__text-label');
-    }
-    const results = await builder.analyze();
+    // Nothing is excluded in dark any more: a tab label read 1.08:1, 3.2:1 or 14.42:1 because it was still fading from
+    // the light scheme's colour when axe read it, which ThemeFacade now prevents (§ 8 row 28).
+    const results = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
     // Soft, deliberately: a hard assertion stops the walk at the first bad screen and hides every screen
     // after it, so one violation would read as one screen's problem when it may be eight. The run reports
     // them all and still fails.

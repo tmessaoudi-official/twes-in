@@ -1065,3 +1065,12 @@ body {
   width: 18rem;
   transform: rotate(-3deg);
 }
+
+// Held for one frame while the theme's colours change (ThemeFacade): without it every colour transition fades from the
+// previous scheme, so a page opened in dark shows dark text on the dark ground until the fade ends.
+.theme-changing,
+.theme-changing *,
+.theme-changing *::before,
+.theme-changing *::after {
+  transition: none !important;
+}
