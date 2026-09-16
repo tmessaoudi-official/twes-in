@@ -198,7 +198,11 @@ test('every screen the goals added is accessible, in both colour schemes', async
     /theme-dark/,
   );
 
-  // Put the scheme back where the next scenario expects it: this walk is the only test here that changes it.
+  // Put the scheme back. This walk is the test that MUST end where it started, because it is the only one
+  // asserting the scheme on every route — but it is not the only one that changes it: the members walk and
+  // the CSP test below both toggle to dark and leave it there, so after a full run of this file the stored
+  // scheme is dark. What actually protects each scenario is signIn's own forgetPresentationChoices, not
+  // this line.
   // Inline, after every assertion, rather than in a file-wide `afterEach` — an afterEach would also run after
   // the signed-out tests, where `/api/auth/me` answers `authentication_required` with no `company` key at
   // all, and `forgetPresentationChoices` guards `me.company === null`, which `undefined` passes straight

@@ -179,6 +179,14 @@ tables, essay gotchas) was retired with the reset. What applies here:
   (SPEC § 8 row 24), not a regression: rerun after 01:00 before digging.
 - Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
   it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
+- The web container serves a STATIC nginx build, never a dev server (`infra/web/Dockerfile` builds and copies
+  `dist/web/browser` into nginx), so a `web/src/**` edit is invisible to the browser and to Playwright until
+  `docker compose up -d --build web`. Three rounds of measurement read as product defects before that was
+  identified (2026-09-16).
+- A dead operator session makes `/api/auth/me` answer 401 with no `company` key AT ALL, so
+  `forgetPresentationChoices`'s `me.company === null` guard passes `undefined` straight into `me.company.id`:
+  a spec dying with `Cannot read properties of undefined (reading 'id')` on its first line needs the session
+  re-minted with `--project=setup`, not a teardown fix (2026-09-16).
 - A mutated migration mutates its `down()` too: migrate the test database down before applying the mutant, and down with the
   mutant before restoring it, or what the mutant removed never leaves the schema (2026-09-15: a dropped CHECK stayed, and read green).
 - `KernelTestCase::ensureKernelShutdown()` BOOTS the kernel to read its container for the cache directories, so a kernel a
