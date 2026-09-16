@@ -177,3 +177,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
 - A mutated migration mutates its `down()` too: migrate the test database down before applying the mutant, and down with the
   mutant before restoring it, or what the mutant removed never leaves the schema (2026-09-15: a dropped CHECK stayed, and read green).
+- `KernelTestCase::ensureKernelShutdown()` BOOTS the kernel to read its container for the cache directories, so a kernel a
+  refusal left assigned but unbooted is booted again by the teardown — and refused there, turning a passing case into an
+  error in a method that never asked for a kernel. Drop it instead (`static::$kernel = null; static::$booted = false;`)
+  when testing anything that refuses to boot (2026-09-16, `DevelopmentKeysTest`).
