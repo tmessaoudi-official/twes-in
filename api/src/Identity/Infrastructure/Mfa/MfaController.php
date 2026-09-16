@@ -15,6 +15,7 @@ use App\Identity\Application\Mfa\RegenerateRecoveryCodes;
 use App\Identity\Application\Mfa\SecondFactorAlreadyEnrolled;
 use App\Identity\Application\Mfa\SecondFactorLockout;
 use App\Identity\Application\Mfa\SecondFactorRefused;
+use App\Identity\Application\Mfa\SecondFactorUnreadable;
 use App\Identity\Application\Mfa\VerifySecondFactor;
 use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
@@ -78,6 +79,11 @@ final readonly class MfaController
             $this->lockout->recordWrongCode($userId);
 
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
+        } catch (SecondFactorUnreadable) {
+            // The stored secret cannot be read with the current APP_MFA_KEY: refused, but not a guess, so it does not
+            // count toward the lock (docs/SPEC.md § 8 row 26). The client hears the same invalid_code, which is what it
+            // can act on (a recovery code, or re-enrolment); the audit row `unreadable_secret` tells the operator why.
+            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNAUTHORIZED);
         }
 
         return $this->secondFactorLogin->complete($user);
@@ -133,6 +139,9 @@ final readonly class MfaController
         } catch (SecondFactorRefused) {
             $this->lockout->recordWrongCode($userId);
 
+            return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        } catch (SecondFactorUnreadable) {
+            // Not a guess, as at login: refused with the same answer, never counted (docs/SPEC.md § 8 row 26).
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

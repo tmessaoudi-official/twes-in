@@ -40,7 +40,8 @@ final readonly class RegenerateRecoveryCodes
     /**
      * @return list<string> the raw recovery codes, to be shown once
      *
-     * @throws SecondFactorRefused when there is no authenticator or the code does not verify
+     * @throws SecondFactorRefused    when there is no authenticator or the code does not verify
+     * @throws SecondFactorUnreadable when the stored secret cannot be read with the current key
      */
     public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): array
     {
@@ -52,7 +53,14 @@ final readonly class RegenerateRecoveryCodes
             throw new SecondFactorRefused();
         }
 
-        $timestep = $this->totp->verify($this->cipher->decrypt($secret), $code, $now);
+        try {
+            $plain = $this->cipher->decrypt($secret);
+        } catch (\RuntimeException) {
+            // A rotated APP_MFA_KEY: no code could verify, so this is not a guess (docs/SPEC.md § 8 row 26).
+            throw new SecondFactorUnreadable();
+        }
+
+        $timestep = $this->totp->verify($plain, $code, $now);
 
         if (null === $timestep) {
             throw new SecondFactorRefused();

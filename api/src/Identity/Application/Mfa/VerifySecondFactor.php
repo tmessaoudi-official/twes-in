@@ -42,7 +42,10 @@ final readonly class VerifySecondFactor
     ) {
     }
 
-    /** @throws SecondFactorRefused */
+    /**
+     * @throws SecondFactorRefused    when the code is wrong, spent or there is no factor
+     * @throws SecondFactorUnreadable when neither a recovery code nor the stored secret, which the current key cannot read, verifies
+     */
     public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): User
     {
         $now ??= new \DateTimeImmutable();
@@ -55,10 +58,20 @@ final readonly class VerifySecondFactor
             throw new SecondFactorRefused();
         }
 
-        if ($this->spendTotp($user, $code, $now) || $this->spendRecoveryCode($user, $code)) {
+        $totp = $this->spendTotp($user, $code, $now);
+
+        // A recovery code is tried even when the secret cannot be read: after a key rotation it is the way back in.
+        if (true === $totp || $this->spendRecoveryCode($user, $code)) {
             $this->users->save($user);
 
             return $user;
+        }
+
+        if (null === $totp) {
+            // Already audited as unreadable_secret, so not audited again as a bad code. What this lets through
+            // uncounted is a wrong recovery code on such an account: ten characters of a 31-letter alphabet, which the
+            // verify limiter's pacing leaves out of reach, unlike the million six-digit codes the lock exists for.
+            throw new SecondFactorUnreadable();
         }
 
         $this->audit->record(new AuditEntry('user', $user->getId(), self::FAILED, $user->getId(), ['reason' => 'bad_code']));
@@ -66,7 +79,8 @@ final readonly class VerifySecondFactor
         throw new SecondFactorRefused();
     }
 
-    private function spendTotp(User $user, string $code, \DateTimeImmutable $now): bool
+    /** True when the code verified and is now spent, false when it did not, null when the stored secret cannot be read. */
+    private function spendTotp(User $user, string $code, \DateTimeImmutable $now): ?bool
     {
         $secret = $user->getTotpSecret();
 
@@ -81,7 +95,7 @@ final readonly class VerifySecondFactor
             // re-enrolment. Refusing is right; pretending the code was wrong is not, so it is audited apart.
             $this->audit->record(new AuditEntry('user', $user->getId(), self::FAILED, $user->getId(), ['reason' => 'unreadable_secret']));
 
-            return false;
+            return null;
         }
 
         if (null === $timestep) {

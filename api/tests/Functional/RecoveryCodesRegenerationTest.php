@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
+use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -105,6 +106,28 @@ final class RecoveryCodesRegenerationTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
         self::assertSame('account_locked', $this->stringAt($this->json(), 'error'));
         self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
+    }
+
+    /**
+     * After APP_MFA_KEY rotates the stored secret cannot be read: that refuses the new set, and counts nothing toward the
+     * lock, because no code could have been right (docs/SPEC.md § 8 row 26).
+     */
+    public function testASecretTheCurrentKeyCannotReadIsRefusedWithoutCountingTowardTheLock(): void
+    {
+        $this->enrolledAndSignedIn();
+        $sealedElsewhere = (new SodiumSecretCipher('AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE='))->encrypt($this->secret);
+        $this->em()->getConnection()->executeStatement('UPDATE "user" SET totp_secret = ? WHERE email = ?', [$sealedElsewhere, 'someone@twes.local']);
+
+        // Five: the lock's budget. A sixth would meet the limiter, whose budget is also five.
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            $this->postJson(self::PATH, ['code' => $this->nextCode()]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+            self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+        }
+
+        self::assertSame(0, $this->audited('auth.recovery_codes_regenerated'));
+        $count = $this->em()->getConnection()->fetchOne('SELECT failed_login_count FROM "user" WHERE email = ?', ['someone@twes.local']);
+        self::assertSame(0, is_numeric($count) ? (int) $count : -1, 'an unreadable secret is not a wrong credential');
     }
 
     public function testItNeedsASession(): void
