@@ -183,16 +183,31 @@ final class InvoiceWorkflowTest extends TestCase
         self::assertSame([InvoiceStatus::Paid, '0.000'], [$invoice->getStatus(), $invoice->getIssuedFigures()?->amountDue], 'a credit note of every line closes the invoice');
     }
 
-    public function testEachCreditNoteRoundsItsOwnWithholdingSoTwoHalvesCanLeaveAThousandthDue(): void
+    public function testTheLastCreditNoteAbsorbsWhatTheOthersRoundedSoTwoHalvesCloseTheInvoice(): void
     {
-        // 1010 net, VAT 191.900: 1 % of 1201.900 is 12.019, while each half withholds 6.0095, rounded away to 6.010.
+        // 1010 net, VAT 191.900: 1 % of 1201.900 is 12.019, while each half of 600.950 comes to 6.0095 on its own.
         $invoice = $this->workflow->issue($this->company, $this->withholdingDraft(['505', '505'])->getId(), null);
         self::assertSame('1190.881', $invoice->getIssuedFigures()?->amountDue);
 
-        $this->workflow->issue($this->company, $this->creditKeeping($invoice, 0, true)->getId(), null);
-        $this->workflow->issue($this->company, $this->creditKeeping($invoice, 1, false)->getId(), null);
+        // The first leaves part of the invoice's base uncredited, so it rounds its own share away, as any does.
+        $first = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 0, true)->getId(), null);
+        self::assertSame([[['RS1', '-6.010']], '-595.940'], [$this->held($first), $first->getIssuedFigures()?->amountDue]);
 
-        self::assertSame([InvoiceStatus::PartiallyPaid, '0.001'], [$invoice->getStatus(), $invoice->getIssuedFigures()->amountDue], 'the rounding of each withholding is left due (docs/SPEC.md § 8, known issues)');
+        // The second completes that base, so it withholds what is left of the invoice's 12.019, not 1 % of itself.
+        $second = $this->workflow->issue($this->company, $this->creditKeeping($invoice, 1, false)->getId(), null);
+        self::assertSame([[['RS1', '-6.009']], '-594.941'], [$this->held($second), $second->getIssuedFigures()?->amountDue]);
+
+        self::assertSame([InvoiceStatus::Paid, '0.000', '1190.881'], [$invoice->getStatus(), $invoice->getIssuedFigures()->amountDue, $invoice->getIssuedFigures()->amountCredited], 'the credit notes of a withheld invoice add up to it exactly');
+    }
+
+    /**
+     * What a document withheld, as code and amount.
+     *
+     * @return list<array{0: string, 1: string}>
+     */
+    private function held(Invoice $document): array
+    {
+        return array_map(static fn (array $each): array => [$each['code'], $each['amount']], $document->getIssuedFigures()->withholdings ?? []);
     }
 
     public function testACreditNoteOfAnInvoiceThatWithheldNothingWithholdsNothing(): void

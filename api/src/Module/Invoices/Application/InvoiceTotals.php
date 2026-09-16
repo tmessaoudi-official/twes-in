@@ -114,7 +114,7 @@ final readonly class InvoiceTotals
             array_map(static fn (InvoiceLineTax $tax): TaxInput => TaxInput::percentage($tax->getCode(), Rate::fromPercentage($tax->getRate()), $tax->entersVatBase()), $line->getTaxes()),
         ), $invoice->getLines());
         $corrected = InvoiceType::CreditNote === $invoice->getType() ? $invoice->getCorrectedInvoice() : null;
-        $withheld = null === $corrected ? null : array_column($corrected->getIssuedFigures()->withholdings ?? [], 'code');
+        $remaining = null === $corrected ? null : $this->remainingWithholdings($corrected, $invoice);
         $documentTaxes = [];
         foreach ($invoice->getDocumentTaxes() as $tax) {
             if (TaxKind::FixedDocument === $tax->getKind()) {
@@ -122,13 +122,14 @@ final readonly class InvoiceTotals
                 continue;
             }
             $rate = Rate::fromPercentage($tax->getRate() ?? '0');
-            if (null === $withheld) {
+            if (null === $remaining) {
                 $documentTaxes[] = TaxInput::withholding($tax->getCode(), $rate, $tax->getThreshold() ?? '0');
                 continue;
             }
             // A credit note withholds what its invoice withheld, whatever its own total: its own threshold never decides.
-            if (\in_array($tax->getCode(), $withheld, true)) {
-                $documentTaxes[] = TaxInput::withholdingAsCharged($tax->getCode(), $rate);
+            if (isset($remaining[$tax->getCode()])) {
+                [$base, $amount] = $remaining[$tax->getCode()];
+                $documentTaxes[] = TaxInput::withholdingCompleting($tax->getCode(), $rate, $base, $amount);
             }
         }
 
@@ -141,5 +142,45 @@ final readonly class InvoiceTotals
             $documentDiscount,
             $documentTaxes,
         ));
+    }
+
+    /**
+     * What is left of each withholding the corrected invoice charged, by code, as base and amount: the invoice's own,
+     * less what its other issued credit notes have already taken. The correction completing a base takes what is left
+     * of its amount, so the credit notes of a withheld invoice add up to it exactly (docs/SPEC.md § 8, row 25) rather
+     * than to what each of them rounded. A base already taken in full leaves nothing, and a correction beyond it
+     * rounds its own share as any document does.
+     *
+     * @return array<string, array{0: string, 1: string}>
+     */
+    private function remainingWithholdings(Invoice $corrected, Invoice $correction): array
+    {
+        $remaining = [];
+        foreach ($corrected->getIssuedFigures()->withholdings ?? [] as $held) {
+            $remaining[$held['code']] = [Decimal::absolute(Decimal::of($held['base'])), Decimal::absolute(Decimal::of($held['amount']))];
+        }
+        foreach ($corrected->getCorrections() as $sibling) {
+            // This correction's own figures are what is being worked out here; a draft sibling has none, and took nothing.
+            if ($sibling->getId()->equals($correction->getId())) {
+                continue;
+            }
+            foreach ($sibling->getIssuedFigures()->withholdings ?? [] as $held) {
+                if (isset($remaining[$held['code']])) {
+                    $remaining[$held['code']] = [
+                        $remaining[$held['code']][0]->sub(Decimal::absolute(Decimal::of($held['base']))),
+                        $remaining[$held['code']][1]->sub(Decimal::absolute(Decimal::of($held['amount']))),
+                    ];
+                }
+            }
+        }
+
+        $scale = $this->scales->of($corrected->getCompany()->getCurrency());
+        $left = [];
+        foreach ($remaining as $code => [$base, $amount]) {
+            $spent = $base->compare(0) <= 0 || $amount->compare(0) < 0;
+            $left[$code] = [Decimal::format($spent ? Decimal::zero() : $base, $scale), Decimal::format($spent ? Decimal::zero() : $amount, $scale)];
+        }
+
+        return $left;
     }
 }

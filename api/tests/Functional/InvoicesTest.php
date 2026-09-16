@@ -414,17 +414,18 @@ final class InvoicesTest extends ApiTestCase
     public function testTheCreditNotesOfEveryLineOfAWithheldInvoiceCloseIt(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
-        $line = fn (): array => ['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '500', 'taxComponentIds' => [$this->taxId('TVA19')]];
+        $line = fn (): array => ['description' => 'Conseil', 'quantity' => '1', 'unitId' => $this->unitId('C62'), 'unitPriceNet' => '505', 'taxComponentIds' => [$this->taxId('TVA19')]];
         $taxes = [$this->taxId('TIMBRE'), $this->taxId('RS1')];
         $this->postJson($this->path(), $this->invoice(['documentTaxComponentIds' => $taxes, 'lines' => [$line(), $line()]]));
         $id = $this->stringAt($this->json(), 'id');
         $this->postJson($this->path($id).'/issue', null);
 
-        // 1000 net, VAT 190: RS1 withholds 1 % of 1190, and the stamp adds 1.000 outside its base.
-        self::assertSame(['1191.000', '1179.100'], [$this->json()['total'], $this->json()['amountDue']]);
+        // 1010 net, VAT 191.900: RS1 withholds 1 % of 1201.900, which is 12.019, and the stamp adds 1.000 outside it.
+        self::assertSame(['1202.900', '1190.881'], [$this->json()['total'], $this->json()['amountDue']]);
 
         // The second credit note leaves the stamp out, which every partial credit note copies (docs/SPEC.md § 8).
-        foreach ([[$taxes, '-590.050'], [[$this->taxId('RS1')], '-589.050']] as [$documentTaxes, $due]) {
+        // Each half comes to 6.0095 of its own: the first rounds that away, the second takes the 6.009 still left.
+        foreach ([[$taxes, '-595.940'], [[$this->taxId('RS1')], '-594.941']] as [$documentTaxes, $due]) {
             $this->postJson($this->path($id).'/credit-notes', null);
             self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
             $creditId = $this->stringAt($this->json(), 'id');

@@ -178,6 +178,10 @@ class Invoice implements CompanyOwned
     #[ORM\OneToMany(targetEntity: Payment::class, mappedBy: 'invoice', cascade: ['persist'], orphanRemoval: true)]
     private Collection $payments;
 
+    /** @var Collection<int, Invoice> the credit notes correcting this invoice, drafts among them */
+    #[ORM\OneToMany(targetEntity: self::class, mappedBy: 'correctsInvoice')]
+    private Collection $corrections;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -195,6 +199,7 @@ class Invoice implements CompanyOwned
         $this->lines = new ArrayCollection();
         $this->documentTaxes = new ArrayCollection();
         $this->payments = new ArrayCollection();
+        $this->corrections = new ArrayCollection();
         $this->createdAt = $now;
         $this->updatedAt = $now;
     }
@@ -232,6 +237,9 @@ class Invoice implements CompanyOwned
         $credit = new self($invoice->company, $now);
         $credit->documentType = InvoiceType::CreditNote;
         $credit->correctsInvoice = $invoice;
+        // Held on both sides here rather than left to Doctrine to fill on a load: what a correction withholds is
+        // decided from the siblings correcting the same invoice, and an invoice never loaded has none of them.
+        $invoice->corrections->add($credit);
         $credit->establishment = $invoice->establishment;
         $credit->customer = $invoice->customer;
         $credit->apply($invoice->getHeader());
@@ -846,6 +854,12 @@ class Invoice implements CompanyOwned
     public function getCorrectedInvoice(): ?self
     {
         return $this->correctsInvoice;
+    }
+
+    /** @return list<self> the credit notes correcting this invoice, drafts among them */
+    public function getCorrections(): array
+    {
+        return array_values($this->corrections->toArray());
     }
 
     public function getEstablishment(): Establishment

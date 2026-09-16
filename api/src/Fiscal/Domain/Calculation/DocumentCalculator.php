@@ -99,7 +99,16 @@ final class DocumentCalculator
             if (Decimal::absolute($beforeCharges)->compare(Decimal::of($tax->threshold)) < 0) {
                 continue;
             }
-            $amount = Decimal::round($beforeCharges->mul($tax->rate->fraction(), Decimal::WORKING_SCALE), $scale);
+            if (null !== $tax->remainingBase && null !== $tax->remainingAmount
+                && Decimal::of($tax->remainingBase)->compare(0) > 0
+                && Decimal::absolute($beforeCharges)->compare(Decimal::of($tax->remainingBase)) >= 0
+            ) {
+                // This correction completes what the corrected document's base still owed, so it takes the whole
+                // remainder: rounding its own share would leave the corrections short by what each of them rounded.
+                $amount = Decimal::of($tax->remainingAmount)->mul($sign);
+            } else {
+                $amount = Decimal::round($beforeCharges->mul($tax->rate->fraction(), Decimal::WORKING_SCALE), $scale);
+            }
             $withholdings[] = new TaxTotal($tax->code, $tax->rate, Decimal::format($beforeCharges, $scale), Decimal::format(Decimal::zero(), $scale), Decimal::format($amount, $scale));
             $withheld = $withheld->add($amount);
         }
