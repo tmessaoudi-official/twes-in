@@ -200,6 +200,23 @@ describe('NotificationBell', () => {
     expect(bell(fixture).getAttribute('aria-label')).toBe('Notifications, 3 non lues');
   });
 
+  it('shows how many notifications are unread as a number, never a bare dot, and 9+ above nine', async () => {
+    const badge = (fixture: ReturnType<typeof render>) =>
+      fixture.nativeElement.querySelector('.mat-badge-content') as HTMLElement | null;
+    unread.set(3);
+    const fixture = render();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    // A small Material badge draws a dot and hides its content: the count must be on a medium one.
+    expect(fixture.nativeElement.querySelector('.mat-badge-small')).toBeNull();
+    expect(badge(fixture)?.textContent?.trim()).toBe('3');
+
+    unread.set(12);
+    fixture.detectChanges();
+    expect(badge(fixture)?.textContent?.trim()).toBe('9+');
+    expect(bell(fixture).getAttribute('aria-label')).toBe('Notifications, 12 non lues');
+  });
+
   it('opens the centre as a named panel on the right, and Escape gives the focus back to the bell', async () => {
     const fixture = render();
     await open(fixture);

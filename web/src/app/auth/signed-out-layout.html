@@ -52,6 +52,12 @@
     </div>
   </div>
 
+  <!-- Language and scheme before anyone signs in (docs/SPEC.md § 7, 2026-09-16 review). -->
+  <div class="twes-auth-toolbar">
+    <app-language-menu />
+    <app-scheme-menu />
+  </div>
+
   <main class="twes-auth-main">
     <header class="twes-auth-brand">
       <app-brand-wordmark [name]="brand.name()" />

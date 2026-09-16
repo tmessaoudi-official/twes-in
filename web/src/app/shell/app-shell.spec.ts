@@ -41,15 +41,18 @@ class StaticLoader implements TranslateLoader {
         menu: 'Menu',
         user_menu: 'Compte',
         language: 'Langue',
-        dark_on: 'Mode sombre',
-        dark_off: 'Mode clair',
+        scheme: 'Thème',
         more: 'Plus',
         collapse_menu: 'Réduire le menu',
         expand_menu: 'Déployer le menu',
         settings: 'Paramètres',
         commands: { open: 'Rechercher' },
       },
-      languages: { fr: 'Français', en: 'English' },
+      appearance: {
+        scheme_menu: 'Thème : {{current}}',
+        language_menu: 'Langue : {{current}}',
+        schemes: { auto: 'Automatique', light: 'Clair', dark: 'Sombre' },
+      },
     });
   }
 }
@@ -117,7 +120,8 @@ describe('AppShell', () => {
   };
   const theme = {
     scheme: signal<'light' | 'dark'>('light'),
-    toggleScheme: vi.fn(),
+    preference: signal<'auto' | 'light' | 'dark'>('auto'),
+    setScheme: vi.fn(),
     density: signal<'comfortable' | 'compact'>('comfortable'),
     toggleDensity: vi.fn(),
     sidebar: signal<'expanded' | 'rail'>('expanded'),
@@ -185,8 +189,69 @@ describe('AppShell', () => {
     const { el, byTestId } = await render();
     expect(el.querySelector('[data-testid="brand"]')?.textContent).toContain('twes-in');
     expect(byTestId('nav-home')?.textContent).toContain('Accueil');
-    // The company settings live behind the gear, not in the sidebar.
+    // Each settings page lives in the settings area, not in the sidebar, which has one way in to all of them.
     expect(byTestId('nav-members')).toBeNull();
+  });
+
+  it('reaches the settings from the sidebar as well as from the gear', async () => {
+    const { byTestId } = await render();
+    const entry = byTestId('nav-settings');
+    expect(entry?.closest('[data-testid="shell-nav"]')).not.toBeNull();
+    expect(entry?.getAttribute('href')).toBe('/members');
+    expect(entry?.textContent).toContain('Paramètres');
+  });
+
+  it('puts the language and the scheme in the top bar, out of the account menu', async () => {
+    const { click, byTestId } = await render();
+    expect(byTestId('language-menu')?.closest('header')).not.toBeNull();
+    expect(byTestId('language-menu')?.getAttribute('aria-label')).toBe('Langue : Français');
+    expect(byTestId('scheme-menu')?.closest('header')).not.toBeNull();
+    expect(byTestId('scheme-menu')?.getAttribute('aria-label')).toBe('Thème : Automatique');
+
+    await click('user-menu');
+    expect(document.querySelectorAll('.mat-mdc-menu-panel [role="menuitemradio"]')).toHaveLength(0);
+    expect(byTestId('account-settings')).toBeNull();
+
+    await click('scheme-menu');
+    await click('scheme-dark');
+    expect(theme.setScheme).toHaveBeenCalledWith('dark');
+  });
+
+  it('folds the language, the scheme and the settings into the account menu on a phone', async () => {
+    width.next(390);
+    const { click, byTestId } = await render();
+    expect(byTestId('language-menu')).toBeNull();
+    expect(byTestId('scheme-menu')).toBeNull();
+
+    await click('user-menu');
+    expect(byTestId('account-scheme-auto')?.getAttribute('aria-checked')).toBe('true');
+    expect(byTestId('account-settings')?.getAttribute('href')).toBe('/company');
+    await click('account-language-en');
+    expect(language.use).toHaveBeenCalledWith('en');
+
+    await click('user-menu');
+    await click('account-scheme-dark');
+    expect(theme.setScheme).toHaveBeenCalledWith('dark');
+  });
+
+  it('centres a wide search from 1200 px, and shows only its icon below', async () => {
+    const { fixture, byTestId } = await render();
+    expect(byTestId('command-open')?.closest('[data-testid="top-bar-centre"]')).not.toBeNull();
+    expect(byTestId('command-open')?.textContent).toContain('Rechercher');
+
+    width.next(900);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('top-bar-centre')).toBeNull();
+    expect(byTestId('command-open')?.textContent).not.toContain('Rechercher');
+    expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
+  });
+
+  it('gives every control in the top bar that shows no words a tooltip saying what it does', async () => {
+    const { byTestId } = await render();
+    for (const id of ['sidebar-toggle', 'settings-gear', 'scheme-menu', 'language-menu']) {
+      expect(byTestId(id)?.classList.contains('mat-mdc-tooltip-trigger'), id).toBe(true);
+    }
   });
 
   it('opens the settings from a gear, on the first settings page the user may see', async () => {
@@ -201,10 +266,12 @@ describe('AppShell', () => {
     expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/company/profile');
   });
 
-  it('opens the list of settings from the gear on a phone, where the list and a page do not fit side by side', async () => {
+  it('opens the list of settings from the account menu on a phone, where the list and a page do not fit side by side', async () => {
     width.next(390);
-    const { byTestId } = await render();
-    expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/company');
+    const { click, byTestId } = await render();
+    expect(byTestId('settings-gear')).toBeNull();
+    await click('user-menu');
+    expect(byTestId('account-settings')?.getAttribute('href')).toBe('/company');
   });
 
   it('keeps every part of the shell inside a landmark, each named once', async () => {
@@ -214,10 +281,12 @@ describe('AppShell', () => {
     expect(el.querySelector('[data-testid="user-menu"]')?.closest('header')).not.toBeNull();
     const lists = [...el.querySelectorAll<HTMLElement>('mat-nav-list')];
     expect(lists.length).toBeGreaterThan(0);
-    const names = lists.map((list) =>
-      el.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
+    const names = lists.map(
+      (list) =>
+        list.getAttribute('aria-label') ??
+        el.querySelector(`#${list.getAttribute('aria-labelledby')}`)?.textContent?.trim(),
     );
-    expect(names).toEqual(['Général']);
+    expect(names).toEqual(['Général', 'Paramètres']);
   });
 
   it('hides an entry whose permission the user lacks', async () => {
@@ -394,20 +463,6 @@ describe('AppShell', () => {
 
     expect(auth.logout).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith('/login');
-  });
-
-  it('switches the language from the account menu', async () => {
-    const { click } = await render();
-    await click('user-menu');
-    await click('language-en');
-    expect(language.use).toHaveBeenCalledWith('en');
-  });
-
-  it('toggles dark mode from the account menu', async () => {
-    const { click } = await render();
-    await click('user-menu');
-    await click('theme-toggle');
-    expect(theme.toggleScheme).toHaveBeenCalledTimes(1);
   });
 
   it('switches to compact density from the account menu', async () => {

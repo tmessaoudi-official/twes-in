@@ -26,8 +26,15 @@ import { SETTINGS_INDEX } from './settings-area';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
-import { LanguageFacade, SUPPORTED_LANGUAGES } from '../shared/i18n/language-facade';
-import { ThemeFacade } from '../shared/theme/theme-facade';
+import { Label } from '../shared/a11y/label';
+import {
+  LANGUAGE_NAMES,
+  LanguageFacade,
+  SUPPORTED_LANGUAGES,
+} from '../shared/i18n/language-facade';
+import { LanguageMenu } from '../shared/i18n/language-menu';
+import { SchemeMenu } from '../shared/theme/scheme-menu';
+import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands } from './commands';
 import {
@@ -64,8 +71,8 @@ export function initialsOf(displayName: string): string {
 }
 
 /**
- * Every signed-in page sits inside this: the navigation the user may see, where they work, and their account
- * (language, dark mode, sign out). Pages bring content only.
+ * Every signed-in page sits inside this: the navigation the user may see, where they work, the language and colour
+ * scheme, and their account. Pages bring content only.
  */
 @Component({
   selector: 'app-shell',
@@ -84,6 +91,9 @@ export function initialsOf(displayName: string): string {
     TranslatePipe,
     CompanySwitcher,
     NotificationBell,
+    Label,
+    LanguageMenu,
+    SchemeMenu,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },
@@ -98,6 +108,8 @@ export class AppShell {
   protected readonly language = inject(LanguageFacade);
 
   protected readonly languages = SUPPORTED_LANGUAGES;
+  protected readonly languageNames = LANGUAGE_NAMES;
+  protected readonly schemes: readonly SchemePreference[] = ['auto', 'light', 'dark'];
   protected readonly me = this.auth.me;
   protected readonly signingOut = signal(false);
   protected readonly windowClass = toSignal(

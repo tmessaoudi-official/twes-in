@@ -406,8 +406,6 @@
     },
     "user_menu": "Account",
     "language": "Language",
-    "dark_on": "Dark mode",
-    "dark_off": "Light mode",
     "density_compact": "Compact density",
     "density_comfortable": "Comfortable density",
     "collapse_menu": "Collapse the menu",
@@ -417,11 +415,8 @@
     "settings_filter": "Filter the settings",
     "settings_back": "All settings",
     "settings_none": "No setting matches.",
-    "settings_pick": "Pick a setting from the list."
-  },
-  "languages": {
-    "fr": "Français",
-    "en": "English"
+    "settings_pick": "Pick a setting from the list.",
+    "scheme": "Theme"
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
@@ -598,7 +593,8 @@
       "accent": "Accent colour",
       "scheme": "Colour scheme",
       "density": "Density",
-      "sidebar": "Sidebar"
+      "sidebar": "Sidebar",
+      "language": "Language"
     },
     "choices": {
       "document": {
@@ -609,6 +605,7 @@
       },
       "presentation": {
         "scheme": {
+          "auto": "Automatic",
           "light": "Light",
           "dark": "Dark"
         },
@@ -619,6 +616,10 @@
         "sidebar": {
           "expanded": "Expanded",
           "rail": "Icons only"
+        },
+        "language": {
+          "fr": "Français",
+          "en": "English"
         }
       }
     },
@@ -1489,6 +1490,15 @@
       "network": "The server could not be reached.",
       "name_taken": "A company already has that name.",
       "already_member": "That address already belongs to this company."
+    }
+  },
+  "appearance": {
+    "scheme_menu": "Theme: {{current}}",
+    "language_menu": "Language: {{current}}",
+    "schemes": {
+      "auto": "Automatic",
+      "light": "Light",
+      "dark": "Dark"
     }
   }
 }

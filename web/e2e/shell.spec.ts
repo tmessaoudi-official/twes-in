@@ -81,7 +81,10 @@ test('on a phone the settings list stands alone, a setting opens without it, and
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await signIn(page);
-  await page.getByTestId('settings-gear').click();
+  // No gear on a phone: the settings are in the account menu, with the language and the scheme.
+  await expect(page.getByTestId('settings-gear')).toHaveCount(0);
+  await page.getByTestId('user-menu').click();
+  await page.getByTestId('account-settings').click();
   await expect(page).toHaveURL(/\/company$/);
   const nav = page.getByTestId('settings-nav');
   await expect(nav).toBeVisible();

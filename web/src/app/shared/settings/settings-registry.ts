@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { assertAccentColour, type ColourScheme } from '../theme/accent-theme';
+import { assertAccentColour } from '../theme/accent-theme';
 import type { ListFilterValues, ListPreferences, ListSort, ListView } from '../list/list-types';
 import { NO_LIST_PREFERENCES } from '../list/list-types';
 import { type SettingDefinition, UnregisteredSetting } from './settings-facade';
 
 export type Density = 'comfortable' | 'compact';
+/** What a person chose: a scheme, or Automatique, which follows the device (docs/SPEC.md § 7, 2026-09-16 review). */
+export type SchemePreference = 'auto' | 'light' | 'dark';
+/** The interface languages, French first (Tunisia, France); Arabic and right-to-left come after the POC. */
+export const SUPPORTED_LANGUAGES = ['fr', 'en'] as const;
+export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 /** The sidebar on a wide screen: icons and labels, or icons alone with the labels as tooltips. */
 export type SidebarState = 'expanded' | 'rail';
 
@@ -41,7 +46,11 @@ function parseAccent(raw: unknown): string | undefined {
 /** Every application-wide presentation preference. A key missing here cannot be read or written. */
 export const PRESENTATION = {
   accent: defineSetting('presentation.accent', DEFAULT_ACCENT, parseAccent),
-  scheme: defineSetting<ColourScheme>('presentation.scheme', 'light', oneOf('light', 'dark')),
+  scheme: defineSetting<SchemePreference>(
+    'presentation.scheme',
+    'auto',
+    oneOf('auto', 'light', 'dark'),
+  ),
   density: defineSetting<Density>(
     'presentation.density',
     'comfortable',
@@ -51,6 +60,11 @@ export const PRESENTATION = {
     'presentation.sidebar',
     'expanded',
     oneOf('expanded', 'rail'),
+  ),
+  language: defineSetting<Language>(
+    'presentation.language',
+    SUPPORTED_LANGUAGES[0],
+    oneOf(...SUPPORTED_LANGUAGES),
   ),
 } as const;
 

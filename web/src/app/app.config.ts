@@ -21,6 +21,7 @@ import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
 import { SettingsFacade } from './shared/settings/settings-facade';
 import { TranslatedPaginatorIntl } from './shared/list/translated-paginator-intl';
+import { LanguageFacade } from './shared/i18n/language-facade';
 import { ThemeFacade } from './shared/theme/theme-facade';
 
 export const appConfig: ApplicationConfig = {
@@ -55,6 +56,8 @@ export const appConfig: ApplicationConfig = {
     provideAppInitializer(() => {
       inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
       inject(ThemeFacade);
+      // The remembered language is applied before any page, a signed-out one included.
+      inject(LanguageFacade);
     }),
   ],
 };

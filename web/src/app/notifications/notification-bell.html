@@ -3,15 +3,15 @@
   type="button"
   aria-haspopup="dialog"
   (click)="open()"
-  [attr.aria-label]="'notifications.bell' | translate: { count: unread() }"
+  [appLabel]="'notifications.bell' | translate: { count: unread() }"
   [attr.data-unread]="unread()"
   data-testid="notification-bell"
 >
   <mat-icon
     aria-hidden="true"
-    [matBadge]="unread()"
+    [matBadge]="badge()"
     [matBadgeHidden]="unread() === 0"
-    matBadgeSize="small"
+    matBadgeSize="medium"
     matBadgeColor="warn"
     >notifications</mat-icon
   >

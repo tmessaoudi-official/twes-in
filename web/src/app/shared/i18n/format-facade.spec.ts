@@ -6,9 +6,13 @@ import { provideTranslateService } from '@ngx-translate/core';
 import { Session } from '../session/session';
 import { FormatFacade } from './format-facade';
 import { LanguageFacade } from './language-facade';
+import { BrowserStorageSettings } from '../settings/browser-storage-settings';
+import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 
 describe('FormatFacade', () => {
-  const me = signal<{ company: { countryCode: string } | null } | null>(null);
+  const me = signal<{ user?: { id: string }; company: { countryCode: string } | null } | null>(
+    null,
+  );
 
   beforeEach(() => {
     me.set(null);
@@ -16,6 +20,8 @@ describe('FormatFacade', () => {
       providers: [
         provideTranslateService({ lang: 'fr', fallbackLang: 'fr' }),
         { provide: Session, useValue: { me } },
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
   });
@@ -24,7 +30,7 @@ describe('FormatFacade', () => {
     const format = TestBed.inject(FormatFacade);
     expect(format.locale()).toBe('fr');
 
-    me.set({ company: { countryCode: 'TN' } });
+    me.set({ user: { id: 'u1' }, company: { countryCode: 'TN' } });
 
     expect(format.locale()).toBe('fr-TN');
     expect(format.amount('2975', 3).replace(/\s/g, ' ')).toBe('2 975,000');
@@ -33,7 +39,7 @@ describe('FormatFacade', () => {
   });
 
   it('follows the interface language when it changes', async () => {
-    me.set({ company: { countryCode: 'TN' } });
+    me.set({ user: { id: 'u1' }, company: { countryCode: 'TN' } });
     const format = TestBed.inject(FormatFacade);
 
     await TestBed.inject(LanguageFacade).use('en');

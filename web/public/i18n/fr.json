@@ -406,8 +406,6 @@
     },
     "user_menu": "Compte",
     "language": "Langue",
-    "dark_on": "Mode sombre",
-    "dark_off": "Mode clair",
     "density_compact": "Affichage compact",
     "density_comfortable": "Affichage confortable",
     "collapse_menu": "Réduire le menu",
@@ -417,11 +415,8 @@
     "settings_filter": "Filtrer les réglages",
     "settings_back": "Tous les paramètres",
     "settings_none": "Aucun réglage ne correspond.",
-    "settings_pick": "Choisissez un réglage dans la liste."
-  },
-  "languages": {
-    "fr": "Français",
-    "en": "English"
+    "settings_pick": "Choisissez un réglage dans la liste.",
+    "scheme": "Thème"
   },
   "notifications": {
     "bell": "Notifications, {{count}} non lue(s)",
@@ -598,7 +593,8 @@
       "accent": "Couleur d'accent",
       "scheme": "Thème",
       "density": "Densité",
-      "sidebar": "Menu latéral"
+      "sidebar": "Menu latéral",
+      "language": "Langue"
     },
     "choices": {
       "document": {
@@ -609,6 +605,7 @@
       },
       "presentation": {
         "scheme": {
+          "auto": "Automatique",
           "light": "Clair",
           "dark": "Sombre"
         },
@@ -619,6 +616,10 @@
         "sidebar": {
           "expanded": "Déployé",
           "rail": "Icônes seules"
+        },
+        "language": {
+          "fr": "Français",
+          "en": "English"
         }
       }
     },
@@ -1489,6 +1490,15 @@
       "network": "Le serveur est injoignable.",
       "name_taken": "Une entreprise porte déjà ce nom.",
       "already_member": "Cette adresse appartient déjà à cette entreprise."
+    }
+  },
+  "appearance": {
+    "scheme_menu": "Thème : {{current}}",
+    "language_menu": "Langue : {{current}}",
+    "schemes": {
+      "auto": "Automatique",
+      "light": "Clair",
+      "dark": "Sombre"
     }
   }
 }

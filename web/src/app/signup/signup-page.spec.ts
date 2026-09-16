@@ -13,6 +13,7 @@ import { LanguageFacade } from '../shared/i18n/language-facade';
 import { SignupFacade } from './signup-facade';
 import { SignupPage } from './signup-page';
 import type { SignupAvailability, SignupError } from './signup-types';
+import { provideStillAppearance } from '../shared/testing/appearance';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -65,6 +66,8 @@ describe('SignupPage', () => {
     await TestBed.configureTestingModule({
       imports: [SignupPage],
       providers: [
+        // Before the page's own language, which the request is tested against.
+        provideStillAppearance(),
         provideRouter([]),
         { provide: SignupFacade, useValue: facade },
         { provide: LanguageFacade, useValue: { current: signal('en') } },

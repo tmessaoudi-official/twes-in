@@ -9,6 +9,8 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { Brand } from '../shared/brand/brand';
+import { LanguageFacade } from '../shared/i18n/language-facade';
+import { ThemeFacade } from '../shared/theme/theme-facade';
 import { SignedOutLayout } from './signed-out-layout';
 
 class StaticLoader implements TranslateLoader {
@@ -35,6 +37,8 @@ describe('SignedOutLayout', () => {
       imports: [Host],
       providers: [
         { provide: Brand, useValue: { name, tagline } },
+        { provide: ThemeFacade, useValue: { preference: signal('auto'), setScheme: vi.fn() } },
+        { provide: LanguageFacade, useValue: { current: signal('fr'), use: vi.fn() } },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -68,5 +72,16 @@ describe('SignedOutLayout', () => {
     expect(scene?.textContent).toContain('Paiement reçu');
     expect(scene?.getAttribute('aria-hidden')).toBe('true');
     expect(scene?.closest('main')).toBeNull();
+  });
+
+  it('offers the language and the colour scheme before anyone signs in, outside the page card', async () => {
+    const el = await render();
+
+    const language = el.querySelector('[data-testid="language-menu"]');
+    const scheme = el.querySelector('[data-testid="scheme-menu"]');
+    expect(language).not.toBeNull();
+    expect(scheme).not.toBeNull();
+    expect(scheme?.closest('.twes-auth-card')).toBeNull();
+    expect(scheme?.closest('[aria-hidden="true"]')).toBeNull();
   });
 });

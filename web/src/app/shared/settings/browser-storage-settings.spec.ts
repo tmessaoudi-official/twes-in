@@ -57,7 +57,7 @@ describe('BrowserStorageSettings', () => {
   });
 
   it('answers the declared default when nothing was chosen', () => {
-    expect(settings().value(PRESENTATION.scheme)()).toBe('light');
+    expect(settings().value(PRESENTATION.scheme)()).toBe('auto');
     expect(settings().value(PRESENTATION.density)()).toBe('comfortable');
   });
 
@@ -72,7 +72,7 @@ describe('BrowserStorageSettings', () => {
 
     userId.set('u2');
 
-    expect(settings().value(PRESENTATION.scheme)()).toBe('light');
+    expect(settings().value(PRESENTATION.scheme)()).toBe('auto');
   });
 
   it('follows the signed-in user while the page stays open', () => {
@@ -89,7 +89,7 @@ describe('BrowserStorageSettings', () => {
     storage.items.set('twes.settings.u1.presentation.scheme', JSON.stringify('purple'));
     storage.items.set('twes.settings.u1.presentation.density', '{not json');
 
-    expect(settings().value(PRESENTATION.scheme)()).toBe('light');
+    expect(settings().value(PRESENTATION.scheme)()).toBe('auto');
     expect(settings().value(PRESENTATION.density)()).toBe('comfortable');
   });
 
@@ -108,7 +108,7 @@ describe('BrowserStorageSettings', () => {
 
     facade.reset(PRESENTATION.scheme);
 
-    expect(facade.value(PRESENTATION.scheme)()).toBe('light');
+    expect(facade.value(PRESENTATION.scheme)()).toBe('auto');
     expect(storage.items.has('twes.settings.u1.presentation.scheme')).toBe(false);
   });
 

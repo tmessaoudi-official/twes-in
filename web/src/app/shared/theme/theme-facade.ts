@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { DOCUMENT, effect, inject, Injectable } from '@angular/core';
+import {
+  computed,
+  DestroyRef,
+  DOCUMENT,
+  effect,
+  inject,
+  Injectable,
+  InjectionToken,
+  signal,
+} from '@angular/core';
 import { SettingsFacade } from '../settings/settings-facade';
-import { type Density, PRESENTATION } from '../settings/settings-registry';
+import { type Density, PRESENTATION, type SchemePreference } from '../settings/settings-registry';
 import {
   applyColourTokens,
   assertAccentColour,
@@ -11,7 +20,22 @@ import {
   statusTokens,
 } from './accent-theme';
 
-export { DEFAULT_ACCENT, type Density } from '../settings/settings-registry';
+export { DEFAULT_ACCENT, type Density, type SchemePreference } from '../settings/settings-registry';
+
+/** What Automatique follows: the device's `prefers-color-scheme: dark`, and its changes. */
+export type DeviceSchemeQuery = Pick<
+  MediaQueryList,
+  'matches' | 'addEventListener' | 'removeEventListener'
+>;
+
+export const DEVICE_SCHEME_QUERY = new InjectionToken<DeviceSchemeQuery | null>(
+  'DEVICE_SCHEME_QUERY',
+  {
+    providedIn: 'root',
+    factory: () =>
+      inject(DOCUMENT).defaultView?.matchMedia?.('(prefers-color-scheme: dark)') ?? null,
+  },
+);
 
 /**
  * The look of the whole application, as signals read through the presentation settings, so a choice outlives
@@ -23,13 +47,27 @@ export class ThemeFacade {
   private readonly root = inject(DOCUMENT).documentElement;
   private readonly view = inject(DOCUMENT).defaultView;
   private readonly settings = inject(SettingsFacade);
+  private readonly deviceQuery = inject(DEVICE_SCHEME_QUERY);
+  private readonly deviceDark = signal(this.deviceQuery?.matches ?? false);
 
   readonly accent = this.settings.value(PRESENTATION.accent);
-  readonly scheme = this.settings.value(PRESENTATION.scheme);
+  /** What the person chose, Automatique included. */
+  readonly preference = this.settings.value(PRESENTATION.scheme);
+  /** The scheme drawn: the choice, or the device's while the choice is Automatique. */
+  readonly scheme = computed((): ColourScheme => {
+    const preference = this.preference();
+    return preference === 'auto' ? (this.deviceDark() ? 'dark' : 'light') : preference;
+  });
   readonly density = this.settings.value(PRESENTATION.density);
   readonly sidebar = this.settings.value(PRESENTATION.sidebar);
 
   constructor() {
+    const query = this.deviceQuery;
+    if (query !== null) {
+      const follow = () => this.deviceDark.set(query.matches);
+      query.addEventListener('change', follow);
+      inject(DestroyRef).onDestroy(() => query.removeEventListener('change', follow));
+    }
     effect(() => {
       const scheme = this.scheme();
       // Every transition is held while the colours change (styles.scss, .theme-changing), or each element with a
@@ -54,12 +92,8 @@ export class ThemeFacade {
     this.settings.set(PRESENTATION.accent, accent.toLowerCase());
   }
 
-  setScheme(scheme: ColourScheme): void {
+  setScheme(scheme: SchemePreference): void {
     this.settings.set(PRESENTATION.scheme, scheme);
-  }
-
-  toggleScheme(): void {
-    this.setScheme(this.scheme() === 'dark' ? 'light' : 'dark');
   }
 
   setDensity(density: Density): void {

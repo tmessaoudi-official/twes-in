@@ -5,15 +5,33 @@ import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { colourTokens, InvalidAccentColour, statusTokens } from './accent-theme';
-import { DEFAULT_ACCENT, ThemeFacade } from './theme-facade';
+import { DEFAULT_ACCENT, DEVICE_SCHEME_QUERY, ThemeFacade } from './theme-facade';
+
+/** The device's `prefers-color-scheme: dark` query, which a test turns on and off. */
+class DeviceQuery {
+  matches = false;
+  private readonly listeners = new Set<() => void>();
+  addEventListener(_type: 'change', listener: () => void): void {
+    this.listeners.add(listener);
+  }
+  removeEventListener(_type: 'change', listener: () => void): void {
+    this.listeners.delete(listener);
+  }
+  prefer(dark: boolean): void {
+    this.matches = dark;
+    this.listeners.forEach((listener) => listener());
+  }
+}
 
 describe('ThemeFacade', () => {
   const root = document.documentElement;
 
   let storage: PageMemoryStorage;
+  let device: DeviceQuery;
 
   beforeEach(() => {
     storage = new PageMemoryStorage();
+    device = new DeviceQuery();
     root.className = '';
     root.removeAttribute('style');
   });
@@ -25,6 +43,7 @@ describe('ThemeFacade', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
         { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+        { provide: DEVICE_SCHEME_QUERY, useValue: device },
       ],
     });
     const facade = TestBed.inject(ThemeFacade);
@@ -92,14 +111,36 @@ describe('ThemeFacade', () => {
     requestFrame.mockRestore();
   });
 
-  it('toggles between the two schemes', () => {
+  it('follows the device until someone chooses, the default being Automatique', () => {
+    device.prefer(true);
     const facade = start();
-    facade.toggleScheme();
-    TestBed.tick();
+
+    expect(facade.preference()).toBe('auto');
     expect(facade.scheme()).toBe('dark');
-    facade.toggleScheme();
+    expect(root.classList.contains('theme-dark')).toBe(true);
+
+    device.prefer(false);
     TestBed.tick();
+
+    expect(facade.scheme()).toBe('light');
     expect(root.classList.contains('theme-dark')).toBe(false);
+    expect(primary()).toBe(colourTokens(DEFAULT_ACCENT, 'light')['--mat-sys-primary']);
+  });
+
+  it('keeps a chosen scheme whatever the device prefers, and follows it again once Automatique is chosen', () => {
+    const facade = start();
+    facade.setScheme('light');
+    TestBed.tick();
+
+    device.prefer(true);
+    TestBed.tick();
+    expect(facade.scheme()).toBe('light');
+    expect(root.classList.contains('theme-dark')).toBe(false);
+
+    facade.setScheme('auto');
+    TestBed.tick();
+    expect(facade.preference()).toBe('auto');
+    expect(root.classList.contains('theme-dark')).toBe(true);
   });
 
   it('re-themes the whole document from a new accent', () => {
@@ -161,6 +202,7 @@ describe('ThemeFacade', () => {
     root.className = '';
     const reloaded = start();
 
+    expect(reloaded.preference()).toBe('dark');
     expect(reloaded.scheme()).toBe('dark');
     expect(reloaded.density()).toBe('compact');
     expect(reloaded.accent()).toBe('#d93025');

@@ -14,6 +14,9 @@ export default defineConfig({
   use: {
     baseURL: process.env['BASE_URL'] ?? 'http://127.0.0.1:8090',
     trace: 'retain-on-failure',
+    // The scheme defaults to Automatique, which follows the device: every run starts from a light device, and a
+    // scenario about the dark one says so with emulateMedia.
+    colorScheme: 'light',
   },
   // CI downloads Playwright's own Chromium. A machine that cannot reach Playwright's browser CDN runs the same
   // engine through an installed Chrome instead: PLAYWRIGHT_CHANNEL=chrome npx playwright test.

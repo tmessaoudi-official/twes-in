@@ -43,10 +43,10 @@ test('the shell, the home page and the members page are accessible in light and 
   await expect(page.getByTestId('members-title')).toBeVisible();
   await expectAccessible(page, 'members, light');
 
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('scheme-menu').click();
+  await page.getByTestId('scheme-dark').click();
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
-  // axe must read the page, not the account menu's closing animation over it.
+  // axe must read the page, not the scheme menu's closing animation over it.
   await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
   await expectAccessible(page, 'members, dark');
 });
@@ -97,7 +97,7 @@ test('the language switch translates the shell and the page', async ({ page }) =
   await signIn(page);
   await expect(page.getByTestId('nav-home')).toContainText('Accueil');
 
-  await page.getByTestId('user-menu').click();
+  await page.getByTestId('language-menu').click();
   await page.getByTestId('language-en').click();
 
   await expect(page.getByTestId('nav-home')).toContainText('Home');
@@ -147,6 +147,31 @@ async function walk(page: Page, scheme: string): Promise<void> {
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
+    // A control that shows no words must say what it does when pointed at (§ 7, 2026-09-16 review): its tooltip,
+    // which the appLabel directive draws from its accessible name. The static gate covers Material icon buttons;
+    // this reads every control actually on screen.
+    const unexplained = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll<HTMLElement>(
+          'main button, main a[href], header button, header a[href]',
+        ),
+      ]
+        .filter((control) => control.offsetParent !== null)
+        .filter((control) => {
+          const words = control.cloneNode(true) as HTMLElement;
+          words
+            .querySelectorAll('mat-icon, [aria-hidden="true"], .material-symbols-outlined')
+            .forEach((icon) => icon.remove());
+          return (
+            (words.textContent ?? '').trim() === '' &&
+            !control.classList.contains('mat-mdc-tooltip-trigger')
+          );
+        })
+        .map((control) => control.getAttribute('data-testid') ?? control.outerHTML.slice(0, 80)),
+    );
+    expect
+      .soft(unexplained, `${route}, ${scheme}: controls with no words and no tooltip`)
+      .toEqual([]);
     // Soft, deliberately: a hard assertion stops the walk at the first bad screen and hides every screen
     // after it, so one violation would read as one screen's problem when it may be eight. The run reports
     // them all and still fails.
@@ -187,11 +212,11 @@ test('every screen the goals added is accessible, in both colour schemes', async
       /\/settings\/presentation\.scheme$/.test(response.url()) &&
       response.request().method() !== 'GET',
   );
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('scheme-menu').click();
+  await page.getByTestId('scheme-dark').click();
   expect((await stored).status()).toBe(200);
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
-  // axe must read the page, not the account menu's closing animation over it.
+  // axe must read the page, not the scheme menu's closing animation over it.
   await expect(page.locator('.mat-mdc-menu-panel')).toHaveCount(0);
   await walk(page, 'dark');
   // And it must still be dark at the end, or the screens above were not all read in dark.
@@ -237,8 +262,8 @@ test('using the shell raises no Content Security Policy violation', async ({ pag
   await signIn(page);
   await page.getByTestId('settings-gear').click();
   await page.getByTestId('nav-members').click();
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('scheme-menu').click();
+  await page.getByTestId('scheme-dark').click();
   await page.reload();
   await expect(page.getByTestId('members-title')).toBeVisible();
 
@@ -269,4 +294,50 @@ test('Ctrl K opens the command palette, which is accessible and takes the person
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('command-palette')).toHaveCount(0);
   await expect(page).toHaveURL(/\/customers\/new$/);
+});
+
+test('Automatique follows the device until a scheme is chosen, and the sign-in page remembers the choice', async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/login');
+  await expect(page.getByTestId('email')).toBeVisible();
+  await expect(page.locator('html')).toHaveClass(/theme-dark/);
+  await expect(page.getByTestId('scheme-menu')).toHaveAttribute('aria-label', /Automatique/);
+
+  await page.getByTestId('scheme-menu').click();
+  await expect(page.getByTestId('scheme-auto')).toHaveAttribute('aria-checked', 'true');
+  await page.getByTestId('scheme-light').click();
+  await expect(page.locator('html')).not.toHaveClass(/theme-dark/);
+
+  await page.reload();
+  await expect(page.getByTestId('email')).toBeVisible();
+  await expect(page.locator('html'), 'a chosen scheme outlives the page').not.toHaveClass(
+    /theme-dark/,
+  );
+
+  await page.getByTestId('scheme-menu').click();
+  await page.getByTestId('scheme-auto').click();
+  await expect(page.locator('html')).toHaveClass(/theme-dark/);
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect(page.locator('html'), 'and follows the device as it changes').not.toHaveClass(
+    /theme-dark/,
+  );
+  await expectAccessible(page, 'login, scheme menu closed');
+});
+
+test('the sign-in page speaks the language chosen on it, after a reload too', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByTestId('language-menu').click();
+  await expect(page.getByTestId('language-fr')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.getByTestId('language-en')).toContainText('English');
+  await page.getByTestId('language-en').click();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+  await expect(page.getByTestId('language-menu')).toHaveAttribute(
+    'aria-label',
+    /Language: English/,
+  );
 });

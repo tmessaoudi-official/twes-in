@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { FinishSignupPage } from './finish-signup-page';
 import { SignupFacade } from './signup-facade';
 import type { SignupAvailability, SignupCompleted, SignupError } from './signup-types';
+import { provideStillAppearance } from '../shared/testing/appearance';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -82,6 +83,7 @@ describe('FinishSignupPage', () => {
       providers: [
         provideRouter([]),
         { provide: SignupFacade, useValue: facade },
+        provideStillAppearance(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

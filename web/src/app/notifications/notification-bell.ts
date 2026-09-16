@@ -17,6 +17,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { NotificationPanel } from './notification-panel';
 import { NotificationsFacade } from './notifications-facade';
+import { Label } from '../shared/a11y/label';
 
 /**
  * The bell in the shell's toolbar and the centre it opens as a panel. It owns the realtime connection's lifetime:
@@ -25,7 +26,7 @@ import { NotificationsFacade } from './notifications-facade';
  */
 @Component({
   selector: 'app-notification-bell',
-  imports: [MatBadgeModule, MatButtonModule, MatIconModule, TranslatePipe],
+  imports: [Label, MatBadgeModule, MatButtonModule, MatIconModule, TranslatePipe],
   templateUrl: './notification-bell.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -35,6 +36,8 @@ export class NotificationBell {
   private panel: MatDialogRef<NotificationPanel> | null = null;
 
   protected readonly unread = this.facade.unread;
+  /** The count on the bell; the accessible name carries the exact number. */
+  protected readonly badge = computed(() => (this.unread() > 9 ? '9+' : String(this.unread())));
 
   constructor() {
     const auth = inject(AuthFacade);

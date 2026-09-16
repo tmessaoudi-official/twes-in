@@ -96,6 +96,8 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/customers');
+    // Filtered: the shared company holds more customers than a page, and this one may sort onto the next.
+    await page.getByTestId('list-filter').fill(number);
     await expect(page.getByTestId(`customer-${number}`)).toContainText(groupName);
   } finally {
     await retire(page, number, groupName);

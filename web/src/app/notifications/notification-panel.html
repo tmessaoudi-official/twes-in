@@ -9,12 +9,14 @@
   }
   <!-- The `aria-label` INPUT, never [attr.aria-label]: MatDialogClose host-binds attr.aria-label from its
        own `aria-label` input, so an attribute binding here is overwritten with null and the button ends up
-       with no accessible name at all — axe's button-name, measured (docs/SPEC.md § 8 row 23, review C8). -->
+       with no accessible name at all — axe's button-name, measured (docs/SPEC.md § 8 row 23, review C8).
+       appLabel binds the same attribute for its tooltip, so both are given the same string. -->
   <button
     mat-icon-button
     type="button"
     mat-dialog-close
     [aria-label]="'notifications.close' | translate"
+    [appLabel]="'notifications.close' | translate"
     data-testid="notifications-close"
   >
     <mat-icon aria-hidden="true">close</mat-icon>

@@ -67,6 +67,27 @@
           }
         </mat-nav-list>
       }
+      @if (settingsRoute(); as route) {
+        <mat-nav-list class="!px-2 !pt-4" [attr.aria-label]="'shell.settings' | translate">
+          <a
+            mat-list-item
+            [routerLink]="route"
+            routerLinkActive
+            #settingsActive="routerLinkActive"
+            [activated]="settingsActive.isActive"
+            data-testid="nav-settings"
+            [matTooltip]="'shell.settings' | translate"
+            matTooltipPosition="right"
+            [matTooltipDisabled]="!rail()"
+            (click)="handset() && drawer.close()"
+          >
+            <mat-icon matListItemIcon aria-hidden="true">settings</mat-icon>
+            <span matListItemTitle [class.sr-only]="rail()">{{
+              'shell.settings' | translate
+            }}</span>
+          </a>
+        </mat-nav-list>
+      }
     </nav>
   </mat-sidenav>
 
@@ -76,139 +97,188 @@
   >
     <header class="sticky top-0 z-10">
       <mat-toolbar class="twes-shell-bar gap-2">
-        @if (handset()) {
-          <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
-          <span class="text-base font-semibold tracking-tight">{{ 'app.name' | translate }}</span>
-        } @else if (windowClass() === 'expanded') {
-          <button
-            mat-icon-button
-            type="button"
-            (click)="theme.toggleSidebar()"
-            [attr.aria-label]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
-            [attr.aria-keyshortcuts]="'['"
-            data-testid="sidebar-toggle"
-          >
-            <mat-icon aria-hidden="true">{{ rail() ? 'menu' : 'menu_open' }}</mat-icon>
-          </button>
-        }
-        <span class="flex-1"></span>
-        <button
-          type="button"
-          class="twes-command-open"
-          (click)="openCommands()"
-          aria-keyshortcuts="Control+K Meta+K"
-          [attr.aria-label]="'shell.commands.open' | translate"
-          data-testid="command-open"
-        >
-          <mat-icon aria-hidden="true">search</mat-icon>
-          <span class="twes-command-open-label">{{ 'shell.commands.open' | translate }}</span>
-          <kbd aria-hidden="true">Ctrl K</kbd>
-        </button>
-        <app-company-switcher />
-        <app-notification-bell />
-        @if (settingsRoute(); as route) {
-          <a
-            mat-icon-button
-            [routerLink]="route"
-            [attr.aria-label]="'shell.settings' | translate"
-            data-testid="settings-gear"
-          >
-            <mat-icon aria-hidden="true">settings</mat-icon>
-          </a>
-        }
-
-        @if (me(); as me) {
-          <button
-            mat-button
-            type="button"
-            [matMenuTriggerFor]="account"
-            [attr.aria-label]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
-            data-testid="user-menu"
-          >
-            <span
-              class="inline-flex size-8 items-center justify-center rounded-full bg-primary-container text-sm font-semibold text-on-primary-container"
-              aria-hidden="true"
+        <!-- Three regions, the outer two of equal share, so the search is centred on the bar and not on what is left. -->
+        <div class="flex min-w-0 flex-1 basis-0 items-center gap-2">
+          @if (handset()) {
+            <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
+            <span class="text-base font-semibold tracking-tight">{{ 'app.name' | translate }}</span>
+          } @else if (windowClass() === 'expanded') {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="theme.toggleSidebar()"
+              [appLabel]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
+              [attr.aria-keyshortcuts]="'['"
+              data-testid="sidebar-toggle"
             >
-              {{ initials() }}
-            </span>
-            <span class="ml-2 hidden text-on-surface sm:inline" data-testid="user-name">
-              {{ me.user.displayName }}
-            </span>
-          </button>
-
-          <mat-menu #account="matMenu" xPosition="before">
-            <div class="px-4 pb-2 pt-1">
-              <p class="font-medium text-on-surface">{{ me.user.displayName }}</p>
-              <p class="text-sm text-on-surface-variant">{{ me.user.email }}</p>
-            </div>
-            <mat-divider />
-            <p
-              class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+              <mat-icon aria-hidden="true">{{ rail() ? 'menu' : 'menu_open' }}</mat-icon>
+            </button>
+          }
+        </div>
+        @if (windowClass() === 'expanded') {
+          <!-- From 1200 px the search is the bar's centre, wide enough to read as a field. -->
+          <div
+            class="flex w-[min(36rem,40vw)] shrink-0 justify-center"
+            data-testid="top-bar-centre"
+          >
+            <button
+              type="button"
+              class="twes-command-open twes-command-open-wide"
+              (click)="openCommands()"
+              aria-keyshortcuts="Control+K Meta+K"
+              [attr.aria-label]="'shell.commands.open' | translate"
+              data-testid="command-open"
             >
-              {{ 'shell.language' | translate }}
-            </p>
-            @for (lang of languages; track lang) {
+              <mat-icon aria-hidden="true">search</mat-icon>
+              <span class="twes-command-open-label">{{ 'shell.commands.open' | translate }}</span>
+              <kbd aria-hidden="true">Ctrl K</kbd>
+            </button>
+          </div>
+        }
+        <div class="flex min-w-0 flex-1 basis-0 items-center justify-end gap-1">
+          @if (windowClass() !== 'expanded') {
+            <button
+              mat-icon-button
+              type="button"
+              (click)="openCommands()"
+              aria-keyshortcuts="Control+K Meta+K"
+              [appLabel]="'shell.commands.open' | translate"
+              data-testid="command-open"
+            >
+              <mat-icon aria-hidden="true">search</mat-icon>
+            </button>
+          }
+          <app-company-switcher />
+          <app-notification-bell />
+          @if (!handset()) {
+            <app-language-menu />
+            <app-scheme-menu />
+            @if (settingsRoute(); as route) {
+              <a
+                mat-icon-button
+                [routerLink]="route"
+                [appLabel]="'shell.settings' | translate"
+                data-testid="settings-gear"
+              >
+                <mat-icon aria-hidden="true">settings</mat-icon>
+              </a>
+            }
+          }
+
+          @if (me(); as me) {
+            <button
+              mat-button
+              type="button"
+              [matMenuTriggerFor]="account"
+              [attr.aria-label]="('shell.user_menu' | translate) + ' — ' + me.user.displayName"
+              data-testid="user-menu"
+            >
+              <span
+                class="inline-flex size-8 items-center justify-center rounded-full bg-primary-container text-sm font-semibold text-on-primary-container"
+                aria-hidden="true"
+              >
+                {{ initials() }}
+              </span>
+              <span class="ml-2 hidden text-on-surface sm:inline" data-testid="user-name">
+                {{ me.user.displayName }}
+              </span>
+            </button>
+
+            <mat-menu #account="matMenu" xPosition="before">
+              <div class="px-4 pb-2 pt-1">
+                <p class="font-medium text-on-surface">{{ me.user.displayName }}</p>
+                <p class="text-sm text-on-surface-variant">{{ me.user.email }}</p>
+              </div>
+              <mat-divider />
+              @if (handset()) {
+                <!-- On a phone the top bar has no room: language, scheme and settings fold in here. -->
+                <p
+                  class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+                >
+                  {{ 'shell.language' | translate }}
+                </p>
+                @for (lang of languages; track lang) {
+                  <button
+                    mat-menu-item
+                    type="button"
+                    role="menuitemradio"
+                    [attr.aria-checked]="language.current() === lang"
+                    (click)="useLanguage(lang)"
+                    [attr.data-testid]="'account-language-' + lang"
+                  >
+                    <mat-icon aria-hidden="true">{{
+                      language.current() === lang
+                        ? 'radio_button_checked'
+                        : 'radio_button_unchecked'
+                    }}</mat-icon>
+                    <span [attr.lang]="lang">{{ languageNames[lang] }}</span>
+                  </button>
+                }
+                <mat-divider />
+                <p
+                  class="px-4 pb-1 pt-2 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
+                >
+                  {{ 'shell.scheme' | translate }}
+                </p>
+                @for (scheme of schemes; track scheme) {
+                  <button
+                    mat-menu-item
+                    type="button"
+                    role="menuitemradio"
+                    [attr.aria-checked]="theme.preference() === scheme"
+                    (click)="theme.setScheme(scheme)"
+                    [attr.data-testid]="'account-scheme-' + scheme"
+                  >
+                    <mat-icon aria-hidden="true">{{
+                      theme.preference() === scheme
+                        ? 'radio_button_checked'
+                        : 'radio_button_unchecked'
+                    }}</mat-icon>
+                    <span>{{ 'appearance.schemes.' + scheme | translate }}</span>
+                  </button>
+                }
+                <mat-divider />
+                @if (settingsRoute(); as route) {
+                  <a mat-menu-item [routerLink]="route" data-testid="account-settings">
+                    <mat-icon aria-hidden="true">settings</mat-icon>
+                    <span>{{ 'shell.settings' | translate }}</span>
+                  </a>
+                }
+              }
               <button
                 mat-menu-item
                 type="button"
-                role="menuitemradio"
-                [attr.aria-checked]="language.current() === lang"
-                (click)="useLanguage(lang)"
-                [attr.data-testid]="'language-' + lang"
+                (click)="theme.toggleDensity()"
+                data-testid="density-toggle"
               >
                 <mat-icon aria-hidden="true">{{
-                  language.current() === lang ? 'radio_button_checked' : 'radio_button_unchecked'
+                  theme.density() === 'compact' ? 'density_medium' : 'density_small'
                 }}</mat-icon>
-                <span>{{ 'languages.' + lang | translate }}</span>
+                <span>{{
+                  (theme.density() === 'compact'
+                    ? 'shell.density_comfortable'
+                    : 'shell.density_compact'
+                  ) | translate
+                }}</span>
               </button>
-            }
-            <mat-divider />
-            <button
-              mat-menu-item
-              type="button"
-              (click)="theme.toggleScheme()"
-              data-testid="theme-toggle"
-            >
-              <mat-icon aria-hidden="true">{{
-                theme.scheme() === 'dark' ? 'light_mode' : 'dark_mode'
-              }}</mat-icon>
-              <span>{{
-                (theme.scheme() === 'dark' ? 'shell.dark_off' : 'shell.dark_on') | translate
-              }}</span>
-            </button>
-            <button
-              mat-menu-item
-              type="button"
-              (click)="theme.toggleDensity()"
-              data-testid="density-toggle"
-            >
-              <mat-icon aria-hidden="true">{{
-                theme.density() === 'compact' ? 'density_medium' : 'density_small'
-              }}</mat-icon>
-              <span>{{
-                (theme.density() === 'compact'
-                  ? 'shell.density_comfortable'
-                  : 'shell.density_compact'
-                ) | translate
-              }}</span>
-            </button>
-            <mat-divider />
-            <a mat-menu-item routerLink="/two-factor" data-testid="two-factor-link">
-              <mat-icon aria-hidden="true">security</mat-icon>
-              <span>{{ 'auth.two_factor.menu' | translate }}</span>
-            </a>
-            <button
-              mat-menu-item
-              type="button"
-              (click)="logout()"
-              [disabled]="signingOut()"
-              data-testid="logout"
-            >
-              <mat-icon aria-hidden="true">logout</mat-icon>
-              <span>{{ 'auth.logout' | translate }}</span>
-            </button>
-          </mat-menu>
-        }
+              <mat-divider />
+              <a mat-menu-item routerLink="/two-factor" data-testid="two-factor-link">
+                <mat-icon aria-hidden="true">security</mat-icon>
+                <span>{{ 'auth.two_factor.menu' | translate }}</span>
+              </a>
+              <button
+                mat-menu-item
+                type="button"
+                (click)="logout()"
+                [disabled]="signingOut()"
+                data-testid="logout"
+              >
+                <mat-icon aria-hidden="true">logout</mat-icon>
+                <span>{{ 'auth.logout' | translate }}</span>
+              </button>
+            </mat-menu>
+          }
+        </div>
       </mat-toolbar>
     </header>
 

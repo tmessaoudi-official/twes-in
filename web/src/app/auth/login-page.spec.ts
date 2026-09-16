@@ -13,6 +13,7 @@ import { of } from 'rxjs';
 import type { Me } from '../api/types.gen';
 import { LoginPage } from './login-page';
 import { PasskeyClient } from './passkey-client';
+import { provideStillAppearance } from '../shared/testing/appearance';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -81,6 +82,7 @@ describe('LoginPage', () => {
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: PasskeyClient, useValue: passkeyClient },
+        provideStillAppearance(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

@@ -12,6 +12,7 @@ import { of } from 'rxjs';
 import { AcceptInvitationPage } from './accept-invitation-page';
 import { InvitationFacade } from './invitation-facade';
 import type { InvitationError, InvitationOffer } from './invitation-types';
+import { provideStillAppearance } from '../shared/testing/appearance';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -60,6 +61,7 @@ describe('AcceptInvitationPage', () => {
       imports: [AcceptInvitationPage],
       providers: [
         provideRouter([]),
+        provideStillAppearance(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

@@ -26,9 +26,11 @@ jobs:
       - run: bash scripts/gates/tests/dependency-licences.test.sh
       - run: bash scripts/gates/tests/spdx-headers.test.sh
       - run: bash scripts/gates/tests/executable-bits.test.sh
+      - run: bash scripts/gates/tests/icon-buttons-named.test.sh
       - run: php scripts/gates/dependency-licences.php
       - run: bash scripts/gates/spdx-headers.sh
       - run: bash scripts/gates/executable-bits.sh
+      - run: bash scripts/gates/icon-buttons-named.sh
 
   # WHY: the API tier's gate — code style, PHPStan at level max, PHPUnit against a REAL PostgreSQL 18,
   # because money and tenancy bugs live in SQL and a mocked database cannot show them.

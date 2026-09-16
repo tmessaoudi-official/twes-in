@@ -55,7 +55,7 @@
               mat-icon-button
               type="button"
               (click)="clearFilter()"
-              [attr.aria-label]="'list.filter_clear' | translate"
+              [appLabel]="'list.filter_clear' | translate"
             >
               <mat-icon aria-hidden="true">close</mat-icon>
             </button>
@@ -67,7 +67,7 @@
         type="button"
         class="twes-list-tool"
         (click)="viewsOpen.set(!viewsOpen())"
-        [attr.aria-label]="'list.views' | translate"
+        [appLabel]="'list.views' | translate"
         [attr.aria-expanded]="viewsOpen()"
         [attr.aria-controls]="testId() + '-views'"
         data-testid="list-views"
@@ -79,7 +79,7 @@
         type="button"
         class="twes-list-tool"
         (click)="chooserOpen.set(!chooserOpen())"
-        [attr.aria-label]="'list.columns' | translate"
+        [appLabel]="'list.columns' | translate"
         [attr.aria-expanded]="chooserOpen()"
         [attr.aria-controls]="testId() + '-columns'"
         data-testid="list-columns"
@@ -120,7 +120,7 @@
                 mat-icon-button
                 type="button"
                 (click)="deleteView(view.id)"
-                [attr.aria-label]="'list.view_delete' | translate: { name: view.name }"
+                [appLabel]="'list.view_delete' | translate: { name: view.name }"
                 [attr.data-testid]="'list-view-delete-' + view.id"
               >
                 <mat-icon aria-hidden="true">delete</mat-icon>
@@ -186,7 +186,7 @@
               type="button"
               [disabled]="first"
               (click)="move(entry.column.id, -1)"
-              [attr.aria-label]="
+              [appLabel]="
                 'list.move_column' | translate: { column: (entry.column.label | translate) }
               "
               [attr.data-testid]="'list-column-up-' + entry.column.id"
@@ -198,7 +198,7 @@
               type="button"
               [disabled]="last"
               (click)="move(entry.column.id, 1)"
-              [attr.aria-label]="
+              [appLabel]="
                 'list.move_column' | translate: { column: (entry.column.label | translate) }
               "
               [attr.data-testid]="'list-column-down-' + entry.column.id"

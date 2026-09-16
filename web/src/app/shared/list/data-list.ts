@@ -52,6 +52,7 @@ import {
   saveView,
   sortRows,
 } from './list-view';
+import { Label } from '../a11y/label';
 
 /** `<ng-template appDataListCell="columnId" let-row>`: how one column's cell renders instead of its plain value. */
 @Directive({ selector: 'ng-template[appDataListCell]' })
@@ -91,6 +92,7 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
 @Component({
   selector: 'app-data-list',
   imports: [
+    Label,
     NgTemplateOutlet,
     CdkDropList,
     CdkDrag,

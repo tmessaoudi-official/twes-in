@@ -71,8 +71,8 @@ test('a column moves without dragging, and the order survives a reload', async (
 
 test('the dark scheme survives a reload', async ({ page }) => {
   await signIn(page);
-  await page.getByTestId('user-menu').click();
-  await page.getByTestId('theme-toggle').click();
+  await page.getByTestId('scheme-menu').click();
+  await page.getByTestId('scheme-dark').click();
   await expect(page.locator('html')).toHaveClass(/theme-dark/);
 
   await page.reload();

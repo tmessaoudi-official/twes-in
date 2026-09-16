@@ -35,8 +35,14 @@ final class SettingsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar'], array_column($rows, 'key'));
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.language'], array_column($rows, 'key'));
         self::assertSame('expanded', $rows[3]['value']);
+        // The scheme follows the device until someone chooses (docs/SPEC.md § 7, 2026-09-16 review).
+        self::assertSame('auto', $rows[1]['value']);
+        self::assertSame(['auto', 'light', 'dark'], $rows[1]['choices']);
+        // The interface language is remembered like any presentation choice, French until one is made.
+        self::assertSame('fr', $rows[4]['value']);
+        self::assertSame(['fr', 'en'], $rows[4]['choices']);
         $accent = $rows[0];
         self::assertSame('#1f6feb', $accent['value']);
         self::assertSame('#1f6feb', $accent['default']);

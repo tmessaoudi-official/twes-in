@@ -70,9 +70,9 @@ final class ResolveSettingsTest extends TestCase
         self::assertSame('dark', $this->find('presentation.scheme')->value);
         self::assertSame(SettingLevel::Role, $this->find('presentation.scheme')->source);
         $elsewhere = new SettingContext(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $this->roleId, $this->userId);
-        self::assertSame('light', $this->find('presentation.scheme', $elsewhere)->value);
+        self::assertSame('auto', $this->find('presentation.scheme', $elsewhere)->value);
         $anotherRole = new SettingContext($this->company, Uuid::v7(), $this->userId);
-        self::assertSame('light', $this->find('presentation.scheme', $anotherRole)->value);
+        self::assertSame('auto', $this->find('presentation.scheme', $anotherRole)->value);
     }
 
     public function testAUserPreferenceFollowsTheUserIntoEveryCompany(): void
@@ -105,10 +105,10 @@ final class ResolveSettingsTest extends TestCase
         $resolved = $this->resolve->handle(SettingChain::Presentation, $this->context());
 
         self::assertSame(
-            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.list.members', 'presentation.list.members.views'],
+            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.language', 'presentation.list.members', 'presentation.list.members.views'],
             array_map(static fn (ResolvedSetting $setting) => $setting->key, $resolved),
         );
-        self::assertSame($layout, $resolved[4]->value);
+        self::assertSame($layout, $resolved[5]->value);
     }
 
     public function testASettingOutsideTheCatalogueCannotBeResolved(): void

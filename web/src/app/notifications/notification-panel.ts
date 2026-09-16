@@ -19,6 +19,7 @@ import { FormatFacade } from '../shared/i18n/format-facade';
 import { groupByDay, relativeTime } from './notification-days';
 import { NotificationsFacade } from './notifications-facade';
 import { type InboxEntry, notificationKey, notificationRecord } from './notifications-types';
+import { Label } from '../shared/a11y/label';
 
 type Filter = 'all' | 'unread';
 
@@ -29,6 +30,7 @@ type Filter = 'all' | 'unread';
 @Component({
   selector: 'app-notification-panel',
   imports: [
+    Label,
     MatButtonModule,
     MatDialogModule,
     MatIconModule,

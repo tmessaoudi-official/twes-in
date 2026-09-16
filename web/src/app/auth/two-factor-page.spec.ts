@@ -14,6 +14,7 @@ import { Session } from '../shared/session/session';
 import type { MfaStatus, PasskeySummary, SignedInState } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { TwoFactorPage } from './two-factor-page';
+import { provideStillAppearance } from '../shared/testing/appearance';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -82,6 +83,7 @@ describe('TwoFactorPage', () => {
         { provide: AuthFacade, useValue: facade },
         { provide: Session, useExisting: AuthFacade },
         { provide: PasskeyClient, useValue: { supported: () => true } },
+        provideStillAppearance(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

@@ -13,6 +13,7 @@ import { AuthFacade } from './auth-facade';
 import { Session } from '../shared/session/session';
 import type { SignedInState } from './auth-types';
 import { AwaitingApprovalPage } from './awaiting-approval-page';
+import { provideStillAppearance } from '../shared/testing/appearance';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -67,6 +68,7 @@ describe('AwaitingApprovalPage', () => {
         provideRouter([]),
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        provideStillAppearance(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
