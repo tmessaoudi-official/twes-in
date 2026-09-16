@@ -3,7 +3,6 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { Router } from '@angular/router';
@@ -12,6 +11,7 @@ import { AuthFacade } from './auth-facade';
 import type { LoginError, PasskeySummary, TotpEnrolment } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { QrCode } from './qr-code';
+import { SignedOutLayout } from './signed-out-layout';
 
 /**
  * Two-step verification for the signed-in account: an authenticator app, passkeys, and the recovery codes behind both.
@@ -23,8 +23,8 @@ import { QrCode } from './qr-code';
 @Component({
   selector: 'app-two-factor-page',
   imports: [
+    SignedOutLayout,
     ReactiveFormsModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,

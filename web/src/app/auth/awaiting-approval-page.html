@@ -1,5 +1,5 @@
-<main class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-6">
-  <h1 class="text-3xl font-semibold">{{ 'auth.awaiting.title' | translate }}</h1>
+<app-signed-out-layout>
+  <h1>{{ 'auth.awaiting.title' | translate }}</h1>
 
   @if (company(); as company) {
     @if (company.status === 'suspended') {
@@ -16,4 +16,4 @@
   <button mat-stroked-button type="button" (click)="signOut()" data-testid="awaiting-sign-out">
     {{ 'auth.awaiting.sign_out' | translate }}
   </button>
-</main>
+</app-signed-out-layout>

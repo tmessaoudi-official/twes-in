@@ -17,7 +17,7 @@ import { PasskeyClient } from './passkey-client';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      app: { name: 'twes-in', tagline: 'Facturation' },
+      app: { name: 'twes-in' },
       health: { api: 'API', ok: 'opérationnelle', checking: 'vérification…' },
       auth: {
         login: {
@@ -33,7 +33,8 @@ class StaticLoader implements TranslateLoader {
         },
         mfa: {
           title: 'Vérification en deux étapes',
-          intro: 'Saisissez le code de votre application',
+          intro: 'Votre compte est protégé par une deuxième étape',
+          recovery_hint: 'Un code de secours fonctionne aussi',
           code: 'Code',
           code_required: 'Code obligatoire',
           submit: 'Vérifier',
@@ -122,10 +123,23 @@ describe('LoginPage', () => {
 
   it('renders the form and the API status line', async () => {
     const { el, query } = await render();
-    expect(el.querySelector('h1')?.textContent).toContain('twes-in');
+    expect(el.querySelector('header [role="img"]')?.getAttribute('aria-label')).toBe('twes-in');
+    expect(el.querySelector('h1')?.textContent).toContain('Connexion');
     expect(query('email')).not.toBeNull();
     expect(query('password')).not.toBeNull();
     expect(query('api-status')?.textContent).toContain('opérationnelle');
+  });
+
+  it('puts each label above its field and ties it to the control', async () => {
+    const { query } = await render();
+
+    for (const id of ['email', 'password']) {
+      const input = query<HTMLInputElement>(id)!;
+      expect(input.labels?.[0]?.textContent).toContain(
+        id === 'email' ? 'Adresse e-mail' : 'Mot de passe',
+      );
+      expect(input.closest('mat-form-field')?.querySelector('mat-label')).toBeNull();
+    }
   });
 
   it('offers to create an account while signup is open', async () => {
@@ -229,6 +243,20 @@ describe('LoginPage', () => {
     await settle(rendered.fixture);
 
     expect(navigate).toHaveBeenCalledWith('/');
+  });
+
+  it('says why the code is asked for, and that a recovery code works too', async () => {
+    const rendered = await render();
+    await passThePassword(rendered);
+
+    const input = rendered.query<HTMLInputElement>('mfa-code')!;
+    const described = (input.getAttribute('aria-describedby') ?? '')
+      .split(' ')
+      .map((id) => rendered.el.querySelector(`[id="${id}"]`)?.textContent ?? '')
+      .join(' ');
+    expect(described).toContain('protégé par une deuxième étape');
+    expect(described).toContain('Un code de secours fonctionne aussi');
+    expect(input.labels?.[0]?.textContent).toContain('Code');
   });
 
   it('shows a refused code, clears it and keeps asking', async () => {

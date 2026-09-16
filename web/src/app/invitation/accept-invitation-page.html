@@ -1,5 +1,5 @@
-<main class="mx-auto flex max-w-md flex-col gap-6 p-8">
-  <h1 class="text-2xl font-semibold" data-testid="invitation-title">
+<app-signed-out-layout>
+  <h1 data-testid="invitation-title">
     {{ 'invitation.title' | translate }}
   </h1>
 
@@ -10,67 +10,75 @@
           | translate: { company: offer.companyName, role: 'roles.' + offer.roleName | translate }
       }}
     </p>
-    <p class="text-sm opacity-70" data-testid="invitation-email">{{ offer.email }}</p>
+    <p class="twes-auth-intro" data-testid="invitation-email">{{ offer.email }}</p>
 
     @if (offer.hasAccount) {
-      <mat-card>
-        <mat-card-content>
-          <div class="flex flex-col gap-4">
-            <p data-testid="invitation-has-account">{{ 'invitation.has_account' | translate }}</p>
-            <button
-              mat-flat-button
-              type="button"
-              (click)="join()"
-              [disabled]="busy()"
-              data-testid="invitation-join"
-            >
-              {{ 'invitation.join' | translate }}
-            </button>
-          </div>
-        </mat-card-content>
-      </mat-card>
+      <div class="flex flex-col gap-4">
+        <p data-testid="invitation-has-account">{{ 'invitation.has_account' | translate }}</p>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="join()"
+          [disabled]="busy()"
+          data-testid="invitation-join"
+        >
+          {{ 'invitation.join' | translate }}
+        </button>
+      </div>
     } @else {
-      <mat-card>
-        <mat-card-content>
-          <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
-            <mat-form-field>
-              <mat-label>{{ 'invitation.display_name' | translate }}</mat-label>
-              <input matInput formControlName="displayName" data-testid="invitation-name" />
-              @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
-                <mat-error data-testid="invitation-name-error">
-                  {{ 'invitation.display_name_required' | translate }}
-                </mat-error>
-              }
-            </mat-form-field>
+      <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-4">
+        <div class="twes-auth-field">
+          <label class="twes-field-label" for="invitation-name-input">{{
+            'invitation.display_name' | translate
+          }}</label>
+          <mat-form-field>
+            <input
+              matInput
+              id="invitation-name-input"
+              formControlName="displayName"
+              data-testid="invitation-name"
+            />
+            @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+              <mat-error data-testid="invitation-name-error">
+                {{ 'invitation.display_name_required' | translate }}
+              </mat-error>
+            }
+          </mat-form-field>
+        </div>
 
-            <mat-form-field>
-              <mat-label>{{ 'invitation.password' | translate }}</mat-label>
-              <input
-                matInput
-                type="password"
-                formControlName="password"
-                autocomplete="new-password"
-                data-testid="invitation-password"
-              />
-              <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
-              @if (form.controls.password.touched && form.controls.password.invalid) {
-                <mat-error data-testid="invitation-password-error">
-                  {{ 'invitation.password_too_short' | translate }}
-                </mat-error>
-              }
-            </mat-form-field>
+        <div class="twes-auth-field">
+          <label class="twes-field-label" for="invitation-password-input">{{
+            'invitation.password' | translate
+          }}</label>
 
-            <button
-              mat-flat-button
-              type="submit"
-              [disabled]="busy()"
-              data-testid="invitation-submit"
-            >
-              {{ 'invitation.submit' | translate }}
-            </button>
-          </form>
-        </mat-card-content>
-      </mat-card>
+          <mat-form-field>
+            <input
+              matInput
+              id="invitation-password-input"
+              type="password"
+              formControlName="password"
+              autocomplete="new-password"
+              data-testid="invitation-password"
+            />
+            <mat-hint>{{ 'invitation.password_hint' | translate }}</mat-hint>
+            @if (form.controls.password.touched && form.controls.password.invalid) {
+              <mat-error data-testid="invitation-password-error">
+                {{ 'invitation.password_too_short' | translate }}
+              </mat-error>
+            }
+          </mat-form-field>
+        </div>
+
+        <button
+          mat-flat-button
+          type="submit"
+          class="twes-auth-submit"
+          [disabled]="busy()"
+          data-testid="invitation-submit"
+        >
+          {{ 'invitation.submit' | translate }}
+        </button>
+      </form>
     }
   } @else if (!busy()) {
     <p role="alert" data-testid="invitation-error">
@@ -79,8 +87,8 @@
   }
 
   @if (offer() && error()) {
-    <p role="alert" data-testid="invitation-form-error" class="text-red-700">
+    <p role="alert" data-testid="invitation-form-error" class="twes-auth-error">
       {{ 'invitation.errors.' + error() | translate }}
     </p>
   }
-</main>
+</app-signed-out-layout>

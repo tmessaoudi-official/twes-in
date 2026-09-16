@@ -1,121 +1,156 @@
-<main class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 p-6">
-  <h1 class="text-3xl font-semibold" data-testid="signup-finish-title">
+<app-signed-out-layout>
+  <h1 data-testid="signup-finish-title">
     {{ 'signup.finish.title' | translate }}
   </h1>
 
   @if (completed(); as done) {
-    <mat-card appearance="outlined" data-testid="signup-completed">
-      <mat-card-content class="flex flex-col gap-3">
-        <p class="font-medium">{{ 'signup.finish.ready' | translate }}</p>
-        @if (done.companyStatus === 'active') {
-          <p data-testid="signup-completed-active">
-            {{ 'signup.finish.active' | translate: { company: done.companyName } }}
-          </p>
-        } @else {
-          <p data-testid="signup-completed-pending">
-            {{ 'signup.finish.pending' | translate: { company: done.companyName } }}
-          </p>
-        }
-        <a mat-flat-button routerLink="/login" data-testid="signup-login">
-          {{ 'signup.back_to_login' | translate }}
-        </a>
-      </mat-card-content>
-    </mat-card>
+    <div class="flex flex-col gap-3" data-testid="signup-completed">
+      <p class="font-medium">{{ 'signup.finish.ready' | translate }}</p>
+      @if (done.companyStatus === 'active') {
+        <p data-testid="signup-completed-active">
+          {{ 'signup.finish.active' | translate: { company: done.companyName } }}
+        </p>
+      } @else {
+        <p data-testid="signup-completed-pending">
+          {{ 'signup.finish.pending' | translate: { company: done.companyName } }}
+        </p>
+      }
+      <a mat-flat-button class="twes-auth-submit" routerLink="/login" data-testid="signup-login">
+        {{ 'signup.back_to_login' | translate }}
+      </a>
+    </div>
   } @else if (linkEmail(); as email) {
-    <p class="text-sm opacity-70" data-testid="signup-finish-email">{{ email }}</p>
+    <p class="twes-auth-intro" data-testid="signup-finish-email">{{ email }}</p>
 
-    <mat-card appearance="outlined">
-      <mat-card-content>
-        <form
-          [formGroup]="form"
-          (ngSubmit)="submit()"
-          class="mt-4 flex flex-col gap-2"
-          novalidate
-          data-testid="signup-finish-form"
-        >
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'signup.finish.display_name' | translate }}</mat-label>
-            <input
-              matInput
-              formControlName="displayName"
-              autocomplete="name"
-              data-testid="signup-name"
-            />
-            @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
-              <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'signup.finish.password' | translate }}</mat-label>
-            <input
-              matInput
-              type="password"
-              formControlName="password"
-              autocomplete="new-password"
-              data-testid="signup-password"
-            />
-            <mat-hint>{{ 'signup.finish.password_hint' | translate }}</mat-hint>
-            @if (form.controls.password.touched && form.controls.password.invalid) {
-              <mat-error>{{ 'signup.finish.password_too_short' | translate }}</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'signup.finish.company_name' | translate }}</mat-label>
-            <input
-              matInput
-              formControlName="companyName"
-              autocomplete="organization"
-              data-testid="signup-company"
-            />
-            @if (form.controls.companyName.touched && form.controls.companyName.invalid) {
-              <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'signup.finish.country' | translate }}</mat-label>
-            <mat-select formControlName="countryCode" data-testid="signup-country">
-              @for (code of countries(); track code) {
-                <mat-option [value]="code" [attr.data-testid]="'signup-country-' + code">
-                  {{ countryName(code) }}
-                </mat-option>
-              }
-            </mat-select>
-            @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
-              <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
-            }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>{{ 'signup.finish.timezone' | translate }}</mat-label>
-            <input matInput formControlName="timezone" data-testid="signup-timezone" />
-            @if (form.controls.timezone.touched && form.controls.timezone.invalid) {
-              <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
-            }
-          </mat-form-field>
-
-          @if (error(); as code) {
-            <p role="alert" class="text-sm text-red-700" data-testid="signup-finish-error">
-              {{ 'signup.finish.errors.' + code | translate }}
-            </p>
+    <form
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+      class="mt-4 flex flex-col gap-2"
+      novalidate
+      data-testid="signup-finish-form"
+    >
+      <div class="twes-auth-field">
+        <label class="twes-field-label" for="signup-name-input">{{
+          'signup.finish.display_name' | translate
+        }}</label>
+        <mat-form-field>
+          <input
+            matInput
+            id="signup-name-input"
+            formControlName="displayName"
+            autocomplete="name"
+            data-testid="signup-name"
+          />
+          @if (form.controls.displayName.touched && form.controls.displayName.invalid) {
+            <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
           }
+        </mat-form-field>
+      </div>
 
-          <button
-            mat-flat-button
-            type="submit"
-            [disabled]="busy()"
-            data-testid="signup-finish-submit"
+      <div class="twes-auth-field">
+        <label class="twes-field-label" for="signup-password-input">{{
+          'signup.finish.password' | translate
+        }}</label>
+
+        <mat-form-field>
+          <input
+            matInput
+            id="signup-password-input"
+            type="password"
+            formControlName="password"
+            autocomplete="new-password"
+            data-testid="signup-password"
+          />
+          <mat-hint>{{ 'signup.finish.password_hint' | translate }}</mat-hint>
+          @if (form.controls.password.touched && form.controls.password.invalid) {
+            <mat-error>{{ 'signup.finish.password_too_short' | translate }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="twes-auth-field">
+        <label class="twes-field-label" for="signup-company-input">{{
+          'signup.finish.company_name' | translate
+        }}</label>
+
+        <mat-form-field>
+          <input
+            matInput
+            id="signup-company-input"
+            formControlName="companyName"
+            autocomplete="organization"
+            data-testid="signup-company"
+          />
+          @if (form.controls.companyName.touched && form.controls.companyName.invalid) {
+            <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="twes-auth-field">
+        <label
+          class="twes-field-label"
+          id="signup-country-input-label"
+          for="signup-country-input"
+          >{{ 'signup.finish.country' | translate }}</label
+        >
+
+        <mat-form-field>
+          <mat-select
+            id="signup-country-input"
+            aria-labelledby="signup-country-input-label"
+            formControlName="countryCode"
+            data-testid="signup-country"
           >
-            {{ 'signup.finish.submit' | translate }}
-          </button>
-        </form>
-      </mat-card-content>
-    </mat-card>
+            @for (code of countries(); track code) {
+              <mat-option [value]="code" [attr.data-testid]="'signup-country-' + code">
+                {{ countryName(code) }}
+              </mat-option>
+            }
+          </mat-select>
+          @if (form.controls.countryCode.touched && form.controls.countryCode.invalid) {
+            <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      <div class="twes-auth-field">
+        <label class="twes-field-label" for="signup-timezone-input">{{
+          'signup.finish.timezone' | translate
+        }}</label>
+
+        <mat-form-field>
+          <input
+            matInput
+            id="signup-timezone-input"
+            formControlName="timezone"
+            data-testid="signup-timezone"
+          />
+          @if (form.controls.timezone.touched && form.controls.timezone.invalid) {
+            <mat-error>{{ 'signup.finish.required' | translate }}</mat-error>
+          }
+        </mat-form-field>
+      </div>
+
+      @if (error(); as code) {
+        <p role="alert" class="twes-auth-error" data-testid="signup-finish-error">
+          {{ 'signup.finish.errors.' + code | translate }}
+        </p>
+      }
+
+      <button
+        mat-flat-button
+        type="submit"
+        class="twes-auth-submit"
+        [disabled]="busy()"
+        data-testid="signup-finish-submit"
+      >
+        {{ 'signup.finish.submit' | translate }}
+      </button>
+    </form>
   } @else if (!busy()) {
     <p role="alert" data-testid="signup-link-error">
       {{ 'signup.finish.errors.' + (error() ?? 'not_usable') | translate }}
     </p>
   }
-</main>
+</app-signed-out-layout>

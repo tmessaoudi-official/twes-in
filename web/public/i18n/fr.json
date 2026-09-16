@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "twes-in",
-    "tagline": "Facturation pour petites entreprises"
+    "name": "twes-in"
   },
   "health": {
     "api": "API",
@@ -20,7 +19,8 @@
       "password_required": "Le mot de passe est obligatoire.",
       "submit": "Se connecter",
       "submitting": "Connexion…",
-      "signup": "Créer un compte"
+      "signup": "Créer un compte",
+      "no_account": "Pas encore de compte ?"
     },
     "logout": "Se déconnecter",
     "errors": {
@@ -44,13 +44,16 @@
     },
     "mfa": {
       "title": "Vérification en deux étapes",
-      "intro": "Saisissez le code à six chiffres de votre application d’authentification, ou l’un de vos codes de secours.",
+      "intro": "Votre compte est protégé par une deuxième étape : saisissez le code à six chiffres affiché par votre application d’authentification.",
       "code": "Code",
       "code_required": "Le code est obligatoire.",
       "submit": "Vérifier",
       "submitting": "Vérification…",
       "back": "Retour à la connexion",
-      "passkey": "Utiliser une clé d’accès"
+      "passkey": "Utiliser une clé d’accès",
+      "recovery_hint": "Plus d’accès à l’application ? Un code de secours fonctionne aussi dans ce champ.",
+      "other": "Autre moyen",
+      "passkey_detail": "Empreinte, visage ou clé de sécurité"
     },
     "two_factor": {
       "title": "Vérification en deux étapes",
@@ -92,6 +95,22 @@
       "pending": "{{company}} attend l'approbation de l'équipe de la plateforme. Vous recevrez un e-mail dès qu'elle sera approuvée.",
       "suspended": "{{company}} est suspendue. Contactez l'équipe de la plateforme pour en savoir plus.",
       "sign_out": "Se déconnecter"
+    },
+    "scene": {
+      "invoice_number": "FA-2026-0142",
+      "paid": "Payée",
+      "invoice_customer": "Nord Logistique",
+      "total": "Total TTC",
+      "invoice_amount": "1 428,000 TND",
+      "collected": "Encaissé · sept.",
+      "delivered": "BL-2026-0087 livré",
+      "delivered_detail": "Studio Horizon · 3 colis",
+      "payment": "Paiement reçu",
+      "payment_detail": "Clinique Les Oliviers · virement",
+      "payment_amount": "+850,050",
+      "stock": "Stock · Réf. A-1042",
+      "stock_quantity": "18 unités",
+      "stock_threshold": "Sous le seuil de 25 unités"
     }
   },
   "hello": {

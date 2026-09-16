@@ -1,0 +1,69 @@
+<div class="twes-auth">
+  <div class="twes-auth-scene" aria-hidden="true" data-testid="auth-scene">
+    <div class="twes-scene-card twes-scene-invoice">
+      <div class="twes-scene-row">
+        <span class="twes-scene-meta">{{ 'auth.scene.invoice_number' | translate }}</span>
+        <span class="twes-scene-badge">
+          <mat-icon>check</mat-icon>{{ 'auth.scene.paid' | translate }}
+        </span>
+      </div>
+      <p class="twes-scene-title">{{ 'auth.scene.invoice_customer' | translate }}</p>
+      <span class="twes-scene-line"></span>
+      <span class="twes-scene-line twes-scene-line-short"></span>
+      <div class="twes-scene-row">
+        <span class="twes-scene-meta">{{ 'auth.scene.total' | translate }}</span>
+        <span class="twes-scene-amount">{{ 'auth.scene.invoice_amount' | translate }}</span>
+      </div>
+    </div>
+
+    <div class="twes-scene-card twes-scene-chart">
+      <span class="twes-scene-meta">{{ 'auth.scene.collected' | translate }}</span>
+      <div class="twes-scene-bars">
+        @for (height of [30, 55, 40, 70, 50, 95, 80]; track $index) {
+          <span [style.height.%]="height" [class.twes-scene-bar-strong]="$index === 5"></span>
+        }
+      </div>
+    </div>
+
+    <div class="twes-scene-card twes-scene-delivery">
+      <span class="twes-scene-icon"><mat-icon>local_shipping</mat-icon></span>
+      <div>
+        <p class="twes-scene-title">{{ 'auth.scene.delivered' | translate }}</p>
+        <span class="twes-scene-meta">{{ 'auth.scene.delivered_detail' | translate }}</span>
+      </div>
+    </div>
+
+    <div class="twes-scene-card twes-scene-payment">
+      <span class="twes-scene-icon twes-scene-icon-success"><mat-icon>check</mat-icon></span>
+      <div>
+        <p class="twes-scene-title">{{ 'auth.scene.payment' | translate }}</p>
+        <span class="twes-scene-meta">{{ 'auth.scene.payment_detail' | translate }}</span>
+      </div>
+      <span class="twes-scene-amount twes-scene-amount-success">{{
+        'auth.scene.payment_amount' | translate
+      }}</span>
+    </div>
+
+    <div class="twes-scene-card twes-scene-stock">
+      <span class="twes-scene-meta">{{ 'auth.scene.stock' | translate }}</span>
+      <p class="twes-scene-title">{{ 'auth.scene.stock_quantity' | translate }}</p>
+      <span class="twes-scene-gauge"><span></span></span>
+      <span class="twes-scene-meta">{{ 'auth.scene.stock_threshold' | translate }}</span>
+    </div>
+  </div>
+
+  <main class="twes-auth-main">
+    <header class="twes-auth-brand">
+      <app-brand-wordmark [name]="brand.name()" />
+      <p class="twes-auth-tagline" data-testid="brand-tagline">{{ brand.tagline() }}</p>
+    </header>
+    <div class="twes-auth-card" [class.twes-auth-card-wide]="wide()">
+      <ng-content />
+    </div>
+    <ng-content select="[twesAuthAfter]" />
+  </main>
+
+  <footer class="twes-auth-footer">
+    <ng-content select="[twesAuthFooter]" />
+  </footer>
+</div>

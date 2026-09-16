@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from './auth-facade';
+import { SignedOutLayout } from './signed-out-layout';
 
 /**
  * Where a member of a company that is not active lands: pending an operator's approval, or suspended by one. Outside
@@ -12,7 +13,7 @@ import { AuthFacade } from './auth-facade';
  */
 @Component({
   selector: 'app-awaiting-approval-page',
-  imports: [MatButtonModule, TranslatePipe],
+  imports: [SignedOutLayout, MatButtonModule, TranslatePipe],
   templateUrl: './awaiting-approval-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

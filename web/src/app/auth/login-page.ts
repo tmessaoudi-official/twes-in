@@ -3,8 +3,8 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -13,16 +13,18 @@ import { SignupFacade } from '../signup/signup-facade';
 import { AuthFacade } from './auth-facade';
 import type { LoginError } from './auth-types';
 import { PasskeyClient } from './passkey-client';
+import { SignedOutLayout } from './signed-out-layout';
 
 @Component({
   selector: 'app-login-page',
   imports: [
     ReactiveFormsModule,
-    MatCardModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatButtonModule,
     RouterLink,
+    SignedOutLayout,
     TranslatePipe,
   ],
   templateUrl: './login-page.html',

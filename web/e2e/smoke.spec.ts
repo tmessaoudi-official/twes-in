@@ -6,6 +6,6 @@ import { expect, test } from '@playwright/test';
 test('the login page shows the product name and a healthy API', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('twes-in');
+  await expect(page.getByRole('img', { name: 'twes-in' })).toBeVisible();
   await expect(page.getByTestId('api-status')).toContainText('opérationnelle');
 });

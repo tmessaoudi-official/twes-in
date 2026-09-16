@@ -1,7 +1,6 @@
 {
   "app": {
-    "name": "twes-in",
-    "tagline": "Invoicing for small companies"
+    "name": "twes-in"
   },
   "health": {
     "api": "API",
@@ -20,7 +19,8 @@
       "password_required": "The password is required.",
       "submit": "Sign in",
       "submitting": "Signing in…",
-      "signup": "Create an account"
+      "signup": "Create an account",
+      "no_account": "No account yet?"
     },
     "logout": "Sign out",
     "errors": {
@@ -44,13 +44,16 @@
     },
     "mfa": {
       "title": "Two-step verification",
-      "intro": "Enter the six-digit code from your authenticator app, or one of your recovery codes.",
+      "intro": "Your account is protected by a second step: enter the six-digit code shown by your authenticator app.",
       "code": "Code",
       "code_required": "The code is required.",
       "submit": "Verify",
       "submitting": "Verifying…",
       "back": "Back to sign in",
-      "passkey": "Use a passkey"
+      "passkey": "Use a passkey",
+      "recovery_hint": "Lost access to the app? A recovery code works in this field too.",
+      "other": "Another way",
+      "passkey_detail": "Fingerprint, face or security key"
     },
     "two_factor": {
       "title": "Two-step verification",
@@ -92,6 +95,22 @@
       "pending": "{{company}} is waiting for approval by the platform's team. You will receive an email as soon as it is approved.",
       "suspended": "{{company}} is suspended. Contact the platform's team to find out more.",
       "sign_out": "Sign out"
+    },
+    "scene": {
+      "invoice_number": "INV-2026-0142",
+      "paid": "Paid",
+      "invoice_customer": "Nord Logistique",
+      "total": "Total incl. tax",
+      "invoice_amount": "1,428.000 TND",
+      "collected": "Collected · Sept.",
+      "delivered": "DN-2026-0087 delivered",
+      "delivered_detail": "Studio Horizon · 3 parcels",
+      "payment": "Payment received",
+      "payment_detail": "Clinique Les Oliviers · transfer",
+      "payment_amount": "+850.050",
+      "stock": "Stock · Ref. A-1042",
+      "stock_quantity": "18 units",
+      "stock_threshold": "Below the threshold of 25 units"
     }
   },
   "hello": {

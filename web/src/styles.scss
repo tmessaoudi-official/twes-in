@@ -616,3 +616,452 @@ body {
 .twes-palette-foot {
   border-top: 1px solid var(--mat-sys-outline-variant);
 }
+
+// The wordmark (shared/brand/brand-wordmark.ts): the name in Manrope 800, joiners muted, the rising arrow in the accent.
+.twes-wordmark {
+  display: inline-block;
+  color: var(--mat-sys-on-surface);
+  font-family: 'Manrope Variable', 'Inter Variable', system-ui, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+
+.twes-wordmark-joiner {
+  color: var(--mat-sys-on-surface-variant);
+  font-weight: 700;
+}
+
+.twes-wordmark-arrow {
+  position: relative;
+
+  // A rising arrow where the dot of the "i" was, drawn in the accent through a mask so it follows the theme.
+  &::after {
+    content: '';
+    position: absolute;
+    top: -0.2em;
+    left: 50%;
+    width: 0.42em;
+    height: 0.42em;
+    transform: translateX(-35%);
+    background-color: var(--mat-sys-primary);
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' fill='none' stroke='black' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 9.5 9 3M4 2.75h5.25V8'/%3E%3C/svg%3E")
+      center / contain no-repeat;
+  }
+}
+
+// The pages shown before the shell (auth/signed-out-layout.html): the brand over one card, on a softly tinted ground.
+.twes-auth {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      60rem 40rem at 100% 0%,
+      color-mix(in oklch, var(--mat-sys-primary) 16%, transparent),
+      transparent 70%
+    ),
+    var(--mat-sys-surface-container-low);
+}
+
+.twes-auth-main {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  padding: 2.5rem 1rem 1.5rem;
+}
+
+.twes-auth-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+.twes-auth-tagline {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-large);
+  text-wrap: balance;
+}
+
+.twes-auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+  width: min(26.25rem, 100%);
+  padding: 2rem;
+  border-radius: 1.25rem;
+  background-color: var(--mat-sys-surface);
+  box-shadow: var(--twes-shadow-2);
+
+  h1 {
+    margin: 0;
+    font: var(--mat-sys-headline-small);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+.twes-auth-card-wide {
+  width: min(32rem, 100%);
+
+  h2 {
+    margin: 0;
+    font: var(--mat-sys-title-medium);
+    font-weight: 650;
+  }
+}
+
+.twes-auth-intro {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+}
+
+.twes-auth-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.twes-auth-submit.mat-mdc-unelevated-button {
+  --mat-button-filled-container-height: 2.75rem;
+  width: 100%;
+}
+
+.twes-auth-error {
+  margin: 0;
+  color: var(--mat-sys-error);
+  font: var(--mat-sys-body-medium);
+}
+
+.twes-auth-after {
+  margin: 0;
+  color: var(--mat-sys-on-surface-variant);
+  text-align: center;
+
+  a,
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--mat-sys-primary);
+    font: inherit;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
+    }
+  }
+}
+
+.twes-auth-section-label {
+  margin: 0.25rem 0 0;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-small);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+// A choice row inside the card: icon tile, two lines, a chevron.
+.twes-auth-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--mat-sys-on-surface);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+  transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);
+
+  &:hover {
+    background-color: color-mix(in oklch, var(--mat-sys-primary) 5%, transparent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    cursor: default;
+    opacity: 0.6;
+  }
+
+  > .mat-icon:last-child {
+    margin-inline-start: auto;
+    color: var(--mat-sys-on-surface-variant);
+  }
+}
+
+.twes-auth-option-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.625rem;
+  background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
+  color: var(--mat-sys-primary);
+}
+
+.twes-auth-option-text {
+  display: flex;
+  flex-direction: column;
+
+  strong {
+    font-weight: 600;
+  }
+
+  span {
+    color: var(--mat-sys-on-surface-variant);
+    font: var(--mat-sys-body-small);
+  }
+}
+
+.twes-auth-footer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  min-height: 1.5rem;
+  padding: 0 1rem 1rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+
+  p {
+    margin: 0;
+  }
+}
+
+.twes-auth-status::before {
+  content: '';
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-end: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--twes-status-neutral-dot, currentColor);
+  vertical-align: 0.05em;
+}
+
+.twes-auth-status[data-status='ok']::before {
+  background-color: var(--twes-status-success-dot, currentColor);
+}
+
+.twes-auth-status[data-status='degraded']::before {
+  background-color: var(--twes-status-warning-dot, currentColor);
+}
+
+.twes-auth-status[data-status='unreachable']::before {
+  background-color: var(--twes-status-danger-dot, currentColor);
+}
+
+// The scene behind the card: a few documents a business keeps here, tilted and quiet. Wide screens only.
+.twes-auth-scene {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  .twes-auth-scene {
+    position: absolute;
+    inset: 0;
+    display: block;
+    pointer-events: none;
+    user-select: none;
+  }
+}
+
+.twes-scene-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  box-sizing: border-box;
+  padding: 1rem 1.125rem;
+  border-radius: 1rem;
+  background-color: color-mix(in oklch, var(--mat-sys-surface) 88%, transparent);
+  box-shadow: var(--twes-shadow-2);
+  color: var(--mat-sys-on-surface);
+
+  p {
+    margin: 0;
+  }
+}
+
+.twes-scene-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.twes-scene-meta {
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-body-small);
+}
+
+.twes-scene-title {
+  font: var(--mat-sys-title-small);
+  font-weight: 650;
+}
+
+.twes-scene-amount {
+  font: var(--mat-sys-title-medium);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.twes-scene-amount-success {
+  margin-inline-start: auto;
+  color: var(--twes-status-success-fg, inherit);
+}
+
+.twes-scene-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background-color: var(--twes-status-success-bg, transparent);
+  color: var(--twes-status-success-fg, inherit);
+  font: var(--mat-sys-label-medium);
+
+  .mat-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    font-size: 0.875rem;
+  }
+}
+
+.twes-scene-line {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background-color: var(--mat-sys-surface-container-high);
+}
+
+.twes-scene-line-short {
+  width: 70%;
+}
+
+.twes-scene-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 0.75rem;
+  background-color: color-mix(in oklch, var(--mat-sys-primary) 12%, transparent);
+  color: var(--mat-sys-primary);
+}
+
+.twes-scene-icon-success {
+  background-color: var(--twes-status-success-bg, transparent);
+  color: var(--twes-status-success-fg, inherit);
+}
+
+.twes-scene-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  height: 3.5rem;
+
+  span {
+    flex: 1;
+    border-radius: 0.25rem 0.25rem 0 0;
+    background-color: color-mix(in oklch, var(--mat-sys-primary) 22%, transparent);
+  }
+
+  .twes-scene-bar-strong {
+    background-color: color-mix(in oklch, var(--mat-sys-primary) 60%, transparent);
+  }
+}
+
+.twes-scene-gauge {
+  display: block;
+  height: 0.375rem;
+  border-radius: 999px;
+  background-color: var(--mat-sys-surface-container-high);
+
+  span {
+    display: block;
+    width: 34%;
+    height: 100%;
+    border-radius: inherit;
+    background-color: var(--twes-status-warning-dot, currentColor);
+  }
+}
+
+.twes-scene-invoice {
+  top: 11%;
+  left: 6%;
+  width: 21rem;
+  transform: rotate(-4deg);
+}
+
+.twes-scene-chart {
+  top: 40%;
+  left: 18%;
+  width: 13rem;
+  transform: rotate(-6deg);
+  opacity: 0.8;
+}
+
+.twes-scene-delivery {
+  bottom: 24%;
+  left: 10%;
+  flex-direction: row;
+  align-items: center;
+  width: 19rem;
+  transform: rotate(3deg);
+}
+
+.twes-scene-payment {
+  top: 10%;
+  right: 6%;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.75rem;
+  width: 19rem;
+  transform: rotate(4deg);
+}
+
+.twes-scene-stock {
+  bottom: 22%;
+  right: 6%;
+  width: 18rem;
+  transform: rotate(-3deg);
+}
