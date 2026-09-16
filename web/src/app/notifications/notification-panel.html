@@ -7,11 +7,14 @@
       {{ 'notifications.mark_all' | translate }}
     </button>
   }
+  <!-- The `aria-label` INPUT, never [attr.aria-label]: MatDialogClose host-binds attr.aria-label from its
+       own `aria-label` input, so an attribute binding here is overwritten with null and the button ends up
+       with no accessible name at all — axe's button-name, measured (docs/SPEC.md § 8 row 23, review C8). -->
   <button
     mat-icon-button
     type="button"
     mat-dialog-close
-    [attr.aria-label]="'notifications.close' | translate"
+    [aria-label]="'notifications.close' | translate"
     data-testid="notifications-close"
   >
     <mat-icon aria-hidden="true">close</mat-icon>

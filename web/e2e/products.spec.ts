@@ -94,6 +94,8 @@ test('a product is filed in a category, priced at the currency scale and revised
     await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('product-title')).toContainText(reference);
     await expect(page.getByTestId('field-unitPriceNet')).toHaveValue('120.500');
+    // docs/SPEC.md § 8 row 23 (review C8): the saved product's own screen, whose id only this scenario holds.
+    expect(await wcagViolations(page)).toEqual([]);
 
     await page.getByTestId('field-unitPriceNet').fill('135');
     await page.getByTestId('product-save').click();

@@ -81,7 +81,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
   `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
   `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources and plain controllers),
-  `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, a local volume),
+  `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, on whichever filesystem
+  `FILES_STORAGE` names: `local`, a volume under `FILES_DIRECTORY`, which `api/.env` ships, or `s3`, any
+  S3-compatible bucket, which refuses to start without its own variables),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
   "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
   scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
@@ -92,8 +94,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `web/src/app/api/` — TypeScript types generated from the API's OpenAPI document (`make api-types`, gitignored;
   CI passes the document from the api job to the web job as an artifact; the web IMAGE generates them itself from
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
-  clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature (`auth`,
-  `company`, `hello`, `health`, `invitation`, `design` — the G2b checkpoint's fixture screens, development builds only, `notifications` — the bell, the centre and the Centrifugo connection behind
+  clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — twenty of them, so
+  check `ls web/src/app` rather than this sentence: `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
+  `fiscal`, `hello`, `health`, `inventory`, `invitation`, `platform`, `products`, `settings`, `signup`, `vendors`,
+  `design` — the G2b checkpoint's fixture screens, development builds only, `notifications` — the bell, the centre and the Centrifugo connection behind
   the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout, its nav manifest, account menu and the settings area behind the gear; every
   signed-in route is a child of it), `shared/` for what several features use (`theme/`: runtime accent colour tokens and
   `ThemeFacade`; `i18n/`: `LanguageFacade`; `settings/`: the `SettingsFacade` port, its API adapter

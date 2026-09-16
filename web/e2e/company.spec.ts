@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
@@ -15,6 +16,16 @@ import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
 // the origin proof comes from the request being made by the page itself.
 const CSRF = '0123456789abcdef0123456789abcdef';
 const OWNER_PASSWORD = 'a-long-enough-password';
+
+// docs/SPEC.md § 8 row 23 (review C8). The invitation screen is checked here rather than in the central walk of
+// accessibility.spec.ts because only this scenario holds a live token: it opens the company, invites its owner and
+// reads the link out of mailpit. A walk elsewhere would have to build that fixture a second time.
+async function wcagViolations(page: Page): Promise<string[]> {
+  const axe = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  return axe.violations.map((violation) => violation.id);
+}
 
 async function signInAs(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
@@ -50,6 +61,8 @@ test('an operator opens a company from the platform, and the switcher moves the 
   const theirs = await browser.newContext();
   const ownerPage = await theirs.newPage();
   await ownerPage.goto(`/invitations/${await invitationTokenFor(request, owner)}`);
+  await expect(ownerPage.getByTestId('invitation-name')).toBeVisible();
+  expect(await wcagViolations(ownerPage)).toEqual([]);
   await ownerPage.getByTestId('invitation-name').fill('Globex Owner');
   await ownerPage.getByTestId('invitation-password').fill(OWNER_PASSWORD);
   await ownerPage.getByTestId('invitation-submit').click();
