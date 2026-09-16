@@ -9,7 +9,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { BrowserStorageSettings } from './browser-storage-settings';
 import { type SettingDefinition, SettingsFacade, UnregisteredSetting } from './settings-facade';
 import { SettingsApi } from './settings-api';
@@ -46,12 +46,12 @@ const sameScope = (a: Scope | null, b: Scope | null): boolean =>
  */
 @Injectable()
 export class ApiSettings extends SettingsFacade {
-  private readonly auth = inject(AuthFacade);
+  private readonly session = inject(Session);
   private readonly api = inject(SettingsApi);
   private readonly browser = inject(BrowserStorageSettings);
   private readonly scope = computed<Scope | null>(
     () => {
-      const me = this.auth.me();
+      const me = this.session.me();
       return me?.company ? { userId: me.user.id, companyId: me.company.id } : null;
     },
     { equal: sameScope },

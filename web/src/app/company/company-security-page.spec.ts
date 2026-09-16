@@ -11,6 +11,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import type { CompanySecurity, CompanySecurityError } from './company-security-api';
 import { CompanySecurityFacade } from './company-security-facade';
 import { CompanySecurityPage } from './company-security-page';
@@ -84,6 +85,7 @@ describe('CompanySecurityPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CompanySecurityFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
       ],
     });
   });

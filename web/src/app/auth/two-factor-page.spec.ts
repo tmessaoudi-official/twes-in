@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from './auth-facade';
+import { Session } from '../shared/session/session';
 import type { MfaStatus, PasskeySummary, SignedInState } from './auth-types';
 import { PasskeyClient } from './passkey-client';
 import { TwoFactorPage } from './two-factor-page';
@@ -79,6 +80,7 @@ describe('TwoFactorPage', () => {
       providers: [
         provideRouter([]),
         { provide: AuthFacade, useValue: facade },
+        { provide: Session, useExisting: AuthFacade },
         { provide: PasskeyClient, useValue: { supported: () => true } },
         provideTranslateService({
           lang: 'fr',

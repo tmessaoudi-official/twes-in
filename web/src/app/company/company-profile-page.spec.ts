@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { CompanyProfileFacade } from './company-profile-facade';
 import { CompanyProfilePage } from './company-profile-page';
 import type { CompanyError, CompanyProfile } from './company-types';
@@ -85,6 +86,7 @@ describe('CompanyProfilePage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CompanyProfileFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
       ],
     });
     fixture = TestBed.createComponent(CompanyProfilePage);

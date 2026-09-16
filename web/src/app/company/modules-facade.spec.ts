@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { ModulesApi, ModulesRefused } from './modules-api';
 import { ModulesFacade } from './modules-facade';
 import type { ModuleRow } from './modules-types';
@@ -27,6 +28,7 @@ describe('ModulesFacade', () => {
       providers: [
         { provide: ModulesApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
       ],
     });
     facade = TestBed.inject(ModulesFacade);

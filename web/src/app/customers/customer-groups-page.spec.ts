@@ -13,6 +13,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -105,6 +106,7 @@ describe('CustomerGroupsPage', () => {
         { provide: CustomersFacade, useValue: facade },
         { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],

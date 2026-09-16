@@ -9,6 +9,7 @@ import {
   UrlTree,
 } from '@angular/router';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { moduleGuard } from './module-guard';
 
 describe('moduleGuard', () => {
@@ -17,7 +18,11 @@ describe('moduleGuard', () => {
   beforeEach(() => {
     auth.hasModule.mockReset();
     TestBed.configureTestingModule({
-      providers: [provideRouter([]), { provide: AuthFacade, useValue: auth }],
+      providers: [
+        provideRouter([]),
+        { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
+      ],
     });
   });
 

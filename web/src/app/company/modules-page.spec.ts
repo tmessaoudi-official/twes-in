@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import type { ModulesError } from './modules-api';
 import { ModulesFacade } from './modules-facade';
 import { ModulesPage } from './modules-page';
@@ -106,6 +107,7 @@ describe('ModulesPage', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: ModulesFacade, useValue: facade },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
       ],
     });
   });

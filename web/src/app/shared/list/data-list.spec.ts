@@ -9,7 +9,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
@@ -177,7 +177,7 @@ describe('DataList', () => {
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
-        { provide: AuthFacade, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+        { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
       ],
     });
     if (saved) TestBed.inject(SettingsFacade).set(listPreferencesSetting('customers'), saved);

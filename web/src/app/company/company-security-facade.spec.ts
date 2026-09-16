@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { CompanySecurityApi, CompanySecurityRefused } from './company-security-api';
 import { CompanySecurityFacade } from './company-security-facade';
 
@@ -17,6 +18,7 @@ describe('CompanySecurityFacade', () => {
       providers: [
         { provide: CompanySecurityApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
       ],
     });
     facade = TestBed.inject(CompanySecurityFacade);

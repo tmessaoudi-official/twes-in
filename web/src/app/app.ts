@@ -2,7 +2,7 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 
-/** The shell is the router: each page brings its own chrome until the G2 layout lands. */
+/** The root is the router: signed-in pages sit inside the shell (shell/app-shell), the pages before sign-in in their own layout. */
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet],

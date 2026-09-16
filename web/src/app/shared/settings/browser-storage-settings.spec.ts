@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { BrowserStorageSettings } from './browser-storage-settings';
 import { SETTINGS_STORAGE, SettingsFacade, UnregisteredSetting } from './settings-facade';
 import {
@@ -43,7 +43,7 @@ describe('BrowserStorageSettings', () => {
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
         {
-          provide: AuthFacade,
+          provide: Session,
           useValue: { me: () => (userId() ? { user: { id: userId() } } : null) },
         },
       ],

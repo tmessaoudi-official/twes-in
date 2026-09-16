@@ -3,7 +3,7 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideTranslateService } from '@ngx-translate/core';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { FormatFacade } from './format-facade';
 import { LanguageFacade } from './language-facade';
 
@@ -15,7 +15,7 @@ describe('FormatFacade', () => {
     TestBed.configureTestingModule({
       providers: [
         provideTranslateService({ lang: 'fr', fallbackLang: 'fr' }),
-        { provide: AuthFacade, useValue: { me } },
+        { provide: Session, useValue: { me } },
       ],
     });
   });

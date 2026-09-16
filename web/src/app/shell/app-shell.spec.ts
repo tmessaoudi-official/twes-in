@@ -12,6 +12,7 @@ import {
 } from '@ngx-translate/core';
 import { BehaviorSubject, map, of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
 import { CompanyFacade } from '../company/company-facade';
 import { NotificationsFacade } from '../notifications/notifications-facade';
@@ -137,6 +138,7 @@ describe('AppShell', () => {
         provideRouter([]),
         { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
         { provide: CompanyFacade, useValue: companies },
         { provide: ThemeFacade, useValue: theme },
         { provide: LanguageFacade, useValue: language },

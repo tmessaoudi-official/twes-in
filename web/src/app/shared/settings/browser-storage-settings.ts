@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable, type Signal, signal } from '@angular/core';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import {
   SETTINGS_STORAGE,
   type SettingDefinition,
@@ -18,7 +18,7 @@ const FORGOTTEN = Symbol('forgotten');
  */
 @Injectable()
 export class BrowserStorageSettings extends SettingsFacade {
-  private readonly auth = inject(AuthFacade);
+  private readonly session = inject(Session);
   private readonly storage = inject(SETTINGS_STORAGE);
   private readonly written = signal(new Map<string, unknown>());
 
@@ -71,7 +71,7 @@ export class BrowserStorageSettings extends SettingsFacade {
   }
 
   private storageKey(setting: SettingDefinition<unknown>): string {
-    return `twes.settings.${this.auth.me()?.user.id ?? 'anonymous'}.${setting.key}`;
+    return `twes.settings.${this.session.me()?.user.id ?? 'anonymous'}.${setting.key}`;
   }
 
   private assertRegistered(setting: SettingDefinition<unknown>): void {

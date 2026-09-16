@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { colourTokens, InvalidAccentColour, statusTokens } from './accent-theme';
@@ -24,7 +24,7 @@ describe('ThemeFacade', () => {
       providers: [
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
-        { provide: AuthFacade, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+        { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
       ],
     });
     const facade = TestBed.inject(ThemeFacade);

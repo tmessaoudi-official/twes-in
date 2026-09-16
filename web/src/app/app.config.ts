@@ -14,6 +14,8 @@ import { provideRouter, withComponentInputBinding } from '@angular/router';
 import { provideTranslateService } from '@ngx-translate/core';
 import { provideTranslateHttpLoader } from '@ngx-translate/http-loader';
 import { routes } from './app.routes';
+import { AuthFacade } from './auth/auth-facade';
+import { Session } from './shared/session/session';
 import { csrfInterceptor } from './auth/csrf-interceptor';
 import { ApiSettings } from './shared/settings/api-settings';
 import { BrowserStorageSettings } from './shared/settings/browser-storage-settings';
@@ -36,6 +38,8 @@ export const appConfig: ApplicationConfig = {
     }),
     // Presentation preferences go through the API's presentation chain; the browser keeps them only for the pages
     // shown before anyone signs in.
+    // Shared code reads the session through its port; the auth feature answers it.
+    { provide: Session, useExisting: AuthFacade },
     { provide: SettingsFacade, useClass: ApiSettings },
     BrowserStorageSettings,
     // Every paginator's labels follow the chosen language.

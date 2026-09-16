@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import { SettingsArea } from './settings-area';
 
 class StaticLoader implements TranslateLoader {
@@ -55,6 +56,7 @@ describe('SettingsArea', () => {
       providers: [
         provideRouter([]),
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

@@ -2,7 +2,7 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { ApiSettings } from './api-settings';
 import { BrowserStorageSettings } from './browser-storage-settings';
 import {
@@ -61,7 +61,7 @@ describe('ApiSettings', () => {
         { provide: SettingsFacade, useClass: ApiSettings },
         BrowserStorageSettings,
         { provide: SETTINGS_STORAGE, useValue: storage },
-        { provide: AuthFacade, useValue: { me } },
+        { provide: Session, useValue: { me } },
         { provide: SettingsApi, useValue: api },
       ],
     });

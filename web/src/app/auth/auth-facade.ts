@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { Session } from '../shared/session/session';
 import { AuthApi, AuthRefused } from './auth-api';
 import type {
   AuthStatus,
@@ -21,7 +22,7 @@ import { PasskeyClient } from './passkey-client';
  * what the API last said. Components depend on it and never on the API adapter.
  */
 @Injectable({ providedIn: 'root' })
-export class AuthFacade {
+export class AuthFacade implements Session {
   private readonly api = inject(AuthApi);
   private readonly passkeyClient = inject(PasskeyClient);
   private readonly stateSignal = signal<SignedInState | null>(null);

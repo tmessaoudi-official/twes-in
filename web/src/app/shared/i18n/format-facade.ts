@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable } from '@angular/core';
-import { AuthFacade } from '../../auth/auth-facade';
+import { Session } from '../session/session';
 import { formatAmount, formatDay, formatLocale, formatMoment } from './format';
 import { LanguageFacade } from './language-facade';
 
@@ -11,11 +11,11 @@ import { LanguageFacade } from './language-facade';
  */
 @Injectable({ providedIn: 'root' })
 export class FormatFacade {
-  private readonly auth = inject(AuthFacade);
+  private readonly session = inject(Session);
   private readonly language = inject(LanguageFacade);
 
   readonly locale = computed(() =>
-    formatLocale(this.language.current(), this.auth.me()?.company?.countryCode),
+    formatLocale(this.language.current(), this.session.me()?.company?.countryCode),
   );
 
   amount(value: string, scale: number | null): string {

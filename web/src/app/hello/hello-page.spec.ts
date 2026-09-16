@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
 import { HelloPage } from './hello-page';
 
@@ -70,6 +71,7 @@ describe('HelloPage', () => {
       providers: [
         provideRouter([]),
         { provide: AuthFacade, useValue: { me: me.asReadonly(), logout, hasPermission } },
+        { provide: Session, useExisting: AuthFacade },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

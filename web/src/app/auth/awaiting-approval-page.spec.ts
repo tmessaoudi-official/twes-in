@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from './auth-facade';
+import { Session } from '../shared/session/session';
 import type { SignedInState } from './auth-types';
 import { AwaitingApprovalPage } from './awaiting-approval-page';
 
@@ -65,6 +66,7 @@ describe('AwaitingApprovalPage', () => {
       providers: [
         provideRouter([]),
         { provide: AuthFacade, useValue: auth },
+        { provide: Session, useExisting: AuthFacade },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

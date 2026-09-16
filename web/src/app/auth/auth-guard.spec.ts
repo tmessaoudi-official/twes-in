@@ -10,6 +10,7 @@ import {
   UrlTree,
 } from '@angular/router';
 import { AuthFacade } from './auth-facade';
+import { Session } from '../shared/session/session';
 import {
   anonymousGuard,
   authGuard,
@@ -39,7 +40,11 @@ async function run(guard: CanActivateFn, fake: ReturnType<typeof facade>): Promi
   // Each call stands alone, so one test can compare several accounts.
   TestBed.resetTestingModule();
   TestBed.configureTestingModule({
-    providers: [provideRouter([]), { provide: AuthFacade, useValue: fake }],
+    providers: [
+      provideRouter([]),
+      { provide: AuthFacade, useValue: fake },
+      { provide: Session, useExisting: AuthFacade },
+    ],
   });
   const result = await TestBed.runInInjectionContext(() =>
     guard({} as ActivatedRouteSnapshot, {} as RouterStateSnapshot),
