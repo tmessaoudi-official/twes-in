@@ -830,10 +830,11 @@ not compiled into what we distribute, and are not listed here.
 | zod | 4.4.3 | MIT | runtime |
 | zod-to-json-schema | 3.25.2 | ISC | dev |
 
-## Vendored fonts — 1
+## Vendored fonts — 2
 
 Shipped unmodified, each with its licence text in the same directory.
 
 | Directory | Licence | Files |
 |---|---|---|
 | web/public/fonts/inter | OFL-1.1 | inter-latin-ext-wght-normal.woff2, inter-latin-wght-normal.woff2 |
+| web/public/fonts/manrope | OFL-1.1 | manrope-latin-ext-wght-normal.woff2, manrope-latin-wght-normal.woff2 |
