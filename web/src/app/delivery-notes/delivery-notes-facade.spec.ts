@@ -58,6 +58,7 @@ describe('DeliveryNotesFacade', () => {
     validate: vi.fn(),
     deliver: vi.fn(),
     cancel: vi.fn(),
+    invoice: vi.fn(),
   };
   let facade: DeliveryNotesFacade;
 
@@ -121,5 +122,14 @@ describe('DeliveryNotesFacade', () => {
     expect(await facade.reviseAndValidate('c1', 'n1', input)).toBeNull();
     expect(facade.error()).toBe('conflict');
     expect(facade.note()).toEqual(draft);
+  });
+  it('answers the id of the invoice drafted from a note, or null with the reason', async () => {
+    api.invoice.mockResolvedValue('i7');
+    expect(await facade.invoice('c1', 'n1')).toBe('i7');
+    expect(api.invoice).toHaveBeenCalledWith('c1', ['n1']);
+
+    api.invoice.mockRejectedValue(new DeliveryNotesRefused('conflict'));
+    expect(await facade.invoice('c1', 'n1')).toBeNull();
+    expect(facade.error()).toBe('conflict');
   });
 });

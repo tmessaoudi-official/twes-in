@@ -1,0 +1,72 @@
+<section class="flex flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="invoices-title">
+      {{ 'invoices.title' | translate }}
+    </h1>
+    @if (mayWrite() && company()) {
+      <a mat-flat-button routerLink="/invoices/new" data-testid="invoice-add">
+        {{ 'invoices.add' | translate }}
+      </a>
+    }
+  </div>
+
+  @if (!company()) {
+    <p data-testid="invoices-no-company">{{ 'invoices.no_company' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="invoices-error" class="text-error">
+      {{ 'invoices.errors.' + code | translate }}
+    </p>
+  }
+
+  <app-data-list
+    [descriptor]="list"
+    [rows]="rows()"
+    testId="invoices-table"
+    [rowTestId]="rowTestId"
+    emptyKey="invoices.none"
+    emptyTestId="invoices-empty"
+  >
+    <ng-template appDataListCell="number" let-row>
+      <span class="flex flex-col">
+        <span class="tabular-nums">{{ row.number ?? ('invoices.draft' | translate) }}</span>
+        @if (row.type === 'credit_note') {
+          <span class="text-xs text-on-surface-variant">{{
+            'invoices.types.credit_note' | translate
+          }}</span>
+        }
+      </span>
+    </ng-template>
+    <ng-template appDataListCell="status" let-row>
+      <app-status-badge [tone]="toneOf(row.shown)">
+        {{ 'invoices.statuses.' + row.shown | translate }}
+      </app-status-badge>
+    </ng-template>
+    <ng-template appDataListCell="issueDate" let-row>
+      {{ row.issueDate | day }}
+    </ng-template>
+    <ng-template appDataListCell="dueDate" let-row>
+      {{ row.dueDate | day }}
+    </ng-template>
+    <ng-template appDataListCell="total" let-row>
+      <span class="tabular-nums">{{ row.total | amount: scale() }}</span>
+    </ng-template>
+    <ng-template appDataListCell="amountDue" let-row>
+      @if (row.type === 'invoice' && row.status !== 'draft' && row.status !== 'cancelled') {
+        <span class="tabular-nums">{{ row.amountDue | amount: scale() }}</span>
+      }
+    </ng-template>
+    <ng-template appDataListRowActions let-row>
+      <a
+        mat-button
+        [routerLink]="['/invoices', row.id]"
+        [attr.data-testid]="'invoice-open-' + row.id"
+        [attr.aria-label]="
+          'invoices.open' | translate: { number: row.number ?? ('invoices.draft' | translate) }
+        "
+      >
+        {{ 'invoices.open_short' | translate }}
+      </a>
+    </ng-template>
+  </app-data-list>
+</section>

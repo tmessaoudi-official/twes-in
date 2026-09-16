@@ -1,0 +1,409 @@
+<section class="flex max-w-5xl flex-col gap-6">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-col gap-1">
+      <h1 class="text-3xl font-semibold" data-testid="invoice-title">
+        @if (current(); as invoice) {
+          @if (invoice.number; as number) {
+            {{ number }}
+          } @else if (isCreditNote()) {
+            {{ 'invoices.credit_note_draft_title' | translate }}
+          } @else {
+            {{ 'invoices.draft_title' | translate }}
+          }
+        } @else {
+          {{ 'invoices.new_title' | translate }}
+        }
+      </h1>
+      @if (current(); as invoice) {
+        <p
+          class="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant"
+          data-testid="invoice-status"
+        >
+          @if (shown(); as status) {
+            <app-status-badge [tone]="tones[status]">
+              {{ 'invoices.statuses.' + status | translate }}
+            </app-status-badge>
+          }
+          @if (isCreditNote()) {
+            · {{ 'invoices.types.credit_note' | translate }}
+          }
+          @if (invoice.issueDate) {
+            · {{ 'invoices.fields.issueDate' | translate }} {{ invoice.issueDate | day }}
+          }
+          @if (invoice.dueDate && !isCreditNote()) {
+            · {{ 'invoices.fields.dueDate' | translate }} {{ invoice.dueDate | day }}
+          }
+        </p>
+        @if (invoice.correctsInvoiceId; as corrected) {
+          <a
+            class="text-sm underline"
+            [routerLink]="['/invoices', corrected]"
+            data-testid="invoice-corrects"
+            >{{ 'invoices.corrects' | translate }}</a
+          >
+        }
+      }
+    </div>
+    <div class="flex flex-wrap gap-2">
+      @if (pdfUrl(); as url) {
+        <a mat-stroked-button [href]="url" target="_blank" rel="noopener" data-testid="invoice-pdf">
+          {{
+            (current()?.status === 'draft' ? 'invoices.actions.pdf_draft' : 'invoices.actions.pdf')
+              | translate
+          }}
+        </a>
+      }
+      <a mat-button routerLink="/invoices">{{ 'invoices.back' | translate }}</a>
+    </div>
+  </div>
+
+  @if (!company()) {
+    <p data-testid="invoice-no-company">{{ 'invoices.no_company' | translate }}</p>
+  }
+  @if (!mayWrite()) {
+    <p data-testid="invoice-read-only">{{ 'invoices.read_only' | translate }}</p>
+  } @else if (current(); as invoice) {
+    @if (invoice.status !== 'draft') {
+      <p data-testid="invoice-fixed">
+        {{
+          (invoice.status === 'cancelled' ? 'invoices.fixed.cancelled' : 'invoices.fixed.issued')
+            | translate
+        }}
+      </p>
+    }
+  }
+  @if (noCustomers()) {
+    <p data-testid="invoice-no-customers">{{ 'invoices.no_customers' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="invoice-error" class="text-error">
+      {{ 'invoices.errors.' + code | translate }}
+    </p>
+  }
+  @if (saved()) {
+    <p role="status" data-testid="invoice-saved">{{ 'invoices.saved' | translate }}</p>
+  }
+
+  @if (current(); as invoice) {
+    @if (!isCreditNote() && invoice.status !== 'draft' && invoice.status !== 'cancelled') {
+      <mat-card data-testid="invoice-due">
+        <mat-card-content>
+          <div class="flex flex-wrap items-end justify-between gap-4">
+            <div class="flex flex-col">
+              <span class="text-sm text-on-surface-variant">{{
+                'invoices.due.left' | translate
+              }}</span>
+              <span class="text-3xl font-semibold tabular-nums" data-testid="invoice-amount-due">
+                {{ invoice.amountDue | amount: scale() }}
+                <span class="text-base font-normal">{{ options()?.currency }}</span>
+              </span>
+            </div>
+            <p class="text-sm tabular-nums text-on-surface-variant">
+              {{
+                'invoices.due.paid_of'
+                  | translate
+                    : {
+                        paid: (invoice.amountPaid | amount: scale()),
+                        total: (invoice.total | amount: scale()),
+                      }
+              }}
+            </p>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (form(); as form) {
+    @if (descriptor(); as descriptor) {
+      <mat-card>
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="form"
+            testId="invoice-form"
+            [readOnly]="!editable()"
+            (submitted)="save()"
+          />
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (lines(); as lines) {
+    @if (options(); as options) {
+      <mat-card>
+        <mat-card-content>
+          <app-invoice-lines
+            [lines]="lines"
+            [options]="options"
+            [customer]="customer()"
+            [nets]="nets()"
+            [readOnly]="!editable()"
+          />
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  @if (form() && documentTaxChoices().length > 0) {
+    <mat-card data-testid="invoice-document-taxes">
+      <mat-card-content>
+        <div class="flex flex-col gap-2">
+          <h2 class="text-xl font-semibold">{{ 'invoices.document_taxes.title' | translate }}</h2>
+          <p class="text-sm text-on-surface-variant">
+            {{ 'invoices.document_taxes.hint' | translate }}
+          </p>
+          <div
+            class="flex flex-wrap gap-x-6"
+            role="group"
+            [attr.aria-label]="'invoices.document_taxes.title' | translate"
+          >
+            @for (tax of documentTaxChoices(); track tax.id) {
+              <mat-checkbox
+                [checked]="chargesDocumentTax(tax.id)"
+                [disabled]="!editable()"
+                (change)="toggleDocumentTax(tax.id, $event.checked)"
+                [attr.data-testid]="'document-tax-' + tax.code"
+                >{{ tax.name }}</mat-checkbox
+              >
+            }
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (current(); as invoice) {
+    <mat-card data-testid="invoice-totals">
+      <mat-card-content>
+        <div class="flex flex-col gap-2">
+          <h2 class="text-xl font-semibold">{{ 'invoices.totals.title' | translate }}</h2>
+          <dl class="grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 tabular-nums">
+            <dt>{{ 'invoices.totals.subtotal' | translate }}</dt>
+            <dd class="text-end">{{ invoice.subtotalNet | amount: scale() }}</dd>
+            @if (!isZero(invoice.documentDiscount)) {
+              <dt>{{ 'invoices.totals.discount' | translate }}</dt>
+              <dd class="text-end">{{ '-' + invoice.documentDiscount | amount: scale() }}</dd>
+              <dt>{{ 'invoices.totals.total_net' | translate }}</dt>
+              <dd class="text-end">{{ invoice.totalNet | amount: scale() }}</dd>
+            }
+            @for (tax of invoice.taxes; track tax.code + '|' + tax.rate) {
+              <dt>
+                {{
+                  'invoices.totals.tax'
+                    | translate
+                      : {
+                          code: tax.code,
+                          rate: (tax.rate | amount: 0),
+                          base: (tax.base | amount: scale()),
+                        }
+                }}
+              </dt>
+              <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+            }
+            @for (tax of invoice.fixedTaxes; track tax.code) {
+              <dt>{{ tax.code }}</dt>
+              <dd class="text-end">{{ tax.amount | amount: scale() }}</dd>
+            }
+            <dt class="font-semibold">{{ 'invoices.totals.total' | translate }}</dt>
+            <dd class="text-end font-semibold" data-testid="invoice-total">
+              {{ invoice.total | amount: scale() }}
+            </dd>
+            @for (withholding of invoice.withholdings; track withholding.code) {
+              <dt>
+                {{
+                  'invoices.totals.withholding'
+                    | translate: { code: withholding.code, rate: (withholding.rate | amount: 0) }
+                }}
+              </dt>
+              <dd class="text-end">{{ '-' + withholding.amount | amount: scale() }}</dd>
+            }
+            @if (invoice.status === 'draft' || isCreditNote()) {
+              <dt class="font-semibold">{{ 'invoices.totals.net_due' | translate }}</dt>
+              <dd class="text-end font-semibold" data-testid="invoice-net-due">
+                {{ invoice.amountDue | amount: scale() }}
+              </dd>
+            } @else {
+              <dt>{{ 'invoices.totals.paid' | translate }}</dt>
+              <dd class="text-end">{{ invoice.amountPaid | amount: scale() }}</dd>
+              <dt>{{ 'invoices.totals.credited' | translate }}</dt>
+              <dd class="text-end">{{ invoice.amountCredited | amount: scale() }}</dd>
+              <dt class="font-semibold">{{ 'invoices.totals.left' | translate }}</dt>
+              <dd class="text-end font-semibold">{{ invoice.amountDue | amount: scale() }}</dd>
+            }
+          </dl>
+          <p class="text-xs opacity-70">
+            {{ 'invoices.totals.as_saved' | translate: { currency: options()?.currency } }}
+          </p>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  @if (showsPayments()) {
+    @if (current(); as invoice) {
+      <mat-card data-testid="invoice-payments">
+        <mat-card-content>
+          <div class="flex flex-col gap-4">
+            <h2 class="text-xl font-semibold">{{ 'invoices.payments.title' | translate }}</h2>
+            @if (invoice.payments.length === 0) {
+              <p data-testid="invoice-payments-none">{{ 'invoices.payments.none' | translate }}</p>
+            } @else {
+              <ul class="flex flex-col divide-y divide-outline-variant">
+                @for (payment of invoice.payments; track payment.id) {
+                  <li
+                    class="flex flex-wrap items-center justify-between gap-2 py-2"
+                    [attr.data-testid]="'payment-' + payment.id"
+                  >
+                    <span class="flex flex-col">
+                      <span
+                        >{{ 'invoices.payments.methods.' + payment.method | translate }} ·
+                        {{ payment.date | day }}</span
+                      >
+                      @if (payment.reference) {
+                        <span class="text-sm text-on-surface-variant">{{ payment.reference }}</span>
+                      }
+                    </span>
+                    <span class="flex items-center gap-2">
+                      <span class="font-semibold tabular-nums">{{
+                        payment.amount | amount: scale()
+                      }}</span>
+                      @if (mayPay()) {
+                        @if (confirmingPaymentDelete() === payment.id) {
+                          <button
+                            mat-button
+                            type="button"
+                            (click)="confirmingPaymentDelete.set(null)"
+                            [attr.data-testid]="'payment-' + payment.id + '-keep'"
+                          >
+                            {{ 'invoices.payments.keep' | translate }}
+                          </button>
+                          <button
+                            mat-flat-button
+                            type="button"
+                            [disabled]="busy()"
+                            (click)="deletePayment(payment)"
+                            [attr.data-testid]="'payment-' + payment.id + '-delete-confirm'"
+                          >
+                            {{ 'invoices.payments.confirm_delete' | translate }}
+                          </button>
+                        } @else {
+                          <button
+                            mat-button
+                            type="button"
+                            (click)="confirmingPaymentDelete.set(payment.id)"
+                            [attr.data-testid]="'payment-' + payment.id + '-delete'"
+                            [attr.aria-label]="
+                              'invoices.payments.delete'
+                                | translate: { amount: (payment.amount | amount: scale()) }
+                            "
+                          >
+                            {{ 'invoices.payments.delete_short' | translate }}
+                          </button>
+                        }
+                      }
+                    </span>
+                  </li>
+                }
+              </ul>
+            }
+            @if (paymentRecorded()) {
+              <p role="status" data-testid="invoice-payment-recorded">
+                {{ 'invoices.payments.recorded' | translate }}
+              </p>
+            }
+            @if (payment(); as payment) {
+              <app-descriptor-form
+                [descriptor]="payment.descriptor"
+                [form]="payment.group"
+                testId="invoice-payment-form"
+                (submitted)="recordPayment()"
+              />
+              <div class="flex justify-end">
+                <button
+                  mat-flat-button
+                  type="button"
+                  [disabled]="busy()"
+                  (click)="recordPayment()"
+                  data-testid="invoice-payment-record"
+                >
+                  {{ 'invoices.payments.record' | translate }}
+                </button>
+              </div>
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+    }
+  }
+
+  <div class="flex flex-wrap items-center justify-end gap-2">
+    @if (editable() && form()) {
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="busy()"
+        (click)="save()"
+        data-testid="invoice-save"
+      >
+        {{ 'invoices.actions.save' | translate }}
+      </button>
+    }
+    @if (canIssue()) {
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="busy()"
+        (click)="issue()"
+        data-testid="invoice-issue"
+      >
+        {{
+          (isCreditNote() ? 'invoices.actions.issue_credit_note' : 'invoices.actions.issue')
+            | translate
+        }}
+      </button>
+    }
+    @if (canCredit()) {
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="busy()"
+        (click)="creditNote()"
+        data-testid="invoice-credit-note"
+      >
+        {{ 'invoices.actions.credit_note' | translate }}
+      </button>
+    }
+    @if (canCancel()) {
+      @if (confirmingCancel()) {
+        <button
+          mat-button
+          type="button"
+          (click)="confirmingCancel.set(false)"
+          data-testid="invoice-cancel-keep"
+        >
+          {{ 'invoices.actions.keep' | translate }}
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          [disabled]="busy()"
+          (click)="cancel()"
+          data-testid="invoice-cancel-confirm"
+        >
+          {{ 'invoices.actions.confirm_cancel' | translate }}
+        </button>
+      } @else {
+        <button
+          mat-button
+          type="button"
+          (click)="confirmingCancel.set(true)"
+          data-testid="invoice-cancel"
+        >
+          {{ 'invoices.actions.cancel' | translate }}
+        </button>
+      }
+    }
+  </div>
+</section>

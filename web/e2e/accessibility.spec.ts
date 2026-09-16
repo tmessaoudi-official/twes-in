@@ -110,6 +110,8 @@ test('the language switch translates the shell and the page', async ({ page }) =
 // fiscal and settings screens, by a scenario that makes none at all. One walk covers them here, in both colour
 // schemes, so that a screen a goal adds is a row in this table rather than an assertion nobody remembers to write.
 const WALK: readonly (readonly [string, RegExp])[] = [
+  ['/invoices', /\/invoices$/],
+  ['/invoices/new', /\/invoices\/new$/],
   ['/customers', /\/customers$/],
   ['/customers/groups', /\/customers\/groups$/],
   ['/products', /\/products$/],
@@ -136,6 +138,9 @@ async function walk(page: Page, scheme: string): Promise<void> {
       scheme === 'dark' ? /theme-dark/ : /^((?!theme-dark).)*$/,
     );
     await expect(page.getByRole('heading').first(), `${route} (${scheme})`).toBeVisible();
+    // Again once the page has drawn: the URL above can match before a module guard sends the person home, and the
+    // home page's heading would then be the one found (§ 8 row 10: an invoices module left off passed this way).
+    await expect(page, `${route} (${scheme}), still there once drawn`).toHaveURL(url);
     // Nothing is excluded in dark any more: a tab label read 1.08:1, 3.2:1 or 14.42:1 because it was still fading from
     // the light scheme's colour when axe read it, which ThemeFacade now prevents (§ 8 row 28).
     const results = await new AxeBuilder({ page })

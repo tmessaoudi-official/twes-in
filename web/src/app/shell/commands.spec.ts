@@ -5,6 +5,7 @@ import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_COMMANDS } from '../customers/customers-nav';
 import { DELIVERY_NOTES_COMMANDS } from '../delivery-notes/delivery-notes-nav';
 import { EXPENSES_COMMANDS } from '../expenses/expenses-nav';
+import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
 import { type Command, matchCommands, MODULE_COMMANDS, navCommands } from './commands';
@@ -42,13 +43,13 @@ describe('navCommands', () => {
   it('turns each navigation entry into a "go to" command keeping its route and its gates', () => {
     expect(navCommands(MODULE_NAV.slice(0, 1))).toEqual([
       {
-        key: 'goto-customers',
-        labelKey: 'nav.customers',
-        icon: 'contacts',
-        route: '/customers',
+        key: 'goto-invoices',
+        labelKey: 'nav.invoices',
+        icon: 'receipt_long',
+        route: '/invoices',
         group: 'goto',
-        permission: 'customer.read',
-        module: 'customers',
+        permission: 'invoice.read',
+        module: 'invoices',
       },
     ]);
   });
@@ -88,6 +89,7 @@ describe('matchCommands', () => {
 describe('MODULE_COMMANDS', () => {
   it("gathers each module's own commands, each gated by its module and a write permission", () => {
     expect(MODULE_COMMANDS).toEqual([
+      ...INVOICES_COMMANDS,
       ...CUSTOMERS_COMMANDS,
       ...PRODUCTS_COMMANDS,
       ...DELIVERY_NOTES_COMMANDS,
@@ -97,6 +99,7 @@ describe('MODULE_COMMANDS', () => {
     expect(
       MODULE_COMMANDS.map((command) => [command.route, command.module, command.permission]),
     ).toEqual([
+      ['/invoices/new', 'invoices', 'invoice.write'],
       ['/customers/new', 'customers', 'customer.write'],
       ['/products/new', 'products', 'product.write'],
       ['/delivery-notes/new', 'delivery_notes', 'delivery_note.write'],

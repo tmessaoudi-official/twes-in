@@ -3,6 +3,7 @@
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
+import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
 import { EXPENSES_NAV } from '../expenses/expenses-nav';
@@ -134,20 +135,15 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
   },
 ];
 
-/** The design checkpoint's fixture screens: a development build only, never shipped, last in the sidebar. */
-export const DEV_NAV: readonly NavEntry[] = [
-  {
-    key: 'design',
-    labelKey: 'nav.design',
-    icon: 'palette',
-    route: '/design',
-    section: 'main',
-    devOnly: true,
-  },
-];
+/**
+ * Entries for development builds only, never shipped (`devOnly`). Empty since the design checkpoint's fixture screens
+ * were retired with the invoice screens (docs/SPEC.md § 7, 2026-09-16); the gate stays for the next one.
+ */
+export const DEV_NAV: readonly NavEntry[] = [];
 
 /** Every module's entries, each declared by its module's web feature. */
 export const MODULE_NAV: readonly NavEntry[] = [
+  ...INVOICES_NAV,
   ...CUSTOMERS_NAV,
   ...PRODUCTS_NAV,
   ...DELIVERY_NOTES_NAV,

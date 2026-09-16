@@ -8,6 +8,8 @@ import type {
   DeliveryNoteDeliveryNoteRead,
   DeliveryNoteDeliveryNoteWrite,
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
+  InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
+  InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
 import {
   DELIVERY_NOTE_STATUSES,
@@ -100,6 +102,25 @@ export class DeliveryNotesApi {
 
   async cancel(companyId: string, id: string): Promise<DeliveryNoteRow> {
     return this.step(companyId, id, 'cancel', null);
+  }
+
+  /**
+   * Drafts an invoice from validated or delivered notes of one customer and establishment, and answers its id; 409
+   * when a note is not validated or delivered or is already on an invoice, 422 when the notes cannot share one.
+   */
+  async invoice(companyId: string, deliveryNoteIds: readonly string[]): Promise<string> {
+    const body: InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite = {
+      deliveryNoteIds: [...deliveryNoteIds],
+    };
+    return this.guard(async () => {
+      const draft = await firstValueFrom(
+        this.http.post<InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead>(
+          `${companyPath(companyId)}/invoices/from-delivery-notes`,
+          body,
+        ),
+      );
+      return draft.id ?? '';
+    });
   }
 
   /** Where a note's PDF is downloaded from, with the session the browser already has. */

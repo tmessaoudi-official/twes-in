@@ -5,9 +5,9 @@ import { signIn } from './session';
 
 // G5 module registry through the real stack: in the seeded company, the owner switches the customers module off,
 // its entries leave the navigation, its page sends them home and its API answers 404; switching it back on brings
-// all of it back. Delivery notes need customers, so they are switched off first and back on last. The suite shares
-// one database and runs serially, and both modules are switched on again whatever happens, so no other scenario
-// ever finds either off.
+// all of it back. Delivery notes and invoices need customers, so they are switched off first and back on last. The
+// suite shares one database and runs serially, and every module switched off is switched on again whatever happens,
+// so no other scenario ever finds one off.
 const CSRF = '0123456789abcdef0123456789abcdef';
 
 async function wcagViolations(page: Page): Promise<string[]> {
@@ -66,5 +66,7 @@ test('a module switched off leaves the navigation, its pages and its API until i
   } finally {
     await switchModule(page, 'customers', true);
     await switchModule(page, 'delivery_notes', true);
+    // Invoices were switched off first, like delivery notes, and need customers back before they come back on.
+    await switchModule(page, 'invoices', true);
   }
 });

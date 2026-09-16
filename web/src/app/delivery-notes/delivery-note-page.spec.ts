@@ -116,14 +116,17 @@ describe('DeliveryNotePage', () => {
     reviseAndValidate: vi.fn(),
     deliver: vi.fn(),
     cancel: vi.fn(),
+    invoice: vi.fn(),
     clearError: vi.fn(),
     pdfUrl: (companyId: string, id: string) =>
       `/api/companies/${companyId}/delivery-notes/${id}/pdf`,
   };
   const granted = new Set<string>();
+  const modules = new Set<string>(['delivery_notes', 'invoices']);
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: (permission: string) => granted.has(permission),
+    hasModule: (module: string) => modules.has(module),
   };
   let fixture: ComponentFixture<DeliveryNotePage>;
 
@@ -165,9 +168,15 @@ describe('DeliveryNotePage', () => {
     error.set(null);
     note.set(null);
     granted.clear();
-    ['delivery_note.read', 'delivery_note.write', 'delivery_note.validate'].forEach((each) =>
-      granted.add(each),
-    );
+    [
+      'delivery_note.read',
+      'delivery_note.write',
+      'delivery_note.validate',
+      'invoice.write',
+    ].forEach((each) => granted.add(each));
+    modules.clear();
+    ['delivery_notes', 'invoices'].forEach((each) => modules.add(each));
+    facade.invoice.mockReset().mockResolvedValue('i7');
     facade.loadNote.mockReset().mockResolvedValue(undefined);
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'n9' });
     facade.revise.mockReset().mockResolvedValue(draft);
@@ -361,5 +370,38 @@ describe('DeliveryNotePage', () => {
     await open('n1');
 
     expect(q('delivery-note-error')?.textContent).toContain('changé d’état');
+  });
+  it('drafts an invoice from a validated or delivered note and opens it', async () => {
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    note.set(validated);
+    await open('n1');
+    q('delivery-note-invoice')!.click();
+    await settle();
+    expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1');
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
+
+    note.set({ ...validated, status: 'delivered' });
+    await settle();
+    expect(q('delivery-note-invoice')).not.toBeNull();
+  });
+
+  it('offers no invoice for a draft, an invoiced note, without the invoices module or the permission', async () => {
+    note.set(draft);
+    await open('n1');
+    expect(q('delivery-note-invoice')).toBeNull();
+
+    note.set({ ...validated, status: 'invoiced' });
+    await settle();
+    expect(q('delivery-note-invoice')).toBeNull();
+
+    note.set(validated);
+    modules.delete('invoices');
+    await open('n1');
+    expect(q('delivery-note-invoice')).toBeNull();
+
+    modules.add('invoices');
+    granted.delete('invoice.write');
+    await open('n1');
+    expect(q('delivery-note-invoice')).toBeNull();
   });
 });

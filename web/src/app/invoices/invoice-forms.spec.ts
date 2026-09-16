@@ -1,0 +1,300 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import {
+  applyProduct,
+  defaultDocumentTaxes,
+  documentTaxOptions,
+  invoiceForm,
+  invoiceInput,
+  invoiceListRows,
+  invoiceValues,
+  INVOICES_LIST,
+  lineGroup,
+  linesArray,
+  paymentForm,
+  paymentInput,
+  shownStatus,
+} from './invoice-forms';
+import type { InvoiceOptions, InvoiceRow } from './invoices-types';
+
+const options: InvoiceOptions = {
+  currency: 'TND',
+  currencyScale: 3,
+  establishments: [
+    { id: 'e0', code: 'SFAX', name: 'Sfax', isDefault: false },
+    { id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true },
+  ],
+  customers: [
+    {
+      id: 'k1',
+      number: 'CLI-1',
+      name: 'Carthage',
+      excludedFamilies: [],
+      defaultDiscountRate: '5',
+      defaultTaxComponentIds: ['w1'],
+    },
+    {
+      id: 'k2',
+      number: 'CLI-2',
+      name: 'Ambassade',
+      excludedFamilies: ['vat', 'stamp'],
+      defaultDiscountRate: null,
+      defaultTaxComponentIds: [],
+    },
+  ],
+  products: [
+    {
+      id: 'p1',
+      reference: 'ART-1',
+      name: 'Conception',
+      unitId: 'u2',
+      unitPriceNet: '1800.0000',
+      defaultTaxComponentIds: ['t1', 'f1'],
+    },
+  ],
+  units: [
+    { id: 'u1', code: 'C62', name: 'Unité', decimals: 0 },
+    { id: 'u2', code: 'HUR', name: 'Heure', decimals: 2 },
+  ],
+  taxes: [
+    tax('t1', 'TVA19', 'percentage_line', 'vat', false),
+    tax('f1', 'FODEC', 'percentage_line', 'levy', false),
+    tax('s1', 'TIMBRE', 'fixed_document', 'stamp', true),
+    tax('w1', 'RS1', 'withholding_total', 'withholding', false),
+  ],
+};
+
+function tax(
+  id: string,
+  code: string,
+  kind: InvoiceOptions['taxes'][number]['kind'],
+  family: InvoiceOptions['taxes'][number]['family'],
+  isDefault: boolean,
+): InvoiceOptions['taxes'][number] {
+  return {
+    id,
+    code,
+    name: code,
+    kind,
+    family,
+    rate: kind === 'fixed_document' ? null : '1',
+    amount: kind === 'fixed_document' ? '1.000' : null,
+    threshold: null,
+    isDefault,
+  };
+}
+
+function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
+  return {
+    id: 'i1',
+    type: 'invoice',
+    correctsInvoiceId: null,
+    number: 'FAC-2026-00043',
+    status: 'issued',
+    customerId: 'k1',
+    customerName: 'Carthage SA',
+    establishmentId: 'e1',
+    issueDate: '2026-08-14',
+    dueDate: '2026-09-13',
+    supplyDate: null,
+    paymentTermsDays: 30,
+    customerReference: null,
+    notesPrinted: null,
+    notesInternal: null,
+    discountAmount: null,
+    documentTaxComponentIds: ['s1'],
+    lines: [],
+    subtotalNet: '1200.000',
+    documentDiscount: '0.000',
+    totalNet: '1200.000',
+    taxes: [],
+    totalTax: '228.000',
+    fixedTaxes: [],
+    total: '1428.000',
+    withholdings: [],
+    amountDue: '1428.000',
+    amountPaid: '0.000',
+    amountCredited: '0.000',
+    payments: [],
+    ...overrides,
+  };
+}
+
+describe('invoice forms', () => {
+  describe('shownStatus', () => {
+    it('reads an issued or partly paid invoice past its due day as overdue', () => {
+      expect(shownStatus(invoice(), '2026-09-16')).toBe('overdue');
+      expect(shownStatus(invoice({ status: 'partially_paid' }), '2026-09-16')).toBe('overdue');
+    });
+
+    it('keeps the status on the due day itself and before it', () => {
+      expect(shownStatus(invoice(), '2026-09-13')).toBe('issued');
+      expect(shownStatus(invoice({ status: 'partially_paid' }), '2026-09-01')).toBe(
+        'partially_paid',
+      );
+    });
+
+    it('never reads a paid invoice, a draft or a credit note as overdue', () => {
+      expect(shownStatus(invoice({ status: 'paid' }), '2027-01-01')).toBe('paid');
+      expect(shownStatus(invoice({ status: 'draft', dueDate: null }), '2027-01-01')).toBe('draft');
+      expect(shownStatus(invoice({ type: 'credit_note' }), '2027-01-01')).toBe('issued');
+    });
+  });
+
+  it('names each row by the issued name, else today’s customer, with its shown status', () => {
+    const rows = invoiceListRows(
+      [invoice(), invoice({ id: 'i2', status: 'draft', customerName: null, dueDate: null })],
+      options,
+      '2026-09-16',
+    );
+    expect(rows.map((row) => [row.customer, row.shown])).toEqual([
+      ['Carthage SA', 'overdue'],
+      ['Carthage', 'draft'],
+    ]);
+  });
+
+  it('filters the list by the shown status, overdue counted apart from issued', () => {
+    const filter = INVOICES_LIST.filters?.find((each) => each.id === 'status');
+    expect(filter?.options.map((option) => option.value)).toEqual([
+      'draft',
+      'issued',
+      'overdue',
+      'partially_paid',
+      'paid',
+      'cancelled',
+    ]);
+    const [row] = invoiceListRows([invoice()], options, '2026-09-16');
+    expect(row && filter?.value(row)).toBe('overdue');
+  });
+
+  it('offers the customers and establishments, keeping those a document already names', () => {
+    const form = invoiceForm(options, invoice({ customerId: 'gone', establishmentId: 'closed' }));
+    const fields = form.sections.flatMap((section) => section.fields);
+    const customer = fields.find((field) => field.id === 'customerId');
+    expect(customer?.options?.map((option) => option.value)).toEqual(['k1', 'k2', 'gone']);
+    const establishment = fields.find((field) => field.id === 'establishmentId');
+    expect(establishment?.options?.map((option) => option.value)).toContain('closed');
+    expect(fields.map((field) => field.id)).toEqual(
+      expect.arrayContaining(['supplyDate', 'paymentTermsDays', 'discountAmount', 'notesPrinted']),
+    );
+  });
+
+  it('starts a new invoice at the default establishment and the customer’s terms', () => {
+    const values = invoiceValues(null, options);
+    expect(values['establishmentId']).toBe('e1');
+    expect(values['paymentTermsDays']).toBe('');
+    expect(invoiceValues(invoice({ paymentTermsDays: 0 }), options)['paymentTermsDays']).toBe('0');
+  });
+
+  it('prefills the document taxes: the company’s defaults and the customer’s, less what its regime refuses', () => {
+    expect(defaultDocumentTaxes(options, 'k1')).toEqual(['s1', 'w1']);
+    expect(defaultDocumentTaxes(options, 'k2')).toEqual([]);
+    expect(documentTaxOptions(options, 'k2', ['s1']).map((each) => each.id)).toEqual(['w1', 's1']);
+  });
+
+  describe('lines', () => {
+    it('discounts a new line by the customer’s default rate', () => {
+      expect(
+        lineGroup(null, options, options.customers[0] ?? null).controls.discountRate.value,
+      ).toBe('5');
+      expect(lineGroup(null, options, null).controls.discountRate.value).toBe('');
+    });
+
+    it('fills a line from its product, less the taxes the customer’s regime refuses', () => {
+      const line = lineGroup(null, options, null);
+      applyProduct(line, 'p1', options, ['vat']);
+      expect(line.getRawValue()).toMatchObject({
+        productId: 'p1',
+        description: 'Conception',
+        unitId: 'u2',
+        unitPriceNet: '1800.000',
+        taxComponentIds: ['f1'],
+      });
+    });
+
+    it('refuses a quantity finer than the unit counts and a discount above 100', () => {
+      const line = lineGroup(null, options, null);
+      line.patchValue({ unitId: 'u1', quantity: '1.5', discountRate: '120' });
+      expect(line.hasError('quantityDecimals')).toBe(true);
+      expect(line.controls.discountRate.invalid).toBe(true);
+      line.patchValue({ unitId: 'u2', discountRate: '12.5' });
+      expect(line.hasError('quantityDecimals')).toBe(false);
+      expect(line.controls.discountRate.valid).toBe(true);
+    });
+
+    it('keeps where a line came from through the form', () => {
+      const lines = linesArray(
+        [
+          {
+            productId: null,
+            description: 'Palette',
+            quantity: '2.000',
+            unitId: 'u1',
+            unitPriceNet: '35.0000',
+            discountRate: null,
+            taxComponentIds: [],
+            sourceDeliveryNoteLineId: 'dl1',
+            net: '70.000',
+          },
+        ],
+        options,
+        null,
+      );
+      const input = invoiceInput(invoiceValues(null, options), lines, ['s1']);
+      expect(input.lines[0]).toMatchObject({
+        quantity: '2',
+        discountRate: null,
+        sourceDeliveryNoteLineId: 'dl1',
+      });
+    });
+  });
+
+  it('sends the header as the API takes it: trimmed, empty as no value, the terms as a number', () => {
+    const values = {
+      ...invoiceValues(null, options),
+      customerId: 'k1',
+      paymentTermsDays: ' 45 ',
+      discountAmount: ' ',
+      customerReference: '  PO-9 ',
+    };
+    const input = invoiceInput(values, linesArray([], options, null), ['s1', 'w1']);
+    expect(input).toMatchObject({
+      customerId: 'k1',
+      establishmentId: 'e1',
+      paymentTermsDays: 45,
+      discountAmount: null,
+      customerReference: 'PO-9',
+      documentTaxComponentIds: ['s1', 'w1'],
+    });
+    expect(
+      invoiceInput({ ...values, paymentTermsDays: '' }, linesArray([], options, null), [])
+        .paymentTermsDays,
+    ).toBeNull();
+  });
+
+  it('records a payment on today with the amount still due, and sends it trimmed', () => {
+    const form = paymentForm();
+    expect(form.sections.flatMap((s) => s.fields).map((f) => f.id)).toEqual([
+      'date',
+      'amount',
+      'method',
+      'reference',
+      'notes',
+    ]);
+    expect(
+      paymentInput({
+        date: '2026-09-16',
+        amount: ' 5950.000 ',
+        method: 'transfer',
+        reference: '',
+        notes: ' ok ',
+      }),
+    ).toEqual({
+      date: '2026-09-16',
+      amount: '5950.000',
+      method: 'transfer',
+      reference: null,
+      notes: 'ok',
+    });
+  });
+});

@@ -4,6 +4,7 @@ import en from '../../../public/i18n/en.json';
 import fr from '../../../public/i18n/fr.json';
 import { CUSTOMERS_NAV } from '../customers/customers-nav';
 import { DELIVERY_NOTES_NAV } from '../delivery-notes/delivery-notes-nav';
+import { INVOICES_NAV } from '../invoices/invoices-nav';
 import { INVENTORY_NAV } from '../inventory/inventory-nav';
 import { PRODUCTS_NAV } from '../products/products-nav';
 import { VENDORS_NAV } from '../vendors/vendors-nav';
@@ -157,6 +158,10 @@ describe('the navigation manifest', () => {
     expect(
       [...CORE_NAV, ...SETTINGS_NAV, ...DEV_NAV].filter((entry) => entry.module !== undefined),
     ).toEqual([]);
+    // Invoices come first: on a phone the bottom bar shows the first four destinations.
+    expect(
+      INVOICES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
+    ).toEqual([['invoices', 'invoices', 'invoice.read', '/invoices']]);
     // Customer groups and product categories are tabs of their module's screen, not sidebar entries.
     expect(CUSTOMERS_NAV.map((entry) => [entry.key, entry.module])).toEqual([
       ['customers', 'customers'],
@@ -179,6 +184,7 @@ describe('the navigation manifest', () => {
       EXPENSES_NAV.map((entry) => [entry.key, entry.module, entry.permission, entry.route]),
     ).toEqual([['expenses', 'expenses', 'expense.read', '/expenses']]);
     expect(MODULE_NAV).toEqual([
+      ...INVOICES_NAV,
       ...CUSTOMERS_NAV,
       ...PRODUCTS_NAV,
       ...DELIVERY_NOTES_NAV,

@@ -149,6 +149,15 @@ export class DeliveryNotePage {
   protected readonly canDeliver = computed(
     () => this.current()?.status === 'validated' && this.mayWrite(),
   );
+  /** A validated or delivered note becomes an invoice, while the invoices module is on for a writer of invoices. */
+  protected readonly canInvoice = computed(() => {
+    const status = this.current()?.status;
+    return (
+      (status === 'validated' || status === 'delivered') &&
+      this.auth.hasModule('invoices') &&
+      this.auth.hasPermission('invoice.write')
+    );
+  });
   protected readonly canCancel = computed(() => {
     const status = this.current()?.status;
     return (status === 'draft' || status === 'validated') && this.mayValidate();
@@ -219,6 +228,16 @@ export class DeliveryNotePage {
     if (!companyId || id === null || this.busy()) return;
     const day = this.deliveredOn().trim();
     await this.facade.deliver(companyId, id, day === '' ? null : day);
+  }
+
+  protected async invoice(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const invoiceId = await this.facade.invoice(companyId, id);
+    if (invoiceId !== null) {
+      await this.router.navigate(['/invoices', invoiceId]);
+    }
   }
 
   protected async cancel(): Promise<void> {

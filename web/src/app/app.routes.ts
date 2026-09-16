@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { isDevMode } from '@angular/core';
 import { Routes } from '@angular/router';
 import {
   anonymousGuard,
@@ -11,6 +10,7 @@ import {
 } from './auth/auth-guard';
 import { CUSTOMERS_MODULE } from './customers/customers-nav';
 import { DELIVERY_NOTES_MODULE } from './delivery-notes/delivery-notes-nav';
+import { INVOICES_MODULE } from './invoices/invoices-nav';
 import { EXPENSES_MODULE } from './expenses/expenses-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
@@ -108,6 +108,22 @@ export const routes: Routes = [
         path: 'products/:productId',
         canActivate: [moduleGuard(PRODUCTS_MODULE)],
         loadComponent: () => import('./products/product-page').then((m) => m.ProductPage),
+      },
+      {
+        path: 'invoices',
+        canActivate: [moduleGuard(INVOICES_MODULE)],
+        loadComponent: () => import('./invoices/invoices-page').then((m) => m.InvoicesPage),
+      },
+      {
+        // Before ':invoiceId', which would otherwise take "new" for an identifier.
+        path: 'invoices/new',
+        canActivate: [moduleGuard(INVOICES_MODULE)],
+        loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
+      },
+      {
+        path: 'invoices/:invoiceId',
+        canActivate: [moduleGuard(INVOICES_MODULE)],
+        loadComponent: () => import('./invoices/invoice-page').then((m) => m.InvoicePage),
       },
       {
         path: 'delivery-notes',
@@ -238,21 +254,6 @@ export const routes: Routes = [
           {
             path: 'company/modules',
             loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
-          },
-        ],
-      },
-      {
-        // The G2b design checkpoint's fixture screens. canMatch keeps them out of a production build's router
-        // entirely; the nav entry is devOnly for the same reason.
-        path: 'design',
-        canMatch: [() => isDevMode()],
-        loadComponent: () => import('./design/design-page').then((m) => m.DesignPage),
-        children: [
-          { path: '', pathMatch: 'full', redirectTo: 'invoice' },
-          {
-            path: 'invoice',
-            loadComponent: () =>
-              import('./design/design-invoice-page').then((m) => m.DesignInvoicePage),
           },
         ],
       },

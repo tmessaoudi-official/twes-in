@@ -371,13 +371,13 @@
       "team": "Équipe",
       "customisation": "Personnalisation"
     },
-    "design": "Maquettes",
     "taxes": "Taxes",
     "units": "Unités",
     "settings": "Valeurs par défaut",
     "company_profile": "Profil de la société",
     "establishments": "Établissements",
     "numbering": "Numérotation des documents",
+    "invoices": "Factures",
     "customers": "Clients",
     "customer_groups": "Groupes de clients",
     "custom_fields": "Champs personnalisés",
@@ -486,42 +486,6 @@
     "view_name": "Nom de la vue",
     "view_save": "Enregistrer la vue",
     "view_delete": "Supprimer la vue {{name}}"
-  },
-  "design": {
-    "title": "Point de validation du design",
-    "intro": "Écrans de démonstration à valider. Aucune donnée n’est enregistrée.",
-    "invoice": {
-      "title": "Facture",
-      "number": "Numéro",
-      "customer": "Client",
-      "issue_date": "Date d’émission",
-      "due_date": "Échéance",
-      "lines": "Lignes",
-      "description": "Désignation",
-      "quantity": "Qté",
-      "unit_price": "Prix unitaire",
-      "tax": "Taxe",
-      "line_total": "Total",
-      "add_line": "Ajouter une ligne",
-      "subtotal": "Sous-total",
-      "tax_total": "Taxes",
-      "stamp": "Droit de timbre",
-      "total": "Total à payer",
-      "notes": "Notes",
-      "draft": "Brouillon",
-      "send": "Envoyer",
-      "preview": "Aperçu PDF",
-      "line": "Ligne {{n}}",
-      "remove_line": "Supprimer la ligne {{n}}",
-      "totals": "Totaux",
-      "bill_to": "Facturer à"
-    },
-    "tabs_label": "Écrans de maquette",
-    "fixture_notice": "Écran de démonstration : les montants sont des exemples et ne se recalculent pas.",
-    "countries": {
-      "TN": "Tunisie",
-      "FR": "France"
-    }
   },
   "form": {
     "optional": "facultatif",
@@ -794,6 +758,159 @@
       }
     }
   },
+  "invoices": {
+    "title": "Factures",
+    "add": "Nouvelle facture",
+    "open": "Ouvrir {{number}}",
+    "open_short": "Ouvrir",
+    "none": "Aucune facture pour l'instant.",
+    "no_company": "Choisissez d'abord une société.",
+    "no_customers": "Une facture est établie pour un client : ajoutez d'abord un client.",
+    "new_title": "Nouvelle facture",
+    "draft_title": "Facture en brouillon",
+    "credit_note_draft_title": "Avoir en brouillon",
+    "draft": "Brouillon",
+    "back": "Retour aux factures",
+    "saved": "Le brouillon a été enregistré.",
+    "read_only": "Vous pouvez consulter les factures, pas les modifier.",
+    "corrects": "Voir la facture corrigée",
+    "fixed": {
+      "issued": "Ce document est émis et ne change plus : il se corrige par un avoir, et peut encore être imprimé.",
+      "cancelled": "Ce brouillon est annulé et ne change plus."
+    },
+    "types": {
+      "invoice": "Facture",
+      "credit_note": "Avoir"
+    },
+    "statuses": {
+      "draft": "Brouillon",
+      "issued": "Émise",
+      "overdue": "En retard",
+      "partially_paid": "Partiellement payée",
+      "paid": "Payée",
+      "cancelled": "Annulée"
+    },
+    "sections": {
+      "parties": "Client et établissement",
+      "terms": "Dates, échéance et remise",
+      "notes": "Notes"
+    },
+    "fields": {
+      "number": "Numéro",
+      "status": "Statut",
+      "type": "Type",
+      "customer": "Client",
+      "customerId": "Client",
+      "establishmentId": "Établissement",
+      "customerReference": "Référence du client",
+      "issueDate": "Émise le",
+      "dueDate": "Échéance",
+      "supplyDate": "Date de la livraison ou de la prestation",
+      "paymentTermsDays": "Délai de paiement (jours)",
+      "discountAmount": "Remise sur le document",
+      "total": "Total TTC",
+      "amountDue": "Reste à payer",
+      "notesPrinted": "Notes imprimées sur la facture",
+      "notesInternal": "Notes internes"
+    },
+    "form": {
+      "reference_hint": "Le numéro de commande du client, imprimé sur la facture.",
+      "supply_date_hint": "Le jour où les biens ont été livrés ou la prestation rendue, s'il diffère du jour d'émission.",
+      "terms_hint": "De 0 à 365 jours après l'émission. Laissé vide, le délai du client à l'émission.",
+      "discount_hint": "Un montant hors taxes, réparti sur les lignes ; au plus ce que les lignes totalisent.",
+      "printed_hint": "Imprimées sur la facture.",
+      "internal_hint": "Gardées dans la société, jamais imprimées."
+    },
+    "lines": {
+      "title": "Lignes",
+      "position": "Ligne {{position}}",
+      "from_delivery_note": "Depuis un bon de livraison",
+      "product": "Produit",
+      "no_product": "Sans produit",
+      "description": "Désignation",
+      "quantity": "Quantité",
+      "unit": "Unité",
+      "unitPriceNet": "Prix unitaire HT",
+      "price_hint": "En {{currency}}, avec au plus quatre décimales.",
+      "discountRate": "Remise",
+      "taxes": "Taxes de la ligne",
+      "net": "Total HT de la ligne :",
+      "add": "Ajouter une ligne",
+      "remove": "Retirer la ligne {{position}}",
+      "remove_short": "Retirer",
+      "none": "Aucune ligne : une facture en demande au moins une pour être émise.",
+      "errors": {
+        "description": "Indiquez ce qui est facturé.",
+        "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
+        "unitId": "Choisissez une unité.",
+        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales et un point.",
+        "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales et un point."
+      }
+    },
+    "document_taxes": {
+      "title": "Droits et retenues du document",
+      "hint": "Proposés d'après la société et le client ; ils ne s'appliquent qu'une fois, sur tout le document."
+    },
+    "totals": {
+      "title": "Totaux",
+      "subtotal": "Total HT",
+      "discount": "Remise",
+      "total_net": "Total HT après remise",
+      "tax": "{{code}} {{rate}} % · base {{base}}",
+      "total": "Total TTC",
+      "withholding": "Retenue {{code}} {{rate}} %",
+      "net_due": "Net à payer",
+      "paid": "Déjà payé",
+      "credited": "Avoirs",
+      "left": "Reste à payer",
+      "as_saved": "En {{currency}}, tels qu'enregistrés en dernier."
+    },
+    "due": {
+      "left": "Reste à encaisser",
+      "paid_of": "{{paid}} payés sur {{total}}"
+    },
+    "payments": {
+      "title": "Paiements",
+      "none": "Aucun paiement enregistré.",
+      "record_title": "Enregistrer un paiement",
+      "date": "Date du paiement",
+      "amount": "Montant",
+      "method": "Moyen de paiement",
+      "reference": "Référence",
+      "reference_hint": "Un numéro de virement ou de chèque, par exemple.",
+      "notes": "Notes",
+      "record": "Enregistrer le paiement",
+      "recorded": "Le paiement a été enregistré.",
+      "delete": "Supprimer le paiement de {{amount}}",
+      "delete_short": "Supprimer",
+      "confirm_delete": "Confirmer la suppression",
+      "keep": "Garder le paiement",
+      "methods": {
+        "transfer": "Virement",
+        "cash": "Espèces",
+        "check": "Chèque",
+        "card": "Carte",
+        "other": "Autre"
+      }
+    },
+    "actions": {
+      "save": "Enregistrer le brouillon",
+      "issue": "Émettre la facture",
+      "issue_credit_note": "Émettre l'avoir",
+      "credit_note": "Créer un avoir",
+      "cancel": "Annuler le brouillon",
+      "confirm_cancel": "Confirmer l'annulation",
+      "keep": "Garder le brouillon",
+      "pdf": "Télécharger le PDF",
+      "pdf_draft": "Aperçu du PDF"
+    },
+    "errors": {
+      "network": "Le serveur est injoignable.",
+      "not_found": "Facture introuvable.",
+      "conflict": "Le document a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des factures.",
+      "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l'émission et aujourd'hui)."
+    }
+  },
   "delivery_notes": {
     "title": "Bons de livraison",
     "add": "Nouveau bon de livraison",
@@ -885,6 +1002,7 @@
       "save": "Enregistrer le brouillon",
       "validate": "Valider et numéroter",
       "deliver": "Marquer livré",
+      "invoice": "Facturer ce bon",
       "delivered_on": "Livré le",
       "cancel": "Annuler le bon",
       "confirm_cancel": "Confirmer l'annulation",

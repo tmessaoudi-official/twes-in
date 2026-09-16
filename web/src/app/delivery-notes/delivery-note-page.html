@@ -172,6 +172,17 @@
         {{ 'delivery_notes.actions.deliver' | translate }}
       </button>
     }
+    @if (canInvoice()) {
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="busy()"
+        (click)="invoice()"
+        data-testid="delivery-note-invoice"
+      >
+        {{ 'delivery_notes.actions.invoice' | translate }}
+      </button>
+    }
     @if (canCancel()) {
       @if (confirmingCancel()) {
         <button

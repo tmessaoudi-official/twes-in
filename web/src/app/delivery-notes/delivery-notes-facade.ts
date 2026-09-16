@@ -88,6 +88,20 @@ export class DeliveryNotesFacade {
     return this.step(() => this.api.cancel(companyId, id));
   }
 
+  /** The id of the invoice drafted from the note, or null with the reason in `error`. */
+  async invoice(companyId: string, id: string): Promise<string | null> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      return await this.api.invoice(companyId, [id]);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
   pdfUrl(companyId: string, id: string): string {
     return this.api.pdfUrl(companyId, id);
   }

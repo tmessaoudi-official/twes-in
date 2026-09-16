@@ -3,6 +3,7 @@
 import { CUSTOMERS_COMMANDS } from '../customers/customers-nav';
 import { DELIVERY_NOTES_COMMANDS } from '../delivery-notes/delivery-notes-nav';
 import { EXPENSES_COMMANDS } from '../expenses/expenses-nav';
+import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
 import type { Gated, NavEntry } from './nav-manifest';
@@ -26,6 +27,7 @@ export interface Command extends Gated {
 
 /** Every module's commands, each declared by its module's web feature. */
 export const MODULE_COMMANDS: readonly Command[] = [
+  ...INVOICES_COMMANDS,
   ...CUSTOMERS_COMMANDS,
   ...PRODUCTS_COMMANDS,
   ...DELIVERY_NOTES_COMMANDS,

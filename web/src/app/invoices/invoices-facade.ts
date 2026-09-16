@@ -1,0 +1,143 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
+import { inject, Injectable, signal } from '@angular/core';
+import { InvoicesApi, InvoicesRefused } from './invoices-api';
+import type {
+  InvoiceInput,
+  InvoiceOptions,
+  InvoiceRow,
+  InvoicesError,
+  PaymentInput,
+} from './invoices-types';
+
+/** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
+@Injectable({ providedIn: 'root' })
+export class InvoicesFacade {
+  private readonly api = inject(InvoicesApi);
+  private readonly invoicesSignal = signal<readonly InvoiceRow[]>([]);
+  private readonly optionsSignal = signal<InvoiceOptions | null>(null);
+  private readonly invoiceSignal = signal<InvoiceRow | null>(null);
+  private readonly busySignal = signal(false);
+  private readonly errorSignal = signal<InvoicesError | null>(null);
+
+  readonly invoices = this.invoicesSignal.asReadonly();
+  readonly options = this.optionsSignal.asReadonly();
+  /** The document open on screen, as the API last answered with it; null while a new one is filled in. */
+  readonly invoice = this.invoiceSignal.asReadonly();
+  readonly busy = this.busySignal.asReadonly();
+  readonly error = this.errorSignal.asReadonly();
+
+  /** The list, with the options that name its drafts' customers. */
+  async loadList(companyId: string): Promise<void> {
+    await this.read(async () => {
+      const [invoices, options] = await Promise.all([
+        this.api.invoices(companyId),
+        this.api.options(companyId),
+      ]);
+      this.invoicesSignal.set(invoices);
+      this.optionsSignal.set(options);
+    });
+  }
+
+  /** What the document screen needs: the form's options, and the document unless it is new. */
+  async loadInvoice(companyId: string, id: string | null): Promise<void> {
+    await this.read(async () => {
+      const [options, invoice] = await Promise.all([
+        this.api.options(companyId),
+        id === null ? Promise.resolve(null) : this.api.invoice(companyId, id),
+      ]);
+      this.optionsSignal.set(options);
+      this.invoiceSignal.set(invoice);
+    });
+  }
+
+  /** The draft as the API kept it, or null with the reason in `error`. */
+  async create(companyId: string, input: InvoiceInput): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.create(companyId, input));
+  }
+
+  async revise(companyId: string, id: string, input: InvoiceInput): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.revise(companyId, id, input));
+  }
+
+  /** Saves what is on screen, then issues it: a document is never issued with content other than the one shown. */
+  async reviseAndIssue(
+    companyId: string,
+    id: string,
+    input: InvoiceInput,
+  ): Promise<InvoiceRow | null> {
+    return this.step(async () => {
+      this.invoiceSignal.set(await this.api.revise(companyId, id, input));
+      return this.api.issue(companyId, id);
+    });
+  }
+
+  async cancel(companyId: string, id: string): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.cancel(companyId, id));
+  }
+
+  /** The credit note drafted for an issued invoice, which becomes the document on screen. */
+  async creditNote(companyId: string, id: string): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.creditNote(companyId, id));
+  }
+
+  /** True once recorded, with the invoice read again so its amount due and status are the API's. */
+  async recordPayment(companyId: string, id: string, payment: PaymentInput): Promise<boolean> {
+    return this.paymentStep(companyId, id, () => this.api.recordPayment(companyId, id, payment));
+  }
+
+  async deletePayment(companyId: string, id: string, paymentId: string): Promise<boolean> {
+    return this.paymentStep(companyId, id, () => this.api.deletePayment(companyId, id, paymentId));
+  }
+
+  pdfUrl(companyId: string, id: string): string {
+    return this.api.pdfUrl(companyId, id);
+  }
+
+  clearError(): void {
+    this.errorSignal.set(null);
+  }
+
+  private async read(load: () => Promise<void>): Promise<void> {
+    this.busySignal.set(true);
+    try {
+      await load();
+      this.errorSignal.set(null);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
+  private async step(call: () => Promise<InvoiceRow>): Promise<InvoiceRow | null> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      const invoice = await call();
+      this.invoiceSignal.set(invoice);
+      return invoice;
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return null;
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
+  private async paymentStep(
+    companyId: string,
+    id: string,
+    call: () => Promise<void>,
+  ): Promise<boolean> {
+    const invoice = await this.step(async () => {
+      await call();
+      return this.api.invoice(companyId, id);
+    });
+    return invoice !== null;
+  }
+}
+
+function codeOf(error: unknown): InvoicesError {
+  return error instanceof InvoicesRefused ? error.code : 'network';
+}

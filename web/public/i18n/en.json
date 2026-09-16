@@ -371,13 +371,13 @@
       "team": "Team",
       "customisation": "Customisation"
     },
-    "design": "Design",
     "taxes": "Taxes",
     "units": "Units",
     "settings": "Defaults",
     "company_profile": "Company profile",
     "establishments": "Establishments",
     "numbering": "Document numbering",
+    "invoices": "Invoices",
     "customers": "Customers",
     "customer_groups": "Customer groups",
     "custom_fields": "Custom fields",
@@ -486,42 +486,6 @@
     "view_name": "View name",
     "view_save": "Save view",
     "view_delete": "Delete the view {{name}}"
-  },
-  "design": {
-    "title": "Design checkpoint",
-    "intro": "Fixture screens for review. No data is saved.",
-    "invoice": {
-      "title": "Invoice",
-      "number": "Number",
-      "customer": "Customer",
-      "issue_date": "Issue date",
-      "due_date": "Due date",
-      "lines": "Lines",
-      "description": "Description",
-      "quantity": "Qty",
-      "unit_price": "Unit price",
-      "tax": "Tax",
-      "line_total": "Total",
-      "add_line": "Add a line",
-      "subtotal": "Subtotal",
-      "tax_total": "Taxes",
-      "stamp": "Stamp duty",
-      "total": "Total due",
-      "notes": "Notes",
-      "draft": "Draft",
-      "send": "Send",
-      "preview": "Preview PDF",
-      "line": "Line {{n}}",
-      "remove_line": "Remove line {{n}}",
-      "totals": "Totals",
-      "bill_to": "Bill to"
-    },
-    "tabs_label": "Design screens",
-    "fixture_notice": "Fixture screen: amounts are sample values and do not recompute.",
-    "countries": {
-      "TN": "Tunisia",
-      "FR": "France"
-    }
   },
   "form": {
     "optional": "optional",
@@ -794,6 +758,159 @@
       }
     }
   },
+  "invoices": {
+    "title": "Invoices",
+    "add": "New invoice",
+    "open": "Open {{number}}",
+    "open_short": "Open",
+    "none": "No invoices yet.",
+    "no_company": "Choose a company first.",
+    "no_customers": "An invoice is made out to a customer: add a customer first.",
+    "new_title": "New invoice",
+    "draft_title": "Draft invoice",
+    "credit_note_draft_title": "Draft credit note",
+    "draft": "Draft",
+    "back": "Back to invoices",
+    "saved": "The draft has been saved.",
+    "read_only": "You can view invoices, not change them.",
+    "corrects": "See the corrected invoice",
+    "fixed": {
+      "issued": "This document is issued and no longer changes: it is corrected with a credit note, and can still be printed.",
+      "cancelled": "This draft is cancelled and no longer changes."
+    },
+    "types": {
+      "invoice": "Invoice",
+      "credit_note": "Credit note"
+    },
+    "statuses": {
+      "draft": "Draft",
+      "issued": "Issued",
+      "overdue": "Overdue",
+      "partially_paid": "Partly paid",
+      "paid": "Paid",
+      "cancelled": "Cancelled"
+    },
+    "sections": {
+      "parties": "Customer and establishment",
+      "terms": "Dates, terms and discount",
+      "notes": "Notes"
+    },
+    "fields": {
+      "number": "Number",
+      "status": "Status",
+      "type": "Type",
+      "customer": "Customer",
+      "customerId": "Customer",
+      "establishmentId": "Establishment",
+      "customerReference": "Customer reference",
+      "issueDate": "Issued on",
+      "dueDate": "Due",
+      "supplyDate": "Supply date",
+      "paymentTermsDays": "Payment terms (days)",
+      "discountAmount": "Document discount",
+      "total": "Total incl. tax",
+      "amountDue": "Amount due",
+      "notesPrinted": "Notes printed on the invoice",
+      "notesInternal": "Internal notes"
+    },
+    "form": {
+      "reference_hint": "The customer's order number, printed on the invoice.",
+      "supply_date_hint": "The day the goods were delivered or the service rendered, when it differs from the issue day.",
+      "terms_hint": "0 to 365 days after issue. Left empty, the customer's terms at issue.",
+      "discount_hint": "An amount before tax, spread over the lines; at most what the lines come to.",
+      "printed_hint": "Printed on the invoice.",
+      "internal_hint": "Kept inside the company, never printed."
+    },
+    "lines": {
+      "title": "Lines",
+      "position": "Line {{position}}",
+      "from_delivery_note": "From a delivery note",
+      "product": "Product",
+      "no_product": "No product",
+      "description": "Description",
+      "quantity": "Quantity",
+      "unit": "Unit",
+      "unitPriceNet": "Unit price before tax",
+      "price_hint": "In {{currency}}, with at most four decimals.",
+      "discountRate": "Discount",
+      "taxes": "Line taxes",
+      "net": "Line total before tax:",
+      "add": "Add a line",
+      "remove": "Remove line {{position}}",
+      "remove_short": "Remove",
+      "none": "No lines: an invoice needs at least one to be issued.",
+      "errors": {
+        "description": "Say what is invoiced.",
+        "quantity": "A quantity above zero, with no more decimals than its unit counts (three at most).",
+        "unitId": "Choose a unit.",
+        "unitPriceNet": "A price from 0, with at most four decimals and a point.",
+        "discountRate": "A percentage from 0 to 100, with at most three decimals and a point."
+      }
+    },
+    "document_taxes": {
+      "title": "Document charges and withholdings",
+      "hint": "Suggested from the company and the customer; each applies once, to the whole document."
+    },
+    "totals": {
+      "title": "Totals",
+      "subtotal": "Total before tax",
+      "discount": "Discount",
+      "total_net": "Total before tax after discount",
+      "tax": "{{code}} {{rate}} % · base {{base}}",
+      "total": "Total incl. tax",
+      "withholding": "Withholding {{code}} {{rate}} %",
+      "net_due": "Net payable",
+      "paid": "Paid so far",
+      "credited": "Credit notes",
+      "left": "Amount due",
+      "as_saved": "In {{currency}}, as last saved."
+    },
+    "due": {
+      "left": "Still to collect",
+      "paid_of": "{{paid}} paid of {{total}}"
+    },
+    "payments": {
+      "title": "Payments",
+      "none": "No payments recorded.",
+      "record_title": "Record a payment",
+      "date": "Payment date",
+      "amount": "Amount",
+      "method": "Payment method",
+      "reference": "Reference",
+      "reference_hint": "A transfer or cheque number, say.",
+      "notes": "Notes",
+      "record": "Record the payment",
+      "recorded": "The payment has been recorded.",
+      "delete": "Delete the payment of {{amount}}",
+      "delete_short": "Delete",
+      "confirm_delete": "Confirm deletion",
+      "keep": "Keep the payment",
+      "methods": {
+        "transfer": "Transfer",
+        "cash": "Cash",
+        "check": "Cheque",
+        "card": "Card",
+        "other": "Other"
+      }
+    },
+    "actions": {
+      "save": "Save the draft",
+      "issue": "Issue the invoice",
+      "issue_credit_note": "Issue the credit note",
+      "credit_note": "Create a credit note",
+      "cancel": "Cancel the draft",
+      "confirm_cancel": "Confirm cancellation",
+      "keep": "Keep the draft",
+      "pdf": "Download the PDF",
+      "pdf_draft": "Preview the PDF"
+    },
+    "errors": {
+      "network": "The server cannot be reached.",
+      "not_found": "Invoice not found.",
+      "conflict": "The document changed state meanwhile, or its establishment has no invoice numbering series.",
+      "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today)."
+    }
+  },
   "delivery_notes": {
     "title": "Delivery notes",
     "add": "New delivery note",
@@ -885,6 +1002,7 @@
       "save": "Save the draft",
       "validate": "Validate and number",
       "deliver": "Mark delivered",
+      "invoice": "Invoice this note",
       "delivered_on": "Delivered on",
       "cancel": "Cancel the note",
       "confirm_cancel": "Confirm the cancellation",

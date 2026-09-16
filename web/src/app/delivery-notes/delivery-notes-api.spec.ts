@@ -236,4 +236,20 @@ describe('DeliveryNotesApi', () => {
   it('names the PDF of a note', () => {
     expect(api.pdfUrl('c 1', 'n1')).toBe('/api/companies/c%201/delivery-notes/n1/pdf');
   });
+  it('drafts an invoice from notes and answers its id', async () => {
+    const pending = api.invoice('c1', ['n1']);
+    const request = http.expectOne('/api/companies/c1/invoices/from-delivery-notes');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ deliveryNoteIds: ['n1'] });
+    request.flush({ id: 'i7', status: 'draft' });
+    expect(await pending).toBe('i7');
+  });
+
+  it('turns a refused conversion into a code the screen translates', async () => {
+    const pending = api.invoice('c1', ['n1']);
+    http
+      .expectOne('/api/companies/c1/invoices/from-delivery-notes')
+      .flush({}, { status: 409, statusText: 'Conflict' });
+    await expect(pending).rejects.toEqual(new DeliveryNotesRefused('conflict'));
+  });
 });
