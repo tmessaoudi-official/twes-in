@@ -191,3 +191,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   refusal left assigned but unbooted is booted again by the teardown — and refused there, turning a passing case into an
   error in a method that never asked for a kernel. Drop it instead (`static::$kernel = null; static::$booted = false;`)
   when testing anything that refuses to boot (2026-09-16, `DevelopmentKeysTest`).
+- A Doctrine inverse `OneToMany` is filled by a LOAD, so an in-memory repository never fills it and a unit test reads it
+  empty. A domain rule that reads an entity's siblings — what a credit note's withholding leaves for the next one —
+  needs the inverse side maintained in the entity beside the owning assignment, as the other collections here are
+  (2026-09-16, `Invoice::creditNoteFor`). Adding the inverse side alone is a mapping change, not a migration: the
+  owning column and its index already exist.
