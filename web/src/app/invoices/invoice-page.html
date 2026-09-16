@@ -80,9 +80,6 @@
       {{ 'invoices.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="invoice-saved">{{ 'invoices.saved' | translate }}</p>
-  }
 
   @if (current(); as invoice) {
     @if (!isCreditNote() && invoice.status !== 'draft' && invoice.status !== 'cancelled') {
@@ -307,11 +304,6 @@
                   </li>
                 }
               </ul>
-            }
-            @if (paymentRecorded()) {
-              <p role="status" data-testid="invoice-payment-recorded">
-                {{ 'invoices.payments.recorded' | translate }}
-              </p>
             }
             @if (payment(); as payment) {
               <app-descriptor-form

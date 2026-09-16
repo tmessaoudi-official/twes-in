@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { signIn as signInAsOperator } from './session';
+import { toast } from './toast';
 
 // A passkey is bound to a domain, and Chromium refuses an IP address as one, so this file talks to the stack as
 // localhost whatever address the other files use. The API allows exactly that origin (APP_WEBAUTHN_ORIGINS).
@@ -63,7 +64,7 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
-  await expect(page.getByTestId('members-added')).toContainText('invitation');
+  await expect(toast(page)).toContainText('invitation');
   const token = await invitationTokenFor(request, invited);
 
   await page.context().clearCookies();

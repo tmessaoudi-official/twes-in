@@ -27,11 +27,6 @@
         {{ 'customers.groups.errors.' + code | translate }}
       </p>
     }
-    @if (saved()) {
-      <p role="status" data-testid="customer-group-saved">
-        {{ 'customers.groups.saved' | translate }}
-      </p>
-    }
 
     @if (form(); as form) {
       <mat-card>

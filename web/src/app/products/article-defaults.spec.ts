@@ -14,6 +14,7 @@ import { Session } from '../shared/session/session';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { ArticleDefaults } from './article-defaults';
 import { ArticleSettings } from './article-settings-facade';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -78,6 +79,7 @@ describe('ArticleDefaults', () => {
     TestBed.configureTestingModule({
       imports: [ArticleDefaults],
       providers: [
+        ...provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

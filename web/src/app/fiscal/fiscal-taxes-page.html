@@ -19,9 +19,6 @@
       {{ 'fiscal.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="tax-saved">{{ 'fiscal.taxes.saved' | translate }}</p>
-  }
 
   @if (form(); as form) {
     @if (descriptor(); as descriptor) {

@@ -15,9 +15,6 @@
         {{ 'settings.errors.' + code | translate }}
       </p>
     }
-    @if (saved()) {
-      <p role="status" data-testid="settings-saved">{{ 'settings.saved' | translate }}</p>
-    }
 
     @if (descriptor().sections.length > 0) {
       <mat-card>

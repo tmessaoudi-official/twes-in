@@ -33,6 +33,7 @@ import {
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
 import type { StockOperation } from './inventory-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** What is on hand of each product whose stock is kept, per location, with goods received and counts recorded here. */
 @Component({
@@ -57,6 +58,7 @@ export class StockPage implements OnInit {
   protected readonly tabs = INVENTORY_TABS;
   private readonly facade = inject(InventoryFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly feedback = inject(Feedback);
 
   protected readonly list = STOCK_LIST;
   protected readonly rows = computed(() =>
@@ -70,7 +72,6 @@ export class StockPage implements OnInit {
     `stock-${row.productReference}-${row.locationCode}`;
 
   protected readonly operation = signal<StockOperation | null>(null);
-  protected readonly recorded = signal(false);
   protected readonly descriptor = computed(() => {
     const operation = this.operation();
     const options = this.facade.options();
@@ -109,7 +110,6 @@ export class StockPage implements OnInit {
 
   protected open(operation: StockOperation): void {
     this.facade.clearError();
-    this.recorded.set(false);
     this.operation.set(operation);
   }
 
@@ -124,7 +124,7 @@ export class StockPage implements OnInit {
     if (!companyId || operation === null || this.busy()) return;
     if (await this.facade.record(companyId, movementInput(operation, values))) {
       this.operation.set(null);
-      this.recorded.set(true);
+      this.feedback.success('inventory.stock.recorded');
     }
   }
 }

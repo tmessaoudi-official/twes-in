@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Locator, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // G10 inventory through the real stack: in the seeded company, a product made for the run keeps stock; the owner
 // files a location under the default one of the company's default establishment, receives ten pieces there, a
@@ -14,13 +15,6 @@ interface Fixture {
   productId: string;
   customerId: string;
   establishment: { id: string; code: string; name: string };
-}
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
 }
 
 /** A piece-counted product whose stock is kept, and a customer to deliver it to, through the API. */
@@ -267,7 +261,7 @@ test('stock received at a location leaves with a validated delivery note and ret
     await page.getByTestId('field-quantity').fill('10');
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('stock-movement-save').click();
-    await expect(page.getByTestId('stock-recorded')).toBeVisible();
+    await expect(toast(page)).toContainText('Le mouvement a été enregistré.');
     const row = page.getByTestId(`stock-${reference}-${code}`);
     await expect(quantity(row)).toHaveText('10');
     expect(await wcagViolations(page)).toEqual([]);

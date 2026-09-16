@@ -30,6 +30,7 @@ import {
 import { ExpensesFacade } from './expenses-facade';
 import { EXPENSES_TABS } from './expenses-nav';
 import type { ExpenseCategoryRow } from './expenses-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The tree expenses are filed in: a category sits under another or at the top, and is deactivated, never deleted. */
 @Component({
@@ -51,6 +52,7 @@ import type { ExpenseCategoryRow } from './expenses-types';
 export class ExpenseCategoriesPage implements OnInit {
   protected readonly tabs = EXPENSES_TABS;
   private readonly facade = inject(ExpensesFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = EXPENSE_CATEGORIES_LIST;
@@ -63,7 +65,6 @@ export class ExpenseCategoriesPage implements OnInit {
     `expense-category-${row.name}`;
 
   protected readonly editing = signal<ExpenseCategoryRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     return categoryForm(
@@ -99,7 +100,6 @@ export class ExpenseCategoriesPage implements OnInit {
 
   protected open(target: ExpenseCategoryRow | 'new'): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 
@@ -119,7 +119,7 @@ export class ExpenseCategoriesPage implements OnInit {
         : await this.facade.reviseCategory(companyId, editing.id, input);
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('expenses.categories.saved');
     }
   }
 }

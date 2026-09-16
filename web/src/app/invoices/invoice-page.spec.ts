@@ -24,6 +24,7 @@ import {
 import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
 import type { InvoiceOptions, InvoiceRow, InvoicesError } from './invoices-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -262,6 +263,7 @@ describe('InvoicePage', () => {
     TestBed.configureTestingModule({
       imports: [InvoicePage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -414,7 +416,7 @@ describe('InvoicePage', () => {
       reference: 'CHQ 12',
       notes: null,
     });
-    expect(q('invoice-payment-recorded')).not.toBeNull();
+    expect(successToasts()).toContain('invoices.payments.recorded');
   });
 
   it('deletes a payment only once confirmed', async () => {

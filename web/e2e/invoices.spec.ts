@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // G7 invoices through the real stack (docs/SPEC.md § 8 row 10): in the seeded Tunisian company, the owner drafts an
 // invoice for a customer made for the run, two days of consulting at 500 under the 19 % VAT, issues it and finds it
@@ -9,16 +10,6 @@ import { signIn } from './session';
 // invoice with a credit note, which leaves nothing due. One database is shared by the whole suite and issued documents
 // are never deleted, so the customer is unique to the run and deactivated afterwards.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map(
-    (violation) =>
-      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
-  );
-}
 
 /** A customer billed in Tunis under the standard regime, through the API: the customers screens have their own run. */
 async function createCustomer(page: Page, number: string): Promise<void> {
@@ -159,7 +150,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('field-amount').fill('100');
     await page.getByTestId('field-reference').fill(`VIR ${run}`);
     await page.getByTestId('invoice-payment-record').click();
-    await expect(page.getByTestId('invoice-payment-recorded')).toBeVisible();
+    await expect(toast(page)).toContainText('Le paiement a été enregistré.');
     await expect(page.getByTestId('invoice-status')).toContainText(
       /Partiellement payée|Partly paid/,
     );

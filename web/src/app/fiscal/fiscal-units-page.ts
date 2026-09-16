@@ -25,6 +25,7 @@ import {
   unitInput,
 } from './fiscal-forms';
 import type { UnitRow } from './fiscal-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The units a company sells in: UN/ECE Recommendation 20 codes, named in the company's own words. */
 @Component({
@@ -43,6 +44,7 @@ import type { UnitRow } from './fiscal-types';
 })
 export class FiscalUnitsPage implements OnInit {
   private readonly fiscal = inject(FiscalFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = UNIT_LIST;
@@ -54,7 +56,6 @@ export class FiscalUnitsPage implements OnInit {
   protected readonly rowTestId = (row: UnitRow): string => `unit-${row.code}`;
 
   protected readonly editing = signal<UnitRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     if (editing === null) return null;
@@ -97,13 +98,12 @@ export class FiscalUnitsPage implements OnInit {
         : await this.fiscal.reviseUnit(companyId, editing.id, unitInput(values, editing.code));
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('fiscal.units.saved');
     }
   }
 
   private open(target: UnitRow | 'new'): void {
     this.fiscal.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 }

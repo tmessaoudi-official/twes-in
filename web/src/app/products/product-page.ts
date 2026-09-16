@@ -7,7 +7,6 @@ import {
   effect,
   inject,
   input,
-  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -21,6 +20,7 @@ import type { FormValues } from '../shared/form/form-types';
 import { ArticleDefaults } from './article-defaults';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** One product: a new one to fill in, or an existing one to revise. */
 @Component({
@@ -38,6 +38,7 @@ import { ProductsFacade } from './products-facade';
 })
 export class ProductPage {
   private readonly facade = inject(ProductsFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
 
@@ -49,7 +50,6 @@ export class ProductPage {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
-  protected readonly saved = signal(false);
 
   /** Null while a new product is filled in; undefined until the product asked for has been read. */
   protected readonly current = computed(() => {
@@ -99,7 +99,6 @@ export class ProductPage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.saved.set(false);
         if (companyId) {
           void this.facade.loadProduct(companyId, id);
         }
@@ -113,14 +112,13 @@ export class ProductPage {
     if (!companyId || options === null || this.busy()) return;
     const input = productInput(values, options, this.facade.customFields());
     const id = this.id();
-    this.saved.set(false);
     if (id === null) {
       const created = await this.facade.createProduct(companyId, input);
       if (created !== null) {
         await this.router.navigate(['/products', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseProduct(companyId, id, input)) !== null) {
-      this.saved.set(true);
+      this.feedback.success('products.saved');
     }
   }
 }

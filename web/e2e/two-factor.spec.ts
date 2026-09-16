@@ -4,6 +4,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { signIn as signInAsOperator } from './session';
 import { totp } from './totp';
+import { toast } from './toast';
 
 // Two-step verification through the real stack, for a freshly invited account. Never the shared operator: every
 // other scenario computes the operator's codes from the authenticator the seed gave them.
@@ -53,7 +54,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
-  await expect(page.getByTestId('members-added')).toContainText('invitation');
+  await expect(toast(page)).toContainText('invitation');
   const token = await invitationTokenFor(request, invited);
 
   await page.context().clearCookies();

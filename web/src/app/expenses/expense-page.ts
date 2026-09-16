@@ -33,6 +33,7 @@ import {
 } from './expense-forms';
 import { ExpensesFacade } from './expenses-facade';
 import { EXPENSE_STATUS_TONES, type ExpenseAttachment } from './expenses-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -56,6 +57,7 @@ import { EXPENSE_STATUS_TONES, type ExpenseAttachment } from './expenses-types';
 })
 export class ExpensePage {
   private readonly facade = inject(ExpensesFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
@@ -71,7 +73,6 @@ export class ExpensePage {
   protected readonly options = this.facade.options;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('expense.write'));
-  protected readonly saved = signal(false);
   protected readonly confirmingDelete = signal(false);
 
   /** Null while a new expense is filled in; undefined until the expense asked for has been read. */
@@ -126,7 +127,6 @@ export class ExpensePage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.saved.set(false);
         this.confirmingDelete.set(false);
         if (companyId) {
           void this.facade.loadExpense(companyId, id);
@@ -166,14 +166,13 @@ export class ExpensePage {
     if (!companyId || this.busy()) return;
     const input = expenseInput(values);
     const id = this.id();
-    this.saved.set(false);
     if (id === null) {
       const created = await this.facade.createExpense(companyId, input);
       if (created !== null) {
         await this.router.navigate(['/expenses', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseExpense(companyId, id, input)) !== null) {
-      this.saved.set(true);
+      this.feedback.success('expenses.saved');
     }
   }
 
@@ -185,7 +184,6 @@ export class ExpensePage {
     if (!companyId || id === null || form === null || this.busy()) return;
     form.markAllAsTouched();
     if (form.invalid) return;
-    this.saved.set(false);
     if (
       (await this.facade.reviseExpense(companyId, id, expenseInput(form.getRawValue()))) === null
     ) {
@@ -198,7 +196,6 @@ export class ExpensePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    this.saved.set(false);
     await this.facade.payExpense(companyId, id, paymentInput(values));
   }
 
@@ -221,7 +218,6 @@ export class ExpensePage {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!file || !companyId || id === null) return;
-    this.saved.set(false);
     await this.facade.attach(companyId, id, file);
     control.value = '';
   }

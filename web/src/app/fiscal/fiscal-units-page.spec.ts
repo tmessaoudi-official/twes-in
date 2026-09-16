@@ -23,6 +23,7 @@ import {
 import { FiscalFacade } from './fiscal-facade';
 import { FiscalUnitsPage } from './fiscal-units-page';
 import type { UnitRow } from './fiscal-types';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -79,6 +80,7 @@ describe('FiscalUnitsPage', () => {
     TestBed.configureTestingModule({
       imports: [FiscalUnitsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

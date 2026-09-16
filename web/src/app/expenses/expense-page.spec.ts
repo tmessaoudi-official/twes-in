@@ -29,6 +29,7 @@ import type {
   ExpenseRow,
   ExpensesError,
 } from './expenses-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -171,6 +172,7 @@ describe('ExpensePage', () => {
     TestBed.configureTestingModule({
       imports: [ExpensePage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -339,7 +341,7 @@ describe('ExpensePage', () => {
     error.set('not_draft');
     q('expense-save')!.click();
     await settle();
-    expect(q('expense-saved')).toBeNull();
+    expect(successToasts()).toEqual([]);
     expect(q('expense-error')?.textContent).toContain('brouillon');
   });
 

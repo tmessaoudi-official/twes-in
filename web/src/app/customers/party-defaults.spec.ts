@@ -14,6 +14,7 @@ import { Session } from '../shared/session/session';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { PartyDefaults } from './party-defaults';
 import { PartySettings } from './party-settings-facade';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -76,6 +77,7 @@ describe('PartyDefaults', () => {
     TestBed.configureTestingModule({
       imports: [PartyDefaults],
       providers: [
+        ...provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',

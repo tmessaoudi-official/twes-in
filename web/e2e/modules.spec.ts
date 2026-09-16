@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { wcagViolations } from './axe';
 
 // G5 module registry through the real stack: in the seeded company, the owner switches the customers module off,
 // its entries leave the navigation, its page sends them home and its API answers 404; switching it back on brings
@@ -9,13 +9,6 @@ import { signIn } from './session';
 // suite shares one database and runs serially, and every module switched off is switched on again whatever happens,
 // so no other scenario ever finds one off.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
 
 /** What the API answers for the working company's customers. */
 async function customersStatus(page: Page): Promise<number> {

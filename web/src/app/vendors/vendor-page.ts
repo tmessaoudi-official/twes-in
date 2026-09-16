@@ -7,7 +7,6 @@ import {
   effect,
   inject,
   input,
-  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -20,6 +19,7 @@ import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { vendorForm, vendorInput, vendorValues } from './vendor-forms';
 import { VendorsFacade } from './vendors-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 @Component({
@@ -30,6 +30,7 @@ import { VendorsFacade } from './vendors-facade';
 })
 export class VendorPage {
   private readonly facade = inject(VendorsFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
 
@@ -41,7 +42,6 @@ export class VendorPage {
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('vendor.write'));
-  protected readonly saved = signal(false);
 
   /** Null while a new vendor is filled in; undefined until the vendor asked for has been read. */
   protected readonly current = computed(() => {
@@ -80,7 +80,6 @@ export class VendorPage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.saved.set(false);
         if (companyId) {
           void this.facade.loadVendor(companyId, id);
         }
@@ -94,14 +93,13 @@ export class VendorPage {
     if (!companyId || options === null || this.busy()) return;
     const input = vendorInput(values, options);
     const id = this.id();
-    this.saved.set(false);
     if (id === null) {
       const created = await this.facade.createVendor(companyId, input);
       if (created !== null) {
         await this.router.navigate(['/vendors', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseVendor(companyId, id, input)) !== null) {
-      this.saved.set(true);
+      this.feedback.success('vendors.saved');
     }
   }
 }

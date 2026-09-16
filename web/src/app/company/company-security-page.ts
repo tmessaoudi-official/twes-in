@@ -1,18 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySecurityFacade } from './company-security-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 /**
  * The company's sign-in requirements: one switch, whether every member needs a second factor. Turning it on while
@@ -26,6 +20,7 @@ import { CompanySecurityFacade } from './company-security-facade';
 })
 export class CompanySecurityPage implements OnInit {
   private readonly facade = inject(CompanySecurityFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
 
@@ -33,7 +28,6 @@ export class CompanySecurityPage implements OnInit {
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
-  protected readonly saved = signal(false);
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
@@ -45,7 +39,6 @@ export class CompanySecurityPage implements OnInit {
   protected async toggle(change: MatSlideToggleChange): Promise<void> {
     const companyId = this.company()?.id;
     const current = this.security()?.mfaRequired ?? false;
-    this.saved.set(false);
     if (!companyId || this.busy()) {
       change.source.checked = current;
       return;
@@ -58,6 +51,6 @@ export class CompanySecurityPage implements OnInit {
       await this.router.navigateByUrl('/two-factor');
       return;
     }
-    this.saved.set(true);
+    this.feedback.success('company.security.saved');
   }
 }

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // G4 through the real stack: in the seeded Tunisian company, the owner creates a customer group, gives it its own
 // payment terms, files a business customer in it and finds the terms inherited on the customer, then adds a contact.
@@ -9,13 +10,6 @@ import { signIn } from './session';
 // the group and deactivated (customers are never deleted) before the group is deleted, which forgets its terms.
 const CSRF = '0123456789abcdef0123456789abcdef';
 const TERMS = 'field-document__payment_terms_days';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
 
 /** Takes the run's customer out of its group, deactivates it, then deletes the group. */
 async function retire(page: Page, number: string, groupName: string): Promise<void> {
@@ -73,7 +67,7 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     await expect(page.getByTestId(TERMS)).toBeVisible();
     await page.getByTestId(TERMS).fill('45');
     await page.getByTestId('party-defaults-save').click();
-    await expect(page.getByTestId('party-defaults-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('Les valeurs par défaut ont été enregistrées.');
 
     await page.goto('/customers/new');
     await page.getByTestId('field-number').fill(number);

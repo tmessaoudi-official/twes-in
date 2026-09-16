@@ -22,6 +22,7 @@ import { PartyDefaults } from './party-defaults';
 import type { CustomerGroupRow } from './customers-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { CUSTOMERS_TABS } from './customers-nav';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The groups customers are sorted into; a group's settings apply to every customer in it. */
 @Component({
@@ -42,6 +43,7 @@ import { CUSTOMERS_TABS } from './customers-nav';
 export class CustomerGroupsPage implements OnInit {
   protected readonly tabs = CUSTOMERS_TABS;
   private readonly facade = inject(CustomersFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = GROUPS_LIST;
@@ -54,7 +56,6 @@ export class CustomerGroupsPage implements OnInit {
   protected readonly rowTestId = (row: CustomerGroupRow): string => `customer-group-${row.name}`;
 
   protected readonly editing = signal<CustomerGroupRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly form = computed(() => {
     const editing = this.editing();
     return editing === null
@@ -77,7 +78,6 @@ export class CustomerGroupsPage implements OnInit {
 
   protected open(target: CustomerGroupRow | 'new'): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 
@@ -97,14 +97,13 @@ export class CustomerGroupsPage implements OnInit {
         : await this.facade.reviseGroup(companyId, editing.id, input);
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('customers.groups.saved');
     }
   }
 
   protected async remove(row: CustomerGroupRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     await this.facade.deleteGroup(companyId, row.id);
   }
 }

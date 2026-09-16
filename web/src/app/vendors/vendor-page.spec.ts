@@ -23,6 +23,7 @@ import {
 import { VendorPage } from './vendor-page';
 import { VendorsFacade } from './vendors-facade';
 import type { VendorOptions, VendorRow, VendorsError } from './vendors-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -113,6 +114,7 @@ describe('VendorPage', () => {
     TestBed.configureTestingModule({
       imports: [VendorPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -189,13 +191,13 @@ describe('VendorPage', () => {
       'v1',
       expect.objectContaining({ email: 'compta@sotumag.tn' }),
     );
-    expect(q('vendor-saved')).not.toBeNull();
+    expect(successToasts()).toContain('vendors.saved');
 
     facade.reviseVendor.mockResolvedValue(null);
     error.set('number_taken');
     q('vendor-save')!.click();
     await settle();
-    expect(q('vendor-saved')).toBeNull();
+    expect(successToasts()).toEqual(['vendors.saved']);
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
   });
 

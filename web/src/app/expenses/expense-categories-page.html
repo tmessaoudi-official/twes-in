@@ -25,11 +25,6 @@
         {{ 'expenses.errors.' + code | translate }}
       </p>
     }
-    @if (saved()) {
-      <p role="status" data-testid="expense-category-saved">
-        {{ 'expenses.categories.saved' | translate }}
-      </p>
-    }
 
     @if (form(); as form) {
       <mat-card>

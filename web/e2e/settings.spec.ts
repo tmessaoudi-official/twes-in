@@ -2,6 +2,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
 
 // G3b through the real stack: the seeded company's owner sets a business default on the settings page, it survives
 // a reload, and a reset returns it to the declared default. One database is shared by the whole suite, so the
@@ -43,7 +44,7 @@ test("the owner sets the company's payment terms, which survive a reload until r
 
     await terms.fill('45');
     await page.getByTestId('settings-save').click();
-    await expect(page.getByTestId('settings-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('Les paramètres ont été enregistrés.');
 
     await page.reload();
     await expect(terms).toHaveValue('45');

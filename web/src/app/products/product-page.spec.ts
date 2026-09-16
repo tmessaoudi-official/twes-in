@@ -31,6 +31,7 @@ import type {
   ProductRow,
   ProductsError,
 } from './products-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -129,6 +130,7 @@ describe('ProductPage', () => {
     TestBed.configureTestingModule({
       imports: [ProductPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -205,7 +207,7 @@ describe('ProductPage', () => {
       'p1',
       expect.objectContaining({ unitPriceNet: '1300', defaultTaxComponentIds: ['t1'] }),
     );
-    expect(q('product-saved')).not.toBeNull();
+    expect(successToasts()).toContain('products.saved');
   });
 
   it('keeps what was typed when the product and its options are read again', async () => {

@@ -15,6 +15,7 @@ import { Session } from '../shared/session/session';
 import type { CompanySecurity, CompanySecurityError } from './company-security-api';
 import { CompanySecurityFacade } from './company-security-facade';
 import { CompanySecurityPage } from './company-security-page';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -76,6 +77,7 @@ describe('CompanySecurityPage', () => {
     TestBed.configureTestingModule({
       imports: [CompanySecurityPage],
       providers: [
+        ...provideQuietFeedback(),
         provideRouter([]),
         provideTranslateService({
           lang: 'fr',
@@ -129,7 +131,7 @@ describe('CompanySecurityPage', () => {
     theSwitch().click();
     await settle();
 
-    expect(q('security-saved')).not.toBeNull();
+    expect(successToasts()).toContain('company.security.saved');
     expect(navigate).not.toHaveBeenCalled();
   });
 

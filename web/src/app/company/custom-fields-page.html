@@ -51,11 +51,6 @@
       {{ 'company.custom_fields.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="custom-field-saved">
-      {{ 'company.custom_fields.saved' | translate }}
-    </p>
-  }
 
   @if (form(); as form) {
     <mat-card>

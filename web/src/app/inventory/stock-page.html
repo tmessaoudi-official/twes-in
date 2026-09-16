@@ -35,12 +35,6 @@
         {{ 'inventory.errors.' + code | translate }}
       </p>
     }
-    @if (recorded()) {
-      <p role="status" data-testid="stock-recorded">
-        {{ 'inventory.stock.recorded' | translate }}
-      </p>
-    }
-
     @if (form(); as form) {
       @if (descriptor(); as descriptor) {
         <mat-card class="max-w-3xl">

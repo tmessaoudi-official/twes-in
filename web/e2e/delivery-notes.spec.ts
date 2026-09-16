@@ -1,20 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { wcagViolations } from './axe';
 
 // G6 delivery notes through the real stack: in the seeded Tunisian company, the owner drafts a note for a customer
 // made for the run, two laptops at 1250 under the 19 % VAT, validates it and finds it numbered, downloads its PDF
 // rendered by Gotenberg, marks it delivered and finds it in the list. One database is shared by the whole suite and
 // notes are never deleted, so the customer is unique to the run and deactivated afterwards.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
 
 /** A customer billed in Tunis under the standard regime, through the API: the customers screens have their own run. */
 async function createCustomer(page: Page, number: string): Promise<void> {

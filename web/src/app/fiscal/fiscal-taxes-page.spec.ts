@@ -23,6 +23,7 @@ import {
 import { FiscalFacade } from './fiscal-facade';
 import { FiscalTaxesPage } from './fiscal-taxes-page';
 import type { CustomerTaxRegimeRow, TaxComponentRow } from './fiscal-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -123,6 +124,7 @@ describe('FiscalTaxesPage', () => {
     TestBed.configureTestingModule({
       imports: [FiscalTaxesPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -185,7 +187,7 @@ describe('FiscalTaxesPage', () => {
       }),
     );
     expect(q('tax-form')).toBeNull();
-    expect(q('tax-saved')).not.toBeNull();
+    expect(successToasts()).toContain('fiscal.taxes.saved');
   });
 
   it('keeps the form open when the API refused', async () => {

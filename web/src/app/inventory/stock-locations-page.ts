@@ -31,6 +31,7 @@ import {
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
 import type { StockLocationRow } from './inventory-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** Where stock is kept: each establishment's tree under its default location; a location goes only once empty. */
 @Component({
@@ -52,6 +53,7 @@ import type { StockLocationRow } from './inventory-types';
 export class StockLocationsPage implements OnInit {
   protected readonly tabs = INVENTORY_TABS;
   private readonly facade = inject(InventoryFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = LOCATIONS_LIST;
@@ -64,7 +66,6 @@ export class StockLocationsPage implements OnInit {
     `stock-location-${row.code}`;
 
   protected readonly editing = signal<StockLocationRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();
     const editing = this.editing();
@@ -116,7 +117,6 @@ export class StockLocationsPage implements OnInit {
 
   protected open(target: StockLocationRow | 'new'): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 
@@ -136,14 +136,13 @@ export class StockLocationsPage implements OnInit {
         : await this.facade.reviseLocation(companyId, editing.id, input);
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('inventory.locations.saved');
     }
   }
 
   protected async remove(row: StockLocationRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     await this.facade.deleteLocation(companyId, row.id);
   }
 }

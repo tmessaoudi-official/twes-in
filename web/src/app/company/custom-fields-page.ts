@@ -29,6 +29,7 @@ import {
   definitionInput,
 } from './custom-field-forms';
 import { CustomFieldsFacade } from './custom-fields-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The fields the company adds to its customers: declared here, retired here, never deleted. */
 @Component({
@@ -48,6 +49,7 @@ import { CustomFieldsFacade } from './custom-fields-facade';
 })
 export class CustomFieldsPage implements OnInit {
   private readonly facade = inject(CustomFieldsFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = DEFINITIONS_LIST;
@@ -62,7 +64,6 @@ export class CustomFieldsPage implements OnInit {
   /** The kind of record whose fields are shown and declared. */
   protected readonly entity = signal<CustomFieldEntity>('customer');
   protected readonly editing = signal<CustomFieldDefinition | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     return definitionForm(editing === 'new' || editing === null ? null : editing);
@@ -86,7 +87,6 @@ export class CustomFieldsPage implements OnInit {
   protected async show(entity: CustomFieldEntity): Promise<void> {
     const companyId = this.company()?.id;
     this.editing.set(null);
-    this.saved.set(false);
     this.facade.clearError();
     this.entity.set(entity);
     if (companyId) {
@@ -119,13 +119,12 @@ export class CustomFieldsPage implements OnInit {
         : await this.facade.revise(companyId, declared.id, input);
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('company.custom_fields.saved');
     }
   }
 
   private open(target: CustomFieldDefinition | 'new'): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 }

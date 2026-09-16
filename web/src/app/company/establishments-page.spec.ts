@@ -23,6 +23,7 @@ import {
 import type { CompanyError, EstablishmentRow } from './company-types';
 import { EstablishmentsFacade } from './establishments-facade';
 import { EstablishmentsPage } from './establishments-page';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -98,6 +99,7 @@ describe('EstablishmentsPage', () => {
     TestBed.configureTestingModule({
       imports: [EstablishmentsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

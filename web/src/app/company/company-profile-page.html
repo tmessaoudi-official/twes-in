@@ -15,9 +15,6 @@
         {{ 'company.profile.errors.' + code | translate }}
       </p>
     }
-    @if (saved()) {
-      <p role="status" data-testid="profile-saved">{{ 'company.profile.saved' | translate }}</p>
-    }
 
     @if (descriptor(); as descriptor) {
       @if (form(); as form) {

@@ -14,6 +14,7 @@ import { Session } from '../shared/session/session';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { CompanySettings } from './company-settings-facade';
 import { SettingsPage } from './settings-page';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -69,6 +70,7 @@ describe('SettingsPage', () => {
     TestBed.configureTestingModule({
       imports: [SettingsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -110,7 +112,7 @@ describe('SettingsPage', () => {
     expect(settings.save).toHaveBeenCalledWith('c1', [
       { key: 'document.payment_terms_days', value: 60 },
     ]);
-    expect(q('settings-saved')?.textContent).toContain('Enregistré');
+    expect(successToasts()).toContain('settings.saved');
   });
 
   it('resets a value the company holds to the level above', async () => {

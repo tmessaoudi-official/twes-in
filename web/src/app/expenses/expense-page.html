@@ -41,9 +41,6 @@
       {{ 'expenses.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="expense-saved">{{ 'expenses.saved' | translate }}</p>
-  }
 
   @if (current(); as expense) {
     <mat-card>

@@ -24,6 +24,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { CustomFieldsFacade } from './custom-fields-facade';
 import { CustomFieldsPage } from './custom-fields-page';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -93,6 +94,7 @@ describe('CustomFieldsPage', () => {
     TestBed.configureTestingModule({
       imports: [CustomFieldsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

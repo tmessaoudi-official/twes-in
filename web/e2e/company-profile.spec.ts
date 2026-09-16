@@ -2,6 +2,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
 
 // G3b through the real stack: the seeded Tunisian company's owner fills its profile, which asks for the matricule
 // fiscal its preset requires, and the profile survives a reload. One database is shared by the whole suite, so a
@@ -74,7 +75,7 @@ test("the owner fills the company's profile with the identifier its preset requi
     await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
     await page.getByTestId('field-iban').fill('TN59 1000 6035 1835 9847 8831');
     await page.getByTestId('profile-save').click();
-    await expect(page.getByTestId('profile-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('Le profil a été enregistré.');
 
     await page.reload();
     await expect(legalName).toHaveValue(name);

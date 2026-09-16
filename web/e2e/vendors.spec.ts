@@ -1,19 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // G8 through the real stack: in the seeded Tunisian company, the owner adds a vendor without any registration number,
 // with its bank account and payment terms, revises it and finds it in the list. One database is shared by the whole
 // suite, so the number is unique to the run and the vendor is deactivated at the end (vendors are never deleted).
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
 
 /** Deactivates the run's vendor. */
 async function retire(page: Page, number: string): Promise<void> {
@@ -65,7 +59,7 @@ test('a vendor is added with its bank account and terms, then revised', async ({
 
     await page.getByTestId('field-email').fill('compta@sotumag.tn');
     await page.getByTestId('vendor-save').click();
-    await expect(page.getByTestId('vendor-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('Le fournisseur a été enregistré.');
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/vendors');

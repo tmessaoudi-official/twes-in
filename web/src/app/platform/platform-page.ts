@@ -14,6 +14,7 @@ import {
   type CompanyCountry,
   type SignupSwitch,
 } from './platform-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /**
  * The operators' page: whether anyone may sign up, whether a company that signs up waits for approval, the
@@ -36,6 +37,7 @@ import {
 })
 export class PlatformPage implements OnInit {
   private readonly platform = inject(PlatformFacade);
+  private readonly feedback = inject(Feedback);
 
   protected readonly waiting = this.platform.waiting;
   protected readonly signup = this.platform.signup;
@@ -49,7 +51,6 @@ export class PlatformPage implements OnInit {
   protected readonly companyCountry = signal<CompanyCountry>('TN');
   protected readonly ownerEmail = signal('');
   /** The address the last invitation went to, once it went. */
-  protected readonly invitedTo = signal<string | null>(null);
   /** What is typed in each company's owner field, by company. */
   protected readonly ownerEmails = signal<Readonly<Record<string, string>>>({});
 
@@ -71,9 +72,8 @@ export class PlatformPage implements OnInit {
 
   protected async open(): Promise<void> {
     const email = this.ownerEmail().trim();
-    this.invitedTo.set(null);
     if (await this.platform.openCompany(this.companyName().trim(), this.companyCountry(), email)) {
-      this.invitedTo.set(email);
+      this.feedback.success('platform.companies.invited', { email });
       this.companyName.set('');
       this.ownerEmail.set('');
     }
@@ -81,9 +81,8 @@ export class PlatformPage implements OnInit {
 
   protected async invite(companyId: string): Promise<void> {
     const email = (this.ownerEmails()[companyId] ?? '').trim();
-    this.invitedTo.set(null);
     if (await this.platform.inviteOwner(companyId, email)) {
-      this.invitedTo.set(email);
+      this.feedback.success('platform.companies.invited', { email });
       this.ownerEmails.update((typed) => ({ ...typed, [companyId]: '' }));
     }
   }

@@ -28,6 +28,7 @@ import type {
   StockOptions,
 } from './inventory-types';
 import { StockPage } from './stock-page';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -108,6 +109,7 @@ describe('StockPage', () => {
     TestBed.configureTestingModule({
       imports: [StockPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -156,7 +158,7 @@ describe('StockPage', () => {
       locationId: 'l1',
       quantity: '10',
     });
-    expect(q('stock-recorded')).not.toBeNull();
+    expect(successToasts()).toContain('inventory.stock.recorded');
     expect(q('stock-movement-save')).toBeNull();
   });
 

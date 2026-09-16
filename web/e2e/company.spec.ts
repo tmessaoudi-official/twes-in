@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { OPERATOR_EMAIL as EMAIL, signIn, signInWithCode } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // The G1b switcher, through the real bundle, nginx, FrankenPHP and PostgreSQL. The second company is opened by
 // the operator on /platform; what the owner and the operator then do between them goes through the API.
@@ -20,13 +21,6 @@ const OWNER_PASSWORD = 'a-long-enough-password';
 // docs/SPEC.md § 8 row 23 (review C8). The invitation screen is checked here rather than in the central walk of
 // accessibility.spec.ts because only this scenario holds a live token: it opens the company, invites its owner and
 // reads the link out of mailpit. A walk elsewhere would have to build that fixture a second time.
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
-
 async function signInAs(page: Page, email: string, password: string): Promise<void> {
   await page.goto('/login');
   await page.getByTestId('email').fill(email);
@@ -51,7 +45,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
   await page.getByTestId('platform-company-country').selectOption('TN');
   await page.getByTestId('platform-company-owner').fill(owner);
   await page.getByTestId('platform-company-create').click();
-  await expect(page.getByTestId('platform-company-invited')).toContainText(owner);
+  await expect(toast(page)).toContainText(owner);
   // A company an operator opens waits for its first owner.
   await expect(page.getByTestId(`company-${name}`)).toContainText('En attente');
   await page.getByTestId(`company-${name}`).scrollIntoViewIfNeeded();

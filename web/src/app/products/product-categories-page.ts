@@ -30,6 +30,7 @@ import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow } from './products-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The tree products are filed in: a category sits under another or at the top, and goes only once empty. */
 @Component({
@@ -50,6 +51,7 @@ import { PRODUCTS_TABS } from './products-nav';
 export class ProductCategoriesPage implements OnInit {
   protected readonly tabs = PRODUCTS_TABS;
   private readonly facade = inject(ProductsFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = CATEGORIES_LIST;
@@ -62,7 +64,6 @@ export class ProductCategoriesPage implements OnInit {
     `product-category-${row.name}`;
 
   protected readonly editing = signal<ProductCategoryRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     return categoryForm(
@@ -108,7 +109,6 @@ export class ProductCategoriesPage implements OnInit {
 
   protected open(target: ProductCategoryRow | 'new'): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 
@@ -128,14 +128,13 @@ export class ProductCategoriesPage implements OnInit {
         : await this.facade.reviseCategory(companyId, editing.id, input);
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('products.categories.saved');
     }
   }
 
   protected async remove(row: ProductCategoryRow): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     await this.facade.deleteCategory(companyId, row.id);
   }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { wcagViolations } from './axe';
 
 // G9 through the real stack: in the seeded Tunisian company, the owner files a category, adds an expense under it with
 // VAT at 19 %, attaches a receipt and reads it back, records the expense and pays it. One database is shared by the
@@ -9,13 +9,6 @@ import { signIn } from './session';
 // as a paid expense does.
 const CSRF = '0123456789abcdef0123456789abcdef';
 const PDF = '%PDF-1.4\n1 0 obj << /Type /Catalog >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
 
 /** Deactivates the run's category. */
 async function retire(page: Page, name: string): Promise<void> {

@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -22,6 +15,7 @@ import {
   companySettingsForm,
   companySettingsValues,
 } from './settings-forms';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The one generic settings page: the company's defaults, rendered by type from the definitions the API returns. */
 @Component({
@@ -32,13 +26,13 @@ import {
 })
 export class SettingsPage implements OnInit {
   private readonly settings = inject(CompanySettings);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('company.settings'));
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => companySettingsForm(this.settings.rows()));
   protected readonly form = computed(() =>
     buildFormGroup(this.descriptor(), companySettingsValues(this.settings.rows())),
@@ -55,19 +49,17 @@ export class SettingsPage implements OnInit {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     const changes = changedSettings(this.settings.rows(), values);
     if (changes.length === 0 || (await this.settings.save(companyId, changes))) {
-      this.saved.set(true);
+      this.feedback.success('settings.saved');
     }
   }
 
   protected async reset(key: string): Promise<void> {
     const companyId = this.company()?.id;
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     if (await this.settings.reset(companyId, key)) {
-      this.saved.set(true);
+      this.feedback.success('settings.saved');
     }
   }
 }

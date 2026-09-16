@@ -23,6 +23,7 @@ import {
 import { InventoryFacade } from './inventory-facade';
 import type { InventoryError, StockLocationRow, StockOptions } from './inventory-types';
 import { StockLocationsPage } from './stock-locations-page';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -108,6 +109,7 @@ describe('StockLocationsPage', () => {
     TestBed.configureTestingModule({
       imports: [StockLocationsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -149,7 +151,7 @@ describe('StockLocationsPage', () => {
       code: 'R1',
       name: 'Rayonnage 1',
     });
-    expect(q('stock-location-saved')).not.toBeNull();
+    expect(successToasts()).toContain('inventory.locations.saved');
   });
 
   it('keeps what was typed when the locations arrive after the form was opened', async () => {

@@ -22,11 +22,6 @@
       {{ 'company.establishments.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="establishment-saved">
-      {{ 'company.establishments.saved' | translate }}
-    </p>
-  }
 
   @if (form(); as form) {
     <mat-card>

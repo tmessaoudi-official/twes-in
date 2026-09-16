@@ -36,6 +36,7 @@ import {
 import { InvoiceLines } from './invoice-lines';
 import { InvoicesFacade } from './invoices-facade';
 import { INVOICE_STATUS_TONES, type InvoiceInput, type Payment } from './invoices-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -61,6 +62,7 @@ import { INVOICE_STATUS_TONES, type InvoiceInput, type Payment } from './invoice
 })
 export class InvoicePage {
   private readonly facade = inject(InvoicesFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
 
@@ -77,8 +79,6 @@ export class InvoicePage {
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
   protected readonly mayIssue = computed(() => this.auth.hasPermission('invoice.issue'));
   protected readonly mayPay = computed(() => this.auth.hasPermission('payment.write'));
-  protected readonly saved = signal(false);
-  protected readonly paymentRecorded = signal(false);
   protected readonly confirmingCancel = signal(false);
   protected readonly confirmingPaymentDelete = signal<string | null>(null);
 
@@ -203,8 +203,6 @@ export class InvoicePage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.saved.set(false);
-        this.paymentRecorded.set(false);
         this.confirmingCancel.set(false);
         this.confirmingPaymentDelete.set(null);
         if (companyId) {
@@ -271,14 +269,13 @@ export class InvoicePage {
     const input = this.collect();
     if (!companyId || input === null) return;
     const id = this.id();
-    this.saved.set(false);
     if (id === null) {
       const created = await this.facade.create(companyId, input);
       if (created !== null) {
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {
-      this.saved.set(true);
+      this.feedback.success('invoices.saved');
     }
   }
 
@@ -287,7 +284,6 @@ export class InvoicePage {
     const id = this.id();
     const input = this.collect();
     if (!companyId || id === null || input === null) return;
-    this.saved.set(false);
     await this.facade.reviseAndIssue(companyId, id, input);
   }
 
@@ -314,13 +310,12 @@ export class InvoicePage {
     const id = this.id();
     const group = this.payment()?.group;
     if (!companyId || id === null || group === undefined || this.busy()) return;
-    this.paymentRecorded.set(false);
     if (group.invalid) {
       group.markAllAsTouched();
       return;
     }
     if (await this.facade.recordPayment(companyId, id, paymentInput(group.getRawValue()))) {
-      this.paymentRecorded.set(true);
+      this.feedback.success('invoices.payments.recorded');
     }
   }
 
@@ -329,7 +324,6 @@ export class InvoicePage {
     const id = this.id();
     this.confirmingPaymentDelete.set(null);
     if (!companyId || id === null || this.busy()) return;
-    this.paymentRecorded.set(false);
     await this.facade.deletePayment(companyId, id, payment.id);
   }
 

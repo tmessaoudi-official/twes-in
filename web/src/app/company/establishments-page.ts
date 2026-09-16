@@ -24,6 +24,7 @@ import {
   establishmentInput,
 } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The places the company issues documents from, one of them its default. */
 @Component({
@@ -42,6 +43,7 @@ import { EstablishmentsFacade } from './establishments-facade';
 })
 export class EstablishmentsPage implements OnInit {
   private readonly facade = inject(EstablishmentsFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = ESTABLISHMENT_LIST;
@@ -53,7 +55,6 @@ export class EstablishmentsPage implements OnInit {
   protected readonly rowTestId = (row: EstablishmentRow): string => `establishment-${row.code}`;
 
   protected readonly editing = signal<EstablishmentRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     return establishmentForm(
@@ -101,13 +102,12 @@ export class EstablishmentsPage implements OnInit {
         : await this.facade.reviseEstablishment(companyId, editing.id, input);
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('company.establishments.saved');
     }
   }
 
   private open(target: EstablishmentRow | 'new'): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 }

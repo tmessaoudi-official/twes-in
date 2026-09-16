@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
 // in it in hours with the 19 % VAT by default, finds its price at the currency's three decimals, revises it, and
@@ -9,13 +10,6 @@ import { signIn } from './session';
 // the run, and the product is deactivated (products are never deleted) and taken out of the category before the
 // category is deleted.
 const CSRF = '0123456789abcdef0123456789abcdef';
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
-}
 
 /** Deactivates the run's product and takes it out of its category, then deletes the category. */
 async function retire(page: Page, reference: string, categoryName: string): Promise<void> {
@@ -74,7 +68,7 @@ test('a product is filed in a category, priced at the currency scale and revised
     await page.getByTestId(`product-category-edit-${categoryName}`).click();
     await page.getByTestId('field-article__default_unit').fill('HUR');
     await page.getByTestId('article-defaults-save').click();
-    await expect(page.getByTestId('article-defaults-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('Les valeurs par défaut ont été enregistrées.');
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/products/new');
@@ -99,7 +93,7 @@ test('a product is filed in a category, priced at the currency scale and revised
 
     await page.getByTestId('field-unitPriceNet').fill('135');
     await page.getByTestId('product-save').click();
-    await expect(page.getByTestId('product-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('Le produit a été enregistré.');
     await expect(page.getByTestId('field-article__default_unit')).toHaveValue('HUR');
 
     await page.goto('/products');

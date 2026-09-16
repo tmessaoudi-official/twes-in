@@ -2,6 +2,7 @@
 import { expect, type Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { signIn } from './session';
+import { toast } from './toast';
 
 // The notification centre through the whole stack (docs/SPEC.md § 7, 2026-09-13): accepting an invitation
 // publishes to the company channel, the API keeps a row for every member and pushes through Centrifugo, and the
@@ -28,7 +29,7 @@ test('a member joining reaches the open page live, and stays in the centre after
 
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
-  await expect(page.getByTestId('members-added')).toContainText('invitation');
+  await expect(toast(page)).toContainText('invitation');
   const token = await invitationTokenFor(request, invited);
 
   // The invited person is somebody else, in a browser of their own.

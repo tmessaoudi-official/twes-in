@@ -2,6 +2,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { invitationTokenFor } from './mailpit';
 import { signIn as signInAsOperator } from './session';
+import { toast } from './toast';
 
 // The whole invitation, through the real stack: an operator invites an address with no account, Mailpit
 // receives the mail, the link in it is opened with no session, an account is created, and that account signs
@@ -30,7 +31,7 @@ test('an invited address sets a password from the mailed link and then signs in'
 
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
-  await expect(page.getByTestId('members-added')).toContainText('invitation');
+  await expect(toast(page)).toContainText('invitation');
 
   // The mail really went out: Mailpit has it, and it carries a usable link.
   const token = await invitationTokenFor(request, invited);
@@ -102,7 +103,7 @@ test('an address that already has an account joins from the mailed link with not
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(existing);
   await page.getByTestId('member-add').click();
-  await expect(page.getByTestId('members-added')).toContainText('invitation');
+  await expect(toast(page)).toContainText('invitation');
   // Every scenario adds people to Demo, so the row is found by filtering rather than by the page it lands on.
   await page.getByTestId('list-filter').fill(existing);
   await expect(page.getByTestId(`member-${existing}`)).toContainText('Invitation en attente');

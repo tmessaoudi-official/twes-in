@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { type Provider, signal } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { Feedback } from '../feedback/feedback';
 import { RequestActivity } from '../feedback/request-activity';
 
@@ -40,4 +41,11 @@ export function provideQuietFeedback(): Provider[] {
       },
     },
   ];
+}
+
+/** The keys of the success toasts a spec's page has asked for so far, in order (needs `provideQuietFeedback()`). */
+export function successToasts(): string[] {
+  return (TestBed.inject(Feedback) as RecordedFeedback).said
+    .filter((toast) => toast.kind === 'success')
+    .map((toast) => toast.key);
 }

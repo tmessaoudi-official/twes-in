@@ -7,7 +7,6 @@ import {
   effect,
   inject,
   input,
-  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,6 +23,7 @@ import {
 } from '../shared/settings/setting-forms';
 import type { SettingChain, PartySubject } from '../shared/settings/settings-types';
 import { levelOf, PartySettings } from './party-settings-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
 
@@ -39,13 +39,13 @@ const PARTY_CHAINS: readonly SettingChain[] = ['parties'];
 })
 export class PartyDefaults {
   private readonly settings = inject(PartySettings);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   readonly subject = input.required<PartySubject>();
 
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
-  protected readonly saved = signal(false);
   protected readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
   protected readonly level = computed(() => levelOf(this.subject()));
   protected readonly intro = computed(() =>
@@ -79,7 +79,6 @@ export class PartyDefaults {
       const companyId = this.companyId();
       const subject = this.subject();
       untracked(() => {
-        this.saved.set(false);
         if (companyId) {
           void this.settings.load(companyId, subject);
         }
@@ -90,19 +89,17 @@ export class PartyDefaults {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     const changes = changedSettingsAt(this.settings.rows(), values, this.level());
     if (changes.length === 0 || (await this.settings.save(companyId, this.subject(), changes))) {
-      this.saved.set(true);
+      this.feedback.success('customers.defaults.saved');
     }
   }
 
   protected async reset(key: string): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     if (await this.settings.reset(companyId, this.subject(), key)) {
-      this.saved.set(true);
+      this.feedback.success('customers.defaults.saved');
     }
   }
 }

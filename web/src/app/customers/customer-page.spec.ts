@@ -32,6 +32,7 @@ import type {
   CustomerRow,
   CustomersError,
 } from './customers-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -159,6 +160,7 @@ describe('CustomerPage', () => {
     TestBed.configureTestingModule({
       imports: [CustomerPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -265,7 +267,7 @@ describe('CustomerPage', () => {
       'k1',
       expect.objectContaining({ email: 'compta@carthage.tn', defaultTaxComponentIds: ['t1'] }),
     );
-    expect(q('customer-saved')).not.toBeNull();
+    expect(successToasts()).toContain('customers.saved');
   });
 
   it('adds a contact to the customer and removes one', async () => {

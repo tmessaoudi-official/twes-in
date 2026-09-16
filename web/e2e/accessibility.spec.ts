@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { forgetPresentationChoices } from './presentation';
 import { signIn as signInAsOperator } from './session';
+import { wcagViolations } from './axe';
 
 // The design system's quality bar (docs/SPEC.md § 7, 2026-09-13): every screen passes axe's WCAG 2.1 A and AA
 // rules in both colour schemes, the shell works at phone width, and the Content Security Policy is never
@@ -15,14 +16,7 @@ async function signIn(page: Page): Promise<void> {
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  const violations = results.violations.map(
-    (violation) =>
-      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
-  );
-  expect(violations, screen).toEqual([]);
+  expect(await wcagViolations(page), screen).toEqual([]);
 }
 
 test('the login page is accessible', async ({ page }) => {

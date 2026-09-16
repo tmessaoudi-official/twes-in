@@ -22,6 +22,7 @@ import {
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
 import { MembersPage } from './members-page';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -87,6 +88,7 @@ describe('MembersPage', () => {
     TestBed.configureTestingModule({
       imports: [MembersPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

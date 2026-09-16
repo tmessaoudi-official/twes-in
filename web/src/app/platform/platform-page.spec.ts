@@ -16,6 +16,8 @@ import type {
   PlatformError,
   PlatformSignup,
 } from './platform-types';
+import { Feedback } from '../shared/feedback/feedback';
+import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -123,6 +125,7 @@ describe('PlatformPage', () => {
     await TestBed.configureTestingModule({
       imports: [PlatformPage],
       providers: [
+        ...provideQuietFeedback(),
         { provide: PlatformFacade, useValue: facade },
         provideTranslateService({
           lang: 'fr',
@@ -250,7 +253,13 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.openCompany).toHaveBeenCalledWith('Globex', 'FR', 'nadia@example.test');
-    expect(query('platform-company-invited')?.textContent).toContain('nadia@example.test');
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+      {
+        kind: 'success',
+        key: 'platform.companies.invited',
+        params: { email: 'nadia@example.test' },
+      },
+    ]);
   });
 
   it('lists every company with its status and invites an owner into one', async () => {

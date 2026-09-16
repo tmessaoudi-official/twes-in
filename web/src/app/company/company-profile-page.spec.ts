@@ -14,6 +14,7 @@ import { Session } from '../shared/session/session';
 import { CompanyProfileFacade } from './company-profile-facade';
 import { CompanyProfilePage } from './company-profile-page';
 import type { CompanyError, CompanyProfile } from './company-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -78,6 +79,7 @@ describe('CompanyProfilePage', () => {
     TestBed.configureTestingModule({
       imports: [CompanyProfilePage],
       providers: [
+        ...provideQuietFeedback(),
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -125,7 +127,7 @@ describe('CompanyProfilePage', () => {
         vatRegime: 'standard',
       }),
     );
-    expect(q('profile-saved')?.textContent).toContain('Enregistré');
+    expect(successToasts()).toContain('company.profile.saved');
   });
 
   it('does not send an identifier without the shape the preset expects', async () => {

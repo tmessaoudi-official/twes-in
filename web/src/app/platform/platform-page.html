@@ -122,11 +122,6 @@
             {{ 'platform.companies.create' | translate }}
           </button>
         </div>
-        @if (invitedTo(); as email) {
-          <p role="status" class="mt-3" data-testid="platform-company-invited">
-            {{ 'platform.companies.invited' | translate: { email } }}
-          </p>
-        }
       </mat-card-content>
     </mat-card>
     @for (company of companies(); track company.id) {

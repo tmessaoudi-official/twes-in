@@ -23,6 +23,7 @@ import {
 import type { NumberingSeriesRow } from './company-types';
 import { EstablishmentsFacade } from './establishments-facade';
 import { NumberingPage } from './numbering-page';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -93,6 +94,7 @@ describe('NumberingPage', () => {
     TestBed.configureTestingModule({
       imports: [NumberingPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

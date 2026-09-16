@@ -14,10 +14,6 @@
       {{ 'members.errors.' + code | translate }}
     </p>
   }
-  @if (outcome(); as outcome) {
-    <p role="status" data-testid="members-added">{{ 'members.' + outcome | translate }}</p>
-  }
-
   <app-data-list
     [descriptor]="list"
     [rows]="rows()"

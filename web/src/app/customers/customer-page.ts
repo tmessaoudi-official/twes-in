@@ -31,6 +31,7 @@ import {
 import { CustomersFacade } from './customers-facade';
 import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** One customer: a new one to fill in, or an existing one with the people to write to there. */
 @Component({
@@ -51,6 +52,7 @@ import type { ContactRow } from './customers-types';
 })
 export class CustomerPage {
   private readonly facade = inject(CustomersFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
 
@@ -63,7 +65,6 @@ export class CustomerPage {
   protected readonly contacts = this.facade.contacts;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('customer.write'));
-  protected readonly saved = signal(false);
 
   /** Null while a new customer is filled in; undefined until the customer asked for has been read. */
   protected readonly current = computed(() => {
@@ -124,7 +125,6 @@ export class CustomerPage {
       const companyId = this.company()?.id;
       const id = this.id();
       untracked(() => {
-        this.saved.set(false);
         this.contactEditing.set(null);
         if (companyId) {
           void this.facade.loadCustomer(companyId, id);
@@ -139,14 +139,13 @@ export class CustomerPage {
     if (!companyId || options === null || this.busy()) return;
     const input = customerInput(values, options, this.facade.customFields());
     const id = this.id();
-    this.saved.set(false);
     if (id === null) {
       const created = await this.facade.createCustomer(companyId, input);
       if (created !== null) {
         await this.router.navigate(['/customers', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseCustomer(companyId, id, input)) !== null) {
-      this.saved.set(true);
+      this.feedback.success('customers.saved');
     }
   }
 

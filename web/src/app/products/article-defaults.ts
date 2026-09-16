@@ -7,7 +7,6 @@ import {
   effect,
   inject,
   input,
-  signal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,6 +23,7 @@ import {
 } from '../shared/settings/setting-forms';
 import type { ArticleSubject, SettingChain } from '../shared/settings/settings-types';
 import { articleLevelOf, ArticleSettings } from './article-settings-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 
@@ -39,13 +39,13 @@ const ARTICLE_CHAINS: readonly SettingChain[] = ['articles'];
 })
 export class ArticleDefaults {
   private readonly settings = inject(ArticleSettings);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   readonly subject = input.required<ArticleSubject>();
 
   protected readonly busy = this.settings.busy;
   protected readonly error = this.settings.error;
-  protected readonly saved = signal(false);
   protected readonly companyId = computed(() => this.auth.me()?.company?.id ?? null);
   protected readonly level = computed(() => articleLevelOf(this.subject()));
   protected readonly intro = computed(() =>
@@ -79,7 +79,6 @@ export class ArticleDefaults {
       const companyId = this.companyId();
       const subject = this.subject();
       untracked(() => {
-        this.saved.set(false);
         if (companyId) {
           void this.settings.load(companyId, subject);
         }
@@ -90,19 +89,17 @@ export class ArticleDefaults {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     const changes = changedSettingsAt(this.settings.rows(), values, this.level());
     if (changes.length === 0 || (await this.settings.save(companyId, this.subject(), changes))) {
-      this.saved.set(true);
+      this.feedback.success('products.defaults.saved');
     }
   }
 
   protected async reset(key: string): Promise<void> {
     const companyId = this.companyId();
     if (!companyId || this.busy()) return;
-    this.saved.set(false);
     if (await this.settings.reset(companyId, this.subject(), key)) {
-      this.saved.set(true);
+      this.feedback.success('products.defaults.saved');
     }
   }
 }

@@ -11,9 +11,6 @@
         {{ 'company.security.errors.' + code | translate }}
       </p>
     }
-    @if (saved()) {
-      <p role="status" data-testid="security-saved">{{ 'company.security.saved' | translate }}</p>
-    }
 
     @if (security(); as current) {
       <div

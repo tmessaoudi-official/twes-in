@@ -25,6 +25,7 @@ import { CustomersFacade } from './customers-facade';
 import { PartySettings } from './party-settings-facade';
 import type { SettingRow } from '../shared/settings/settings-types';
 import type { CustomerGroupRow, CustomersError } from './customers-types';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -94,6 +95,7 @@ describe('CustomerGroupsPage', () => {
     TestBed.configureTestingModule({
       imports: [CustomerGroupsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

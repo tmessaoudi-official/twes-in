@@ -25,6 +25,7 @@ import type { SettingRow } from '../shared/settings/settings-types';
 import { ArticleSettings } from './article-settings-facade';
 import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow, ProductsError } from './products-types';
+import { provideQuietFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -106,6 +107,7 @@ describe('ProductCategoriesPage', () => {
     TestBed.configureTestingModule({
       imports: [ProductCategoriesPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),

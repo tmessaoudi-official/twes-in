@@ -1,13 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  OnInit,
-  signal,
-} from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -20,6 +13,7 @@ import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-
 import type { ListDescriptor } from '../shared/list/list-types';
 import type { MemberRole, MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
 export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
@@ -79,6 +73,7 @@ export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
 export class MembersPage implements OnInit {
   private readonly members = inject(MembersFacade);
   private readonly auth = inject(AuthFacade);
+  private readonly feedback = inject(Feedback);
 
   protected readonly roles: readonly MemberRole[] = ['owner', 'admin', 'member'];
   protected readonly list = MEMBERS_LIST;
@@ -86,7 +81,6 @@ export class MembersPage implements OnInit {
   protected readonly rows = this.members.members;
   protected readonly busy = this.members.busy;
   protected readonly error = this.members.error;
-  protected readonly outcome = signal<'invited' | null>(null);
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayManage = computed(() => this.auth.hasPermission('user.write'));
 
@@ -111,13 +105,12 @@ export class MembersPage implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    this.outcome.set(null);
     const { email, role } = this.form.getRawValue();
     const row = await this.members.add(companyId, email, role);
     if (row !== null) {
       this.form.reset({ email: '', role: 'member' });
       // Every address is invited, one with an account included: nobody is a member until they accept.
-      this.outcome.set('invited');
+      this.feedback.success('members.invited');
     }
   }
 

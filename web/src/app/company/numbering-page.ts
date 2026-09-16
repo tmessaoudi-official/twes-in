@@ -21,6 +21,7 @@ import type { NumberingSeriesRow } from './company-types';
 import { SERIES_LIST, seriesChanges, seriesForm, seriesFormValues } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
 import { renderNumber } from './number-format';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** How each establishment numbers each kind of document, with the next number shown while a format is typed. */
 @Component({
@@ -39,6 +40,7 @@ import { renderNumber } from './number-format';
 })
 export class NumberingPage implements OnInit {
   private readonly facade = inject(EstablishmentsFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = SERIES_LIST;
@@ -52,7 +54,6 @@ export class NumberingPage implements OnInit {
   protected readonly rowTestId = (row: NumberingSeriesRow): string =>
     `series-${row.establishmentCode}-${row.documentType}`;
 
-  protected readonly saved = signal(false);
   protected readonly form = computed(() => {
     const editing = this.editing();
     return editing === null ? null : buildFormGroup(this.descriptor(), seriesFormValues(editing));
@@ -90,7 +91,6 @@ export class NumberingPage implements OnInit {
 
   protected edit(row: NumberingSeriesRow): void {
     this.facade.clearError();
-    this.saved.set(false);
     this.editing.set(row);
   }
 
@@ -105,7 +105,7 @@ export class NumberingPage implements OnInit {
     if (!companyId || editing === null || this.busy()) return;
     if (await this.facade.reviseSeries(companyId, editing.id, seriesChanges(values))) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('company.numbering.saved');
     }
   }
 }

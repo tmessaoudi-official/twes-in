@@ -23,6 +23,7 @@ import {
 import { ExpenseCategoriesPage } from './expense-categories-page';
 import { ExpensesFacade } from './expenses-facade';
 import type { ExpenseCategoryRow, ExpensesError } from './expenses-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -90,6 +91,7 @@ describe('ExpenseCategoriesPage', () => {
     TestBed.configureTestingModule({
       imports: [ExpenseCategoriesPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -133,7 +135,7 @@ describe('ExpenseCategoriesPage', () => {
       parentId: null,
       isActive: true,
     });
-    expect(q('expense-category-saved')).not.toBeNull();
+    expect(successToasts()).toContain('expenses.categories.saved');
     expect(q('expense-category-form')).toBeNull();
   });
 

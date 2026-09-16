@@ -13,11 +13,6 @@
       {{ 'products.defaults.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="article-defaults-saved">
-      {{ 'products.defaults.saved' | translate }}
-    </p>
-  }
 
   @if (descriptor().sections.length > 0) {
     <app-descriptor-form

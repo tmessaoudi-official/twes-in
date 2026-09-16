@@ -26,6 +26,7 @@ import {
   taxReviseForm,
 } from './fiscal-forms';
 import type { CustomerTaxRegimeRow, TaxComponentRow } from './fiscal-types';
+import { Feedback } from '../shared/feedback/feedback';
 
 /** A company's taxes, which it copied from its fiscal preset and now edits, and the regimes its customers may be under. */
 @Component({
@@ -44,6 +45,7 @@ import type { CustomerTaxRegimeRow, TaxComponentRow } from './fiscal-types';
 })
 export class FiscalTaxesPage implements OnInit {
   private readonly fiscal = inject(FiscalFacade);
+  private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
   protected readonly list = TAX_LIST;
@@ -59,7 +61,6 @@ export class FiscalTaxesPage implements OnInit {
 
   /** The tax being revised, "new" while one is being added, null when no form is open. */
   protected readonly editing = signal<TaxComponentRow | 'new' | null>(null);
-  protected readonly saved = signal(false);
   protected readonly descriptor = computed(() => {
     const editing = this.editing();
     if (editing === null) return null;
@@ -102,13 +103,12 @@ export class FiscalTaxesPage implements OnInit {
         : await this.fiscal.reviseTax(companyId, editing.id, taxInput(values, editing));
     if (accepted) {
       this.editing.set(null);
-      this.saved.set(true);
+      this.feedback.success('fiscal.taxes.saved');
     }
   }
 
   private open(target: TaxComponentRow | 'new'): void {
     this.fiscal.clearError();
-    this.saved.set(false);
     this.editing.set(target);
   }
 }

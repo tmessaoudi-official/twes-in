@@ -27,6 +27,7 @@ import type {
   DeliveryNoteRow,
   DeliveryNotesError,
 } from './delivery-notes-types';
+import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -186,6 +187,7 @@ describe('DeliveryNotePage', () => {
     TestBed.configureTestingModule({
       imports: [DeliveryNotePage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -281,7 +283,7 @@ describe('DeliveryNotePage', () => {
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '3' })] }),
     );
-    expect(q('delivery-note-saved')).not.toBeNull();
+    expect(successToasts()).toContain('delivery_notes.saved');
 
     type('line-0-quantity', '4');
     q('delivery-note-validate')!.click();

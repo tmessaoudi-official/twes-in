@@ -13,9 +13,6 @@
       {{ 'company.numbering.errors.' + code | translate }}
     </p>
   }
-  @if (saved()) {
-    <p role="status" data-testid="series-saved">{{ 'company.numbering.saved' | translate }}</p>
-  }
 
   @if (form(); as form) {
     @if (editing(); as row) {

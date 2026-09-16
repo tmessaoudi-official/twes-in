@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
+import { toast } from './toast';
+import { wcagViolations } from './axe';
 
 // G3b through the real stack: the seeded Tunisian company starts with its default establishment, coded the way its
 // preset says, and a numbering series per document type on it. The owner changes how invoices are numbered, sees the
@@ -18,13 +19,6 @@ interface Series {
   format: string;
   nextNumber: number;
   resetPeriod: string;
-}
-
-async function wcagViolations(page: Page): Promise<string[]> {
-  const axe = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return axe.violations.map((violation) => violation.id);
 }
 
 async function invoices(page: Page): Promise<Series> {
@@ -78,7 +72,7 @@ test('the owner reformats invoices and sees the next number before saving', asyn
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.getByTestId('series-save').click();
-    await expect(page.getByTestId('series-saved')).toBeVisible();
+    await expect(toast(page)).toContainText('La numérotation a été enregistrée.');
 
     await page.reload();
     await expect(page.getByTestId(`series-${code}-invoice`)).toContainText(
