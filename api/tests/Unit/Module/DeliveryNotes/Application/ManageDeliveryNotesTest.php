@@ -68,9 +68,10 @@ final class ManageDeliveryNotesTest extends TestCase
         $provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock);
         $this->customers = new InMemoryCustomers();
         $this->products = new InMemoryProducts();
-        $this->audit = new InMemoryAuditTrail();
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
         $this->totals = new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
-        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions = new FakeTransactions(), $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
+        $this->manage = new ManageDeliveryNotes($this->notes = new InMemoryDeliveryNotes(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
         $this->notes->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');

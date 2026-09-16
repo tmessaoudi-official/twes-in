@@ -17,6 +17,7 @@ use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\InvalidCustomerGroup;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\SettingAddress;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -39,6 +40,7 @@ final readonly class ManageCustomerGroups
         private ForgetSettings $settings,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -60,14 +62,16 @@ final readonly class ManageCustomerGroups
      */
     public function create(Company $company, string $name, ?string $description, ?Uuid $actorUserId): CustomerGroup
     {
-        if (null !== $this->groups->ofNameInCompany(trim($name), $company->getId())) {
-            throw new CustomerGroupNameTaken();
-        }
-        $group = CustomerGroup::create($company, $name, $description, $this->clock->now());
-        $this->groups->save($group);
-        $this->record($company, $group->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $name, $description, $actorUserId): CustomerGroup {
+            if (null !== $this->groups->ofNameInCompany(trim($name), $company->getId())) {
+                throw new CustomerGroupNameTaken();
+            }
+            $group = CustomerGroup::create($company, $name, $description, $this->clock->now());
+            $this->groups->save($group);
+            $this->record($company, $group->getId(), self::CREATED, [], $actorUserId);
 
-        return $group;
+            return $group;
+        });
     }
 
     /**
@@ -77,20 +81,22 @@ final readonly class ManageCustomerGroups
      */
     public function revise(Company $company, Uuid $id, string $name, ?string $description, ?Uuid $actorUserId): CustomerGroup
     {
-        $group = $this->find($company, $id);
-        $holder = $this->groups->ofNameInCompany(trim($name), $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($group->getId())) {
-            throw new CustomerGroupNameTaken();
-        }
+        return $this->transactions->run(function () use ($company, $id, $name, $description, $actorUserId): CustomerGroup {
+            $group = $this->find($company, $id);
+            $holder = $this->groups->ofNameInCompany(trim($name), $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($group->getId())) {
+                throw new CustomerGroupNameTaken();
+            }
 
-        $before = ['name' => $group->getName(), 'description' => $group->getDescription()];
-        if ($group->revise($name, $description, $this->clock->now())) {
-            $after = ['name' => $group->getName(), 'description' => $group->getDescription()];
-            $this->groups->save($group);
-            $this->record($company, $group->getId(), self::REVISED, ['fields' => array_keys(array_diff_assoc($after, $before) + array_diff_assoc($before, $after))], $actorUserId);
-        }
+            $before = ['name' => $group->getName(), 'description' => $group->getDescription()];
+            if ($group->revise($name, $description, $this->clock->now())) {
+                $after = ['name' => $group->getName(), 'description' => $group->getDescription()];
+                $this->groups->save($group);
+                $this->record($company, $group->getId(), self::REVISED, ['fields' => array_keys(array_diff_assoc($after, $before) + array_diff_assoc($before, $after))], $actorUserId);
+            }
 
-        return $group;
+            return $group;
+        });
     }
 
     /**
@@ -99,13 +105,15 @@ final readonly class ManageCustomerGroups
      */
     public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
     {
-        $group = $this->find($company, $id);
-        if ($this->customers->countInGroup($group->getId()) > 0) {
-            throw new CustomerGroupInUse();
-        }
-        $this->settings->at(SettingAddress::customerGroup($company, $id));
-        $this->groups->remove($group);
-        $this->record($company, $id, self::DELETED, [], $actorUserId);
+        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
+            $group = $this->find($company, $id);
+            if ($this->customers->countInGroup($group->getId()) > 0) {
+                throw new CustomerGroupInUse();
+            }
+            $this->settings->at(SettingAddress::customerGroup($company, $id));
+            $this->groups->remove($group);
+            $this->record($company, $id, self::DELETED, [], $actorUserId);
+        });
     }
 
     private function find(Company $company, Uuid $id): CustomerGroup

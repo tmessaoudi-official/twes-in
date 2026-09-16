@@ -26,6 +26,7 @@ use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -52,6 +53,7 @@ final readonly class ManageProducts
         private ClockInterface $clock,
         private CustomFieldDefinitionRepository $customFields,
         private ProductStockHistory $stockHistory,
+        private Transactions $transactions,
     ) {
     }
 
@@ -73,21 +75,23 @@ final readonly class ManageProducts
      */
     public function create(Company $company, ProductInput $input, ?Uuid $actorUserId): Product
     {
-        if (null !== $this->products->ofReferenceInCompany(trim($input->reference), $company->getId())) {
-            throw new ProductReferenceTaken();
-        }
-        [$unit, $category] = $this->checked($company, $input, null);
-        $values = $this->customFieldValues($company, $input, null);
-        $now = $this->clock->now();
-        $product = Product::create($company, $input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $now);
-        $product->reviseCustomFields($values, $now);
-        if (!$input->isActive) {
-            $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
-        }
-        $this->products->save($product);
-        $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): Product {
+            if (null !== $this->products->ofReferenceInCompany(trim($input->reference), $company->getId())) {
+                throw new ProductReferenceTaken();
+            }
+            [$unit, $category] = $this->checked($company, $input, null);
+            $values = $this->customFieldValues($company, $input, null);
+            $now = $this->clock->now();
+            $product = Product::create($company, $input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $now);
+            $product->reviseCustomFields($values, $now);
+            if (!$input->isActive) {
+                $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, false, $now);
+            }
+            $this->products->save($product);
+            $this->record($company, $product->getId(), self::CREATED, [], $actorUserId);
 
-        return $product;
+            return $product;
+        });
     }
 
     /**
@@ -97,24 +101,26 @@ final readonly class ManageProducts
      */
     public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId): Product
     {
-        $product = $this->get($company, $id);
-        $holder = $this->products->ofReferenceInCompany(trim($input->reference), $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($product->getId())) {
-            throw new ProductReferenceTaken();
-        }
-        [$unit, $category] = $this->checked($company, $input, $product);
-        $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
-        $values = $this->customFieldValues($company, $input, $product);
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Product {
+            $product = $this->get($company, $id);
+            $holder = $this->products->ofReferenceInCompany(trim($input->reference), $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($product->getId())) {
+                throw new ProductReferenceTaken();
+            }
+            [$unit, $category] = $this->checked($company, $input, $product);
+            $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
+            $values = $this->customFieldValues($company, $input, $product);
 
-        $now = $this->clock->now();
-        $changed = $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
-        $changed = [...$changed, ...$product->reviseCustomFields($values, $now)];
-        if ([] !== $changed) {
-            $this->products->save($product);
-            $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $now = $this->clock->now();
+            $changed = $product->revise($input->reference, $input->details, $unit, $category, $input->defaultTaxComponentIds, $input->isActive, $now);
+            $changed = [...$changed, ...$product->reviseCustomFields($values, $now)];
+            if ([] !== $changed) {
+                $this->products->save($product);
+                $this->record($company, $product->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $product;
+            return $product;
+        });
     }
 
     /**

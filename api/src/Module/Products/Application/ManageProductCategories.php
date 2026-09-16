@@ -17,6 +17,7 @@ use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductRepository;
 use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\SettingAddress;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -39,6 +40,7 @@ final readonly class ManageProductCategories
         private ForgetSettings $settings,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -66,14 +68,16 @@ final readonly class ManageProductCategories
      */
     public function create(Company $company, string $name, ?Uuid $parentId, ?Uuid $actorUserId): ProductCategory
     {
-        if (null !== $this->categories->ofNameInCompany(trim($name), $company->getId())) {
-            throw new ProductCategoryNameTaken();
-        }
-        $category = ProductCategory::create($company, $name, $this->parent($company, $parentId), $this->clock->now());
-        $this->categories->save($category);
-        $this->record($company, $category->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $name, $parentId, $actorUserId): ProductCategory {
+            if (null !== $this->categories->ofNameInCompany(trim($name), $company->getId())) {
+                throw new ProductCategoryNameTaken();
+            }
+            $category = ProductCategory::create($company, $name, $this->parent($company, $parentId), $this->clock->now());
+            $this->categories->save($category);
+            $this->record($company, $category->getId(), self::CREATED, [], $actorUserId);
 
-        return $category;
+            return $category;
+        });
     }
 
     /**
@@ -83,19 +87,21 @@ final readonly class ManageProductCategories
      */
     public function revise(Company $company, Uuid $id, string $name, ?Uuid $parentId, ?Uuid $actorUserId): ProductCategory
     {
-        $category = $this->find($company, $id);
-        $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($category->getId())) {
-            throw new ProductCategoryNameTaken();
-        }
+        return $this->transactions->run(function () use ($company, $id, $name, $parentId, $actorUserId): ProductCategory {
+            $category = $this->find($company, $id);
+            $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($category->getId())) {
+                throw new ProductCategoryNameTaken();
+            }
 
-        $changed = $category->revise($name, $this->parent($company, $parentId), $this->clock->now());
-        if ([] !== $changed) {
-            $this->categories->save($category);
-            $this->record($company, $category->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $changed = $category->revise($name, $this->parent($company, $parentId), $this->clock->now());
+            if ([] !== $changed) {
+                $this->categories->save($category);
+                $this->record($company, $category->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $category;
+            return $category;
+        });
     }
 
     /**
@@ -104,15 +110,17 @@ final readonly class ManageProductCategories
      */
     public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
     {
-        $category = $this->find($company, $id);
-        $subcategories = $this->childCount($category);
-        $products = $this->productCount($category);
-        if ($subcategories > 0 || $products > 0) {
-            throw new ProductCategoryInUse($subcategories, $products);
-        }
-        $this->settings->at(SettingAddress::productCategory($company, $id));
-        $this->categories->remove($category);
-        $this->record($company, $id, self::DELETED, [], $actorUserId);
+        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
+            $category = $this->find($company, $id);
+            $subcategories = $this->childCount($category);
+            $products = $this->productCount($category);
+            if ($subcategories > 0 || $products > 0) {
+                throw new ProductCategoryInUse($subcategories, $products);
+            }
+            $this->settings->at(SettingAddress::productCategory($company, $id));
+            $this->categories->remove($category);
+            $this->record($company, $id, self::DELETED, [], $actorUserId);
+        });
     }
 
     private function parent(Company $company, ?Uuid $parentId): ?ProductCategory

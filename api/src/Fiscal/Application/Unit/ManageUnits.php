@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Fiscal\Domain\InvalidFiscalValue;
 use App\Fiscal\Domain\Unit;
 use App\Fiscal\Domain\UnitRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -29,6 +30,7 @@ final readonly class ManageUnits
         private UnitRepository $units,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -44,14 +46,16 @@ final readonly class ManageUnits
      */
     public function create(Company $company, UnitDraft $draft, ?Uuid $actorUserId): Unit
     {
-        if (null !== $this->units->ofCodeInCompany($draft->code, $company->getId())) {
-            throw new UnitCodeTaken(\sprintf('The company already has a unit coded %s.', $draft->code));
-        }
-        $unit = Unit::create($company, $draft->code, $draft->name, $draft->decimals, $draft->sortOrder, $this->clock->now());
-        $this->units->save($unit);
-        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::CREATED, $actorUserId, self::snapshot($unit), $company->getId()));
+        return $this->transactions->run(function () use ($company, $draft, $actorUserId): Unit {
+            if (null !== $this->units->ofCodeInCompany($draft->code, $company->getId())) {
+                throw new UnitCodeTaken(\sprintf('The company already has a unit coded %s.', $draft->code));
+            }
+            $unit = Unit::create($company, $draft->code, $draft->name, $draft->decimals, $draft->sortOrder, $this->clock->now());
+            $this->units->save($unit);
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::CREATED, $actorUserId, self::snapshot($unit), $company->getId()));
 
-        return $unit;
+            return $unit;
+        });
     }
 
     /**
@@ -60,13 +64,15 @@ final readonly class ManageUnits
      */
     public function revise(Company $company, Uuid $unitId, UnitChanges $changes, ?Uuid $actorUserId): Unit
     {
-        $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new UnitNotFound('No such unit.');
-        if ($unit->revise($changes->name, $changes->decimals, $changes->isActive, $changes->sortOrder, $this->clock->now())) {
-            $this->units->save($unit);
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::REVISED, $actorUserId, self::snapshot($unit), $company->getId()));
-        }
+        return $this->transactions->run(function () use ($company, $unitId, $changes, $actorUserId): Unit {
+            $unit = $this->units->ofIdInCompany($unitId, $company->getId()) ?? throw new UnitNotFound('No such unit.');
+            if ($unit->revise($changes->name, $changes->decimals, $changes->isActive, $changes->sortOrder, $this->clock->now())) {
+                $this->units->save($unit);
+                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $unit->getId(), self::REVISED, $actorUserId, self::snapshot($unit), $company->getId()));
+            }
 
-        return $unit;
+            return $unit;
+        });
     }
 
     /** @return array<string, mixed> */

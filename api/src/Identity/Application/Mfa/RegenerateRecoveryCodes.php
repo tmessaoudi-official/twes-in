@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -34,6 +35,7 @@ final readonly class RegenerateRecoveryCodes
         private TotpCodes $totp,
         private SecretCipher $cipher,
         private AuditTrail $audit,
+        private Transactions $transactions,
     ) {
     }
 
@@ -66,19 +68,21 @@ final readonly class RegenerateRecoveryCodes
             throw new SecondFactorRefused();
         }
 
-        try {
-            $user->useTotpTimestep($timestep, $now);
-        } catch (\DomainException) {
-            // Already spent: the very code that confirmed the authenticator, or one that signed in a moment ago.
-            throw new SecondFactorRefused();
-        }
+        return $this->transactions->run(function () use ($user, $timestep, $now): array {
+            try {
+                $user->useTotpTimestep($timestep, $now);
+            } catch (\DomainException) {
+                // Already spent: the very code that confirmed the authenticator, or one that signed in a moment ago.
+                throw new SecondFactorRefused();
+            }
 
-        $this->users->save($user);
+            $this->users->save($user);
 
-        $codes = $this->issueRecoveryCodes->handle($user, $now);
+            $codes = $this->issueRecoveryCodes->handle($user, $now);
 
-        $this->audit->record(new AuditEntry('user', $user->getId(), self::REGENERATED, $user->getId(), ['count' => \count($codes), 'method' => 'totp']));
+            $this->audit->record(new AuditEntry('user', $user->getId(), self::REGENERATED, $user->getId(), ['count' => \count($codes), 'method' => 'totp']));
 
-        return $codes;
+            return $codes;
+        });
     }
 }

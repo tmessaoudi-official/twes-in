@@ -23,6 +23,7 @@ use App\Tenancy\Domain\InvitationToken;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
 use App\Tests\Support\FakeBreachedPasswordCheck;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryInvitations;
@@ -45,6 +46,7 @@ final class AcceptInvitationTest extends TestCase
     private InMemoryInvitations $invitations;
     private InMemoryCompanies $companies;
     private InMemoryNotifications $notifications;
+    private FakeTransactions $transactions;
     private InMemoryAuditTrail $audit;
     private InMemoryRoles $roles;
     private Company $company;
@@ -56,7 +58,8 @@ final class AcceptInvitationTest extends TestCase
         $this->invitations = new InMemoryInvitations();
         $this->companies = new InMemoryCompanies();
         $this->notifications = new InMemoryNotifications();
-        $this->audit = new InMemoryAuditTrail();
+        $this->transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->roles = new InMemoryRoles();
         $this->roles->save(new Role(Role::OWNER, [Permission::WILDCARD]));
         $this->roles->save(new Role(Role::MEMBER, ['company.read']));
@@ -273,6 +276,7 @@ final class AcceptInvitationTest extends TestCase
             $this->notifications,
             $this->audit,
             new MockClock($now),
+            $this->transactions,
         );
     }
 }

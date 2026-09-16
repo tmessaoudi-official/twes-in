@@ -80,8 +80,8 @@ final class DeliveryNoteWorkflowTest extends TestCase
         $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->notes = new InMemoryDeliveryNotes();
         $this->invoices = new InMemoryInvoices();
-        $this->audit = new InMemoryAuditTrail();
         $this->transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
         $this->workflow = new DeliveryNoteWorkflow(
             $this->notes,
@@ -151,7 +151,7 @@ final class DeliveryNoteWorkflowTest extends TestCase
 
     public function testANumberAnotherEstablishmentOfTheCompanyAlreadyGaveIsRefusedWithTheWayOut(): void
     {
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail(), $this->clock)
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions)
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         $this->workflow->validate($this->company, $this->draft()->getId(), null);
         $fromTheBranch = $this->draft(establishment: $branch);

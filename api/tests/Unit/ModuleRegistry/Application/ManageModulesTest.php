@@ -18,6 +18,7 @@ use App\ModuleRegistry\Application\ModuleStates;
 use App\ModuleRegistry\Application\ModuleView;
 use App\ModuleRegistry\Application\UnknownModule;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryModuleStates;
 use PHPUnit\Framework\TestCase;
@@ -44,9 +45,10 @@ final class ManageModulesTest extends TestCase
             new ModuleManifest('invoices', 'modules.invoices', ['customers', 'products']),
         ));
         $this->rows = new InMemoryModuleStates();
-        $this->audit = new InMemoryAuditTrail();
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
         $this->states = new ModuleStates($catalog, $this->rows);
-        $this->manage = new ManageModules($catalog, $this->rows, $this->states, $this->audit, new MockClock('2026-09-14 10:00:00'));
+        $this->manage = new ManageModules($catalog, $this->rows, $this->states, $this->audit, new MockClock('2026-09-14 10:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

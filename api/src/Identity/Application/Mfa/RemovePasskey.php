@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use Symfony\Component\Uid\Uuid;
 
@@ -29,6 +30,7 @@ final readonly class RemovePasskey
         private PasskeyRepository $passkeys,
         private MfaRequirement $requirement,
         private AuditTrail $audit,
+        private Transactions $transactions,
     ) {
     }
 
@@ -38,18 +40,20 @@ final readonly class RemovePasskey
      */
     public function handle(Uuid $userId, Uuid $passkeyId): void
     {
-        $user = $this->users->ofId($userId);
-        $passkey = null === $user ? null : $this->passkeys->ofUserAndId($user, $passkeyId);
+        $this->transactions->run(function () use ($userId, $passkeyId): void {
+            $user = $this->users->ofId($userId);
+            $passkey = null === $user ? null : $this->passkeys->ofUserAndId($user, $passkeyId);
 
-        if (null === $user || null === $passkey) {
-            throw new PasskeyNotFound();
-        }
+            if (null === $user || null === $passkey) {
+                throw new PasskeyNotFound();
+            }
 
-        if (!$user->hasTotp() && 1 === $this->passkeys->countFor($user) && $this->requirement->appliesTo($user)) {
-            throw new LastSecondFactor();
-        }
+            if (!$user->hasTotp() && 1 === $this->passkeys->countFor($user) && $this->requirement->appliesTo($user)) {
+                throw new LastSecondFactor();
+            }
 
-        $this->passkeys->remove($passkey);
-        $this->audit->record(new AuditEntry('user', $user->getId(), self::REMOVED, $user->getId(), ['passkey' => $passkeyId->toRfc4122()]));
+            $this->passkeys->remove($passkey);
+            $this->audit->record(new AuditEntry('user', $user->getId(), self::REMOVED, $user->getId(), ['passkey' => $passkeyId->toRfc4122()]));
+        });
     }
 }

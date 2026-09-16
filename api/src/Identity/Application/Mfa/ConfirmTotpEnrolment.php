@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Identity\Application\SecretCipher;
 use App\Identity\Application\TotpCodes;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -32,6 +33,7 @@ final readonly class ConfirmTotpEnrolment
         private TotpCodes $totp,
         private SecretCipher $cipher,
         private AuditTrail $audit,
+        private Transactions $transactions,
     ) {
     }
 
@@ -58,13 +60,15 @@ final readonly class ConfirmTotpEnrolment
             throw new SecondFactorRefused();
         }
 
-        $user->confirmTotpEnrolment($timestep, $now);
-        $this->users->save($user);
+        return $this->transactions->run(function () use ($user, $timestep, $now): array {
+            $user->confirmTotpEnrolment($timestep, $now);
+            $this->users->save($user);
 
-        $codes = $this->issueRecoveryCodes->handle($user, $now);
+            $codes = $this->issueRecoveryCodes->handle($user, $now);
 
-        $this->audit->record(new AuditEntry('user', $user->getId(), self::ENROLLED, $user->getId(), ['method' => 'totp']));
+            $this->audit->record(new AuditEntry('user', $user->getId(), self::ENROLLED, $user->getId(), ['method' => 'totp']));
 
-        return $codes;
+            return $codes;
+        });
     }
 }

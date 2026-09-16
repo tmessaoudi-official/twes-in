@@ -36,6 +36,7 @@ use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tests\Support\FakePdfRenderer;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryFileStorage;
@@ -82,7 +83,7 @@ final class PrintInvoiceTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail(), $this->clock);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
         $this->print = new PrintInvoice(
             $this->invoices,

@@ -11,6 +11,7 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\MembershipRepository;
@@ -35,6 +36,7 @@ final readonly class DecideCompanyApproval
         private AuditTrail $audit,
         private ClockInterface $clock,
         private string $loginUrl,
+        private Transactions $transactions,
     ) {
     }
 
@@ -45,11 +47,14 @@ final readonly class DecideCompanyApproval
         if ($company->isActive()) {
             return $company;
         }
-        $from = $company->getStatus();
-        $company->activate($this->clock->now());
-        $this->companies->save($company);
-        $this->record($company, self::APPROVED, $from, $operatorId);
+        $this->transactions->run(function () use ($company, $operatorId): void {
+            $from = $company->getStatus();
+            $company->activate($this->clock->now());
+            $this->companies->save($company);
+            $this->record($company, self::APPROVED, $from, $operatorId);
+        });
 
+        // The owners hear of it once the approval is stored, never of one that rolled back.
         foreach ($this->memberships->ofCompany($company->getId()) as $membership) {
             if (Role::OWNER === $membership->getRole()->getName()) {
                 $owner = $membership->getUser();
@@ -67,12 +72,15 @@ final readonly class DecideCompanyApproval
         if (Company::STATUS_SUSPENDED === $company->getStatus()) {
             return $company;
         }
-        $from = $company->getStatus();
-        $company->suspend($this->clock->now());
-        $this->companies->save($company);
-        $this->record($company, self::REJECTED, $from, $operatorId);
 
-        return $company;
+        return $this->transactions->run(function () use ($company, $operatorId): Company {
+            $from = $company->getStatus();
+            $company->suspend($this->clock->now());
+            $this->companies->save($company);
+            $this->record($company, self::REJECTED, $from, $operatorId);
+
+            return $company;
+        });
     }
 
     private function companyOf(Uuid $companyId): Company

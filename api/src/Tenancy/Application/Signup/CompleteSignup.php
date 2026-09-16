@@ -16,6 +16,7 @@ use App\Identity\Application\BreachedPasswordCheck;
 use App\Identity\Application\PasswordHasher;
 use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\CompanyNameTaken;
 use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Application\Company\NewCompany;
@@ -56,6 +57,7 @@ final readonly class CompleteSignup
         private BreachedPasswordCheck $breachedPasswords,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -84,39 +86,41 @@ final readonly class CompleteSignup
         $companyLocale = \in_array($signup->getLocale(), $preset->documentLanguages, true) ? $signup->getLocale() : ($preset->documentLanguages[0] ?? $signup->getLocale());
         $now = $this->clock->now();
 
-        $user = new User($signup->getEmail(), $request->displayName, $signup->getLocale(), $now);
-        $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);
-        $this->users->save($user);
+        return $this->transactions->run(function () use ($request, $signup, $preset, $companyLocale, $owner, $breached, $now): CompleteSignupOutcome {
+            $user = new User($signup->getEmail(), $request->displayName, $signup->getLocale(), $now);
+            $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);
+            $this->users->save($user);
 
-        $company = $this->createCompany->handle(new NewCompany($request->companyName, $request->countryCode, $preset->currency, $companyLocale, $request->timezone), $user->getId());
-        $this->memberships->save(new Membership($user, $company, $owner, $now));
-        if (!$this->policy->approvalRequired()) {
-            $company->activate($now);
-            $this->companies->save($company);
-        }
+            $company = $this->createCompany->handle(new NewCompany($request->companyName, $request->countryCode, $preset->currency, $companyLocale, $request->timezone), $user->getId());
+            $this->memberships->save(new Membership($user, $company, $owner, $now));
+            if (!$this->policy->approvalRequired()) {
+                $company->activate($now);
+                $this->companies->save($company);
+            }
 
-        $signup->complete($now);
-        $this->signups->save($signup);
+            $signup->complete($now);
+            $this->signups->save($signup);
 
-        $this->audit->record(new AuditEntry(
-            self::ENTITY_TYPE,
-            $signup->getId(),
-            self::COMPLETED,
-            $user->getId(),
-            ['email' => $user->getEmail()->value, 'company' => $company->getName(), 'status' => $company->getStatus()],
-            $company->getId(),
-        ));
-        if (null === $breached) {
             $this->audit->record(new AuditEntry(
                 self::ENTITY_TYPE,
                 $signup->getId(),
-                AcceptInvitation::BREACH_CHECK_SKIPPED,
+                self::COMPLETED,
                 $user->getId(),
-                ['email' => $user->getEmail()->value, 'reason' => 'the breach service could not be reached'],
+                ['email' => $user->getEmail()->value, 'company' => $company->getName(), 'status' => $company->getStatus()],
                 $company->getId(),
             ));
-        }
+            if (null === $breached) {
+                $this->audit->record(new AuditEntry(
+                    self::ENTITY_TYPE,
+                    $signup->getId(),
+                    AcceptInvitation::BREACH_CHECK_SKIPPED,
+                    $user->getId(),
+                    ['email' => $user->getEmail()->value, 'reason' => 'the breach service could not be reached'],
+                    $company->getId(),
+                ));
+            }
 
-        return new CompleteSignupOutcome($user->getId()->toRfc4122(), $company->getName(), $company->getStatus());
+            return new CompleteSignupOutcome($user->getId()->toRfc4122(), $company->getName(), $company->getStatus());
+        });
     }
 }

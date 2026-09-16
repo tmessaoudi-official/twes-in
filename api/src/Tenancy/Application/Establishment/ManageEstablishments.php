@@ -12,6 +12,7 @@ namespace App\Tenancy\Application\Establishment;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -41,6 +42,7 @@ final readonly class ManageEstablishments
         private FiscalPresets $presets,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -62,26 +64,28 @@ final readonly class ManageEstablishments
      */
     public function create(Company $company, EstablishmentDetails $details, ?Uuid $actorUserId): Establishment
     {
-        $code = $this->checkedCode($company, $details->code);
-        if (null !== $this->establishments->ofCodeInCompany($code, $company->getId())) {
-            throw new EstablishmentCodeTaken(\sprintf('The company already has an establishment coded %s.', $code));
-        }
-        $now = $this->clock->now();
-        $template = $this->defaultOf($company);
+        return $this->transactions->run(function () use ($company, $details, $actorUserId): Establishment {
+            $code = $this->checkedCode($company, $details->code);
+            if (null !== $this->establishments->ofCodeInCompany($code, $company->getId())) {
+                throw new EstablishmentCodeTaken(\sprintf('The company already has an establishment coded %s.', $code));
+            }
+            $now = $this->clock->now();
+            $template = $this->defaultOf($company);
 
-        $establishment = Establishment::create($company, $code, $details->name, false, $now);
-        $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
-        if ($details->isDefault) {
-            $this->handOverDefault($company, $establishment, $now);
-        }
-        $this->establishments->save($establishment);
+            $establishment = Establishment::create($company, $code, $details->name, false, $now);
+            $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
+            if ($details->isDefault) {
+                $this->handOverDefault($company, $establishment, $now);
+            }
+            $this->establishments->save($establishment);
 
-        foreach ($this->seriesToCopy($company, $template) as $documentType => [$format, $reset]) {
-            $this->series->save(NumberingSeries::create($company, $establishment, $documentType, new NumberFormat($format), $reset, true, $now));
-        }
-        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::CREATED, $actorUserId, ['code' => $establishment->getCode(), 'name' => $establishment->getName(), 'is_default' => $establishment->isDefault()], $company->getId()));
+            foreach ($this->seriesToCopy($company, $template) as $documentType => [$format, $reset]) {
+                $this->series->save(NumberingSeries::create($company, $establishment, $documentType, new NumberFormat($format), $reset, true, $now));
+            }
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::CREATED, $actorUserId, ['code' => $establishment->getCode(), 'name' => $establishment->getName(), 'is_default' => $establishment->isDefault()], $company->getId()));
 
-        return $establishment;
+            return $establishment;
+        });
     }
 
     /**
@@ -91,34 +95,36 @@ final readonly class ManageEstablishments
      */
     public function revise(Company $company, Uuid $establishmentId, EstablishmentDetails $details, ?Uuid $actorUserId): Establishment
     {
-        $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId()) ?? throw new EstablishmentNotFound('No such establishment.');
-        $code = $this->checkedCode($company, $details->code);
-        $holder = $this->establishments->ofCodeInCompany($code, $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($establishment->getId())) {
-            throw new EstablishmentCodeTaken(\sprintf('The company already has an establishment coded %s.', $code));
-        }
-        if ($code !== $establishment->getCode() && $this->isCodeLocked($company, $establishment)) {
-            throw new InvalidEstablishment('code', \sprintf('Numbered documents carry the code %s: it no longer changes.', $establishment->getCode()));
-        }
-        if ($establishment->isDefault() && !$details->isDefault) {
-            throw new InvalidEstablishment('isDefault', 'A company keeps one default establishment: make another one the default instead.');
-        }
+        return $this->transactions->run(function () use ($company, $establishmentId, $details, $actorUserId): Establishment {
+            $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId()) ?? throw new EstablishmentNotFound('No such establishment.');
+            $code = $this->checkedCode($company, $details->code);
+            $holder = $this->establishments->ofCodeInCompany($code, $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($establishment->getId())) {
+                throw new EstablishmentCodeTaken(\sprintf('The company already has an establishment coded %s.', $code));
+            }
+            if ($code !== $establishment->getCode() && $this->isCodeLocked($company, $establishment)) {
+                throw new InvalidEstablishment('code', \sprintf('Numbered documents carry the code %s: it no longer changes.', $establishment->getCode()));
+            }
+            if ($establishment->isDefault() && !$details->isDefault) {
+                throw new InvalidEstablishment('isDefault', 'A company keeps one default establishment: make another one the default instead.');
+            }
 
-        $now = $this->clock->now();
-        $before = self::fields($establishment);
-        $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
-        if ($details->isDefault && !$establishment->isDefault()) {
-            $this->handOverDefault($company, $establishment, $now);
-        }
-        $after = self::fields($establishment);
-        $changed = array_keys(array_filter($after, static fn (mixed $value, string $field): bool => $value !== $before[$field], \ARRAY_FILTER_USE_BOTH));
+            $now = $this->clock->now();
+            $before = self::fields($establishment);
+            $establishment->revise($code, $details->name, $details->addressLine1, $details->addressLine2, $details->postalCode, $details->city, $details->phone, $details->email, $now);
+            if ($details->isDefault && !$establishment->isDefault()) {
+                $this->handOverDefault($company, $establishment, $now);
+            }
+            $after = self::fields($establishment);
+            $changed = array_keys(array_filter($after, static fn (mixed $value, string $field): bool => $value !== $before[$field], \ARRAY_FILTER_USE_BOTH));
 
-        if ([] !== $changed) {
-            $this->establishments->save($establishment);
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::REVISED, $actorUserId, ['fields' => $changed], $company->getId()));
-        }
+            if ([] !== $changed) {
+                $this->establishments->save($establishment);
+                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $establishment->getId(), self::REVISED, $actorUserId, ['fields' => $changed], $company->getId()));
+            }
 
-        return $establishment;
+            return $establishment;
+        });
     }
 
     /** Whether a document carries the establishment's code: once one of its series has numbered a document. */

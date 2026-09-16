@@ -18,6 +18,7 @@ use App\CustomFields\Domain\CustomFieldRule;
 use App\CustomFields\Domain\CustomFieldType;
 use App\CustomFields\Domain\InvalidCustomFieldDefinition;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomFieldDefinitions;
 use PHPUnit\Framework\TestCase;
@@ -34,8 +35,9 @@ final class ManageCustomFieldsTest extends TestCase
     protected function setUp(): void
     {
         $this->fields = new InMemoryCustomFieldDefinitions();
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageCustomFields($this->fields, $this->audit, new MockClock('2026-09-14 09:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageCustomFields($this->fields, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

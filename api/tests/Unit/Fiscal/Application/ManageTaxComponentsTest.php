@@ -16,6 +16,7 @@ use App\Fiscal\Application\TaxComponent\TaxComponentDraft;
 use App\Fiscal\Application\TaxComponent\TaxComponentNotFound;
 use App\Fiscal\Domain\InvalidFiscalValue;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -33,8 +34,9 @@ final class ManageTaxComponentsTest extends TestCase
     protected function setUp(): void
     {
         $this->components = new InMemoryTaxComponents();
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageTaxComponents($this->components, ShippedFiscalPresets::scales(), $this->audit, new MockClock('2026-09-13 10:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageTaxComponents($this->components, ShippedFiscalPresets::scales(), $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

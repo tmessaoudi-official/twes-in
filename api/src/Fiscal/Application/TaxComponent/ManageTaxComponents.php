@@ -16,6 +16,7 @@ use App\Fiscal\Domain\InvalidFiscalValue;
 use App\Fiscal\Domain\TaxComponent;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\TaxFamily;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -32,6 +33,7 @@ final readonly class ManageTaxComponents
         private CurrencyScales $scales,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -47,30 +49,32 @@ final readonly class ManageTaxComponents
      */
     public function create(Company $company, TaxComponentDraft $draft, ?Uuid $actorUserId): TaxComponent
     {
-        $family = TaxFamily::tryFrom($draft->family) ?? throw new InvalidFiscalValue('family', \sprintf('"%s" is not a tax family.', $draft->family));
-        if (null !== $this->components->ofCodeInCompany($draft->code, $company->getId())) {
-            throw new TaxComponentCodeTaken(\sprintf('The company already has a tax coded %s.', $draft->code));
-        }
+        return $this->transactions->run(function () use ($company, $draft, $actorUserId): TaxComponent {
+            $family = TaxFamily::tryFrom($draft->family) ?? throw new InvalidFiscalValue('family', \sprintf('"%s" is not a tax family.', $draft->family));
+            if (null !== $this->components->ofCodeInCompany($draft->code, $company->getId())) {
+                throw new TaxComponentCodeTaken(\sprintf('The company already has a tax coded %s.', $draft->code));
+            }
 
-        $component = TaxComponent::create(
-            $company,
-            $draft->code,
-            $draft->name,
-            $family,
-            $draft->rate,
-            $draft->amount,
-            $draft->threshold,
-            $draft->entersVatBase,
-            $draft->isDefault,
-            $draft->exemptionMention,
-            $draft->sortOrder,
-            $this->scales->of($company->getCurrency()),
-            $this->clock->now(),
-        );
-        $this->components->save($component);
-        $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::CREATED, $actorUserId, self::snapshot($component), $company->getId()));
+            $component = TaxComponent::create(
+                $company,
+                $draft->code,
+                $draft->name,
+                $family,
+                $draft->rate,
+                $draft->amount,
+                $draft->threshold,
+                $draft->entersVatBase,
+                $draft->isDefault,
+                $draft->exemptionMention,
+                $draft->sortOrder,
+                $this->scales->of($company->getCurrency()),
+                $this->clock->now(),
+            );
+            $this->components->save($component);
+            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::CREATED, $actorUserId, self::snapshot($component), $company->getId()));
 
-        return $component;
+            return $component;
+        });
     }
 
     /**
@@ -79,28 +83,30 @@ final readonly class ManageTaxComponents
      */
     public function revise(Company $company, Uuid $componentId, TaxComponentChanges $changes, ?Uuid $actorUserId): TaxComponent
     {
-        $component = $this->components->ofIdInCompany($componentId, $company->getId())
-            ?? throw new TaxComponentNotFound('No such tax component.');
+        return $this->transactions->run(function () use ($company, $componentId, $changes, $actorUserId): TaxComponent {
+            $component = $this->components->ofIdInCompany($componentId, $company->getId())
+                ?? throw new TaxComponentNotFound('No such tax component.');
 
-        $changed = $component->revise(
-            $changes->name,
-            $changes->rate,
-            $changes->amount,
-            $changes->threshold,
-            $changes->entersVatBase,
-            $changes->isDefault,
-            $changes->isActive,
-            $changes->exemptionMention,
-            $changes->sortOrder,
-            $this->scales->of($company->getCurrency()),
-            $this->clock->now(),
-        );
-        if ($changed) {
-            $this->components->save($component);
-            $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::REVISED, $actorUserId, self::snapshot($component), $company->getId()));
-        }
+            $changed = $component->revise(
+                $changes->name,
+                $changes->rate,
+                $changes->amount,
+                $changes->threshold,
+                $changes->entersVatBase,
+                $changes->isDefault,
+                $changes->isActive,
+                $changes->exemptionMention,
+                $changes->sortOrder,
+                $this->scales->of($company->getCurrency()),
+                $this->clock->now(),
+            );
+            if ($changed) {
+                $this->components->save($component);
+                $this->audit->record(new AuditEntry(self::ENTITY_TYPE, $component->getId(), self::REVISED, $actorUserId, self::snapshot($component), $company->getId()));
+            }
 
-        return $component;
+            return $component;
+        });
     }
 
     /** @return array<string, mixed> */

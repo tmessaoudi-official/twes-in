@@ -16,6 +16,7 @@ use App\Module\Customers\Domain\ContactDetails;
 use App\Module\Customers\Domain\ContactRepository;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -36,6 +37,7 @@ final readonly class ManageContacts
         private CustomerRepository $customers,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -52,17 +54,19 @@ final readonly class ManageContacts
     /** @throws CustomerNotFound */
     public function add(Company $company, Uuid $customerId, ContactDetails $details, bool $isPrimary, ?Uuid $actorUserId): Contact
     {
-        $customer = $this->customer($company, $customerId);
-        $others = $this->contacts->ofCustomer($customer->getId());
-        $isPrimary = $isPrimary || [] === $others;
-        if ($isPrimary) {
-            $this->stepDown($others);
-        }
-        $contact = Contact::create($customer, $details, $isPrimary, $this->clock->now());
-        $this->contacts->save($contact);
-        $this->record($company, $contact->getId(), self::CREATED, $actorUserId);
+        return $this->transactions->run(function () use ($company, $customerId, $details, $isPrimary, $actorUserId): Contact {
+            $customer = $this->customer($company, $customerId);
+            $others = $this->contacts->ofCustomer($customer->getId());
+            $isPrimary = $isPrimary || [] === $others;
+            if ($isPrimary) {
+                $this->stepDown($others);
+            }
+            $contact = Contact::create($customer, $details, $isPrimary, $this->clock->now());
+            $this->contacts->save($contact);
+            $this->record($company, $contact->getId(), self::CREATED, $actorUserId);
 
-        return $contact;
+            return $contact;
+        });
     }
 
     /**
@@ -71,18 +75,20 @@ final readonly class ManageContacts
      */
     public function revise(Company $company, Uuid $customerId, Uuid $contactId, ContactDetails $details, bool $isPrimary, ?Uuid $actorUserId): Contact
     {
-        $contact = $this->contact($company, $customerId, $contactId);
-        $now = $this->clock->now();
-        $changed = $contact->revise($details, $now);
-        if ($isPrimary && !$contact->isPrimary()) {
-            $this->stepDown(array_values(array_filter($this->contacts->ofCustomer($customerId), static fn (Contact $other) => $other !== $contact)));
-        }
-        if ($contact->markPrimary($isPrimary, $now) || $changed) {
-            $this->contacts->save($contact);
-            $this->record($company, $contact->getId(), self::REVISED, $actorUserId);
-        }
+        return $this->transactions->run(function () use ($company, $customerId, $contactId, $details, $isPrimary, $actorUserId): Contact {
+            $contact = $this->contact($company, $customerId, $contactId);
+            $now = $this->clock->now();
+            $changed = $contact->revise($details, $now);
+            if ($isPrimary && !$contact->isPrimary()) {
+                $this->stepDown(array_values(array_filter($this->contacts->ofCustomer($customerId), static fn (Contact $other) => $other !== $contact)));
+            }
+            if ($contact->markPrimary($isPrimary, $now) || $changed) {
+                $this->contacts->save($contact);
+                $this->record($company, $contact->getId(), self::REVISED, $actorUserId);
+            }
 
-        return $contact;
+            return $contact;
+        });
     }
 
     /**
@@ -91,14 +97,16 @@ final readonly class ManageContacts
      */
     public function remove(Company $company, Uuid $customerId, Uuid $contactId, ?Uuid $actorUserId): void
     {
-        $contact = $this->contact($company, $customerId, $contactId);
-        $wasPrimary = $contact->isPrimary();
-        $this->contacts->remove($contact);
-        $next = $wasPrimary ? ($this->contacts->ofCustomer($customerId)[0] ?? null) : null;
-        if (null !== $next && $next->markPrimary(true, $this->clock->now())) {
-            $this->contacts->save($next);
-        }
-        $this->record($company, $contactId, self::DELETED, $actorUserId);
+        $this->transactions->run(function () use ($company, $customerId, $contactId, $actorUserId): void {
+            $contact = $this->contact($company, $customerId, $contactId);
+            $wasPrimary = $contact->isPrimary();
+            $this->contacts->remove($contact);
+            $next = $wasPrimary ? ($this->contacts->ofCustomer($customerId)[0] ?? null) : null;
+            if (null !== $next && $next->markPrimary(true, $this->clock->now())) {
+                $this->contacts->save($next);
+            }
+            $this->record($company, $contactId, self::DELETED, $actorUserId);
+        });
     }
 
     /**

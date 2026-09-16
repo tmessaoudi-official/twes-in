@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Application\Preset\IdentifierRules;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyProfile;
 use App\Tenancy\Domain\CompanyRepository;
@@ -34,6 +35,7 @@ final readonly class ReviseCompanyProfile
         private FiscalPresets $presets,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -51,12 +53,14 @@ final readonly class ReviseCompanyProfile
             throw new InvalidCompanyProfile(...$refusal);
         }
 
-        $changed = $profile->differencesFrom($company->getProfile());
-        if ($company->reviseProfile($profile, $this->clock->now())) {
-            $this->companies->save($company);
-            $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::REVISED, $actorUserId, ['fields' => $changed], $company->getId()));
-        }
+        return $this->transactions->run(function () use ($company, $profile, $actorUserId): Company {
+            $changed = $profile->differencesFrom($company->getProfile());
+            if ($company->reviseProfile($profile, $this->clock->now())) {
+                $this->companies->save($company);
+                $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::REVISED, $actorUserId, ['fields' => $changed], $company->getId()));
+            }
 
-        return $company;
+            return $company;
+        });
     }
 }

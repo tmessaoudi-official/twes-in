@@ -17,6 +17,7 @@ use App\Module\Vendors\Domain\InvalidVendor;
 use App\Module\Vendors\Domain\VendorProfile;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryExpenseCategoryDirectory;
 use App\Tests\Support\InMemoryVendors;
@@ -33,8 +34,9 @@ final class ManageVendorsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageVendors(new InMemoryVendors(), ShippedFiscalPresets::presets(), $this->audit, new MockClock('2026-09-15 09:00:00'), new InMemoryExpenseCategoryDirectory());
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageVendors(new InMemoryVendors(), ShippedFiscalPresets::presets(), $this->audit, new MockClock('2026-09-15 09:00:00'), new InMemoryExpenseCategoryDirectory(), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }

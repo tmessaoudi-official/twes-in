@@ -22,6 +22,7 @@ use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryProductCategories;
 use App\Tests\Support\InMemoryProducts;
@@ -44,8 +45,9 @@ final class ManageProductCategoriesTest extends TestCase
         $this->categories = new InMemoryProductCategories();
         $this->products = new InMemoryProducts();
         $this->settings = new InMemorySettings();
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageProductCategories($this->categories, $this->products, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageProductCategories($this->categories, $this->products, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

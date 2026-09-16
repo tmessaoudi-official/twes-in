@@ -18,6 +18,7 @@ use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerProfile;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryContacts;
 use App\Tests\Support\InMemoryCustomers;
@@ -35,8 +36,9 @@ final class ManageContactsTest extends TestCase
     protected function setUp(): void
     {
         $this->customers = new InMemoryCustomers();
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageContacts(new InMemoryContacts(), $this->customers, $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->customer = $this->customerOf($this->company, 'CLI-0001');
     }

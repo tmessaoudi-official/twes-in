@@ -17,6 +17,7 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\InvalidNumbering;
 use App\Tenancy\Domain\NumberingSeries;
 use App\Tenancy\Domain\ResetPeriod;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
@@ -38,9 +39,10 @@ final class ManageNumberingSeriesTest extends TestCase
     {
         $clock = new MockClock('2026-09-13 10:00:00');
         $this->series = new InMemoryNumberingSeries();
-        $this->audit = new InMemoryAuditTrail();
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
         $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), new InMemoryTaxComponents(), new InMemoryUnits(), new InMemoryEstablishments(), $this->series, ShippedFiscalPresets::scales(), $clock);
-        $this->manage = new ManageNumberingSeries($this->series, $this->audit, $clock);
+        $this->manage = new ManageNumberingSeries($this->series, $this->audit, $clock, $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->provision->handle($this->company);
     }

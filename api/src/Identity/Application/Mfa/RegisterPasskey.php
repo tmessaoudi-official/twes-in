@@ -15,6 +15,7 @@ use App\Identity\Application\PasskeyCeremonies;
 use App\Identity\Domain\Passkey;
 use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -35,6 +36,7 @@ final readonly class RegisterPasskey
         private PasskeyCeremonies $ceremonies,
         private SecondFactors $secondFactors,
         private AuditTrail $audit,
+        private Transactions $transactions,
     ) {
     }
 
@@ -49,17 +51,19 @@ final readonly class RegisterPasskey
             throw new PasskeyRefused();
         }
 
-        $first = !$this->secondFactors->has($user);
-        $passkey = new Passkey($user, $verified->credentialId, $verified->record, $name, $now);
-        $this->passkeys->save($passkey);
+        return $this->transactions->run(function () use ($user, $verified, $name, $now): RegisteredPasskey {
+            $first = !$this->secondFactors->has($user);
+            $passkey = new Passkey($user, $verified->credentialId, $verified->record, $name, $now);
+            $this->passkeys->save($passkey);
 
-        $codes = $first ? $this->issueRecoveryCodes->handle($user, $now) : [];
+            $codes = $first ? $this->issueRecoveryCodes->handle($user, $now) : [];
 
-        $this->audit->record(new AuditEntry('user', $user->getId(), self::REGISTERED, $user->getId(), [
-            'passkey' => $passkey->getId()->toRfc4122(),
-            'recoveryCodesIssued' => $first,
-        ]));
+            $this->audit->record(new AuditEntry('user', $user->getId(), self::REGISTERED, $user->getId(), [
+                'passkey' => $passkey->getId()->toRfc4122(),
+                'recoveryCodesIssued' => $first,
+            ]));
 
-        return new RegisteredPasskey($passkey, $codes);
+            return new RegisteredPasskey($passkey, $codes);
+        });
     }
 }

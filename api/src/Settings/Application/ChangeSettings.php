@@ -16,6 +16,7 @@ use App\Settings\Domain\SettingAddress;
 use App\Settings\Domain\SettingDefinition;
 use App\Settings\Domain\SettingLevel;
 use App\Settings\Domain\SettingRepository;
+use App\Shared\Application\Transactions;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -35,6 +36,7 @@ final readonly class ChangeSettings
         private ResolveSettings $resolve,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -51,17 +53,19 @@ final readonly class ChangeSettings
             throw new InvalidSettingValue(\sprintf('%s: %s.', $key, $refusal));
         }
         $value = $definition->normalize($value);
-        $now = $this->clock->now();
 
-        $setting = $this->settings->find($address, $key);
-        if (null === $setting) {
-            $setting = new Setting($address, $key, $value, $now);
-            $this->settings->save($setting);
-            $this->record(self::CHANGED, $setting, $address, $actorUserId);
-        } elseif ($setting->change($value, $now)) {
-            $this->settings->save($setting);
-            $this->record(self::CHANGED, $setting, $address, $actorUserId);
-        }
+        $this->transactions->run(function () use ($address, $key, $value, $actorUserId): void {
+            $now = $this->clock->now();
+            $setting = $this->settings->find($address, $key);
+            if (null === $setting) {
+                $setting = new Setting($address, $key, $value, $now);
+                $this->settings->save($setting);
+                $this->record(self::CHANGED, $setting, $address, $actorUserId);
+            } elseif ($setting->change($value, $now)) {
+                $this->settings->save($setting);
+                $this->record(self::CHANGED, $setting, $address, $actorUserId);
+            }
+        });
 
         return $this->resolve->one($context, $key);
     }
@@ -73,11 +77,13 @@ final readonly class ChangeSettings
     public function reset(SettingContext $context, string $key, SettingLevel $level, ?Uuid $actorUserId): ResolvedSetting
     {
         [, $address] = $this->locate($context, $key, $level);
-        $setting = $this->settings->find($address, $key);
-        if (null !== $setting) {
-            $this->settings->remove($setting);
-            $this->record(self::RESET, $setting, $address, $actorUserId);
-        }
+        $this->transactions->run(function () use ($address, $key, $actorUserId): void {
+            $setting = $this->settings->find($address, $key);
+            if (null !== $setting) {
+                $this->settings->remove($setting);
+                $this->record(self::RESET, $setting, $address, $actorUserId);
+            }
+        });
 
         return $this->resolve->one($context, $key);
     }

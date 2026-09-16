@@ -82,13 +82,15 @@ final readonly class ManageInvoices
     /** @throws InvalidInvoice */
     public function create(Company $company, InvoiceInput $input, ?Uuid $actorUserId): Invoice
     {
-        [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, null);
-        $invoice = Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
-        $this->totals->checked($invoice);
-        $this->invoices->save($invoice);
-        $this->record($company, $invoice->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): Invoice {
+            [$establishment, $customer, $lines, $documentTaxes] = $this->checked($company, $input, null);
+            $invoice = Invoice::create($company, $establishment, $customer, $input->header, $lines, $documentTaxes, $this->clock->now());
+            $this->totals->checked($invoice);
+            $this->invoices->save($invoice);
+            $this->record($company, $invoice->getId(), self::CREATED, [], $actorUserId);
 
-        return $invoice;
+            return $invoice;
+        });
     }
 
     /**
@@ -102,12 +104,14 @@ final readonly class ManageInvoices
      */
     public function createFromLines(Company $company, Establishment $establishment, Customer $customer, InvoiceHeader $header, array $lines, array $origin, ?Uuid $actorUserId): Invoice
     {
-        $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now());
-        $this->totals->checked($invoice);
-        $this->invoices->save($invoice);
-        $this->record($company, $invoice->getId(), self::CREATED, $origin, $actorUserId);
+        return $this->transactions->run(function () use ($company, $establishment, $customer, $header, $lines, $origin, $actorUserId): Invoice {
+            $invoice = Invoice::create($company, $establishment, $customer, $header, $lines, $this->documentTaxes($company, $customer, null, []), $this->clock->now());
+            $this->totals->checked($invoice);
+            $this->invoices->save($invoice);
+            $this->record($company, $invoice->getId(), self::CREATED, $origin, $actorUserId);
 
-        return $invoice;
+            return $invoice;
+        });
     }
 
     /**
@@ -120,12 +124,14 @@ final readonly class ManageInvoices
      */
     public function draftCreditNote(Company $company, Uuid $invoiceId, ?Uuid $actorUserId): Invoice
     {
-        $credit = Invoice::creditNoteFor($this->get($company, $invoiceId), $this->clock->now());
-        $this->totals->checked($credit);
-        $this->invoices->save($credit);
-        $this->record($company, $credit->getId(), self::CREATED, ['correctsInvoiceId' => $invoiceId->toRfc4122()], $actorUserId);
+        return $this->transactions->run(function () use ($company, $invoiceId, $actorUserId): Invoice {
+            $credit = Invoice::creditNoteFor($this->get($company, $invoiceId), $this->clock->now());
+            $this->totals->checked($credit);
+            $this->invoices->save($credit);
+            $this->record($company, $credit->getId(), self::CREATED, ['correctsInvoiceId' => $invoiceId->toRfc4122()], $actorUserId);
 
-        return $credit;
+            return $credit;
+        });
     }
 
     /**

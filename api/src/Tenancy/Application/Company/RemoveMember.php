@@ -11,6 +11,7 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\Role;
@@ -28,30 +29,33 @@ final readonly class RemoveMember
         private RoleBounds $bounds,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
     /** @throws NotAMember|LastOwner|RoleNotManageable */
     public function handle(Uuid $companyId, Uuid $userId, ?Uuid $actorUserId): void
     {
-        $membership = $this->memberships->ofUserInCompany($userId, $companyId)
-            ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
-        $this->bounds->assertMayRemove($companyId, $actorUserId, $membership->getRole());
+        $this->transactions->run(function () use ($companyId, $userId, $actorUserId): void {
+            $membership = $this->memberships->ofUserInCompany($userId, $companyId)
+                ?? throw new NotAMember(\sprintf('%s is not a member of that company.', $userId->toRfc4122()));
+            $this->bounds->assertMayRemove($companyId, $actorUserId, $membership->getRole());
 
-        if (Role::OWNER === $membership->getRole()->getName() && 1 === $this->countOwners($companyId)) {
-            throw new LastOwner('A company keeps at least one owner.');
-        }
+            if (Role::OWNER === $membership->getRole()->getName() && 1 === $this->countOwners($companyId)) {
+                throw new LastOwner('A company keeps at least one owner.');
+            }
 
-        $this->memberships->remove($membership);
+            $this->memberships->remove($membership);
 
-        $this->audit->record(new AuditEntry(
-            self::ENTITY_TYPE,
-            $membership->getId(),
-            self::REMOVED,
-            $actorUserId,
-            ['user_id' => $userId->toRfc4122(), 'role' => $membership->getRole()->getName(), 'at' => $this->clock->now()->format(\DATE_ATOM)],
-            $companyId,
-        ));
+            $this->audit->record(new AuditEntry(
+                self::ENTITY_TYPE,
+                $membership->getId(),
+                self::REMOVED,
+                $actorUserId,
+                ['user_id' => $userId->toRfc4122(), 'role' => $membership->getRole()->getName(), 'at' => $this->clock->now()->format(\DATE_ATOM)],
+                $companyId,
+            ));
+        });
     }
 
     private function countOwners(Uuid $companyId): int

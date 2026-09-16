@@ -20,6 +20,7 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryMemberships;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -41,8 +42,9 @@ final class RemoveMemberTest extends TestCase
     protected function setUp(): void
     {
         $this->memberships = new InMemoryMemberships();
-        $this->audit = new InMemoryAuditTrail();
-        $this->remove = new RemoveMember($this->memberships, new RoleBounds($this->memberships), $this->audit, new MockClock('2026-09-09 10:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->remove = new RemoveMember($this->memberships, new RoleBounds($this->memberships), $this->audit, new MockClock('2026-09-09 10:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->owner = new Role(Role::OWNER, [Permission::WILDCARD]);
         $this->member = new Role(Role::MEMBER, ['company.read']);

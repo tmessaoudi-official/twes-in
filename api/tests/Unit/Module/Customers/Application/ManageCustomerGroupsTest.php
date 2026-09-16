@@ -21,6 +21,7 @@ use App\Settings\Application\ForgetSettings;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCustomerGroups;
 use App\Tests\Support\InMemoryCustomers;
@@ -43,8 +44,9 @@ final class ManageCustomerGroupsTest extends TestCase
         $this->groups = new InMemoryCustomerGroups();
         $this->customers = new InMemoryCustomers();
         $this->settings = new InMemorySettings();
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageCustomerGroups($this->groups, $this->customers, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageCustomerGroups($this->groups, $this->customers, new ForgetSettings($this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 

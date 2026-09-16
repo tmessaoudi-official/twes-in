@@ -76,8 +76,8 @@ final class InvoiceDeliveryNotesTest extends TestCase
         $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->notes = new InMemoryDeliveryNotes();
         $this->invoices = new InMemoryInvoices();
-        $this->audit = new InMemoryAuditTrail();
         $this->transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($this->transactions);
         // The notes are held while they are read, as the database holds their rows.
         $this->notes->transactions = $this->transactions;
         $manage = new ManageInvoices($this->invoices, new FakeTransactions(), new InMemoryCustomers(), new InMemoryProducts(), $this->units, $this->taxes, $this->establishments, new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()), $this->audit, $this->clock);
@@ -125,7 +125,7 @@ final class InvoiceDeliveryNotesTest extends TestCase
     {
         $mine = $this->note('BL-2026-00001');
         $otherCustomers = $this->note('BL-2026-00002', customer: $this->customer($this->company, 'CLI-0002'));
-        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail(), $this->clock)
+        $branch = new ManageEstablishments($this->establishments, $this->series, ShippedFiscalPresets::presets(), new InMemoryAuditTrail($branchTransactions = new FakeTransactions()), $this->clock, $branchTransactions)
             ->create($this->company, new EstablishmentDetails('001', 'Sfax', null, null, null, null, null, null, false), null);
         $fromTheBranch = $this->note('BL-2026-00003', establishment: $branch);
         $theirs = $this->note('BL-2026-00001', company: $this->globex);

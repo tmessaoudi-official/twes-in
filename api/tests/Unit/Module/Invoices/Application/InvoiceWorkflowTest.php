@@ -83,13 +83,13 @@ final class InvoiceWorkflowTest extends TestCase
         $provision->handle($this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $provision->handle($this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'));
         $this->invoices = new InMemoryInvoices();
-        $this->audit = new InMemoryAuditTrail();
         $this->transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->events = new RecordingDomainEvents($this->transactions);
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail(), $this->clock);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->workflow = new InvoiceWorkflow(
             $this->invoices,
             new AllocateNumber($this->series, $this->transactions, $this->clock),

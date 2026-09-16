@@ -15,6 +15,7 @@ use App\Tenancy\Application\Company\CreateCompany;
 use App\Tenancy\Application\Company\NewCompany;
 use App\Tenancy\Application\Company\NoFiscalPreset;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryTaxComponents;
@@ -37,13 +38,14 @@ final class CreateCompanyTest extends TestCase
     protected function setUp(): void
     {
         $this->companies = new InMemoryCompanies();
-        $this->audit = new InMemoryAuditTrail();
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
         $this->components = new InMemoryTaxComponents();
         $this->units = new InMemoryUnits();
         $clock = new MockClock('2026-09-09 10:00:00');
         $presets = ShippedFiscalPresets::presets();
         $provision = new ProvisionCompany($presets, $this->components, $this->units, new \App\Tests\Support\InMemoryEstablishments(), new \App\Tests\Support\InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $clock);
-        $this->create = new CreateCompany($this->companies, $presets, $provision, $this->audit, $clock);
+        $this->create = new CreateCompany($this->companies, $presets, $provision, $this->audit, $clock, $transactions);
     }
 
     public function testTheCompanyWaitsForItsFirstOwner(): void

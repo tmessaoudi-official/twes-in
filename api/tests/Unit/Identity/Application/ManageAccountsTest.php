@@ -14,6 +14,7 @@ use App\Identity\Application\Account\ManageAccounts;
 use App\Identity\Application\Account\OwnAccount;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUsers;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -31,8 +32,9 @@ final class ManageAccountsTest extends TestCase
     protected function setUp(): void
     {
         $this->users = new InMemoryUsers();
-        $this->audit = new InMemoryAuditTrail();
-        $this->accounts = new ManageAccounts($this->users, $this->audit);
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->accounts = new ManageAccounts($this->users, $this->audit, $transactions);
         $this->operator = $this->account('op@twes.local', 'Operator');
     }
 

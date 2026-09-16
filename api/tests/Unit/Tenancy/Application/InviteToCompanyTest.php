@@ -22,6 +22,7 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryCompanies;
 use App\Tests\Support\InMemoryInvitationMailer;
@@ -57,7 +58,8 @@ final class InviteToCompanyTest extends TestCase
         $this->invitations = new InMemoryInvitations();
         $this->mailer = new InMemoryInvitationMailer();
         $this->notifications = new InMemoryNotifications();
-        $this->audit = new InMemoryAuditTrail();
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
         $roles = new InMemoryRoles();
         $roles->save(new Role(Role::OWNER, [Permission::WILDCARD]));
         $roles->save(new Role(Role::MEMBER, ['company.read']));
@@ -78,6 +80,7 @@ final class InviteToCompanyTest extends TestCase
             $clock,
             'https://twes.test/invitations/{token}',
             'P7D',
+            $transactions,
         );
 
         $this->company = Company::pending('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');

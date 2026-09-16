@@ -27,6 +27,7 @@ use App\Module\Expenses\Domain\ExpenseTransitionRefused;
 use App\Module\Expenses\Domain\InvalidExpense;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\Shared\Application\Transactions;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -35,7 +36,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * A company's expenses and the files they rest on. The vendor, category and tax an expense names are looked up in its
  * company; the figures are the expense's own. A receipt is attached at any status, since one often arrives after the
- * expense is recorded, but only a draft loses one. Audited with field names, never values.
+ * expense is recorded, but only a draft loses one. Audited with field names, never values. A file attached or detached
+ * runs in the same transaction as its audit row, so a refused row takes the attachment row back with it.
  */
 final readonly class ManageExpenses
 {
@@ -57,6 +59,7 @@ final readonly class ManageExpenses
         private Attachments $attachments,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -75,11 +78,13 @@ final readonly class ManageExpenses
     /** @throws InvalidExpense */
     public function create(Company $company, ExpenseInput $input, ?Uuid $actorUserId): Expense
     {
-        $expense = Expense::create($company, $input->details, $this->vendor($company, $input->vendorId), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
-        $this->expenses->save($expense);
-        $this->record($company, $expense->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): Expense {
+            $expense = Expense::create($company, $input->details, $this->vendor($company, $input->vendorId), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
+            $this->expenses->save($expense);
+            $this->record($company, $expense->getId(), self::CREATED, [], $actorUserId);
 
-        return $expense;
+            return $expense;
+        });
     }
 
     /**
@@ -89,15 +94,17 @@ final readonly class ManageExpenses
      */
     public function revise(Company $company, Uuid $id, ExpenseInput $input, ?Uuid $actorUserId): Expense
     {
-        $expense = $this->get($company, $id);
-        $expense->assertDraft('revised');
-        $changed = $expense->revise($input->details, $this->vendor($company, $input->vendorId), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
-        if ([] !== $changed) {
-            $this->expenses->save($expense);
-            $this->record($company, $expense->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Expense {
+            $expense = $this->get($company, $id);
+            $expense->assertDraft('revised');
+            $changed = $expense->revise($input->details, $this->vendor($company, $input->vendorId), $this->category($company, $input->categoryId), $this->tax($company, $input->taxComponentId), $this->scales->of($company->getCurrency()), $this->clock->now());
+            if ([] !== $changed) {
+                $this->expenses->save($expense);
+                $this->record($company, $expense->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $expense;
+            return $expense;
+        });
     }
 
     /**
@@ -107,12 +114,14 @@ final readonly class ManageExpenses
      */
     public function recordInBooks(Company $company, Uuid $id, ?Uuid $actorUserId): Expense
     {
-        $expense = $this->get($company, $id);
-        $expense->record($this->clock->now());
-        $this->expenses->save($expense);
-        $this->record($company, $expense->getId(), self::RECORDED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $id, $actorUserId): Expense {
+            $expense = $this->get($company, $id);
+            $expense->record($this->clock->now());
+            $this->expenses->save($expense);
+            $this->record($company, $expense->getId(), self::RECORDED, [], $actorUserId);
 
-        return $expense;
+            return $expense;
+        });
     }
 
     /**
@@ -122,13 +131,15 @@ final readonly class ManageExpenses
      */
     public function pay(Company $company, Uuid $id, PaymentMethod $method, \DateTimeImmutable $paidOn, ?Uuid $actorUserId): Expense
     {
-        $expense = $this->get($company, $id);
-        $now = $this->clock->now();
-        $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now);
-        $this->expenses->save($expense);
-        $this->record($company, $expense->getId(), self::PAID, ['fields' => ['paymentMethod', 'paidOn']], $actorUserId);
+        return $this->transactions->run(function () use ($company, $id, $method, $paidOn, $actorUserId): Expense {
+            $expense = $this->get($company, $id);
+            $now = $this->clock->now();
+            $expense->pay($method, $paidOn, $now->setTimezone(new \DateTimeZone($company->getTimezone())), $now);
+            $this->expenses->save($expense);
+            $this->record($company, $expense->getId(), self::PAID, ['fields' => ['paymentMethod', 'paidOn']], $actorUserId);
 
-        return $expense;
+            return $expense;
+        });
     }
 
     /**
@@ -137,11 +148,13 @@ final readonly class ManageExpenses
      */
     public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
     {
-        $expense = $this->get($company, $id);
-        $expense->assertDraft('deleted');
-        $this->attachments->detachAll($company, self::ENTITY_TYPE, $id);
-        $this->expenses->remove($expense);
-        $this->record($company, $id, self::DELETED, [], $actorUserId);
+        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
+            $expense = $this->get($company, $id);
+            $expense->assertDraft('deleted');
+            $this->attachments->detachAll($company, self::ENTITY_TYPE, $id);
+            $this->expenses->remove($expense);
+            $this->record($company, $id, self::DELETED, [], $actorUserId);
+        });
     }
 
     /**
@@ -165,11 +178,13 @@ final readonly class ManageExpenses
      */
     public function attach(Company $company, Uuid $id, string $name, string $contents, ?Uuid $actorUserId): Attachment
     {
-        $expense = $this->get($company, $id);
-        $attachment = $this->attachments->attach($company, self::ENTITY_TYPE, $expense->getId(), $name, $contents, $actorUserId);
-        $this->record($company, $expense->getId(), self::ATTACHMENT_ADDED, ['attachmentId' => $attachment->getId()->toRfc4122()], $actorUserId);
+        return $this->transactions->run(function () use ($company, $id, $name, $contents, $actorUserId): Attachment {
+            $expense = $this->get($company, $id);
+            $attachment = $this->attachments->attach($company, self::ENTITY_TYPE, $expense->getId(), $name, $contents, $actorUserId);
+            $this->record($company, $expense->getId(), self::ATTACHMENT_ADDED, ['attachmentId' => $attachment->getId()->toRfc4122()], $actorUserId);
 
-        return $attachment;
+            return $attachment;
+        });
     }
 
     /**
@@ -194,10 +209,12 @@ final readonly class ManageExpenses
      */
     public function detach(Company $company, Uuid $id, Uuid $attachmentId, ?Uuid $actorUserId): void
     {
-        $attachment = $this->attachment($company, $id, $attachmentId);
-        $this->get($company, $id)->assertDraft('stripped of a file');
-        $this->attachments->detach($attachment);
-        $this->record($company, $id, self::ATTACHMENT_REMOVED, ['attachmentId' => $attachmentId->toRfc4122()], $actorUserId);
+        $this->transactions->run(function () use ($company, $id, $attachmentId, $actorUserId): void {
+            $attachment = $this->attachment($company, $id, $attachmentId);
+            $this->get($company, $id)->assertDraft('stripped of a file');
+            $this->attachments->detach($attachment);
+            $this->record($company, $id, self::ATTACHMENT_REMOVED, ['attachmentId' => $attachmentId->toRfc4122()], $actorUserId);
+        });
     }
 
     private function attachment(Company $company, Uuid $id, Uuid $attachmentId): Attachment

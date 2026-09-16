@@ -17,6 +17,7 @@ use App\Identity\Domain\User;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\UnknownRole;
 use App\Tenancy\Domain\CompanyRepository;
 use App\Tenancy\Domain\Invitation;
@@ -54,65 +55,74 @@ final readonly class AcceptInvitation
         private Notifications $notifications,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
     /** @throws InvitationNotUsable|AccountDetailsRequired|PasswordBreached|UnknownRole */
     public function handle(AcceptRequest $request): AcceptOutcome
     {
-        $invitation = $this->usable($request->rawToken);
-        $company = $invitation->getCompany();
-        $role = $this->roles->builtIn($invitation->getRoleName())
-            ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $invitation->getRoleName()));
+        [$outcome, $joined] = $this->transactions->run(function () use ($request): array {
+            $invitation = $this->usable($request->rawToken);
+            $company = $invitation->getCompany();
+            $role = $this->roles->builtIn($invitation->getRoleName())
+                ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $invitation->getRoleName()));
 
-        $now = $this->clock->now();
-        $user = $this->users->ofEmail($invitation->getEmail());
-        $passwordSet = null === $user;
+            $now = $this->clock->now();
+            $user = $this->users->ofEmail($invitation->getEmail());
+            $passwordSet = null === $user;
 
-        if (null === $user) {
-            if (null === $request->displayName || null === $request->plainPassword) {
-                throw new AccountDetailsRequired('A new account needs a name and a password.');
+            if (null === $user) {
+                if (null === $request->displayName || null === $request->plainPassword) {
+                    throw new AccountDetailsRequired('A new account needs a name and a password.');
+                }
+                $this->refuseABreachedPassword($request->plainPassword, $invitation);
+                $user = new User($invitation->getEmail(), $request->displayName, $company->getLocale(), $now);
+                $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);
+                $this->users->save($user);
             }
-            $this->refuseABreachedPassword($request->plainPassword, $invitation);
-            $user = new User($invitation->getEmail(), $request->displayName, $company->getLocale(), $now);
-            $user->setPasswordHash($this->hasher->hash($request->plainPassword), $now);
-            $this->users->save($user);
-        }
 
-        if (null === $this->memberships->ofUserInCompany($user->getId(), $company->getId())) {
-            $this->memberships->save(new Membership($user, $company, $role, $now));
-        }
+            if (null === $this->memberships->ofUserInCompany($user->getId(), $company->getId())) {
+                $this->memberships->save(new Membership($user, $company, $role, $now));
+            }
 
-        if (Role::OWNER === $role->getName()) {
-            $company->activate($now);
-            $this->companies->save($company);
-        }
+            if (Role::OWNER === $role->getName()) {
+                $company->activate($now);
+                $this->companies->save($company);
+            }
 
-        $invitation->accept($now);
-        $this->invitations->save($invitation);
+            $invitation->accept($now);
+            $this->invitations->save($invitation);
 
-        $this->audit->record(new AuditEntry(
-            self::ENTITY_TYPE,
-            $invitation->getId(),
-            self::ACCEPTED,
-            $user->getId(),
-            ['email' => $invitation->getEmail()->value, 'role' => $role->getName(), 'password_set' => $passwordSet],
-            $company->getId(),
-        ));
+            $this->audit->record(new AuditEntry(
+                self::ENTITY_TYPE,
+                $invitation->getId(),
+                self::ACCEPTED,
+                $user->getId(),
+                ['email' => $invitation->getEmail()->value, 'role' => $role->getName(), 'password_set' => $passwordSet],
+                $company->getId(),
+            ));
 
-        $this->notifications->publish(new Notification(
-            'company:'.$company->getId()->toRfc4122(),
-            self::ACCEPTED,
-            ['user_id' => $user->getId()->toRfc4122(), 'display_name' => $user->getDisplayName(), 'role' => $role->getName()],
-        ));
+            return [
+                new AcceptOutcome(
+                    $user->getId()->toRfc4122(),
+                    $company->getId()->toRfc4122(),
+                    $company->getName(),
+                    $role->getName(),
+                    $passwordSet,
+                ),
+                new Notification(
+                    'company:'.$company->getId()->toRfc4122(),
+                    self::ACCEPTED,
+                    ['user_id' => $user->getId()->toRfc4122(), 'display_name' => $user->getDisplayName(), 'role' => $role->getName()],
+                ),
+            ];
+        });
 
-        return new AcceptOutcome(
-            $user->getId()->toRfc4122(),
-            $company->getId()->toRfc4122(),
-            $company->getName(),
-            $role->getName(),
-            $passwordSet,
-        );
+        // Published once the membership is committed, so nobody is told of a join that was rolled back.
+        $this->notifications->publish($joined);
+
+        return $outcome;
     }
 
     private function usable(string $rawToken): Invitation

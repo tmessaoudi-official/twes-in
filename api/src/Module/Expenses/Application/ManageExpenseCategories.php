@@ -14,6 +14,7 @@ use App\Audit\Application\AuditTrail;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Expenses\Domain\ExpenseCategoryRepository;
 use App\Module\Expenses\Domain\InvalidExpense;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -29,8 +30,12 @@ final readonly class ManageExpenseCategories
     public const string CREATED = 'expense_category.created';
     public const string REVISED = 'expense_category.revised';
 
-    public function __construct(private ExpenseCategoryRepository $categories, private AuditTrail $audit, private ClockInterface $clock)
-    {
+    public function __construct(
+        private ExpenseCategoryRepository $categories,
+        private AuditTrail $audit,
+        private ClockInterface $clock,
+        private Transactions $transactions,
+    ) {
     }
 
     /** @return list<ExpenseCategory> */
@@ -45,17 +50,19 @@ final readonly class ManageExpenseCategories
      */
     public function create(Company $company, string $name, ?Uuid $parentId, bool $isActive, ?Uuid $actorUserId): ExpenseCategory
     {
-        if (null !== $this->categories->ofNameInCompany(trim($name), $company->getId())) {
-            throw new ExpenseCategoryNameTaken();
-        }
-        $category = ExpenseCategory::create($company, $name, $this->parent($company, $parentId), $this->clock->now());
-        if (!$isActive) {
-            $category->revise($name, $category->getParent(), false, $this->clock->now());
-        }
-        $this->categories->save($category);
-        $this->record($company, $category->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $name, $parentId, $isActive, $actorUserId): ExpenseCategory {
+            if (null !== $this->categories->ofNameInCompany(trim($name), $company->getId())) {
+                throw new ExpenseCategoryNameTaken();
+            }
+            $category = ExpenseCategory::create($company, $name, $this->parent($company, $parentId), $this->clock->now());
+            if (!$isActive) {
+                $category->revise($name, $category->getParent(), false, $this->clock->now());
+            }
+            $this->categories->save($category);
+            $this->record($company, $category->getId(), self::CREATED, [], $actorUserId);
 
-        return $category;
+            return $category;
+        });
     }
 
     /**
@@ -65,19 +72,21 @@ final readonly class ManageExpenseCategories
      */
     public function revise(Company $company, Uuid $id, string $name, ?Uuid $parentId, bool $isActive, ?Uuid $actorUserId): ExpenseCategory
     {
-        $category = $this->categories->ofIdInCompany($id, $company->getId()) ?? throw new ExpenseCategoryNotFound();
-        $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($category->getId())) {
-            throw new ExpenseCategoryNameTaken();
-        }
+        return $this->transactions->run(function () use ($company, $id, $name, $parentId, $isActive, $actorUserId): ExpenseCategory {
+            $category = $this->categories->ofIdInCompany($id, $company->getId()) ?? throw new ExpenseCategoryNotFound();
+            $holder = $this->categories->ofNameInCompany(trim($name), $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($category->getId())) {
+                throw new ExpenseCategoryNameTaken();
+            }
 
-        $changed = $category->revise($name, $this->parent($company, $parentId), $isActive, $this->clock->now());
-        if ([] !== $changed) {
-            $this->categories->save($category);
-            $this->record($company, $category->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $changed = $category->revise($name, $this->parent($company, $parentId), $isActive, $this->clock->now());
+            if ([] !== $changed) {
+                $this->categories->save($category);
+                $this->record($company, $category->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $category;
+            return $category;
+        });
     }
 
     private function parent(Company $company, ?Uuid $parentId): ?ExpenseCategory

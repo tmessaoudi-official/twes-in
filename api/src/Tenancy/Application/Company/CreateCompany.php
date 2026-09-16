@@ -13,6 +13,7 @@ use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Preset\FiscalPresets;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use Psr\Clock\ClockInterface;
@@ -34,6 +35,7 @@ final readonly class CreateCompany
         private ProvisionCompany $provision,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -43,33 +45,35 @@ final readonly class CreateCompany
      */
     public function handle(NewCompany $request, ?Uuid $actorUserId): Company
     {
-        if (null !== $this->companies->ofName($request->name)) {
-            throw new CompanyNameTaken(\sprintf('A company named "%s" already exists.', $request->name));
-        }
+        return $this->transactions->run(function () use ($request, $actorUserId): Company {
+            if (null !== $this->companies->ofName($request->name)) {
+                throw new CompanyNameTaken(\sprintf('A company named "%s" already exists.', $request->name));
+            }
 
-        $company = Company::pending(
-            $request->name,
-            $request->countryCode,
-            $request->currency,
-            $request->locale,
-            $request->timezone,
-            $this->clock->now(),
-        );
-        if (!$this->presets->has($company->getFiscalPreset())) {
-            throw new NoFiscalPreset(\sprintf('There is no fiscal preset for %s yet, so a company there could not invoice.', $company->getCountryCode()));
-        }
-        $this->companies->save($company);
-        $this->provision->handle($company);
+            $company = Company::pending(
+                $request->name,
+                $request->countryCode,
+                $request->currency,
+                $request->locale,
+                $request->timezone,
+                $this->clock->now(),
+            );
+            if (!$this->presets->has($company->getFiscalPreset())) {
+                throw new NoFiscalPreset(\sprintf('There is no fiscal preset for %s yet, so a company there could not invoice.', $company->getCountryCode()));
+            }
+            $this->companies->save($company);
+            $this->provision->handle($company);
 
-        $this->audit->record(new AuditEntry(
-            self::ENTITY_TYPE,
-            $company->getId(),
-            self::CREATED,
-            $actorUserId,
-            ['name' => $company->getName(), 'status' => $company->getStatus(), 'fiscal_preset' => $company->getFiscalPreset()],
-            $company->getId(),
-        ));
+            $this->audit->record(new AuditEntry(
+                self::ENTITY_TYPE,
+                $company->getId(),
+                self::CREATED,
+                $actorUserId,
+                ['name' => $company->getName(), 'status' => $company->getStatus(), 'fiscal_preset' => $company->getFiscalPreset()],
+                $company->getId(),
+            ));
 
-        return $company;
+            return $company;
+        });
     }
 }

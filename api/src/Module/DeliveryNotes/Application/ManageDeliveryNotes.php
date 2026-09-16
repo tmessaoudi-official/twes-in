@@ -70,13 +70,15 @@ final readonly class ManageDeliveryNotes
     /** @throws InvalidDeliveryNote */
     public function create(Company $company, DeliveryNoteInput $input, ?Uuid $actorUserId): DeliveryNote
     {
-        [$establishment, $customer, $lines] = $this->checked($company, $input, null);
-        $note = DeliveryNote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now());
-        $this->totals->checked($note);
-        $this->notes->save($note);
-        $this->record($company, $note->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): DeliveryNote {
+            [$establishment, $customer, $lines] = $this->checked($company, $input, null);
+            $note = DeliveryNote::create($company, $establishment, $customer, $input->header, $lines, $this->clock->now());
+            $this->totals->checked($note);
+            $this->notes->save($note);
+            $this->record($company, $note->getId(), self::CREATED, [], $actorUserId);
 
-        return $note;
+            return $note;
+        });
     }
 
     /**

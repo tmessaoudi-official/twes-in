@@ -20,6 +20,7 @@ use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
@@ -44,7 +45,7 @@ final class ArticleLevelsTest extends TestCase
         $this->settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings()]);
         $this->resolve = new ResolveSettings($catalog, $this->settings);
-        $this->change = new ChangeSettings($catalog, $this->settings, $this->resolve, new InMemoryAuditTrail(), new MockClock('2026-09-14 09:00:00'));
+        $this->change = new ChangeSettings($catalog, $this->settings, $this->resolve, new InMemoryAuditTrail($transactions = new FakeTransactions()), new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->categoryId = Uuid::v7();
         $this->productId = Uuid::v7();

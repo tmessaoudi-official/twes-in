@@ -15,6 +15,7 @@ use App\Identity\Domain\Email;
 use App\Identity\Domain\UserRepository;
 use App\Shared\Application\Notification;
 use App\Shared\Application\Notifications;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Company\AlreadyAMember;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\RoleBounds;
@@ -53,45 +54,61 @@ final readonly class InviteToCompany
         private ClockInterface $clock,
         private string $acceptUrlTemplate,
         private string $validFor,
+        private Transactions $transactions,
     ) {
     }
 
     /** @throws CompanyNotFound|UnknownRole|RoleNotManageable|AlreadyAMember */
     public function handle(InviteRequest $request, ?Uuid $actorUserId): InviteOutcome
     {
-        $company = $this->companies->ofId($request->companyId)
-            ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
+        [$company, $email, $existing, $token, $invitation] = $this->transactions->run(function () use ($request, $actorUserId): array {
+            $company = $this->companies->ofId($request->companyId)
+                ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
 
-        // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
-        $this->roles->builtIn($request->roleName)
-            ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $request->roleName));
-        $this->bounds->assertMayGrant($company->getId(), $actorUserId, $request->roleName);
+            // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
+            $this->roles->builtIn($request->roleName)
+                ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $request->roleName));
+            $this->bounds->assertMayGrant($company->getId(), $actorUserId, $request->roleName);
 
-        $email = Email::fromString($request->email);
-        $existing = $this->users->ofEmail($email);
-        if (null !== $existing && null !== $this->memberships->ofUserInCompany($existing->getId(), $company->getId())) {
-            throw new AlreadyAMember(\sprintf('%s already belongs to %s.', $email->value, $company->getName()));
-        }
-        $now = $this->clock->now();
+            $email = Email::fromString($request->email);
+            $existing = $this->users->ofEmail($email);
+            if (null !== $existing && null !== $this->memberships->ofUserInCompany($existing->getId(), $company->getId())) {
+                throw new AlreadyAMember(\sprintf('%s already belongs to %s.', $email->value, $company->getName()));
+            }
+            $now = $this->clock->now();
 
-        // Inviting again replaces the open invitation: two live tokens for one address is one more than anybody needs.
-        $open = $this->invitations->pendingFor($company->getId(), $email->value);
-        if (null !== $open) {
-            $this->invitations->remove($open);
-        }
+            // Inviting again replaces the open invitation: two live tokens for one address is one more than anybody needs.
+            $open = $this->invitations->pendingFor($company->getId(), $email->value);
+            if (null !== $open) {
+                $this->invitations->remove($open);
+            }
 
-        $token = InvitationToken::generate();
-        $invitation = new Invitation(
-            $company,
-            $email,
-            $request->roleName,
-            $token,
-            $now,
-            new \DateInterval($this->validFor),
-            null === $actorUserId ? null : $this->users->ofId($actorUserId),
-        );
-        $this->invitations->save($invitation);
+            $token = InvitationToken::generate();
+            $invitation = new Invitation(
+                $company,
+                $email,
+                $request->roleName,
+                $token,
+                $now,
+                new \DateInterval($this->validFor),
+                null === $actorUserId ? null : $this->users->ofId($actorUserId),
+            );
+            $this->invitations->save($invitation);
 
+            // The token is deliberately absent from what is recorded: audit rows are read by people.
+            $this->audit->record(new AuditEntry(
+                self::ENTITY_TYPE,
+                $invitation->getId(),
+                self::SENT,
+                $actorUserId,
+                ['email' => $email->value, 'role' => $request->roleName, 'expires_at' => $invitation->getExpiresAt()->format(\DATE_ATOM)],
+                $company->getId(),
+            ));
+
+            return [$company, $email, $existing, $token, $invitation];
+        });
+
+        // Mailed once the invitation is committed, so a link never points at an invitation that was rolled back.
         $this->mailer->send(new InvitationMail(
             $email->value,
             $company->getName(),
@@ -101,16 +118,6 @@ final readonly class InviteToCompany
             $company->getLocale(),
             $company->getTimezone(),
             $invitation->getExpiresAt(),
-        ));
-
-        // The token is deliberately absent from what is recorded: audit rows are read by people.
-        $this->audit->record(new AuditEntry(
-            self::ENTITY_TYPE,
-            $invitation->getId(),
-            self::SENT,
-            $actorUserId,
-            ['email' => $email->value, 'role' => $request->roleName, 'expires_at' => $invitation->getExpiresAt()->format(\DATE_ATOM)],
-            $company->getId(),
         ));
 
         // The link stays in the mail: a notification is stored and shown to whoever holds the session later.

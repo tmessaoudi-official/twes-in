@@ -27,6 +27,7 @@ use App\Module\Customers\Domain\CustomerGroupRepository;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerRepository;
 use App\Module\Customers\Domain\InvalidCustomer;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -53,6 +54,7 @@ final readonly class ManageCustomers
         private AuditTrail $audit,
         private ClockInterface $clock,
         private CustomFieldDefinitionRepository $customFields,
+        private Transactions $transactions,
     ) {
     }
 
@@ -74,20 +76,22 @@ final readonly class ManageCustomers
      */
     public function create(Company $company, CustomerInput $input, ?Uuid $actorUserId): Customer
     {
-        if (null !== $this->customers->ofNumberInCompany(trim($input->number), $company->getId())) {
-            throw new CustomerNumberTaken();
-        }
-        [$group, $regime] = $this->checked($company, $input, null);
-        $values = $this->customFieldValues($company, $input, null);
-        $customer = Customer::create($company, $input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $this->clock->now());
-        $customer->reviseCustomFields($values, $this->clock->now());
-        if (!$input->isActive) {
-            $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, false, $this->clock->now());
-        }
-        $this->customers->save($customer);
-        $this->record($company, $customer->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): Customer {
+            if (null !== $this->customers->ofNumberInCompany(trim($input->number), $company->getId())) {
+                throw new CustomerNumberTaken();
+            }
+            [$group, $regime] = $this->checked($company, $input, null);
+            $values = $this->customFieldValues($company, $input, null);
+            $customer = Customer::create($company, $input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $this->clock->now());
+            $customer->reviseCustomFields($values, $this->clock->now());
+            if (!$input->isActive) {
+                $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, false, $this->clock->now());
+            }
+            $this->customers->save($customer);
+            $this->record($company, $customer->getId(), self::CREATED, [], $actorUserId);
 
-        return $customer;
+            return $customer;
+        });
     }
 
     /**
@@ -97,22 +101,24 @@ final readonly class ManageCustomers
      */
     public function revise(Company $company, Uuid $id, CustomerInput $input, ?Uuid $actorUserId): Customer
     {
-        $customer = $this->get($company, $id);
-        $holder = $this->customers->ofNumberInCompany(trim($input->number), $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($customer->getId())) {
-            throw new CustomerNumberTaken();
-        }
-        [$group, $regime] = $this->checked($company, $input, $customer);
-        $values = $this->customFieldValues($company, $input, $customer);
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Customer {
+            $customer = $this->get($company, $id);
+            $holder = $this->customers->ofNumberInCompany(trim($input->number), $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($customer->getId())) {
+                throw new CustomerNumberTaken();
+            }
+            [$group, $regime] = $this->checked($company, $input, $customer);
+            $values = $this->customFieldValues($company, $input, $customer);
 
-        $changed = $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $input->isActive, $this->clock->now());
-        $changed = [...$changed, ...$customer->reviseCustomFields($values, $this->clock->now())];
-        if ([] !== $changed) {
-            $this->customers->save($customer);
-            $this->record($company, $customer->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $changed = $customer->revise($input->number, $input->profile, $group, $regime, $input->defaultTaxComponentIds, $input->isActive, $this->clock->now());
+            $changed = [...$changed, ...$customer->reviseCustomFields($values, $this->clock->now())];
+            if ([] !== $changed) {
+                $this->customers->save($customer);
+                $this->record($company, $customer->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $customer;
+            return $customer;
+        });
     }
 
     /**

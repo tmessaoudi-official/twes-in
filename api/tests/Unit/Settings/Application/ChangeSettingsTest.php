@@ -19,6 +19,7 @@ use App\Settings\Application\SettingLevelRefused;
 use App\Settings\Application\UnknownSetting;
 use App\Settings\Domain\SettingLevel;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemorySettings;
 use PHPUnit\Framework\TestCase;
@@ -37,9 +38,10 @@ final class ChangeSettingsTest extends TestCase
     protected function setUp(): void
     {
         $this->settings = new InMemorySettings();
-        $this->audit = new InMemoryAuditTrail();
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
         $catalog = new SettingCatalog([new PresentationSettings()]);
-        $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'));
+        $this->change = new ChangeSettings($catalog, $this->settings, new ResolveSettings($catalog, $this->settings), $this->audit, new MockClock('2026-09-14 09:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->userId = Uuid::v7();
         $this->context = new SettingContext($this->company, Uuid::v7(), $this->userId);

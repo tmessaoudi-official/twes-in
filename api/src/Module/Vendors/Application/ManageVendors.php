@@ -16,6 +16,7 @@ use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Module\Vendors\Domain\InvalidVendor;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -38,6 +39,7 @@ final readonly class ManageVendors
         private AuditTrail $audit,
         private ClockInterface $clock,
         private ExpenseCategoryDirectory $expenseCategories,
+        private Transactions $transactions,
     ) {
     }
 
@@ -59,18 +61,20 @@ final readonly class ManageVendors
      */
     public function create(Company $company, VendorInput $input, ?Uuid $actorUserId): Vendor
     {
-        if (null !== $this->vendors->ofNumberInCompany(trim($input->number), $company->getId())) {
-            throw new VendorNumberTaken();
-        }
-        $this->check($company, $input, null);
-        $vendor = Vendor::create($company, $input->number, $input->profile, $this->clock->now());
-        if (!$input->isActive) {
-            $vendor->revise($input->number, $input->profile, false, $this->clock->now());
-        }
-        $this->vendors->save($vendor);
-        $this->record($company, $vendor->getId(), self::CREATED, [], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): Vendor {
+            if (null !== $this->vendors->ofNumberInCompany(trim($input->number), $company->getId())) {
+                throw new VendorNumberTaken();
+            }
+            $this->check($company, $input, null);
+            $vendor = Vendor::create($company, $input->number, $input->profile, $this->clock->now());
+            if (!$input->isActive) {
+                $vendor->revise($input->number, $input->profile, false, $this->clock->now());
+            }
+            $this->vendors->save($vendor);
+            $this->record($company, $vendor->getId(), self::CREATED, [], $actorUserId);
 
-        return $vendor;
+            return $vendor;
+        });
     }
 
     /**
@@ -80,20 +84,22 @@ final readonly class ManageVendors
      */
     public function revise(Company $company, Uuid $id, VendorInput $input, ?Uuid $actorUserId): Vendor
     {
-        $vendor = $this->get($company, $id);
-        $holder = $this->vendors->ofNumberInCompany(trim($input->number), $company->getId());
-        if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {
-            throw new VendorNumberTaken();
-        }
-        $this->check($company, $input, $vendor);
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): Vendor {
+            $vendor = $this->get($company, $id);
+            $holder = $this->vendors->ofNumberInCompany(trim($input->number), $company->getId());
+            if (null !== $holder && !$holder->getId()->equals($vendor->getId())) {
+                throw new VendorNumberTaken();
+            }
+            $this->check($company, $input, $vendor);
 
-        $changed = $vendor->revise($input->number, $input->profile, $input->isActive, $this->clock->now());
-        if ([] !== $changed) {
-            $this->vendors->save($vendor);
-            $this->record($company, $vendor->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $changed = $vendor->revise($input->number, $input->profile, $input->isActive, $this->clock->now());
+            if ([] !== $changed) {
+                $this->vendors->save($vendor);
+                $this->record($company, $vendor->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $vendor;
+            return $vendor;
+        });
     }
 
     private function check(Company $company, VendorInput $input, ?Vendor $current): void

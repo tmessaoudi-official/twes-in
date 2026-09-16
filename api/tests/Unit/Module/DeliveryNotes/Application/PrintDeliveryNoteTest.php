@@ -33,6 +33,7 @@ use App\Settings\Domain\SettingLevel;
 use App\Shared\Application\PdfRenderingFailed;
 use App\Tenancy\Domain\Company;
 use App\Tests\Support\FakePdfRenderer;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryDeliveryNotes;
 use App\Tests\Support\InMemoryEstablishments;
@@ -77,7 +78,7 @@ final class PrintDeliveryNoteTest extends TestCase
         $settings = new InMemorySettings();
         $catalog = new SettingCatalog([new BusinessDefaultSettings(), new DeliveryNoteSettings()]);
         $resolve = new ResolveSettings($catalog, $settings);
-        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail(), $this->clock);
+        $this->change = new ChangeSettings($catalog, $settings, $resolve, new InMemoryAuditTrail($settingTransactions = new FakeTransactions()), $this->clock, $settingTransactions);
         $this->print = new PrintDeliveryNote(
             $this->notes,
             new DeliveryNoteTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales()),

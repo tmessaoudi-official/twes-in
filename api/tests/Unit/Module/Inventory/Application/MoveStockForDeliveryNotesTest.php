@@ -89,7 +89,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
         $this->settings->save(new Setting(SettingAddress::product($this->company, $this->untracked->getId()), 'article.stock_tracking', false, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
-        $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail(), $this->clock);
+        $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions);
         $keep = new KeepStock($this->movements, $this->locations, $products, $read, $this->transactions, $this->clock);
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
         $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock);

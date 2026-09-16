@@ -16,6 +16,7 @@ use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -42,6 +43,7 @@ final readonly class ManageStockLocations
         private EstablishmentRepository $establishments,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -88,18 +90,20 @@ final readonly class ManageStockLocations
      */
     public function create(Company $company, Uuid $establishmentId, ?Uuid $parentId, StockLocationKind $kind, string $code, string $name, ?Uuid $actorUserId): StockLocation
     {
-        $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId())
-            ?? throw new InvalidStockLocation('establishmentId', 'No establishment of this company has this id.');
-        $parent = null === $parentId ? $this->defaultOf($establishment) : $this->parent($company, $parentId);
-        if (null !== $this->locations->ofCodeInEstablishment(trim($code), $establishment->getId())) {
-            throw new StockLocationCodeTaken();
-        }
+        return $this->transactions->run(function () use ($company, $establishmentId, $parentId, $kind, $code, $name, $actorUserId): StockLocation {
+            $establishment = $this->establishments->ofIdInCompany($establishmentId, $company->getId())
+                ?? throw new InvalidStockLocation('establishmentId', 'No establishment of this company has this id.');
+            $parent = null === $parentId ? $this->defaultOf($establishment) : $this->parent($company, $parentId);
+            if (null !== $this->locations->ofCodeInEstablishment(trim($code), $establishment->getId())) {
+                throw new StockLocationCodeTaken();
+            }
 
-        $location = StockLocation::create($establishment, $parent, $kind, $code, $name, $this->clock->now());
-        $this->locations->save($location);
-        $this->record($company, $location->getId(), self::CREATED, [], $actorUserId);
+            $location = StockLocation::create($establishment, $parent, $kind, $code, $name, $this->clock->now());
+            $this->locations->save($location);
+            $this->record($company, $location->getId(), self::CREATED, [], $actorUserId);
 
-        return $location;
+            return $location;
+        });
     }
 
     /**
@@ -111,24 +115,26 @@ final readonly class ManageStockLocations
      */
     public function revise(Company $company, Uuid $id, ?Uuid $parentId, StockLocationKind $kind, string $code, string $name, ?Uuid $actorUserId): array
     {
-        $location = $this->get($company, $id);
-        $parent = match (true) {
-            null !== $parentId => $this->parent($company, $parentId),
-            $location->isDefault() => null,
-            default => $this->defaultOf($location->getEstablishment()),
-        };
-        $holder = $this->locations->ofCodeInEstablishment(trim($code), $location->getEstablishment()->getId());
-        if (null !== $holder && !$holder->getId()->equals($location->getId())) {
-            throw new StockLocationCodeTaken();
-        }
+        return $this->transactions->run(function () use ($company, $id, $parentId, $kind, $code, $name, $actorUserId): array {
+            $location = $this->get($company, $id);
+            $parent = match (true) {
+                null !== $parentId => $this->parent($company, $parentId),
+                $location->isDefault() => null,
+                default => $this->defaultOf($location->getEstablishment()),
+            };
+            $holder = $this->locations->ofCodeInEstablishment(trim($code), $location->getEstablishment()->getId());
+            if (null !== $holder && !$holder->getId()->equals($location->getId())) {
+                throw new StockLocationCodeTaken();
+            }
 
-        $changed = $location->revise($parent, $kind, $code, $name, $this->clock->now());
-        if ([] !== $changed) {
-            $this->locations->save($location);
-            $this->record($company, $location->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $changed = $location->revise($parent, $kind, $code, $name, $this->clock->now());
+            if ([] !== $changed) {
+                $this->locations->save($location);
+                $this->record($company, $location->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $changed;
+            return $changed;
+        });
     }
 
     /**
@@ -137,17 +143,19 @@ final readonly class ManageStockLocations
      */
     public function delete(Company $company, Uuid $id, ?Uuid $actorUserId): void
     {
-        $location = $this->get($company, $id);
-        if ($location->isDefault()) {
-            throw StockLocationInUse::asDefault();
-        }
-        $children = $this->childCount($location);
-        $movements = $this->movementCount($location);
-        if ($children > 0 || $movements > 0) {
-            throw StockLocationInUse::holding($children, $movements);
-        }
-        $this->locations->remove($location);
-        $this->record($company, $id, self::DELETED, [], $actorUserId);
+        $this->transactions->run(function () use ($company, $id, $actorUserId): void {
+            $location = $this->get($company, $id);
+            if ($location->isDefault()) {
+                throw StockLocationInUse::asDefault();
+            }
+            $children = $this->childCount($location);
+            $movements = $this->movementCount($location);
+            if ($children > 0 || $movements > 0) {
+                throw StockLocationInUse::holding($children, $movements);
+            }
+            $this->locations->remove($location);
+            $this->record($company, $id, self::DELETED, [], $actorUserId);
+        });
     }
 
     private function parent(Company $company, Uuid $parentId): StockLocation

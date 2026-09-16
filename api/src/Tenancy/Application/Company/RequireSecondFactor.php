@@ -11,6 +11,7 @@ namespace App\Tenancy\Application\Company;
 
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\CompanyRepository;
 use Psr\Clock\ClockInterface;
@@ -29,16 +30,19 @@ final readonly class RequireSecondFactor
         private CompanyRepository $companies,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
     public function handle(Company $company, bool $required, ?Uuid $actorUserId): Company
     {
-        if ($company->requireMfa($required, $this->clock->now())) {
-            $this->companies->save($company);
-            $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::CHANGED, $actorUserId, ['required' => $required], $company->getId()));
-        }
+        return $this->transactions->run(function () use ($company, $required, $actorUserId): Company {
+            if ($company->requireMfa($required, $this->clock->now())) {
+                $this->companies->save($company);
+                $this->audit->record(new AuditEntry(CreateCompany::ENTITY_TYPE, $company->getId(), self::CHANGED, $actorUserId, ['required' => $required], $company->getId()));
+            }
 
-        return $company;
+            return $company;
+        });
     }
 }

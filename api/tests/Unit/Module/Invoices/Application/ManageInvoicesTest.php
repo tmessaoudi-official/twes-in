@@ -72,9 +72,9 @@ final class ManageInvoicesTest extends TestCase
         $this->provision = new ProvisionCompany(ShippedFiscalPresets::presets(), $this->taxes, $this->units, $this->establishments, new InMemoryNumberingSeries(), ShippedFiscalPresets::scales(), $this->clock);
         $this->customers = new InMemoryCustomers();
         $this->products = new InMemoryProducts();
-        $this->audit = new InMemoryAuditTrail();
-        $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
         $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->totals = new InvoiceTotals(ShippedFiscalPresets::presets(), ShippedFiscalPresets::scales());
         $this->manage = new ManageInvoices($this->invoices = new InMemoryInvoices(), $transactions, $this->customers, $this->products, $this->units, $this->taxes, $this->establishments, $this->totals, $this->audit, $this->clock);
         $this->invoices->transactions = $transactions;
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');

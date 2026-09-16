@@ -64,7 +64,7 @@ final class ManagePaymentsTest extends TestCase
         $this->transactions = new FakeTransactions();
         $this->invoices = new InMemoryInvoices();
         $this->invoices->transactions = $this->transactions;
-        $this->audit = new InMemoryAuditTrail();
+        $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->payments = new ManagePayments($this->invoices, $this->transactions, ShippedFiscalPresets::scales(), $this->audit, $this->clock);
     }
 

@@ -12,6 +12,7 @@ namespace App\Identity\Application\Mfa;
 use App\Audit\Application\AuditEntry;
 use App\Audit\Application\AuditTrail;
 use App\Identity\Domain\UserRepository;
+use App\Shared\Application\Transactions;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -26,6 +27,7 @@ final readonly class RegenerateRecoveryCodesWithPasskey
         private PasskeyAssertions $assertions,
         private IssueRecoveryCodes $issueRecoveryCodes,
         private AuditTrail $audit,
+        private Transactions $transactions,
     ) {
     }
 
@@ -39,14 +41,17 @@ final readonly class RegenerateRecoveryCodesWithPasskey
         $now ??= new \DateTimeImmutable();
         $user = $this->users->ofId($userId) ?? throw new PasskeyRefused();
 
-        $this->assertions->verify($user, $optionsJson, $credentialJson, $now);
-        $codes = $this->issueRecoveryCodes->handle($user, $now);
+        return $this->transactions->run(function () use ($user, $optionsJson, $credentialJson, $now): array {
+            // The passkey's new signature counter is saved by the verification, so it commits with the codes it paid for.
+            $this->assertions->verify($user, $optionsJson, $credentialJson, $now);
+            $codes = $this->issueRecoveryCodes->handle($user, $now);
 
-        $this->audit->record(new AuditEntry('user', $user->getId(), RegenerateRecoveryCodes::REGENERATED, $user->getId(), [
-            'count' => \count($codes),
-            'method' => 'passkey',
-        ]));
+            $this->audit->record(new AuditEntry('user', $user->getId(), RegenerateRecoveryCodes::REGENERATED, $user->getId(), [
+                'count' => \count($codes),
+                'method' => 'passkey',
+            ]));
 
-        return $codes;
+            return $codes;
+        });
     }
 }

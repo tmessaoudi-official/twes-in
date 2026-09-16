@@ -16,6 +16,7 @@ use App\CustomFields\Domain\CustomFieldDefinitionRepository;
 use App\CustomFields\Domain\CustomFieldEntity;
 use App\CustomFields\Domain\CustomFieldRule;
 use App\CustomFields\Domain\InvalidCustomFieldDefinition;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -35,6 +36,7 @@ final readonly class ManageCustomFields
         private CustomFieldDefinitionRepository $fields,
         private AuditTrail $audit,
         private ClockInterface $clock,
+        private Transactions $transactions,
     ) {
     }
 
@@ -56,17 +58,19 @@ final readonly class ManageCustomFields
      */
     public function create(Company $company, CustomFieldInput $input, ?Uuid $actorUserId): CustomFieldDefinition
     {
-        if (null !== $this->fields->ofKey($company->getId(), $input->entity, $input->key)) {
-            throw new CustomFieldKeyTaken();
-        }
-        $field = CustomFieldDefinition::create($company, $input->entity, $input->key, $input->label, $input->type, $input->required, $input->choices, $input->sortOrder, $this->clock->now());
-        if (!$input->isActive) {
-            $field->revise($input->label, $input->required, $input->choices, $input->sortOrder, false, $this->clock->now());
-        }
-        $this->fields->save($field);
-        $this->record($company, $field->getId(), self::CREATED, ['key' => $field->getKey()], $actorUserId);
+        return $this->transactions->run(function () use ($company, $input, $actorUserId): CustomFieldDefinition {
+            if (null !== $this->fields->ofKey($company->getId(), $input->entity, $input->key)) {
+                throw new CustomFieldKeyTaken();
+            }
+            $field = CustomFieldDefinition::create($company, $input->entity, $input->key, $input->label, $input->type, $input->required, $input->choices, $input->sortOrder, $this->clock->now());
+            if (!$input->isActive) {
+                $field->revise($input->label, $input->required, $input->choices, $input->sortOrder, false, $this->clock->now());
+            }
+            $this->fields->save($field);
+            $this->record($company, $field->getId(), self::CREATED, ['key' => $field->getKey()], $actorUserId);
 
-        return $field;
+            return $field;
+        });
     }
 
     /**
@@ -75,24 +79,26 @@ final readonly class ManageCustomFields
      */
     public function revise(Company $company, Uuid $id, CustomFieldInput $input, ?Uuid $actorUserId): CustomFieldDefinition
     {
-        $field = $this->fields->ofIdInCompany($id, $company->getId()) ?? throw new CustomFieldNotFound();
-        if ($input->entity !== $field->getEntity()) {
-            throw new InvalidCustomFieldDefinition('entity', "A field's kind of record never changes: declare another field.");
-        }
-        if ($input->key !== $field->getKey()) {
-            throw new InvalidCustomFieldDefinition('key', "A field's key never changes: declare another field.");
-        }
-        if ($input->type !== $field->getType()) {
-            throw new InvalidCustomFieldDefinition('type', "A field's type never changes: declare another field.");
-        }
+        return $this->transactions->run(function () use ($company, $id, $input, $actorUserId): CustomFieldDefinition {
+            $field = $this->fields->ofIdInCompany($id, $company->getId()) ?? throw new CustomFieldNotFound();
+            if ($input->entity !== $field->getEntity()) {
+                throw new InvalidCustomFieldDefinition('entity', "A field's kind of record never changes: declare another field.");
+            }
+            if ($input->key !== $field->getKey()) {
+                throw new InvalidCustomFieldDefinition('key', "A field's key never changes: declare another field.");
+            }
+            if ($input->type !== $field->getType()) {
+                throw new InvalidCustomFieldDefinition('type', "A field's type never changes: declare another field.");
+            }
 
-        $changed = $field->revise($input->label, $input->required, $input->choices, $input->sortOrder, $input->isActive, $this->clock->now());
-        if ([] !== $changed) {
-            $this->fields->save($field);
-            $this->record($company, $field->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
-        }
+            $changed = $field->revise($input->label, $input->required, $input->choices, $input->sortOrder, $input->isActive, $this->clock->now());
+            if ([] !== $changed) {
+                $this->fields->save($field);
+                $this->record($company, $field->getId(), self::REVISED, ['fields' => $changed], $actorUserId);
+            }
 
-        return $field;
+            return $field;
+        });
     }
 
     /** @param array<string, mixed> $changes */

@@ -15,6 +15,7 @@ use App\Fiscal\Application\Unit\UnitCodeTaken;
 use App\Fiscal\Application\Unit\UnitDraft;
 use App\Fiscal\Application\Unit\UnitNotFound;
 use App\Tenancy\Domain\Company;
+use App\Tests\Support\FakeTransactions;
 use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryUnits;
 use PHPUnit\Framework\TestCase;
@@ -30,8 +31,9 @@ final class ManageUnitsTest extends TestCase
     protected function setUp(): void
     {
         $this->units = new InMemoryUnits();
-        $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'));
+        $transactions = new FakeTransactions();
+        $this->audit = new InMemoryAuditTrail($transactions);
+        $this->manage = new ManageUnits($this->units, $this->audit, new MockClock('2026-09-13 10:00:00'), $transactions);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
     }
 
