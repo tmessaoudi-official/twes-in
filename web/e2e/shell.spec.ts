@@ -75,3 +75,30 @@ test('the navigation follows the window: a rail of icons on a tablet, a bottom b
   expect(box && box.y + box.height).toBeCloseTo(844, 0);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
+
+test('on a phone the settings list stands alone, a setting opens without it, and the way back returns to it', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await signIn(page);
+  await page.getByTestId('settings-gear').click();
+  await expect(page).toHaveURL(/\/company$/);
+  const nav = page.getByTestId('settings-nav');
+  await expect(nav).toBeVisible();
+  await expect(page.getByTestId('settings-index')).toBeHidden();
+
+  await page.getByTestId('settings-filter').fill('membres');
+  await expect(page.getByTestId('nav-company-profile')).toHaveCount(0);
+  await page.getByTestId('nav-members').click();
+  await expect(page.getByTestId('members-title')).toBeVisible();
+  await expect(nav).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  await page.getByTestId('settings-back').click();
+  await expect(page).toHaveURL(/\/company$/);
+  await expect(nav).toBeVisible();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await expect(page.getByTestId('settings-back')).toBeHidden();
+  await expect(page.getByTestId('settings-index')).toBeVisible();
+});

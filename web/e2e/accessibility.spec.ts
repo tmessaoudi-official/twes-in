@@ -112,6 +112,7 @@ test('the language switch translates the shell and the page', async ({ page }) =
 const WALK: readonly (readonly [string, RegExp])[] = [
   ['/invoices', /\/invoices$/],
   ['/invoices/new', /\/invoices\/new$/],
+  ['/company', /\/company$/],
   ['/customers', /\/customers$/],
   ['/customers/groups', /\/customers\/groups$/],
   ['/products', /\/products$/],

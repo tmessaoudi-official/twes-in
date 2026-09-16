@@ -201,6 +201,12 @@ describe('AppShell', () => {
     expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/company/profile');
   });
 
+  it('opens the list of settings from the gear on a phone, where the list and a page do not fit side by side', async () => {
+    width.next(390);
+    const { byTestId } = await render();
+    expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/company');
+  });
+
   it('keeps every part of the shell inside a landmark, each named once', async () => {
     const { el } = await render();
 

@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -37,10 +37,17 @@ class StaticLoader implements TranslateLoader {
       shell: {
         navigation: 'Navigation principale',
         settings_navigation: 'Paramètres de la société',
+        settings: 'Paramètres',
+        settings_filter: 'Filtrer les réglages',
+        settings_back: 'Tous les paramètres',
+        settings_none: 'Aucun réglage ne correspond.',
       },
     });
   }
 }
+
+@Component({ template: '' })
+class Blank {}
 
 describe('SettingsArea', () => {
   const permissions = signal<readonly string[]>([]);
@@ -54,7 +61,10 @@ describe('SettingsArea', () => {
     await TestBed.configureTestingModule({
       imports: [SettingsArea],
       providers: [
-        provideRouter([]),
+        provideRouter([
+          { path: 'company', component: Blank },
+          { path: 'members', component: Blank },
+        ]),
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         provideTranslateService({
@@ -107,6 +117,49 @@ describe('SettingsArea', () => {
     ]);
     expect(byTestId('nav-members')?.getAttribute('href')).toBe('/members');
     expect(el.querySelector('router-outlet')).not.toBeNull();
+  });
+
+  it('filters the settings by name, whatever the accents and the case, leaving out empty groups', async () => {
+    const { fixture, el, byTestId, groups } = await render();
+    const filter = byTestId('settings-filter') as HTMLInputElement;
+    expect(filter.getAttribute('aria-label') ?? filter.labels?.[0]?.textContent).toContain(
+      'Filtrer les réglages',
+    );
+
+    filter.value = 'PROFIL SOCIETE';
+    filter.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(groups()).toEqual([['settings-section-company', 'Société', ['nav-company-profile']]]);
+
+    // A group's name finds every setting in it.
+    filter.value = 'fiscalite';
+    filter.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(groups()).toEqual([
+      ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units']],
+    ]);
+
+    filter.value = 'zzz';
+    filter.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    expect(groups()).toEqual([]);
+    expect(el.textContent).toContain('Aucun réglage ne correspond.');
+  });
+
+  it('lists the sections alone at /company, and offers the way back to them from a page', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/company');
+    const index = await render();
+    expect(index.byTestId('settings-nav')?.getAttribute('data-at-index')).toBe('true');
+    expect(index.byTestId('settings-back')).toBeNull();
+    index.fixture.destroy();
+
+    await router.navigateByUrl('/members');
+    const page = await render();
+    expect(page.byTestId('settings-nav')?.getAttribute('data-at-index')).toBe('false');
+    expect(page.byTestId('settings-back')?.getAttribute('href')).toBe('/company');
+    expect(page.byTestId('settings-back')?.textContent).toContain('Tous les paramètres');
   });
 
   it('shows a member only the settings they may open', async () => {

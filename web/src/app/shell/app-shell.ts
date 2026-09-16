@@ -22,6 +22,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
+import { SETTINGS_INDEX } from './settings-area';
 import { AuthFacade } from '../auth/auth-facade';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
@@ -117,8 +118,14 @@ export class AppShell {
   protected readonly sections = computed(() =>
     navSections(this.visible([...CORE_NAV, ...MODULE_NAV, ...DEV_NAV]), SIDEBAR_SECTIONS),
   );
-  /** The gear opens the first settings page this user may see, and is absent when there is none. */
-  protected readonly settingsRoute = computed(() => this.visible(SETTINGS_NAV)[0]?.route ?? null);
+  /**
+   * The gear opens the first settings page this user may see, and is absent when there is none. On a phone the list and
+   * a page do not fit side by side, so it opens the list.
+   */
+  protected readonly settingsRoute = computed(() => {
+    const first = this.visible(SETTINGS_NAV)[0]?.route ?? null;
+    return first !== null && this.handset() ? SETTINGS_INDEX : first;
+  });
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
   /** What the command palette offers this user: the modules' commands, then a way to every screen they may see. */
   protected readonly commands = computed((): readonly Command[] =>

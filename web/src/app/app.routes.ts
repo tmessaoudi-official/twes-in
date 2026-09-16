@@ -210,6 +210,12 @@ export const routes: Routes = [
         loadComponent: () => import('./shell/settings-area').then((m) => m.SettingsArea),
         children: [
           {
+            // The list of settings on its own, which the gear opens on a phone.
+            path: 'company',
+            pathMatch: 'full',
+            loadComponent: () => import('./shell/settings-index').then((m) => m.SettingsIndex),
+          },
+          {
             path: 'members',
             loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
           },

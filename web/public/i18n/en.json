@@ -413,7 +413,11 @@
     "collapse_menu": "Collapse the menu",
     "expand_menu": "Expand the menu",
     "settings": "Settings",
-    "settings_navigation": "Company settings"
+    "settings_navigation": "Company settings",
+    "settings_filter": "Filter the settings",
+    "settings_back": "All settings",
+    "settings_none": "No setting matches.",
+    "settings_pick": "Pick a setting from the list."
   },
   "languages": {
     "fr": "Français",

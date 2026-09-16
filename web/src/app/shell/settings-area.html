@@ -1,25 +1,51 @@
-<div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
-  <!-- On a narrow screen the groups become one row that scrolls sideways, so the page stays in view. -->
+<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
+  @if (!atIndex()) {
+    <a
+      [routerLink]="index"
+      class="flex items-center gap-1 self-start text-sm font-medium text-primary lg:hidden"
+      data-testid="settings-back"
+    >
+      <mat-icon aria-hidden="true">arrow_back</mat-icon>
+      {{ 'shell.settings_back' | translate }}
+    </a>
+  }
+
+  <!-- Below the large window class the list and a page take turns: the list alone at its index, a page without it. -->
   <nav
     [attr.aria-label]="'shell.settings_navigation' | translate"
-    class="flex shrink-0 overflow-x-auto rounded-xl border border-outline-variant py-2 lg:sticky lg:top-20 lg:block lg:w-60 lg:overflow-visible"
+    [attr.data-at-index]="atIndex()"
+    class="shrink-0 rounded-xl border border-outline-variant py-2 data-[at-index=false]:max-lg:hidden lg:sticky lg:top-20 lg:w-72"
     data-testid="settings-nav"
   >
+    <div class="flex flex-col gap-2 px-4 pb-1 pt-2">
+      <p class="text-lg font-semibold">{{ 'shell.settings' | translate }}</p>
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+        <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+        <input
+          matInput
+          type="search"
+          data-testid="settings-filter"
+          [attr.aria-label]="'shell.settings_filter' | translate"
+          [placeholder]="'shell.settings_filter' | translate"
+          [value]="query()"
+          (input)="query.set($any($event.target).value)"
+        />
+      </mat-form-field>
+    </div>
     @for (group of sections(); track group.section) {
       <h2
         [id]="'settings-section-' + group.section"
-        class="px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-on-surface-variant max-lg:sr-only"
+        class="px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wider text-on-surface-variant"
       >
         {{ 'nav.sections.' + group.section | translate }}
       </h2>
       <mat-nav-list
-        class="!px-2 !py-0 max-lg:!flex max-lg:shrink-0"
+        class="!px-2 !py-0"
         [attr.aria-labelledby]="'settings-section-' + group.section"
       >
         @for (entry of group.entries; track entry.key) {
           <a
             mat-list-item
-            class="max-lg:!w-auto max-lg:shrink-0"
             [routerLink]="entry.route"
             routerLinkActive
             #active="routerLinkActive"
@@ -32,10 +58,14 @@
           </a>
         }
       </mat-nav-list>
+    } @empty {
+      <p class="px-4 py-3 text-sm text-on-surface-variant" data-testid="settings-filter-none">
+        {{ 'shell.settings_none' | translate }}
+      </p>
     }
   </nav>
 
-  <div class="min-w-0 flex-1">
+  <div class="min-w-0 flex-1 data-[at-index=true]:max-lg:hidden" [attr.data-at-index]="atIndex()">
     <router-outlet />
   </div>
 </div>

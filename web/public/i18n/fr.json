@@ -413,7 +413,11 @@
     "collapse_menu": "Réduire le menu",
     "expand_menu": "Déployer le menu",
     "settings": "Paramètres",
-    "settings_navigation": "Paramètres de la société"
+    "settings_navigation": "Paramètres de la société",
+    "settings_filter": "Filtrer les réglages",
+    "settings_back": "Tous les paramètres",
+    "settings_none": "Aucun réglage ne correspond.",
+    "settings_pick": "Choisissez un réglage dans la liste."
   },
   "languages": {
     "fr": "Français",
