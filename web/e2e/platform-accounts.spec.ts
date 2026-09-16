@@ -71,7 +71,13 @@ test('an operator ends the sessions of an account, deactivates it and reactivate
   await page.screenshot({ path: test.info().outputPath('platform-accounts.png'), fullPage: true });
 
   // Ending the sessions sends their open browser back to the login page on its next request.
+  const ended = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/end-sessions') && response.request().method() === 'POST',
+  );
   await page.getByTestId(`end-sessions-${managed}`).click();
+  // Only once the API has ended them: a reload racing the click can still carry the old session.
+  expect((await ended).ok()).toBe(true);
   await theirPage.reload();
   await expect(theirPage).toHaveURL(/\/login/);
   await signIn(theirPage, managed, THEIR_PASSWORD);
