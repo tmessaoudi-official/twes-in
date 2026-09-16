@@ -108,7 +108,7 @@ final readonly class MfaController
     {
         try {
             $codes = $this->confirmEnrolment->handle($this->currentUserId(), self::codeIn($request));
-        } catch (SecondFactorRefused) {
+        } catch (SecondFactorRefused|SecondFactorUnreadable) {
             return new JsonResponse(['error' => 'invalid_code'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 

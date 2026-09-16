@@ -140,6 +140,46 @@ final class SecondFactorTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    /**
+     * The limiter behind the second factor (five in five minutes) is reached only by codes that are right: the lock
+     * answers every wrong one first, both budgets being five (docs/SPEC.md § 8 row 27). Recovery codes are right and
+     * spent once each, so they are how a run of right codes is made.
+     */
+    public function testRightCodesStillMeetTheLimiterAtTheLoginStep(): void
+    {
+        $codes = $this->enrolledUser('someone@twes.local');
+
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            $this->signOut();
+            $this->login('someone@twes.local', self::PASSWORD);
+            $this->postJson('/api/auth/mfa/verify', ['code' => $codes[$attempt]]);
+            self::assertResponseIsSuccessful();
+        }
+        $this->signOut();
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->postJson('/api/auth/mfa/verify', ['code' => $codes[5]]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame(['error' => 'too_many_attempts'], $this->json());
+    }
+
+    public function testRightCodesStillMeetTheLimiterWhenReplacingTheRecoveryCodes(): void
+    {
+        $codes = $this->enrolledUser('someone@twes.local');
+        for ($attempt = 0; $attempt < 5; ++$attempt) {
+            $this->signOut();
+            $this->login('someone@twes.local', self::PASSWORD);
+            $this->postJson('/api/auth/mfa/verify', ['code' => $codes[$attempt]]);
+            self::assertResponseIsSuccessful();
+        }
+
+        // Signed in, with the budget both sites share spent: a right authenticator code is still refused.
+        $this->postJson('/api/auth/mfa/recovery-codes', ['code' => $this->currentCode()]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_TOO_MANY_REQUESTS);
+        self::assertSame(['error' => 'too_many_attempts'], $this->json());
+    }
+
     public function testAnotherAccountSigningInClosesTheSecondFactorTheFirstOwed(): void
     {
         $this->enrolledUser('someone@twes.local');

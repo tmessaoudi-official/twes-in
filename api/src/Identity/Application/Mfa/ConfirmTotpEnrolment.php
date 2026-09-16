@@ -40,7 +40,8 @@ final readonly class ConfirmTotpEnrolment
     /**
      * @return list<string> the raw recovery codes, to be shown once
      *
-     * @throws SecondFactorRefused when the code does not match the pending secret
+     * @throws SecondFactorRefused    when the code does not match the pending secret
+     * @throws SecondFactorUnreadable when the current key cannot read the pending secret
      */
     public function handle(Uuid $userId, string $code, ?\DateTimeImmutable $now = null): array
     {
@@ -54,7 +55,13 @@ final readonly class ConfirmTotpEnrolment
             throw new SecondFactorRefused();
         }
 
-        $timestep = $this->totp->verify($this->cipher->decrypt($pending), $code, $now);
+        try {
+            $timestep = $this->totp->verify($this->cipher->decrypt($pending), $code, $now);
+        } catch (\RuntimeException) {
+            // The pending secret was sealed under a key since rotated: no code can confirm it, so it is refused, not a
+            // 500, and starting the enrolment again seals a new one under the current key (docs/SPEC.md § 8 row 31).
+            throw new SecondFactorUnreadable();
+        }
 
         if (null === $timestep) {
             throw new SecondFactorRefused();

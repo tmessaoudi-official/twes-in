@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional;
 
 use App\Identity\Infrastructure\Mfa\OtphpTotpCodes;
+use App\Identity\Infrastructure\Mfa\SodiumSecretCipher;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -89,6 +90,30 @@ final class MfaEnrolmentTest extends ApiTestCase
         $this->signOut();
         $this->login('someone@twes.local', self::PASSWORD);
         self::assertTrue($this->boolAt($this->json(), 'mfaRequired'));
+    }
+
+    /**
+     * A pending secret sealed under a key since rotated cannot be read: confirming is refused as a wrong code would be,
+     * not answered with a 500, and starting again seals a new secret under the current key (docs/SPEC.md § 8 row 31).
+     */
+    public function testConfirmingAPendingSecretTheCurrentKeyCannotReadIsRefusedAndStartingAgainWorks(): void
+    {
+        $this->createUser('someone@twes.local', self::PASSWORD);
+        $this->login('someone@twes.local', self::PASSWORD);
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        $secret = $this->stringAt($this->json(), 'secret');
+        $sealedElsewhere = (new SodiumSecretCipher('AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE='))->encrypt($secret);
+        $this->em()->getConnection()->executeStatement('UPDATE "user" SET totp_secret = ? WHERE email = ?', [$sealedElsewhere, 'someone@twes.local']);
+
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($secret, new \DateTimeImmutable())]);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertSame('invalid_code', $this->stringAt($this->json(), 'error'));
+
+        $this->postJson('/api/auth/mfa/enrolment', []);
+        $fresh = $this->stringAt($this->json(), 'secret');
+        $this->postJson('/api/auth/mfa/enrolment/confirm', ['code' => (new OtphpTotpCodes())->codeAt($fresh, new \DateTimeImmutable())]);
+        self::assertResponseIsSuccessful();
     }
 
     public function testConfirmingWithAWrongCodeLeavesItOff(): void
