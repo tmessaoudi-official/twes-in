@@ -614,6 +614,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 26 | A second factor that cannot be read is not a wrong guess: after a key rotation the refusal stops counting toward the lock | S | todo | - | api/src/Identity/** api/tests/** |
 | 27 | The second-factor limiter is covered again: the lock answers every wrong code first, so only a run of correct codes reaches it | S | todo | - | api/tests/** |
 | 28 | The tab label's colour in the dark scheme: understood, then fixed or ruled correct — row 23 excluded it from the dark walk rather than guess | S | todo | - | web/src/styles.scss web/src/app/shared/ui/** web/e2e/accessibility.spec.ts |
+| 29 | A withholding prints one minus sign on a credit note, not two: the template prefixes a sign to an amount that is already negative, and the only test touching that template checks its margins | S | todo | - | api/templates/pdf/** api/tests/** |
 <!-- /progress-block -->
 
 ### Delivered
