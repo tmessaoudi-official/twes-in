@@ -64,6 +64,7 @@ final class KeepStockTest extends TestCase
         $this->products = new InMemoryProducts();
         $this->settings = new InMemorySettings();
         $this->transactions = new FakeTransactions();
+        $this->movements->transactions = $this->transactions;
         $locations = new InMemoryStockLocations();
         $establishments = new InMemoryEstablishments();
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
@@ -141,6 +142,8 @@ final class KeepStockTest extends TestCase
 
         self::assertSame([StockMovementKind::Adjustment, '-2.000', '0.000'], [$short->getKind(), $short->getQuantity(), $same->getQuantity()]);
         self::assertSame(2, $this->transactions->committed);
+        $at = $this->laptop->getId()->toRfc4122().' '.$this->site->getId()->toRfc4122().' in transaction';
+        self::assertSame(['lock '.$at, 'onHand '.$at, 'lock '.$at, 'onHand '.$at], $this->movements->calls, 'a count reads its stock under the lock another count or a delivery takes');
         self::assertSame([[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '3.000']], $this->levels());
         $this->expectException(InvalidStockMovement::class);
         $this->keep->count($this->company, $this->laptop->getId(), $this->site->getId(), '-1', null);

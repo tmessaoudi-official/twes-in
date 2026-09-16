@@ -24,6 +24,7 @@ use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductCategoryRepository;
+use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -50,6 +51,7 @@ final readonly class ManageProducts
         private AuditTrail $audit,
         private ClockInterface $clock,
         private CustomFieldDefinitionRepository $customFields,
+        private ProductStockHistory $stockHistory,
     ) {
     }
 
@@ -101,6 +103,7 @@ final readonly class ManageProducts
             throw new ProductReferenceTaken();
         }
         [$unit, $category] = $this->checked($company, $input, $product);
+        $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
         $values = $this->customFieldValues($company, $input, $product);
 
         $now = $this->clock->now();
@@ -146,6 +149,26 @@ final readonly class ManageProducts
         }
 
         return [$unit, $category];
+    }
+
+    /**
+     * Stock is the sum of a product's movements in its unit: once stock was moved, a new unit would silently rename every
+     * figure (10 kg read as 10 g), and a service is never counted again. Becoming goods breaks nothing.
+     *
+     * @throws InvalidProduct
+     */
+    private function assertStockKeepsItsMeaning(Company $company, Product $product, Unit $unit, ProductKind $kind): void
+    {
+        $unitChanges = !$unit->getId()->equals($product->getUnit()->getId());
+        $leavesGoods = ProductKind::Goods === $product->getDetails()->kind && ProductKind::Goods !== $kind;
+        if ((!$unitChanges && !$leavesGoods) || !$this->stockHistory->hasMovements($product->getId(), $company->getId())) {
+            return;
+        }
+        if ($unitChanges) {
+            throw new InvalidProduct('unitId', \sprintf('Stock of %s was moved in %s, so it keeps that unit.', $product->getReference(), $product->getUnit()->getCode()));
+        }
+
+        throw new InvalidProduct('kind', \sprintf('Stock of %s was moved, so it stays goods.', $product->getReference()));
     }
 
     /** @return array<string, string|int|float|bool> */

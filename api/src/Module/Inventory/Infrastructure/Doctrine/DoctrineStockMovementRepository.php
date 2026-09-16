@@ -45,6 +45,15 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['product' => $productId, 'company' => $companyId], ['at' => 'DESC', 'id' => 'DESC'], $limit);
     }
 
+    /** A transaction-scoped advisory lock: stock is a sum of rows, so there is no one row to lock. */
+    public function lockStockOf(Uuid $productId, Uuid $locationId): void
+    {
+        $this->entityManager->getConnection()->executeQuery(
+            'SELECT pg_advisory_xact_lock(hashtextextended(?, 0))',
+            ['stock:'.$productId->toRfc4122().':'.$locationId->toRfc4122()],
+        );
+    }
+
     public function onHand(Uuid $productId, Uuid $locationId): string
     {
         $sum = $this->entityManager->createQueryBuilder()

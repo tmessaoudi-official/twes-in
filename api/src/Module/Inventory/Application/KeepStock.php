@@ -70,6 +70,7 @@ final readonly class KeepStock
     {
         return $this->transactions->run(function () use ($company, $productId, $locationId, $counted, $actorUserId): StockMovement {
             [$product, $location] = $this->trackedAt($company, $productId, $locationId);
+            $this->movements->lockStockOf($product->getId(), $location->getId());
             $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId), $actorUserId, $this->clock->now());
             $this->movements->save($movement);
 

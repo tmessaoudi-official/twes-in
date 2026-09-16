@@ -30,6 +30,7 @@ use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryNumberingSeries;
 use App\Tests\Support\InMemoryProductCategories;
 use App\Tests\Support\InMemoryProducts;
+use App\Tests\Support\InMemoryProductStockHistory;
 use App\Tests\Support\InMemoryTaxComponents;
 use App\Tests\Support\InMemoryUnits;
 use App\Tests\Support\ShippedFiscalPresets;
@@ -44,6 +45,7 @@ final class ManageProductsTest extends TestCase
     private InMemoryProductCategories $categories;
     private InMemoryCustomFieldDefinitions $fields;
     private InMemoryAuditTrail $audit;
+    private InMemoryProductStockHistory $stockHistory;
     private ManageProducts $manage;
     private Company $company;
     private Company $globex;
@@ -57,7 +59,8 @@ final class ManageProductsTest extends TestCase
         $this->categories = new InMemoryProductCategories();
         $this->fields = new InMemoryCustomFieldDefinitions();
         $this->audit = new InMemoryAuditTrail();
-        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields);
+        $this->stockHistory = new InMemoryProductStockHistory();
+        $this->manage = new ManageProducts(new InMemoryProducts(), $this->categories, $this->units, $this->taxes, $this->audit, $clock, $this->fields, $this->stockHistory);
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->globex = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $provision->handle($this->company);
@@ -175,6 +178,38 @@ final class ManageProductsTest extends TestCase
         self::assertFalse($product->isActive());
     }
 
+    public function testAProductWithStockHistoryKeepsItsUnitAndStaysGoods(): void
+    {
+        $product = $this->manage->create($this->company, $this->input(unit: 'KGM'), null);
+        $this->stockHistory->withMovements[] = $product->getId()->toRfc4122();
+
+        try {
+            $this->manage->revise($this->company, $product->getId(), $this->input(unit: 'C62'), null);
+            self::fail('The unit of a product with stock movements was changed.');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('unitId', $refused->field);
+        }
+        try {
+            $this->manage->revise($this->company, $product->getId(), $this->input(unit: 'KGM', kind: ProductKind::Service), null);
+            self::fail('A product with stock movements became a service.');
+        } catch (InvalidProduct $refused) {
+            self::assertSame('kind', $refused->field);
+        }
+        self::assertSame(['KGM', ProductKind::Goods], [$product->getUnit()->getCode(), $product->getDetails()->kind]);
+
+        $this->manage->revise($this->company, $product->getId(), $this->input(unit: 'KGM', price: '9'), null);
+        self::assertSame('9.0000', $product->getDetails()->unitPriceNet, 'everything else is still revised');
+
+        $service = $this->manage->create($this->company, $this->input(reference: 'SRV-001', unit: 'HUR', kind: ProductKind::Service), null);
+        $this->stockHistory->withMovements[] = $service->getId()->toRfc4122();
+        $this->manage->revise($this->company, $service->getId(), $this->input(reference: 'SRV-001', unit: 'HUR', kind: ProductKind::Goods), null);
+        self::assertSame(ProductKind::Goods, $service->getDetails()->kind, 'becoming goods never breaks a stock figure');
+
+        $fresh = $this->manage->create($this->company, $this->input(reference: 'ART-002', unit: 'KGM'), null);
+        $this->manage->revise($this->company, $fresh->getId(), $this->input(reference: 'ART-002', unit: 'C62', kind: ProductKind::Service), null);
+        self::assertSame(['C62', ProductKind::Service], [$fresh->getUnit()->getCode(), $fresh->getDetails()->kind], 'without movements both change');
+    }
+
     public function testCustomFieldValuesAreCheckedAgainstTheCompanysFieldsForProductsOnly(): void
     {
         $now = new \DateTimeImmutable();
@@ -230,12 +265,13 @@ final class ManageProductsTest extends TestCase
         bool $active = true,
         array $customFields = [],
         ?Company $company = null,
+        ProductKind $kind = ProductKind::Goods,
     ): ProductInput {
         $company ??= $this->company;
 
         return new ProductInput(
             $reference,
-            new ProductDetails($name, null, ProductKind::Goods, $price, null, null),
+            new ProductDetails($name, null, $kind, $price, null, null),
             $unitId ?? $this->unit($unit, $company)->getId(),
             $categoryId,
             $taxIds ?? array_map(fn (string $code): Uuid => $this->tax($code, $company)->getId(), $taxes ?? ['TVA19']),

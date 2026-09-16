@@ -82,8 +82,12 @@ final readonly class MoveStockForDeliveryNotes
         }
 
         $now = $this->clock->now();
+        ksort($out);
         $this->transactions->run(function () use ($establishment, $out, $deliveryNoteId, $now): void {
             $location = $this->locations->defaultOf($establishment);
+            foreach ($out as $delivered) {
+                $this->movements->lockStockOf($delivered[0]->getId(), $location->getId());
+            }
             $this->movements->save(...array_map(
                 static fn (array $delivered): StockMovement => StockMovement::delivery($delivered[0], $location, $delivered[1]->value, $deliveryNoteId, $now),
                 array_values($out),

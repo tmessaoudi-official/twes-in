@@ -28,6 +28,8 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'membership.added',
   'invitation.received',
   'invitation.accepted',
+  'stock.delivery_note_lines_left_out',
+  'stock.delivery_note_moved_no_stock',
 ] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
@@ -52,6 +54,15 @@ const RECORDS = new Map<string, NotificationRecord>([
   // An invitation is to another company, and its link is in the mail alone: nothing here to open either.
   ['invitation.received', { icon: 'mail', route: null, permission: null }],
   ['invitation.accepted', { icon: 'group_add', route: '/members', permission: 'user.read' }],
+  // A delivery note whose stock did not all move: the movements show what did.
+  [
+    'stock.delivery_note_lines_left_out',
+    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
+  [
+    'stock.delivery_note_moved_no_stock',
+    { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
 ]);
 
 export function notificationRecord(type: string): NotificationRecord {

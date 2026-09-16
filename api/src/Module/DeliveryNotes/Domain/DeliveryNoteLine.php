@@ -83,6 +83,20 @@ class DeliveryNoteLine implements CompanyOwned
         }
     }
 
+    /**
+     * @internal validation checks the quantity against its unit as the unit counts today: a unit's decimals may have been
+     * lowered since the line was written, and stock is moved in the unit's own precision
+     *
+     * @throws InvalidDeliveryNote
+     */
+    public function assertCountedByItsUnit(): void
+    {
+        [, $decimals] = [...explode('.', $this->quantity), ''];
+        if (\strlen(rtrim($decimals, '0')) > $this->unit->getDecimals()) {
+            throw new InvalidDeliveryNote('quantity', \sprintf('Line %d delivers %s, but the unit %s now counts with %d decimals: revise the line before validating.', $this->position, $this->quantity, $this->unit->getCode(), $this->unit->getDecimals()));
+        }
+    }
+
     /** @internal validation takes each tax's code, rate and VAT base behaviour again, as they stand on the issue day */
     public function retakeTaxes(): void
     {

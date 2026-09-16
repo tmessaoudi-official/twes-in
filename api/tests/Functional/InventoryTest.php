@@ -24,6 +24,8 @@ use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
+use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\HttpFoundation\Response;
 
 final class InventoryTest extends ApiTestCase
@@ -165,6 +167,55 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testANoteWhoseStockNeverMovedIsReplayedOnceByTheCommand(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        $customerId = $this->customer();
+        $noteId = $this->validatedNote($customerId, '3');
+        // What a failed listener leaves behind: a validated note and no movement of it.
+        $this->em()->getConnection()->executeStatement("DELETE FROM stock_movement WHERE source_type = 'delivery_note'");
+        self::assertSame(['10.000'], array_column($this->levels(), 'quantity'));
+        $companyId = $this->company->getId()->toRfc4122();
+
+        $first = $this->replay([$companyId, $noteId]);
+        $second = $this->replay([$companyId, $noteId]);
+
+        self::assertSame([0, 0], [$first->getStatusCode(), $second->getStatusCode()], $first->getDisplay().$second->getDisplay());
+        self::assertStringContainsString('1 movement', $first->getDisplay());
+        self::assertStringContainsString('already moved', $second->getDisplay());
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+
+        $draftId = $this->draftNote($customerId, '1');
+        foreach ([[$companyId, $draftId], [$this->createCompany('Globex')->getId()->toRfc4122(), $noteId], [$companyId, 'not-an-id']] as $arguments) {
+            self::assertSame(1, $this->replay($arguments)->getStatusCode(), implode(' ', $arguments));
+        }
+        self::assertSame(['7.000'], array_column($this->levels(), 'quantity'));
+    }
+
+    public function testAProductWhoseStockWasMovedKeepsItsUnitEvenWithInventoryOff(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write', 'product.read', 'product.write']);
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $this->defaultLocationId(), 'quantity' => '10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->em()->persist(ModuleState::of($this->company(), 'inventory', false, new \DateTimeImmutable()));
+        $this->em()->flush();
+        $hour = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('HUR', $this->company->getId());
+        $piece = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($hour);
+        self::assertNotNull($piece);
+        $laptop = ['reference' => 'ART-001', 'name' => 'Portable 14"', 'description' => null, 'kind' => 'goods', 'unitId' => $hour->getId()->toRfc4122(), 'unitPriceNet' => '1250', 'costPrice' => null, 'categoryId' => null, 'barcode' => null, 'defaultTaxComponentIds' => [], 'customFields' => [], 'isActive' => true];
+
+        foreach (['unitId' => $laptop, 'kind' => [...$laptop, 'unitId' => $piece->getId()->toRfc4122(), 'kind' => 'service']] as $field => $body) {
+            $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->laptopId, $body);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+        }
+        self::assertSame('C62', $this->em()->getConnection()->fetchOne('SELECT u.code FROM product p JOIN unit u ON u.id = p.unit_id WHERE p.id = ?', [$this->laptopId]));
+        $this->sendJson('PUT', '/api/companies/'.$this->company->getId()->toRfc4122().'/products/'.$this->supportId, [...$laptop, 'reference' => 'SRV-001', 'name' => 'Assistance', 'kind' => 'service', 'unitPriceNet' => '50']);
+        self::assertResponseIsSuccessful();
+    }
+
     public function testWithoutThePermissionOrForAnotherCompanyNothingIsFound(): void
     {
         $this->signedIn(['stock.read']);
@@ -185,8 +236,27 @@ final class InventoryTest extends ApiTestCase
         self::assertEquals(0, $this->em()->getConnection()->fetchOne('SELECT count(*) FROM stock_movement'));
     }
 
+    /** @param array{string, string} $arguments company id and delivery note id */
+    private function replay(array $arguments): CommandTester
+    {
+        $tester = new CommandTester((new Application(static::$kernel ?? throw new \LogicException('kernel not booted')))->find('app:stock:replay-delivery-note'));
+        $tester->execute(['company' => $arguments[0], 'delivery-note' => $arguments[1]]);
+
+        return $tester;
+    }
+
     /** A validated note delivering the laptop to the customer; its id. */
     private function validatedNote(string $customerId, string $quantity): string
+    {
+        $noteId = $this->draftNote($customerId, $quantity);
+        $this->postJson($this->path('delivery-notes', $noteId).'/validate', null);
+        self::assertResponseIsSuccessful();
+
+        return $noteId;
+    }
+
+    /** A draft note delivering the laptop to the customer; its id. */
+    private function draftNote(string $customerId, string $quantity): string
     {
         $this->postJson($this->path('delivery-notes'), [
             'customerId' => $customerId,
@@ -203,11 +273,8 @@ final class InventoryTest extends ApiTestCase
             'lines' => [['productId' => $this->laptopId, 'quantity' => $quantity]],
         ]);
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
-        $noteId = $this->stringAt($this->json(), 'id');
-        $this->postJson($this->path('delivery-notes', $noteId).'/validate', null);
-        self::assertResponseIsSuccessful();
 
-        return $noteId;
+        return $this->stringAt($this->json(), 'id');
     }
 
     private function customer(): string

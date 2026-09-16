@@ -217,6 +217,22 @@ final class DeliveryNoteTest extends TestCase
         $note->validate('BL-2026-00002', new \DateTimeImmutable('2026-09-15'), $later);
     }
 
+    public function testValidationRefusesAQuantityItsUnitNoLongerCounts(): void
+    {
+        $kilogram = Unit::create($this->company, 'KGM', 'Kilogramme', 3, 9, $this->now);
+        $note = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [
+            new DeliveryNoteLineDetails(null, 'Farine', '2.5', $kilogram, '1', []),
+        ], $this->now);
+        $kilogram->revise('Kilogramme', 0, true, 9, $this->now);
+
+        $this->assertRefused('quantity', fn () => $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now));
+        self::assertSame([DeliveryNoteStatus::Draft, null, []], [$note->getStatus(), $note->getNumber(), $note->releaseEvents()]);
+
+        $kilogram->revise('Kilogramme', 1, true, 9, $this->now);
+        $note->validate('BL-2026-00001', new \DateTimeImmutable('2026-09-15'), $this->now);
+        self::assertSame(DeliveryNoteStatus::Validated, $note->getStatus());
+    }
+
     public function testANoteIsValidatedWithALineAndGoesWhereItOrItsCustomerSays(): void
     {
         $empty = DeliveryNote::create($this->company, $this->establishment(), $this->customer, new DeliveryNoteHeader(), [], $this->now);

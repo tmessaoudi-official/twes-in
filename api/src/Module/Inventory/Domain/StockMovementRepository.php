@@ -26,6 +26,13 @@ interface StockMovementRepository
     public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array;
 
     /**
+     * Holds the stock of a product at a location until the current transaction ends, so a count that reads it and a
+     * delivery that takes from it run one after the other; a count would otherwise record its difference from a stock
+     * the delivery had already changed. Taken inside a transaction only; callers taking several take them in a fixed order.
+     */
+    public function lockStockOf(Uuid $productId, Uuid $locationId): void;
+
+    /**
      * The stock of a product at a location, "0.000" when nothing ever moved there.
      *
      * @return numeric-string

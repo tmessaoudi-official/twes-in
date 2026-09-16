@@ -438,6 +438,8 @@
       "membership_added": "Vous avez été ajouté à {{company}}.",
       "invitation_accepted": "{{display_name}} a rejoint l'entreprise.",
       "invitation_received": "Une invitation à rejoindre {{company}} vous attend dans votre messagerie.",
+      "stock_delivery_note_lines_left_out": "Le bon de livraison {{number}} est validé, mais certaines de ses lignes n'ont pas sorti de stock (unité différente ou quantité absente).",
+      "stock_delivery_note_moved_no_stock": "Le stock du bon de livraison {{number}} n'a pas pu être mis à jour. Rien n'a bougé : prévenez l'administrateur de la plateforme, qui peut le rejouer.",
       "unknown": "Nouvelle notification."
     }
   },

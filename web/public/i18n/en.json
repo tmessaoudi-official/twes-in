@@ -438,6 +438,8 @@
       "membership_added": "You were added to {{company}}.",
       "invitation_accepted": "{{display_name}} joined the company.",
       "invitation_received": "An invitation to join {{company}} is waiting in your email.",
+      "stock_delivery_note_lines_left_out": "Delivery note {{number}} is validated, but some of its lines moved no stock (another unit, or no quantity).",
+      "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: tell the platform administrator, who can replay it.",
       "unknown": "New notification."
     }
   },

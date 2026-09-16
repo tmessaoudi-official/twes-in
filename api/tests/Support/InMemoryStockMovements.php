@@ -12,6 +12,7 @@ namespace App\Tests\Support;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Shared\Application\Transactions;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 
@@ -19,6 +20,9 @@ final class InMemoryStockMovements implements StockMovementRepository
 {
     /** @var list<StockMovement> */
     public array $movements = [];
+    /** @var list<string> "lock <product> <location>" and "onHand <product> <location>", in call order, with " in transaction" while one is open */
+    public array $calls = [];
+    public ?Transactions $transactions = null;
 
     public function save(StockMovement ...$movements): void
     {
@@ -59,8 +63,14 @@ final class InMemoryStockMovements implements StockMovementRepository
         return \array_slice($movements, 0, $limit);
     }
 
+    public function lockStockOf(Uuid $productId, Uuid $locationId): void
+    {
+        $this->calls[] = $this->call('lock', $productId, $locationId);
+    }
+
     public function onHand(Uuid $productId, Uuid $locationId): string
     {
+        $this->calls[] = $this->call('onHand', $productId, $locationId);
         $sum = new Number('0.000');
         foreach ($this->movements as $movement) {
             if ($movement->getProduct()->getId()->equals($productId) && $movement->getLocation()->getId()->equals($locationId)) {
@@ -92,5 +102,10 @@ final class InMemoryStockMovements implements StockMovementRepository
     public function countAt(Uuid $locationId): int
     {
         return \count(array_filter($this->movements, static fn (StockMovement $m) => $m->getLocation()->getId()->equals($locationId)));
+    }
+
+    private function call(string $name, Uuid $productId, Uuid $locationId): string
+    {
+        return \sprintf('%s %s %s%s', $name, $productId->toRfc4122(), $locationId->toRfc4122(), true === $this->transactions?->active() ? ' in transaction' : '');
     }
 }

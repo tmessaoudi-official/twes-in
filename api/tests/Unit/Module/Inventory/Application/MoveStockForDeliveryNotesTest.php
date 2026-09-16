@@ -70,6 +70,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->settings = new InMemorySettings();
         $this->states = new InMemoryModuleStates();
         $this->transactions = new FakeTransactions();
+        $this->movements->transactions = $this->transactions;
         $establishments = new InMemoryEstablishments();
         $products = new InMemoryProducts();
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
@@ -114,6 +115,11 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         self::assertTrue($this->movements->movements[0]->getSourceId()?->equals($noteId));
         self::assertTrue($this->movements->movements[0]->getLocation()->isDefault());
         self::assertSame(1, $this->transactions->committed);
+        $default = $this->movements->movements[0]->getLocation()->getId()->toRfc4122();
+        $locks = array_values(array_filter($this->movements->calls, static fn (string $call): bool => str_starts_with($call, 'lock ')));
+        $expected = array_map(static fn (Product $p): string => 'lock '.$p->getId()->toRfc4122().' '.$default.' in transaction', [$this->laptop, $this->flour]);
+        sort($expected);
+        self::assertSame($expected, $locks, 'each product is locked once, in a fixed order, before its movement is written');
     }
 
     public function testALineInAnotherUnitThanItsProductCountsIsLeftOutAndSaid(): void

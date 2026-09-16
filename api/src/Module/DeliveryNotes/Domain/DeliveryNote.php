@@ -188,6 +188,9 @@ class DeliveryNote implements CompanyOwned
         }
 
         foreach ($this->getLines() as $line) {
+            $line->assertCountedByItsUnit();
+        }
+        foreach ($this->getLines() as $line) {
             $line->retakeTaxes();
         }
         if ($this->deliveryAddress->isEmpty()) {
@@ -206,8 +209,14 @@ class DeliveryNote implements CompanyOwned
             $this->establishment->getId(),
             $number,
             $this->issueDate,
-            array_map(static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId()), $this->getLines()),
+            $this->deliveredQuantities(),
         );
+    }
+
+    /** @return list<DeliveredQuantity> what each line delivers, in order: what `DeliveryNoteValidated` carries */
+    public function deliveredQuantities(): array
+    {
+        return array_map(static fn (DeliveryNoteLine $line): DeliveredQuantity => new DeliveredQuantity($line->getProduct()?->getId(), $line->getQuantity(), $line->getUnit()->getId()), $this->getLines());
     }
 
     /**
