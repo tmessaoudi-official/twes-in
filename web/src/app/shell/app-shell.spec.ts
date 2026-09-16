@@ -364,6 +364,8 @@ describe('AppShell', () => {
 
     expect(byTestId('command-open')?.closest('header')).not.toBeNull();
     expect(byTestId('command-open')?.getAttribute('aria-keyshortcuts')).toBe('Control+K Meta+K');
+    // Named even on a phone, where its visible label and shortcut are hidden to save room.
+    expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
     await click('command-open');
 
     expect(open).toHaveBeenCalledTimes(1);

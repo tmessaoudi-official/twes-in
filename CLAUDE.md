@@ -98,7 +98,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   check `ls web/src/app` rather than this sentence: `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
   `fiscal`, `hello`, `health`, `inventory`, `invitation`, `platform`, `products`, `settings`, `signup`, `vendors`,
   `design` — the G2b checkpoint's fixture screens, development builds only, `notifications` — the bell, the centre and the Centrifugo connection behind
-  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout, its nav manifest, account menu and the settings area behind the gear; every
+  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
   signed-in route is a child of it), `shared/` for what several features use (`theme/`: runtime accent colour tokens and
   `ThemeFacade`; `i18n/`: `LanguageFacade`; `settings/`: the `SettingsFacade` port, its API adapter
   `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry
@@ -191,6 +191,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   refusal left assigned but unbooted is booted again by the teardown — and refused there, turning a passing case into an
   error in a method that never asked for a kernel. Drop it instead (`static::$kernel = null; static::$booted = false;`)
   when testing anything that refuses to boot (2026-09-16, `DevelopmentKeysTest`).
+- Never animate `mat-sidenav`'s width inside an `autosize` container: autosize measures the drawer once per change,
+  reads it mid-transition and leaves the page on a margin between the two widths (2026-09-16: x=200 between 248 and 80).
 - A Doctrine inverse `OneToMany` is filled by a LOAD, so an in-memory repository never fills it and a unit test reads it
   empty. A domain rule that reads an entity's siblings — what a credit note's withholding leaves for the next one —
   needs the inverse side maintained in the entity beside the owning assignment, as the other collections here are

@@ -97,6 +97,7 @@
           class="twes-command-open"
           (click)="openCommands()"
           aria-keyshortcuts="Control+K Meta+K"
+          [attr.aria-label]="'shell.commands.open' | translate"
           data-testid="command-open"
         >
           <mat-icon aria-hidden="true">search</mat-icon>
