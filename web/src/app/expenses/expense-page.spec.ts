@@ -111,7 +111,12 @@ describe('ExpensePage', () => {
       `/api/companies/${companyId}/expenses/${expenseId}/attachments/${attachmentId}/content`,
   };
   const auth = {
-    me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
+    // New York is behind both UTC and Europe/Paris, so the company's day cannot tie with the browser's by luck
+    // whatever clock the runner keeps — nothing pins TZ for `ng test`.
+    me: () => ({
+      user: { id: 'u1' },
+      company: { id: 'c1', name: 'Acme', timezone: 'America/New_York' },
+    }),
     hasPermission: vi.fn(),
   };
   let fixture: ComponentFixture<ExpensePage>;
@@ -122,6 +127,12 @@ describe('ExpensePage', () => {
   /** The expense form as the page holds it; a mat-select is set through its control. */
   const form = (): FormGroup =>
     (fixture.componentInstance as unknown as { form: () => FormGroup }).form();
+
+  /** The payment form, which exists only once a recorded expense has been read. */
+  const payment = (): FormGroup =>
+    (
+      fixture.componentInstance as unknown as { paymentFormGroup: () => FormGroup }
+    ).paymentFormGroup();
 
   async function settle(): Promise<void> {
     fixture.detectChanges();
@@ -257,6 +268,25 @@ describe('ExpensePage', () => {
       'e1',
       expect.objectContaining({ paymentMethod: 'transfer' }),
     );
+  });
+
+  it("proposes the company's day, not the browser's, for an expense's date and its payment", async () => {
+    // 02:00 UTC is still 15 September in New York, while UTC and Europe/Paris have both turned to the 16th. The
+    // API takes a day up to the company's today and answers 422 otherwise, so a browser-day default is refused
+    // outright for anyone whose own day runs ahead — the defect docs/SPEC.md § 8 row 24 records.
+    // Only `Date` is faked: a faked `setTimeout` never fires and `fixture.whenStable()` would hang on it.
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-09-16T02:00:00Z'));
+    try {
+      await open(undefined);
+      expect(form().get('date')!.value).toBe('2026-09-15');
+
+      expense.set({ ...draft, status: 'recorded' });
+      await open('e1');
+      expect(payment().get('paidOn')!.value).toBe('2026-09-15');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('deletes a draft only on the second click', async () => {

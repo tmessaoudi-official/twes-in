@@ -92,6 +92,46 @@ export function formatMoment(value: string, locale: string, timeZone?: string): 
   }).format(date);
 }
 
+const dayFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** The calendar day ("2026-09-14") a moment falls on in a time zone; what is not a moment comes back as it came. */
+export function dayKey(moment: string, timeZone: string): string {
+  const date = new Date(moment);
+  if (Number.isNaN(date.getTime())) return moment;
+  let format = dayFormats.get(timeZone);
+  if (format === undefined) {
+    format = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    dayFormats.set(timeZone, format);
+  }
+  const parts = format.formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((candidate) => candidate.type === type)?.value ?? '';
+  return `${part('year')}-${part('month')}-${part('day')}`;
+}
+
+/**
+ * Today in a time zone, as a date field writes it. A date the API takes may be the company's today at the latest, so
+ * a person whose own day has already turned (Paris after midnight, a company in Africa/Tunis) must be proposed the
+ * company's day and not their browser's, which the API would refuse. The viewer's own day stands in while the company
+ * is not known yet, and for a zone that is no zone at all.
+ */
+export function todayIn(timeZone: string | null | undefined): string {
+  const moment = new Date().toISOString();
+  const viewer = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  if (!timeZone) return dayKey(moment, viewer);
+  try {
+    return dayKey(moment, timeZone);
+  } catch {
+    // DateTimeFormat throws a RangeError for a string that is no time zone ("Mars/Olympus").
+    return dayKey(moment, viewer);
+  }
+}
+
 /** The locale figures are written in: the interface language for the company's country ("fr-TN"), else the language. */
 export function formatLocale(language: string, country: string | null | undefined): string {
   if (!country) return language;

@@ -20,6 +20,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
+import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
@@ -32,13 +33,6 @@ import {
 } from './expense-forms';
 import { ExpensesFacade } from './expenses-facade';
 import { EXPENSE_STATUS_TONES, type ExpenseAttachment } from './expenses-types';
-
-/** The day in the browser's calendar, as a date field writes it. */
-function today(): string {
-  const now = new Date();
-  const pad = (value: number): string => String(value).padStart(2, '0');
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -108,7 +102,9 @@ export class ExpensePage {
       const descriptor = this.descriptor();
       const current = this.current();
       if (descriptor === null || current === undefined) return null;
-      return buildFormGroup(descriptor, expenseValues(current, today()));
+      // The company's day, not this browser's: the API takes a date up to the company's today and refuses a later
+      // one, so someone whose own day has already turned would be proposed a value it answers 422 to.
+      return buildFormGroup(descriptor, expenseValues(current, todayIn(this.company()?.timezone)));
     });
   });
   protected readonly paymentDescriptor = computed(() => {
@@ -120,7 +116,9 @@ export class ExpensePage {
     const id = this.current()?.id;
     return descriptor === null || id === undefined
       ? null
-      : untracked(() => buildFormGroup(descriptor, paymentValues(today())));
+      : untracked(() =>
+          buildFormGroup(descriptor, paymentValues(todayIn(this.company()?.timezone))),
+        );
   });
 
   constructor() {

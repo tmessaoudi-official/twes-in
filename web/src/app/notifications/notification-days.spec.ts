@@ -1,17 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { dayKey, groupByDay, relativeTime } from './notification-days';
+import { groupByDay, relativeTime } from './notification-days';
 
 // Intl writes a narrow no-break space in some locales; compare words, not spacing.
 const plain = (text: string) => text.replace(/\s/g, ' ');
-
-describe('dayKey', () => {
-  it('names the calendar day a moment falls on in a time zone', () => {
-    // 23:30 in London's winter-free UTC is already half past midnight in Tunis.
-    expect(dayKey('2026-09-13T23:30:00+00:00', 'Africa/Tunis')).toBe('2026-09-14');
-    expect(dayKey('2026-09-13T23:30:00+00:00', 'UTC')).toBe('2026-09-13');
-  });
-});
 
 describe('groupByDay', () => {
   const now = new Date('2026-09-14T09:00:00Z');

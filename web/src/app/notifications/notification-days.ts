@@ -1,33 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { dayKey } from '../shared/i18n/format';
+
 /** The entries of one calendar day, and whether that day is today, yesterday or earlier. */
 export interface DayGroup<T> {
   /** the day as "2026-09-14" */
   readonly key: string;
   readonly when: 'today' | 'yesterday' | 'earlier';
   readonly entries: readonly T[];
-}
-
-const dayFormats = new Map<string, Intl.DateTimeFormat>();
-
-/** The calendar day ("2026-09-14") a moment falls on in a time zone; what is not a moment comes back as it came. */
-export function dayKey(moment: string, timeZone: string): string {
-  const date = new Date(moment);
-  if (Number.isNaN(date.getTime())) return moment;
-  let format = dayFormats.get(timeZone);
-  if (format === undefined) {
-    format = new Intl.DateTimeFormat('en-CA', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    dayFormats.set(timeZone, format);
-  }
-  const parts = format.formatToParts(date);
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((candidate) => candidate.type === type)?.value ?? '';
-  return `${part('year')}-${part('month')}-${part('day')}`;
 }
 
 function dayBefore(key: string): string {

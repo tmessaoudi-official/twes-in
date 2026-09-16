@@ -175,8 +175,6 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Create source files with the Write tool, never `printf`/heredoc in Bash: the lint-on-write `php -l` hook sees only
   tool writes, and shell quote splicing turned two PHP string literals into bare words, so every functional test died at
   kernel boot (2026-09-15). Never run a sabotage batch in the same parallel block as a gate: it mutates what the gate reads.
-- A red `expenses.spec.ts` between 00:00 and 01:00 Paris time is the browser's day running ahead of a Tunis company's
-  (SPEC § 8 row 24), not a regression: rerun after 01:00 before digging.
 - Angular Material's `mat-card-content` overrides Tailwind layout utilities placed on it: put the flex or grid on a `div` inside
   it (2026-09-15: the platform page's switches ran together and its buttons wrapped under the company name).
 - The web container serves a STATIC nginx build, never a dev server (`infra/web/Dockerfile` builds and copies

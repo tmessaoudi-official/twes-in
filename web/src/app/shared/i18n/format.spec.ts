@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { atScale, formatAmount, formatDay, formatLocale, formatMoment } from './format';
+import {
+  atScale,
+  dayKey,
+  formatAmount,
+  formatDay,
+  formatLocale,
+  formatMoment,
+  todayIn,
+} from './format';
 
 /** ICU groups French thousands with a narrow no-break space; the assertions read it as a space. */
 const spaced = (text: string): string => text.replace(/\s/g, ' ');
@@ -86,6 +94,51 @@ describe('formatMoment', () => {
 
   it('shows what is not a moment as it came', () => {
     expect(formatMoment('later', 'fr', 'UTC')).toBe('later');
+  });
+});
+
+describe('dayKey', () => {
+  it('names the calendar day a moment falls on in a time zone', () => {
+    // 23:30 in London's winter-free UTC is already half past midnight in Tunis.
+    expect(dayKey('2026-09-13T23:30:00+00:00', 'Africa/Tunis')).toBe('2026-09-14');
+    expect(dayKey('2026-09-13T23:30:00+00:00', 'UTC')).toBe('2026-09-13');
+  });
+
+  it('shows what is not a moment as it came', () => {
+    expect(dayKey('someday', 'UTC')).toBe('someday');
+  });
+});
+
+describe('todayIn', () => {
+  // Only Date is faked: a faked setTimeout never fires, and anything awaiting a timer would hang on it.
+  const at = (moment: string, body: () => void): void => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(moment));
+    try {
+      body();
+    } finally {
+      vi.useRealTimers();
+    }
+  };
+
+  it('answers the day in the given zone, which is not the day everywhere', () => {
+    // 02:00 UTC is still the 15th in New York, and already the 16th in UTC itself and in Tunis.
+    at('2026-09-16T02:00:00Z', () => {
+      expect(todayIn('America/New_York')).toBe('2026-09-15');
+      expect(todayIn('UTC')).toBe('2026-09-16');
+      expect(todayIn('Africa/Tunis')).toBe('2026-09-16');
+    });
+  });
+
+  it('falls back to the viewer’s own day for a company not read yet, and for a zone that is none', () => {
+    at('2026-09-16T02:00:00Z', () => {
+      const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const viewer = dayKey('2026-09-16T02:00:00Z', zone);
+      expect(todayIn(null)).toBe(viewer);
+      expect(todayIn(undefined)).toBe(viewer);
+      expect(todayIn('')).toBe(viewer);
+      expect(todayIn('Mars/Olympus')).toBe(viewer);
+    });
   });
 });
 
