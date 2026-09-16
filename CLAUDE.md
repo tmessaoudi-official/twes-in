@@ -96,8 +96,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   the document the api image exports at build, through a compose `additional_contexts` service reference, so a
   clean clone builds without them and a stale local copy is kept out by `.dockerignore`). One directory per feature — twenty of them, so
   check `ls web/src/app` rather than this sentence: `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
-  `fiscal`, `hello`, `health`, `inventory`, `invitation`, `platform`, `products`, `settings`, `signup`, `vendors`,
-  `design` — the G2b checkpoint's fixture screens, development builds only, `notifications` — the bell, the centre and the Centrifugo connection behind
+  `fiscal`, `hello`, `health`, `inventory`, `invitation`, `invoices`, `platform`, `products`, `settings`, `signup`,
+  `vendors`, `notifications` — the bell, the centre and the Centrifugo connection behind
   the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
   signed-in route is a child of it), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens and
