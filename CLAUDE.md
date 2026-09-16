@@ -99,7 +99,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `fiscal`, `hello`, `health`, `inventory`, `invitation`, `platform`, `products`, `settings`, `signup`, `vendors`,
   `design` — the G2b checkpoint's fixture screens, development builds only, `notifications` — the bell, the centre and the Centrifugo connection behind
   the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
-  signed-in route is a child of it), `shared/` for what several features use (`theme/`: runtime accent colour tokens and
+  signed-in route is a child of it), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
+  port the auth facade answers; `theme/`: runtime accent colour tokens and
   `ThemeFacade`; `i18n/`: `LanguageFacade`; `settings/`: the `SettingsFacade` port, its API adapter
   `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry
   every presentation key must be declared in; `list/`: `ListDescriptor`, the pure view
@@ -191,6 +192,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   refusal left assigned but unbooted is booted again by the teardown — and refused there, turning a passing case into an
   error in a method that never asked for a kernel. Drop it instead (`static::$kernel = null; static::$booted = false;`)
   when testing anything that refuses to boot (2026-09-16, `DevelopmentKeysTest`).
+- Axe reads colours mid-transition: after a runtime scheme change every element with a colour transition still shows a
+  blend of the old scheme, and the contrast check fails on a moment, not a design. `ThemeFacade` holds transitions for
+  one frame (`.theme-changing`); a new transition on colour must stay under that class (2026-09-16, row 28).
 - Never animate `mat-sidenav`'s width inside an `autosize` container: autosize measures the drawer once per change,
   reads it mid-transition and leaves the page on a margin between the two widths (2026-09-16: x=200 between 248 and 80).
 - A Doctrine inverse `OneToMany` is filled by a LOAD, so an in-memory repository never fills it and a unit test reads it
