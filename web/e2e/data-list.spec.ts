@@ -85,7 +85,7 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await openMembers(page);
 
   await page.getByTestId('list-filter').fill('operator');
-  await page.getByTestId('list-facet-role').selectOption('owner');
+  await page.getByTestId('list-facet-role-owner').click();
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-column-toggle-email').click();
   await page.getByTestId('list-views').click();
@@ -106,7 +106,7 @@ test('a saved view brings back its filters and columns after a reload', async ({
   await saved.click();
   await expect(page.getByTestId('list-header-email')).toHaveCount(0);
   await expect(page.getByTestId('list-filter')).toHaveValue('operator');
-  await expect(page.getByTestId('list-facet-role')).toHaveValue('owner');
+  await expect(page.getByTestId('list-facet-role-owner')).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByTestId(`member-${EMAIL}`)).toBeVisible();
 });
 

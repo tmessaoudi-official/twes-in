@@ -179,6 +179,94 @@ html {
   color: var(--mat-sys-on-surface-variant);
 }
 
+// A list's toolbar (app/shared/list/data-list.html), as on the approved list: each filter a row of pill choices with
+// their counts, the pressed one inverted; below them the search, and the views and columns tools at the end.
+.twes-list-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.625rem 1rem;
+}
+
+.twes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.twes-chips-label {
+  align-self: center;
+  padding-inline-end: 0.125rem;
+  color: var(--mat-sys-on-surface-variant);
+  font: var(--mat-sys-label-medium);
+}
+
+.twes-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  height: 2rem;
+  padding-inline: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 9999px;
+  background-color: var(--mat-sys-surface);
+  color: var(--mat-sys-on-surface);
+  font: var(--mat-sys-label-large);
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background-color var(--twes-motion-standard) var(--twes-ease-standard),
+    border-color var(--twes-motion-standard) var(--twes-ease-standard);
+
+  &:hover {
+    border-color: var(--mat-sys-outline);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--mat-sys-primary);
+    outline-offset: 2px;
+  }
+
+  &[aria-pressed='true'] {
+    border-color: var(--mat-sys-on-surface);
+    background-color: var(--mat-sys-on-surface);
+    color: var(--mat-sys-surface);
+
+    .twes-chip-count {
+      color: inherit;
+      opacity: 0.75;
+    }
+  }
+}
+
+.twes-chip-count {
+  color: var(--mat-sys-on-surface-variant);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.twes-list-tools {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  gap: 0.25rem;
+
+  .twes-list-search {
+    flex: 0 1 20rem;
+    min-width: 0;
+    margin-right: auto;
+  }
+}
+
+.twes-list-table {
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.875rem;
+
+  .mat-mdc-header-row {
+    background-color: var(--mat-sys-surface-container-low);
+  }
+}
+
 // A row answers the pointer with the accent's faintest tint, as on the approved list.
 .mat-mdc-row {
   transition: background-color var(--twes-motion-standard) var(--twes-ease-standard);

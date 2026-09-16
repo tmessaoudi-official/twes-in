@@ -1,71 +1,92 @@
 <div class="flex flex-col gap-3">
-  <div class="flex flex-wrap items-center justify-between gap-3">
-    @if (filterable()) {
-      <mat-form-field subscriptSizing="dynamic" class="w-full sm:w-auto sm:max-w-sm sm:flex-1">
-        <mat-label>{{ 'list.filter' | translate }}</mat-label>
-        <mat-icon matPrefix aria-hidden="true">search</mat-icon>
-        <input
-          matInput
-          type="search"
-          [value]="query()"
-          (input)="onFilter($event)"
-          data-testid="list-filter"
-        />
-        @if (query()) {
+  <div class="twes-list-toolbar">
+    @for (facet of facets(); track facet.filter.id) {
+      <div
+        role="group"
+        class="twes-chips"
+        [attr.aria-label]="facet.filter.label | translate"
+        [attr.data-testid]="'list-facet-' + facet.filter.id"
+      >
+        @if (facets().length > 1) {
+          <span class="twes-chips-label" aria-hidden="true">{{
+            facet.filter.label | translate
+          }}</span>
+        }
+        <button
+          type="button"
+          class="twes-chip"
+          [attr.aria-pressed]="facet.chosen === ''"
+          (click)="onFacet(facet.filter.id, '')"
+          [attr.data-testid]="'list-facet-' + facet.filter.id + '-all'"
+        >
+          {{ 'list.filter_any' | translate }}
+          <span class="twes-chip-count">{{ facet.total }}</span>
+        </button>
+        @for (entry of facet.options; track entry.option.value) {
           <button
-            matSuffix
-            mat-icon-button
             type="button"
-            (click)="clearFilter()"
-            [attr.aria-label]="'list.filter_clear' | translate"
+            class="twes-chip"
+            [attr.aria-pressed]="facet.chosen === entry.option.value"
+            (click)="onFacet(facet.filter.id, entry.option.value)"
+            [attr.data-testid]="'list-facet-' + facet.filter.id + '-' + entry.option.value"
           >
-            <mat-icon aria-hidden="true">close</mat-icon>
+            {{ entry.option.label | translate }}
+            <span class="twes-chip-count">{{ entry.count }}</span>
           </button>
         }
-      </mat-form-field>
+      </div>
     }
-    @for (filter of filters(); track filter.id) {
-      <mat-form-field subscriptSizing="dynamic" class="w-full sm:w-44">
-        <mat-label>{{ filter.label | translate }}</mat-label>
-        <select
-          matNativeControl
-          (change)="onFacet(filter.id, $event)"
-          [attr.data-testid]="'list-facet-' + filter.id"
-        >
-          <option value="" [selected]="!chosenFilters()[filter.id]">
-            {{ 'list.filter_any' | translate }}
-          </option>
-          @for (option of filter.options; track option.value) {
-            <option [value]="option.value" [selected]="chosenFilters()[filter.id] === option.value">
-              {{ option.label | translate }}
-            </option>
+    <div class="twes-list-tools">
+      @if (filterable()) {
+        <mat-form-field class="twes-list-search">
+          <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+          <input
+            matInput
+            type="search"
+            [value]="query()"
+            [placeholder]="'list.filter' | translate"
+            [attr.aria-label]="'list.filter' | translate"
+            (input)="onFilter($event)"
+            data-testid="list-filter"
+          />
+          @if (query()) {
+            <button
+              matSuffix
+              mat-icon-button
+              type="button"
+              (click)="clearFilter()"
+              [attr.aria-label]="'list.filter_clear' | translate"
+            >
+              <mat-icon aria-hidden="true">close</mat-icon>
+            </button>
           }
-        </select>
-      </mat-form-field>
-    }
-    <button
-      mat-stroked-button
-      class="ms-auto"
-      type="button"
-      (click)="viewsOpen.set(!viewsOpen())"
-      [attr.aria-expanded]="viewsOpen()"
-      [attr.aria-controls]="testId() + '-views'"
-      data-testid="list-views"
-    >
-      <mat-icon aria-hidden="true">bookmarks</mat-icon>
-      {{ 'list.views' | translate }}
-    </button>
-    <button
-      mat-stroked-button
-      type="button"
-      (click)="chooserOpen.set(!chooserOpen())"
-      [attr.aria-expanded]="chooserOpen()"
-      [attr.aria-controls]="testId() + '-columns'"
-      data-testid="list-columns"
-    >
-      <mat-icon aria-hidden="true">view_column</mat-icon>
-      {{ 'list.columns' | translate }}
-    </button>
+        </mat-form-field>
+      }
+      <button
+        mat-icon-button
+        type="button"
+        class="twes-list-tool"
+        (click)="viewsOpen.set(!viewsOpen())"
+        [attr.aria-label]="'list.views' | translate"
+        [attr.aria-expanded]="viewsOpen()"
+        [attr.aria-controls]="testId() + '-views'"
+        data-testid="list-views"
+      >
+        <mat-icon aria-hidden="true">bookmarks</mat-icon>
+      </button>
+      <button
+        mat-icon-button
+        type="button"
+        class="twes-list-tool"
+        (click)="chooserOpen.set(!chooserOpen())"
+        [attr.aria-label]="'list.columns' | translate"
+        [attr.aria-expanded]="chooserOpen()"
+        [attr.aria-controls]="testId() + '-columns'"
+        data-testid="list-columns"
+      >
+        <mat-icon aria-hidden="true">view_column</mat-icon>
+      </button>
+    </div>
   </div>
 
   @if (viewsOpen()) {
@@ -73,7 +94,7 @@
       [id]="testId() + '-views'"
       role="group"
       [attr.aria-label]="'list.views' | translate"
-      class="flex flex-col gap-2 rounded-lg border border-outline-variant bg-surface-container-low p-2"
+      class="flex flex-col gap-2 rounded-xl border border-outline-variant bg-surface-container-low p-2"
     >
       @if (views().length === 0) {
         <p class="px-2 py-1 text-sm text-on-surface-variant" data-testid="list-views-none">
@@ -136,7 +157,7 @@
       [id]="testId() + '-columns'"
       role="group"
       [attr.aria-label]="'list.columns' | translate"
-      class="flex flex-col gap-1 rounded-lg border border-outline-variant bg-surface-container-low p-2"
+      class="flex flex-col gap-1 rounded-xl border border-outline-variant bg-surface-container-low p-2"
     >
       <ul cdkDropList (cdkDropListDropped)="drop($event)" class="flex flex-col">
         @for (entry of chooser(); track entry.column.id; let first = $first, last = $last) {
@@ -199,7 +220,7 @@
     </div>
   }
 
-  <div class="overflow-x-auto rounded-lg border border-outline-variant">
+  <div class="twes-list-table overflow-x-auto">
     <table
       mat-table
       [dataSource]="page().rows"

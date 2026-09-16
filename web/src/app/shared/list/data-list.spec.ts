@@ -327,10 +327,41 @@ describe('DataList', () => {
     expect(q('customers-table')!.style.minWidth).toBe('696px');
   });
 
+  it('offers each filter as a group of choices, each saying how many rows it would show', async () => {
+    const chip = (value: string) => q(`list-facet-status-${value}`)!;
+    const label = (value: string) => chip(value).textContent?.replace(/\s+/g, ' ').trim();
+
+    expect(q('list-facet-status')?.getAttribute('role')).toBe('group');
+    expect(q('list-facet-status')?.getAttribute('aria-label')).toBe('Status');
+    expect([label('all'), label('active'), label('archived')]).toEqual([
+      'All 30',
+      'Active 15',
+      'Archived 15',
+    ]);
+    expect(chip('all').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('archived').getAttribute('aria-pressed')).toBe('false');
+
+    await type('list-filter', 'sfax');
+    expect([label('all'), label('active'), label('archived')]).toEqual([
+      'All 10',
+      'Active 5',
+      'Archived 5',
+    ]);
+
+    chip('archived').click();
+    await settle();
+    expect(chip('archived').getAttribute('aria-pressed')).toBe('true');
+    expect(chip('all').getAttribute('aria-pressed')).toBe('false');
+    expect(label('all')).toBe('All 10');
+
+    chip('all').click();
+    await settle();
+    expect(rowIds()).toHaveLength(10);
+    expect(chip('all').getAttribute('aria-pressed')).toBe('true');
+  });
+
   it('narrows the rows to the option picked in a filter, and says when the filters match nothing', async () => {
-    const status = q('list-facet-status') as HTMLSelectElement;
-    status.value = 'archived';
-    status.dispatchEvent(new Event('change'));
+    q('list-facet-status-archived')!.click();
     await settle();
 
     expect(rowIds()).toEqual(['2', '4', '6', '8', '10', '12', '14', '16', '18', '20']);
@@ -391,7 +422,7 @@ describe('DataList', () => {
     q('list-view-apply-v1')!.click();
     await settle();
 
-    expect((q('list-facet-status') as HTMLSelectElement).value).toBe('archived');
+    expect(q('list-facet-status-archived')!.getAttribute('aria-pressed')).toBe('true');
     expect(rowIds()[0]).toBe('2');
   });
 

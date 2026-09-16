@@ -84,7 +84,7 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
   JSON.stringify([query, Object.entries(filters).sort(([a], [b]) => a.localeCompare(b)), layout]);
 
 /**
- * Every list screen: a text filter and faceted filters, saved views, sortable columns a person may hide, reorder (by dragging or with buttons) and
+ * Every list screen: a text filter and filters offered as counted choices, saved views, sortable columns a person may hide, reorder (by dragging or with buttons) and
  * resize (by pointer or keyboard), pages, and an empty state. What it shows comes from the screen's descriptor
  * and the pure functions in list-view.ts; what a person chose is kept through the presentation settings.
  */
@@ -157,6 +157,28 @@ export class DataList<Row> {
     this.descriptor().columns.some((column) => column.filterable),
   );
   protected readonly filters = computed(() => this.descriptor().filters ?? []);
+  /**
+   * Each filter's choices with how many rows each would show: counted over the rows the text filter and the other
+   * filters leave, so a number never promises rows the next click cannot deliver. The rows are all on the page, so
+   * the count is exact.
+   */
+  protected readonly facets = computed(() => {
+    const chosen = this.chosenFilters();
+    const searched = filterRows(this.rows(), this.descriptor().columns, this.query());
+    return this.filters().map((filter) => {
+      const others = Object.fromEntries(Object.entries(chosen).filter(([id]) => id !== filter.id));
+      const base = applyFilters(searched, this.filters(), others);
+      return {
+        filter,
+        chosen: chosen[filter.id] ?? '',
+        total: base.length,
+        options: filter.options.map((option) => ({
+          option,
+          count: base.filter((row) => filter.value(row) === option.value).length,
+        })),
+      };
+    });
+  });
   /** The saved view that matches what the screen shows now, if any. */
   protected readonly currentViewId = computed(() => {
     const now = viewState(this.query(), this.chosenFilters(), this.preferences());
@@ -216,8 +238,8 @@ export class DataList<Row> {
     this.pageIndex.set(0);
   }
 
-  protected onFacet(filterId: string, event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
+  /** Picks one option of a filter; the empty value shows every row again. */
+  protected onFacet(filterId: string, value: string): void {
     this.chosenFilters.update((chosen) => ({
       ...Object.fromEntries(Object.entries(chosen).filter(([id]) => id !== filterId)),
       ...(value === '' ? {} : { [filterId]: value }),
