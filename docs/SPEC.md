@@ -19,6 +19,19 @@ sold by Takieddine MESSAOUDI, hosted by him, with a plan per company. A **Symfon
 and an **Angular admin web app** over **PostgreSQL**. Multi-company from the first goal: a
 person can belong to several companies and switches between them.
 
+**Who it is for** (2026-09-16): businesses with a place — shops, cafés and restaurants, workshops,
+small warehouses. A service firm is served too, but the brand does not address it first. What the
+product does for them, today and planned, sorts into five jobs, and the brand carries what they
+share, never the list itself:
+
+| Job | In the POC | Planned (§ 2) |
+|---|---|---|
+| Get paid | invoices, payments, credit notes, PDF | quotes, sending by email, money owed at a glance, Factur-X / El Fatoora, foreign currency |
+| Know where things are | products, stock locations from site to bin, stock movements | drawn site and store maps |
+| Run the place | delivery notes, vendors, expenses | café and restaurant module (tables, orders, waiters) |
+| Stay safe and in control | roles, second factor, passkeys, audit log, several companies | editable roles, plans, per-company branding |
+| Work anywhere | web, dark mode, French and English | Arabic and right-to-left, mobile client |
+
 It is a **clean-room reimplementation inspired by Invoice Ninja**, never a fork or a port; the
 licensing invariants in `CLAUDE.md` are the legal boundary. twes-in itself is
 **AGPL-3.0-or-later plus a commercial licence**, copyright wholly the author.
@@ -594,6 +607,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-16] DECIDED: row 33's rulings. Material's own fields, buttons, tables and cards are restyled through its override mixins in `styles.scss` (40 px outlined fields, 36 px buttons, 10 px corners, flat cards), so every page follows without template churn. A descriptor form puts each label above its field, tied to the control, with "optional" inside the label, and each section takes an optional explanation shown beside its title. A list's filters are pill choices with counts taken over what the text filter and the other filters leave, never the whole list, so a number never promises rows the click cannot deliver; the counts are exact only because a list holds all its rows in the page, and a server-paged list must drop or re-source them. Left out of the approved list on purpose: the row checkboxes (no bulk action exists), the sort drop-down (the sortable headers already do it, accessibly) and shortcut hints for shortcuts that do not exist.
 - [2026-09-16] AGREED: the tagline is "Tout en lieu sûr. Tout tracé. Rien ne se perd." / "All kept safe. All on record. Nothing lost.", replacing "Facturez sans paperasse. Soyez payé." from the brand round, which the developer rejected on seeing it: the documents are printed, so "without paperwork" promises something false. It says what the product assures a business: everything in one place and safe, every change traced, anything recoverable. Still a brand-kit default, configurable like the name.
 - [2026-09-16] DECIDED: row 34's rulings. Every page shown before the shell (sign-in and its code step, second-factor setup, awaiting approval, signup, finishing signup, an invitation) wears one layout, `auth/signed-out-layout`: the wordmark and tagline over one card, and a scene of five business documents behind it from 1024 px, hidden from assistive technology and drawn from translations. The name and tagline come through the `Brand` port (`shared/brand/brand.ts`), whose default adapter holds the chosen values; row 36 replaces the adapter. The wordmark is computed from the name: lowercase, Manrope 800 (vendored under `public/fonts/manrope`, OFL-1.1), joiners muted, the dot of the last "i" replaced by the accent arrow, and a name without an "i" carries the arrow over its last letter. The text is bound, never interpolated, because an interpolation's surrounding whitespace draws as a gap inside the name, and the formatter reintroduced it once. The code step says why it is asked for and that a recovery code works in the same field; the passkey is offered as another way. Left for later on purpose: the Auto / Clair / Sombre switch (row 37), a show-password toggle, and the name in the signed-in shell (row 36).
+- [2026-09-16] AGREED: the sign-in scene follows the modules a deployment has switched on: each module contributes its own card, so a store map or a table order appears the day that module exists and nothing is redrawn; a sign-in page never shows a feature the product does not have. Built with the brand kit (row 36). The shipped wordmark and tagline stay until the rebrand below.
+- [2026-09-16] AGREED: the brand speaks to businesses with a place (§ 1, "Who it is for"). A full rebrand — name, then symbol, then tagline, in that order, starting from the five jobs of § 1 and the one promise they share — runs once the POC is usable: after the invoice screens (row 10) and the settings and home restyle (row 35), before any public launch. The name twes-in is open in that round and kept only if it fits: it is an acronym of its founders' names that the developer judges does not ring well. A rename stays brand-kit data; what it cannot spare is the web address passkeys are bound to. Row 39 is deferred into that round.
 
 ## 8. Status
 
@@ -634,12 +649,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 31 | Enrolling an authenticator whose pending secret the current key cannot read answers a refusal, not a 500: `ConfirmTotpEnrolment` decrypts unguarded as `VerifySecondFactor` did before row 26 | S | todo | - | api/src/Identity/** api/tests/** |
 | 32 | Mockups for the pages the approved design lacks: the six sign-in pages and the settings layout, light and dark, desktop and phone, variants where the layout is a real choice | M | done | 40889e0 | docs/SPEC.md |
 | 33 | Restyle, part 2: the shared list and form components and every list and record page built on them, to the approved list and editor mockups | L | done | 1bc8f01 | web/src/styles.scss web/src/app/shared/** web/src/app/*/*-page.* web/e2e/** |
-| 34 | Restyle, part 3: the sign-in pages, to the variant chosen in row 32 | M | doing | - | web/src/app/auth/** web/src/app/signup/** web/src/app/invitation/** web/src/app/shared/brand/** web/public/fonts/** web/public/i18n/** web/src/styles.scss web/e2e/** THIRD-PARTY-NOTICES.md |
+| 34 | Restyle, part 3: the sign-in pages, to the variant chosen in row 32 | M | done | 7a84e6b | web/src/app/auth/** web/src/app/signup/** web/src/app/invitation/** web/src/app/shared/brand/** web/public/fonts/** web/public/i18n/** web/src/styles.scss web/e2e/** THIRD-PARTY-NOTICES.md |
 | 35 | Restyle, part 4: the settings pages and home, to the variant chosen in row 32 and the approved home mockup | L | todo | - | web/src/app/company/** web/src/app/settings/** web/src/app/fiscal/** web/src/app/hello/** web/src/styles.scss web/e2e/** |
-| 36 | The installation brand kit: product name, tagline per language, logo light and dark, app icon, default accent and sign-in background as platform settings behind a brand port, the operator's Marque page, and every place the name is read today reading it | L | todo | - | api/src/Settings/** api/src/Platform/** api/src/Files/** api/config/** web/src/app/platform/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
+| 36 | The installation brand kit: product name, tagline per language, logo light and dark, app icon, default accent and sign-in background as platform settings behind a brand port, the operator's Marque page, every place the name is read today reading it, and the sign-in scene built from one card per switched-on module | L | todo | - | api/src/Settings/** api/src/Platform/** api/src/Files/** api/config/** web/src/app/platform/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 37 | The colour scheme gains Automatique (follows the device, the default) and the sign-in pages a Mode clair / Mode sombre switch the browser remembers | M | todo | - | web/src/app/shared/theme/** web/src/app/shared/settings/** web/src/app/auth/** web/public/i18n/** web/e2e/** |
 | 38 | Per-company sign-in, signup and invitation pages, reached through a per-company address, resolving the brand kit at the company level (after the POC) | L | deferred | - | api/src/** web/src/app/auth/** web/src/app/signup/** web/src/app/invitation/** |
-| 39 | A twes-in logo and tagline: concepts drawn on the design canvas, one chosen, shipped as the brand kit's defaults | M | doing | 8a40530 | docs/SPEC.md |
+| 39 | The rebrand: name, then symbol, then tagline, from § 1's five jobs, drawn on the design canvas and shipped as the brand kit's defaults (after rows 10 and 35, before a public launch) | M | deferred | 8a40530 | docs/SPEC.md |
 <!-- /progress-block -->
 
 ### Delivered
