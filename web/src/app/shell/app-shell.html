@@ -97,8 +97,9 @@
   >
     <header class="sticky top-0 z-10">
       <mat-toolbar class="twes-shell-bar gap-2">
-        <!-- Three regions, the outer two of equal share, so the search is centred on the bar and not on what is left. -->
-        <div class="flex min-w-0 flex-1 basis-0 items-center gap-2">
+        <!-- Three regions, the outer two of equal share, so the search is centred on the bar. Neither side shrinks below its
+             controls: when one needs more than half, the search gives way instead of lying under them. -->
+        <div class="flex min-w-max flex-1 basis-0 items-center gap-2">
           @if (handset()) {
             <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
             <span class="text-base font-semibold tracking-tight">{{ 'app.name' | translate }}</span>
@@ -118,7 +119,7 @@
         @if (windowClass() === 'expanded') {
           <!-- From 1200 px the search is the bar's centre, wide enough to read as a field. -->
           <div
-            class="flex w-[min(36rem,40vw)] shrink-0 justify-center"
+            class="flex min-w-0 flex-[0_1_26rem] min-[1440px]:flex-[0_1_32rem] justify-center px-2"
             data-testid="top-bar-centre"
           >
             <button
@@ -135,7 +136,7 @@
             </button>
           </div>
         }
-        <div class="flex min-w-0 flex-1 basis-0 items-center justify-end gap-1">
+        <div class="flex min-w-max flex-1 basis-0 items-center justify-end gap-1">
           @if (windowClass() !== 'expanded') {
             <button
               mat-icon-button
@@ -179,7 +180,7 @@
               >
                 {{ initials() }}
               </span>
-              <span class="ml-2 hidden text-on-surface sm:inline" data-testid="user-name">
+              <span class="ml-2 hidden text-on-surface min-[1600px]:inline" data-testid="user-name">
                 {{ me.user.displayName }}
               </span>
             </button>

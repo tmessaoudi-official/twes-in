@@ -105,3 +105,45 @@ test('on a phone the settings list stands alone, a setting opens without it, and
   await expect(page.getByTestId('settings-back')).toBeHidden();
   await expect(page.getByTestId('settings-index')).toBeVisible();
 });
+
+test('the top bar keeps every control clear of the next, down to the narrowest labelled window', async ({
+  page,
+}) => {
+  await signIn(page);
+  for (const width of [1200, 1280, 900]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(page.getByTestId('user-menu')).toBeVisible();
+    // A control another one covers cannot be clicked: the account button once lay over the gear at 1280 px (CI, row 37).
+    const boxes = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('.twes-shell-bar button, .twes-shell-bar a')]
+        .filter((control) => control.offsetParent !== null)
+        .map((control) => {
+          const box = control.getBoundingClientRect();
+          return {
+            id: control.getAttribute('data-testid') ?? control.textContent?.trim() ?? '?',
+            left: box.left,
+            right: box.right,
+            top: box.top,
+            bottom: box.bottom,
+          };
+        }),
+    );
+    const overlaps = boxes.flatMap((a, i) =>
+      boxes
+        .slice(i + 1)
+        .filter(
+          (b) =>
+            a.left < b.right - 1 &&
+            b.left < a.right - 1 &&
+            a.top < b.bottom - 1 &&
+            b.top < a.bottom - 1,
+        )
+        .map((b) => `${a.id} × ${b.id}`),
+    );
+    expect(overlaps, `${width} px`).toEqual([]);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      `${width} px`,
+    ).toBe(true);
+  }
+});

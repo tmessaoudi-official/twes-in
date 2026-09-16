@@ -203,3 +203,5 @@ tables, essay gotchas) was retired with the reset. What applies here:
   needs the inverse side maintained in the entity beside the owning assignment, as the other collections here are
   (2026-09-16, `Invoice::creditNoteFor`). Adding the inverse side alone is a mapping change, not a migration: the
   owning column and its index already exist.
+- The shared Demo company outgrows a list page as e2e runs leave rows behind (52 customers on 2026-09-16, 25 a page): a
+  scenario asserting its new row in a list filters the list first, or the row sorts onto page 2 and reads as missing.
