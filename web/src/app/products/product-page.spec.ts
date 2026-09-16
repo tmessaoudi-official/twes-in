@@ -176,6 +176,7 @@ describe('ProductPage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/products', 'p9'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('products.saved');
   });
 
   it('does not send a price the API would refuse', async () => {

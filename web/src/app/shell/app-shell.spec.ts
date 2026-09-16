@@ -472,7 +472,19 @@ describe('AppShell', () => {
 
     expect(auth.sessionEnded).toHaveBeenCalledOnce();
     expect(navigate).toHaveBeenCalledWith('/login?expired=1');
-    expect(activity.acknowledgeExpiry).toHaveBeenCalledOnce();
+    expect(sessionExpired()).toBe(false);
+  });
+
+  it('forgets a session end that arrived after the last redirect, so a fresh sign-in is not sent straight back', async () => {
+    // Several requests refused at once: the first sends the person away, a later one lands once the shell is gone.
+    sessionExpired.set(true);
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
+
+    await render();
+
+    expect(navigate).not.toHaveBeenCalledWith('/login?expired=1');
+    expect(auth.sessionEnded).not.toHaveBeenCalled();
+    expect(sessionExpired()).toBe(false);
   });
 
   it('names the signed-in user on the account menu', async () => {

@@ -319,6 +319,7 @@ describe('InvoicePage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/invoices', 'i9'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('invoices.saved');
   });
 
   it('gives lines whose discount nobody typed the discount of the customer chosen', async () => {

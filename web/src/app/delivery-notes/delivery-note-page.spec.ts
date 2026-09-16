@@ -239,6 +239,7 @@ describe('DeliveryNotePage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('delivery_notes.saved');
   });
 
   it('does not send a line the API would refuse, and says what is wrong with it', async () => {

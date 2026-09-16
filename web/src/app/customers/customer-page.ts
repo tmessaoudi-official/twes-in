@@ -142,6 +142,7 @@ export class CustomerPage {
     if (id === null) {
       const created = await this.facade.createCustomer(companyId, input);
       if (created !== null) {
+        this.feedback.success('customers.saved');
         await this.router.navigate(['/customers', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseCustomer(companyId, id, input)) !== null) {

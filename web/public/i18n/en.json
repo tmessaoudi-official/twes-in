@@ -1306,6 +1306,7 @@
     "save": "Save",
     "cancel": "Cancel",
     "saved": "The expense was saved.",
+    "deleted": "The expense was deleted.",
     "read_only": "You can read expenses but not change them.",
     "statuses": {
       "draft": "Draft",

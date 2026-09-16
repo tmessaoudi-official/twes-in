@@ -169,6 +169,7 @@ export class ExpensePage {
     if (id === null) {
       const created = await this.facade.createExpense(companyId, input);
       if (created !== null) {
+        this.feedback.success('expenses.saved');
         await this.router.navigate(['/expenses', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseExpense(companyId, id, input)) !== null) {
@@ -208,6 +209,7 @@ export class ExpensePage {
       return;
     }
     if (await this.facade.deleteExpense(companyId, id)) {
+      this.feedback.success('expenses.deleted');
       await this.router.navigate(['/expenses'], { replaceUrl: true });
     }
   }

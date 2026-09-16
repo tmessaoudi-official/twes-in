@@ -216,6 +216,7 @@ describe('ExpensePage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/expenses', 'e9'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('expenses.saved');
   });
 
   it('keeps a category already chosen when the vendor changes, and sends no amount of the wrong shape', async () => {
@@ -307,6 +308,7 @@ describe('ExpensePage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/expenses'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('expenses.deleted');
   });
 
   it('attaches a chosen file, links each receipt to its content, and removes one only from a draft', async () => {

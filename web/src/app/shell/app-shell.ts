@@ -167,7 +167,9 @@ export class AppShell {
 
   constructor() {
     // A session that ended while the page was open (expired, or ended from another device) sends the person back to
-    // sign in with a word of why, instead of leaving every screen failing one request at a time.
+    // sign in with a word of why, instead of leaving every screen failing one request at a time. A refusal that landed
+    // after the last redirect, while no shell was open, belongs to that ended session and must not eject a new one.
+    this.activity.acknowledgeExpiry();
     effect(() => {
       if (!this.activity.sessionExpired()) return;
       untracked(() => {

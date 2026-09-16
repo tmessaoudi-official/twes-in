@@ -272,6 +272,7 @@ export class InvoicePage {
     if (id === null) {
       const created = await this.facade.create(companyId, input);
       if (created !== null) {
+        this.feedback.success('invoices.saved');
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {

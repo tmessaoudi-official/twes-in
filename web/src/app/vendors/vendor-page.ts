@@ -96,6 +96,7 @@ export class VendorPage {
     if (id === null) {
       const created = await this.facade.createVendor(companyId, input);
       if (created !== null) {
+        this.feedback.success('vendors.saved');
         await this.router.navigate(['/vendors', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseVendor(companyId, id, input)) !== null) {

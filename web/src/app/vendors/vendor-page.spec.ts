@@ -158,6 +158,7 @@ describe('VendorPage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/vendors', 'v9'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('vendors.saved');
   });
 
   it('does not send a registration number or payment terms of the wrong shape', async () => {

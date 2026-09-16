@@ -115,6 +115,7 @@ export class ProductPage {
     if (id === null) {
       const created = await this.facade.createProduct(companyId, input);
       if (created !== null) {
+        this.feedback.success('products.saved');
         await this.router.navigate(['/products', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseProduct(companyId, id, input)) !== null) {

@@ -205,6 +205,7 @@ export class DeliveryNotePage {
     if (id === null) {
       const created = await this.facade.create(companyId, input);
       if (created !== null) {
+        this.feedback.success('delivery_notes.saved');
         await this.router.navigate(['/delivery-notes', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {

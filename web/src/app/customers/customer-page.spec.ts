@@ -206,6 +206,7 @@ describe('CustomerPage', () => {
     await vi.waitFor(() =>
       expect(navigate).toHaveBeenCalledWith(['/customers', 'k9'], { replaceUrl: true }),
     );
+    expect(successToasts()).toContain('customers.saved');
   });
 
   it("sends what the company's custom fields were filled in with", async () => {
