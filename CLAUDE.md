@@ -98,7 +98,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   check `ls web/src/app` rather than this sentence: `auth`, `company`, `customers`, `delivery-notes`, `expenses`,
   `fiscal`, `hello`, `health`, `inventory`, `invitation`, `invoices`, `platform`, `products`, `settings`, `signup`,
   `vendors`, `notifications` — the bell, the centre and the Centrifugo connection behind
-  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
+  the `REALTIME_CONNECTOR` token, `shell` — the signed-in layout by window class (bottom bar below 600 px, rail to 1199, labelled from 1200), its nav manifest, the home manifest (`home-manifest.ts`: a module declares its `*_HOME` panel, loaded lazily, beside its `*_NAV`), the Ctrl K palette (`commands.ts`: a module declares its `*_COMMANDS` beside its `*_NAV`), account menu and the settings area behind the gear; every
   signed-in route is a child of it), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens and
   `ThemeFacade`; `i18n/`: `LanguageFacade`; `settings/`: the `SettingsFacade` port, its API adapter

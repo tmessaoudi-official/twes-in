@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { Command } from '../shell/commands';
+import type { HomePanel } from '../shell/home-manifest';
 import type { NavEntry } from '../shell/nav-manifest';
 
 /** The key the API's module registry knows the invoices module by. */
@@ -29,5 +30,15 @@ export const INVOICES_COMMANDS: readonly Command[] = [
     group: 'create',
     permission: 'invoice.write',
     module: INVOICES_MODULE,
+  },
+];
+
+/** What the module shows on the home page: what is still to collect, the invoices to chase and the months' payments. */
+export const INVOICES_HOME: readonly HomePanel[] = [
+  {
+    key: 'invoices',
+    permission: 'invoice.read',
+    module: INVOICES_MODULE,
+    load: () => import('./invoices-home').then((feature) => feature.InvoicesHome),
   },
 ];

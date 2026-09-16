@@ -118,8 +118,6 @@
     "company": "You are working in {{company}} as {{role}}.",
     "no_company": "You are not a member of any company yet.",
     "operator": "You are a platform operator.",
-    "permissions": "Permissions",
-    "none": "none",
     "platform": "Run the platform"
   },
   "roles": {
@@ -909,6 +907,32 @@
       "not_found": "Invoice not found.",
       "conflict": "The document changed state meanwhile, or its establishment has no invoice numbering series.",
       "invalid": "Refused. Check the customer, the lines, the discount and, for a payment, its amount (at most what is due) and its day (between issue and today)."
+    },
+    "home": {
+      "outstanding": "To collect",
+      "not_yet_due": "Not yet due",
+      "overdue": "Overdue",
+      "overdue_detail": "{{count}} invoices · the oldest {{days}} d",
+      "overdue_none": "No overdue invoice",
+      "see": "View",
+      "collected": "Collected in {{month}}",
+      "vat": "VAT invoiced · {{month}}",
+      "to_chase": "To chase",
+      "to_chase_detail": "{{count}} invoices · {{amount}} {{currency}}",
+      "to_chase_none": "Nothing to chase: no invoice overdue or due this week.",
+      "all_unpaid": "All invoices",
+      "late": "{{days}} d overdue",
+      "due_today": "Due today",
+      "due_in": "Due in {{days}} d",
+      "collections": "Collections",
+      "six_months": "Last 6 months",
+      "aging": {
+        "not_due": "Not yet due",
+        "days_1_15": "1–15 d",
+        "days_16_30": "16–30 d",
+        "days_31_45": "31–45 d",
+        "days_over_45": "> 45 d"
+      }
     }
   },
   "delivery_notes": {

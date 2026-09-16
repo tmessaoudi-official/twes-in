@@ -209,3 +209,63 @@ export interface InvoiceOptions {
   units: UnitOption[];
   taxes: TaxOption[];
 }
+
+/** Where an amount still due stands against its due day: not yet due, then by how many days late. */
+export type AgingBucket = 'not_due' | 'days_1_15' | 'days_16_30' | 'days_31_45' | 'days_over_45';
+export const AGING_BUCKETS: readonly AgingBucket[] = [
+  'not_due',
+  'days_1_15',
+  'days_16_30',
+  'days_31_45',
+  'days_over_45',
+];
+
+export interface AgingAmount {
+  readonly bucket: AgingBucket;
+  readonly amount: string;
+  readonly count: number;
+}
+
+/** An invoice to chase: `daysLate` is negative while its due day is still ahead. */
+export interface InvoiceToChase {
+  readonly invoiceId: string;
+  readonly number: string;
+  readonly customerName: string;
+  readonly dueDate: string;
+  readonly amountDue: string;
+  readonly daysLate: number;
+}
+
+export interface MonthCollected {
+  /** YYYY-MM */
+  readonly month: string;
+  readonly amount: string;
+}
+
+export interface VatCollected {
+  readonly code: string;
+  readonly rate: string;
+  readonly amount: string;
+}
+
+/** The home page's figures of the company's invoices, every one worked out by the API on the company's day. */
+export interface InvoiceSummary {
+  readonly currency: string;
+  readonly currencyScale: number;
+  /** The company's day, YYYY-MM-DD. */
+  readonly today: string;
+  readonly outstanding: string;
+  readonly notYetDue: string;
+  readonly overdue: string;
+  readonly overdueCount: number;
+  readonly oldestOverdueDays: number | null;
+  readonly aging: readonly AgingAmount[];
+  /** The first four; `toChaseCount` and `toChaseAmount` cover them all. */
+  readonly toChase: readonly InvoiceToChase[];
+  readonly toChaseCount: number;
+  readonly toChaseAmount: string;
+  /** The last six months, the oldest first. */
+  readonly collected: readonly MonthCollected[];
+  readonly vat: readonly VatCollected[];
+  readonly vatTotal: string;
+}

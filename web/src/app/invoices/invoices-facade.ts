@@ -7,6 +7,7 @@ import type {
   InvoiceOptions,
   InvoiceRow,
   InvoicesError,
+  InvoiceSummary,
   PaymentInput,
 } from './invoices-types';
 
@@ -17,6 +18,7 @@ export class InvoicesFacade {
   private readonly invoicesSignal = signal<readonly InvoiceRow[]>([]);
   private readonly optionsSignal = signal<InvoiceOptions | null>(null);
   private readonly invoiceSignal = signal<InvoiceRow | null>(null);
+  private readonly summarySignal = signal<InvoiceSummary | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InvoicesError | null>(null);
 
@@ -24,6 +26,8 @@ export class InvoicesFacade {
   readonly options = this.optionsSignal.asReadonly();
   /** The document open on screen, as the API last answered with it; null while a new one is filled in. */
   readonly invoice = this.invoiceSignal.asReadonly();
+  /** The home page's figures; null until read, and again when the read is refused. */
+  readonly summary = this.summarySignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -37,6 +41,11 @@ export class InvoicesFacade {
       this.invoicesSignal.set(invoices);
       this.optionsSignal.set(options);
     });
+  }
+
+  async loadSummary(companyId: string): Promise<void> {
+    this.summarySignal.set(null);
+    await this.read(async () => this.summarySignal.set(await this.api.summary(companyId)));
   }
 
   /** What the document screen needs: the form's options, and the document unless it is new. */

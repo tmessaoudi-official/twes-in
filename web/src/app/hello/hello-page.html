@@ -1,35 +1,43 @@
 @if (me(); as me) {
-  <section class="flex max-w-3xl flex-col gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="greeting">
-      {{ 'hello.greeting' | translate: { name: me.user.displayName } }}
-    </h1>
-    @if (me.company; as company) {
-      <p data-testid="company-line">
-        {{
-          'hello.company'
-            | translate
-              : {
-                  company: company.name,
-                  role: ('roles.' + company.role | translate),
-                }
-        }}
-      </p>
-    } @else {
-      <p data-testid="company-line">{{ 'hello.no_company' | translate }}</p>
-    }
+  <section class="flex flex-col gap-6">
+    <header class="flex flex-col gap-1">
+      @if (today(); as today) {
+        <p class="text-sm first-letter:uppercase text-on-surface-variant" data-testid="home-today">
+          {{ today }}
+        </p>
+      }
+      <h1 class="text-3xl font-semibold" data-testid="greeting">
+        {{ 'hello.greeting' | translate: { name: me.user.displayName } }}
+      </h1>
+      @if (me.company; as company) {
+        <p class="text-on-surface-variant" data-testid="company-line">
+          {{
+            'hello.company'
+              | translate
+                : {
+                    company: company.name,
+                    role: ('roles.' + company.role | translate),
+                  }
+          }}
+        </p>
+      } @else {
+        <p data-testid="company-line">{{ 'hello.no_company' | translate }}</p>
+      }
+    </header>
+
     @if (me.user.isPlatformOperator) {
-      <p data-testid="operator-line" class="text-sm text-on-surface-variant">
-        {{ 'hello.operator' | translate }}
-      </p>
-      <p>
+      <div class="flex flex-wrap items-center gap-4">
+        <p data-testid="operator-line" class="text-sm text-on-surface-variant">
+          {{ 'hello.operator' | translate }}
+        </p>
         <a mat-stroked-button routerLink="/platform" data-testid="hello-platform-link">{{
           'hello.platform' | translate
         }}</a>
-      </p>
+      </div>
     }
-    <p class="text-sm text-on-surface-variant" data-testid="permissions">
-      {{ 'hello.permissions' | translate }} :
-      {{ me.permissions.length ? me.permissions.join(', ') : ('hello.none' | translate) }}
-    </p>
+
+    @for (component of components(); track component) {
+      <ng-container *ngComponentOutlet="component" />
+    }
   </section>
 }

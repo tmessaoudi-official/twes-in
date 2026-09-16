@@ -7,14 +7,18 @@ import type {
   InvoiceInvoiceRead,
   InvoiceInvoiceWrite,
   InvoiceOptionsInvoiceOptionsRead,
+  InvoiceSummaryInvoiceSummaryRead,
   PaymentPaymentWrite,
 } from '../api/types.gen';
 import {
+  AGING_BUCKETS,
+  type AgingAmount,
   INVOICE_STATUSES,
   type InvoiceInput,
   type InvoiceOptions,
   type InvoiceRow,
   type InvoicesError,
+  type InvoiceSummary,
   PAYMENT_METHODS,
   type PaymentInput,
 } from './invoices-types';
@@ -38,6 +42,19 @@ export class InvoicesApi {
         await firstValueFrom(
           this.http.get<InvoiceOptionsInvoiceOptionsRead>(
             `${companyPath(companyId)}/invoice-options`,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** The home page's figures, worked out by the API on the company's day. */
+  async summary(companyId: string): Promise<InvoiceSummary> {
+    return this.guard(async () =>
+      toSummary(
+        await firstValueFrom(
+          this.http.get<InvoiceSummaryInvoiceSummaryRead>(
+            `${companyPath(companyId)}/invoice-summary`,
           ),
         ),
       ),
@@ -222,6 +239,38 @@ function toInvoice(raw: InvoiceInvoiceRead): InvoiceRow {
       reference: payment.reference,
       notes: payment.notes,
     })),
+  };
+}
+
+function toSummary(raw: InvoiceSummaryInvoiceSummaryRead): InvoiceSummary {
+  return {
+    currency: raw.currency ?? '',
+    currencyScale: raw.currencyScale ?? 2,
+    today: raw.today ?? '',
+    outstanding: raw.outstanding ?? '0',
+    notYetDue: raw.notYetDue ?? '0',
+    overdue: raw.overdue ?? '0',
+    overdueCount: raw.overdueCount ?? 0,
+    oldestOverdueDays: raw.oldestOverdueDays ?? null,
+    aging: (raw.aging ?? []).flatMap(({ bucket, amount, count }): AgingAmount[] => {
+      const known = AGING_BUCKETS.find((each) => each === bucket);
+      return known === undefined ? [] : [{ bucket: known, amount, count }];
+    }),
+    toChase: (raw.toChase ?? []).map(
+      ({ invoiceId, number, customerName, dueDate, amountDue, daysLate }) => ({
+        invoiceId,
+        number,
+        customerName,
+        dueDate,
+        amountDue,
+        daysLate,
+      }),
+    ),
+    toChaseCount: raw.toChaseCount ?? 0,
+    toChaseAmount: raw.toChaseAmount ?? '0',
+    collected: (raw.collected ?? []).map(({ month, amount }) => ({ month, amount })),
+    vat: (raw.vat ?? []).map(({ code, rate, amount }) => ({ code, rate, amount })),
+    vatTotal: raw.vatTotal ?? '0',
   };
 }
 

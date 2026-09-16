@@ -500,17 +500,52 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNAUTHORIZED);
     }
 
+    public function testTheSummaryCountsWhatIsDueAndCollectedOnTheCompanysDayForAReader(): void
+    {
+        $globex = $this->createCompany('Globex');
+        $this->createUser('summary-reader@twes.local', 'password-1234', $this->company, ['invoice.read'], 'reader');
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue', 'payment.write']);
+        $today = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->format('Y-m-d');
+        $id = $this->issuedInvoice();
+        $total = $this->stringAt($this->json(), 'amountDue');
+        self::assertIsNumeric($total);
+        $this->postJson($this->path($id).'/payments', ['date' => $today, 'amount' => '100', 'method' => 'cash', 'reference' => null, 'notes' => null]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->sendJson('POST', '/api/auth/logout');
+        $this->login('summary-reader@twes.local', 'password-1234');
+
+        $this->getJson($this->companyPath().'/invoice-summary');
+
+        self::assertResponseIsSuccessful();
+        $summary = $this->json();
+        $due = bcsub($total, '100', 3);
+        self::assertSame(['TND', 3, $today, $due], [$summary['currency'], $summary['currencyScale'], $summary['today'], $summary['outstanding']]);
+        $collected = $this->arrayAt($summary, 'collected');
+        self::assertCount(6, $collected);
+        self::assertSame(['month' => substr($today, 0, 7), 'amount' => '100.000'], $collected[5]);
+        self::assertSame(['not_due', 'days_1_15', 'days_16_30', 'days_31_45', 'days_over_45'], array_column($this->arrayAt($summary, 'aging'), 'bucket'));
+        self::assertSame(['TVA19'], array_column($this->arrayAt($summary, 'vat'), 'code'));
+        self::assertSame(1, array_sum(array_column($this->arrayAt($summary, 'aging'), 'count')), 'the one issued invoice, in whichever bucket its terms put it');
+
+        $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/invoice-summary');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testSwitchedOffTheModuleAnswersNotFoundAndKeepsItsInvoices(): void
     {
         $this->signedIn(['invoice.read', 'invoice.write', 'company.read', 'company.settings']);
         $this->postJson($this->path(), $this->invoice());
         self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->getJson($this->companyPath().'/invoice-summary');
+        self::assertResponseIsSuccessful();
 
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => false]);
         self::assertResponseIsSuccessful();
         $this->getJson($this->path());
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->companyPath().'/invoice-options');
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->getJson($this->companyPath().'/invoice-summary');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
 
         $this->sendJson('PUT', $this->companyPath().'/modules/invoices', ['enabled' => true]);

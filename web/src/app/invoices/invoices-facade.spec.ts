@@ -80,6 +80,7 @@ describe('InvoicesFacade', () => {
     recordPayment: vi.fn(),
     deletePayment: vi.fn(),
     pdfUrl: vi.fn(),
+    summary: vi.fn(),
   };
   let facade: InvoicesFacade;
 
@@ -90,6 +91,19 @@ describe('InvoicesFacade', () => {
     api.invoice.mockResolvedValue(draft);
     TestBed.configureTestingModule({ providers: [{ provide: InvoicesApi, useValue: api }] });
     facade = TestBed.inject(InvoicesFacade);
+  });
+
+  it('reads the home summary, and says why when it cannot', async () => {
+    const summary = { today: '2026-09-21', outstanding: '10.000' };
+    api.summary.mockResolvedValueOnce(summary);
+    await facade.loadSummary('c1');
+    expect(api.summary).toHaveBeenCalledWith('c1');
+    expect(facade.summary()).toEqual(summary);
+
+    api.summary.mockRejectedValueOnce(new InvoicesRefused('not_found'));
+    await facade.loadSummary('c1');
+    expect(facade.summary()).toBeNull();
+    expect(facade.error()).toBe('not_found');
   });
 
   it('reads the list with the options that name its drafts’ customers', async () => {

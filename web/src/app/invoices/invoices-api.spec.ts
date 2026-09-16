@@ -100,6 +100,50 @@ describe('InvoicesApi', () => {
 
   afterEach(() => http.verify());
 
+  it('reads the home summary as the API works it out, the unknown aging bucket dropped', async () => {
+    const pending = api.summary('c 1');
+    http.expectOne('/api/companies/c%201/invoice-summary').flush({
+      currency: 'TND',
+      currencyScale: 3,
+      today: '2026-09-21',
+      outstanding: '3531.050',
+      notYetDue: '1500.000',
+      overdue: '2031.050',
+      overdueCount: 3,
+      oldestOverdueDays: 82,
+      aging: [
+        { bucket: 'not_due', amount: '1500.000', count: 2 },
+        { bucket: 'days_over_45', amount: '881.000', count: 1 },
+        { bucket: 'someday', amount: '1.000', count: 1 },
+      ],
+      toChase: [
+        {
+          invoiceId: 'i3',
+          number: 'FAC-O3',
+          customerName: 'Transports Sahel',
+          dueDate: '2026-07-01',
+          amountDue: '881.000',
+          daysLate: 82,
+        },
+      ],
+      toChaseCount: 4,
+      toChaseAmount: '2331.050',
+      collected: [{ month: '2026-09', amount: '800.000' }],
+      vat: [{ code: 'TVA19', rate: '19.000', amount: '171.000' }],
+      vatTotal: '171.000',
+    });
+    const summary = await pending;
+    expect(summary.aging.map((each) => each.bucket)).toEqual(['not_due', 'days_over_45']);
+    expect(summary).toMatchObject({
+      today: '2026-09-21',
+      oldestOverdueDays: 82,
+      toChase: [{ invoiceId: 'i3', daysLate: 82 }],
+      toChaseCount: 4,
+      collected: [{ month: '2026-09', amount: '800.000' }],
+      vatTotal: '171.000',
+    });
+  });
+
   it('reads the form options, taxes of every kind included', async () => {
     const pending = api.options('c 1');
     http.expectOne('/api/companies/c%201/invoice-options').flush({

@@ -1074,3 +1074,18 @@ body {
 .theme-changing *::after {
   transition: none !important;
 }
+
+/* A small round marker in a status tone, beside a figure's label (the home page's legends). */
+.twes-dot {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+}
+.twes-dot-info {
+  background: var(--twes-status-info-dot);
+}
+.twes-dot-danger {
+  background: var(--twes-status-danger-dot);
+}

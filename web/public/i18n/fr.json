@@ -118,8 +118,6 @@
     "company": "Vous travaillez dans {{company}} en tant que {{role}}.",
     "no_company": "Vous n'êtes membre d'aucune entreprise pour le moment.",
     "operator": "Vous êtes opérateur de la plateforme.",
-    "permissions": "Permissions",
-    "none": "aucune",
     "platform": "Gérer la plateforme"
   },
   "roles": {
@@ -909,6 +907,32 @@
       "not_found": "Facture introuvable.",
       "conflict": "Le document a changé d'état entre-temps, ou son établissement n'a pas de série de numérotation des factures.",
       "invalid": "Refusé. Vérifiez le client, les lignes, la remise et, pour un paiement, son montant (au plus le reste à payer) et sa date (entre l'émission et aujourd'hui)."
+    },
+    "home": {
+      "outstanding": "À encaisser",
+      "not_yet_due": "Pas encore dû",
+      "overdue": "En retard",
+      "overdue_detail": "{{count}} factures · la plus ancienne {{days}} j",
+      "overdue_none": "Aucune facture en retard",
+      "see": "Voir",
+      "collected": "Encaissé en {{month}}",
+      "vat": "TVA facturée · {{month}}",
+      "to_chase": "À relancer",
+      "to_chase_detail": "{{count}} factures · {{amount}} {{currency}}",
+      "to_chase_none": "Rien à relancer : aucune facture en retard ni à échéance cette semaine.",
+      "all_unpaid": "Toutes les factures",
+      "late": "{{days}} j de retard",
+      "due_today": "Échéance aujourd’hui",
+      "due_in": "Échéance dans {{days}} j",
+      "collections": "Encaissements",
+      "six_months": "6 derniers mois",
+      "aging": {
+        "not_due": "Pas encore dû",
+        "days_1_15": "1–15 j",
+        "days_16_30": "16–30 j",
+        "days_31_45": "31–45 j",
+        "days_over_45": "> 45 j"
+      }
     }
   },
   "delivery_notes": {

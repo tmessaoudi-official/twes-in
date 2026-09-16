@@ -74,6 +74,32 @@ export function formatDay(value: string, locale: string): string {
   }).format(date);
 }
 
+/** A calendar day written out in full, "mercredi 16 septembre 2026" in French; what is not a day shows as it came. */
+export function formatLongDay(value: string, locale: string): string {
+  return formatDayParts(value, locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+/** The month of a calendar day, named in full ("September"), or short ("sept.") for a chart's axis. */
+export function formatMonth(
+  value: string,
+  locale: string,
+  width: 'long' | 'short' = 'long',
+): string {
+  return formatDayParts(value, locale, { month: width });
+}
+
+function formatDayParts(value: string, locale: string, parts: Intl.DateTimeFormatOptions): string {
+  const match = DAY.exec(value);
+  if (match === null) return value;
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  return new Intl.DateTimeFormat(locale, { ...parts, timeZone: 'UTC' }).format(date);
+}
+
 /**
  * A moment (an ISO date-time) as its day and a 24-hour time in a time zone, the viewer's when none is given; what is
  * not a moment shows as it came.

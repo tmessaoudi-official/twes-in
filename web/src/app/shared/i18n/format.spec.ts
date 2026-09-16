@@ -5,6 +5,8 @@ import {
   dayKey,
   formatAmount,
   formatDay,
+  formatLongDay,
+  formatMonth,
   formatLocale,
   formatMoment,
   todayIn,
@@ -65,6 +67,15 @@ describe('formatAmount', () => {
     expect(formatAmount('abc', 3, 'fr')).toBe('abc');
     expect(formatAmount('', 3, 'fr')).toBe('');
     expect(formatAmount('1e3', 3, 'fr')).toBe('1e3');
+  });
+});
+
+describe('formatLongDay and formatMonth', () => {
+  it('write a day out in full and name its month, whatever the viewer’s time zone', () => {
+    expect(formatLongDay('2026-09-16', 'fr-TN')).toMatch(/mercredi 16 septembre 2026/i);
+    expect(formatMonth('2026-09-21', 'en')).toBe('September');
+    expect(formatMonth('2026-09-01', 'fr-TN', 'short')).toMatch(/^sept/);
+    expect(formatLongDay('soon', 'fr')).toBe('soon');
   });
 });
 

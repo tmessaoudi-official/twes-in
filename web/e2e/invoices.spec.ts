@@ -192,6 +192,26 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
 
     await page.goto('/invoices');
     await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);
+
+    // The home page lays out the API's own summary: the same digits, whatever the locale does with separators.
+    await page.goto('/');
+    await expect(page.getByTestId('home-outstanding')).toBeVisible();
+    const summary = await page.evaluate(async () => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      return (await (await fetch(`/api/companies/${me.company.id}/invoice-summary`)).json()) as {
+        outstanding: string;
+        today: string;
+      };
+    });
+    const digits = (value: string): string => value.replace(/\D/g, '');
+    expect(digits((await page.getByTestId('home-outstanding').textContent()) ?? '')).toContain(
+      digits(summary.outstanding),
+    );
+    await expect(page.getByTestId(`home-month-${summary.today.slice(0, 7)}`)).toHaveAttribute(
+      'data-current',
+      'true',
+    );
+    expect(await wcagViolations(page)).toEqual([]);
   } finally {
     await retire(page, customerNumber);
   }
