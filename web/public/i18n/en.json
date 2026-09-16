@@ -370,6 +370,15 @@
     "navigation": "Main navigation",
     "more": "More",
     "bottom_navigation": "Shortcuts",
+    "commands": {
+      "open": "Search",
+      "title": "Commands",
+      "placeholder": "Go to or create…",
+      "create": "Create",
+      "goto": "Go to",
+      "empty": "No command matches",
+      "hint": "Each module adds its own commands"
+    },
     "user_menu": "Account",
     "language": "Language",
     "dark_on": "Dark mode",

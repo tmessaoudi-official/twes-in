@@ -14,19 +14,23 @@ import { EXPENSES_NAV } from '../expenses/expenses-nav';
  */
 export type NavSection = 'main' | 'company' | 'fiscal' | 'team' | 'customisation';
 
-export interface NavEntry {
+/** What decides whether a user sees something the shell offers: a navigation entry or a command. */
+export interface Gated {
+  /** The permission string it needs; without one, every signed-in user sees it. */
+  readonly permission?: string;
+  /** Present in development builds only, such as the design checkpoint screens. */
+  readonly devOnly?: boolean;
+  /** The module it belongs to: shown only while the working company has that module on. */
+  readonly module?: string;
+}
+
+export interface NavEntry extends Gated {
   readonly key: string;
   readonly labelKey: string;
   /** A Material Symbols ligature. */
   readonly icon: string;
   readonly route: string;
   readonly section: NavSection;
-  /** The permission string the entry needs; without one, every signed-in user sees it. */
-  readonly permission?: string;
-  /** Present in development builds only, such as the design checkpoint screens. */
-  readonly devOnly?: boolean;
-  /** The module the entry belongs to: shown only while the working company has that module on. */
-  readonly module?: string;
 }
 
 export interface NavGroup {
@@ -156,12 +160,12 @@ export const MODULE_NAV: readonly NavEntry[] = [
  * The entries this user may see in this build, in the working company. Hiding is a courtesy: the API refuses what
  * the voter refuses, and answers 404 for a module the company has off.
  */
-export function visibleEntries(
-  entries: readonly NavEntry[],
+export function visibleEntries<T extends Gated>(
+  entries: readonly T[],
   can: (permission: string) => boolean,
   developmentBuild: boolean,
   enabled: (module: string) => boolean,
-): readonly NavEntry[] {
+): readonly T[] {
   return entries.filter(
     (entry) =>
       (entry.devOnly !== true || developmentBuild) &&

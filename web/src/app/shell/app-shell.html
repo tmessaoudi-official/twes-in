@@ -92,6 +92,17 @@
           </button>
         }
         <span class="flex-1"></span>
+        <button
+          type="button"
+          class="twes-command-open"
+          (click)="openCommands()"
+          aria-keyshortcuts="Control+K Meta+K"
+          data-testid="command-open"
+        >
+          <mat-icon aria-hidden="true">search</mat-icon>
+          <span class="twes-command-open-label">{{ 'shell.commands.open' | translate }}</span>
+          <kbd aria-hidden="true">Ctrl K</kbd>
+        </button>
         <app-company-switcher />
         <app-notification-bell />
         @if (settingsRoute(); as route) {

@@ -370,6 +370,15 @@
     "navigation": "Navigation principale",
     "more": "Plus",
     "bottom_navigation": "Raccourcis",
+    "commands": {
+      "open": "Rechercher",
+      "title": "Commandes",
+      "placeholder": "Aller à ou créer…",
+      "create": "Créer",
+      "goto": "Aller à",
+      "empty": "Aucune commande ne correspond",
+      "hint": "Chaque module ajoute ses propres commandes"
+    },
     "user_menu": "Compte",
     "language": "Langue",
     "dark_on": "Mode sombre",

@@ -3,6 +3,7 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
@@ -17,6 +18,8 @@ import { NotificationsFacade } from '../notifications/notifications-facade';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
+import { CommandPalette } from './command-palette';
+import type { Command } from './commands';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -43,6 +46,7 @@ class StaticLoader implements TranslateLoader {
         collapse_menu: 'Réduire le menu',
         expand_menu: 'Déployer le menu',
         settings: 'Paramètres',
+        commands: { open: 'Rechercher' },
       },
       languages: { fr: 'Français', en: 'English' },
     });
@@ -320,6 +324,49 @@ describe('AppShell', () => {
     expect(document.querySelector('mat-sidenav')?.classList.contains('mat-drawer-opened')).toBe(
       true,
     );
+  });
+
+  it('opens the command palette with Ctrl K or ⌘ K, offering only what the user may do', async () => {
+    permissions.set(['customer.read', 'customer.write', 'expense.write']);
+    await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+    const press = (init: KeyboardEventInit) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'k', bubbles: true, cancelable: true, ...init }),
+      );
+
+    press({ ctrlKey: true });
+    expect(open).toHaveBeenCalledTimes(1);
+    const [component, config] = open.mock.calls[0] as [unknown, { data: { commands: Command[] } }];
+    expect(component).toBe(CommandPalette);
+    // Expenses is off for this company: its creation is not offered even with the permission.
+    expect(config.data.commands.map((command) => command.key)).toEqual([
+      'new-customer',
+      'goto-home',
+      'goto-customers',
+    ]);
+
+    press({ metaKey: true });
+    expect(open).toHaveBeenCalledTimes(2);
+    // AltGr+K is a character on some layouts, not a shortcut; a bare k is typing.
+    press({ ctrlKey: true, altKey: true });
+    press({});
+    expect(open).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens the command palette from the search button in the top bar', async () => {
+    const { click, byTestId } = await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    expect(byTestId('command-open')?.closest('header')).not.toBeNull();
+    expect(byTestId('command-open')?.getAttribute('aria-keyshortcuts')).toBe('Control+K Meta+K');
+    await click('command-open');
+
+    expect(open).toHaveBeenCalledTimes(1);
   });
 
   it('names the signed-in user on the account menu', async () => {

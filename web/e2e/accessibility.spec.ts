@@ -245,3 +245,29 @@ test('using the shell raises no Content Security Policy violation', async ({ pag
 
   expect(violations).toEqual([]);
 });
+
+test('Ctrl K opens the command palette, which is accessible and takes the person where they typed', async ({
+  page,
+}) => {
+  await signIn(page);
+  await expect(page.getByTestId('greeting')).toBeVisible();
+
+  await page.keyboard.press('Control+k');
+  const input = page.getByTestId('command-input');
+  await expect(input).toBeFocused();
+  await expect(page.getByTestId('command-goto-home')).toBeVisible();
+  await expectAccessible(page, 'command palette');
+
+  await input.fill('nouveau client');
+  await expect(page.getByRole('option')).toHaveCount(1);
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/\/customers\/new$/);
+  await expect(page.getByTestId('command-palette')).toHaveCount(0);
+
+  // The button in the top bar opens it too, and Escape closes it where it was.
+  await page.getByTestId('command-open').click();
+  await expect(input).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('command-palette')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/customers\/new$/);
+});

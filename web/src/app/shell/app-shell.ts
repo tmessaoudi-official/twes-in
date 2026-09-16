@@ -13,6 +13,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDialog } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
@@ -26,11 +27,13 @@ import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { LanguageFacade, SUPPORTED_LANGUAGES } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
+import { CommandPalette, type CommandPaletteData } from './command-palette';
+import { type Command, MODULE_COMMANDS, navCommands } from './commands';
 import {
   CORE_NAV,
   DEV_NAV,
+  type Gated,
   MODULE_NAV,
-  type NavEntry,
   navSections,
   SETTINGS_NAV,
   SIDEBAR_SECTIONS,
@@ -88,6 +91,8 @@ export function initialsOf(displayName: string): string {
 export class AppShell {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private paletteOpen = false;
   protected readonly theme = inject(ThemeFacade);
   protected readonly language = inject(LanguageFacade);
 
@@ -115,6 +120,13 @@ export class AppShell {
   /** The gear opens the first settings page this user may see, and is absent when there is none. */
   protected readonly settingsRoute = computed(() => this.visible(SETTINGS_NAV)[0]?.route ?? null);
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
+  /** What the command palette offers this user: the modules' commands, then a way to every screen they may see. */
+  protected readonly commands = computed((): readonly Command[] =>
+    this.visible([
+      ...MODULE_COMMANDS,
+      ...navCommands([...CORE_NAV, ...MODULE_NAV, ...SETTINGS_NAV]),
+    ]),
+  );
   /** The phone's bottom bar: the first destinations of the sidebar, in its order. */
   protected readonly bottomBar = computed(() =>
     this.sections()
@@ -134,6 +146,17 @@ export class AppShell {
    * and Alt together, Option on a French Mac reports Alt alone. Only Meta, or Ctrl without Alt, is a shortcut.
    */
   protected onKeydown(event: KeyboardEvent): void {
+    // Ctrl K (⌘ K on a Mac) opens the palette from anywhere, a field included, as in most tools that have one. AltGr
+    // reports Ctrl and Alt together and types a character, so it is not the shortcut.
+    if (
+      event.key.toLowerCase() === 'k' &&
+      !event.defaultPrevented &&
+      (event.metaKey || (event.ctrlKey && !event.altKey))
+    ) {
+      event.preventDefault();
+      this.openCommands();
+      return;
+    }
     if (event.key !== '[' || event.defaultPrevented || event.metaKey) return;
     if ((event.ctrlKey && !event.altKey) || this.windowClass() !== 'expanded') return;
     const target = event.target;
@@ -147,7 +170,22 @@ export class AppShell {
     this.theme.toggleSidebar();
   }
 
-  private visible(entries: readonly NavEntry[]): readonly NavEntry[] {
+  protected openCommands(): void {
+    if (this.paletteOpen) return;
+    this.paletteOpen = true;
+    this.dialog
+      .open<CommandPalette, CommandPaletteData>(CommandPalette, {
+        data: { commands: this.commands() },
+        width: 'min(40rem, calc(100vw - 2rem))',
+        position: { top: '12vh' },
+        panelClass: 'twes-palette-panel',
+        autoFocus: 'first-tabbable',
+      })
+      .afterClosed()
+      .subscribe(() => (this.paletteOpen = false));
+  }
+
+  private visible<T extends Gated>(entries: readonly T[]): readonly T[] {
     return visibleEntries(
       entries,
       (permission) => this.auth.hasPermission(permission),

@@ -1,0 +1,63 @@
+<div class="twes-palette" data-testid="command-palette">
+  <div class="twes-palette-field">
+    <mat-icon aria-hidden="true">search</mat-icon>
+    <input
+      type="text"
+      id="command-input"
+      role="combobox"
+      aria-autocomplete="list"
+      aria-expanded="true"
+      aria-controls="command-list"
+      [attr.aria-activedescendant]="activeCommand() ? optionId(activeCommand()!) : null"
+      [attr.aria-label]="'shell.commands.title' | translate"
+      [placeholder]="'shell.commands.placeholder' | translate"
+      [value]="query()"
+      (input)="onInput($any($event.target).value)"
+      (keydown)="onKeydown($event)"
+      autocomplete="off"
+      spellcheck="false"
+      cdkFocusInitial
+      data-testid="command-input"
+    />
+    <kbd aria-hidden="true">Esc</kbd>
+  </div>
+
+  <div
+    id="command-list"
+    role="listbox"
+    class="twes-palette-list"
+    [attr.aria-label]="'shell.commands.title' | translate"
+  >
+    @for (entry of groups(); track entry.group) {
+      <div role="group" [attr.aria-label]="'shell.commands.' + entry.group | translate">
+        <p class="twes-palette-group" aria-hidden="true">
+          {{ 'shell.commands.' + entry.group | translate }}
+        </p>
+        @for (command of entry.commands; track command.key) {
+          <div
+            role="option"
+            [id]="optionId(command)"
+            [attr.aria-selected]="activeCommand()?.key === command.key"
+            [class.is-active]="activeCommand()?.key === command.key"
+            tabindex="-1"
+            (click)="run(command)"
+            (keydown.enter)="run(command)"
+            (pointermove)="active.set(matches().indexOf(command))"
+            [attr.data-testid]="'command-' + command.key"
+          >
+            <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon
+            ><span>{{ command.labelKey | translate }}</span>
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  @if (matches().length === 0) {
+    <p class="twes-palette-empty" role="status" data-testid="command-empty">
+      {{ 'shell.commands.empty' | translate }}
+    </p>
+  }
+
+  <p class="twes-palette-foot">{{ 'shell.commands.hint' | translate }}</p>
+</div>
