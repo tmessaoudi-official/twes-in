@@ -65,6 +65,39 @@ html {
   }
 }
 
+// The approved design's motion and depth (docs/SPEC.md § 7, 2026-09-16). Durations follow Material 3: a state change
+// is quick, what enters decelerates, what leaves accelerates. Depth is a hairline ring plus a soft drop, darker and
+// wider for what floats higher, redrawn for the dark scheme (`light-dark()` takes colours only, not shadows).
+:root {
+  --twes-motion-standard: 120ms;
+  --twes-motion-enter: 250ms;
+  --twes-motion-exit: 200ms;
+  --twes-motion-page: 350ms;
+  --twes-motion-data: 450ms;
+  --twes-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --twes-ease-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --twes-ease-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  --twes-shadow-1: 0 0 0 1px oklch(0.2 0.03 262 / 0.07), 0 1px 2px oklch(0.2 0.03 262 / 0.06);
+  --twes-shadow-2:
+    0 0 0 1px oklch(0.2 0.03 262 / 0.07), 0 24px 48px -18px oklch(0.25 0.05 262 / 0.3);
+}
+
+html.theme-dark {
+  --twes-shadow-1: 0 0 0 1px oklch(1 0 0 / 0.07), 0 1px 0 oklch(1 0 0 / 0.04) inset;
+  --twes-shadow-2: 0 0 0 1px oklch(1 0 0 / 0.09), 0 28px 56px -18px oklch(0 0 0 / 0.7);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --twes-motion-standard: 0ms;
+    --twes-motion-enter: 0ms;
+    --twes-motion-exit: 0ms;
+    --twes-motion-page: 0ms;
+    --twes-motion-data: 0ms;
+  }
+}
+
 body {
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);

@@ -4,6 +4,7 @@ import {
   applyColourTokens,
   colourTokens,
   InvalidAccentColour,
+  oklchToHex,
   STATUS_TONES,
   statusTokens,
   SYSTEM_COLOUR_ROLES,
@@ -82,35 +83,72 @@ describe('colourTokens', () => {
   });
 });
 
-describe('statusTokens', () => {
-  it('computes the status tones the design canvas shows, the accent tone from the accent', () => {
-    const light = statusTokens('#1f6feb', 'light');
-    const dark = statusTokens('#1f6feb', 'dark');
-    const tone = (tokens: Record<string, string>, name: string) =>
-      ['bg', 'fg', 'dot'].map((part) => tokens[`--twes-status-${name}-${part}`]);
-
-    expect(tone(light, 'green')).toEqual(['#ddf4d9', '#135224', '#488450']);
-    expect(tone(light, 'amber')).toEqual(['#ffead7', '#653e00', '#a66a0b']);
-    expect(tone(light, 'neutral')).toEqual(['#f6ece4', '#4b4640', '#7d766f']);
-    expect(tone(dark, 'red')).toEqual(['#4b2d29', '#ffd3cd', '#ff897d']);
-    expect(tone(light, 'accent')).toEqual(['#e9edff', '#004299', '#2471ed']);
-    expect(tone(dark, 'accent')).toEqual(['#2c3449', '#d1dcff', '#84aaff']);
-    expect(tone(statusTokens('#d93025', 'light'), 'accent')).not.toEqual(tone(light, 'accent'));
-    expect(tone(statusTokens('#d93025', 'light'), 'green')).toEqual(tone(light, 'green'));
+describe('oklchToHex', () => {
+  it('converts OKLCH to sRGB as CSS Color 4 does, for the three primaries and both ends of lightness', () => {
+    expect(oklchToHex(0.6279554, 0.2576833, 29.2338851)).toBe('#ff0000');
+    expect(oklchToHex(0.8664396, 0.2948272, 142.4953366)).toBe('#00ff00');
+    expect(oklchToHex(0.4520137, 0.313214, 264.0520206)).toBe('#0000ff');
+    expect(oklchToHex(1, 0, 0)).toBe('#ffffff');
+    expect(oklchToHex(0, 0, 0)).toBe('#000000');
   });
 
-  it('keeps a status label readable on its badge in both schemes, whatever the accent', () => {
-    for (const accent of ['#1f6feb', '#ffd400', '#0b7a3b', '#d93025', '#000000']) {
-      for (const scheme of ['light', 'dark'] as const) {
-        const tokens = statusTokens(accent, scheme);
-        expect(Object.keys(tokens)).toHaveLength(STATUS_TONES.length * 3);
-        for (const tone of STATUS_TONES) {
-          expect(
-            contrast(tokens[`--twes-status-${tone}-fg`], tokens[`--twes-status-${tone}-bg`]),
-            `${accent} ${scheme} ${tone}`,
-          ).toBeGreaterThanOrEqual(4.5);
-        }
+  it('clips a colour outside sRGB to the nearest channel values instead of wrapping', () => {
+    expect(oklchToHex(0.95, 0.4, 25)).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('statusTokens', () => {
+  it('offers six tones that name a meaning, never a colour and never the accent', () => {
+    expect([...STATUS_TONES]).toEqual([
+      'neutral',
+      'info',
+      'warning',
+      'success',
+      'danger',
+      'purple',
+    ]);
+  });
+
+  it('gives every tone a soft background, a strong label and a solid dot, in each scheme', () => {
+    for (const scheme of ['light', 'dark'] as const) {
+      const tokens = statusTokens(scheme);
+      expect(Object.keys(tokens).sort()).toEqual(
+        STATUS_TONES.flatMap((tone) =>
+          ['bg', 'fg', 'dot'].map((part) => `--twes-status-${tone}-${part}`),
+        ).sort(),
+      );
+      for (const value of Object.values(tokens)) {
+        expect(value).toMatch(/^#[0-9a-f]{6}$/);
       }
+    }
+  });
+
+  it('keeps a status label readable on its badge in both schemes', () => {
+    for (const scheme of ['light', 'dark'] as const) {
+      const tokens = statusTokens(scheme);
+      for (const tone of STATUS_TONES) {
+        expect(
+          contrast(tokens[`--twes-status-${tone}-fg`], tokens[`--twes-status-${tone}-bg`]),
+          `${scheme} ${tone}`,
+        ).toBeGreaterThanOrEqual(6);
+      }
+    }
+  });
+
+  it('puts a light badge in the light scheme and a dark one in the dark scheme', () => {
+    for (const tone of STATUS_TONES) {
+      expect(luminance(statusTokens('light')[`--twes-status-${tone}-bg`]), tone).toBeGreaterThan(
+        0.75,
+      );
+      expect(luminance(statusTokens('dark')[`--twes-status-${tone}-bg`]), tone).toBeLessThan(0.08);
+    }
+  });
+
+  it('keeps the tones apart: no two share a label colour', () => {
+    for (const scheme of ['light', 'dark'] as const) {
+      const tokens = statusTokens(scheme);
+      const labels = STATUS_TONES.map((tone) => tokens[`--twes-status-${tone}-fg`]);
+      expect(new Set(labels).size).toBe(STATUS_TONES.length);
     }
   });
 });

@@ -10,7 +10,7 @@ import { StatusBadge } from './status-badge';
   template: `<app-status-badge [tone]="tone()">Livré</app-status-badge>`,
 })
 class Host {
-  readonly tone = signal<StatusTone>('amber');
+  readonly tone = signal<StatusTone>('warning');
 }
 
 describe('StatusBadge', () => {
@@ -20,16 +20,16 @@ describe('StatusBadge', () => {
     const badge: HTMLElement = fixture.nativeElement.querySelector('app-status-badge');
 
     expect(badge.textContent?.trim()).toBe('Livré');
-    expect(badge.getAttribute('data-tone')).toBe('amber');
-    expect(badge.style.getPropertyValue('--status-bg')).toBe('var(--twes-status-amber-bg)');
-    expect(badge.style.getPropertyValue('--status-fg')).toBe('var(--twes-status-amber-fg)');
-    expect(badge.style.getPropertyValue('--status-dot')).toBe('var(--twes-status-amber-dot)');
+    expect(badge.getAttribute('data-tone')).toBe('warning');
+    expect(badge.style.getPropertyValue('--status-bg')).toBe('var(--twes-status-warning-bg)');
+    expect(badge.style.getPropertyValue('--status-fg')).toBe('var(--twes-status-warning-fg)');
+    expect(badge.style.getPropertyValue('--status-dot')).toBe('var(--twes-status-warning-dot)');
     expect(badge.querySelector('[data-part="dot"]')?.getAttribute('aria-hidden')).toBe('true');
 
-    fixture.componentInstance.tone.set('green');
+    fixture.componentInstance.tone.set('success');
     fixture.detectChanges();
 
-    expect(badge.getAttribute('data-tone')).toBe('green');
-    expect(badge.style.getPropertyValue('--status-bg')).toBe('var(--twes-status-green-bg)');
+    expect(badge.getAttribute('data-tone')).toBe('success');
+    expect(badge.style.getPropertyValue('--status-bg')).toBe('var(--twes-status-success-bg)');
   });
 });

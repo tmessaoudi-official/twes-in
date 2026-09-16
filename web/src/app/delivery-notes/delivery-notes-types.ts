@@ -20,10 +20,10 @@ export const DELIVERY_NOTE_STATUSES: readonly DeliveryNoteStatus[] = [
  */
 export const DELIVERY_NOTE_STATUS_TONES: Readonly<Record<DeliveryNoteStatus, StatusTone>> = {
   draft: 'neutral',
-  validated: 'accent',
-  delivered: 'amber',
-  invoiced: 'green',
-  cancelled: 'red',
+  validated: 'info',
+  delivered: 'warning',
+  invoiced: 'success',
+  cancelled: 'danger',
 };
 
 export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';

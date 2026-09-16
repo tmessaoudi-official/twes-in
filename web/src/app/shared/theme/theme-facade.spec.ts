@@ -42,13 +42,25 @@ describe('ThemeFacade', () => {
 
   it('applies the status tones of the scheme beside the system colours', () => {
     const facade = start();
-    const green = () => root.style.getPropertyValue('--twes-status-green-fg');
-    expect(green()).toBe(statusTokens(DEFAULT_ACCENT, 'light')['--twes-status-green-fg']);
+    const green = () => root.style.getPropertyValue('--twes-status-success-fg');
+    expect(green()).toBe(statusTokens('light')['--twes-status-success-fg']);
 
     facade.setScheme('dark');
     TestBed.tick();
 
-    expect(green()).toBe(statusTokens(DEFAULT_ACCENT, 'dark')['--twes-status-green-fg']);
+    expect(green()).toBe(statusTokens('dark')['--twes-status-success-fg']);
+  });
+
+  it('leaves the status tones alone when the accent changes: a status never borrows the brand colour', () => {
+    const facade = start();
+    const info = () => root.style.getPropertyValue('--twes-status-info-fg');
+    const before = info();
+
+    facade.setAccent('#d93025');
+    TestBed.tick();
+
+    expect(info()).toBe(before);
+    expect(info()).toBe(statusTokens('light')['--twes-status-info-fg']);
   });
 
   it('switches to the dark scheme: the class for color-scheme and the dark tokens', () => {

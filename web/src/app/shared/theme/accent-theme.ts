@@ -6,7 +6,6 @@ import {
   Hct,
   hexFromArgb,
   SchemeFidelity,
-  TonalPalette,
 } from '@material/material-color-utilities';
 
 /**
@@ -122,35 +121,71 @@ function roleArgb(scheme: DynamicScheme, role: SystemColourRole): number {
   return (scheme as unknown as Record<string, number>)[getter];
 }
 
-/** The tones a status badge takes: `accent` follows the company's accent, the others keep their own hue. */
-export const STATUS_TONES = ['accent', 'green', 'amber', 'red', 'neutral'] as const;
+/**
+ * The tones a status badge takes. Each names a meaning, so a module maps its statuses onto them and never picks a
+ * colour; none follows the company's accent, which marks actions, selection and focus (docs/SPEC.md § 7, 2026-09-16,
+ * the approved design).
+ */
+export const STATUS_TONES = ['neutral', 'info', 'warning', 'success', 'danger', 'purple'] as const;
 export type StatusTone = (typeof STATUS_TONES)[number];
 export type StatusTokens = Record<`--twes-status-${StatusTone}-${'bg' | 'fg' | 'dot'}`, string>;
 
-/** Hue and chroma of the tones that do not follow the accent, as the design canvas computed them. */
-const FIXED_TONES: Record<Exclude<StatusTone, 'accent'>, readonly [number, number]> = {
-  green: [150, 40],
-  amber: [70, 45],
-  red: [25, 60],
-  neutral: [75, 4],
+/** OKLCH hue and chroma of each tone, as the approved design canvas draws them. */
+const TONE_HUE_CHROMA: Record<StatusTone, readonly [number, number]> = {
+  neutral: [262, 0.02],
+  info: [252, 0.13],
+  warning: [68, 0.12],
+  success: [152, 0.12],
+  danger: [25, 0.15],
+  purple: [300, 0.13],
 };
 
 /**
- * Each status tone's badge colours in one scheme: a soft tone behind, a strong one for the label and the dot, far
- * enough apart in lightness that the label reads on its badge whatever the hue ("quiet ledger": colour marks status).
+ * Each status tone's badge colours in one scheme: a soft background, a strong label and a solid dot at fixed OKLCH
+ * lightness, so every tone reads alike whatever its hue and the label stays readable on its badge.
  */
-export function statusTokens(accent: string, scheme: ColourScheme): StatusTokens {
-  assertAccentColour(accent);
-  const source = Hct.fromInt(argbFromHex(accent.toLowerCase()));
+export function statusTokens(scheme: ColourScheme): StatusTokens {
   const dark = scheme === 'dark';
   const tokens: Record<string, string> = {};
   for (const tone of STATUS_TONES) {
-    const [hue, chroma] = tone === 'accent' ? [source.hue, source.chroma] : FIXED_TONES[tone];
-    const strong = TonalPalette.fromHueAndChroma(hue, chroma);
-    const soft = TonalPalette.fromHueAndChroma(hue, Math.min(chroma, 18));
-    tokens[`--twes-status-${tone}-bg`] = hexFromArgb(soft.tone(dark ? 22 : 94)).toLowerCase();
-    tokens[`--twes-status-${tone}-fg`] = hexFromArgb(strong.tone(dark ? 88 : 30)).toLowerCase();
-    tokens[`--twes-status-${tone}-dot`] = hexFromArgb(strong.tone(dark ? 70 : 50)).toLowerCase();
+    const [hue, chroma] = TONE_HUE_CHROMA[tone];
+    tokens[`--twes-status-${tone}-bg`] = dark
+      ? oklchToHex(0.31, chroma * 0.4, hue)
+      : oklchToHex(0.95, chroma * 0.28, hue);
+    tokens[`--twes-status-${tone}-fg`] = dark
+      ? oklchToHex(0.86, chroma * 0.75, hue)
+      : oklchToHex(0.45, chroma, hue);
+    tokens[`--twes-status-${tone}-dot`] = dark
+      ? oklchToHex(0.74, chroma, hue)
+      : oklchToHex(0.62, chroma, hue);
   }
   return tokens as StatusTokens;
+}
+
+/** An OKLCH colour as #rrggbb (CSS Color 4 matrices), each channel clipped into sRGB. */
+export function oklchToHex(lightness: number, chroma: number, hue: number): string {
+  const radians = (hue * Math.PI) / 180;
+  const a = chroma * Math.cos(radians);
+  const b = chroma * Math.sin(radians);
+  const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const linear = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  return (
+    '#' +
+    linear
+      .map((channel) => {
+        const clipped = Math.min(1, Math.max(0, channel));
+        const encoded =
+          clipped <= 0.0031308 ? 12.92 * clipped : 1.055 * clipped ** (1 / 2.4) - 0.055;
+        return Math.round(encoded * 255)
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('')
+  );
 }

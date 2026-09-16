@@ -33,7 +33,7 @@ export class ThemeFacade {
       const scheme = this.scheme();
       applyColourTokens(this.root, {
         ...colourTokens(this.accent(), scheme),
-        ...statusTokens(this.accent(), scheme),
+        ...statusTokens(scheme),
       });
       this.root.classList.toggle('theme-dark', scheme === 'dark');
       this.root.classList.toggle('density-compact', this.density() === 'compact');

@@ -86,7 +86,7 @@
       <ng-template appDataListCell="quantity" let-row>
         <span class="inline-flex items-center gap-2">
           @if (row.negative) {
-            <app-status-badge tone="red">{{
+            <app-status-badge tone="danger">{{
               'inventory.stock.negative' | translate
             }}</app-status-badge>
           }

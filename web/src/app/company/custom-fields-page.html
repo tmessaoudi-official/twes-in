@@ -99,7 +99,7 @@
       {{ (row.required ? 'company.custom_fields.yes' : 'company.custom_fields.no') | translate }}
     </ng-template>
     <ng-template appDataListCell="status" let-row>
-      <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+      <app-status-badge [tone]="row.isActive ? 'success' : 'neutral'">
         {{ 'company.custom_fields.statuses.' + (row.isActive ? 'active' : 'retired') | translate }}
       </app-status-badge>
     </ng-template>

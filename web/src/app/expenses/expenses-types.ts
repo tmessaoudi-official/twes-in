@@ -18,8 +18,8 @@ export const EXPENSE_STATUSES: readonly ExpenseStatus[] = ['draft', 'recorded', 
 
 export const EXPENSE_STATUS_TONES: Readonly<Record<ExpenseStatus, StatusTone>> = {
   draft: 'neutral',
-  recorded: 'accent',
-  paid: 'green',
+  recorded: 'info',
+  paid: 'success',
 };
 
 export type PaymentMethod = 'transfer' | 'cash' | 'check' | 'card' | 'other';

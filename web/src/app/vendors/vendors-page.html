@@ -28,7 +28,7 @@
     emptyTestId="vendors-empty"
   >
     <ng-template appDataListCell="status" let-row>
-      <app-status-badge [tone]="row.isActive ? 'green' : 'neutral'">
+      <app-status-badge [tone]="row.isActive ? 'success' : 'neutral'">
         {{ 'vendors.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
       </app-status-badge>
     </ng-template>
