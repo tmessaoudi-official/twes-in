@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
 import { wcagViolations } from './axe';
 import { forgetPresentationChoices } from './presentation';
@@ -12,6 +11,15 @@ import { OPERATOR_EMAIL as EMAIL, signIn as logIn } from './session';
 async function signIn(page: Page): Promise<void> {
   await logIn(page);
   await forgetPresentationChoices(page);
+}
+
+/** Whether a tooltip is still arriving: the fade is on an ancestor, so the surface's own opacity says nothing. */
+async function tooltipsArriving(page: Page): Promise<boolean> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll('.mat-mdc-tooltip-panel')]
+      .flatMap((panel) => panel.getAnimations({ subtree: true }))
+      .some((animation) => 'running' === animation.playState),
+  );
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {
@@ -63,23 +71,13 @@ test('a scan waits for a tooltip to arrive instead of reading it mid-fade', asyn
   // The tooltip has to be arriving for any of this to mean something: a scan taken before it appears finds nothing
   // and would read as a pass. At this playback rate it cannot finish arriving on its own.
   await expect(page.locator('.mat-mdc-tooltip-panel')).toHaveCount(1);
-  await expect
-    .poll(() =>
-      page.evaluate(() =>
-        [...document.querySelectorAll('.mat-mdc-tooltip-panel')]
-          .flatMap((panel) => panel.getAnimations({ subtree: true }))
-          .some((animation) => 'running' === animation.playState),
-      ),
-    )
-    .toBe(true);
+  await expect.poll(() => tooltipsArriving(page)).toBe(true);
 
-  // Non-vacuity: with it mid-fade there IS something to read, so this guard cannot pass by finding nothing.
-  const raw = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  expect(raw.violations.map((violation) => violation.id)).toContain('color-contrast');
-
+  // What the helper promises is that it scans the page at rest, and that is what is asserted: whether a fade of a
+  // given moment reads as a contrast violation depends on the scheme and on how far the fade got, which is why an
+  // earlier version of this guard asserting the violation itself passed here and failed on CI (run 35275018376).
   expect(await wcagViolations(page), 'members, chooser open, tooltip settled').toEqual([]);
+  expect(await tooltipsArriving(page), 'the scan waited for the tooltip').toBe(false);
 });
 
 test('a column moves without dragging, and the order survives a reload', async ({ page }) => {

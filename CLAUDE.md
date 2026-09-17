@@ -226,5 +226,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Playwright's `error-context.md` snapshots the default `page` fixture, so a failure inside a second
   `browser.newContext()` page shows another page entirely; read that page's last `screencast/page@<id>-*.jpeg` in the
   trace zip instead. Its frame is what showed a form whose inputs had collapsed to nothing (2026-09-17).
+- A guard that slows an animation to make a moment reproducible must stay slow through the scan it guards: putting the
+  speed back first, or letting an earlier scan eat the window, lets the fade finish by itself and the mutant that
+  removes the fix passes. Twice green before the sabotage caught it (2026-09-17, `data-list.spec.ts` mid-fade).
 - `make gate`'s licence half is ELEVEN scripts (`.github/workflows/ci.yml`'s `licences` job), not
   `dependency-licences.php` alone: running that one and calling the job green put a red on master (2026-09-17).
