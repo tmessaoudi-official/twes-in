@@ -95,7 +95,8 @@
       "title": "Almost there",
       "pending": "{{company}} is waiting for approval by the platform's team. You will receive an email as soon as it is approved.",
       "suspended": "{{company}} is suspended. Contact the platform's team to find out more.",
-      "sign_out": "Sign out"
+      "sign_out": "Sign out",
+      "locked": "{{company}} is closed until its subscription is settled. Contact us to reopen it."
     },
     "scene": {
       "invoice_number": "INV-2026-0142",
@@ -1494,6 +1495,43 @@
       "network": "The server could not be reached.",
       "name_taken": "A company already has that name.",
       "already_member": "That address already belongs to this company."
+    },
+    "subscription": {
+      "open": "Subscription",
+      "trial_ends_on": "Trial ends on",
+      "paid_through": "Paid through",
+      "period_count": "Length",
+      "period_unit": "Unit",
+      "price": "Price per period",
+      "currency": "Currency",
+      "grace_days": "Grace days",
+      "unpaid_mode": "When unpaid",
+      "save": "Save subscription",
+      "stop": "Stop managing",
+      "saved": "The subscription has been saved.",
+      "stopped": "The subscription is no longer managed.",
+      "days_left": "{{days}} day(s) left",
+      "units": {
+        "day": "days",
+        "month": "months",
+        "year": "years"
+      },
+      "modes": {
+        "default": "The platform's own",
+        "read_only": "Read-only",
+        "locked": "Locked"
+      },
+      "stages": {
+        "trial": "Trial",
+        "paid": "Paid",
+        "grace": "Grace",
+        "unpaid": "Unpaid"
+      },
+      "accesses": {
+        "full": "Full access",
+        "read_only": "Read-only",
+        "locked": "Locked"
+      }
     }
   },
   "appearance": {
@@ -1531,5 +1569,12 @@
     "lines_conflict": "The lines were changed in the saved version too.",
     "take_saved": "Take the saved version",
     "keep_typed": "Keep what I typed"
+  },
+  "licensing": {
+    "notice": {
+      "ending": "Your subscription ends in {{days}} day(s). Declare your payment to extend it.",
+      "grace": "Your subscription has expired. {{days}} day(s) left before the company becomes read-only.",
+      "read_only": "Subscription unpaid: you can view, print and export, but create or change nothing."
+    }
   }
 }

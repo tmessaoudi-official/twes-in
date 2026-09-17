@@ -13,6 +13,8 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use App\Licensing\Domain\Standing;
+use App\Licensing\Infrastructure\ApiPlatform\SubscriptionSummary;
 use App\Tenancy\Application\Company\PlatformCompanyView;
 use Symfony\Component\Serializer\Attribute\Groups;
 
@@ -82,7 +84,12 @@ final class PlatformCompanyResource
     #[Groups([self::READ])]
     public array $owners = [];
 
-    public static function of(PlatformCompanyView $view): self
+    /** Where the company stands in its subscription; null when licensing does not manage it. */
+    #[ApiProperty(writable: false, required: true)]
+    #[Groups([self::READ])]
+    public ?SubscriptionSummary $subscription = null;
+
+    public static function of(PlatformCompanyView $view, ?Standing $standing = null): self
     {
         $resource = new self();
         $resource->id = $view->id;
@@ -91,6 +98,7 @@ final class PlatformCompanyResource
         $resource->status = $view->status;
         $resource->createdAt = $view->createdAt;
         $resource->owners = $view->owners;
+        $resource->subscription = null === $standing ? null : SubscriptionSummary::of($standing);
 
         return $resource;
     }

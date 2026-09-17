@@ -27,7 +27,13 @@ final class PlatformSettingsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
-        self::assertSame(['signup.enabled', 'signup.approval_required'], array_column($rows, 'key'));
+        $keys = array_column($rows, 'key');
+        sort($keys);
+        self::assertSame(['licensing.grace_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled'], $keys);
+        $rows = array_column($rows, null, 'key');
+        self::assertSame(7, $rows['licensing.grace_days']['value']);
+        self::assertSame('read_only', $rows['licensing.unpaid_mode']['value']);
+        $rows = [$rows['signup.enabled'], $rows['signup.approval_required']];
         self::assertFalse($rows[0]['value']);
         self::assertTrue($rows[1]['value']);
         self::assertNull($rows[0]['source']);
@@ -47,7 +53,7 @@ final class PlatformSettingsTest extends ApiTestCase
         self::assertSame('platform', $this->json()['source']);
 
         $this->getJson(self::PATH);
-        self::assertTrue($this->jsonList()[0]['value']);
+        self::assertTrue(array_column($this->jsonList(), null, 'key')['signup.enabled']['value']);
 
         // Audited like a company default, with no company: the platform is nobody's tenant.
         $companies = $this->em()->getConnection()->fetchFirstColumn("SELECT company_id FROM audit_log WHERE action = 'setting.changed'");

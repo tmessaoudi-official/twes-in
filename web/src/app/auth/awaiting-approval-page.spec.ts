@@ -24,6 +24,7 @@ class StaticLoader implements TranslateLoader {
           title: 'Presque prêt',
           pending: '{{company}} attend l’approbation d’un opérateur.',
           suspended: '{{company}} est suspendue.',
+          locked: '{{company}} est fermée en attendant le règlement.',
           sign_out: 'Se déconnecter',
         },
       },
@@ -31,7 +32,7 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
-function state(status: string): SignedInState {
+function state(status: string, access: 'full' | 'read_only' | 'locked' = 'full'): SignedInState {
   return {
     user: {
       id: '1',
@@ -49,6 +50,16 @@ function state(status: string): SignedInState {
       timezone: 'Africa/Tunis',
       status,
       role: 'owner',
+      access,
+      subscription:
+        access === 'locked'
+          ? {
+              stage: 'unpaid' as const,
+              coveredUntil: '2026-08-31T23:59:59+01:00',
+              graceEndsAt: '2026-09-07T23:59:59+01:00',
+              daysLeft: null,
+            }
+          : null,
     },
     permissions: ['*'],
     modules: [],
@@ -103,6 +114,16 @@ describe('AwaitingApprovalPage', () => {
 
     expect(query('awaiting-suspended')?.textContent).toContain('Nouvelle Société');
     expect(query('awaiting-pending')).toBeNull();
+  });
+
+  it('says an unpaid company is closed until it is settled, before saying anything about its status', async () => {
+    me.set(state('active', 'locked'));
+
+    const { query } = await render();
+
+    expect(query('awaiting-locked')?.textContent).toContain('Nouvelle Société');
+    expect(query('awaiting-pending')).toBeNull();
+    expect(query('awaiting-suspended')).toBeNull();
   });
 
   it('signs out and goes back to the sign-in page', async () => {

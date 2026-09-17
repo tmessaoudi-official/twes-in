@@ -43,6 +43,21 @@ export interface SignedInUser {
   isPlatformOperator: boolean;
 }
 
+/** What the company's subscription lets its members do, whatever their role allows (docs/SPEC.md § 7, 2026-09-17). */
+export type CompanyAccess = 'full' | 'read_only' | 'locked';
+
+/** What stays open whatever the subscription says: the way out of an unpaid company. */
+export const ALWAYS_PERMITTED: readonly string[] = ['subscription.read', 'subscription.pay'];
+
+/** Where the working company stands in its subscription, so the application can warn before anything closes. */
+export interface CompanySubscription {
+  readonly stage: 'trial' | 'paid' | 'grace' | 'unpaid';
+  readonly coveredUntil: string;
+  readonly graceEndsAt: string;
+  /** Whole days before the stage changes; null once unpaid. */
+  readonly daysLeft: number | null;
+}
+
 export interface WorkingCompany {
   id: string;
   name: string;
@@ -53,6 +68,9 @@ export interface WorkingCompany {
   status: string;
   /** the user role name in this company */
   role: string;
+  access: CompanyAccess;
+  /** Null when licensing does not manage the company. */
+  subscription: CompanySubscription | null;
 }
 
 /** Whether the account has a second factor in force, and whether a company it belongs to requires one. */

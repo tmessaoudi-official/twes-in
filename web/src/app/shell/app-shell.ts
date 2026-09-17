@@ -27,6 +27,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { map } from 'rxjs';
 import { SETTINGS_INDEX } from './settings-area';
 import { AuthFacade } from '../auth/auth-facade';
+import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
@@ -101,6 +102,7 @@ export function initialsOf(displayName: string): string {
     LanguageMenu,
     SchemeMenu,
     ActivityBar,
+    SubscriptionNoticeBar,
   ],
   templateUrl: './app-shell.html',
   host: { '(document:keydown)': 'onKeydown($event)' },

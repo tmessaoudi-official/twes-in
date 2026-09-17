@@ -15,6 +15,7 @@ import type {
   PlatformCompanyRow,
   PlatformError,
   PlatformSignup,
+  PlatformSubscriptionRow,
 } from './platform-types';
 import { Feedback } from '../shared/feedback/feedback';
 import { provideQuietFeedback, RecordedFeedback } from '../shared/testing/feedback';
@@ -87,6 +88,7 @@ const row: PlatformCompanyRow = {
   status: 'pending',
   createdAt: '2026-09-15T10:00:00+00:00',
   owners: ['nadia@example.test'],
+  subscription: null,
 };
 
 describe('PlatformPage', () => {
@@ -96,6 +98,8 @@ describe('PlatformPage', () => {
   const error = signal<PlatformError | null>(null);
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
   const companies = signal<readonly PlatformCompanyRow[]>([row]);
+  const subscription = signal<PlatformSubscriptionRow | null>(null);
+  const openedSubscription = signal<string | null>(null);
   const facade = {
     waiting,
     companies,
@@ -111,6 +115,14 @@ describe('PlatformPage', () => {
     setSignup: vi.fn(),
     findAccounts: vi.fn(),
     actOnAccount: vi.fn(),
+    subscription: subscription.asReadonly(),
+    openedSubscription: openedSubscription.asReadonly(),
+    openSubscription: vi.fn(async (companyId: string) => {
+      openedSubscription.set(companyId);
+    }),
+    closeSubscription: vi.fn(() => openedSubscription.set(null)),
+    saveSubscription: vi.fn(async () => true),
+    stopSubscription: vi.fn(async () => true),
   };
 
   beforeEach(async () => {
@@ -146,6 +158,34 @@ describe('PlatformPage', () => {
       query(id)!.querySelector('button[role="switch"]') as HTMLButtonElement;
     return { fixture, query, switchOf };
   }
+
+  it('opens a company subscription panel, saves its terms and closes it again', async () => {
+    const { fixture, query } = await render();
+
+    query('subscription-Nouvelle Société')!.click();
+    await fixture.whenStable();
+    expect(facade.openSubscription).toHaveBeenCalledWith('c1');
+
+    openedSubscription.set('c1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(query('subscription-panel-Nouvelle Société')).not.toBeNull();
+
+    const paidThrough = query<HTMLInputElement>('subscription-paid-through')!;
+    paidThrough.value = '2026-12-31';
+    paidThrough.dispatchEvent(new Event('input'));
+    query('subscription-save')!.click();
+    await fixture.whenStable();
+
+    expect(facade.saveSubscription).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ paidThrough: '2026-12-31', periodUnit: 'month' }),
+    );
+
+    query('subscription-Nouvelle Société')!.click();
+    await fixture.whenStable();
+    expect(facade.closeSubscription).toHaveBeenCalled();
+  });
 
   it('loads the platform when it opens', async () => {
     await render();

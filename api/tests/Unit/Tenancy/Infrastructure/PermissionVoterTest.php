@@ -12,10 +12,12 @@ namespace App\Tests\Unit\Tenancy\Infrastructure;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Licensing\Domain\Access;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Role;
 use App\Tenancy\Infrastructure\Security\PermissionVoter;
+use App\Tests\Support\FixedCompanyAccess;
 use App\Tests\Support\InMemoryCurrentCompany;
 use App\Tests\Support\InMemoryMemberships;
 use PHPUnit\Framework\TestCase;
@@ -28,6 +30,7 @@ final class PermissionVoterTest extends TestCase
     private Company $company;
     private InMemoryMemberships $memberships;
     private InMemoryCurrentCompany $currentCompany;
+    private FixedCompanyAccess $access;
     private PermissionVoter $voter;
 
     protected function setUp(): void
@@ -35,7 +38,8 @@ final class PermissionVoterTest extends TestCase
         $this->company = new Company('Demo', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->memberships = new InMemoryMemberships();
         $this->currentCompany = new InMemoryCurrentCompany($this->company->getId());
-        $this->voter = new PermissionVoter($this->memberships, $this->currentCompany);
+        $this->access = new FixedCompanyAccess();
+        $this->voter = new PermissionVoter($this->memberships, $this->currentCompany, $this->access);
     }
 
     public function testAMemberWhoseRoleListsThePermissionIsGranted(): void
@@ -69,6 +73,19 @@ final class PermissionVoterTest extends TestCase
         $pending = Company::pending('Waiting', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $this->memberships->save(new Membership($user, $pending, new Role(Role::OWNER, ['*'])));
         self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($user), $pending, ['invoice.read']));
+    }
+
+    public function testAnUnpaidSubscriptionNarrowsWhatTheRoleGrantsJudgedOnThePermissionAskedFor(): void
+    {
+        $owner = $this->member(new Role(Role::OWNER, ['*']));
+
+        $this->access->access = Access::ReadOnly;
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($owner), null, ['invoice.read']));
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($owner), null, ['invoice.write']));
+
+        $this->access->access = Access::Locked;
+        self::assertSame(VoterInterface::ACCESS_DENIED, $this->voter->vote($this->token($owner), null, ['invoice.read']));
+        self::assertSame(VoterInterface::ACCESS_GRANTED, $this->voter->vote($this->token($owner), null, ['subscription.pay']));
     }
 
     public function testAUserWithoutAMembershipInTheCurrentCompanyIsDenied(): void

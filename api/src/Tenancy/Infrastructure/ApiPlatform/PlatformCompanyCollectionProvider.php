@@ -11,14 +11,17 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Licensing\Application\CompanyStandings;
 use App\Tenancy\Application\Company\PlatformCompanies;
+use App\Tenancy\Application\Company\PlatformCompanyView;
 use App\Tenancy\Application\Company\UnknownCompanyStatus;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\Uid\Uuid;
 
 /** @implements ProviderInterface<PlatformCompanyResource> */
 final readonly class PlatformCompanyCollectionProvider implements ProviderInterface
 {
-    public function __construct(private PlatformCompanies $companies)
+    public function __construct(private PlatformCompanies $companies, private CompanyStandings $standings)
     {
     }
 
@@ -37,6 +40,8 @@ final readonly class PlatformCompanyCollectionProvider implements ProviderInterf
             throw new BadRequestHttpException($unknown->getMessage(), $unknown);
         }
 
-        return array_map(PlatformCompanyResource::of(...), $views);
+        $standings = $this->standings->ofCompanies(array_map(static fn (PlatformCompanyView $view): Uuid => Uuid::fromString($view->id), $views));
+
+        return array_map(static fn (PlatformCompanyView $view): PlatformCompanyResource => PlatformCompanyResource::of($view, $standings[$view->id] ?? null), $views);
     }
 }

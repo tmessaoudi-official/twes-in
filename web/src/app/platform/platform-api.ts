@@ -8,12 +8,16 @@ import type {
   CompanyCompanyWrite,
   PlatformAccountPlatformAccountRead,
   PlatformCompanyPlatformCompanyRead,
+  PlatformSubscriptionPlatformSubscriptionRead,
+  PlatformSubscriptionPlatformSubscriptionWrite,
   PlatformOwnerInvitationPlatformOwnerInvitationRead,
   PlatformOwnerInvitationPlatformOwnerInvitationWrite,
   SettingSettingRead,
 } from '../api/types.gen';
 import type {
   AccountAction,
+  PlatformSubscriptionRow,
+  SubscriptionTerms,
   NewCompany,
   PlatformAccountRow,
   PlatformCompanyRow,
@@ -148,6 +152,44 @@ export class PlatformApi {
   }
 
   /** A 409 means something different on each endpoint, so each names its own. */
+  /** A company's subscription, or null where licensing does not manage it: the API answers that with a 404. */
+  async subscription(companyId: string): Promise<PlatformSubscriptionRow | null> {
+    try {
+      return toSubscription(
+        await firstValueFrom(
+          this.http.get<PlatformSubscriptionPlatformSubscriptionRead>(subscriptionPath(companyId)),
+        ),
+      );
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 404) return null;
+      throw new PlatformRefused(codeOf(error, 'refused'));
+    }
+  }
+
+  /** Sets the terms, starting to manage the company or revising what it holds. */
+  setSubscription(companyId: string, terms: SubscriptionTerms): Promise<PlatformSubscriptionRow> {
+    const body: PlatformSubscriptionPlatformSubscriptionWrite = { ...terms };
+    return this.guard(
+      async () =>
+        toSubscription(
+          await firstValueFrom(
+            this.http.put<PlatformSubscriptionPlatformSubscriptionRead>(
+              subscriptionPath(companyId),
+              body,
+            ),
+          ),
+        ),
+      'refused',
+    );
+  }
+
+  /** Stops managing the company: it gets full access again, and the audit log keeps what was set. */
+  stopSubscription(companyId: string): Promise<void> {
+    return this.guard(async () => {
+      await firstValueFrom(this.http.delete(subscriptionPath(companyId)));
+    }, 'refused');
+  }
+
   private async guard<T>(
     call: () => Promise<T>,
     conflict: PlatformError = 'own_account',
@@ -160,6 +202,9 @@ export class PlatformApi {
   }
 }
 
+const subscriptionPath = (companyId: string): string =>
+  `/api/platform/companies/${encodeURIComponent(companyId)}/subscription`;
+
 function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
   return {
     id: read.id ?? '',
@@ -168,6 +213,37 @@ function toRow(read: PlatformCompanyPlatformCompanyRead): PlatformCompanyRow {
     status: read.status ?? 'pending',
     createdAt: read.createdAt ?? '',
     owners: read.owners ?? [],
+    subscription:
+      read.subscription === null || read.subscription === undefined
+        ? null
+        : {
+            stage: read.subscription.stage,
+            access: read.subscription.access,
+            coveredUntil: read.subscription.coveredUntil,
+            daysLeft: read.subscription.daysLeft ?? null,
+          },
+  };
+}
+
+function toSubscription(
+  read: PlatformSubscriptionPlatformSubscriptionRead,
+): PlatformSubscriptionRow {
+  return {
+    companyId: read.companyId ?? '',
+    periodCount: read.periodCount,
+    periodUnit: read.periodUnit,
+    trialEndsOn: read.trialEndsOn ?? null,
+    paidThrough: read.paidThrough ?? null,
+    price: read.price ?? null,
+    currency: read.currency ?? null,
+    graceDays: read.graceDays ?? null,
+    unpaidMode: read.unpaidMode ?? null,
+    stage: read.stage,
+    access: read.access,
+    coveredUntil: read.coveredUntil,
+    graceEndsAt: read.graceEndsAt,
+    daysLeft: read.daysLeft ?? null,
+    updatedAt: read.updatedAt,
   };
 }
 

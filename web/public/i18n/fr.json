@@ -95,7 +95,8 @@
       "title": "Presque prêt",
       "pending": "{{company}} attend l'approbation de l'équipe de la plateforme. Vous recevrez un e-mail dès qu'elle sera approuvée.",
       "suspended": "{{company}} est suspendue. Contactez l'équipe de la plateforme pour en savoir plus.",
-      "sign_out": "Se déconnecter"
+      "sign_out": "Se déconnecter",
+      "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir."
     },
     "scene": {
       "invoice_number": "FA-2026-0142",
@@ -1494,6 +1495,43 @@
       "network": "Le serveur est injoignable.",
       "name_taken": "Une entreprise porte déjà ce nom.",
       "already_member": "Cette adresse appartient déjà à cette entreprise."
+    },
+    "subscription": {
+      "open": "Abonnement",
+      "trial_ends_on": "Fin de l’essai",
+      "paid_through": "Payé jusqu’au",
+      "period_count": "Durée",
+      "period_unit": "Unité",
+      "price": "Prix par période",
+      "currency": "Devise",
+      "grace_days": "Jours de tolérance",
+      "unpaid_mode": "En cas d’impayé",
+      "save": "Enregistrer l’abonnement",
+      "stop": "Ne plus gérer",
+      "saved": "L’abonnement a été enregistré.",
+      "stopped": "L’abonnement n’est plus géré.",
+      "days_left": "{{days}} jour(s) restant(s)",
+      "units": {
+        "day": "jours",
+        "month": "mois",
+        "year": "ans"
+      },
+      "modes": {
+        "default": "Valeur de la plateforme",
+        "read_only": "Lecture seule",
+        "locked": "Fermée"
+      },
+      "stages": {
+        "trial": "Essai",
+        "paid": "À jour",
+        "grace": "Tolérance",
+        "unpaid": "Impayé"
+      },
+      "accesses": {
+        "full": "Accès complet",
+        "read_only": "Lecture seule",
+        "locked": "Fermée"
+      }
     }
   },
   "appearance": {
@@ -1531,5 +1569,12 @@
     "lines_conflict": "Les lignes ont aussi été modifiées dans la version enregistrée.",
     "take_saved": "Prendre la version enregistrée",
     "keep_typed": "Garder ma saisie"
+  },
+  "licensing": {
+    "notice": {
+      "ending": "Votre abonnement se termine dans {{days}} jour(s). Déclarez votre règlement pour le prolonger.",
+      "grace": "Votre abonnement a expiré. Il vous reste {{days}} jour(s) avant que l’entreprise ne passe en lecture seule.",
+      "read_only": "Abonnement impayé : vous pouvez consulter, imprimer et exporter, mais plus rien créer ni modifier."
+    }
   }
 }

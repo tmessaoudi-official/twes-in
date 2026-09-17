@@ -2,7 +2,11 @@
   <h1>{{ 'auth.awaiting.title' | translate }}</h1>
 
   @if (company(); as company) {
-    @if (company.status === 'suspended') {
+    @if (company.access === 'locked') {
+      <p data-testid="awaiting-locked">
+        {{ 'auth.awaiting.locked' | translate: { company: company.name } }}
+      </p>
+    } @else if (company.status === 'suspended') {
       <p data-testid="awaiting-suspended">
         {{ 'auth.awaiting.suspended' | translate: { company: company.name } }}
       </p>

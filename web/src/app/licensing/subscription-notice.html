@@ -1,0 +1,13 @@
+@if (notice(); as notice) {
+  <p
+    class="mx-auto flex w-full max-w-6xl items-center gap-2 px-4 py-2 text-sm sm:px-6 lg:px-8"
+    [class.bg-secondary-container]="notice.tone === 'warn'"
+    [class.text-on-secondary-container]="notice.tone === 'warn'"
+    [class.bg-error-container]="notice.tone === 'error'"
+    [class.text-on-error-container]="notice.tone === 'error'"
+    data-testid="subscription-notice"
+  >
+    <mat-icon aria-hidden="true" class="shrink-0">schedule</mat-icon>
+    {{ 'licensing.notice.' + notice.key | translate: { days: notice.days } }}
+  </p>
+}

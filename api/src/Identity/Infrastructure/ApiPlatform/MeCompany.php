@@ -23,6 +23,10 @@ final readonly class MeCompany
         #[ApiProperty(required: true)] public string $status,
         /** the user's role name in this company */
         #[ApiProperty(required: true)] public string $role,
+        /** what the company's subscription lets its members do on top of their role: full, read_only or locked */
+        #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['full', 'read_only', 'locked']])] public string $access = 'full',
+        /** null when licensing does not manage the company */
+        #[ApiProperty(required: true)] public ?MeSubscription $subscription = null,
     ) {
     }
 }

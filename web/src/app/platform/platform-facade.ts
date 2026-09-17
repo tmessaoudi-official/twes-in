@@ -10,6 +10,8 @@ import {
   type PlatformCompanyRow,
   type PlatformError,
   type PlatformSignup,
+  type PlatformSubscriptionRow,
+  type SubscriptionTerms,
   type SignupSwitch,
 } from './platform-types';
 
@@ -30,6 +32,12 @@ export class PlatformFacade {
   readonly companies = this.companiesSignal.asReadonly();
   /** Null until read. */
   readonly signup = this.signupSignal.asReadonly();
+  private readonly subscriptionSignal = signal<PlatformSubscriptionRow | null>(null);
+  private readonly openedSignal = signal<string | null>(null);
+  /** The subscription of the company whose panel is open, null while it is being read or where there is none. */
+  readonly subscription = this.subscriptionSignal.asReadonly();
+  /** The company whose subscription panel is open. */
+  readonly openedSubscription = this.openedSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -49,6 +57,57 @@ export class PlatformFacade {
       this.errorSignal.set(null);
     } catch (error) {
       this.errorSignal.set(codeOf(error));
+    } finally {
+      this.busySignal.set(false);
+    }
+  }
+
+  /**
+   * The subscription of the company an operator opened, null when licensing does not manage it. Only the company last
+   * opened is held: the panel shows one at a time.
+   */
+  async openSubscription(companyId: string): Promise<void> {
+    this.openedSignal.set(companyId);
+    this.subscriptionSignal.set(null);
+    await this.write(async () => {
+      this.subscriptionSignal.set(await this.api.subscription(companyId));
+    });
+  }
+
+  closeSubscription(): void {
+    this.openedSignal.set(null);
+    this.subscriptionSignal.set(null);
+  }
+
+  /** True once the terms are held; the company list is read again, since its standing changed. */
+  async saveSubscription(companyId: string, terms: SubscriptionTerms): Promise<boolean> {
+    return this.write(async () => {
+      this.subscriptionSignal.set(await this.api.setSubscription(companyId, terms));
+      this.companiesSignal.set(await this.api.companies());
+
+      return true;
+    });
+  }
+
+  async stopSubscription(companyId: string): Promise<boolean> {
+    return this.write(async () => {
+      await this.api.stopSubscription(companyId);
+      this.subscriptionSignal.set(null);
+      this.companiesSignal.set(await this.api.companies());
+
+      return true;
+    });
+  }
+
+  private async write<T>(work: () => Promise<T>): Promise<T | false> {
+    this.busySignal.set(true);
+    this.errorSignal.set(null);
+    try {
+      return await work();
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+
+      return false;
     } finally {
       this.busySignal.set(false);
     }

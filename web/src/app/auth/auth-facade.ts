@@ -3,8 +3,10 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Session } from '../shared/session/session';
 import { AuthApi, AuthRefused } from './auth-api';
+import { ALWAYS_PERMITTED } from './auth-types';
 import type {
   AuthStatus,
+  CompanyAccess,
   ConfirmationOutcome,
   Credentials,
   EnrolmentOutcome,
@@ -42,8 +44,17 @@ export class AuthFacade implements Session {
    */
   readonly companyClosed = computed(() => {
     const state = this.stateSignal();
-    return !!state?.company && state.company.status !== 'active' && !state.user.isPlatformOperator;
+    const closed =
+      !!state?.company && (state.company.status !== 'active' || 'locked' === state.company.access);
+
+    return closed && !state.user.isPlatformOperator;
   });
+
+  /** Where the working company stands in its subscription, null when licensing does not manage it. */
+  readonly subscription = computed(() => this.stateSignal()?.company?.subscription ?? null);
+
+  /** What the working company's subscription lets its members do; full without one. */
+  readonly access = computed(() => this.stateSignal()?.company?.access ?? 'full');
 
   /** Asks the API who the session belongs to. Any failure means "nobody": the guard sends the user to sign in. */
   async load(): Promise<SignedInState | null> {
@@ -217,9 +228,17 @@ export class AuthFacade implements Session {
     return this.stateSignal()?.user.isPlatformOperator ?? false;
   }
 
+  /**
+   * What the person may do here: their role's grants, narrowed by the working company's subscription. The narrowing
+   * judges the permission asked for, never the grant, so an owner's "*" passes nothing an unpaid subscription
+   * refuses — the same rule the API enforces, applied here so screens offer only what would be accepted.
+   */
   hasPermission(permission: string): boolean {
-    const permissions = this.stateSignal()?.permissions ?? [];
-    return permissions.includes('*') || permissions.includes(permission);
+    const state = this.stateSignal();
+    const permissions = state?.permissions ?? [];
+    const granted = permissions.includes('*') || permissions.includes(permission);
+
+    return granted && permittedBy(state?.company?.access ?? 'full', permission);
   }
 
   /** Whether the working company has the module on: its navigation and pages are offered only then. */
@@ -256,4 +275,12 @@ async function fromBrowser<T>(ceremony: () => Promise<T>): Promise<T> {
 
 function codeOf(error: unknown): LoginError {
   return error instanceof AuthRefused ? error.code : 'network';
+}
+
+/** The rule App\Licensing\Domain\Access enforces, mirrored so a screen offers only what the API would accept. */
+function permittedBy(access: CompanyAccess, permission: string): boolean {
+  if ('full' === access) return true;
+  if (ALWAYS_PERMITTED.includes(permission)) return true;
+
+  return 'read_only' === access && permission.endsWith('.read');
 }

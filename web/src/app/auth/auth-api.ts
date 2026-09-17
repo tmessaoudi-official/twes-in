@@ -7,6 +7,7 @@ import type {
   AuthError,
   LoginRequest,
   Me,
+  MeSubscription,
   MfaCode,
   MfaEnrolment,
   MfaPending,
@@ -19,6 +20,8 @@ import type {
   PublicKeyCredentialOptionsJson,
 } from '../api/types.gen';
 import type {
+  CompanyAccess,
+  CompanySubscription,
   Credentials,
   LoginError,
   PasskeyCredential,
@@ -27,6 +30,9 @@ import type {
   SignedInState,
   TotpEnrolment,
 } from './auth-types';
+
+const ACCESSES: readonly CompanyAccess[] = ['full', 'read_only', 'locked'];
+const STAGES: readonly CompanySubscription['stage'][] = ['trial', 'paid', 'grace', 'unpaid'];
 
 /** Thrown by the adapter when the API refuses; carries the stable error code the API answered with. */
 export class AuthRefused extends Error {
@@ -179,6 +185,8 @@ function toState(me: Me): SignedInState {
             timezone: me.company.timezone,
             status: me.company.status,
             role: me.company.role,
+            access: toAccess(me.company.access),
+            subscription: toSubscription(me.company.subscription),
           },
     permissions: [...me.permissions],
     modules: [...me.modules],
@@ -206,4 +214,19 @@ function codeOf(error: unknown): LoginError {
     return body?.error ?? 'invalid_credentials';
   }
   return 'network';
+}
+
+/** An access the API does not name is read as full: the API enforces it whatever the SPA believes. */
+function toAccess(access: string | undefined): CompanyAccess {
+  return ACCESSES.find((known) => known === access) ?? 'full';
+}
+
+function toSubscription(raw: MeSubscription | null | undefined): CompanySubscription | null {
+  if (raw === null || raw === undefined) return null;
+  return {
+    stage: STAGES.find((known) => known === raw.stage) ?? 'unpaid',
+    coveredUntil: raw.coveredUntil,
+    graceEndsAt: raw.graceEndsAt,
+    daysLeft: raw.daysLeft,
+  };
 }

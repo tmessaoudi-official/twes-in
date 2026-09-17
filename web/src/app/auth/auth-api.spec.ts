@@ -23,6 +23,13 @@ const owner: Me = {
     timezone: 'Africa/Tunis',
     status: 'active',
     role: 'owner',
+    access: 'read_only',
+    subscription: {
+      stage: 'unpaid',
+      coveredUntil: '2026-08-31T23:59:59+01:00',
+      graceEndsAt: '2026-09-07T23:59:59+01:00',
+      daysLeft: null,
+    },
   },
   permissions: ['*'],
   mfa: { enrolled: false, required: false, totp: false, passkeys: 0 },
@@ -59,6 +66,17 @@ describe('AuthApi', () => {
     expect(request.request.body).toEqual({ email: 'owner@example.test', password: 'pw' });
     request.flush({ ...owner, company: null, permissions: [] });
     expect(await pending).toMatchObject({ company: null });
+  });
+
+  it('reads where the working company stands in its subscription, and full access without one', async () => {
+    const pending = api.me();
+    http
+      .expectOne('/api/auth/me')
+      .flush({ ...owner, company: { ...owner.company, access: 'full', subscription: null } });
+
+    const state = await pending;
+    expect(state?.company?.access).toBe('full');
+    expect(state?.company?.subscription).toBeNull();
   });
 
   it('turns a refusal into the API error code, and no answer at all into network', async () => {

@@ -23,6 +23,8 @@ const owner: SignedInState = {
     timezone: 'Africa/Tunis',
     status: 'active',
     role: 'owner',
+    access: 'full',
+    subscription: null,
   },
   permissions: ['*'],
   modules: ['customers'],
@@ -137,6 +139,9 @@ describe('AuthFacade', () => {
       [{ ...owner, company: { ...owner.company!, status: 'suspended' } }, true],
       [operator, false],
       [{ ...owner, company: null }, false],
+      // A locked company is as closed to its members as a suspended one; read-only is not closed.
+      [{ ...owner, company: { ...owner.company!, access: 'locked' as const } }, true],
+      [{ ...owner, company: { ...owner.company!, access: 'read_only' as const } }, false],
     ];
     for (const [state, closed] of cases) {
       api.me.mockResolvedValue(state);
@@ -318,6 +323,25 @@ describe('AuthFacade', () => {
     await facade.logout();
     expect(facade.status()).toBe('anonymous');
     expect(facade.me()).toBeNull();
+  });
+
+  it('hasPermission() narrows to reading, and to the way out, while the subscription is unpaid', async () => {
+    const readOnly = { ...owner, company: { ...owner.company!, access: 'read_only' as const } };
+    api.me.mockResolvedValue(readOnly);
+    await facade.load();
+
+    // The owner holds "*": what the subscription refuses is judged on the permission asked for, as the API judges it.
+    expect(facade.hasPermission('invoice.read')).toBe(true);
+    expect(facade.hasPermission('invoice.write')).toBe(false);
+    expect(facade.hasPermission('subscription.pay')).toBe(true);
+
+    api.me.mockResolvedValue({
+      ...owner,
+      company: { ...owner.company!, access: 'locked' as const },
+    });
+    await facade.load();
+    expect(facade.hasPermission('invoice.read')).toBe(false);
+    expect(facade.hasPermission('subscription.pay')).toBe(true);
   });
 
   it('hasPermission() honours the wildcard and exact strings only', async () => {

@@ -25,6 +25,7 @@ describe('PlatformApi', () => {
     status: 'pending',
     createdAt: '2026-09-15T10:00:00+00:00',
     owners: ['nadia@example.test'],
+    subscription: null,
   };
 
   beforeEach(() => {
@@ -36,6 +37,72 @@ describe('PlatformApi', () => {
   });
 
   afterEach(() => http.verify());
+
+  it("reads a company's subscription, its terms with where they leave it, and none as null", async () => {
+    const pending = api.subscription('c1');
+    http.expectOne('/api/platform/companies/c1/subscription').flush({
+      companyId: 'c1',
+      periodCount: 6,
+      periodUnit: 'month',
+      trialEndsOn: null,
+      paidThrough: '2026-12-31',
+      price: '600.000',
+      currency: 'TND',
+      graceDays: null,
+      unpaidMode: null,
+      stage: 'paid',
+      access: 'full',
+      coveredUntil: '2026-12-31T23:59:59+01:00',
+      graceEndsAt: '2027-01-07T23:59:59+01:00',
+      daysLeft: 105,
+      updatedAt: '2026-09-17T10:00:00+00:00',
+    });
+
+    const held = await pending;
+    expect(held?.periodCount).toBe(6);
+    expect(held?.price).toBe('600.000');
+    expect(held?.daysLeft).toBe(105);
+
+    const none = api.subscription('c2');
+    http
+      .expectOne('/api/platform/companies/c2/subscription')
+      .flush(null, { status: 404, statusText: 'Not Found' });
+    await expect(none).resolves.toBeNull();
+  });
+
+  it('sets the terms and stops managing a company', async () => {
+    const terms = {
+      periodCount: 1,
+      periodUnit: 'year' as const,
+      trialEndsOn: '2026-10-01',
+      paidThrough: null,
+      price: null,
+      currency: null,
+      graceDays: 10,
+      unpaidMode: 'locked' as const,
+    };
+    const saving = api.setSubscription('c1', terms);
+    const put = http.expectOne('/api/platform/companies/c1/subscription');
+    expect(put.request.method).toBe('PUT');
+    expect(put.request.body).toEqual(terms);
+    put.flush({
+      companyId: 'c1',
+      ...terms,
+      stage: 'trial',
+      access: 'full',
+      coveredUntil: '2026-10-01T23:59:59+01:00',
+      graceEndsAt: '2026-10-11T23:59:59+01:00',
+      daysLeft: 14,
+      updatedAt: '2026-09-17T10:00:00+00:00',
+    });
+    expect((await saving).stage).toBe('trial');
+
+    const stopping = api.stopSubscription('c1');
+    const gone = http.expectOne('/api/platform/companies/c1/subscription');
+    expect(gone.request.method).toBe('DELETE');
+    gone.flush(null, { status: 204, statusText: 'No Content' });
+    await expect(stopping).resolves.toBeUndefined();
+  });
 
   it('finds accounts by a piece of their address or name', async () => {
     const found = api.accounts('acme & co');

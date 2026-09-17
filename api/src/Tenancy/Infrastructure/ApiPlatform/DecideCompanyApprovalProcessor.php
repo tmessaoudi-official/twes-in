@@ -12,6 +12,7 @@ namespace App\Tenancy\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Licensing\Application\CompanyStandings;
 use App\Tenancy\Application\Company\CompanyNotFound;
 use App\Tenancy\Application\Company\DecideCompanyApproval;
 use App\Tenancy\Application\Company\PlatformCompanies;
@@ -26,7 +27,7 @@ use Symfony\Component\Security\Core\Exception\AccessDeniedException;
  */
 final readonly class DecideCompanyApprovalProcessor implements ProcessorInterface
 {
-    public function __construct(private DecideCompanyApproval $decide, private PlatformCompanies $companies, private Security $security)
+    public function __construct(private DecideCompanyApproval $decide, private PlatformCompanies $companies, private Security $security, private CompanyStandings $standings)
     {
     }
 
@@ -46,6 +47,6 @@ final readonly class DecideCompanyApprovalProcessor implements ProcessorInterfac
             throw new NotFoundHttpException($notFound->getMessage(), $notFound);
         }
 
-        return PlatformCompanyResource::of($this->companies->viewOf($company));
+        return PlatformCompanyResource::of($this->companies->viewOf($company), $this->standings->of($company->getId()));
     }
 }

@@ -12,6 +12,7 @@ namespace App\Identity\Infrastructure\ApiPlatform;
 use App\Identity\Domain\PasskeyRepository;
 use App\Identity\Domain\UserRepository;
 use App\Identity\Infrastructure\Security\SecurityUser;
+use App\Licensing\Application\CompanyStandings;
 use App\ModuleRegistry\Application\ModuleStates;
 use App\Tenancy\Application\Mfa\MfaRequirement;
 use App\Tenancy\Application\Session\DescribeWorkingContext;
@@ -26,6 +27,7 @@ final readonly class MeFactory
         private MfaRequirement $mfaRequirement,
         private ModuleStates $modules,
         private PasskeyRepository $passkeys,
+        private CompanyStandings $standings,
     ) {
     }
 
@@ -35,6 +37,8 @@ final readonly class MeFactory
         $context = $this->describeWorkingContext->for($user->getId());
         $modules = null === $context ? [] : $this->modules->enabledKeys(Uuid::fromString($context->companyId));
 
-        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user));
+        $standing = null === $context ? null : $this->standings->of(Uuid::fromString($context->companyId));
+
+        return Me::of($user, $context, $this->mfaRequirement->appliesTo($user), $modules, $this->passkeys->countFor($user), $standing);
     }
 }

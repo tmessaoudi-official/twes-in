@@ -13,7 +13,24 @@ import {
   type AccountAction,
   type CompanyCountry,
   type SignupSwitch,
+  type SubscriptionTerms,
 } from './platform-types';
+
+const PERIOD_UNITS: readonly SubscriptionTerms['periodUnit'][] = ['day', 'month', 'year'];
+const UNPAID_MODES: readonly NonNullable<SubscriptionTerms['unpaidMode']>[] = [
+  'read_only',
+  'locked',
+];
+const EMPTY_TERMS: SubscriptionTerms = {
+  periodCount: 1,
+  periodUnit: 'month',
+  trialEndsOn: null,
+  paidThrough: null,
+  price: null,
+  currency: null,
+  graceDays: null,
+  unpaidMode: null,
+};
 import { Feedback } from '../shared/feedback/feedback';
 
 /**
@@ -53,6 +70,12 @@ export class PlatformPage implements OnInit {
   /** The address the last invitation went to, once it went. */
   /** What is typed in each company's owner field, by company. */
   protected readonly ownerEmails = signal<Readonly<Record<string, string>>>({});
+  protected readonly subscription = this.platform.subscription;
+  protected readonly openedSubscription = this.platform.openedSubscription;
+  protected readonly periodUnits = PERIOD_UNITS;
+  protected readonly unpaidModes = UNPAID_MODES;
+  /** The terms in the open panel, which start from what the company holds, or empty where it holds none. */
+  protected readonly terms = signal<SubscriptionTerms>({ ...EMPTY_TERMS });
 
   async ngOnInit(): Promise<void> {
     await this.platform.load();
@@ -99,6 +122,62 @@ export class PlatformPage implements OnInit {
 
   protected typed(event: Event): string {
     return (event.target as HTMLInputElement).value;
+  }
+
+  protected async toggleSubscription(companyId: string): Promise<void> {
+    if (this.openedSubscription() === companyId) {
+      this.platform.closeSubscription();
+
+      return;
+    }
+    await this.platform.openSubscription(companyId);
+    const held = this.subscription();
+    this.terms.set(
+      held === null
+        ? { ...EMPTY_TERMS }
+        : {
+            periodCount: held.periodCount,
+            periodUnit: held.periodUnit,
+            trialEndsOn: held.trialEndsOn,
+            paidThrough: held.paidThrough,
+            price: held.price,
+            currency: held.currency,
+            graceDays: held.graceDays,
+            unpaidMode: held.unpaidMode,
+          },
+    );
+  }
+
+  /** One field of the terms being edited; an emptied field is null, which is what "follow the platform" means. */
+  protected type(field: keyof SubscriptionTerms, event: Event): void {
+    const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
+    this.terms.update((terms) => {
+      switch (field) {
+        case 'periodCount':
+          return { ...terms, periodCount: Number.parseInt(value, 10) || 1 };
+        case 'periodUnit':
+          return { ...terms, periodUnit: PERIOD_UNITS.find((unit) => unit === value) ?? 'month' };
+        case 'graceDays':
+          return { ...terms, graceDays: '' === value ? null : Number.parseInt(value, 10) };
+        case 'unpaidMode':
+          return { ...terms, unpaidMode: UNPAID_MODES.find((mode) => mode === value) ?? null };
+        default:
+          return { ...terms, [field]: '' === value.trim() ? null : value.trim() };
+      }
+    });
+  }
+
+  protected async saveSubscription(companyId: string): Promise<void> {
+    if (await this.platform.saveSubscription(companyId, this.terms())) {
+      this.feedback.success('platform.subscription.saved');
+    }
+  }
+
+  protected async stopSubscription(companyId: string): Promise<void> {
+    if (await this.platform.stopSubscription(companyId)) {
+      this.feedback.success('platform.subscription.stopped');
+      this.terms.set({ ...EMPTY_TERMS });
+    }
   }
 
   protected async approve(companyId: string): Promise<void> {

@@ -21,6 +21,7 @@ const row: PlatformCompanyRow = {
   status: 'pending',
   createdAt: '2026-09-15T10:00:00+00:00',
   owners: ['nadia@example.test'],
+  subscription: null,
 };
 
 describe('PlatformFacade', () => {
@@ -35,6 +36,9 @@ describe('PlatformFacade', () => {
     companies: vi.fn(),
     createCompany: vi.fn(),
     inviteOwner: vi.fn(),
+    subscription: vi.fn(),
+    setSubscription: vi.fn(),
+    stopSubscription: vi.fn(),
   };
   let facade: PlatformFacade;
 
@@ -179,5 +183,64 @@ describe('PlatformFacade', () => {
 
     expect(facade.signup()).toEqual({ enabled: false, approvalRequired: true });
     expect(facade.error()).toBe('network');
+  });
+
+  it('opens one subscription at a time, saves its terms and reads the companies again', async () => {
+    const terms = {
+      periodCount: 1,
+      periodUnit: 'month' as const,
+      trialEndsOn: null,
+      paidThrough: '2026-12-31',
+      price: null,
+      currency: null,
+      graceDays: null,
+      unpaidMode: null,
+    };
+    const held = {
+      companyId: 'c1',
+      ...terms,
+      stage: 'paid' as const,
+      access: 'full' as const,
+      coveredUntil: '2026-12-31T23:59:59+01:00',
+      graceEndsAt: '2027-01-07T23:59:59+01:00',
+      daysLeft: 105,
+      updatedAt: '2026-09-17T10:00:00+00:00',
+    };
+    api.subscription.mockResolvedValue(null);
+    api.setSubscription.mockResolvedValue(held);
+    api.companies.mockResolvedValue([row]);
+
+    await facade.openSubscription('c1');
+    expect(facade.openedSubscription()).toBe('c1');
+    expect(facade.subscription()).toBeNull();
+
+    expect(await facade.saveSubscription('c1', terms)).toBe(true);
+    expect(facade.subscription()).toEqual(held);
+    expect(api.companies).toHaveBeenCalled();
+
+    facade.closeSubscription();
+    expect(facade.openedSubscription()).toBeNull();
+  });
+
+  it('stops managing a company, and names a refusal instead of throwing', async () => {
+    api.stopSubscription.mockResolvedValue(undefined);
+    api.companies.mockResolvedValue([]);
+    expect(await facade.stopSubscription('c1')).toBe(true);
+    expect(facade.subscription()).toBeNull();
+
+    api.setSubscription.mockRejectedValue(new PlatformRefused('refused'));
+    expect(
+      await facade.saveSubscription('c1', {
+        periodCount: 1,
+        periodUnit: 'month',
+        trialEndsOn: null,
+        paidThrough: null,
+        price: null,
+        currency: null,
+        graceDays: null,
+        unpaidMode: null,
+      }),
+    ).toBe(false);
+    expect(facade.error()).toBe('refused');
   });
 });

@@ -57,6 +57,8 @@ const owner: SignedInState = {
     timezone: 'Africa/Tunis',
     status: 'active',
     role: 'owner',
+    access: 'full' as const,
+    subscription: null,
   },
   permissions: ['*'],
   modules: ['customers'],

@@ -46,7 +46,9 @@ hostname are platform settings).
 Auth (hardened sessions, MFA, invitations), companies with fiscal presets, settings, users and
 roles, customers and contacts, products and categories, delivery notes, invoices with manual
 payments and credit notes, vendors, expenses with attachments, inventory, PDF, transactional email (invitations, signup, approval), audit
-log.
+log, and subscriptions: a trial and paid periods per company, cash payments the company declares and the operator
+confirms, and an unpaid company left read-only or locked as the operator chose (§ 7 2026-09-17, which re-rules the
+2026-09-09 placement of licensing after G10).
 
 ### After the POC, in this order unless re-ruled
 
@@ -197,6 +199,19 @@ with the rest of TOTP and the passkeys). G1d opens public signup behind platform
 `company.status` is `pending | active | suspended`; `signup.approval_required` defaults to on.
 Invitation, verification and reset links are opened from a mail client, so under
 SameSite=Strict they arrive without a session cookie: those flows are designed logged-out.
+
+### Subscriptions [RULED 2026-09-17]
+
+`Licensing` holds one `subscription` per company: its billing period, price, trial end and paid-through date, and,
+where they differ from the platform's, its grace days and its unpaid mode. The standing — trial, paid, grace or
+unpaid, and the access that follows: full, read-only or locked — is computed from those dates on every request, never
+written by a scheduled job. A company without a subscription is not managed and keeps full access. Both access checks,
+`CompanyGuard` and `PermissionVoter`, judge the permission a request asks for against that access, never the role's
+grants, so an owner's `*` passes nothing an unpaid subscription refuses; read-only allows `*.read` plus the way out
+(`subscription.read`, `subscription.pay`) and locked allows only the way out. A member refused that way is told which
+of the two it is with a 403; a stranger still gets the same 404. Only operators set the terms, from
+`/api/platform/companies/{companyId}/subscription`, and the platform defaults are operator-only platform settings —
+declared in a business chain, a company's own admin could edit them.
 
 ### Modules [RULED 2026-09-09]
 
@@ -703,6 +718,9 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 61 | Product identity (§ 7 2026-09-17): an optional reference generated from a numbering series when left empty (previewed in the form, proposal to confirm), a barcode unique within the company when set, an EAN/UPC check digit verified | M | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 62 | Substitution groups (§ 7 2026-09-17): the business groups products that replace each other; the product page and a document line short of stock show the in-stock substitutes and swap in one click | M | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 63 | Scanner (§ 7 2026-09-17): a camera scan for the barcode field, a list's search and a document's lines; a phone paired to a laptop tab by a single-use, scan-only QR code, codes sent over the tab's realtime channel; iPhone Safari, HTTPS and the decoder's licence researched first | L | todo | - | api/src/** api/tests/** web/src/app/** web/e2e/** docs/** |
+| 65 | Subscriptions, slice 1 (§ 7 2026-09-17): the `Licensing` context, a subscription per company with its trial, billing period, price and paid-through date, the standing computed from those dates, the operator's platform endpoints and panel, an unpaid company read-only or locked in both access checks, the notice above every page | L | doing | - | api/src/Licensing/** api/src/Tenancy/Infrastructure/** api/src/Identity/Infrastructure/ApiPlatform/** api/migrations/** api/tests/** web/src/app/** |
+| 66 | Subscriptions, slice 2 (§ 7 2026-09-17): a company declares a cash payment with its method, date, reference and receipt; the operator is told in the app and by mail and confirms or rejects it from the platform page; a declaration holds the lock off for the configured days; the ledger is audited | L | todo | - | api/src/Licensing/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
+| 67 | Subscriptions, slice 3 (§ 7 2026-09-17): reminder mail before a period ends and while grace runs, on the row-56 scheduler worker; and operator hardening with owner-granted, time-boxed support access | M | todo | - | api/src/Licensing/** api/src/Identity/** api/tests/** web/src/app/** |
 | 64 | Import past invoices and delivery notes as a read-only archive keeping their original numbers, outside the gapless series (§ 7 2026-09-17) | L | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->
 

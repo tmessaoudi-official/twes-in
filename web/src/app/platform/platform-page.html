@@ -159,8 +159,148 @@
               >
                 {{ 'platform.companies.invite' | translate }}
               </button>
+              <button
+                mat-stroked-button
+                type="button"
+                (click)="toggleSubscription(company.id)"
+                [disabled]="busy()"
+                [attr.data-testid]="'subscription-' + company.name"
+              >
+                {{ 'platform.subscription.open' | translate }}
+              </button>
             </div>
           </div>
+
+          @if (company.subscription; as standing) {
+            <p class="text-sm" [attr.data-testid]="'standing-' + company.name">
+              {{ 'platform.subscription.stages.' + standing.stage | translate }} ·
+              {{ 'platform.subscription.accesses.' + standing.access | translate }}
+              @if (standing.daysLeft !== null) {
+                · {{ 'platform.subscription.days_left' | translate: { days: standing.daysLeft } }}
+              }
+            </p>
+          }
+
+          @if (openedSubscription() === company.id) {
+            <div
+              class="mt-4 flex flex-col gap-3 border-t border-outline-variant pt-4"
+              [attr.data-testid]="'subscription-panel-' + company.name"
+            >
+              <div class="flex flex-wrap gap-3">
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.trial_ends_on' | translate }}</mat-label>
+                  <input
+                    matInput
+                    type="date"
+                    [value]="terms().trialEndsOn ?? ''"
+                    (input)="type('trialEndsOn', $event)"
+                    data-testid="subscription-trial-ends-on"
+                  />
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.paid_through' | translate }}</mat-label>
+                  <input
+                    matInput
+                    type="date"
+                    [value]="terms().paidThrough ?? ''"
+                    (input)="type('paidThrough', $event)"
+                    data-testid="subscription-paid-through"
+                  />
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.period_count' | translate }}</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="1"
+                    [value]="terms().periodCount"
+                    (input)="type('periodCount', $event)"
+                    data-testid="subscription-period-count"
+                  />
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.period_unit' | translate }}</mat-label>
+                  <select
+                    matNativeControl
+                    (change)="type('periodUnit', $event)"
+                    data-testid="subscription-period-unit"
+                  >
+                    @for (unit of periodUnits; track unit) {
+                      <option [value]="unit" [selected]="unit === terms().periodUnit">
+                        {{ 'platform.subscription.units.' + unit | translate }}
+                      </option>
+                    }
+                  </select>
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.price' | translate }}</mat-label>
+                  <input
+                    matInput
+                    [value]="terms().price ?? ''"
+                    (input)="type('price', $event)"
+                    data-testid="subscription-price"
+                  />
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.currency' | translate }}</mat-label>
+                  <input
+                    matInput
+                    [value]="terms().currency ?? ''"
+                    (input)="type('currency', $event)"
+                    data-testid="subscription-currency"
+                  />
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.grace_days' | translate }}</mat-label>
+                  <input
+                    matInput
+                    type="number"
+                    min="0"
+                    [value]="terms().graceDays ?? ''"
+                    (input)="type('graceDays', $event)"
+                    data-testid="subscription-grace-days"
+                  />
+                </mat-form-field>
+                <mat-form-field subscriptSizing="dynamic">
+                  <mat-label>{{ 'platform.subscription.unpaid_mode' | translate }}</mat-label>
+                  <select
+                    matNativeControl
+                    (change)="type('unpaidMode', $event)"
+                    data-testid="subscription-unpaid-mode"
+                  >
+                    <option value="" [selected]="terms().unpaidMode === null">
+                      {{ 'platform.subscription.modes.default' | translate }}
+                    </option>
+                    @for (mode of unpaidModes; track mode) {
+                      <option [value]="mode" [selected]="mode === terms().unpaidMode">
+                        {{ 'platform.subscription.modes.' + mode | translate }}
+                      </option>
+                    }
+                  </select>
+                </mat-form-field>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button
+                  mat-flat-button
+                  type="button"
+                  (click)="saveSubscription(company.id)"
+                  [disabled]="busy()"
+                  data-testid="subscription-save"
+                >
+                  {{ 'platform.subscription.save' | translate }}
+                </button>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  (click)="stopSubscription(company.id)"
+                  [disabled]="busy() || subscription() === null"
+                  data-testid="subscription-stop"
+                >
+                  {{ 'platform.subscription.stop' | translate }}
+                </button>
+              </div>
+            </div>
+          }
         </mat-card-content>
       </mat-card>
     } @empty {

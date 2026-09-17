@@ -75,6 +75,8 @@ const owner: SignedInState = {
     timezone: 'Africa/Tunis',
     status: 'active',
     role: 'owner',
+    access: 'full' as const,
+    subscription: null,
   },
   permissions: ['*'],
   modules: ['customers'],
@@ -107,6 +109,8 @@ describe('AppShell', () => {
   const modules = signal<readonly string[]>(['customers']);
   const auth = {
     me: me.asReadonly(),
+    subscription: computed(() => me()?.company?.subscription ?? null),
+    access: computed(() => me()?.company?.access ?? 'full'),
     logout: vi.fn(async () => undefined),
     sessionEnded: vi.fn(),
     hasPermission: (permission: string) => permissions().includes(permission),
@@ -199,6 +203,26 @@ describe('AppShell', () => {
     };
     return { fixture, el, byTestId, click };
   }
+
+  it('carries the subscription notice above the page when a period is ending', async () => {
+    me.set({
+      ...owner,
+      company: {
+        ...owner.company!,
+        subscription: {
+          stage: 'grace' as const,
+          coveredUntil: '2026-09-15T23:59:59+01:00',
+          graceEndsAt: '2026-09-22T23:59:59+01:00',
+          daysLeft: 5,
+        },
+      },
+    });
+
+    const { byTestId } = await render();
+
+    expect(byTestId('subscription-notice')).not.toBeNull();
+    me.set(owner);
+  });
 
   it('shows the navigation the user may see, with the product name', async () => {
     const { el, byTestId } = await render();
