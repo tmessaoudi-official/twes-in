@@ -1207,9 +1207,25 @@ body {
   }
 }
 
-/* A row another tab or person added while the list was open (docs/SPEC.md § 7, 2026-09-17). */
+/*
+ * A row another tab or person added while the list was open (docs/SPEC.md § 7, 2026-09-17): a line above and below
+ * it that fades. Never a background behind its text: a contrast check reading mid-fade would fail on a moment.
+ */
 tr.twes-row-new > td {
-  animation: twes-field-updated 2.4s ease-out;
+  animation: twes-row-new 2.4s ease-out;
+}
+
+@keyframes twes-row-new {
+  from {
+    box-shadow:
+      inset 0 2px 0 var(--mat-sys-secondary),
+      inset 0 -2px 0 var(--mat-sys-secondary);
+  }
+  to {
+    box-shadow:
+      inset 0 2px 0 transparent,
+      inset 0 -2px 0 transparent;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

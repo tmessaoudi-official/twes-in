@@ -16,7 +16,24 @@ test('a change made in one tab reaches a list open in another without a reload',
   await signIn(writer);
   await signIn(watcher);
 
+  // The list must already show a row: a first row into an empty list is shown by the empty state leaving, not
+  // highlighted, since an empty read cannot be told from one not made yet.
+  const seed = `${name} SEED`;
+  await writer.evaluate(
+    async ([csrf, group]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const created = await fetch(`/api/companies/${me.company.id}/customer-groups`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'csrf-token': csrf },
+        body: JSON.stringify({ name: group, description: null }),
+      });
+      if (!created.ok) throw new Error(`creating ${group} answered ${created.status}`);
+    },
+    [CSRF, seed] as const,
+  );
+
   await watcher.goto('/customers/groups');
+  await expect(watcher.getByTestId(`customer-group-${seed}`)).toBeVisible();
   await expect(watcher.getByTestId('customer-group-add')).toBeVisible();
   // A marker a reload would erase: the row must arrive in this very document.
   await watcher.evaluate(() => ((window as unknown as { liveMarker: boolean }).liveMarker = true));
@@ -47,6 +64,21 @@ test('a change made in one tab reaches a list open in another without a reload',
   );
 
   await expect(watcher.getByTestId(`customer-group-${name}`)).toHaveCount(0, { timeout: 10_000 });
+  await writer.evaluate(
+    async ([csrf, group]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      const base = `/api/companies/${me.company.id}/customer-groups`;
+      const groups = (await (await fetch(base)).json()) as { id: string; name: string }[];
+      const found = groups.find((row) => row.name === group);
+      if (!found) throw new Error(`${group} is not listed`);
+      const deleted = await fetch(`${base}/${found.id}`, {
+        method: 'DELETE',
+        headers: { 'csrf-token': csrf },
+      });
+      if (!deleted.ok) throw new Error(`deleting ${group} answered ${deleted.status}`);
+    },
+    [CSRF, seed] as const,
+  );
   expect(
     await watcher.evaluate(() => (window as unknown as { liveMarker?: boolean }).liveMarker),
   ).toBe(true);
