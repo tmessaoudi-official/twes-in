@@ -152,7 +152,10 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await expect(page.getByTestId('delivery-note-deliver')).toHaveCount(0);
     await expect(page.getByTestId('delivery-note-status')).toContainText(/Livré|Delivered/);
 
+    // The API pages this list and the shared company outgrows one page, so the row is searched for rather than
+    // expected among the newest few.
     await page.goto('/delivery-notes');
+    await page.getByTestId('list-filter').fill(noteNumber);
     await expect(page.getByTestId('delivery-notes-table')).toContainText(noteNumber);
   } finally {
     await retire(page, customerNumber);

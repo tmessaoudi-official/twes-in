@@ -65,16 +65,28 @@ describe('DeliveryNotesFacade', () => {
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     api.options.mockResolvedValue(options);
-    api.notes.mockResolvedValue([draft]);
+    api.notes.mockResolvedValue({ rows: [draft], total: 1 });
     api.note.mockResolvedValue(draft);
     TestBed.configureTestingModule({ providers: [{ provide: DeliveryNotesApi, useValue: api }] });
     facade = TestBed.inject(DeliveryNotesFacade);
   });
 
-  it('reads the list with the options that name its customers', async () => {
-    await facade.loadList('c1');
+  it('reads one page of notes with the options that name its customers, and how many there are in all', async () => {
+    const search = {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      status: null,
+      customerId: null,
+      order: null,
+    } as const;
 
+    await facade.loadListContext('c1');
+    await facade.loadPage('c1', search);
+
+    expect(api.notes).toHaveBeenCalledWith('c1', search);
     expect(facade.notes()).toEqual([draft]);
+    expect(facade.total()).toBe(1);
     expect(facade.options()).toEqual(options);
     expect(facade.error()).toBeNull();
   });

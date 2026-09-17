@@ -20,9 +20,12 @@ use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLineDetails;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteNotDraft;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
 use App\Module\DeliveryNotes\Domain\InvalidDeliveryNote;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -59,6 +62,16 @@ final readonly class ManageDeliveryNotes
     public function list(Company $company): array
     {
         return $this->notes->ofCompany($company->getId());
+    }
+
+    /**
+     * One page of the company's delivery notes, searched, narrowed and sorted by the database.
+     *
+     * @return Page<DeliveryNote>
+     */
+    public function search(Company $company, DeliveryNoteSearch $search, PageRequest $page): Page
+    {
+        return $this->notes->search($company->getId(), $search, $page);
     }
 
     /** @throws DeliveryNoteNotFound */

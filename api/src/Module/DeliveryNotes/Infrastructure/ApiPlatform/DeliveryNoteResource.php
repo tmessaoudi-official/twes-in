@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Fiscal\Domain\Calculation\DocumentTotals;
 use App\Fiscal\Domain\Calculation\LineTotals;
@@ -47,6 +48,18 @@ use Symfony\Component\Validator\Constraints as Assert;
             provider: DeliveryNoteCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
+            // One page at a time, with its total, which only JSON-LD carries.
+            outputFormats: ['jsonld' => ['application/ld+json']],
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, the customer\'s reference or the customer as the note recorded them, whatever their case and accents; under three characters, the exact number only. A draft carries no number and no recorded customer: narrow it with customerId.'),
+                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['draft', 'validated', 'delivered', 'cancelled', 'invoiced']]),
+                'customerId' => new QueryParameter(schema: self::ID),
+                'order[number]' => new QueryParameter(schema: self::DIRECTION, description: 'Drafts carry no number and come last whichever the direction.'),
+                'order[customer]' => new QueryParameter(schema: self::DIRECTION, description: 'By the customer\'s current name.'),
+                'order[issueDate]' => new QueryParameter(schema: self::DIRECTION),
+                'order[deliveryDate]' => new QueryParameter(schema: self::DIRECTION),
+                'order[status]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Get(
             uriTemplate: '/companies/{companyId}/delivery-notes/{deliveryNoteId}',
@@ -110,6 +123,8 @@ final class DeliveryNoteResource
     private const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
+    /** Which way one of the list's sorts reads. */
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]

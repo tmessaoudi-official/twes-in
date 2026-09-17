@@ -6,6 +6,7 @@ import type {
   DeliveryNoteInput,
   DeliveryNoteOptions,
   DeliveryNoteRow,
+  DeliveryNoteSearch,
   DeliveryNotesError,
 } from './delivery-notes-types';
 
@@ -16,6 +17,8 @@ export class DeliveryNotesFacade {
   private readonly notesSignal = signal<readonly DeliveryNoteRow[]>([]);
   private readonly optionsSignal = signal<DeliveryNoteOptions | null>(null);
   private readonly noteSignal = signal<DeliveryNoteRow | null>(null);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<DeliveryNotesError | null>(null);
 
@@ -23,18 +26,27 @@ export class DeliveryNotesFacade {
   readonly options = this.optionsSignal.asReadonly();
   /** The note open on screen, as the API last answered with it; null while a new one is filled in. */
   readonly note = this.noteSignal.asReadonly();
+  /** How many notes the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  /** The list, with the options that name its drafts' customers. */
-  async loadList(companyId: string): Promise<void> {
+  /** What the list screen needs besides its page: the options that name its drafts' customers. */
+  async loadListContext(companyId: string): Promise<void> {
+    await this.read(async () => this.optionsSignal.set(await this.api.options(companyId)));
+  }
+
+  /**
+   * One page of the notes the search finds. Only the latest search's answer is shown: typing sends one search per
+   * keystroke and they need not come back in order.
+   */
+  async loadPage(companyId: string, search: DeliveryNoteSearch): Promise<void> {
+    const request = ++this.pageRequest;
     await this.read(async () => {
-      const [notes, options] = await Promise.all([
-        this.api.notes(companyId),
-        this.api.options(companyId),
-      ]);
-      this.notesSignal.set(notes);
-      this.optionsSignal.set(options);
+      const page = await this.api.notes(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.notesSignal.set(page.rows);
+      this.totalSignal.set(page.total);
     });
   }
 

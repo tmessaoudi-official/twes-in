@@ -17,13 +17,19 @@ import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
+import type { ListQuery } from '../shared/list/list-types';
 import {
   DELIVERY_NOTES_LIST,
   type DeliveryNoteListRow,
   deliveryNoteListRows,
+  deliveryNoteSearch,
 } from './delivery-note-forms';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
-import { DELIVERY_NOTE_STATUS_TONES, type DeliveryNoteStatus } from './delivery-notes-types';
+import {
+  DELIVERY_NOTE_STATUS_TONES,
+  type DeliveryNoteSearch,
+  type DeliveryNoteStatus,
+} from './delivery-notes-types';
 
 /** The delivery notes of the company being worked in. */
 @Component({
@@ -56,20 +62,38 @@ export class DeliveryNotesPage implements OnInit {
     deliveryNoteListRows(this.facade.notes(), this.facade.options()),
   );
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
+  protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('delivery_note.write'));
   protected readonly rowTestId = (row: DeliveryNoteListRow): string => `delivery-note-${row.id}`;
+
+  /** What the list last asked the API for; the page is not read until the list has said what it wants. */
+  private search: DeliveryNoteSearch | null = null;
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
         ['delivery_note', 'customer', 'invoice'],
-        () => this.facade.loadList(companyId),
+        () => this.reload(companyId),
         this.destroyRef,
       );
-      await this.facade.loadList(companyId);
+      await this.facade.loadListContext(companyId);
     }
+  }
+
+  protected onQuery(query: ListQuery): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.search = deliveryNoteSearch(query);
+    void this.facade.loadPage(companyId, this.search);
+  }
+
+  private async reload(companyId: string): Promise<void> {
+    await Promise.all([
+      this.facade.loadListContext(companyId),
+      this.search === null ? Promise.resolve() : this.facade.loadPage(companyId, this.search),
+    ]);
   }
 }

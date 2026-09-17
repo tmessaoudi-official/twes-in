@@ -77,7 +77,9 @@ describe('DeliveryNotesPage', () => {
       taxes: [],
     }).asReadonly(),
     error: error.asReadonly(),
-    loadList: vi.fn(),
+    total: signal(2).asReadonly(),
+    loadListContext: vi.fn(),
+    loadPage: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -96,7 +98,8 @@ describe('DeliveryNotesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
-    facade.loadList.mockReset().mockResolvedValue(undefined);
+    facade.loadListContext.mockReset().mockResolvedValue(undefined);
+    facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [DeliveryNotesPage],
@@ -121,8 +124,15 @@ describe('DeliveryNotesPage', () => {
     await settle();
   });
 
+  it('asks the API for the page the list wants, rather than reading the whole ledger', () => {
+    expect(facade.loadListContext).toHaveBeenCalledWith('c1');
+    expect(facade.loadPage).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: null }),
+    );
+  });
+
   it('lists the notes with their number, status, customer and total at the currency scale', () => {
-    expect(facade.loadList).toHaveBeenCalledWith('c1');
     const row = (q('delivery-note-n1')?.textContent ?? '').replace(/\s/g, ' ');
     expect(row).toContain('BL-2026-00001');
     expect(row).toContain('Validé');

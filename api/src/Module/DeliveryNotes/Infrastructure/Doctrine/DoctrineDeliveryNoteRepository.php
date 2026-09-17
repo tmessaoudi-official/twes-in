@@ -12,14 +12,31 @@ namespace App\Module\DeliveryNotes\Infrastructure\Doctrine;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepository
 {
+    /** The condition the delivery note trigram index answers; `SearchIndexesTest` proves the pair. */
+    public const string MATCHES_WORDS = "SEARCH_TEXT(n.number, n.customerReference, JSON_VALUES(n.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+
+    private const array SORTED_BY = [
+        'number' => 'n.number',
+        'customer' => 'c.name',
+        'issueDate' => 'n.issueDate',
+        'deliveryDate' => 'n.deliveryDate',
+        'status' => 'n.status',
+    ];
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -27,6 +44,37 @@ final readonly class DoctrineDeliveryNoteRepository implements DeliveryNoteRepos
     public function ofCompany(Uuid $companyId): array
     {
         return $this->entityManager->getRepository(DeliveryNote::class)->findBy(['company' => $companyId], ['createdAt' => 'DESC', 'id' => 'DESC']);
+    }
+
+    public function search(Uuid $companyId, DeliveryNoteSearch $search, PageRequest $page): Page
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('n', 'c')->from(DeliveryNote::class, 'n')
+            ->join('n.customer', 'c')
+            ->where('n.company = :company')->setParameter('company', $companyId, 'uuid');
+        $words = trim($search->text ?? '');
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(n.number) = LOWER(:number)')->setParameter('number', $words);
+        }
+        if (null !== $search->status) {
+            $query->andWhere('n.status = :status')->setParameter('status', $search->status->value);
+        }
+        if (null !== $search->customer) {
+            $query->andWhere('n.customer = :customerId')->setParameter('customerId', $search->customer, 'uuid');
+        }
+        // A draft has no number and no issue day, so neither can settle a tie: the newest first, and the id last,
+        // which is unique and never empty.
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'deliveryDate'], 'n.createdAt', 'DESC')
+            ->addOrderBy('n.id', 'DESC')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
+
+        $paginator = new Paginator($query, fetchJoinCollection: false);
+        /** @var list<DeliveryNote> $notes */
+        $notes = iterator_to_array($paginator, false);
+
+        return new Page($notes, \count($paginator), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote

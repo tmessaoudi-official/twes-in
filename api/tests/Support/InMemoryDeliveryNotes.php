@@ -12,7 +12,10 @@ namespace App\Tests\Support;
 use App\Module\DeliveryNotes\Domain\DeliveryNote;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteLine;
 use App\Module\DeliveryNotes\Domain\DeliveryNoteRepository;
+use App\Module\DeliveryNotes\Domain\DeliveryNoteSearch;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryDeliveryNotes implements DeliveryNoteRepository
@@ -37,6 +40,18 @@ final class InMemoryDeliveryNotes implements DeliveryNoteRepository
         usort($mine, static fn (DeliveryNote $a, DeliveryNote $b) => [$b->getCreatedAt(), $b->getId()->toRfc4122()] <=> [$a->getCreatedAt(), $a->getId()->toRfc4122()]);
 
         return $mine;
+    }
+
+    /**
+     * The page the database would answer is the database's own job — searching, narrowing and ordering are SQL here,
+     * and a unit test that wants them tests the real repository. This one pages what it holds, so a caller reading a
+     * page still reads rows, and says plainly that it ignores the rest.
+     */
+    public function search(Uuid $companyId, DeliveryNoteSearch $search, PageRequest $page): Page
+    {
+        $mine = $this->ofCompany($companyId);
+
+        return new Page(\array_slice($mine, $page->offset(), $page->size), \count($mine), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote

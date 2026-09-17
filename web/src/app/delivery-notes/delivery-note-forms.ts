@@ -3,13 +3,15 @@
 import { atScale } from '../shared/i18n/format';
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   DELIVERY_NOTE_STATUSES,
   type DeliveryNoteInput,
   type DeliveryNoteLine,
   type DeliveryNoteOptions,
   type DeliveryNoteRow,
+  type DeliveryNoteSearch,
+  type DeliveryNoteSortKey,
   type LineTaxOption,
   type TaxFamily,
 } from './delivery-notes-types';
@@ -42,6 +44,29 @@ export function deliveryNoteListRows(
     ...note,
     customer: note.customerName ?? customers.get(note.customerId) ?? '',
   }));
+}
+
+const SORT_KEYS: Readonly<Record<string, DeliveryNoteSortKey>> = {
+  number: 'number',
+  customer: 'customer',
+  issueDate: 'issueDate',
+  deliveryDate: 'deliveryDate',
+  status: 'status',
+};
+
+/** What the API is asked for the page of notes the list shows. */
+export function deliveryNoteSearch(query: ListQuery): DeliveryNoteSearch {
+  const status = DELIVERY_NOTE_STATUSES.find((known) => known === query.filters['status']) ?? null;
+  const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    status,
+    customerId: null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
 }
 
 export const DELIVERY_NOTES_LIST: ListDescriptor<DeliveryNoteListRow> = {

@@ -1,21 +1,25 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  ApiCompaniesCompanyIddeliveryNotesGetCollectionResponse,
   DeliveryNoteDeliveryNoteDeliver,
   DeliveryNoteDeliveryNoteRead,
   DeliveryNoteDeliveryNoteWrite,
+  DeliveryNoteJsonldDeliveryNoteRead,
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
+import type { ListPage } from '../shared/list/list-types';
 import {
   DELIVERY_NOTE_STATUSES,
   type DeliveryNoteInput,
   type DeliveryNoteOptions,
   type DeliveryNoteRow,
+  type DeliveryNoteSearch,
   type DeliveryNotesError,
   type LineTaxOption,
 } from './delivery-notes-types';
@@ -47,12 +51,22 @@ export class DeliveryNotesApi {
     );
   }
 
-  async notes(companyId: string): Promise<DeliveryNoteRow[]> {
-    return this.guard(async () =>
-      (
-        await firstValueFrom(this.http.get<DeliveryNoteDeliveryNoteRead[]>(notePath(companyId)))
-      ).map(toNote),
-    );
+  /** One page of the company's delivery notes, searched, narrowed and sorted by the API. */
+  async notes(companyId: string, search: DeliveryNoteSearch): Promise<ListPage<DeliveryNoteRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIddeliveryNotesGetCollectionResponse>(
+          notePath(companyId),
+          {
+            headers: { Accept: 'application/ld+json' },
+            params: toSearchParams(search),
+          },
+        ),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of delivery notes came without its total.');
+      return { rows: page.member.map(toNote), total: page.totalItems };
+    });
   }
 
   async note(companyId: string, id: string): Promise<DeliveryNoteRow> {
@@ -175,7 +189,20 @@ const companyPath = (companyId: string): string =>
 const notePath = (companyId: string, id?: string): string =>
   `${companyPath(companyId)}/delivery-notes${id === undefined ? '' : `/${encodeURIComponent(id)}`}`;
 
-function toNote(raw: DeliveryNoteDeliveryNoteRead): DeliveryNoteRow {
+/** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
+function toSearchParams(search: DeliveryNoteSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.status !== null) params = params.set('status', search.status);
+  if (search.customerId !== null) params = params.set('customerId', search.customerId);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function toNote(
+  raw: DeliveryNoteDeliveryNoteRead | DeliveryNoteJsonldDeliveryNoteRead,
+): DeliveryNoteRow {
   return {
     id: raw.id ?? '',
     number: raw.number ?? null,

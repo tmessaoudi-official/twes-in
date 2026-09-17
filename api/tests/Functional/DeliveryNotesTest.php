@@ -29,6 +29,8 @@ use Symfony\Component\HttpFoundation\Response;
 final class DeliveryNotesTest extends ApiTestCase
 {
     private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
+    /** What a row with no number yet is called, so an empty column cannot pass for one. */
+    private const string DRAFT = '(draft)';
 
     private Company $company;
     private string $customerId;
@@ -434,6 +436,58 @@ final class DeliveryNotesTest extends ApiTestCase
     private function establishmentId(): string
     {
         return static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0]->getId()->toRfc4122();
+    }
+
+    public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $this->signedIn(['delivery_note.read', 'delivery_note.write', 'delivery_note.validate']);
+        $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+
+        $validated = $this->draftWithALine();
+        $this->postJson($this->path($validated).'/validate', null);
+        self::assertResponseIsSuccessful();
+        $number = $this->stringAt($this->json(), 'number');
+        // A draft carries no number and no customer snapshot: it is the row the searchable text cannot cover by name.
+        $this->postJson($this->path(), $this->note([
+            'customerId' => $other,
+            'customerReference' => 'BC-7788',
+            'lines' => [['productId' => $this->productId, 'quantity' => '1']],
+        ]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->path());
+        self::assertCount(2, $this->jsonList());
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+
+        $this->getJson($this->path().'?itemsPerPage=1');
+        self::assertCount(1, $this->jsonList());
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+
+        foreach ([
+            'q='.$number => [$number],
+            'q='.strtolower($number) => [$number],
+            'q=carthage' => [$number],
+            'q=BC-7788' => [self::DRAFT],
+            'q=zzzz' => [],
+            'status=draft' => [self::DRAFT],
+            'status=validated' => [$number],
+            'customerId='.$other => [self::DRAFT],
+            'order[number]=asc' => [$number, self::DRAFT],
+        ] as $query => $numbers) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            // A draft's number is null, so it is named rather than read as an empty column.
+            $shown = array_map(
+                static fn (array $row): string => \is_string($row['number'] ?? null) ? $row['number'] : self::DRAFT,
+                $this->jsonList(),
+            );
+            self::assertSame($numbers, $shown, $query);
+        }
+
+        foreach (['status=delivered-ish', 'customerId=not-an-id'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
     }
 
     /** @param list<string> $permissions */

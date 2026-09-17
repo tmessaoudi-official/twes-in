@@ -9,12 +9,21 @@ declare(strict_types=1);
 
 namespace App\Module\DeliveryNotes\Domain;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface DeliveryNoteRepository
 {
     /** @return list<DeliveryNote> one company's delivery notes, the newest first */
     public function ofCompany(Uuid $companyId): array;
+
+    /**
+     * One page of a company's delivery notes, searched, narrowed and sorted by the database.
+     *
+     * @return Page<DeliveryNote>
+     */
+    public function search(Uuid $companyId, DeliveryNoteSearch $search, PageRequest $page): Page;
 
     /** Null for a delivery note that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?DeliveryNote;

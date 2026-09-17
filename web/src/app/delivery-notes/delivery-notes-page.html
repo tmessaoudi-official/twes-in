@@ -22,6 +22,8 @@
   <app-data-list
     [descriptor]="list"
     [rows]="rows()"
+    [total]="total()"
+    (queryChange)="onQuery($event)"
     testId="delivery-notes-table"
     [rowTestId]="rowTestId"
     emptyKey="delivery_notes.none"

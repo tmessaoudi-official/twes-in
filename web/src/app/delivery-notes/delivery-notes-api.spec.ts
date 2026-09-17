@@ -32,6 +32,16 @@ const input: DeliveryNoteInput = {
   ],
 };
 
+/** A search that asks for nothing but the first page, so a case names only what it changes. */
+const SEARCH = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  status: null,
+  customerId: null,
+  order: null,
+} as const;
+
 describe('DeliveryNotesApi', () => {
   let api: DeliveryNotesApi;
   let http: HttpTestingController;
@@ -178,9 +188,52 @@ describe('DeliveryNotesApi', () => {
     put.flush({ id: 'n1', status: 'draft', customerId: 'k1' });
     await revised;
 
-    const list = api.notes('c1');
-    http.expectOne('/api/companies/c1/delivery-notes').flush([{ id: 'n1', status: 'draft' }]);
-    expect((await list).map((row) => row.status)).toEqual(['draft']);
+    const list = api.notes('c1', SEARCH);
+    http
+      .expectOne((candidate) => candidate.url === '/api/companies/c1/delivery-notes')
+      .flush({ member: [{ id: 'n1', status: 'draft' }], totalItems: 1 });
+    expect((await list).rows.map((row) => row.status)).toEqual(['draft']);
+  });
+
+  it('asks the API for one page of notes, with what it searches, narrows and sorts by', async () => {
+    const pending = api.notes('c1', {
+      ...SEARCH,
+      page: 3,
+      itemsPerPage: 50,
+      q: '  BL-2026  ',
+      status: 'validated',
+      customerId: 'k1',
+      order: { key: 'deliveryDate', direction: 'asc' },
+    });
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/delivery-notes' && candidate.method === 'GET',
+    );
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.get('page')).toBe('3');
+    expect(request.request.params.get('itemsPerPage')).toBe('50');
+    // Trimmed, so a trailing space is not a different search.
+    expect(request.request.params.get('q')).toBe('BL-2026');
+    expect(request.request.params.get('status')).toBe('validated');
+    expect(request.request.params.get('customerId')).toBe('k1');
+    expect(request.request.params.get('order[deliveryDate]')).toBe('asc');
+    request.flush({ member: [{ id: 'n1', number: 'BL-2026-00001' }], totalItems: 91 });
+
+    const page = await pending;
+    expect(page.rows.map((row) => row.number)).toEqual(['BL-2026-00001']);
+    expect(page.total).toBe(91);
+  });
+
+  it('refuses a page that came without its total, rather than showing one page as the whole list', async () => {
+    const pending = api.notes('c1', SEARCH);
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/delivery-notes' && candidate.method === 'GET',
+    );
+    expect(request.request.params.has('q')).toBe(false);
+    expect(request.request.params.has('status')).toBe(false);
+    request.flush({ member: [] });
+    await expect(pending).rejects.toThrow();
   });
 
   it('validates, delivers on a day or today, and cancels', async () => {
@@ -228,8 +281,10 @@ describe('DeliveryNotesApi', () => {
       .flush(null, { status: 404, statusText: 'Not Found' });
     await expect(absent).rejects.toEqual(new DeliveryNotesRefused('not_found'));
 
-    const offline = api.notes('c1');
-    http.expectOne('/api/companies/c1/delivery-notes').error(new ProgressEvent('error'));
+    const offline = api.notes('c1', SEARCH);
+    http
+      .expectOne((candidate) => candidate.url === '/api/companies/c1/delivery-notes')
+      .error(new ProgressEvent('error'));
     await expect(offline).rejects.toEqual(new DeliveryNotesRefused('network'));
   });
 

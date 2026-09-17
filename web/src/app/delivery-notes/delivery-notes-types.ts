@@ -6,6 +6,21 @@ import type { StatusTone } from '../shared/theme/accent-theme';
 export type DeliveryNotesError = 'network' | 'not_found' | 'conflict' | 'invalid';
 
 export type DeliveryNoteStatus = 'draft' | 'validated' | 'delivered' | 'cancelled' | 'invoiced';
+/** The sorts the API answers; the total is worked out per row and is not a column it can order by. */
+export type DeliveryNoteSortKey = 'number' | 'customer' | 'issueDate' | 'deliveryDate' | 'status';
+
+/** One page of the delivery notes list as the API searches, narrows and sorts it (docs/SPEC.md § 7). */
+export interface DeliveryNoteSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the number, the customer's reference, or the customer the note recorded; empty finds all. */
+  q: string;
+  status: DeliveryNoteStatus | null;
+  customerId: string | null;
+  order: { key: DeliveryNoteSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 export const DELIVERY_NOTE_STATUSES: readonly DeliveryNoteStatus[] = [
   'draft',
   'validated',
