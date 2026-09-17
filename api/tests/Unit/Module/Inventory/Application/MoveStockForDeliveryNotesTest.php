@@ -39,6 +39,7 @@ use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
+use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -90,7 +91,7 @@ final class MoveStockForDeliveryNotesTest extends TestCase
         $this->settings->save(new Setting(SettingAddress::product($this->company, $this->untracked->getId()), 'article.stock_tracking', false, $now));
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
         $manage = new ManageStockLocations($this->locations, $this->movements, $establishments, new InMemoryAuditTrail($this->transactions), $this->clock, $this->transactions);
-        $keep = new KeepStock($this->movements, $this->locations, $products, $read, $this->transactions, $this->clock);
+        $keep = new KeepStock($this->movements, $this->locations, $products, $read, $this->transactions, $this->clock, new RecordingLiveChanges());
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), $this->states);
         $this->move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $this->transactions, $this->clock);
     }

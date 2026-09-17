@@ -47,6 +47,7 @@ use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
+use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\AbstractLogger;
 use Symfony\Component\Clock\MockClock;
@@ -132,7 +133,7 @@ final class MoveStockOnDeliveryNotesTest extends TestCase
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $settings));
         $locations = new InMemoryStockLocations();
         $manage = new ManageStockLocations($locations, $this->movements, $establishments, new InMemoryAuditTrail($transactions), $clock, $transactions);
-        $keep = new KeepStock($this->movements, $locations, $products, $read, $transactions, $clock);
+        $keep = new KeepStock($this->movements, $locations, $products, $read, $transactions, $clock, new RecordingLiveChanges());
         $modules = new ModuleStates(new ModuleCatalog([new ProductsModule(), new InventoryModule()]), new InMemoryModuleStates());
         $move = new MoveStockForDeliveryNotes($this->movements, $manage, $establishments, $products, $keep, $modules, $transactions, $clock);
         $memberships = new InMemoryMemberships();

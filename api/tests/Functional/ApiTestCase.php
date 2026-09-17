@@ -109,10 +109,13 @@ abstract class ApiTestCase extends WebTestCase
         $em->flush();
     }
 
-    /** @param array<string, mixed>|null $body */
-    protected function postJson(string $path, ?array $body, bool $withCsrf = true): void
+    /**
+     * @param array<string, mixed>|null $body
+     * @param array<string, string>     $server extra server parameters, such as `HTTP_X_TAB`
+     */
+    protected function postJson(string $path, ?array $body, bool $withCsrf = true, array $server = []): void
     {
-        $headers = ['CONTENT_TYPE' => 'application/json'];
+        $headers = ['CONTENT_TYPE' => 'application/json', ...$server];
         if ($withCsrf) {
             $headers['HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER))] = self::CSRF_TOKEN;
         }

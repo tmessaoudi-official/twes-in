@@ -35,6 +35,7 @@ use App\Tests\Support\InMemoryProducts;
 use App\Tests\Support\InMemorySettings;
 use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
+use App\Tests\Support\RecordingLiveChanges;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Clock\MockClock;
 use Symfony\Component\Uid\Uuid;
@@ -48,6 +49,7 @@ final class KeepStockTest extends TestCase
     private InMemoryProducts $products;
     private InMemorySettings $settings;
     private FakeTransactions $transactions;
+    private RecordingLiveChanges $liveChanges;
     private KeepStock $keep;
     private Company $company;
     private StockLocation $site;
@@ -80,7 +82,8 @@ final class KeepStockTest extends TestCase
             $this->products->save($product);
         }
         $read = new ReadSetting(new ResolveSettings(new SettingCatalog([new BusinessDefaultSettings()]), $this->settings));
-        $this->keep = new KeepStock($this->movements, $locations, $this->products, $read, $this->transactions, $this->clock);
+        $this->liveChanges = new RecordingLiveChanges($this->transactions);
+        $this->keep = new KeepStock($this->movements, $locations, $this->products, $read, $this->transactions, $this->clock, $this->liveChanges);
     }
 
     public function testOnlyGoodsWhoseStockTrackingResolvesOnAreTracked(): void
@@ -106,6 +109,20 @@ final class KeepStockTest extends TestCase
 
         self::assertSame([StockMovementKind::In, '5.000', $actor], [$received->getKind(), $received->getQuantity(), $received->getRecordedBy()]);
         self::assertSame([[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '7.000']], $this->levels());
+    }
+
+    public function testEachMovementIsSaidAsAChangeToTheProductsStockInsideItsTransaction(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $actor = Uuid::v7();
+
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '5', $actor);
+        $this->keep->count($this->company, $this->laptop->getId(), $this->site->getId(), '4', $actor);
+
+        self::assertSame(
+            [['stock', $this->laptop->getId()->toRfc4122(), 'stock.received', $actor->toRfc4122(), $this->company->getId()->toRfc4122()], ['stock', $this->laptop->getId()->toRfc4122(), 'stock.counted', $actor->toRfc4122(), $this->company->getId()->toRfc4122()]],
+            array_map(static fn ($change) => [$change->kind, $change->id?->toRfc4122(), $change->action, $change->actorUserId?->toRfc4122(), $change->companyId?->toRfc4122()], $this->liveChanges->staged),
+        );
     }
 
     public function testWhatIsNotTrackedOrNotTheCompanysIsRefusedNamingTheField(): void
@@ -141,7 +158,7 @@ final class KeepStockTest extends TestCase
         $same = $this->keep->count($this->company, $this->laptop->getId(), $this->site->getId(), '3', null);
 
         self::assertSame([StockMovementKind::Adjustment, '-2.000', '0.000'], [$short->getKind(), $short->getQuantity(), $same->getQuantity()]);
-        self::assertSame(2, $this->transactions->committed);
+        self::assertSame(3, $this->transactions->committed, 'the receipt and both counts');
         $at = $this->laptop->getId()->toRfc4122().' '.$this->site->getId()->toRfc4122().' in transaction';
         self::assertSame(['lock '.$at, 'onHand '.$at, 'lock '.$at, 'onHand '.$at], $this->movements->calls, 'a count reads its stock under the lock another count or a delivery takes');
         self::assertSame([[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '3.000']], $this->levels());

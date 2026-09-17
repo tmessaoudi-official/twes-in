@@ -20,6 +20,8 @@ use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Settings\Application\ReadSetting;
 use App\Settings\Application\SettingContext;
+use App\Shared\Application\LiveChange;
+use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -28,7 +30,8 @@ use Symfony\Component\Uid\Uuid;
 /**
  * The stock a company keeps (docs/SPEC.md § 5 G10): goods whose `article.stock_tracking` resolves on for them, their
  * category or the company. Stock is received and counted by a person at a location; a count records the difference from
- * the stock it found, in the transaction reading it. The movements are the record: no audit row repeats them.
+ * the stock it found, in the transaction reading it. The movements are the record: no audit row repeats them, so each is
+ * staged as a live change here instead (docs/SPEC.md § 7, 2026-09-17).
  */
 final readonly class KeepStock
 {
@@ -42,6 +45,7 @@ final readonly class KeepStock
         private ReadSetting $settings,
         private Transactions $transactions,
         private ClockInterface $clock,
+        private LiveChanges $liveChanges,
     ) {
     }
 
@@ -58,11 +62,14 @@ final readonly class KeepStock
     /** @throws InvalidStockMovement */
     public function receive(Company $company, Uuid $productId, Uuid $locationId, string $quantity, ?Uuid $actorUserId): StockMovement
     {
-        [$product, $location] = $this->trackedAt($company, $productId, $locationId);
-        $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now());
-        $this->movements->save($movement);
+        return $this->transactions->run(function () use ($company, $productId, $locationId, $quantity, $actorUserId): StockMovement {
+            [$product, $location] = $this->trackedAt($company, $productId, $locationId);
+            $movement = StockMovement::receipt($product, $location, $quantity, $actorUserId, $this->clock->now());
+            $this->movements->save($movement);
+            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.received', $actorUserId, $company->getId()));
 
-        return $movement;
+            return $movement;
+        });
     }
 
     /** @throws InvalidStockMovement */
@@ -73,6 +80,7 @@ final readonly class KeepStock
             $this->movements->lockStockOf($product->getId(), $location->getId());
             $movement = StockMovement::count($product, $location, $counted, $this->movements->onHand($productId, $locationId), $actorUserId, $this->clock->now());
             $this->movements->save($movement);
+            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
 
             return $movement;
         });
