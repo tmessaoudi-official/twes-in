@@ -60,6 +60,7 @@ function location(
 
 function level(productId: string, locationId: string, quantity: string): StockLevelRow {
   return {
+    id: `${productId}:${locationId}`,
     productId,
     productReference: `ART-${productId.slice(1)}`,
     productName: productId === 'p1' ? 'Portable' : 'Article',
@@ -84,7 +85,11 @@ function movement(
   return {
     id,
     productId,
+    productReference: `ART-${productId.slice(1)}`,
+    productName: productId === 'p2' ? 'Farine' : 'Article',
     locationId,
+    locationCode: 'l1' === locationId ? '000' : 'Z9',
+    locationName: 'l1' === locationId ? 'Siège' : 'Zone froide',
     kind,
     quantity,
     sourceType,
@@ -156,14 +161,14 @@ describe('the list rows', () => {
         movement('m2', 'p2', 'l9', 'in', '2.000', 'receipt', null),
         movement('m3', 'p7', 'l1', 'adjustment', '0.000', 'count', null),
       ],
-      [level('p1', 'l1', '7.000'), level('p7', 'l1', '0.000')],
       [site],
       options,
     );
 
+    // A movement names what it moved, so a location the company no longer keeps is still named by the row itself.
     expect(rows.map((row) => [row.productLabel, row.locationLabel, row.unitDecimals])).toEqual([
-      ['ART-1 — Portable', '000 — Siège', 0],
-      ['ART-2 — Farine', '', 3],
+      ['ART-1 — Article', '000 — Siège', 0],
+      ['ART-2 — Farine', 'Z9 — Zone froide', 3],
       ['ART-7 — Article', '000 — Siège', 3],
     ]);
   });

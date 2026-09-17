@@ -110,7 +110,7 @@ final class InventoryTest extends ApiTestCase
 
         $this->getJson($this->path('stock-levels'));
         self::assertResponseIsSuccessful();
-        self::assertSame([[
+        $level = [
             'productId' => $this->laptopId,
             'productReference' => 'ART-001',
             'productName' => 'Portable 14"',
@@ -120,7 +120,18 @@ final class InventoryTest extends ApiTestCase
             'locationName' => 'Acme',
             'establishmentId' => $this->establishmentId,
             'quantity' => '8.000',
-        ]], $this->jsonList());
+            'id' => $this->laptopId.':'.$siteId,
+        ];
+        // Compared key by key, each side in the same order: a page also carries what Hydra puts on every member, and
+        // in which order the serializer writes them is not what this is about.
+        ksort($level);
+        $shown = array_map(static function (array $row) use ($level): array {
+            $row = array_intersect_key($row, $level);
+            ksort($row);
+
+            return $row;
+        }, $this->jsonList());
+        self::assertSame([$level], $shown);
         $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId);
         self::assertSame(['adjustment', 'in'], array_column($this->jsonList(), 'kind'));
 
@@ -305,6 +316,60 @@ final class InventoryTest extends ApiTestCase
         self::assertResponseIsSuccessful();
 
         return $this->stringAt($this->jsonList()[0], 'id');
+    }
+
+    public function testTheStockListIsAPageSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $site = $this->defaultLocationId();
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'zone', 'code' => 'Z9', 'name' => 'Zone froide']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $zone = $this->stringAt($this->json(), 'id');
+        // A second product whose stock is kept: a service keeps none, so it can never be a row here.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $unit = static::getContainer()->get(UnitRepository::class)->ofCodeInCompany('C62', $company->getId());
+        self::assertNotNull($unit);
+        $mouse = Product::create($company, 'ART-002', new ProductDetails('Souris', null, ProductKind::Goods, '25'), $unit, null, [], new \DateTimeImmutable());
+        $this->em()->persist($mouse);
+        $this->em()->flush();
+
+        foreach ([[$this->laptopId, $site, '10'], [$this->laptopId, $zone, '4'], [$mouse->getId()->toRfc4122(), $site, '7']] as [$product, $location, $quantity]) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $product, 'locationId' => $location, 'quantity' => $quantity]);
+            self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        }
+
+        $this->getJson($this->path('stock-levels'));
+        self::assertSame(3, $this->jsonPage()['totalItems'], 'one row per product and location something moved in');
+
+        $this->getJson($this->path('stock-levels').'?itemsPerPage=2');
+        self::assertCount(2, $this->jsonList());
+        self::assertSame(3, $this->jsonPage()['totalItems']);
+
+        $key = static function (array $row): string {
+            self::assertIsString($row['productReference'] ?? null);
+            self::assertIsString($row['locationCode'] ?? null);
+
+            return $row['productReference'].'@'.$row['locationCode'];
+        };
+        foreach ([
+            // The text finds the product and the location alike: both name a row a person is looking at.
+            'q=portable' => ['ART-001@000', 'ART-001@Z9'],
+            'q=ART-001' => ['ART-001@000', 'ART-001@Z9'],
+            'q=froide' => ['ART-001@Z9'],
+            'q=zzzz' => [],
+            'locationId='.$zone => ['ART-001@Z9'],
+            'establishmentId='.$this->establishmentId => ['ART-001@000', 'ART-001@Z9', 'ART-002@000'],
+            'order[quantity]=desc&itemsPerPage=1' => ['ART-001@000'],
+            'order[reference]=desc&order[location]=asc' => ['ART-002@000', 'ART-001@000', 'ART-001@Z9'],
+        ] as $query => $rows) {
+            $this->getJson($this->path('stock-levels').'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($rows, array_map($key, $this->jsonList()), $query);
+        }
+
+        $this->getJson($this->path('stock-levels').'?locationId=not-an-id');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     /** @return list<array<string, mixed>> */

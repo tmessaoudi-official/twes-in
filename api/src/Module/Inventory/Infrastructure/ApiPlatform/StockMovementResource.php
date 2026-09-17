@@ -69,6 +69,26 @@ final class StockMovementResource
     #[Groups([self::READ, self::WRITE])]
     public string $locationId = '';
 
+    /**
+     * What the movement moved, named here rather than looked up elsewhere: a product or a location the company has
+     * since stopped offering still has its movements, and a list of them has to say whose they are.
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $productReference = '';
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $productName = '';
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $locationCode = '';
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $locationName = '';
+
     #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']])]
     #[Groups([self::READ])]
     public string $kind = '';
@@ -101,7 +121,11 @@ final class StockMovementResource
         $resource = new self();
         $resource->id = $movement->getId()->toRfc4122();
         $resource->productId = $movement->getProduct()->getId()->toRfc4122();
+        $resource->productReference = $movement->getProduct()->getReference();
+        $resource->productName = $movement->getProduct()->getDetails()->name;
         $resource->locationId = $movement->getLocation()->getId()->toRfc4122();
+        $resource->locationCode = $movement->getLocation()->getCode();
+        $resource->locationName = $movement->getLocation()->getName();
         $resource->kind = $movement->getKind()->value;
         $resource->quantity = $movement->getQuantity();
         $resource->sourceType = $movement->getSourceType();

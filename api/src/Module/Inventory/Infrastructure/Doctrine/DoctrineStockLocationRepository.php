@@ -25,6 +25,11 @@ final readonly class DoctrineStockLocationRepository implements StockLocationRep
         return $this->entityManager->getRepository(StockLocation::class)->findBy(['company' => $companyId], ['code' => 'ASC', 'id' => 'ASC']);
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        return [] === $ids ? [] : $this->entityManager->getRepository(StockLocation::class)->findBy(['id' => $ids, 'company' => $companyId]);
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockLocation
     {
         $location = $this->entityManager->find(StockLocation::class, $id);

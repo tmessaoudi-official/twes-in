@@ -43,6 +43,13 @@ final class InMemoryProducts implements ProductRepository
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (Product $product): bool => \in_array($product->getId()->toRfc4122(), $wanted, true)));
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product
     {
         foreach ($this->ofCompany($companyId) as $product) {

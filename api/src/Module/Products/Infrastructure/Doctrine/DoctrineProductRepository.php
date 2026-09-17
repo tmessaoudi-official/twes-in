@@ -63,6 +63,11 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return new Page($products, \count($paginator), $page);
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        return [] === $ids ? [] : $this->entityManager->getRepository(Product::class)->findBy(['id' => $ids, 'company' => $companyId]);
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product
     {
         $product = $this->entityManager->find(Product::class, $id);

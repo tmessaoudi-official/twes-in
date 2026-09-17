@@ -25,6 +25,7 @@ import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
+import type { ListQuery } from '../shared/list/list-types';
 import {
   movementForm,
   movementInput,
@@ -32,9 +33,10 @@ import {
   STOCK_LIST,
   type StockListRow,
   stockListRows,
+  stockSearch,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
-import type { StockOperation } from './inventory-types';
+import type { StockOperation, StockSearch } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
 
 /** What is on hand of each product whose stock is kept, per location, with goods received and counts recorded here. */
@@ -68,6 +70,7 @@ export class StockPage implements OnInit {
   protected readonly rows = computed(() =>
     stockListRows(this.facade.levels(), this.facade.options(), this.facade.locations()),
   );
+  protected readonly total = this.facade.total;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
@@ -105,16 +108,33 @@ export class StockPage implements OnInit {
     },
   });
 
+  /** What the list last asked the API for; the page is not read until the list has said what it wants. */
+  private search: StockSearch | null = null;
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
         ['stock', 'delivery_note', 'product', 'stock_location'],
-        () => this.facade.loadStock(companyId),
+        () => this.reload(companyId),
         this.destroyRef,
       );
-      await this.facade.loadStock(companyId);
+      await this.facade.loadStockContext(companyId);
     }
+  }
+
+  protected onQuery(query: ListQuery): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.search = stockSearch(query);
+    void this.facade.loadStock(companyId, this.search);
+  }
+
+  private async reload(companyId: string): Promise<void> {
+    await Promise.all([
+      this.facade.loadStockContext(companyId),
+      this.search === null ? Promise.resolve() : this.facade.loadStock(companyId, this.search),
+    ]);
   }
 
   protected open(operation: StockOperation): void {

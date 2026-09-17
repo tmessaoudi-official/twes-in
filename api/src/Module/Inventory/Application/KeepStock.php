@@ -11,6 +11,7 @@ namespace App\Module\Inventory\Application;
 
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLevel;
+use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Inventory\Domain\StockMovement;
@@ -23,6 +24,8 @@ use App\Settings\Application\SettingContext;
 use App\Shared\Application\LiveChange;
 use App\Shared\Application\LiveChanges;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -90,6 +93,16 @@ final readonly class KeepStock
     public function levels(Company $company): array
     {
         return $this->movements->levels($company->getId());
+    }
+
+    /**
+     * One page of the same, searched, narrowed and sorted by the database.
+     *
+     * @return Page<StockLevel>
+     */
+    public function searchLevels(Company $company, StockLevelSearch $search, PageRequest $page): Page
+    {
+        return $this->movements->searchLevels($company->getId(), $search, $page);
     }
 
     /** @return list<StockMovement> the latest of one product's, or of all the company's, newest first; none for another company's product */

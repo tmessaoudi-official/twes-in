@@ -4,13 +4,15 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
-  StockLevelStockLevelRead,
+  ApiCompaniesCompanyIdstockLevelsGetCollectionResponse,
+  StockLevelJsonldStockLevelRead,
   StockLocationStockLocationRead,
   StockLocationStockLocationWrite,
   StockMovementStockMovementRead,
   StockMovementStockMovementWrite,
   StockOptionsStockOptionsRead,
 } from '../api/types.gen';
+import type { ListPage } from '../shared/list/list-types';
 import {
   type InventoryError,
   STOCK_LOCATION_KINDS,
@@ -22,6 +24,7 @@ import {
   type StockMovementInput,
   type StockMovementRow,
   type StockOptions,
+  type StockSearch,
 } from './inventory-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -46,14 +49,18 @@ export class InventoryApi {
     );
   }
 
-  async levels(companyId: string): Promise<StockLevelRow[]> {
-    return this.guard(async () =>
-      (
-        await firstValueFrom(
-          this.http.get<StockLevelStockLevelRead[]>(path(companyId, 'stock-levels')),
-        )
-      ).map(toLevel),
-    );
+  /** One page of the stock the company holds, grouped, searched, narrowed and sorted by the API. */
+  async levels(companyId: string, search: StockSearch): Promise<ListPage<StockLevelRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdstockLevelsGetCollectionResponse>(
+          path(companyId, 'stock-levels'),
+          { headers: { Accept: 'application/ld+json' }, params: toSearchParams(search) },
+        ),
+      );
+      if (page.totalItems === undefined) throw new Error('A page of stock came without its total.');
+      return { rows: page.member.map(toLevel), total: page.totalItems };
+    });
   }
 
   /** Every location of the company; reading them gives each establishment its default location. */
@@ -171,8 +178,21 @@ function toOptions(raw: StockOptionsStockOptionsRead): StockOptions {
   };
 }
 
-function toLevel(raw: StockLevelStockLevelRead): StockLevelRow {
+/** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
+function toSearchParams(search: StockSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.locationId !== null) params = params.set('locationId', search.locationId);
+  if (search.establishmentId !== null)
+    params = params.set('establishmentId', search.establishmentId);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
   return {
+    id: raw.id ?? '',
     productId: raw.productId ?? '',
     productReference: raw.productReference ?? '',
     productName: raw.productName ?? '',
@@ -203,7 +223,11 @@ function toMovement(raw: StockMovementStockMovementRead): StockMovementRow {
   return {
     id: raw.id ?? '',
     productId: raw.productId ?? '',
+    productReference: raw.productReference ?? '',
+    productName: raw.productName ?? '',
     locationId: raw.locationId ?? '',
+    locationCode: raw.locationCode ?? '',
+    locationName: raw.locationName ?? '',
     kind: STOCK_MOVEMENT_KINDS.find((kind) => kind === raw.kind) ?? 'adjustment',
     quantity: raw.quantity ?? '0.000',
     sourceType: STOCK_SOURCE_TYPES.find((type) => type === raw.sourceType) ?? 'receipt',

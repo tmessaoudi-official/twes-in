@@ -10,9 +10,12 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Module\Inventory\Domain\StockLevel;
+use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use BcMath\Number;
 use Symfony\Component\Uid\Uuid;
 
@@ -97,6 +100,18 @@ final class InMemoryStockMovements implements StockMovementRepository
 
             return new StockLevel(Uuid::fromString($product), Uuid::fromString($location), $quantity->value);
         }, array_keys($sums), $sums);
+    }
+
+    /**
+     * The page the database would answer is the database's own job — grouping, searching and ordering are SQL here,
+     * and a unit test that wants them tests the real repository. This one pages what it has totalled, so a caller
+     * reading a page still reads rows, and says plainly that it ignores the rest.
+     */
+    public function searchLevels(Uuid $companyId, StockLevelSearch $search, PageRequest $page): Page
+    {
+        $levels = $this->levels($companyId);
+
+        return new Page(\array_slice($levels, $page->offset(), $page->size), \count($levels), $page);
     }
 
     public function countAt(Uuid $locationId): int

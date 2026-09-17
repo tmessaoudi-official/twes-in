@@ -18,10 +18,24 @@ const zone: StockLocationRow = {
   movementCount: 4,
 };
 
+/** A search that asks for nothing but the first page, so a case names only what it changes. */
+const SEARCH = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  locationId: null,
+  establishmentId: null,
+  order: null,
+} as const;
+
 const received: StockMovementRow = {
   id: 'm1',
   productId: 'p1',
+  productReference: 'ART-1',
+  productName: 'Portable',
   locationId: 'l1',
+  locationCode: '000',
+  locationName: 'Siège',
   kind: 'in',
   quantity: '10.000',
   sourceType: 'receipt',
@@ -59,8 +73,9 @@ describe('InventoryApi', () => {
       establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
     });
 
-    const levels = api.levels('c1');
+    const levels = api.levels('c1', SEARCH);
     const level = {
+      id: 'p1:l1',
       productId: 'p1',
       productReference: 'ART-1',
       productName: 'Portable',
@@ -71,8 +86,10 @@ describe('InventoryApi', () => {
       establishmentId: 'e1',
       quantity: '-2.000',
     };
-    http.expectOne('/api/companies/c1/stock-levels').flush([level]);
-    expect(await levels).toEqual([level]);
+    http
+      .expectOne((candidate) => candidate.url === '/api/companies/c1/stock-levels')
+      .flush({ member: [level], totalItems: 7 });
+    expect(await levels).toEqual({ rows: [level], total: 7 });
 
     const locations = api.locations('c1');
     http.expectOne('/api/companies/c1/stock-locations').flush([{ ...zone, kind: 'cellar' }]);
@@ -147,14 +164,54 @@ describe('InventoryApi', () => {
       .flush({ detail: 'quantity' }, { status: 422, statusText: 'Unprocessable Entity' });
     await expect(refused).rejects.toMatchObject({ code: 'invalid' });
 
-    const unreachable = api.levels('c1');
-    http.expectOne('/api/companies/c1/stock-levels').error(new ProgressEvent('error'));
+    const unreachable = api.levels('c1', SEARCH);
+    http
+      .expectOne((candidate) => candidate.url === '/api/companies/c1/stock-levels')
+      .error(new ProgressEvent('error'));
     await expect(unreachable).rejects.toMatchObject({ code: 'network' });
 
-    const gone = api.levels('c1');
+    const gone = api.levels('c1', SEARCH);
     http
-      .expectOne('/api/companies/c1/stock-levels')
+      .expectOne((candidate) => candidate.url === '/api/companies/c1/stock-levels')
       .flush({}, { status: 404, statusText: 'Not Found' });
     await expect(gone).rejects.toMatchObject({ code: 'not_found' });
+  });
+
+  it('asks the API for one page of stock, with what it searches, narrows and sorts by', async () => {
+    const pending = api.levels('c1', {
+      ...SEARCH,
+      page: 2,
+      itemsPerPage: 50,
+      q: '  portable  ',
+      locationId: 'l1',
+      establishmentId: 'e1',
+      order: { key: 'quantity', direction: 'desc' },
+    });
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/stock-levels' && candidate.method === 'GET',
+    );
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('itemsPerPage')).toBe('50');
+    // Trimmed, so a trailing space is not a different search.
+    expect(request.request.params.get('q')).toBe('portable');
+    expect(request.request.params.get('locationId')).toBe('l1');
+    expect(request.request.params.get('establishmentId')).toBe('e1');
+    expect(request.request.params.get('order[quantity]')).toBe('desc');
+    request.flush({ member: [], totalItems: 0 });
+    expect(await pending).toEqual({ rows: [], total: 0 });
+  });
+
+  it('refuses a page that came without its total, rather than showing one page as the whole stock', async () => {
+    const pending = api.levels('c1', SEARCH);
+    const request = http.expectOne(
+      (candidate) =>
+        candidate.url === '/api/companies/c1/stock-levels' && candidate.method === 'GET',
+    );
+    expect(request.request.params.has('q')).toBe(false);
+    expect(request.request.params.has('locationId')).toBe(false);
+    request.flush({ member: [] });
+    await expect(pending).rejects.toThrow();
   });
 });

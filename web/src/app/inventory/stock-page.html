@@ -72,6 +72,8 @@
     <app-data-list
       [descriptor]="list"
       [rows]="rows()"
+      [total]="total()"
+      (queryChange)="onQuery($event)"
       testId="stock-table"
       [rowTestId]="rowTestId"
       emptyKey="inventory.stock.none"

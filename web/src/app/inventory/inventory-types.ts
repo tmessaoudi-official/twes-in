@@ -43,7 +43,24 @@ export type StockLocationInput = Pick<
 >;
 
 /** What is on hand of one product at one location: the sum of its movements, which may fall below zero. */
+/** The sorts the API answers for a stock list. */
+export type StockSortKey = 'reference' | 'product' | 'location' | 'quantity';
+
+/** One page of the stock list as the API groups, searches, narrows and sorts it (docs/SPEC.md § 7). */
+export interface StockSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the product's reference or name or the location's code or name; empty finds all. */
+  q: string;
+  locationId: string | null;
+  establishmentId: string | null;
+  order: { key: StockSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 export interface StockLevelRow {
+  /** The product and the location together: a row is the pair, and neither alone names it. */
+  id: string;
   productId: string;
   productReference: string;
   productName: string;
@@ -59,7 +76,12 @@ export interface StockLevelRow {
 export interface StockMovementRow {
   id: string;
   productId: string;
+  /** What the movement moved, as the API names it: a product no longer offered still has its movements. */
+  productReference: string;
+  productName: string;
   locationId: string;
+  locationCode: string;
+  locationName: string;
   kind: StockMovementKind;
   /** Signed: what came in is positive, what left negative, a count's difference either. */
   quantity: string;

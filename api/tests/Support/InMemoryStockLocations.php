@@ -26,6 +26,13 @@ final class InMemoryStockLocations implements StockLocationRepository
         return $mine;
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (StockLocation $l): bool => \in_array($l->getId()->toRfc4122(), $wanted, true)));
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockLocation
     {
         return array_find($this->ofCompany($companyId), static fn (StockLocation $l) => $l->getId()->equals($id));

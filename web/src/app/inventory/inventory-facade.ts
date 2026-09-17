@@ -10,6 +10,7 @@ import type {
   StockMovementInput,
   StockMovementRow,
   StockOptions,
+  StockSearch,
 } from './inventory-types';
 
 /** The stock of the company being worked in: what is on hand, how it moved, where it is kept, and the forms' options. */
@@ -18,6 +19,10 @@ export class InventoryFacade {
   private readonly api = inject(InventoryApi);
   private readonly optionsSignal = signal<StockOptions | null>(null);
   private readonly levelsSignal = signal<readonly StockLevelRow[]>([]);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
+  /** What the list last asked for, so recording a movement reads that same page again. */
+  private search: StockSearch | null = null;
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
   private readonly movementsSignal = signal<readonly StockMovementRow[]>([]);
   private readonly busySignal = signal(false);
@@ -25,35 +30,49 @@ export class InventoryFacade {
 
   readonly options = this.optionsSignal.asReadonly();
   readonly levels = this.levelsSignal.asReadonly();
+  /** How many rows the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   readonly locations = this.locationsSignal.asReadonly();
   readonly movements = this.movementsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  async loadStock(companyId: string): Promise<void> {
+  /** What the stock screen needs besides its page: what a movement may be recorded against. */
+  async loadStockContext(companyId: string): Promise<void> {
     await this.read(async () => {
-      const [options, levels, locations] = await Promise.all([
+      const [options, locations] = await Promise.all([
         this.api.options(companyId),
-        this.api.levels(companyId),
         this.api.locations(companyId),
       ]);
       this.optionsSignal.set(options);
-      this.levelsSignal.set(levels);
       this.locationsSignal.set(locations);
     });
   }
 
-  /** One product's movements, or the company's latest; the levels name a product the options no longer offer. */
+  /**
+   * One page of the stock the search finds. Only the latest search's answer is shown: typing sends one search per
+   * keystroke and they need not come back in order.
+   */
+  async loadStock(companyId: string, search: StockSearch): Promise<void> {
+    const request = ++this.pageRequest;
+    this.search = search;
+    await this.read(async () => {
+      const page = await this.api.levels(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.levelsSignal.set(page.rows);
+      this.totalSignal.set(page.total);
+    });
+  }
+
+  /** One product's movements, or the company's latest; each names the product and location it moved. */
   async loadMovements(companyId: string, productId: string | null): Promise<void> {
     await this.read(async () => {
-      const [options, levels, locations, movements] = await Promise.all([
+      const [options, locations, movements] = await Promise.all([
         this.api.options(companyId),
-        this.api.levels(companyId),
         this.api.locations(companyId),
         this.api.movements(companyId, productId),
       ]);
       this.optionsSignal.set(options);
-      this.levelsSignal.set(levels);
       this.locationsSignal.set(locations);
       this.movementsSignal.set(movements);
     });
@@ -74,7 +93,11 @@ export class InventoryFacade {
   async record(companyId: string, input: StockMovementInput): Promise<boolean> {
     return this.write(
       () => this.api.record(companyId, input),
-      async () => this.levelsSignal.set(await this.api.levels(companyId)),
+      // The page in hand is read again, not the whole stock: what was just recorded belongs on it or does not.
+      async () => {
+        const search = this.search;
+        if (search !== null) await this.loadStock(companyId, search);
+      },
     );
   }
 

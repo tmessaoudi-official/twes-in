@@ -59,7 +59,11 @@ const options: StockOptions = {
 const delivered: StockMovementRow = {
   id: 'm1',
   productId: 'p1',
+  productReference: 'ART-1',
+  productName: 'Portable',
   locationId: 'l1',
+  locationCode: '000',
+  locationName: 'Siège',
   kind: 'out',
   quantity: '-3.000',
   sourceType: 'delivery_note',

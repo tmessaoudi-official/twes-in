@@ -19,6 +19,13 @@ interface StockLocationRepository
     /** Null for a location that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?StockLocation;
 
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return list<StockLocation> those of the company among these ids, in no particular order
+     */
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array;
+
     public function defaultOf(Uuid $establishmentId): ?StockLocation;
 
     public function ofCodeInEstablishment(string $code, Uuid $establishmentId): ?StockLocation;

@@ -15,6 +15,13 @@ use Symfony\Component\Uid\Uuid;
 
 interface ProductRepository
 {
+    /**
+     * @param list<Uuid> $ids
+     *
+     * @return list<Product> those of the company among these ids, in no particular order
+     */
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array;
+
     /** @return list<Product> one company's products, by reference */
     public function ofCompany(Uuid $companyId): array;
 

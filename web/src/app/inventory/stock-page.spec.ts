@@ -57,6 +57,7 @@ const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
 };
 const shortage: StockLevelRow = {
+  id: 'p1:l1',
   productId: 'p1',
   productReference: 'ART-1',
   productName: 'Portable',
@@ -76,6 +77,8 @@ describe('StockPage', () => {
     locations: signal<readonly StockLocationRow[]>([site]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    total: signal(1).asReadonly(),
+    loadStockContext: vi.fn(),
     loadStock: vi.fn(),
     record: vi.fn(),
     clearError: vi.fn(),
@@ -103,6 +106,7 @@ describe('StockPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    facade.loadStockContext.mockReset().mockResolvedValue(undefined);
     facade.loadStock.mockReset().mockResolvedValue(undefined);
     facade.record.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -130,8 +134,15 @@ describe('StockPage', () => {
     await settle();
   });
 
+  it('asks the API for the page the list wants, rather than reading the whole stock', () => {
+    expect(facade.loadStockContext).toHaveBeenCalledWith('c1');
+    expect(facade.loadStock).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '' }),
+    );
+  });
+
   it('lists what is on hand where, in the unit of its product, and marks stock below zero', () => {
-    expect(facade.loadStock).toHaveBeenCalledWith('c1');
     const row = q('stock-ART-1-000')?.textContent ?? '';
     expect(row).toContain('000 — Siège');
     expect(row).toMatch(/[-−]2(?![,.\d])/);

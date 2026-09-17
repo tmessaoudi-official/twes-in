@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace App\Module\Inventory\Domain;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface StockMovementRepository
@@ -41,6 +43,14 @@ interface StockMovementRepository
 
     /** @return list<StockLevel> every product and location of the company something moved in */
     public function levels(Uuid $companyId): array;
+
+    /**
+     * One page of the same, searched, narrowed and sorted by the database. The page is bounded; the grouping behind
+     * it is not — see StockLevelSearch.
+     *
+     * @return Page<StockLevel>
+     */
+    public function searchLevels(Uuid $companyId, StockLevelSearch $search, PageRequest $page): Page;
 
     /** How many movements a location has seen. */
     public function countAt(Uuid $locationId): int;

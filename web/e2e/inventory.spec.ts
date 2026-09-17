@@ -279,15 +279,24 @@ test('stock received at a location leaves with a validated delivery note and ret
     await page.getByTestId('stock-movement-save').click();
     await expect(toast(page)).toContainText('Le mouvement a été enregistré.');
     const row = page.getByTestId(`stock-${reference}-${code}`);
+    // The API pages this list and the shared company outgrows one page, so the row is searched for; the search is
+    // the list's own and does not survive a reload, so it is made again after each one.
+    const find = async (): Promise<void> => {
+      await page.getByTestId('list-filter').fill(reference);
+      await expect(row).toBeVisible();
+    };
+    await find();
     await expect(quantity(row)).toHaveText('10');
     expect(await wcagViolations(page)).toEqual([]);
 
     const noteId = await deliver(page, fixture);
     await page.reload();
+    await find();
     await expect(quantity(row)).toHaveText('7');
 
     await cancel(page, noteId);
     await page.reload();
+    await find();
     await expect(quantity(row)).toHaveText('10');
 
     await page.getByTestId(`stock-movements-${reference}-${code}`).click();

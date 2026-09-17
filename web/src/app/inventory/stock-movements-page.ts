@@ -48,12 +48,7 @@ export class StockMovementsPage {
 
   protected readonly list = MOVEMENTS_LIST;
   protected readonly rows = computed(() =>
-    movementListRows(
-      this.facade.movements(),
-      this.facade.levels(),
-      this.facade.locations(),
-      this.facade.options(),
-    ),
+    movementListRows(this.facade.movements(), this.facade.locations(), this.facade.options()),
   );
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);

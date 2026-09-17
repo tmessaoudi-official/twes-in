@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import type { FieldValue, FormDescriptor, FormValues } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   STOCK_LOCATION_KINDS,
   STOCK_MOVEMENT_KINDS,
@@ -13,6 +13,8 @@ import {
   type StockMovementRow,
   type StockOperation,
   type StockOptions,
+  type StockSearch,
+  type StockSortKey,
 } from './inventory-types';
 
 const LOCATION_FIELDS = 'inventory.locations.fields';
@@ -73,7 +75,6 @@ export function stockListRows(
   const decimals = decimalsOf(options);
   return levels.map((level) => ({
     ...level,
-    id: `${level.productId}:${level.locationId}`,
     locationLabel: labels.get(level.locationId) ?? `${level.locationCode} — ${level.locationName}`,
     unitDecimals: decimals.get(level.productId) ?? API_DECIMALS,
     negative: Number(level.quantity) < 0,
@@ -98,30 +99,44 @@ export type StockMovementListRow = StockMovementRow & {
 
 export function movementListRows(
   movements: readonly StockMovementRow[],
-  levels: readonly StockLevelRow[],
   locations: readonly StockLocationRow[],
   options: StockOptions | null,
 ): StockMovementListRow[] {
   const labels = locationLabels(locations);
   const decimals = decimalsOf(options);
-  const products = new Map<string, string>();
-  // A product no longer offered still has its movements: the stock levels name it too.
-  for (const level of levels) {
-    products.set(level.productId, `${level.productReference} — ${level.productName}`);
-  }
-  for (const product of options?.products ?? []) {
-    products.set(product.id, `${product.reference} — ${product.name}`);
-  }
   return movements.map((movement) => ({
     ...movement,
-    productLabel: products.get(movement.productId) ?? '',
-    locationLabel: labels.get(movement.locationId) ?? '',
+    // The movement names what it moved, so a product or location no longer offered is still named here.
+    productLabel: `${movement.productReference} — ${movement.productName}`,
+    locationLabel:
+      labels.get(movement.locationId) ?? `${movement.locationCode} — ${movement.locationName}`,
     unitDecimals: decimals.get(movement.productId) ?? API_DECIMALS,
   }));
 }
 
 function decimalsOf(options: StockOptions | null): Map<string, number> {
   return new Map((options?.products ?? []).map((product) => [product.id, product.unitDecimals]));
+}
+
+const SORT_KEYS: Readonly<Record<string, StockSortKey>> = {
+  reference: 'reference',
+  product: 'product',
+  location: 'location',
+  quantity: 'quantity',
+};
+
+/** What the API is asked for the page of stock the list shows. */
+export function stockSearch(query: ListQuery): StockSearch {
+  const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    locationId: null,
+    establishmentId: null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
 }
 
 export const STOCK_LIST: ListDescriptor<StockListRow> = {

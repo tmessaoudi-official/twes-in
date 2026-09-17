@@ -25,7 +25,16 @@ const options: StockOptions = {
   products: [{ id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 }],
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
 };
+const SEARCH = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  locationId: null,
+  establishmentId: null,
+  order: null,
+} as const;
 const level: StockLevelRow = {
+  id: 'p1:l1',
   productId: 'p1',
   productReference: 'ART-1',
   productName: 'Portable',
@@ -59,7 +68,7 @@ describe('InventoryFacade', () => {
 
   beforeEach(() => {
     api.options.mockReset().mockResolvedValue(options);
-    api.levels.mockReset().mockResolvedValue([level]);
+    api.levels.mockReset().mockResolvedValue({ rows: [level], total: 1 });
     api.locations.mockReset().mockResolvedValue([site]);
     api.movements.mockReset().mockResolvedValue([]);
     api.createLocation.mockReset().mockResolvedValue(site);
@@ -70,27 +79,32 @@ describe('InventoryFacade', () => {
     facade = TestBed.inject(InventoryFacade);
   });
 
-  it('reads the stock with what it names: the options and the locations', async () => {
-    await facade.loadStock('c1');
+  it('reads one page of stock with what it names: the options and the locations', async () => {
+    await facade.loadStockContext('c1');
+    await facade.loadStock('c1', SEARCH);
 
-    expect([facade.levels(), facade.locations(), facade.options()]).toEqual([
+    expect(api.levels).toHaveBeenCalledWith('c1', SEARCH);
+    expect([facade.levels(), facade.total(), facade.locations(), facade.options()]).toEqual([
       [level],
+      1,
       [site],
       options,
     ]);
     expect(facade.error()).toBeNull();
   });
 
-  it("reads one product's movements", async () => {
+  it("reads one product's movements, which name what they moved themselves", async () => {
     await facade.loadMovements('c1', 'p1');
 
     expect(api.movements).toHaveBeenCalledWith('c1', 'p1');
-    expect(facade.levels()).toEqual([level]);
+    expect(api.levels).not.toHaveBeenCalled();
   });
 
-  it('records a receipt, then reads the stock again', async () => {
-    api.levels.mockResolvedValueOnce([]).mockResolvedValueOnce([level]);
-    await facade.loadStock('c1');
+  it('records a receipt, then reads the page it was recorded on again', async () => {
+    api.levels
+      .mockResolvedValueOnce({ rows: [], total: 0 })
+      .mockResolvedValueOnce({ rows: [level], total: 1 });
+    await facade.loadStock('c1', SEARCH);
 
     const input = {
       operation: 'receive' as const,
@@ -101,6 +115,7 @@ describe('InventoryFacade', () => {
     expect(await facade.record('c1', input)).toBe(true);
 
     expect(api.record).toHaveBeenCalledWith('c1', input);
+    expect(api.levels).toHaveBeenLastCalledWith('c1', SEARCH);
     expect(facade.levels()).toEqual([level]);
   });
 
