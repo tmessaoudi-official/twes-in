@@ -9,6 +9,8 @@ import {
   productForm,
   productInput,
   productListRows,
+  PRODUCTS_LIST,
+  productSearch,
   productsList,
   productValues,
 } from './product-forms';
@@ -75,6 +77,52 @@ const warranty: CustomFieldDefinition = {
 };
 
 describe('product forms', () => {
+  it('asks the API for the page, words, kind, status and sort the list shows, and sorts only by what it sorts', () => {
+    expect(
+      productSearch({
+        query: 'portable',
+        filters: { kind: 'service', status: 'inactive' },
+        sort: { column: 'status', direction: 'desc' },
+        pageIndex: 2,
+        pageSize: 50,
+      }),
+    ).toEqual({
+      page: 3,
+      itemsPerPage: 50,
+      q: 'portable',
+      kind: 'service',
+      isActive: false,
+      order: { key: 'isActive', direction: 'desc' },
+    });
+    expect(
+      productSearch({
+        query: '',
+        filters: { kind: 'unknown' },
+        sort: { column: 'category', direction: 'asc' },
+        pageIndex: 0,
+        pageSize: 25,
+      }),
+    ).toEqual({
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      kind: null,
+      isActive: null,
+      order: { key: 'category', direction: 'asc' },
+    });
+    for (const column of PRODUCTS_LIST.columns.filter((each) => each.sortable)) {
+      expect(
+        productSearch({
+          query: '',
+          filters: {},
+          sort: { column: column.id, direction: 'asc' },
+          pageIndex: 0,
+          pageSize: 25,
+        }).order,
+      ).not.toBeNull();
+    }
+  });
+
   it('names each category by its path in the tree', () => {
     expect(categoryLabels([gaming, laptops, hardware])).toEqual(
       new Map([

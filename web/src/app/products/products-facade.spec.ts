@@ -12,7 +12,17 @@ import type {
   ProductInput,
   ProductOptions,
   ProductRow,
+  ProductSearch,
 } from './products-types';
+
+const everyProduct: ProductSearch = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  kind: null,
+  isActive: null,
+  order: null,
+};
 
 const input: ProductInput = {
   reference: 'ART-001',
@@ -68,7 +78,7 @@ describe('ProductsFacade', () => {
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     api.options.mockResolvedValue(options);
-    api.products.mockResolvedValue([laptop]);
+    api.products.mockResolvedValue({ rows: [laptop], total: 1 });
     api.categories.mockResolvedValue([hardware]);
     fieldsApi.list.mockReset().mockResolvedValue([warranty]);
     settingsApi.chain.mockReset().mockResolvedValue([]);
@@ -82,15 +92,41 @@ describe('ProductsFacade', () => {
     facade = TestBed.inject(ProductsFacade);
   });
 
-  it("reads the list with the categories, the options and the company's fields for products", async () => {
-    await facade.loadList('c1');
+  it("reads what the list names besides its page: the categories, the options and the company's fields", async () => {
+    await facade.loadListContext('c1');
 
-    expect(facade.products()).toEqual([laptop]);
+    expect(api.products).not.toHaveBeenCalled();
     expect(facade.categories()).toEqual([hardware]);
     expect(facade.options()).toEqual(options);
     expect(fieldsApi.list).toHaveBeenCalledWith('c1', 'product');
     expect(facade.customFields()).toEqual([warranty]);
     expect(facade.error()).toBeNull();
+  });
+
+  it('reads one page of products with the total the paginator counts', async () => {
+    api.products.mockResolvedValue({ rows: [laptop], total: 60 });
+
+    await facade.loadPage('c1', everyProduct);
+
+    expect(api.products).toHaveBeenCalledWith('c1', everyProduct);
+    expect(facade.products()).toEqual([laptop]);
+    expect(facade.total()).toBe(60);
+    expect(facade.error()).toBeNull();
+  });
+
+  it('keeps the page of the last search when an earlier one answers after it', async () => {
+    let answerFirst: (page: { rows: ProductRow[]; total: number }) => void = () => undefined;
+    api.products
+      .mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)))
+      .mockResolvedValueOnce({ rows: [laptop], total: 1 });
+
+    const first = facade.loadPage('c1', everyProduct);
+    await facade.loadPage('c1', { ...everyProduct, q: 'portable' });
+    answerFirst({ rows: [laptop, { ...laptop, id: 'p2' }], total: 2 });
+    await first;
+
+    expect(facade.products()).toEqual([laptop]);
+    expect(facade.total()).toBe(1);
   });
 
   it('reads one product for its form, or none for a new one', async () => {
@@ -151,7 +187,7 @@ describe('ProductsFacade', () => {
 
   it('says the network failed when a read throws something else', async () => {
     api.products.mockRejectedValueOnce(new Error('boom'));
-    await facade.loadList('c1');
+    await facade.loadPage('c1', everyProduct);
 
     expect(facade.error()).toBe('network');
     expect(facade.busy()).toBe(false);

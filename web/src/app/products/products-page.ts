@@ -16,10 +16,12 @@ import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
 import { StatusBadge } from '../shared/ui/status-badge';
-import { type ProductListRow, productListRows, productsList } from './product-forms';
+import type { ListQuery } from '../shared/list/list-types';
+import { type ProductListRow, productListRows, productSearch, productsList } from './product-forms';
 import { ProductsFacade } from './products-facade';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
+import type { ProductSearch } from './products-types';
 
 /** The products of the company being worked in, with a hidden column per custom field of theirs. */
 @Component({
@@ -49,21 +51,39 @@ export class ProductsPage implements OnInit {
   protected readonly rows = computed(() =>
     productListRows(this.facade.products(), this.facade.categories(), this.facade.options()),
   );
+  protected readonly total = this.facade.total;
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('product.write'));
   protected readonly rowTestId = (row: ProductListRow): string => `product-${row.reference}`;
 
+  /** The page the list shows last asked for; a change elsewhere reads it again. */
+  private search: ProductSearch | null = null;
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
         ['product', 'product_category', 'custom_field', 'unit', 'tax_component', 'stock'],
-        () => this.facade.loadList(companyId),
+        () => this.reload(companyId),
         this.destroyRef,
       );
-      await this.facade.loadList(companyId);
+      await this.facade.loadListContext(companyId);
     }
+  }
+
+  protected onQuery(query: ListQuery): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.search = productSearch(query);
+    void this.facade.loadPage(companyId, this.search);
+  }
+
+  private async reload(companyId: string): Promise<void> {
+    await Promise.all([
+      this.facade.loadListContext(companyId),
+      this.search === null ? Promise.resolve() : this.facade.loadPage(companyId, this.search),
+    ]);
   }
 }

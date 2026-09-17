@@ -12,6 +12,7 @@ import type {
   ProductInput,
   ProductOptions,
   ProductRow,
+  ProductSearch,
   ProductsError,
 } from './products-types';
 
@@ -22,6 +23,8 @@ export class ProductsFacade {
   private readonly fields = inject(CustomFieldsApi);
   private readonly settings = inject(SettingsApi);
   private readonly productsSignal = signal<readonly ProductRow[]>([]);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
   private readonly categoriesSignal = signal<readonly ProductCategoryRow[]>([]);
   private readonly optionsSignal = signal<ProductOptions | null>(null);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
@@ -31,6 +34,8 @@ export class ProductsFacade {
   private readonly errorSignal = signal<ProductsError | null>(null);
 
   readonly products = this.productsSignal.asReadonly();
+  /** How many products the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   readonly categories = this.categoriesSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   /** Every custom field declared for products, retired ones included; screens show the active ones. */
@@ -41,19 +46,31 @@ export class ProductsFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  /** The list, with what it names by id: categories and units. */
-  async loadList(companyId: string): Promise<void> {
+  /** What the list screen needs besides its page: the categories and units its rows name, and the custom fields it adds columns for. */
+  async loadListContext(companyId: string): Promise<void> {
     await this.read(async () => {
-      const [products, categories, options, customFields] = await Promise.all([
-        this.api.products(companyId),
+      const [categories, options, customFields] = await Promise.all([
         this.api.categories(companyId),
         this.api.options(companyId),
         this.fields.list(companyId, 'product'),
       ]);
-      this.productsSignal.set(products);
       this.categoriesSignal.set(categories);
       this.optionsSignal.set(options);
       this.customFieldsSignal.set(customFields);
+    });
+  }
+
+  /**
+   * One page of the products the search finds. Only the latest search's answer is shown: typing sends one search per
+   * pause, and an earlier one answering late would otherwise put back rows the words no longer find.
+   */
+  async loadPage(companyId: string, search: ProductSearch): Promise<void> {
+    const request = ++this.pageRequest;
+    await this.read(async () => {
+      const page = await this.api.products(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.productsSignal.set(page.rows);
+      this.totalSignal.set(page.total);
     });
   }
 

@@ -17,11 +17,18 @@ async function retire(page: Page, reference: string, categoryName: string): Prom
     async ([csrf, productReference, category]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       const base = `/api/companies/${me.company.id}`;
-      const products = (await (await fetch(`${base}/products`)).json()) as {
-        id: string;
-        reference: string;
-      }[];
-      const product = products.find((row) => row.reference === productReference);
+      // The list is paged: the product is found by its reference, then read whole as the single record it is.
+      const listed = (await (
+        await fetch(`${base}/products?q=${encodeURIComponent(productReference)}`)
+      ).json()) as { member: { id: string; reference: string }[] };
+      const hit = listed.member.find((row) => row.reference === productReference);
+      const product =
+        hit === undefined
+          ? undefined
+          : ((await (await fetch(`${base}/products/${hit.id}`)).json()) as {
+              id: string;
+              reference: string;
+            });
       if (product) {
         // The write shape has no id: a body naming one is refused, and the category could then not be deleted.
         const { id, ...fields } = product;
@@ -97,6 +104,9 @@ test('a product is filed in a category, priced at the currency scale and revised
     await expect(page.getByTestId('field-article__default_unit')).toHaveValue('HUR');
 
     await page.goto('/products');
+    // Filtered: the shared company holds more products than a page, and the API searches the words.
+    await page.getByTestId('list-filter').fill(reference);
+    await expect(page).toHaveURL(new RegExp(`[?&]q=${reference}`));
     await expect(page.getByTestId(`product-${reference}`)).toContainText(categoryName);
     await expect(page.getByTestId(`product-${reference}`)).toContainText('135,000');
     await expect(page.getByTestId(`product-${reference}`)).toContainText('HUR');

@@ -9,12 +9,17 @@ declare(strict_types=1);
 
 namespace App\Module\Products\Domain;
 
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 interface ProductRepository
 {
     /** @return list<Product> one company's products, by reference */
     public function ofCompany(Uuid $companyId): array;
+
+    /** @return Page<Product> one page of the company's products that the search finds, in its order */
+    public function search(Uuid $companyId, ProductSearch $search, PageRequest $page): Page;
 
     /** Null for a product that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product;

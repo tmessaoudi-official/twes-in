@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Module\Products\Domain\Product;
@@ -35,9 +36,20 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(
             uriTemplate: '/companies/{companyId}/products',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: ProductCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the reference, name or barcode, whatever their case and accents; under three characters, the exact reference only.'),
+                'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['goods', 'service']]),
+                'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),
+                'order[reference]' => new QueryParameter(schema: self::DIRECTION),
+                'order[name]' => new QueryParameter(schema: self::DIRECTION),
+                'order[kind]' => new QueryParameter(schema: self::DIRECTION),
+                'order[category]' => new QueryParameter(schema: self::DIRECTION, description: 'By the name of the product\'s own category; products without one come last.'),
+                'order[isActive]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Get(
             uriTemplate: '/companies/{companyId}/products/{productId}',
@@ -66,6 +78,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 final class ProductResource
 {
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     public const string READ = 'product:read';
     public const string WRITE = 'product:write';
     /** Nulls are answered: an absent description and a product without a category read alike. */

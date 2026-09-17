@@ -181,11 +181,18 @@ async function retire(
         if (!response.ok) throw new Error(`${what} answered ${response.status}`);
       };
       // The write shapes have no id: a body naming one is refused.
-      const products = (await (await fetch(`${base}/products`)).json()) as {
-        id: string;
-        reference: string;
-      }[];
-      const product = products.find((row) => row.reference === productReference);
+      // The list is paged: the product is found by its reference, then read whole as the single record it is.
+      const listed = (await (
+        await fetch(`${base}/products?q=${encodeURIComponent(productReference)}`)
+      ).json()) as { member: { id: string; reference: string }[] };
+      const hit = listed.member.find((row) => row.reference === productReference);
+      const product =
+        hit === undefined
+          ? undefined
+          : ((await (await fetch(`${base}/products/${hit.id}`)).json()) as {
+              id: string;
+              reference: string;
+            });
       if (product) {
         const { id, ...fields } = product;
         check(

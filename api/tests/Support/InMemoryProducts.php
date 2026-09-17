@@ -11,6 +11,9 @@ namespace App\Tests\Support;
 
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\ProductSearch;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryProducts implements ProductRepository
@@ -24,6 +27,20 @@ final class InMemoryProducts implements ProductRepository
         usort($mine, static fn (Product $a, Product $b) => $a->getReference() <=> $b->getReference());
 
         return $mine;
+    }
+
+    /** Narrows as the database does; sorts by reference only, which is all the unit tests ask for. */
+    public function search(Uuid $companyId, ProductSearch $search, PageRequest $page): Page
+    {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Product $p) use ($search): bool {
+            $details = $p->getDetails();
+
+            return InMemorySearch::finds($search->text, $p->getReference(), [$details->name, $details->barcode])
+                && (null === $search->kind || $details->kind === $search->kind)
+                && (null === $search->active || $p->isActive() === $search->active);
+        }));
+
+        return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product

@@ -14,6 +14,8 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -72,8 +74,10 @@ describe('ProductsPage', () => {
       taxes: [],
     }).asReadonly(),
     customFields: signal<readonly CustomFieldDefinition[]>([]).asReadonly(),
+    total: signal(1).asReadonly(),
     error: error.asReadonly(),
-    loadList: vi.fn(),
+    loadListContext: vi.fn(),
+    loadPage: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -92,11 +96,13 @@ describe('ProductsPage', () => {
 
   beforeEach(async () => {
     error.set(null);
-    facade.loadList.mockReset().mockResolvedValue(undefined);
+    facade.loadListContext.mockReset().mockResolvedValue(undefined);
+    facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [ProductsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -118,7 +124,15 @@ describe('ProductsPage', () => {
   });
 
   it('lists the products with their kind, category, unit and price at the currency scale', () => {
-    expect(facade.loadList).toHaveBeenCalledWith('c1');
+    expect(facade.loadListContext).toHaveBeenCalledWith('c1');
+    expect(facade.loadPage).toHaveBeenCalledWith('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      kind: null,
+      isActive: null,
+      order: { key: 'reference', direction: 'asc' },
+    });
     const row = (q('product-ART-001')?.textContent ?? '').replace(/\s/g, ' ');
     expect(row).toContain('Portable 14"');
     expect(row).toContain('Bien');
@@ -127,6 +141,16 @@ describe('ProductsPage', () => {
     expect(row).toContain('1 250,500');
     expect(row).toContain('Actif');
     expect(q('product-open-ART-001')?.getAttribute('href')).toBe('/products/p1');
+  });
+
+  it('reads the page shown and what it names again when products change elsewhere', async () => {
+    facade.loadListContext.mockClear();
+    facade.loadPage.mockClear();
+
+    await announceSaved('product', 'p9');
+
+    expect(facade.loadListContext).toHaveBeenCalledWith('c1');
+    expect(facade.loadPage).toHaveBeenCalledWith('c1', expect.objectContaining({ page: 1 }));
   });
 
   it('offers a new product and the categories to a writer only', async () => {

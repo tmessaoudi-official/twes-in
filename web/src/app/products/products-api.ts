@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  ApiCompaniesCompanyIdproductsGetCollectionResponse,
   ProductCategoryProductCategoryRead,
+  ProductJsonldProductRead,
   ProductCategoryProductCategoryWrite,
   ProductOptionsProductOptionsRead,
   ProductProductRead,
   ProductProductWrite,
 } from '../api/types.gen';
+import type { ListPage } from '../shared/list/list-types';
 import {
   PRODUCT_KINDS,
   type LineTaxFamily,
@@ -18,6 +21,7 @@ import {
   type ProductInput,
   type ProductOptions,
   type ProductRow,
+  type ProductSearch,
   type ProductsError,
 } from './products-types';
 
@@ -46,12 +50,22 @@ export class ProductsApi {
     );
   }
 
-  async products(companyId: string): Promise<ProductRow[]> {
-    return this.guard(async () =>
-      (await firstValueFrom(this.http.get<ProductProductRead[]>(path(companyId, 'products')))).map(
-        toProduct,
-      ),
-    );
+  /** One page of the products the search finds, as Hydra carries it: the rows and the total. */
+  async products(companyId: string, search: ProductSearch): Promise<ListPage<ProductRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdproductsGetCollectionResponse>(
+          path(companyId, 'products'),
+          {
+            headers: { Accept: 'application/ld+json' },
+            params: toSearchParams(search),
+          },
+        ),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of products came without its total.');
+      return { rows: page.member.map(toProduct), total: page.totalItems };
+    });
   }
 
   async product(companyId: string, id: string): Promise<ProductRow> {
@@ -173,7 +187,17 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
 const path = (companyId: string, collection: string, id?: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}/${collection}${id === undefined ? '' : `/${encodeURIComponent(id)}`}`;
 
-function toProduct(raw: ProductProductRead): ProductRow {
+function toSearchParams(search: ProductSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.kind !== null) params = params.set('kind', search.kind);
+  if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function toProduct(raw: ProductProductRead | ProductJsonldProductRead): ProductRow {
   return {
     id: raw.id ?? '',
     reference: raw.reference ?? '',

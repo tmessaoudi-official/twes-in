@@ -13,6 +13,7 @@ use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\Fiscal\Domain\UnitRepository;
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
 use App\Module\Products\Domain\ProductKind;
 use App\Tenancy\Domain\Company;
@@ -182,6 +183,52 @@ final class ProductsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson($this->path('not-a-uuid'));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $now = new \DateTimeImmutable();
+        $units = static::getContainer()->get(UnitRepository::class);
+        $piece = $units->ofCodeInCompany('C62', $this->company->getId());
+        self::assertNotNull($piece);
+        foreach (range(1, 27) as $n) {
+            $this->em()->persist(Product::create($this->company, \sprintf('ART-%04d', $n), new ProductDetails('Article '.$n, null, ProductKind::Goods, '10'), $piece, null, [], $now));
+        }
+        $grocery = ProductCategory::create($this->company, 'Épicerie', null, $now);
+        $this->em()->persist($grocery);
+        $this->em()->persist(Product::create($this->company, 'ART-0100', new ProductDetails('Café moulu Carthage', null, ProductKind::Service, '12.5', barcode: '6191234567890'), $piece, $grocery, [], $now));
+        $retired = Product::create($this->company, 'ART-0101', new ProductDetails('Zitouna thé vert', null, ProductKind::Goods, '4'), $piece, null, [], $now);
+        $retired->revise('ART-0101', new ProductDetails('Zitouna thé vert', null, ProductKind::Goods, '4'), $piece, null, [], false, $now);
+        $this->em()->persist($retired);
+        $this->em()->flush();
+        $this->signedIn(['product.read']);
+
+        $this->getJson($this->path());
+        self::assertCount(25, $this->jsonList());
+        self::assertSame(29, $this->jsonPage()['totalItems']);
+
+        foreach ([
+            'q=cafe' => ['ART-0100'],
+            'q=CARTHAGE' => ['ART-0100'],
+            'q=6191234' => ['ART-0100'],
+            'q=art-0101' => ['ART-0101'],
+            'q=zz' => [],
+            'kind=service' => ['ART-0100'],
+            'isActive=false' => ['ART-0101'],
+            'order[reference]=desc&itemsPerPage=1' => ['ART-0101'],
+            'order[name]=desc&itemsPerPage=1' => ['ART-0101'],
+            'order[kind]=desc&itemsPerPage=1' => ['ART-0100'],
+            'order[category]=asc&itemsPerPage=1' => ['ART-0100'],
+            'order[category]=desc&itemsPerPage=1' => ['ART-0100'],
+            'order[isActive]=asc&itemsPerPage=1' => ['ART-0101'],
+        ] as $query => $references) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($references, array_column($this->jsonList(), 'reference'), $query);
+        }
+
+        $this->getJson($this->path().'?kind=robot');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     /**

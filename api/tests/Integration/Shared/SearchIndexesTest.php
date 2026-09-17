@@ -11,6 +11,8 @@ namespace App\Tests\Integration\Shared;
 
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Infrastructure\Doctrine\DoctrineCustomerRepository;
+use App\Module\Products\Domain\Product;
+use App\Module\Products\Infrastructure\Doctrine\DoctrineProductRepository;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Infrastructure\Doctrine\DoctrineVendorRepository;
 use Doctrine\ORM\EntityManagerInterface;
@@ -28,6 +30,7 @@ final class SearchIndexesTest extends KernelTestCase
     public static function searches(): iterable
     {
         yield 'customers' => [Customer::class, 'c', DoctrineCustomerRepository::MATCHES_WORDS, 'idx_customer_search'];
+        yield 'products' => [Product::class, 'p', DoctrineProductRepository::MATCHES_WORDS, 'idx_product_search'];
         yield 'vendors' => [Vendor::class, 'v', DoctrineVendorRepository::MATCHES_WORDS, 'idx_vendor_search'];
     }
 

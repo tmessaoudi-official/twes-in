@@ -16,7 +16,7 @@ import type {
   FormSection,
   FormValues,
 } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { withCustomColumns } from '../shared/list/list-view';
 import {
   PRODUCT_KINDS,
@@ -26,6 +26,8 @@ import {
   type ProductKind,
   type ProductOptions,
   type ProductRow,
+  type ProductSearch,
+  type ProductSortKey,
 } from './products-types';
 
 const FIELDS = 'products.fields';
@@ -140,6 +142,31 @@ export const PRODUCTS_LIST: ListDescriptor<ProductListRow> = {
 };
 
 /** The products list with a hidden column per active custom field of the company for products. */
+/** The column a person sorts by, as the API names what it sorts products by. */
+const SORT_KEYS: Readonly<Record<string, ProductSortKey>> = {
+  reference: 'reference',
+  name: 'name',
+  kind: 'kind',
+  category: 'category',
+  status: 'isActive',
+};
+
+/** What the API is asked for the page of products the list shows. */
+export function productSearch(query: ListQuery): ProductSearch {
+  const kind = PRODUCT_KINDS.find((known) => known === query.filters['kind']) ?? null;
+  const status = query.filters['status'];
+  const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    kind,
+    isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
+}
+
 export function productsList(
   fields: readonly CustomFieldDefinition[],
 ): ListDescriptor<ProductListRow> {

@@ -4,7 +4,16 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { ProductsApi, ProductsRefused } from './products-api';
-import type { ProductInput } from './products-types';
+import type { ProductInput, ProductSearch } from './products-types';
+
+const everyProduct: ProductSearch = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  kind: null,
+  isActive: null,
+  order: null,
+};
 
 const laptop: ProductInput = {
   reference: 'ART-001',
@@ -97,10 +106,36 @@ describe('ProductsApi', () => {
     expect(put.request.method).toBe('PUT');
     put.flush({ ...laptop, id: 'p1' });
     await revised;
+  });
 
-    const list = api.products('c1');
-    http.expectOne('/api/companies/c1/products').flush([{ ...laptop, id: 'p1' }]);
-    expect((await list).map((row) => row.reference)).toEqual(['ART-001']);
+  it('reads one page of products as the API searched, narrowed and sorted it, with the total', async () => {
+    const pending = api.products('c1', {
+      page: 2,
+      itemsPerPage: 50,
+      q: ' écran ',
+      kind: 'goods',
+      isActive: false,
+      order: { key: 'category', direction: 'desc' },
+    });
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/products');
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.toString()).toBe(
+      'page=2&itemsPerPage=50&q=%C3%A9cran&kind=goods&isActive=false&order%5Bcategory%5D=desc',
+    );
+    request.flush({ member: [{ ...laptop, id: 'p1' }], totalItems: 77 });
+
+    const page = await pending;
+    expect(page.total).toBe(77);
+    expect(page.rows.map((row) => row.reference)).toEqual(['ART-001']);
+  });
+
+  it('leaves out of the query what the list does not narrow by', async () => {
+    const pending = api.products('c1', everyProduct);
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/products');
+    expect(request.request.params.toString()).toBe('page=1&itemsPerPage=25');
+    request.flush({ member: [], totalItems: 0 });
+
+    await expect(pending).resolves.toEqual({ rows: [], total: 0 });
   });
 
   it('answers each refusal with the code the screens translate', async () => {
@@ -116,14 +151,16 @@ describe('ProductsApi', () => {
       .flush(null, { status: 422, statusText: 'Unprocessable' });
     await expect(invalid).rejects.toEqual(new ProductsRefused('invalid'));
 
-    const hidden = api.products('c1');
+    const hidden = api.products('c1', everyProduct);
     http
-      .expectOne('/api/companies/c1/products')
+      .expectOne((req) => req.url === '/api/companies/c1/products')
       .flush(null, { status: 404, statusText: 'Not Found' });
     await expect(hidden).rejects.toEqual(new ProductsRefused('not_found'));
 
-    const offline = api.products('c1');
-    http.expectOne('/api/companies/c1/products').error(new ProgressEvent('error'));
+    const offline = api.products('c1', everyProduct);
+    http
+      .expectOne((req) => req.url === '/api/companies/c1/products')
+      .error(new ProgressEvent('error'));
     await expect(offline).rejects.toEqual(new ProductsRefused('network'));
   });
 

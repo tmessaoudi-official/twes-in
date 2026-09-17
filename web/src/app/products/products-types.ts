@@ -12,6 +12,21 @@ export const PRODUCT_KINDS: readonly ProductKind[] = ['goods', 'service'];
 /** The families of tax charged on a line; a stamp or a withholding belongs to the document. */
 export type LineTaxFamily = 'vat' | 'levy';
 
+/** What the API sorts products by. */
+export type ProductSortKey = 'reference' | 'name' | 'kind' | 'category' | 'isActive';
+
+/** One page of the products list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+export interface ProductSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the reference, name or barcode; empty finds all. */
+  q: string;
+  kind: ProductKind | null;
+  isActive: boolean | null;
+  order: { key: ProductSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 export interface ProductRow {
   id: string;
   reference: string;

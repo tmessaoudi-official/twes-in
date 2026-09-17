@@ -26,7 +26,10 @@ use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductCategoryRepository;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
+use App\Module\Products\Domain\ProductSearch;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -55,6 +58,12 @@ final readonly class ManageProducts
         private ProductStockHistory $stockHistory,
         private Transactions $transactions,
     ) {
+    }
+
+    /** @return Page<Product> */
+    public function search(Company $company, ProductSearch $search, PageRequest $page): Page
+    {
+        return $this->products->search($company->getId(), $search, $page);
     }
 
     /** @return list<Product> */
