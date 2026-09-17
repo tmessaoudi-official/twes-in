@@ -87,3 +87,22 @@ export interface ListView {
 }
 
 export type ListViewDraft = Omit<ListView, 'id'>;
+
+/**
+ * What a list shown one page at a time by the API asks for (docs/SPEC.md § 7, lists at scale): the text filter, the
+ * chosen filter options, the sort and the page. A screen turns it into its API's query.
+ */
+export interface ListQuery {
+  query: string;
+  filters: ListFilterValues;
+  sort: ListSort | null;
+  /** Numbered from 0, as the paginator counts. */
+  pageIndex: number;
+  pageSize: number;
+}
+
+/** One page of a list and how many rows the whole list holds. */
+export interface ListPage<Row> {
+  rows: Row[];
+  total: number;
+}

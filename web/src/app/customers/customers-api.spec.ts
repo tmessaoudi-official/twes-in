@@ -4,7 +4,16 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { CustomersApi } from './customers-api';
-import type { CustomerInput } from './customers-types';
+import type { CustomerInput, CustomerSearch } from './customers-types';
+
+const everyCustomer: CustomerSearch = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  kind: null,
+  isActive: null,
+  order: null,
+};
 
 const carthage: CustomerInput = {
   number: 'CLI-0001',
@@ -165,9 +174,41 @@ describe('CustomersApi', () => {
     await expect(removed).resolves.toBeUndefined();
   });
 
+  it('reads one page of customers as the API searched, narrowed and sorted it, with the total', async () => {
+    const pending = api.customers('c1', {
+      page: 2,
+      itemsPerPage: 50,
+      q: 'carthagé',
+      kind: 'company',
+      isActive: false,
+      order: { key: 'customerGroup', direction: 'desc' },
+    });
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/customers');
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.toString()).toBe(
+      'page=2&itemsPerPage=50&q=carthag%C3%A9&kind=company&isActive=false&order%5BcustomerGroup%5D=desc',
+    );
+    request.flush({ member: [{ id: 'k1', ...carthage }], totalItems: 51 });
+
+    const page = await pending;
+    expect(page.total).toBe(51);
+    expect(page.rows.map((row) => row.name)).toEqual(['Carthage Conseil']);
+  });
+
+  it('leaves out of the query what the list does not narrow by', async () => {
+    const pending = api.customers('c1', { ...everyCustomer });
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/customers');
+    expect(request.request.params.toString()).toBe('page=1&itemsPerPage=25');
+    request.flush({ member: [], totalItems: 0 });
+
+    await expect(pending).resolves.toEqual({ rows: [], total: 0 });
+  });
+
   it('says the server could not be reached', async () => {
-    const pending = api.customers('c1');
-    http.expectOne('/api/companies/c1/customers').error(new ProgressEvent('error'));
+    const pending = api.customers('c1', everyCustomer);
+    http
+      .expectOne((req) => req.url === '/api/companies/c1/customers')
+      .error(new ProgressEvent('error'));
 
     await expect(pending).rejects.toMatchObject({ code: 'network' });
   });

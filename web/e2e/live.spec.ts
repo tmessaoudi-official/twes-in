@@ -93,9 +93,21 @@ async function reviseCustomer(
   await page.evaluate(
     async ([csrf, customerNumber, fields]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      // The list is paged: the customer is found by its number, then read whole as the single record it is.
+      const customerNumbered = async (company: string, wanted: string) => {
+        const listed = (await (
+          await fetch(`${company}/customers?q=${encodeURIComponent(wanted)}`)
+        ).json()) as { member: { id: string; number: string }[] };
+        const hit = listed.member.find((row) => row.number === wanted);
+        return hit === undefined
+          ? undefined
+          : ((await (await fetch(`${company}/customers/${hit.id}`)).json()) as {
+              id: string;
+              number: string;
+            });
+      };
       const base = `/api/companies/${me.company.id}/customers`;
-      const rows = (await (await fetch(base)).json()) as { id: string; number: string }[];
-      const found = rows.find((row) => row.number === customerNumber);
+      const found = await customerNumbered(`/api/companies/${me.company.id}`, customerNumber);
       if (!found) throw new Error(`${customerNumber} is not listed`);
       const { id, ...saved } = found;
       const revised = await fetch(`${base}/${id}`, {

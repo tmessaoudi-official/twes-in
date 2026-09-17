@@ -14,7 +14,7 @@ import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
 import { DataList, DataListCell, DataListRowActions } from './data-list';
-import type { ListDescriptor, ListPreferences, ListView } from './list-types';
+import type { ListDescriptor, ListPreferences, ListQuery, ListView } from './list-types';
 import { NO_LIST_PREFERENCES } from './list-types';
 
 interface Customer {
@@ -94,6 +94,31 @@ const descriptor: ListDescriptor<Customer> = {
 class Host {
   readonly descriptor = descriptor;
   readonly rows = signal<Customer[]>(all);
+  readonly rowTestId = (row: Customer) => `customer-${row.id}`;
+}
+
+/** A screen whose API pages the list: it hands over one page and the total, and reads what the list asks for. */
+@Component({
+  imports: [DataList],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <app-data-list
+      [descriptor]="descriptor"
+      [rows]="rows()"
+      [total]="total()"
+      (queryChange)="queries.push($event)"
+      testId="customers-table"
+      [rowTestId]="rowTestId"
+      emptyKey="c.none"
+      emptyTestId="customers-empty"
+    />
+  `,
+})
+class ServerHost {
+  readonly descriptor = descriptor;
+  readonly rows = signal<Customer[]>([...all].reverse().slice(0, 10));
+  readonly total = signal(30);
+  readonly queries: ListQuery[] = [];
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
 
@@ -449,6 +474,118 @@ describe('DataList', () => {
 
     expect(views().map((kept) => kept.id)).toEqual(['v2']);
     expect(q('list-view-apply-v1')).toBeNull();
+  });
+
+  describe('when the API pages the list', () => {
+    let server: ComponentFixture<ServerHost>;
+    const queries = (): ListQuery[] => server.componentInstance.queries;
+    const lastQuery = (): ListQuery | undefined => queries().at(-1);
+    const serverRowIds = () =>
+      (
+        Array.from(
+          server.nativeElement.querySelectorAll('[data-testid^="customer-"]'),
+        ) as HTMLElement[]
+      ).map((row) => row.getAttribute('data-testid')!.replace('customer-', ''));
+    const pause = () => new Promise((resolve) => setTimeout(resolve, 350));
+
+    async function settleServer(): Promise<void> {
+      server.detectChanges();
+      await server.whenStable();
+      server.detectChanges();
+    }
+
+    beforeEach(async () => {
+      fixture.destroy();
+      server = TestBed.createComponent(ServerHost);
+      await settleServer();
+    });
+
+    afterEach(() => server.destroy());
+
+    it('shows the page it was given as it is, counts the pages by the total, and asks for the first page', () => {
+      expect(serverRowIds()).toEqual(['30', '29', '28', '27', '26', '25', '24', '23', '22', '21']);
+      expect(q('list-paginator')?.textContent).toContain('30');
+      expect(queries()).toEqual([
+        { query: '', filters: {}, sort: null, pageIndex: 0, pageSize: 10 },
+      ]);
+    });
+
+    it('asks for the words a person typed once they pause, from the first page', async () => {
+      const field = q('list-filter') as HTMLInputElement;
+      field.value = 'sfa';
+      field.dispatchEvent(new Event('input'));
+      field.value = 'sfax';
+      field.dispatchEvent(new Event('input'));
+      await settleServer();
+      expect(queries()).toHaveLength(1);
+
+      await pause();
+      await settleServer();
+
+      expect(queries()).toHaveLength(2);
+      expect(lastQuery()).toMatchObject({ query: 'sfax', pageIndex: 0 });
+    });
+
+    it('asks for a sort, a filter option and another page, and counts no choice it cannot see', async () => {
+      q('list-header-name')!.click();
+      await settleServer();
+      expect(lastQuery()?.sort).toEqual({ column: 'name', direction: 'asc' });
+
+      expect(q('list-facet-status-active')?.querySelector('.twes-chip-count')).toBeNull();
+      q('list-facet-status-active')!.click();
+      await settleServer();
+      expect(lastQuery()).toMatchObject({ filters: { status: 'active' }, pageIndex: 0 });
+
+      (
+        q('list-paginator')!.querySelector(
+          '.mat-mdc-paginator-navigation-next',
+        ) as HTMLButtonElement
+      ).click();
+      await settleServer();
+      expect(lastQuery()?.pageIndex).toBe(1);
+    });
+
+    it('asks nothing again for what it already asked, such as an option picked twice', async () => {
+      q('list-facet-status-active')!.click();
+      await settleServer();
+      expect(queries()).toHaveLength(2);
+
+      q('list-facet-status-active')!.click();
+      q('list-resize-city')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+      await settleServer();
+
+      expect(queries()).toHaveLength(2);
+    });
+
+    it('highlights a row a reload brought onto the page, and none once a person asked for another page', async () => {
+      server.componentInstance.rows.set([{ ...all[0], id: 'n1' }, ...all.slice(0, 9)]);
+      await settleServer();
+      expect(q('customer-n1')?.classList).toContain('twes-row-new');
+
+      (
+        q('list-paginator')!.querySelector(
+          '.mat-mdc-paginator-navigation-next',
+        ) as HTMLButtonElement
+      ).click();
+      await settleServer();
+      server.componentInstance.rows.set(all.slice(10, 20));
+      await settleServer();
+
+      expect(server.nativeElement.querySelectorAll('.twes-row-new')).toHaveLength(0);
+      expect(q('list-new')).toBeNull();
+    });
+
+    it('says the list is empty, or that nothing matches what a person asked for', async () => {
+      server.componentInstance.rows.set([]);
+      server.componentInstance.total.set(0);
+      await settleServer();
+      expect(q('customers-empty')).not.toBeNull();
+
+      q('list-facet-status-archived')!.click();
+      await settleServer();
+      expect(q('customers-empty')).toBeNull();
+      expect(q('list-no-match')).not.toBeNull();
+    });
   });
 
   describe('while it is open and rows arrive', () => {

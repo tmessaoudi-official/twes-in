@@ -11,6 +11,9 @@ namespace App\Tests\Support;
 
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\CustomerSearch;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryCustomers implements CustomerRepository
@@ -24,6 +27,22 @@ final class InMemoryCustomers implements CustomerRepository
         usort($mine, static fn (Customer $a, Customer $b) => $a->getNumber() <=> $b->getNumber());
 
         return $mine;
+    }
+
+    /** Narrows as the database does; sorts by number only, which is all the unit tests ask for. */
+    public function search(Uuid $companyId, CustomerSearch $search, PageRequest $page): Page
+    {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Customer $c) use ($search): bool {
+            $profile = $c->getProfile();
+            $text = null === $search->text || str_contains(mb_strtolower(implode(' ', [$c->getNumber(), $profile->name, $profile->legalName, $profile->email, $profile->billingAddress->city])), mb_strtolower($search->text));
+
+            return $text
+                && (null === $search->kind || $profile->kind === $search->kind)
+                && (null === $search->groupId || true === $c->getGroup()?->getId()->equals($search->groupId))
+                && (null === $search->active || $c->isActive() === $search->active);
+        }));
+
+        return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer

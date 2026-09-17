@@ -11,7 +11,14 @@ namespace App\Tests\Functional;
 
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
+use App\Fiscal\Domain\CustomerTaxRegime;
+use App\Fiscal\Domain\CustomerTaxRegimeRepository;
 use App\Fiscal\Domain\TaxComponentRepository;
+use App\Module\Customers\Domain\Customer;
+use App\Module\Customers\Domain\CustomerGroup;
+use App\Module\Customers\Domain\CustomerKind;
+use App\Module\Customers\Domain\CustomerProfile;
+use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -145,9 +152,9 @@ final class CustomersTest extends ApiTestCase
     public function testAnotherCompanysCustomerIsNotFoundThroughThisCompany(): void
     {
         $globex = $this->createCompany('Globex');
-        $regime = static::getContainer()->get(\App\Fiscal\Domain\CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
         self::assertNotNull($regime);
-        $theirs = \App\Module\Customers\Domain\Customer::create($globex, 'CLI-0001', new \App\Module\Customers\Domain\CustomerProfile(\App\Module\Customers\Domain\CustomerKind::Individual, 'Amel'), null, $regime, [], new \DateTimeImmutable());
+        $theirs = Customer::create($globex, 'CLI-0001', new CustomerProfile(CustomerKind::Individual, 'Amel'), null, $regime, [], new \DateTimeImmutable());
         $this->em()->persist($theirs);
         $this->em()->flush();
         $this->signedIn(['customer.read', 'customer.write']);
@@ -156,6 +163,94 @@ final class CustomersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->sendJson('PUT', $this->path($theirs->getId()->toRfc4122()), $this->customer(['kind' => 'individual', 'identifiers' => []]));
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testTheListIsOnePageAtATimeWithTheTotal(): void
+    {
+        $this->seedCustomers(105);
+        $this->signedIn(['customer.read']);
+
+        $this->getJson($this->path());
+        self::assertResponseIsSuccessful();
+        self::assertSame(['CLI-0001', 'CLI-0025'], [$this->jsonList()[0]['number'], $this->jsonList()[24]['number']]);
+        self::assertCount(25, $this->jsonList(), 'a page holds 25 rows unless asked otherwise');
+        $page = $this->jsonPage();
+        self::assertSame(105, $page['totalItems']);
+        self::assertStringContainsString('page=2', $this->stringAt($this->section($page, 'view'), 'next'));
+
+        $this->getJson($this->path().'?page=5');
+        self::assertSame(['CLI-0101', 'CLI-0105'], [$this->jsonList()[0]['number'], $this->jsonList()[4]['number']]);
+
+        $this->getJson($this->path().'?itemsPerPage=50&page=3');
+        self::assertCount(5, $this->jsonList());
+        $this->getJson($this->path().'?itemsPerPage=1000');
+        self::assertCount(100, $this->jsonList(), 'a page never holds more than 100 rows');
+
+        $id = $this->stringAt($this->jsonList()[0], 'id');
+        $this->client->request('GET', $this->path($id), [], [], ['HTTP_ACCEPT' => 'application/ld+json']);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_ACCEPTABLE, 'a single record is plain JSON only');
+        $this->getJson($this->path($id));
+        self::assertResponseHeaderSame('Content-Type', 'application/json; charset=utf-8');
+        $this->client->request('GET', '/api/docs.jsonld');
+        self::assertResponseIsSuccessful('the documentation every Hydra answer links to exists');
+    }
+
+    public function testTheListIsSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $retail = CustomerGroup::create($this->company, 'Retail', null, new \DateTimeImmutable());
+        $this->em()->persist($retail);
+        $regime = $this->standardRegime();
+        $now = new \DateTimeImmutable();
+        $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthagé Conseil', email: 'contact@carthage.tn', billingAddress: new PostalAddress(city: 'Sfax')), $retail, $regime, [], $now));
+        $this->em()->persist(Customer::create($this->company, 'CLI-0002', new CustomerProfile(CustomerKind::Individual, 'Amel Ben Salah', billingAddress: new PostalAddress(city: 'Tunis')), null, $regime, [], $now));
+        $retired = Customer::create($this->company, 'CLI-0003', new CustomerProfile(CustomerKind::Company, 'Zitouna Négoce', legalName: 'Société Zitouna'), $retail, $regime, [], $now);
+        $retired->revise('CLI-0003', $retired->getProfile(), $retail, $regime, [], false, $now);
+        $this->em()->persist($retired);
+        $this->em()->flush();
+        $retailId = $retail->getId()->toRfc4122();
+        $this->signedIn(['customer.read']);
+
+        foreach ([
+            'q=CARTHAGE' => ['CLI-0001'],
+            'q=carthage.tn' => ['CLI-0001'],
+            'q=cli-0002' => ['CLI-0002'],
+            'q=societe' => ['CLI-0003'],
+            'q=tunis' => ['CLI-0002'],
+            'order[city]=asc&isActive=true' => ['CLI-0001', 'CLI-0002'],
+            'q=nobody' => [],
+            'kind=individual' => ['CLI-0002'],
+            'isActive=false' => ['CLI-0003'],
+            'customerGroupId='.$retailId => ['CLI-0001', 'CLI-0003'],
+            'customerGroupId='.$retailId.'&isActive=true' => ['CLI-0001'],
+            'order[name]=desc' => ['CLI-0003', 'CLI-0001', 'CLI-0002'],
+            'order[number]=desc' => ['CLI-0003', 'CLI-0002', 'CLI-0001'],
+        ] as $query => $numbers) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($numbers, array_column($this->jsonList(), 'number'), $query);
+            self::assertSame(\count($numbers), $this->jsonPage()['totalItems'], $query);
+        }
+
+        $this->getJson($this->path().'?kind=robot');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    private function seedCustomers(int $count): void
+    {
+        $regime = $this->standardRegime();
+        $now = new \DateTimeImmutable();
+        foreach (range(1, $count) as $n) {
+            $this->em()->persist(Customer::create($this->company, \sprintf('CLI-%04d', $n), new CustomerProfile(CustomerKind::Individual, 'Client '.$n), null, $regime, [], $now));
+        }
+        $this->em()->flush();
+    }
+
+    private function standardRegime(): CustomerTaxRegime
+    {
+        $regime = static::getContainer()->get(CustomerTaxRegimeRepository::class)->ofPresetAndCode('TN', 'standard');
+        self::assertNotNull($regime);
+
+        return $regime;
     }
 
     /**

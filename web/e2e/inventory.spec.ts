@@ -162,6 +162,19 @@ async function retire(
   await page.evaluate(
     async ([csrf, productReference, number, code]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      // The list is paged: the customer is found by its number, then read whole as the single record it is.
+      const customerNumbered = async (company: string, wanted: string) => {
+        const listed = (await (
+          await fetch(`${company}/customers?q=${encodeURIComponent(wanted)}`)
+        ).json()) as { member: { id: string; number: string }[] };
+        const hit = listed.member.find((row) => row.number === wanted);
+        return hit === undefined
+          ? undefined
+          : ((await (await fetch(`${company}/customers/${hit.id}`)).json()) as {
+              id: string;
+              number: string;
+            });
+      };
       const base = `/api/companies/${me.company.id}`;
       const headers = { 'content-type': 'application/json', 'csrf-token': csrf };
       const check = (response: Response, what: string): void => {
@@ -191,11 +204,7 @@ async function retire(
           `retiring ${productReference}`,
         );
       }
-      const customers = (await (await fetch(`${base}/customers`)).json()) as {
-        id: string;
-        number: string;
-      }[];
-      const customer = customers.find((row) => row.number === number);
+      const customer = await customerNumbered(base, number);
       if (customer) {
         const { id, ...fields } = customer;
         check(

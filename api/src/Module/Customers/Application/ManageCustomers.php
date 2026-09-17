@@ -26,8 +26,11 @@ use App\Module\Customers\Domain\CustomerGroup;
 use App\Module\Customers\Domain\CustomerGroupRepository;
 use App\Module\Customers\Domain\CustomerKind;
 use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\CustomerSearch;
 use App\Module\Customers\Domain\InvalidCustomer;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -62,6 +65,12 @@ final readonly class ManageCustomers
     public function list(Company $company): array
     {
         return $this->customers->ofCompany($company->getId());
+    }
+
+    /** @return Page<Customer> */
+    public function search(Company $company, CustomerSearch $search, PageRequest $page): Page
+    {
+        return $this->customers->search($company->getId(), $search, $page);
     }
 
     /** @throws CustomerNotFound */

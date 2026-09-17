@@ -112,7 +112,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `appLabel` directive, one string for a control's accessible name and its tooltip; `testing/`: providers specs share (`provideQuietFeedback` records toasts; `announceSaved` plays a live change); `feedback/`: the `Feedback` port (toasts), `RequestActivity` and its interceptor, the activity bar; `health/`: the API health client; `realtime/`: the one Centrifugo connection's connector, the `X-Tab` interceptor naming this tab, and `LiveChanges` (a page calls `reloadOn(kinds, reload, destroyRef)` to read its data again, quietly, when another tab or member changes those kinds); `settings/`: the `SettingsFacade` port, its API adapter
   `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry
   every presentation key must be declared in; `list/`: `ListDescriptor`, the pure view
-  functions and `DataList`; `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`; `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
+  functions and `DataList` (given a `total`, it shows the page the API answered and emits `queryChange`); `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`; `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
 - `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
@@ -166,6 +166,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - BrowserKit adds a same-origin `Referer` from its history to every request, and Symfony's CSRF manager accepts it
   as origin proof: a functional test of a cross-site request must set `Sec-Fetch-Site: cross-site` and a foreign
   Referer, and a "no origin at all" request needs `getHistory()->clear()` as well as empty server parameters.
+- An array under `api_platform.defaults` (`output_formats`, `normalization_context`…) is MERGED into an operation's own
+  value, never replaced by it: a default `output_formats: json` left a list declared JSON-LD answering plain JSON first.
+  Restrict per operation, or through a metadata factory decorator (`JsonLdOnlyWhereNamed`, 2026-09-17).
 - An entity's property default must be a literal, never another class's constant (`= Other::X`): the class then needs
   its defaults resolved at runtime, Doctrine's lazy ghosts skip that, and the local debug PHP aborts the whole PHPUnit
   run in `zend_lazy_object_init` (CI's release PHP does not assert, so only the local gate shows it). 2026-09-13.

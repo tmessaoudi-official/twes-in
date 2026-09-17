@@ -14,6 +14,8 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -71,7 +73,9 @@ describe('CustomersPage', () => {
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     customFields: signal([]).asReadonly(),
-    loadList: vi.fn(),
+    total: signal(1).asReadonly(),
+    loadListContext: vi.fn(),
+    loadPage: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -89,11 +93,13 @@ describe('CustomersPage', () => {
   }
 
   beforeEach(async () => {
-    facade.loadList.mockReset().mockResolvedValue(undefined);
+    facade.loadListContext.mockReset().mockResolvedValue(undefined);
+    facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [CustomersPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -115,7 +121,7 @@ describe('CustomersPage', () => {
   });
 
   it("lists the company's customers with their group, kind and status in words", () => {
-    expect(facade.loadList).toHaveBeenCalledWith('c1');
+    expect(facade.loadListContext).toHaveBeenCalledWith('c1');
     const row = q('customer-CLI-0001')?.textContent ?? '';
     expect(row).toContain('Amel Trabelsi');
     expect(row).toContain('Grossistes');
@@ -125,6 +131,27 @@ describe('CustomersPage', () => {
       q('customer-CLI-0001')?.querySelector('app-status-badge')?.getAttribute('data-tone'),
     ).toBe('neutral');
     expect(q('customer-open-CLI-0001')?.getAttribute('href')).toBe('/customers/k1');
+  });
+
+  it('asks the API for the first page of customers, by number', () => {
+    expect(facade.loadPage).toHaveBeenCalledWith('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      kind: null,
+      isActive: null,
+      order: { key: 'number', direction: 'asc' },
+    });
+  });
+
+  it('reads the context and the page shown again when customers change elsewhere', async () => {
+    facade.loadListContext.mockClear();
+    facade.loadPage.mockClear();
+
+    await announceSaved('customer', 'k9');
+
+    expect(facade.loadListContext).toHaveBeenCalledWith('c1');
+    expect(facade.loadPage).toHaveBeenCalledWith('c1', expect.objectContaining({ page: 1 }));
   });
 
   it('leads to the groups through the tabs of the customers screens', () => {

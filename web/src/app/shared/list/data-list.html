@@ -20,7 +20,9 @@
           [attr.data-testid]="'list-facet-' + facet.filter.id + '-all'"
         >
           {{ 'list.filter_any' | translate }}
-          <span class="twes-chip-count">{{ facet.total }}</span>
+          @if (facet.total !== null) {
+            <span class="twes-chip-count">{{ facet.total }}</span>
+          }
         </button>
         @for (entry of facet.options; track entry.option.value) {
           <button
@@ -31,7 +33,9 @@
             [attr.data-testid]="'list-facet-' + facet.filter.id + '-' + entry.option.value"
           >
             {{ entry.option.label | translate }}
-            <span class="twes-chip-count">{{ entry.count }}</span>
+            @if (entry.count !== null) {
+              <span class="twes-chip-count">{{ entry.count }}</span>
+            }
           </button>
         }
       </div>
@@ -307,7 +311,7 @@
           [attr.colspan]="columnIds().length"
           class="px-4 py-8 text-center text-on-surface-variant"
         >
-          @if (rows().length === 0) {
+          @if (empty()) {
             <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
           } @else {
             <span data-testid="list-no-match">{{

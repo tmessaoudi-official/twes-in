@@ -143,16 +143,21 @@ abstract class ApiTestCase extends WebTestCase
         $this->client->request($method, $path, [], [], $headers, null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR));
     }
 
+    /** Accepts what the SPA's HttpClient accepts: a list answers JSON-LD, a single record plain JSON (docs/SPEC.md § 7). */
     protected function getJson(string $path): void
     {
-        $this->client->request('GET', $path, [], [], ['HTTP_ACCEPT' => 'application/json']);
+        $this->client->request('GET', $path, [], [], ['HTTP_ACCEPT' => 'application/json, text/plain, */*']);
     }
 
-    /** @return list<array<string, mixed>> */
+    /** @return list<array<string, mixed>> the rows of a list, whether a Hydra page or a plain array */
     protected function jsonList(): array
     {
         $body = json_decode((string) $this->client->getResponse()->getContent(), true, 512, \JSON_THROW_ON_ERROR);
         self::assertIsArray($body);
+        if (\array_key_exists('member', $body)) {
+            $body = $body['member'];
+            self::assertIsArray($body);
+        }
         $out = [];
         foreach ($body as $row) {
             self::assertIsArray($row);
@@ -192,6 +197,24 @@ abstract class ApiTestCase extends WebTestCase
     private static function spentTimestep(): int
     {
         return intdiv((new \DateTimeImmutable('-1 minute'))->getTimestamp(), 30);
+    }
+
+    /**
+     * What a Hydra page says about itself: `totalItems` and, when there is more than one page, `view`.
+     *
+     * @return array{totalItems: int, view?: array<string, mixed>}
+     */
+    protected function jsonPage(): array
+    {
+        self::assertResponseHeaderSame('Content-Type', 'application/ld+json; charset=utf-8');
+        $body = $this->json();
+        self::assertIsInt($body['totalItems'] ?? null, 'a page carries its total');
+        $page = ['totalItems' => $body['totalItems']];
+        if (isset($body['view'])) {
+            $page['view'] = $this->section($body, 'view');
+        }
+
+        return $page;
     }
 
     /** @return array<string, mixed> */

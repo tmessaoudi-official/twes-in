@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Customers\Application\CustomerInput;
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerKind;
@@ -38,9 +39,22 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(
             uriTemplate: '/companies/{companyId}/customers',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: CustomerCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, name, legal name, email or billing city, whatever their case and accents.'),
+                'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['company', 'individual']]),
+                'customerGroupId' => new QueryParameter(schema: ['type' => 'string', 'format' => 'uuid'], constraints: [new Assert\Uuid()]),
+                'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),
+                'order[number]' => new QueryParameter(schema: self::DIRECTION),
+                'order[name]' => new QueryParameter(schema: self::DIRECTION),
+                'order[kind]' => new QueryParameter(schema: self::DIRECTION),
+                'order[customerGroup]' => new QueryParameter(schema: self::DIRECTION, description: 'By the name of the group.'),
+                'order[city]' => new QueryParameter(schema: self::DIRECTION, description: 'By the billing city.'),
+                'order[isActive]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Get(
             uriTemplate: '/companies/{companyId}/customers/{customerId}',
@@ -78,6 +92,7 @@ final class CustomerResource
         AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true,
         AbstractNormalizer::CALLBACKS => ['identifiers' => [self::class, 'asObject'], 'customFields' => [self::class, 'asObject']],
     ];
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     private const string PHONE = '/^\+?[0-9 ().\-]{3,40}$/';
 
     #[ApiProperty(identifier: false, writable: false)]

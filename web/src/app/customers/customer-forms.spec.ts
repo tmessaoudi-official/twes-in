@@ -5,6 +5,8 @@ import {
   contactValues,
   customerForm,
   customerInput,
+  customerSearch,
+  customersList,
   customerValues,
   CUSTOMERS_LIST,
   groupInput,
@@ -76,6 +78,68 @@ describe('customer forms', () => {
     ]);
     expect(CUSTOMERS_LIST.defaultSort).toEqual({ column: 'number', direction: 'asc' });
     expect(CUSTOMERS_LIST.filters?.map((filter) => filter.id)).toEqual(['kind', 'status']);
+  });
+
+  it('asks the API for the page, words, kind, status and sort the list shows', () => {
+    expect(
+      customerSearch({
+        query: ' amel ',
+        filters: { kind: 'individual', status: 'inactive' },
+        sort: { column: 'group', direction: 'desc' },
+        pageIndex: 2,
+        pageSize: 50,
+      }),
+    ).toEqual({
+      page: 3,
+      itemsPerPage: 50,
+      q: ' amel ',
+      kind: 'individual',
+      isActive: false,
+      order: { key: 'customerGroup', direction: 'desc' },
+    });
+    expect(
+      customerSearch({
+        query: '',
+        filters: { status: 'active' },
+        sort: { column: 'status', direction: 'asc' },
+        pageIndex: 0,
+        pageSize: 25,
+      }),
+    ).toMatchObject({ kind: null, isActive: true, order: { key: 'isActive', direction: 'asc' } });
+    expect(
+      customerSearch({
+        query: '',
+        filters: {},
+        sort: { column: 'email', direction: 'asc' },
+        pageIndex: 0,
+        pageSize: 25,
+      }).order,
+    ).toBeNull();
+  });
+
+  it('offers to sort only by what the API sorts customers by', () => {
+    const list = customersList([
+      {
+        id: 'f1',
+        entity: 'customer',
+        key: 'sector',
+        label: 'Secteur',
+        type: 'text',
+        required: false,
+        choices: [],
+        sortOrder: 0,
+        isActive: true,
+      },
+    ]);
+
+    expect(list.columns.filter((column) => column.sortable).map((column) => column.id)).toEqual([
+      'number',
+      'name',
+      'kind',
+      'group',
+      'city',
+      'status',
+    ]);
   });
 
   it("builds the form from the company's preset, groups and taxes", () => {

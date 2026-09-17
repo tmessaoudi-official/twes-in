@@ -12,6 +12,7 @@ import type {
   CustomerInput,
   CustomerOptions,
   CustomerRow,
+  CustomerSearch,
   CustomersError,
 } from './customers-types';
 
@@ -22,6 +23,8 @@ export class CustomersFacade {
   private readonly fields = inject(CustomFieldsApi);
   private readonly customFieldsSignal = signal<readonly CustomFieldDefinition[]>([]);
   private readonly customersSignal = signal<readonly CustomerRow[]>([]);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
   private readonly groupsSignal = signal<readonly CustomerGroupRow[]>([]);
   private readonly optionsSignal = signal<CustomerOptions | null>(null);
   private readonly customerSignal = signal<CustomerRow | null>(null);
@@ -30,6 +33,8 @@ export class CustomersFacade {
   private readonly errorSignal = signal<CustomersError | null>(null);
 
   readonly customers = this.customersSignal.asReadonly();
+  /** How many customers the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   readonly groups = this.groupsSignal.asReadonly();
   /** Every custom field declared for customers, retired ones included; screens show the active ones. */
   readonly customFields = this.customFieldsSignal.asReadonly();
@@ -39,16 +44,29 @@ export class CustomersFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  async loadList(companyId: string): Promise<void> {
+  /** What the list screen needs besides its page: the groups its rows name and the custom fields it adds columns for. */
+  async loadListContext(companyId: string): Promise<void> {
     await this.read(async () => {
-      const [customers, groups, customFields] = await Promise.all([
-        this.api.customers(companyId),
+      const [groups, customFields] = await Promise.all([
         this.api.groups(companyId),
         this.fields.list(companyId, 'customer'),
       ]);
-      this.customersSignal.set(customers);
       this.groupsSignal.set(groups);
       this.customFieldsSignal.set(customFields);
+    });
+  }
+
+  /**
+   * One page of the customers the search finds. Only the latest search's answer is shown: typing sends one search per
+   * pause, and an earlier one answering late would otherwise put back rows the words no longer find.
+   */
+  async loadPage(companyId: string, search: CustomerSearch): Promise<void> {
+    const request = ++this.pageRequest;
+    await this.read(async () => {
+      const page = await this.api.customers(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.customersSignal.set(page.rows);
+      this.totalSignal.set(page.total);
     });
   }
 

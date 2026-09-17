@@ -16,12 +16,21 @@ async function retire(page: Page, number: string, groupName: string): Promise<vo
   await page.evaluate(
     async ([csrf, customerNumber, group]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
+      // The list is paged: the customer is found by its number, then read whole as the single record it is.
+      const customerNumbered = async (company: string, wanted: string) => {
+        const listed = (await (
+          await fetch(`${company}/customers?q=${encodeURIComponent(wanted)}`)
+        ).json()) as { member: { id: string; number: string }[] };
+        const hit = listed.member.find((row) => row.number === wanted);
+        return hit === undefined
+          ? undefined
+          : ((await (await fetch(`${company}/customers/${hit.id}`)).json()) as {
+              id: string;
+              number: string;
+            });
+      };
       const base = `/api/companies/${me.company.id}`;
-      const customers = (await (await fetch(`${base}/customers`)).json()) as {
-        id: string;
-        number: string;
-      }[];
-      const customer = customers.find((row) => row.number === customerNumber);
+      const customer = await customerNumbered(base, customerNumber);
       if (customer) {
         // The write shape has no id: a body naming one is refused, and the group could then not be deleted.
         const { id, ...fields } = customer;

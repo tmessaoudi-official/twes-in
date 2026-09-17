@@ -67,7 +67,11 @@ final class UnauthenticatedSweepTest extends ApiTestCase
             /** @var list<string> $variables */
             $variables = $route->compile()->getPathVariables();
             foreach ($variables as $variable) {
-                $values[$variable] = self::PLACEHOLDERS[$variable] ?? Uuid::v4()->toRfc4122();
+                // A route that allows one literal value only, such as the JSON-LD context's `_format`, gets that value.
+                $requirement = $route->getRequirement($variable);
+                $values[$variable] = null !== $requirement && 1 === preg_match('/^\w+$/', $requirement)
+                    ? $requirement
+                    : self::PLACEHOLDERS[$variable] ?? Uuid::v4()->toRfc4122();
             }
             $path = $router->generate($name, $values);
             foreach ($route->getMethods() ?: ['GET'] as $method) {

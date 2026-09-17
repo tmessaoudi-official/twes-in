@@ -5,7 +5,22 @@ import { CustomFieldsApi } from '../shared/custom-fields/custom-fields-api';
 import type { CustomFieldDefinition } from '../shared/custom-fields/custom-fields-types';
 import { CustomersApi, CustomersRefused } from './customers-api';
 import { CustomersFacade } from './customers-facade';
-import type { ContactInput, CustomerGroupRow, CustomerInput, CustomerRow } from './customers-types';
+import type {
+  ContactInput,
+  CustomerGroupRow,
+  CustomerInput,
+  CustomerRow,
+  CustomerSearch,
+} from './customers-types';
+
+const everyCustomer: CustomerSearch = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  kind: null,
+  isActive: null,
+  order: null,
+};
 
 const input: CustomerInput = {
   number: 'CLI-0001',
@@ -84,17 +99,41 @@ describe('CustomersFacade', () => {
     facade = TestBed.inject(CustomersFacade);
   });
 
-  it('reads the customers and the groups the list names', async () => {
-    api.customers.mockResolvedValue([amel]);
+  it('reads the groups the list names and the custom fields it adds columns for', async () => {
     api.groups.mockResolvedValue([wholesalers]);
 
-    await facade.loadList('c1');
+    await facade.loadListContext('c1');
 
-    expect(facade.customers()).toEqual([amel]);
     expect(facade.groups()).toEqual([wholesalers]);
     expect(facade.customFields()).toEqual([sector]);
     expect(fieldsApi.list).toHaveBeenCalledWith('c1', 'customer');
+    expect(api.customers).not.toHaveBeenCalled();
     expect(facade.error()).toBeNull();
+  });
+
+  it('reads one page of customers with the total the paginator counts', async () => {
+    api.customers.mockResolvedValue({ rows: [amel], total: 31 });
+
+    await facade.loadPage('c1', everyCustomer);
+
+    expect(api.customers).toHaveBeenCalledWith('c1', everyCustomer);
+    expect(facade.customers()).toEqual([amel]);
+    expect(facade.total()).toBe(31);
+  });
+
+  it('keeps the page of the last search when an earlier one answers after it', async () => {
+    let answerFirst: (page: { rows: CustomerRow[]; total: number }) => void = () => undefined;
+    api.customers
+      .mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)))
+      .mockResolvedValueOnce({ rows: [amel], total: 1 });
+
+    const first = facade.loadPage('c1', everyCustomer);
+    await facade.loadPage('c1', { ...everyCustomer, q: 'amel' });
+    answerFirst({ rows: [amel, { ...amel, id: 'k2' }], total: 2 });
+    await first;
+
+    expect(facade.customers()).toEqual([amel]);
+    expect(facade.total()).toBe(1);
   });
 
   it('opens one customer with its contacts, and a new one with none', async () => {

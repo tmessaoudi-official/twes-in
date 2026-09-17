@@ -15,7 +15,7 @@ import type {
   FormSection,
   FormValues,
 } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import { withCustomColumns } from '../shared/list/list-view';
 import {
   CUSTOMER_KINDS,
@@ -28,6 +28,8 @@ import {
   type CustomerKind,
   type CustomerOptions,
   type CustomerRow,
+  type CustomerSearch,
+  type CustomerSortKey,
 } from './customers-types';
 
 const FIELDS = 'customers.fields';
@@ -121,11 +123,47 @@ export const CUSTOMERS_LIST: ListDescriptor<CustomerListRow> = {
   ],
 };
 
-/** The customers list with a hidden column per active custom field of the company. */
+/** The column a person sorts by, as the API names what it sorts customers by. */
+const SORT_KEYS: Readonly<Record<string, CustomerSortKey>> = {
+  number: 'number',
+  name: 'name',
+  kind: 'kind',
+  group: 'customerGroup',
+  city: 'city',
+  status: 'isActive',
+};
+
+/**
+ * The customers list with a hidden column per active custom field of the company. The API pages it, so a column is
+ * sortable only when the API sorts customers by it (docs/SPEC.md § 7, lists at scale).
+ */
 export function customersList(
   fields: readonly CustomFieldDefinition[],
 ): ListDescriptor<CustomerListRow> {
-  return withCustomColumns(CUSTOMERS_LIST, customListColumns<CustomerListRow>(fields));
+  const list = withCustomColumns(CUSTOMERS_LIST, customListColumns<CustomerListRow>(fields));
+  return {
+    ...list,
+    columns: list.columns.map((column) => ({
+      ...column,
+      sortable: column.sortable === true && column.id in SORT_KEYS,
+    })),
+  };
+}
+
+/** What the API is asked for the page of customers the list shows. */
+export function customerSearch(query: ListQuery): CustomerSearch {
+  const kind = CUSTOMER_KINDS.find((known) => known === query.filters['kind']) ?? null;
+  const status = query.filters['status'];
+  const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    kind,
+    isActive: status === 'active' ? true : status === 'inactive' ? false : null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
 }
 
 const section = (id: string, fields: FormField[]): FormSection => ({

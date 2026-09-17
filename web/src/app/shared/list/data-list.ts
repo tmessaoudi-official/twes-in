@@ -21,6 +21,7 @@ import {
   inject,
   input,
   linkedSignal,
+  output,
   signal,
   TemplateRef,
   untracked,
@@ -40,6 +41,7 @@ import type {
   ListDescriptor,
   ListFilterValues,
   ListPreferences,
+  ListQuery,
   ListSort,
   ListView,
 } from './list-types';
@@ -75,6 +77,8 @@ const MIN_WIDTH = 48;
 const MAX_WIDTH = 960;
 const FALLBACK_WIDTH = 160;
 const ACTIONS_WIDTH = 96;
+/** How long typing pauses before a list the API pages asks for the words. */
+export const LIST_SEARCH_PAUSE_MS = 300;
 
 const clampWidth = (width: number): number => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, width));
 
@@ -90,6 +94,9 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
  * Every list screen: a text filter and filters offered as counted choices, saved views, sortable columns a person may hide, reorder (by dragging or with buttons) and
  * resize (by pointer or keyboard), pages, and an empty state. What it shows comes from the screen's descriptor
  * and the pure functions in list-view.ts; what a person chose is kept through the presentation settings.
+ *
+ * A list the API pages (docs/SPEC.md § 7, lists at scale) is given its `total`: the rows are then one page, shown as
+ * they come, and the list says through `queryChange` which words, filter options, sort and page it wants.
  */
 @Component({
   selector: 'app-data-list',
@@ -122,6 +129,10 @@ export class DataList<Row> {
   readonly rowTestId = input<((row: Row) => string) | null>(null);
   readonly emptyKey = input.required<string>();
   readonly emptyTestId = input('data-list-empty');
+  /** How many rows the whole list holds when the API pages it; null when `rows` is the whole list. */
+  readonly total = input<number | null>(null);
+  /** What a list the API pages wants shown: emitted on opening and on every change a person makes. */
+  readonly queryChange = output<ListQuery>();
 
   private readonly cells = contentChildren(DataListCell);
   protected readonly actions = contentChild(DataListRowActions);
@@ -133,6 +144,11 @@ export class DataList<Row> {
   protected readonly views = computed(() => this.settings.value(this.viewsSetting())());
 
   protected readonly query = signal('');
+  /** The words a list the API pages asked for: what was typed, once typing paused. */
+  private readonly searched = signal('');
+  private searchTimer: ReturnType<typeof setTimeout> | null = null;
+  private lastQuery: string | null = null;
+  protected readonly byApi = computed(() => this.total() !== null);
   protected readonly chosenFilters = signal<ListFilterValues>({});
   protected readonly viewsOpen = signal(false);
   protected readonly viewName = signal('');
@@ -168,6 +184,15 @@ export class DataList<Row> {
    */
   protected readonly facets = computed(() => {
     const chosen = this.chosenFilters();
+    if (this.byApi()) {
+      // The page holds a part of the rows only: a count over it would be wrong, so none is shown.
+      return this.filters().map((filter) => ({
+        filter,
+        chosen: chosen[filter.id] ?? '',
+        total: null,
+        options: filter.options.map((option) => ({ option, count: null })),
+      }));
+    }
     const searched = filterRows(this.rows(), this.descriptor().columns, this.query());
     return this.filters().map((filter) => {
       const others = Object.fromEntries(Object.entries(chosen).filter(([id]) => id !== filter.id));
@@ -195,13 +220,23 @@ export class DataList<Row> {
     () => new Map(this.cells().map((cell) => [cell.column(), cell.template] as const)),
   );
   protected readonly page = computed(() => {
+    const total = this.total();
+    if (total !== null) {
+      return { rows: this.rows(), pageIndex: this.pageIndex(), total };
+    }
     const columns = this.descriptor().columns;
     const narrowed = applyFilters(this.rows(), this.filters(), this.chosenFilters());
     const shown = sortRows(filterRows(narrowed, columns, this.query()), columns, this.sort());
     return paginate(shown, this.pageIndex(), this.pageSize());
   });
   protected readonly paged = computed(
-    () => this.rows().length > (this.descriptor().pageSizes[0] ?? Infinity),
+    () => this.page().total > (this.descriptor().pageSizes[0] ?? Infinity),
+  );
+  /** Nothing to show because there is nothing at all, not because of what a person asked for. */
+  protected readonly empty = computed(
+    () =>
+      this.rows().length === 0 &&
+      (!this.byApi() || (this.searched() === '' && Object.keys(this.chosenFilters()).length === 0)),
   );
   protected readonly actionsColumn = ACTIONS_COLUMN;
   protected readonly actionsWidth = ACTIONS_WIDTH;
@@ -222,18 +257,67 @@ export class DataList<Row> {
   /** How many of those the page does not show, sorted onto another page or hidden by a filter. */
   protected readonly arrivedElsewhere = computed(() => {
     const arrived = this.arrived();
-    if (arrived.size === 0) return 0;
+    if (arrived.size === 0 || this.byApi()) return 0;
     const rowId = this.descriptor().rowId;
     const onPage = new Set(this.page().rows.map(rowId));
     return this.rows().filter((row) => arrived.has(rowId(row)) && !onPage.has(rowId(row))).length;
   });
 
   constructor() {
-    this.destroyRef.onDestroy(() => this.stopResize?.());
+    this.destroyRef.onDestroy(() => {
+      this.stopResize?.();
+      if (this.searchTimer !== null) clearTimeout(this.searchTimer);
+    });
+    effect(() => {
+      if (!this.byApi()) return;
+      const query: ListQuery = {
+        query: this.searched(),
+        filters: this.chosenFilters(),
+        sort: this.sort(),
+        pageIndex: this.pageIndex(),
+        pageSize: this.pageSize(),
+      };
+      untracked(() => this.ask(query));
+    });
     effect(() => {
       const rows = this.rows();
       untracked(() => this.noteArrivals(rows));
     });
+  }
+
+  /**
+   * Asks for another page unless it is the one already asked for, as an option picked again or a view with the same
+   * choices would. The next rows answer a new question, so none of them "arrived".
+   */
+  private ask(query: ListQuery): void {
+    const key = JSON.stringify([
+      query.query,
+      Object.entries(query.filters).sort(([a], [b]) => a.localeCompare(b)),
+      query.sort,
+      query.pageIndex,
+      query.pageSize,
+    ]);
+    if (key === this.lastQuery) return;
+    this.lastQuery = key;
+    this.seen = null;
+    this.arrived.set(new Set());
+    this.queryChange.emit(query);
+  }
+
+  /** The words take effect at once on a list with every row, after a pause on a list the API pages. */
+  private search(words: string, pause: boolean): void {
+    this.query.set(words);
+    this.pageIndex.set(0);
+    if (this.searchTimer !== null) clearTimeout(this.searchTimer);
+    this.searchTimer = null;
+    if (!pause || !this.byApi()) {
+      this.searched.set(words);
+      return;
+    }
+    this.searchTimer = setTimeout(() => {
+      this.searchTimer = null;
+      this.searched.set(words);
+    }, LIST_SEARCH_PAUSE_MS);
   }
 
   protected isArrived(row: Row): boolean {
@@ -257,7 +341,7 @@ export class DataList<Row> {
       );
     let shown = shownWith(this.query(), this.chosenFilters());
     if (!shown.includes(target)) {
-      this.query.set('');
+      this.search('', false);
       this.chosenFilters.set({});
       shown = shownWith('', {});
     }
@@ -289,13 +373,11 @@ export class DataList<Row> {
   }
 
   protected onFilter(event: Event): void {
-    this.query.set((event.target as HTMLInputElement).value);
-    this.pageIndex.set(0);
+    this.search((event.target as HTMLInputElement).value, true);
   }
 
   protected clearFilter(): void {
-    this.query.set('');
-    this.pageIndex.set(0);
+    this.search('', false);
   }
 
   /** Picks one option of a filter; the empty value shows every row again. */
@@ -326,10 +408,9 @@ export class DataList<Row> {
   }
 
   protected applyView(view: ListView): void {
-    this.query.set(view.query);
+    this.search(view.query, false);
     this.chosenFilters.set({ ...view.filters });
     this.settings.set(this.setting(), view.layout);
-    this.pageIndex.set(0);
   }
 
   protected deleteView(id: string): void {

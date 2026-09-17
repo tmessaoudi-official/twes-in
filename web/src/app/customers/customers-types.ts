@@ -9,6 +9,21 @@ export type CustomersError =
 export type CustomerKind = 'company' | 'individual';
 export const CUSTOMER_KINDS: readonly CustomerKind[] = ['company', 'individual'];
 
+/** What the API sorts customers by. */
+export type CustomerSortKey = 'number' | 'name' | 'kind' | 'customerGroup' | 'city' | 'isActive';
+
+/** One page of the customers list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+export interface CustomerSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the number, name, legal name, email or billing city; empty finds every customer. */
+  q: string;
+  kind: CustomerKind | null;
+  isActive: boolean | null;
+  order: { key: CustomerSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 export type TaxFamily = 'vat' | 'levy' | 'stamp' | 'withholding';
 
 export interface CustomerAddress {

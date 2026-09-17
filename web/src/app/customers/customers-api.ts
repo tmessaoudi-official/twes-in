@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
+import type { ListPage } from '../shared/list/list-types';
 import type {
+  ApiCompaniesCompanyIdcustomersGetCollectionResponse,
   ContactContactRead,
   ContactContactWrite,
   CustomerCustomerRead,
   CustomerCustomerWrite,
+  CustomerJsonldCustomerRead,
   CustomerGroupCustomerGroupRead,
   CustomerGroupCustomerGroupWrite,
   CustomerOptionsCustomerOptionsRead,
@@ -22,6 +25,7 @@ import {
   type CustomerInput,
   type CustomerOptions,
   type CustomerRow,
+  type CustomerSearch,
   type CustomersError,
   type TaxFamily,
 } from './customers-types';
@@ -51,12 +55,19 @@ export class CustomersApi {
     );
   }
 
-  async customers(companyId: string): Promise<CustomerRow[]> {
-    return this.guard(async () =>
-      (
-        await firstValueFrom(this.http.get<CustomerCustomerRead[]>(path(companyId, 'customers')))
-      ).map(toCustomer),
-    );
+  /** One page of the customers the search finds, as Hydra carries it: the rows and the total. */
+  async customers(companyId: string, search: CustomerSearch): Promise<ListPage<CustomerRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdcustomersGetCollectionResponse>(
+          path(companyId, 'customers'),
+          { headers: { Accept: 'application/ld+json' }, params: toSearchParams(search) },
+        ),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of customers came without its total.');
+      return { rows: page.member.map(toCustomer), total: page.totalItems };
+    });
   }
 
   async customer(companyId: string, id: string): Promise<CustomerRow> {
@@ -231,7 +242,17 @@ const path = (companyId: string, collection: string, id?: string): string =>
 const contactsPath = (companyId: string, customerId: string): string =>
   `${path(companyId, 'customers', customerId)}/contacts`;
 
-function toCustomer(raw: CustomerCustomerRead): CustomerRow {
+function toSearchParams(search: CustomerSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.kind !== null) params = params.set('kind', search.kind);
+  if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function toCustomer(raw: CustomerCustomerRead | CustomerJsonldCustomerRead): CustomerRow {
   const shipping: CustomerAddress = {
     line1: raw.shippingAddressLine1 ?? null,
     line2: raw.shippingAddressLine2 ?? null,

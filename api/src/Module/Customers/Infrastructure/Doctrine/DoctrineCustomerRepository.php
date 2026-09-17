@@ -11,11 +11,20 @@ namespace App\Module\Customers\Infrastructure\Doctrine;
 
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Domain\CustomerRepository;
+use App\Module\Customers\Domain\CustomerSearch;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineCustomerRepository implements CustomerRepository
 {
+    /** The words of `:text`, found through idx_customer_search: the index is built on this very SEARCH_TEXT expression. */
+    public const string MATCHES_WORDS = "SEARCH_TEXT(c.number, c.name, c.legalName, c.email, c.billingAddress.city) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    private const array SORTED_BY = ['number' => 'c.number', 'name' => 'c.name', 'kind' => 'c.kind', 'customerGroup' => 'g.name', 'city' => 'c.billingAddress.city', 'isActive' => 'c.isActive'];
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -32,6 +41,38 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
             ->getResult();
 
         return $customers;
+    }
+
+    public function search(Uuid $companyId, CustomerSearch $search, PageRequest $page): Page
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('c', 'g', 'r')->from(Customer::class, 'c')
+            ->leftJoin('c.group', 'g')->join('c.taxRegime', 'r')
+            ->where('c.company = :company')->setParameter('company', $companyId, 'uuid');
+        if (null !== $search->text && '' !== trim($search->text)) {
+            $query->andWhere(self::MATCHES_WORDS)
+                ->setParameter('text', SearchText::escapeLike(trim($search->text)));
+        }
+        if (null !== $search->kind) {
+            $query->andWhere('c.kind = :kind')->setParameter('kind', $search->kind->value);
+        }
+        if (null !== $search->groupId) {
+            $query->andWhere('c.group = :group')->setParameter('group', $search->groupId, 'uuid');
+        }
+        if (null !== $search->active) {
+            $query->andWhere('c.isActive = :active')->setParameter('active', $search->active);
+        }
+        foreach ($search->order as $sort => $direction) {
+            $query->addOrderBy(self::SORTED_BY[$sort] ?? throw new \InvalidArgumentException("Customers are not sorted by $sort."), $direction);
+        }
+        $query->addOrderBy('c.number', 'ASC')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
+
+        $paginator = new Paginator($query, fetchJoinCollection: false);
+        /** @var list<Customer> $customers */
+        $customers = iterator_to_array($paginator, false);
+
+        return new Page($customers, \count($paginator), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer
