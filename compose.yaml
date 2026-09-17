@@ -1,8 +1,16 @@
 # twes-in development and CI environment. Ports and the database password come from ./.env (committed defaults).
 name: twes-in
 
+# Every service's output is rotated by Docker's log driver, 10 MB × 5 files (docs/SPEC.md § 7, 2026-09-17).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
 services:
   postgres:
+    logging: *logging
     image: postgres:18.6-trixie
     environment:
       POSTGRES_DB: twes
@@ -20,6 +28,7 @@ services:
       retries: 20
 
   api:
+    logging: *logging
     build:
       context: .
       dockerfile: infra/api/Dockerfile
@@ -54,6 +63,7 @@ services:
   # (/connection/websocket) and only the api container calls its HTTP API, so no port is published. Connections
   # are subscribed server-side from the token's channels claim; the two namespaces are the two channel shapes.
   centrifugo:
+    logging: *logging
     image: centrifugo/centrifugo:v6.9.5
     environment:
       CENTRIFUGO_CLIENT_TOKEN_HMAC_SECRET_KEY: "${REALTIME_TOKEN_KEY:-twes-in-development-realtime-token-key-0001}"
@@ -68,6 +78,7 @@ services:
       retries: 20
 
   web:
+    logging: *logging
     build:
       context: .
       dockerfile: infra/web/Dockerfile
@@ -85,6 +96,7 @@ services:
 
   # Renders PDFs from HTML (docs/SPEC.md § 2 PDF). Only the api calls it; the host port serves a host-side api process.
   gotenberg:
+    logging: *logging
     image: gotenberg/gotenberg:8.37.0
     ports:
       - "127.0.0.1:${GOTENBERG_PORT:-8094}:3000"
@@ -95,6 +107,7 @@ services:
       retries: 20
 
   mailpit:
+    logging: *logging
     image: axllent/mailpit:v1.31.1
     ports:
       - "127.0.0.1:${MAILPIT_UI_PORT:-8092}:8025"

@@ -15,6 +15,7 @@ use App\Identity\Domain\Email;
 use App\Tenancy\Application\Signup\RequestSignup;
 use App\Tenancy\Application\Signup\SignupClosed;
 use App\Tenancy\Application\Signup\SignupPolicy;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\TooManyRequestsHttpException;
@@ -33,7 +34,9 @@ final readonly class RequestSignupProcessor implements ProcessorInterface
     public function __construct(
         private RequestSignup $requestSignup,
         private SignupPolicy $policy,
+        #[Target('signup_client')]
         private RateLimiterFactoryInterface $signupClientLimiter,
+        #[Target('signup_address')]
         private RateLimiterFactoryInterface $signupAddressLimiter,
     ) {
     }

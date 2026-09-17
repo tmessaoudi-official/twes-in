@@ -7,6 +7,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    # Empty: production logs go to STDERR (docs/SPEC.md § 7, 2026-09-17).
+    env(LOG_DIRECTORY): ''
     # Session limits in seconds: 30 minutes idle, 12 hours absolute (docs/SPEC.md § 3 Auth).
     app.session.idle_ttl: 1800
     app.session.absolute_ttl: 43200
@@ -147,6 +149,12 @@ services:
         arguments:
             $hmacKey: '%app.realtime.token_key%'
             $lifetimeSeconds: '%app.realtime.token_lifetime%'
+
+    # Production's log writer (docs/SPEC.md § 7, 2026-09-17): JSON on STDERR in a container, or one JSON file per
+    # channel under LOG_DIRECTORY when self-hosted without containers (see api/.env and infra/self-hosted/).
+    App\Shared\Infrastructure\Logging\ChannelStreams:
+        arguments:
+            $directory: '%env(LOG_DIRECTORY)%'
 
     App\Shared\Infrastructure\Realtime\CentrifugoPublisher:
         arguments:

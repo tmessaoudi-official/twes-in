@@ -21,6 +21,7 @@ use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -44,6 +45,7 @@ final readonly class MfaController
         private PendingSecondFactor $pending,
         private VerifySecondFactor $verify,
         private Security $security,
+        #[Target('mfa_verify')]
         private RateLimiterFactoryInterface $mfaVerifyLimiter,
         private SecondFactorLockout $lockout,
         private BeginTotpEnrolment $beginEnrolment,

@@ -25,6 +25,7 @@ use App\Identity\Infrastructure\Security\PendingSecondFactor;
 use App\Identity\Infrastructure\Security\SecondFactorLogin;
 use App\Identity\Infrastructure\Security\SecurityUser;
 use Symfony\Bundle\SecurityBundle\Security;
+use Symfony\Component\DependencyInjection\Attribute\Target;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -51,6 +52,7 @@ final readonly class PasskeyController
         private Security $security,
         private PendingSecondFactor $pending,
         private PasskeyChallenges $challenges,
+        #[Target('mfa_verify')]
         private RateLimiterFactoryInterface $mfaVerifyLimiter,
         private UserRepository $users,
         private PasskeyRepository $passkeys,

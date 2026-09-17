@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Shared\Infrastructure\Realtime;
 
 use App\Shared\Application\RealtimePublisher;
+use Monolog\Attribute\WithMonologChannel;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\Exception\ExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -19,6 +20,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * an unreachable server, an HTTP error or a refusal in the body is logged as a warning and never thrown, because
  * the notification is already stored and the use case that published it has succeeded.
  */
+#[WithMonologChannel('realtime')]
 final readonly class CentrifugoPublisher implements RealtimePublisher
 {
     public function __construct(
