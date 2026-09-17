@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
+import { wcagViolations } from './axe';
 import { forgetPresentationChoices } from './presentation';
 import { OPERATOR_EMAIL as EMAIL, signIn as logIn } from './session';
 
@@ -14,14 +15,7 @@ async function signIn(page: Page): Promise<void> {
 }
 
 async function expectAccessible(page: Page, screen: string): Promise<void> {
-  const results = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  const violations = results.violations.map(
-    (violation) =>
-      `${violation.id}: ${violation.nodes.map((node) => node.target.join(' ')).join(' | ')}`,
-  );
-  expect(violations, screen).toEqual([]);
+  expect(await wcagViolations(page), screen).toEqual([]);
 }
 
 async function openMembers(page: Page): Promise<void> {
@@ -50,6 +44,42 @@ test('a column hidden from the chooser stays hidden after a reload, until the co
   await page.getByTestId('list-columns').click();
   await page.getByTestId('list-columns-reset').click();
   await expect(page.getByTestId('list-header-email')).toBeVisible();
+});
+
+test('a scan waits for a tooltip to arrive instead of reading it mid-fade', async ({ page }) => {
+  // CI read `color-contrast: .mat-mdc-tooltip-surface` on a commit that changed one Markdown file (run 35272397610):
+  // clicking a control parks the pointer on it, `appLabel` shows its tooltip, and axe reads the colours through the
+  // fade. At rest that tooltip is 12:1. The animation is slowed here so the moment is reproducible rather than a
+  // matter of how loaded the runner is (2026-09-17).
+  await signIn(page);
+  await openMembers(page);
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Animation.enable');
+  // Slow for the whole test, the settling scan included: put the speed back first and the fade finishes by itself,
+  // which is a pass whether or not the helper waits — the mutant that drops the wait went green that way.
+  await cdp.send('Animation.setPlaybackRate', { playbackRate: 0.02 });
+  await page.getByTestId('list-columns').click();
+
+  // The tooltip has to be arriving for any of this to mean something: a scan taken before it appears finds nothing
+  // and would read as a pass. At this playback rate it cannot finish arriving on its own.
+  await expect(page.locator('.mat-mdc-tooltip-panel')).toHaveCount(1);
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        [...document.querySelectorAll('.mat-mdc-tooltip-panel')]
+          .flatMap((panel) => panel.getAnimations({ subtree: true }))
+          .some((animation) => 'running' === animation.playState),
+      ),
+    )
+    .toBe(true);
+
+  // Non-vacuity: with it mid-fade there IS something to read, so this guard cannot pass by finding nothing.
+  const raw = await new AxeBuilder({ page })
+    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+    .analyze();
+  expect(raw.violations.map((violation) => violation.id)).toContain('color-contrast');
+
+  expect(await wcagViolations(page), 'members, chooser open, tooltip settled').toEqual([]);
 });
 
 test('a column moves without dragging, and the order survives a reload', async ({ page }) => {
