@@ -1207,6 +1207,20 @@ body {
   }
 }
 
+/* A row another tab or person added while the list was open (docs/SPEC.md § 7, 2026-09-17). */
+tr.twes-row-new > td {
+  animation: twes-field-updated 2.4s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  tr.twes-row-new > td {
+    animation: none;
+    box-shadow:
+      inset 0 2px 0 var(--mat-sys-secondary),
+      inset 0 -2px 0 var(--mat-sys-secondary);
+  }
+}
+
 .twes-field-conflict {
   display: flex;
   flex-wrap: wrap;

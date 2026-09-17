@@ -125,6 +125,8 @@ class StaticLoader implements TranslateLoader {
         view_save: 'Save view',
         view_apply: 'Apply {{name}}',
         view_delete: 'Delete {{name}}',
+        new_row: '{{count}} new row',
+        new_rows: '{{count}} new rows',
       },
     });
   }
@@ -165,7 +167,11 @@ describe('DataList', () => {
     await settle();
   }
 
-  async function mount(saved?: ListPreferences, savedViews?: ListView[]): Promise<void> {
+  async function mount(
+    saved?: ListPreferences,
+    savedViews?: ListView[],
+    initialRows: Customer[] = all,
+  ): Promise<void> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
       imports: [Host],
@@ -183,6 +189,7 @@ describe('DataList', () => {
     if (saved) TestBed.inject(SettingsFacade).set(listPreferencesSetting('customers'), saved);
     if (savedViews) TestBed.inject(SettingsFacade).set(listViewsSetting('customers'), savedViews);
     fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.rows.set(initialRows);
     await settle();
   }
 
@@ -442,5 +449,59 @@ describe('DataList', () => {
 
     expect(views().map((kept) => kept.id)).toEqual(['v2']);
     expect(q('list-view-apply-v1')).toBeNull();
+  });
+
+  describe('while it is open and rows arrive', () => {
+    const arrived = (overrides: Partial<Customer>): Customer => ({
+      id: 'n1',
+      name: 'Customer 00',
+      city: 'Paris',
+      balance: 0,
+      status: 'active',
+      ...overrides,
+    });
+
+    it('highlights a row that arrived, and none of the rows already shown', async () => {
+      fixture.componentInstance.rows.set([arrived({}), ...all]);
+      await settle();
+
+      expect(q('customer-n1')?.classList).toContain('twes-row-new');
+      expect(q('customer-1')?.classList).not.toContain('twes-row-new');
+      expect(q('list-new')).toBeNull();
+    });
+
+    it('highlights nothing when the rows are first read', async () => {
+      await mount(undefined, undefined, []);
+
+      fixture.componentInstance.rows.set(all);
+      await settle();
+
+      expect(all$('.twes-row-new')).toHaveLength(0);
+    });
+
+    it('says how many arrived beyond the page shown, and shows them on request', async () => {
+      fixture.componentInstance.rows.set([...all, arrived({ name: 'Customer 99' })]);
+      await settle();
+
+      expect(q('list-new')?.textContent).toContain('1');
+      q('list-new')!.click();
+      await settle();
+
+      expect(rowIds()).toContain('n1');
+      expect(q('customer-n1')?.classList).toContain('twes-row-new');
+      expect(q('list-new')).toBeNull();
+    });
+
+    it('clears the filters that hide a row which arrived when asked to show it', async () => {
+      await type('list-filter', 'sfax');
+      fixture.componentInstance.rows.set([arrived({ city: 'Tunis' }), ...all]);
+      await settle();
+
+      q('list-new')!.click();
+      await settle();
+
+      expect((q('list-filter') as HTMLInputElement).value).toBe('');
+      expect(rowIds()).toContain('n1');
+    });
   });
 });

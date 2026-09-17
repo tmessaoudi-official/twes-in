@@ -28,6 +28,7 @@ test('a change made in one tab reaches a list open in another without a reload',
   await expect(writer.getByTestId(`customer-group-${name}`)).toBeVisible();
 
   await expect(watcher.getByTestId(`customer-group-${name}`)).toBeVisible({ timeout: 10_000 });
+  await expect(watcher.getByTestId(`customer-group-${name}`)).toHaveClass(/twes-row-new/);
 
   await writer.evaluate(
     async ([csrf, group]) => {

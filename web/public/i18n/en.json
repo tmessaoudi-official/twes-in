@@ -483,7 +483,9 @@
     "views_none": "No saved views yet. Arrange the list, then name the view to keep it.",
     "view_name": "View name",
     "view_save": "Save view",
-    "view_delete": "Delete the view {{name}}"
+    "view_delete": "Delete the view {{name}}",
+    "new_row": "{{count}} new row",
+    "new_rows": "{{count}} new rows"
   },
   "form": {
     "optional": "optional",

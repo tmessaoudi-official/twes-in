@@ -17,11 +17,13 @@ import {
   DestroyRef,
   Directive,
   DOCUMENT,
+  effect,
   inject,
   input,
   linkedSignal,
   signal,
   TemplateRef,
+  untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -213,9 +215,65 @@ export class DataList<Row> {
   );
 
   private stopResize: (() => void) | null = null;
+  /** The rows this list has shown since it opened, by id; null until it first has some (docs/SPEC.md § 7, 2026-09-17). */
+  private seen: Set<string> | null = null;
+  /** The rows that arrived last while the list was open: another tab or person added them. */
+  protected readonly arrived = signal<ReadonlySet<string>>(new Set());
+  /** How many of those the page does not show, sorted onto another page or hidden by a filter. */
+  protected readonly arrivedElsewhere = computed(() => {
+    const arrived = this.arrived();
+    if (arrived.size === 0) return 0;
+    const rowId = this.descriptor().rowId;
+    const onPage = new Set(this.page().rows.map(rowId));
+    return this.rows().filter((row) => arrived.has(rowId(row)) && !onPage.has(rowId(row))).length;
+  });
 
   constructor() {
     this.destroyRef.onDestroy(() => this.stopResize?.());
+    effect(() => {
+      const rows = this.rows();
+      untracked(() => this.noteArrivals(rows));
+    });
+  }
+
+  protected isArrived(row: Row): boolean {
+    return this.arrived().has(this.descriptor().rowId(row));
+  }
+
+  /** Shows the page holding the first row that arrived out of sight, clearing the filters if they hide it. */
+  protected showArrivals(): void {
+    const rowId = this.descriptor().rowId;
+    const onPage = new Set(this.page().rows.map(rowId));
+    const target = this.rows().find(
+      (row) => this.arrived().has(rowId(row)) && !onPage.has(rowId(row)),
+    );
+    if (target === undefined) return;
+    const columns = this.descriptor().columns;
+    const shownWith = (query: string, chosen: ListFilterValues): readonly Row[] =>
+      sortRows(
+        filterRows(applyFilters(this.rows(), this.filters(), chosen), columns, query),
+        columns,
+        this.sort(),
+      );
+    let shown = shownWith(this.query(), this.chosenFilters());
+    if (!shown.includes(target)) {
+      this.query.set('');
+      this.chosenFilters.set({});
+      shown = shownWith('', {});
+    }
+    this.pageIndex.set(Math.floor(shown.indexOf(target) / this.pageSize()));
+  }
+
+  private noteArrivals(rows: readonly Row[]): void {
+    const ids = rows.map(this.descriptor().rowId);
+    if (this.seen === null) {
+      if (ids.length > 0) this.seen = new Set(ids);
+      return;
+    }
+    const seen = this.seen;
+    const fresh = ids.filter((id) => !seen.has(id));
+    for (const id of fresh) seen.add(id);
+    if (fresh.length > 0) this.arrived.set(new Set(fresh));
   }
 
   protected testIdOf(row: Row): string | null {

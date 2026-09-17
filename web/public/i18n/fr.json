@@ -483,7 +483,9 @@
     "views_none": "Aucune vue enregistrée. Disposez la liste, puis nommez la vue pour la garder.",
     "view_name": "Nom de la vue",
     "view_save": "Enregistrer la vue",
-    "view_delete": "Supprimer la vue {{name}}"
+    "view_delete": "Supprimer la vue {{name}}",
+    "new_row": "{{count}} nouvelle ligne",
+    "new_rows": "{{count}} nouvelles lignes"
   },
   "form": {
     "optional": "facultatif",
