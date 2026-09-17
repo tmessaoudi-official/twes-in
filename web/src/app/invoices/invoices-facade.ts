@@ -6,6 +6,7 @@ import type {
   InvoiceInput,
   InvoiceOptions,
   InvoiceRow,
+  InvoiceSearch,
   InvoicesError,
   InvoiceSummary,
   PaymentInput,
@@ -19,11 +20,15 @@ export class InvoicesFacade {
   private readonly optionsSignal = signal<InvoiceOptions | null>(null);
   private readonly invoiceSignal = signal<InvoiceRow | null>(null);
   private readonly summarySignal = signal<InvoiceSummary | null>(null);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InvoicesError | null>(null);
 
   readonly invoices = this.invoicesSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
+  /** How many documents the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   /** The document open on screen, as the API last answered with it; null while a new one is filled in. */
   readonly invoice = this.invoiceSignal.asReadonly();
   /** The home page's figures; null until read, and again when the read is refused. */
@@ -31,15 +36,22 @@ export class InvoicesFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  /** The list, with the options that name its drafts' customers. */
-  async loadList(companyId: string): Promise<void> {
+  /** What the list screen needs besides its page: the options that name its drafts' customers. */
+  async loadListContext(companyId: string): Promise<void> {
+    await this.read(async () => this.optionsSignal.set(await this.api.options(companyId)));
+  }
+
+  /**
+   * One page of the documents the search finds. Only the latest search's answer is shown: typing sends one search per
+   * keystroke and they need not come back in order.
+   */
+  async loadPage(companyId: string, search: InvoiceSearch): Promise<void> {
+    const request = ++this.pageRequest;
     await this.read(async () => {
-      const [invoices, options] = await Promise.all([
-        this.api.invoices(companyId),
-        this.api.options(companyId),
-      ]);
-      this.invoicesSignal.set(invoices);
-      this.optionsSignal.set(options);
+      const page = await this.api.invoices(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.invoicesSignal.set(page.rows);
+      this.totalSignal.set(page.total);
     });
   }
 

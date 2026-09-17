@@ -18,7 +18,9 @@ export const INVOICE_STATUSES: readonly InvoiceStatus[] = [
 
 /**
  * What a list shows for a document: its status, except that an issued or partly paid invoice whose due day has passed
- * reads as overdue (docs/SPEC.md § 7, 2026-09-16). Overdue is worked out on screen; the API knows no such status.
+ * reads as overdue (docs/SPEC.md § 7, 2026-09-16). Overdue is still worked out on screen for the row that is shown,
+ * and the API answers it as a status to narrow by, against the company's own day, so that a filtered list is a page
+ * of what matches rather than a page filtered after the fact.
  */
 export type InvoiceShownStatus = InvoiceStatus | 'overdue';
 export const INVOICE_SHOWN_STATUSES: readonly InvoiceShownStatus[] = [
@@ -97,6 +99,23 @@ export interface PaymentInput {
   method: PaymentMethod;
   reference: string | null;
   notes: string | null;
+}
+
+/** What the API sorts invoices by. */
+export type InvoiceSortKey = 'number' | 'customer' | 'issueDate' | 'dueDate' | 'status';
+
+/** One page of the invoices list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+export interface InvoiceSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the number, the customer's reference, or the customer the document recorded; empty finds all. */
+  q: string;
+  /** A status the document holds, or `overdue`, which the API answers against the company's own day. */
+  status: InvoiceShownStatus | null;
+  documentType: InvoiceType | null;
+  customerId: string | null;
+  order: { key: InvoiceSortKey; direction: 'asc' | 'desc' } | null;
 }
 
 export interface InvoiceRow {

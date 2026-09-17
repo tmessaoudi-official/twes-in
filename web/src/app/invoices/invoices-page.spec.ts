@@ -104,7 +104,9 @@ describe('InvoicesPage', () => {
       taxes: [],
     }).asReadonly(),
     error: error.asReadonly(),
-    loadList: vi.fn(),
+    total: signal(2).asReadonly(),
+    loadListContext: vi.fn(),
+    loadPage: vi.fn(),
   };
   const auth = {
     me: () => ({
@@ -129,7 +131,8 @@ describe('InvoicesPage', () => {
 
   beforeEach(async () => {
     error.set(null);
-    facade.loadList.mockReset().mockResolvedValue(undefined);
+    facade.loadListContext.mockReset().mockResolvedValue(undefined);
+    facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [InvoicesPage],
@@ -155,7 +158,7 @@ describe('InvoicesPage', () => {
   });
 
   it('lists each invoice with its number, customer, total, amount still due and status', () => {
-    expect(facade.loadList).toHaveBeenCalledWith('c1');
+    expect(facade.loadListContext).toHaveBeenCalledWith('c1');
     const row = text('invoice-i1');
     expect(row).toContain('FAC-2026-00045');
     expect(row).toContain('Groupe Carthage Médias');

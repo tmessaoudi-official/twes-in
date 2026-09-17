@@ -16,11 +16,21 @@ import { AuthFacade } from '../auth/auth-facade';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListQuery } from '../shared/list/list-types';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
-import { INVOICES_LIST, type InvoiceListRow, invoiceListRows } from './invoice-forms';
+import {
+  INVOICES_LIST,
+  type InvoiceListRow,
+  invoiceListRows,
+  invoiceSearch,
+} from './invoice-forms';
 import { InvoicesFacade } from './invoices-facade';
-import { INVOICE_STATUS_TONES, type InvoiceShownStatus } from './invoices-types';
+import {
+  INVOICE_STATUS_TONES,
+  type InvoiceSearch,
+  type InvoiceShownStatus,
+} from './invoices-types';
 
 /** The invoices and credit notes of the company being worked in, with what each still has due. */
 @Component({
@@ -58,19 +68,37 @@ export class InvoicesPage implements OnInit {
     ),
   );
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
+  protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly mayWrite = computed(() => this.auth.hasPermission('invoice.write'));
   protected readonly rowTestId = (row: InvoiceListRow): string => `invoice-${row.id}`;
+
+  /** What the list last asked the API for; the page is not read until the list has said what it wants. */
+  private search: InvoiceSearch | null = null;
 
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
         ['invoice', 'customer', 'delivery_note'],
-        () => this.facade.loadList(companyId),
+        () => this.reload(companyId),
         this.destroyRef,
       );
-      await this.facade.loadList(companyId);
+      await this.facade.loadListContext(companyId);
     }
+  }
+
+  protected onQuery(query: ListQuery): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.search = invoiceSearch(query);
+    void this.facade.loadPage(companyId, this.search);
+  }
+
+  private async reload(companyId: string): Promise<void> {
+    await Promise.all([
+      this.facade.loadListContext(companyId),
+      this.search === null ? Promise.resolve() : this.facade.loadPage(companyId, this.search),
+    ]);
   }
 }

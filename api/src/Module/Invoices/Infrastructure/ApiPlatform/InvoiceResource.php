@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Invoices\Application\InvoiceInput;
 use App\Module\Invoices\Application\InvoiceLineInput;
 use App\Module\Invoices\Domain\InvalidInvoice;
@@ -43,9 +44,21 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(
             uriTemplate: '/companies/{companyId}/invoices',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: InvoiceCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, the customer\'s reference or the customer as the document recorded them, whatever their case and accents; under three characters, the exact number only. A draft carries no number and no recorded customer: narrow it with customerId.'),
+                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['draft', 'issued', 'partially_paid', 'paid', 'cancelled', 'overdue']], description: '`overdue` is what the status column shows rather than a status a document holds: an invoice, issued or partly paid, whose due day has passed in the company\'s own timezone.'),
+                'documentType' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['invoice', 'credit_note']]),
+                'customerId' => new QueryParameter(schema: ['type' => 'string', 'format' => 'uuid']),
+                'order[number]' => new QueryParameter(schema: self::DIRECTION, description: 'Drafts carry no number and come last whichever the direction.'),
+                'order[customer]' => new QueryParameter(schema: self::DIRECTION, description: 'By the customer\'s current name.'),
+                'order[issueDate]' => new QueryParameter(schema: self::DIRECTION),
+                'order[dueDate]' => new QueryParameter(schema: self::DIRECTION),
+                'order[status]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Get(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}',
@@ -104,6 +117,7 @@ final class InvoiceResource
     public const string WRITE = 'invoice:write';
     /** Nulls are answered: a draft's absent number and a line without a product read alike. */
     public const array NORMALIZATION = ['groups' => [self::READ], AbstractObjectNormalizer::SKIP_NULL_VALUES => false, AbstractObjectNormalizer::PRESERVE_EMPTY_OBJECTS => true];
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     private const array ID = ['type' => 'string', 'format' => 'uuid'];
     private const array TEXT_OR_NULL = ['type' => ['string', 'null']];
     private const array AMOUNT_LIST = [

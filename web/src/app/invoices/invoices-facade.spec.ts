@@ -68,6 +68,17 @@ const payment = {
 } as const;
 
 describe('InvoicesFacade', () => {
+  /** What a list asks for when nothing is typed or chosen. */
+  const search = {
+    page: 1,
+    itemsPerPage: 25,
+    q: '',
+    status: null,
+    documentType: null,
+    customerId: null,
+    order: null,
+  } as const;
+
   const api = {
     options: vi.fn(),
     invoices: vi.fn(),
@@ -87,7 +98,7 @@ describe('InvoicesFacade', () => {
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     api.options.mockResolvedValue(options);
-    api.invoices.mockResolvedValue([draft]);
+    api.invoices.mockResolvedValue({ rows: [draft], total: 31 });
     api.invoice.mockResolvedValue(draft);
     TestBed.configureTestingModule({ providers: [{ provide: InvoicesApi, useValue: api }] });
     facade = TestBed.inject(InvoicesFacade);
@@ -106,10 +117,37 @@ describe('InvoicesFacade', () => {
     expect(facade.error()).toBe('not_found');
   });
 
-  it('reads the list with the options that name its drafts’ customers', async () => {
-    await facade.loadList('c1');
-    expect(facade.invoices()).toEqual([draft]);
+  it('reads one page of documents, with how many the search found in all', async () => {
+    await facade.loadListContext('c1');
     expect(facade.options()).toEqual(options);
+
+    await facade.loadPage('c1', search);
+    expect(api.invoices).toHaveBeenCalledWith('c1', search);
+    expect(facade.invoices()).toEqual([draft]);
+    expect(facade.total()).toBe(31);
+  });
+
+  it('shows the answer to the latest search, whatever order the answers come back in', async () => {
+    // Typing sends one search per keystroke; an earlier answer arriving late must not replace a later one.
+    let settleFirst = (): void => {
+      throw new Error('the first search was answered before it was sent');
+    };
+    api.invoices
+      .mockReturnValueOnce(
+        new Promise((resolve) => {
+          settleFirst = () => resolve({ rows: [draft], total: 1 });
+        }),
+      )
+      .mockResolvedValueOnce({ rows: [], total: 0 });
+
+    const stale = facade.loadPage('c1', { ...search, q: 'car' });
+    const latest = facade.loadPage('c1', { ...search, q: 'carthage' });
+    await latest;
+    settleFirst();
+    await stale;
+
+    expect(facade.invoices()).toEqual([]);
+    expect(facade.total()).toBe(0);
   });
 
   it('reads the options alone for a new invoice', async () => {
@@ -163,7 +201,7 @@ describe('InvoicesFacade', () => {
 
   it('names a network failure apart from a refusal', async () => {
     api.invoices.mockRejectedValue(new Error('offline'));
-    await facade.loadList('c1');
+    await facade.loadPage('c1', search);
     expect(facade.error()).toBe('network');
   });
 });

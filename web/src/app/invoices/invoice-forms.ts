@@ -3,7 +3,7 @@
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { atScale } from '../shared/i18n/format';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   type CustomerOption,
   INVOICE_SHOWN_STATUSES,
@@ -11,7 +11,9 @@ import {
   type InvoiceLine,
   type InvoiceOptions,
   type InvoiceRow,
+  type InvoiceSearch,
   type InvoiceShownStatus,
+  type InvoiceSortKey,
   PAYMENT_METHODS,
   type PaymentInput,
   type PaymentMethod,
@@ -45,6 +47,35 @@ export function shownStatus(invoice: InvoiceRow, today: string): InvoiceShownSta
   return invoice.type === 'invoice' && open && invoice.dueDate !== null && invoice.dueDate < today
     ? 'overdue'
     : invoice.status;
+}
+
+const SORT_KEYS: Readonly<Record<string, InvoiceSortKey>> = {
+  number: 'number',
+  customer: 'customer',
+  issueDate: 'issueDate',
+  dueDate: 'dueDate',
+  status: 'status',
+};
+
+/**
+ * What the API is asked for the page of documents the list shows. The status filter carries `overdue` straight
+ * through: the API answers it against the company's own day, by the rule this file's shownStatus reads on screen.
+ */
+export function invoiceSearch(query: ListQuery): InvoiceSearch {
+  const status = INVOICE_SHOWN_STATUSES.find((known) => known === query.filters['status']) ?? null;
+  const documentType = query.filters['type'];
+  const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    status,
+    documentType:
+      documentType === 'invoice' || documentType === 'credit_note' ? documentType : null,
+    customerId: null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
 }
 
 /** A document as the list shows it: with its customer's name and the status shown for it. */

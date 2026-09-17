@@ -23,9 +23,12 @@ use App\Module\Invoices\Domain\InvoiceHeader;
 use App\Module\Invoices\Domain\InvoiceLineDetails;
 use App\Module\Invoices\Domain\InvoiceNotDraft;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\InvoiceSearch;
 use App\Module\Invoices\Domain\InvoiceTransitionRefused;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
@@ -65,6 +68,16 @@ final readonly class ManageInvoices
     public function list(Company $company): array
     {
         return $this->invoices->ofCompany($company->getId());
+    }
+
+    /**
+     * One page of the company's invoices and credit notes, as the list asked for them.
+     *
+     * @return Page<Invoice>
+     */
+    public function search(Company $company, InvoiceSearch $search, PageRequest $page): Page
+    {
+        return $this->invoices->search($company->getId(), $search, $page);
     }
 
     /** @throws InvoiceNotFound */

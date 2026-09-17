@@ -30,6 +30,8 @@ use Symfony\Component\Uid\Uuid;
 final class InvoicesTest extends ApiTestCase
 {
     private const string ABSENT = '0192c3a4-0000-7000-8000-000000000000';
+    /** What a row with no number yet stands as in a list assertion. */
+    private const string DRAFT = '(draft)';
 
     private Company $company;
     private string $customerId;
@@ -552,6 +554,65 @@ final class InvoicesTest extends ApiTestCase
         $this->getJson($this->path());
         self::assertResponseIsSuccessful();
         self::assertCount(1, $this->jsonList());
+    }
+
+    public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();
+
+        $this->issuedInvoice();
+        $first = $this->stringAt($this->json(), 'number');
+        $overdueId = $this->stringAt($this->json(), 'id');
+        $this->issuedInvoice();
+        $second = $this->stringAt($this->json(), 'number');
+        // Issuing dates from the company's own day, so the one row that must read as overdue is made so in the
+        // database: a due day in the past is exactly what the list asks about.
+        $this->em()->getConnection()->executeStatement(
+            'UPDATE invoice SET due_date = :due WHERE id = :id',
+            ['due' => (new \DateTimeImmutable('-3 days'))->format('Y-m-d'), 'id' => $overdueId],
+        );
+        // A draft has no number and no customer snapshot: it is the row the searchable text cannot cover.
+        $this->postJson($this->path(), $this->invoice([
+            'customerId' => $other,
+            'customerReference' => 'BC-4242',
+            'lines' => [['productId' => $this->productId, 'quantity' => '1']],
+        ]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->path());
+        self::assertCount(3, $this->jsonList());
+        self::assertSame(3, $this->jsonPage()['totalItems']);
+
+        $this->getJson($this->path().'?itemsPerPage=2');
+        self::assertCount(2, $this->jsonList());
+        self::assertSame(3, $this->jsonPage()['totalItems']);
+
+        foreach ([
+            'q='.$first => [$first],
+            'q='.strtolower($first) => [$first],
+            'q=carthage' => [$second, $first],
+            'q=BC-4242' => [self::DRAFT],
+            'q=zzzz' => [],
+            'status=draft' => [self::DRAFT],
+            'status=issued' => [$second, $first],
+            'customerId='.$other => [self::DRAFT],
+            'order[number]=desc&itemsPerPage=1' => [$second],
+            // The rule is the column's, not a status any document holds: the one whose due day has passed, and only it.
+            'status=overdue' => [$first],
+        ] as $query => $numbers) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            // A draft's number is null, so it is named rather than read as an empty column.
+            $shown = array_map(
+                static fn (array $row): string => \is_string($row['number'] ?? null) ? $row['number'] : self::DRAFT,
+                $this->jsonList(),
+            );
+            self::assertSame($numbers, $shown, $query);
+        }
+
+        $this->getJson($this->path().'?status=paid-ish');
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     /** Drafts and issues a one-line invoice; the response left to read is the issued invoice. */

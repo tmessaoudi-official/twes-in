@@ -12,16 +12,30 @@ namespace App\Module\Invoices\Infrastructure\Doctrine;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Domain\InvoiceLine;
 use App\Module\Invoices\Domain\InvoiceRepository;
+use App\Module\Invoices\Domain\InvoiceSearch;
 use App\Module\Invoices\Domain\InvoiceStatus;
 use App\Module\Invoices\Domain\InvoiceType;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\ListOrder;
+use App\Shared\Infrastructure\Doctrine\SearchText;
 use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineInvoiceRepository implements InvoiceRepository
 {
+    /**
+     * The words of `:text`, found through idx_invoice_search: the index is built on this very SEARCH_TEXT expression.
+     * All of it is the invoice's own, because an index cannot span a join — and a condition OR-ed onto the customer
+     * table would leave this half indexed and scan the other, which no assertion here would notice.
+     */
+    public const string MATCHES_WORDS = "SEARCH_TEXT(i.number, i.customerReference, JSON_VALUES(i.customerSnapshot)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    private const array SORTED_BY = ['number' => 'i.number', 'customer' => 'c.name', 'issueDate' => 'i.issueDate', 'dueDate' => 'i.dueDate', 'status' => 'i.status'];
+
     public function __construct(private EntityManagerInterface $entityManager)
     {
     }
@@ -29,6 +43,46 @@ final readonly class DoctrineInvoiceRepository implements InvoiceRepository
     public function ofCompany(Uuid $companyId): array
     {
         return $this->entityManager->getRepository(Invoice::class)->findBy(['company' => $companyId], ['createdAt' => 'DESC', 'id' => 'DESC']);
+    }
+
+    public function search(Uuid $companyId, InvoiceSearch $search, PageRequest $page): Page
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('i', 'c')->from(Invoice::class, 'i')
+            ->join('i.customer', 'c')
+            ->where('i.company = :company')->setParameter('company', $companyId, 'uuid');
+        $words = trim($search->text ?? '');
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(i.number) = LOWER(:number)')->setParameter('number', $words);
+        }
+        if (null !== $search->status) {
+            $query->andWhere('i.status = :status')->setParameter('status', $search->status->value);
+        }
+        if (null !== $search->documentType) {
+            $query->andWhere('i.documentType = :documentType')->setParameter('documentType', $search->documentType->value);
+        }
+        if (null !== $search->customer) {
+            $query->andWhere('i.customer = :customerId')->setParameter('customerId', $search->customer, 'uuid');
+        }
+        if (null !== $search->overdueOn) {
+            $query->andWhere('i.documentType = :overdueType AND i.status IN (:overdueStatuses) AND i.dueDate IS NOT NULL AND i.dueDate < :overdueOn')
+                ->setParameter('overdueType', InvoiceType::Invoice->value)
+                ->setParameter('overdueStatuses', [InvoiceStatus::Issued->value, InvoiceStatus::PartiallyPaid->value])
+                ->setParameter('overdueOn', $search->overdueOn);
+        }
+        // A draft has no number, so the number cannot settle a tie the way a product's reference does: the newest
+        // first, and the id last, which is unique and never null.
+        ListOrder::apply($query, $search->order, self::SORTED_BY, ['number', 'issueDate', 'dueDate'], 'i.createdAt', 'DESC')
+            ->addOrderBy('i.id', 'DESC')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
+
+        $paginator = new Paginator($query, fetchJoinCollection: false);
+        /** @var list<Invoice> $invoices */
+        $invoices = iterator_to_array($paginator, false);
+
+        return new Page($invoices, \count($paginator), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Invoice

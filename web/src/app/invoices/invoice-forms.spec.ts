@@ -7,6 +7,7 @@ import {
   invoiceForm,
   invoiceInput,
   invoiceListRows,
+  invoiceSearch,
   invoiceValues,
   INVOICES_LIST,
   lineGroup,
@@ -138,6 +139,44 @@ describe('invoice forms', () => {
       expect(shownStatus(invoice({ status: 'paid' }), '2027-01-01')).toBe('paid');
       expect(shownStatus(invoice({ status: 'draft', dueDate: null }), '2027-01-01')).toBe('draft');
       expect(shownStatus(invoice({ type: 'credit_note' }), '2027-01-01')).toBe('issued');
+    });
+  });
+
+  describe('invoiceSearch', () => {
+    const query = {
+      pageIndex: 0,
+      pageSize: 25,
+      query: '',
+      filters: {} as Record<string, string>,
+      sort: null,
+    };
+
+    it('asks for the page the list shows, numbered from one', () => {
+      expect(invoiceSearch({ ...query, pageIndex: 2, pageSize: 50 })).toMatchObject({
+        page: 3,
+        itemsPerPage: 50,
+      });
+    });
+
+    it('carries overdue through as a status, which the API answers on the company’s day', () => {
+      // It is not a status a document holds; filtering on screen would filter one page instead of the list.
+      expect(invoiceSearch({ ...query, filters: { status: 'overdue' } }).status).toBe('overdue');
+      expect(invoiceSearch({ ...query, filters: { status: 'paid' } }).status).toBe('paid');
+      expect(invoiceSearch({ ...query, filters: { status: 'nonsense' } }).status).toBeNull();
+    });
+
+    it('passes the kind of document and the sort the column names', () => {
+      expect(invoiceSearch({ ...query, filters: { type: 'credit_note' } }).documentType).toBe(
+        'credit_note',
+      );
+      expect(invoiceSearch({ ...query, filters: { type: 'nonsense' } }).documentType).toBeNull();
+      expect(
+        invoiceSearch({ ...query, sort: { column: 'issueDate', direction: 'desc' } }).order,
+      ).toEqual({ key: 'issueDate', direction: 'desc' });
+      // A column the API cannot sort by is left to the API's own order rather than sent as one it would refuse.
+      expect(
+        invoiceSearch({ ...query, sort: { column: 'total', direction: 'asc' } }).order,
+      ).toBeNull();
     });
   });
 

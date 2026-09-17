@@ -35,11 +35,14 @@ gate-licences:
 	bash scripts/gates/tests/executable-bits.test.sh
 	bash scripts/gates/tests/icon-buttons-named.test.sh
 	bash scripts/gates/tests/outcomes-as-toasts.test.sh
+	bash scripts/gates/tests/compose-log-rotation.test.sh
+	bash infra/self-hosted/tests/logrotate.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
 	bash scripts/gates/executable-bits.sh
 	bash scripts/gates/icon-buttons-named.sh
 	bash scripts/gates/outcomes-as-toasts.sh
+	bash scripts/gates/compose-log-rotation.sh
 
 gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
 	cd api && composer gate

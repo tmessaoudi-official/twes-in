@@ -1,15 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  ApiCompaniesCompanyIdinvoicesGetCollectionResponse,
   InvoiceInvoiceRead,
+  InvoiceJsonldInvoiceRead,
   InvoiceInvoiceWrite,
   InvoiceOptionsInvoiceOptionsRead,
   InvoiceSummaryInvoiceSummaryRead,
   PaymentPaymentWrite,
 } from '../api/types.gen';
+import type { ListPage } from '../shared/list/list-types';
 import {
   AGING_BUCKETS,
   type AgingAmount,
@@ -17,6 +20,7 @@ import {
   type InvoiceInput,
   type InvoiceOptions,
   type InvoiceRow,
+  type InvoiceSearch,
   type InvoicesError,
   type InvoiceSummary,
   PAYMENT_METHODS,
@@ -61,13 +65,19 @@ export class InvoicesApi {
     );
   }
 
-  /** The company's invoices and credit notes. */
-  async invoices(companyId: string): Promise<InvoiceRow[]> {
-    return this.guard(async () =>
-      (await firstValueFrom(this.http.get<InvoiceInvoiceRead[]>(invoicePath(companyId)))).map(
-        toInvoice,
-      ),
-    );
+  /** One page of the company's invoices and credit notes, as the API searched, narrowed and sorted them. */
+  async invoices(companyId: string, search: InvoiceSearch): Promise<ListPage<InvoiceRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdinvoicesGetCollectionResponse>(invoicePath(companyId), {
+          headers: { Accept: 'application/ld+json' },
+          params: toSearchParams(search),
+        }),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of invoices came without its total.');
+      return { rows: page.member.map(toInvoice), total: page.totalItems };
+    });
   }
 
   async invoice(companyId: string, id: string): Promise<InvoiceRow> {
@@ -182,7 +192,18 @@ const invoicePath = (companyId: string, id?: string): string =>
 const ids = (values: readonly (string | null | undefined)[] | null | undefined): string[] =>
   (values ?? []).filter((id): id is string => typeof id === 'string');
 
-function toInvoice(raw: InvoiceInvoiceRead): InvoiceRow {
+function toSearchParams(search: InvoiceSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.status !== null) params = params.set('status', search.status);
+  if (search.documentType !== null) params = params.set('documentType', search.documentType);
+  if (search.customerId !== null) params = params.set('customerId', search.customerId);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceRow {
   return {
     id: raw.id ?? '',
     type: raw.type === 'credit_note' ? 'credit_note' : 'invoice',

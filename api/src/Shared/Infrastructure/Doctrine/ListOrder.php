@@ -22,8 +22,10 @@ final class ListOrder
      * @param array<string, 'asc'|'desc'> $order    what the request asked for, in the order it applies
      * @param array<string, string>       $columns  the DQL expression each sort key reads
      * @param list<string>                $nullable the sort keys whose column may be empty
+     * @param 'ASC'|'DESC'                $tieFirst which end of the tie-break comes first: a list whose own order is
+     *                                              newest-first settles ties that way too
      */
-    public static function apply(QueryBuilder $query, array $order, array $columns, array $nullable, string $tieBreak): QueryBuilder
+    public static function apply(QueryBuilder $query, array $order, array $columns, array $nullable, string $tieBreak, string $tieFirst = 'ASC'): QueryBuilder
     {
         foreach ($order as $sort => $direction) {
             $column = $columns[$sort] ?? throw new \InvalidArgumentException("This list is not sorted by $sort.");
@@ -34,6 +36,6 @@ final class ListOrder
             $query->addOrderBy($column, $direction);
         }
 
-        return $query->addOrderBy($tieBreak, 'ASC');
+        return $query->addOrderBy($tieBreak, $tieFirst);
     }
 }

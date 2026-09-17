@@ -205,10 +205,52 @@ describe('InvoicesApi', () => {
     });
   });
 
-  it('lists the invoices and credit notes', async () => {
-    const pending = api.invoices('c1');
-    http.expectOne('/api/companies/c1/invoices').flush([issued]);
-    expect((await pending).map((row) => row.number)).toEqual(['FAC-2026-00045']);
+  it('asks the API for one page of documents, with what it searches, narrows and sorts by', async () => {
+    const pending = api.invoices('c1', {
+      page: 2,
+      itemsPerPage: 25,
+      q: '  carthage  ',
+      status: 'overdue',
+      documentType: 'invoice',
+      customerId: 'cu1',
+      order: { key: 'number', direction: 'desc' },
+    });
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/companies/c1/invoices' && candidate.method === 'GET',
+    );
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('itemsPerPage')).toBe('25');
+    // Trimmed, so a trailing space is not a different search.
+    expect(request.request.params.get('q')).toBe('carthage');
+    expect(request.request.params.get('status')).toBe('overdue');
+    expect(request.request.params.get('documentType')).toBe('invoice');
+    expect(request.request.params.get('customerId')).toBe('cu1');
+    expect(request.request.params.get('order[number]')).toBe('desc');
+    request.flush({ member: [issued], totalItems: 48 });
+
+    const page = await pending;
+    expect(page.rows.map((row) => row.number)).toEqual(['FAC-2026-00045']);
+    expect(page.total).toBe(48);
+  });
+
+  it('refuses a page that came without its total, rather than showing one page as the whole list', async () => {
+    const pending = api.invoices('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      status: null,
+      documentType: null,
+      customerId: null,
+      order: null,
+    });
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/companies/c1/invoices' && candidate.method === 'GET',
+    );
+    expect(request.request.params.has('q')).toBe(false);
+    expect(request.request.params.has('status')).toBe(false);
+    request.flush({ member: [issued] });
+    await expect(pending).rejects.toThrow();
   });
 
   it('drafts and revises with the input as the API takes it', async () => {
