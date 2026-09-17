@@ -18,6 +18,9 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { liveRecord } from '../shared/form/live-record';
+import { PartConflict } from '../shared/form/part-conflict';
+import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -53,6 +56,8 @@ import { Feedback } from '../shared/feedback/feedback';
     DayPipe,
     DescriptorForm,
     DeliveryNoteLines,
+    PartConflict,
+    RecordChanged,
     StatusBadge,
   ],
   templateUrl: './delivery-note-page.html',
@@ -122,14 +127,51 @@ export class DeliveryNotePage {
       return buildFormGroup(descriptor, deliveryNoteValues(current, options));
     });
   });
+  protected readonly isLinesConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'lines';
+  /** Bumped to show the saved lines again in place of the ones shown. */
+  private readonly linesVersion = signal(0);
   protected readonly lines = computed(() => {
     if (this.formKey() === null) return null;
+    this.linesVersion();
     return untracked(() => {
       const options = this.options();
       const current = this.current();
       if (options === null || current === undefined) return null;
       return linesArray(current?.lines ?? [], options);
     });
+  });
+
+  /** The saved version the note stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'delivery_note',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadNote(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      const options = this.options();
+      return current && options ? deliveryNoteValues(current, options) : null;
+    },
+    // The lines are one field: a line is never merged with another person's.
+    parts: [
+      {
+        field: 'lines',
+        saved: () => {
+          const current = this.current();
+          const options = this.options();
+          return current && options
+            ? JSON.stringify(linesArray(current.lines, options).getRawValue())
+            : null;
+        },
+        shown: () => JSON.stringify(this.lines()?.getRawValue() ?? []),
+        take: () => this.linesVersion.update((version) => version + 1),
+      },
+    ],
   });
 
   private readonly customerId = signal('');
@@ -209,6 +251,8 @@ export class DeliveryNotePage {
         await this.router.navigate(['/delivery-notes', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {
+      const form = this.form();
+      if (form !== null) this.sync.savedHere(form);
       this.feedback.success('delivery_notes.saved');
     }
   }

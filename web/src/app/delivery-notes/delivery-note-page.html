@@ -72,6 +72,13 @@
   }
 
   @if (form(); as form) {
+    @if (sync.changedBy(); as changedBy) {
+      <app-record-changed
+        [changedBy]="changedBy"
+        [conflictCount]="sync.conflicts().length"
+        (reload)="sync.reloadSaved(form)"
+      />
+    }
     @if (descriptor(); as descriptor) {
       <mat-card>
         <mat-card-content>
@@ -80,6 +87,9 @@
             [form]="form"
             testId="delivery-note-form"
             [readOnly]="!editable()"
+            [updated]="sync.updated()"
+            [conflicts]="sync.conflicts()"
+            (resolved)="sync.resolve(form, $event)"
             (submitted)="save()"
           />
         </mat-card-content>
@@ -90,7 +100,16 @@
   @if (lines(); as lines) {
     @if (options(); as options) {
       <mat-card>
-        <mat-card-content>
+        <mat-card-content [class.twes-field-updated]="sync.updated().has('lines')">
+          @if (form(); as form) {
+            @if (sync.conflicts().some(isLinesConflict)) {
+              <app-part-conflict
+                field="lines"
+                message="live.lines_conflict"
+                (resolved)="sync.resolve(form, $event)"
+              />
+            }
+          }
           <app-delivery-note-lines
             [lines]="lines"
             [options]="options"

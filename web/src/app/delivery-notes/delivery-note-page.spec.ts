@@ -28,6 +28,7 @@ import type {
   DeliveryNotesError,
 } from './delivery-notes-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -294,6 +295,45 @@ describe('DeliveryNotePage', () => {
       'n1',
       expect.objectContaining({ lines: [expect.objectContaining({ quantity: '4' })] }),
     );
+  });
+
+  it('takes the header and lines another person saved into a quiet draft', async () => {
+    note.set(draft);
+    await open('n1');
+    facade.loadNote.mockImplementation(async () => {
+      note.set({
+        ...draft,
+        customerReference: 'BC-7',
+        lines: [{ ...draft.lines[0], quantity: '5.000' }],
+      });
+    });
+
+    await announceSaved('delivery_note', 'n1');
+    await settle();
+
+    expect(facade.loadNote).toHaveBeenLastCalledWith('c1', 'n1');
+    expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7');
+    expect((q('line-0-quantity') as HTMLInputElement).value).toMatch(/^5/);
+    expect(q('record-changed')).toBeNull();
+  });
+
+  it('keeps lines being edited when another person saved other lines, and offers theirs', async () => {
+    note.set(draft);
+    await open('n1');
+    type('line-0-quantity', '3');
+    facade.loadNote.mockImplementation(async () => {
+      note.set({ ...draft, lines: [{ ...draft.lines[0], quantity: '5.000' }] });
+    });
+
+    await announceSaved('delivery_note', 'n1');
+    await settle();
+
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
+    expect(q('record-changed')).not.toBeNull();
+    q('field-take-theirs-lines')!.click();
+    await settle();
+    expect((q('line-0-quantity') as HTMLInputElement).value).toMatch(/^5/);
+    expect(q('field-conflict-lines')).toBeNull();
   });
 
   it('shows a validated note as it was issued, with its PDF, its delivery and its cancellation', async () => {

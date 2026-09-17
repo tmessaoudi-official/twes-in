@@ -24,6 +24,7 @@ import { VendorPage } from './vendor-page';
 import { VendorsFacade } from './vendors-facade';
 import type { VendorOptions, VendorRow, VendorsError } from './vendors-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -200,6 +201,24 @@ describe('VendorPage', () => {
     await settle();
     expect(successToasts()).toEqual(['vendors.saved']);
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
+  });
+
+  it('takes what another person saved into the open vendor, and keeps what is typed', async () => {
+    vendor.set(sotumag);
+    await open('v1');
+    type('field-name', 'Sotumag & fils');
+    facade.loadVendor.mockImplementation(async () => {
+      vendor.set({ ...sotumag, name: 'Sotumag SA', email: 'compta@sotumag.tn' });
+    });
+
+    await announceSaved('vendor', 'v1');
+    await settle();
+
+    expect(facade.loadVendor).toHaveBeenLastCalledWith('c1', 'v1');
+    expect((q('field-email') as HTMLInputElement).value).toBe('compta@sotumag.tn');
+    expect((q('field-name') as HTMLInputElement).value).toBe('Sotumag & fils');
+    expect(q('record-changed')).not.toBeNull();
+    expect(q('field-conflict-name')).not.toBeNull();
   });
 
   it('shows a reader the vendor without a way to save it', async () => {

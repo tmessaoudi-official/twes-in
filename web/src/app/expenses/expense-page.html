@@ -97,12 +97,22 @@
   }
 
   @if (form(); as form) {
+    @if (sync.changedBy(); as changedBy) {
+      <app-record-changed
+        [changedBy]="changedBy"
+        [conflictCount]="sync.conflicts().length"
+        (reload)="sync.reloadSaved(form)"
+      />
+    }
     @if (descriptor(); as descriptor) {
       <mat-card>
         <mat-card-content>
           <app-descriptor-form
             [descriptor]="descriptor"
             [form]="form"
+            [updated]="sync.updated()"
+            [conflicts]="sync.conflicts()"
+            (resolved)="sync.resolve(form, $event)"
             testId="expense-form"
             [readOnly]="!mayWrite() || !isDraft()"
             (submitted)="save($event)"

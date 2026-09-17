@@ -30,6 +30,7 @@ import type {
   ExpensesError,
 } from './expenses-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -334,6 +335,20 @@ describe('ExpensePage', () => {
     await settle();
     expect(q('expense-detach-recu.pdf')).toBeNull();
     expect(q('expense-attach')).not.toBeNull();
+  });
+
+  it('takes what another person saved into the open draft', async () => {
+    expense.set(draft);
+    await open('e1');
+    facade.loadExpense.mockImplementation(async () => {
+      expense.set({ ...draft, description: 'Gasoil et péage' });
+    });
+
+    await announceSaved('expense', 'e1');
+    await settle();
+
+    expect(facade.loadExpense).toHaveBeenLastCalledWith('c1', 'e1');
+    expect((q('field-description') as HTMLInputElement).value).toBe('Gasoil et péage');
   });
 
   it('says why a change was refused', async () => {

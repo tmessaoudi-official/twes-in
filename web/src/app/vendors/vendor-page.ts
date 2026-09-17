@@ -15,6 +15,8 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { liveRecord } from '../shared/form/live-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { vendorForm, vendorInput, vendorValues } from './vendor-forms';
@@ -24,7 +26,14 @@ import { Feedback } from '../shared/feedback/feedback';
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 @Component({
   selector: 'app-vendor-page',
-  imports: [MatButtonModule, MatCardModule, RouterLink, TranslatePipe, DescriptorForm],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    RouterLink,
+    TranslatePipe,
+    DescriptorForm,
+    RecordChanged,
+  ],
   templateUrl: './vendor-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -75,6 +84,23 @@ export class VendorPage {
     });
   });
 
+  /** The saved version the form stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'vendor',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadVendor(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      const options = this.facade.options();
+      return current && options ? vendorValues(current, options) : null;
+    },
+  });
+
   constructor() {
     effect(() => {
       const companyId = this.company()?.id;
@@ -100,6 +126,8 @@ export class VendorPage {
         await this.router.navigate(['/vendors', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseVendor(companyId, id, input)) !== null) {
+      const form = this.form();
+      if (form !== null) this.sync.savedHere(form);
       this.feedback.success('vendors.saved');
     }
   }

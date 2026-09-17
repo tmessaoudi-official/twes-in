@@ -5,6 +5,12 @@ import type { DescriptorFormGroup } from './form-builder';
 import { type FieldConflict, mergeSavedVersion } from './form-merge';
 import type { FormValues } from './form-types';
 
+export interface PartsOutcome {
+  readonly updated: readonly string[];
+  readonly conflicts: readonly FieldConflict[];
+  readonly typing: boolean;
+}
+
 export interface ChangedBy {
   readonly id: string;
   readonly name: string | null;
@@ -36,23 +42,28 @@ export class RecordSync {
     this.changedBySignal.set(null);
   }
 
+  /** `parts` is what the page compared outside the form (its lines): taken, both changed, or being edited. */
   receive(
     form: DescriptorFormGroup,
     incoming: FormValues,
     actor: ChangedBy | null,
+    parts: PartsOutcome = { updated: [], conflicts: [], typing: false },
   ): 'updated' | 'editing' {
     const base = this.base ?? incoming;
-    const typing = Object.entries(form.controls).some(
-      ([field, control]) =>
-        field in base && String(control.value ?? '') !== String(base[field] ?? ''),
-    );
+    const typing =
+      parts.typing ||
+      Object.entries(form.controls).some(
+        ([field, control]) =>
+          field in base && String(control.value ?? '') !== String(base[field] ?? ''),
+      );
     const outcome = mergeSavedVersion(form, base, incoming);
     this.base = incoming;
-    this.updatedSignal.set(new Set(outcome.updated));
+    this.updatedSignal.set(new Set([...outcome.updated, ...parts.updated]));
+    const arrived = [...outcome.conflicts, ...parts.conflicts];
     const pending = this.conflictsSignal().filter(
-      (conflict) => !outcome.conflicts.some((next) => next.field === conflict.field),
+      (conflict) => !arrived.some((next) => next.field === conflict.field),
     );
-    this.conflictsSignal.set([...pending, ...outcome.conflicts]);
+    this.conflictsSignal.set([...pending, ...arrived]);
     if (!typing) return 'updated';
     this.changedBySignal.set(actor ?? { id: '', name: null });
     return 'editing';
@@ -79,7 +90,7 @@ export class RecordSync {
     this.track(this.base);
   }
 
-  private forget(field: string): void {
+  protected forget(field: string): void {
     // The banner stays until reloaded or saved: it names who changed the record, not only what conflicts.
     this.conflictsSignal.update((conflicts) =>
       conflicts.filter((conflict) => conflict.field !== field),

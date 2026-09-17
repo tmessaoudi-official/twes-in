@@ -34,6 +34,9 @@ import {
   shownStatus,
 } from './invoice-forms';
 import { InvoiceLines } from './invoice-lines';
+import { liveRecord } from '../shared/form/live-record';
+import { PartConflict } from '../shared/form/part-conflict';
+import { RecordChanged } from '../shared/form/record-changed';
 import { InvoicesFacade } from './invoices-facade';
 import { INVOICE_STATUS_TONES, type InvoiceInput, type Payment } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
@@ -55,6 +58,8 @@ import { Feedback } from '../shared/feedback/feedback';
     DayPipe,
     DescriptorForm,
     InvoiceLines,
+    PartConflict,
+    RecordChanged,
     StatusBadge,
   ],
   templateUrl: './invoice-page.html',
@@ -129,8 +134,13 @@ export class InvoicePage {
       return buildFormGroup(descriptor, invoiceValues(current, options));
     });
   });
+  protected readonly isLinesConflict = (conflict: { field: string }): boolean =>
+    conflict.field === 'lines';
+  /** Bumped to show the saved lines again in place of the ones shown. */
+  private readonly linesVersion = signal(0);
   protected readonly lines = computed(() => {
     if (this.formKey() === null) return null;
+    this.linesVersion();
     return untracked(() => {
       const options = this.options();
       const current = this.current();
@@ -138,6 +148,43 @@ export class InvoicePage {
       const customer = options.customers.find((each) => each.id === current?.customerId) ?? null;
       return linesArray(current?.lines ?? [], options, customer);
     });
+  });
+  /** The saved version the document stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'invoice',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadInvoice(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      const options = this.options();
+      return current && options ? invoiceValues(current, options) : null;
+    },
+    // The lines and the document taxes are one field: a line is never merged with another person's.
+    parts: [
+      {
+        field: 'lines',
+        saved: () => {
+          const current = this.current();
+          const options = this.options();
+          if (!current || options === null) return null;
+          const customer = options.customers.find((each) => each.id === current.customerId) ?? null;
+          return this.linesText(
+            linesArray(current.lines, options, customer).getRawValue(),
+            this.savedDocumentTaxes(),
+          );
+        },
+        shown: () => this.linesText(this.lines()?.getRawValue() ?? [], this.documentTaxes()),
+        take: () => {
+          this.linesVersion.update((version) => version + 1);
+          this.documentTaxes.set(this.savedDocumentTaxes());
+        },
+      },
+    ],
   });
   protected readonly nets = computed(() => (this.current()?.lines ?? []).map((line) => line.net));
 
@@ -276,6 +323,8 @@ export class InvoicePage {
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {
+      const form = this.form();
+      if (form !== null) this.sync.savedHere(form);
       this.feedback.success('invoices.saved');
     }
   }
@@ -326,6 +375,18 @@ export class InvoicePage {
     this.confirmingPaymentDelete.set(null);
     if (!companyId || id === null || this.busy()) return;
     await this.facade.deletePayment(companyId, id, payment.id);
+  }
+
+  /** The document taxes the saved document is charged, as a new form would choose them. */
+  private savedDocumentTaxes(): readonly string[] {
+    const current = this.current();
+    const options = this.options();
+    if (!current || options === null) return [];
+    return current.documentTaxComponentIds ?? defaultDocumentTaxes(options, current.customerId);
+  }
+
+  private linesText(lines: unknown, documentTaxes: readonly string[]): string {
+    return JSON.stringify({ lines, documentTaxes: [...documentTaxes].sort() });
   }
 
   /** The header, the lines and the document taxes as the API takes them, or null after showing what is wrong. */

@@ -57,6 +57,8 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await expect(page.getByTestId('field-iban')).toHaveValue('TN5910006035183598478831');
     await expect(page.getByTestId('field-countryCode')).toHaveValue('TN');
 
+    // Creating said "saved" too: let that toast go, or the next check reads it instead of the revision's.
+    await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
     await page.getByTestId('field-email').fill('compta@sotumag.tn');
     await page.getByTestId('vendor-save').click();
     await expect(toast(page)).toContainText('Le fournisseur a été enregistré.');

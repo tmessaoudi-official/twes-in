@@ -40,7 +40,7 @@
             [readOnly]="!mayWrite()"
             [updated]="sync.updated()"
             [conflicts]="sync.conflicts()"
-            (resolved)="resolve(form, $event)"
+            (resolved)="sync.resolve(form, $event)"
             (submitted)="save($event)"
           >
             @if (mayWrite()) {

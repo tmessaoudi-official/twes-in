@@ -25,6 +25,7 @@ import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
 import type { InvoiceOptions, InvoiceRow, InvoicesError } from './invoices-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -371,6 +372,52 @@ describe('InvoicePage', () => {
         lines: [expect.objectContaining({ quantity: '3' })],
       }),
     );
+  });
+
+  it('takes the header and lines another person saved into a quiet draft', async () => {
+    invoice.set(draft);
+    await open('i1');
+    const before = (q('line-0-quantity') as HTMLInputElement).value;
+    facade.loadInvoice.mockImplementation(async () => {
+      invoice.set({
+        ...draft,
+        customerReference: 'BC-7',
+        lines: [{ ...draft.lines[0], quantity: '2.000' }],
+      });
+    });
+
+    await announceSaved('invoice', 'i1');
+    await settle();
+
+    expect(facade.loadInvoice).toHaveBeenLastCalledWith('c1', 'i1');
+    expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7');
+    expect((q('line-0-quantity') as HTMLInputElement).value).not.toBe(before);
+    expect((q('line-0-quantity') as HTMLInputElement).value).toMatch(/^2/);
+    expect(q('record-changed')).toBeNull();
+  });
+
+  it('keeps lines being edited when another person saved other lines, and offers theirs', async () => {
+    invoice.set(draft);
+    await open('i1');
+    type('line-0-quantity', '3');
+    facade.loadInvoice.mockImplementation(async () => {
+      invoice.set({
+        ...draft,
+        customerReference: 'BC-7',
+        lines: [{ ...draft.lines[0], quantity: '2.000' }],
+      });
+    });
+
+    await announceSaved('invoice', 'i1');
+    await settle();
+
+    expect((q('line-0-quantity') as HTMLInputElement).value).toBe('3');
+    expect((q('field-customerReference') as HTMLInputElement).value).toBe('BC-7');
+    expect(q('record-changed')).not.toBeNull();
+    q('field-take-theirs-lines')!.click();
+    await settle();
+    expect((q('line-0-quantity') as HTMLInputElement).value).toMatch(/^2/);
+    expect(q('field-conflict-lines')).toBeNull();
   });
 
   it('cancels a draft only once confirmed', async () => {

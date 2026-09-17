@@ -32,6 +32,9 @@ import type {
   ProductsError,
 } from './products-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
+import { Feedback } from '../shared/feedback/feedback';
+import type { RecordedFeedback } from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -228,6 +231,24 @@ describe('ProductPage', () => {
       'p1',
       expect.objectContaining({ unitPriceNet: '1300' }),
     );
+  });
+
+  it('takes what another person saved into the open product', async () => {
+    product.set(laptop);
+    await open('p1');
+    facade.loadProduct.mockImplementation(async () => {
+      product.set({ ...laptop, name: 'Portable 14 pouces' });
+    });
+
+    await announceSaved('product', 'p1');
+    await settle();
+
+    expect(facade.loadProduct).toHaveBeenLastCalledWith('c1', 'p1');
+    expect((q('field-name') as HTMLInputElement).value).toBe('Portable 14 pouces');
+    expect(q('record-changed')).toBeNull();
+    expect(TestBed.inject(Feedback) as RecordedFeedback).toMatchObject({
+      said: [{ kind: 'notice', key: 'live.notice', params: { name: 'Nadia' } }],
+    });
   });
 
   it('shows another product when another one is opened', async () => {

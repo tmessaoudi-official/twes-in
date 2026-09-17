@@ -1523,6 +1523,11 @@
     "take_theirs": "Take this one",
     "keep_mine": "Keep mine",
     "notice": "{{name}} changed this record.",
-    "notice_someone": "This record was changed."
+    "notice_someone": "This record was changed.",
+    "deleted": "{{name}} deleted this record.",
+    "deleted_someone": "This record was deleted.",
+    "lines_conflict": "The lines were changed in the saved version too.",
+    "take_saved": "Take the saved version",
+    "keep_typed": "Keep what I typed"
   }
 }

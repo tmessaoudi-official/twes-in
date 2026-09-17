@@ -15,6 +15,8 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { liveRecord } from '../shared/form/live-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { ArticleDefaults } from './article-defaults';
@@ -31,6 +33,7 @@ import { Feedback } from '../shared/feedback/feedback';
     RouterLink,
     TranslatePipe,
     DescriptorForm,
+    RecordChanged,
     ArticleDefaults,
   ],
   templateUrl: './product-page.html',
@@ -88,6 +91,25 @@ export class ProductPage {
     });
   });
 
+  /** The saved version the form stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'product',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadProduct(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      const options = this.facade.options();
+      return current && options
+        ? productValues(current, options, this.facade.customFields(), this.facade.defaultUnitCode())
+        : null;
+    },
+  });
+
   /** The subject of the defaults panel: the product once it exists. */
   protected readonly defaultsSubject = computed(() => {
     const current = this.current();
@@ -119,6 +141,8 @@ export class ProductPage {
         await this.router.navigate(['/products', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseProduct(companyId, id, input)) !== null) {
+      const form = this.form();
+      if (form !== null) this.sync.savedHere(form);
       this.feedback.success('products.saved');
     }
   }

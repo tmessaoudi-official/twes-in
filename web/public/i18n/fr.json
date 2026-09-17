@@ -1523,6 +1523,11 @@
     "take_theirs": "Prendre celle-ci",
     "keep_mine": "Garder la mienne",
     "notice": "{{name}} a modifié cette fiche.",
-    "notice_someone": "Cette fiche a été modifiée."
+    "notice_someone": "Cette fiche a été modifiée.",
+    "deleted": "{{name}} a supprimé cette fiche.",
+    "deleted_someone": "Cette fiche a été supprimée.",
+    "lines_conflict": "Les lignes ont aussi été modifiées dans la version enregistrée.",
+    "take_saved": "Prendre la version enregistrée",
+    "keep_typed": "Garder ma saisie"
   }
 }

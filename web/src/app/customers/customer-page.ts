@@ -4,7 +4,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  DestroyRef,
   effect,
   inject,
   input,
@@ -18,10 +17,8 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { RecordChanged } from '../shared/form/record-changed';
-import { RecordSync } from '../shared/form/record-sync';
-import { RequestActivity } from '../shared/feedback/request-activity';
-import { type LiveChange, LiveChanges } from '../shared/realtime/live-changes';
-import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
+import { liveRecord } from '../shared/form/live-record';
+import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
 import {
@@ -61,9 +58,6 @@ export class CustomerPage {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
-  private readonly activity = inject(RequestActivity);
-  /** The saved version the form stands on, and what another person's save changed in it (docs/SPEC.md § 7, 2026-09-17). */
-  protected readonly sync = new RecordSync();
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `customers/new`. */
   readonly customerId = input<string | undefined>(undefined);
@@ -112,6 +106,25 @@ export class CustomerPage {
     });
   });
 
+  /** The saved version the form stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'customer',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadCustomer(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      const options = this.facade.options();
+      return current && options
+        ? customerValues(current, options, this.facade.customFields())
+        : null;
+    },
+  });
+
   /** The subject of the defaults panel: the customer once it exists. */
   protected readonly defaultsSubject = computed(() => {
     const current = this.current();
@@ -130,15 +143,6 @@ export class CustomerPage {
   });
 
   constructor() {
-    effect(() => {
-      const form = this.form();
-      if (form !== null) untracked(() => this.sync.track(form.getRawValue()));
-    });
-    inject(LiveChanges).on(
-      ['customer'],
-      (changes) => void this.savedElsewhere(changes),
-      inject(DestroyRef),
-    );
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();
@@ -165,37 +169,8 @@ export class CustomerPage {
       }
     } else if ((await this.facade.reviseCustomer(companyId, id, input)) !== null) {
       const form = this.form();
-      if (form !== null) {
-        this.sync.track(form.getRawValue());
-        form.markAsPristine();
-      }
+      if (form !== null) this.sync.savedHere(form);
       this.feedback.success('customers.saved');
-    }
-  }
-
-  protected resolve(
-    form: DescriptorFormGroup,
-    { field, choice }: { field: string; choice: 'theirs' | 'mine' },
-  ): void {
-    if (choice === 'theirs') this.sync.takeTheirs(form, field);
-    else this.sync.keepMine(field);
-  }
-
-  /** Another tab or person saved this customer: read it again, and merge it into the form. */
-  private async savedElsewhere(changes: readonly LiveChange[]): Promise<void> {
-    const id = this.id();
-    const companyId = this.company()?.id;
-    const change = changes.filter((candidate) => candidate.id === id).at(-1);
-    if (change === undefined || id === null || !companyId) return;
-    await this.activity.quietly(() => this.facade.loadCustomer(companyId, id));
-    const form = this.form();
-    const options = this.facade.options();
-    const current = this.current();
-    if (form === null || options === null || !current) return;
-    const incoming = customerValues(current, options, this.facade.customFields());
-    if (this.sync.receive(form, incoming, change.actor) === 'updated') {
-      const name = change.actor?.name;
-      this.feedback.notice(name ? 'live.notice' : 'live.notice_someone', name ? { name } : {});
     }
   }
 

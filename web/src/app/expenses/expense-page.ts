@@ -18,6 +18,8 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { liveRecord } from '../shared/form/live-record';
+import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
@@ -47,6 +49,7 @@ import { Feedback } from '../shared/feedback/feedback';
     RouterLink,
     TranslatePipe,
     DescriptorForm,
+    RecordChanged,
     StatusBadge,
     AmountPipe,
     DayPipe,
@@ -107,6 +110,22 @@ export class ExpensePage {
       // one, so someone whose own day has already turned would be proposed a value it answers 422 to.
       return buildFormGroup(descriptor, expenseValues(current, todayIn(this.company()?.timezone)));
     });
+  });
+
+  /** The saved version the form stands on, and what another person's save changed in it. */
+  protected readonly sync = liveRecord({
+    kind: 'expense',
+    id: this.id,
+    form: this.form,
+    reload: async () => {
+      const companyId = this.company()?.id;
+      const id = this.id();
+      if (companyId && id !== null) await this.facade.loadExpense(companyId, id);
+    },
+    saved: () => {
+      const current = this.current();
+      return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
+    },
   });
   protected readonly paymentDescriptor = computed(() => {
     const options = this.facade.options();
@@ -173,6 +192,8 @@ export class ExpensePage {
         await this.router.navigate(['/expenses', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseExpense(companyId, id, input)) !== null) {
+      const form = this.form();
+      if (form !== null) this.sync.savedHere(form);
       this.feedback.success('expenses.saved');
     }
   }
