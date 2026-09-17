@@ -44,7 +44,7 @@ use Symfony\Component\Validator\Constraints as Assert;
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
             parameters: [
-                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, name, legal name, email or billing city, whatever their case and accents.'),
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, name, legal name, email, billing address or registration numbers, whatever their case and accents; under three characters, the exact number only.'),
                 'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['company', 'individual']]),
                 'customerGroupId' => new QueryParameter(schema: ['type' => 'string', 'format' => 'uuid'], constraints: [new Assert\Uuid()]),
                 'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),

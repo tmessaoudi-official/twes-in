@@ -22,7 +22,9 @@ use Symfony\Component\Uid\Uuid;
 final readonly class DoctrineCustomerRepository implements CustomerRepository
 {
     /** The words of `:text`, found through idx_customer_search: the index is built on this very SEARCH_TEXT expression. */
-    public const string MATCHES_WORDS = "SEARCH_TEXT(c.number, c.name, c.legalName, c.email, c.billingAddress.city) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    public const string MATCHES_WORDS = "SEARCH_TEXT(c.number, c.name, c.legalName, c.email, c.billingAddress.line1, c.billingAddress.postalCode, c.billingAddress.city, JSON_VALUES(c.identifiers)) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
+    /** Fewer characters than a trigram find only the customer numbered so, whatever the case (docs/SPEC.md § 7). */
+    private const int SHORTEST_WORDS = 3;
     private const array SORTED_BY = ['number' => 'c.number', 'name' => 'c.name', 'kind' => 'c.kind', 'customerGroup' => 'g.name', 'city' => 'c.billingAddress.city', 'isActive' => 'c.isActive'];
 
     public function __construct(private EntityManagerInterface $entityManager)
@@ -49,9 +51,11 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
             ->select('c', 'g', 'r')->from(Customer::class, 'c')
             ->leftJoin('c.group', 'g')->join('c.taxRegime', 'r')
             ->where('c.company = :company')->setParameter('company', $companyId, 'uuid');
-        if (null !== $search->text && '' !== trim($search->text)) {
-            $query->andWhere(self::MATCHES_WORDS)
-                ->setParameter('text', SearchText::escapeLike(trim($search->text)));
+        $words = trim($search->text ?? '');
+        if (mb_strlen($words) >= self::SHORTEST_WORDS) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(c.number) = LOWER(:number)')->setParameter('number', $words);
         }
         if (null !== $search->kind) {
             $query->andWhere('c.kind = :kind')->setParameter('kind', $search->kind->value);

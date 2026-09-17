@@ -201,7 +201,8 @@ final class CustomersTest extends ApiTestCase
         $this->em()->persist($retail);
         $regime = $this->standardRegime();
         $now = new \DateTimeImmutable();
-        $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthagé Conseil', email: 'contact@carthage.tn', billingAddress: new PostalAddress(city: 'Sfax')), $retail, $regime, [], $now));
+        $this->em()->persist(Customer::create($this->company, 'CLI-0001', new CustomerProfile(CustomerKind::Company, 'Carthagé Conseil', identifiers: ['matricule_fiscal' => self::MATRICULE], email: 'contact@carthage.tn', billingAddress: new PostalAddress('12, rue du Lac Léman', null, '1053', 'Sfax')), $retail, $regime, [], $now));
+        $this->em()->persist(Customer::create($this->company, 'K9', new CustomerProfile(CustomerKind::Individual, 'Kais'), null, $regime, [], $now));
         $this->em()->persist(Customer::create($this->company, 'CLI-0002', new CustomerProfile(CustomerKind::Individual, 'Amel Ben Salah', billingAddress: new PostalAddress(city: 'Tunis')), null, $regime, [], $now));
         $retired = Customer::create($this->company, 'CLI-0003', new CustomerProfile(CustomerKind::Company, 'Zitouna Négoce', legalName: 'Société Zitouna'), $retail, $regime, [], $now);
         $retired->revise('CLI-0003', $retired->getProfile(), $retail, $regime, [], false, $now);
@@ -216,14 +217,20 @@ final class CustomersTest extends ApiTestCase
             'q=cli-0002' => ['CLI-0002'],
             'q=societe' => ['CLI-0003'],
             'q=tunis' => ['CLI-0002'],
-            'order[city]=asc&isActive=true' => ['CLI-0001', 'CLI-0002'],
+            'q=lac leman' => ['CLI-0001'],
+            'q=1053' => ['CLI-0001'],
+            'q=1234567a' => ['CLI-0001'],
+            'q=matricule' => [],
+            'q=ca' => [],
+            'q=k9' => ['K9'],
+            'order[city]=asc&isActive=true' => ['CLI-0001', 'CLI-0002', 'K9'],
             'q=nobody' => [],
-            'kind=individual' => ['CLI-0002'],
+            'kind=individual' => ['CLI-0002', 'K9'],
             'isActive=false' => ['CLI-0003'],
             'customerGroupId='.$retailId => ['CLI-0001', 'CLI-0003'],
             'customerGroupId='.$retailId.'&isActive=true' => ['CLI-0001'],
-            'order[name]=desc' => ['CLI-0003', 'CLI-0001', 'CLI-0002'],
-            'order[number]=desc' => ['CLI-0003', 'CLI-0002', 'CLI-0001'],
+            'order[name]=desc' => ['CLI-0003', 'K9', 'CLI-0001', 'CLI-0002'],
+            'order[number]=desc' => ['K9', 'CLI-0003', 'CLI-0002', 'CLI-0001'],
         ] as $query => $numbers) {
             $this->getJson($this->path().'?'.$query);
             self::assertResponseIsSuccessful($query);

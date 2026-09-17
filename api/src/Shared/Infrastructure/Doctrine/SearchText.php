@@ -22,7 +22,7 @@ use Doctrine\ORM\Query\TokenType;
  */
 final class SearchText extends FunctionNode
 {
-    /** @var list<Node|string> */
+    /** @var list<Node> */
     private array $parts = [];
 
     public function parse(Parser $parser): void
@@ -39,7 +39,7 @@ final class SearchText extends FunctionNode
 
     public function getSql(SqlWalker $sqlWalker): string
     {
-        return 'search_text('.implode(', ', array_map(static fn (Node|string $part): string => $sqlWalker->walkStringPrimary($part), $this->parts)).')';
+        return 'search_text('.implode(', ', array_map(static fn (Node $part): string => $sqlWalker->walkStringPrimary($part), $this->parts)).')';
     }
 
     /** Words as LIKE reads them literally: a `%` or `_` someone typed is looked for, not a wildcard. */

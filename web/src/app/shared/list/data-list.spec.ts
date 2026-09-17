@@ -3,6 +3,7 @@
 import { ChangeDetectionStrategy, Component, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import {
   provideTranslateLoader,
   provideTranslateService,
@@ -196,6 +197,7 @@ describe('DataList', () => {
     saved?: ListPreferences,
     savedViews?: ListView[],
     initialRows: Customer[] = all,
+    queryParams: Record<string, string> = {},
   ): Promise<void> {
     TestBed.resetTestingModule();
     TestBed.configureTestingModule({
@@ -205,6 +207,11 @@ describe('DataList', () => {
           lang: 'en',
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
+        provideRouter([]),
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: convertToParamMap(queryParams) } },
+        },
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: storage },
@@ -573,6 +580,48 @@ describe('DataList', () => {
 
       expect(server.nativeElement.querySelectorAll('.twes-row-new')).toHaveLength(0);
       expect(q('list-new')).toBeNull();
+    });
+
+    it('opens on the page, words, filter options, sort and size the address names', async () => {
+      server.destroy();
+      await mount(undefined, undefined, all, {
+        q: 'sfax',
+        status: 'archived',
+        sort: '-name',
+        page: '2',
+        size: '25',
+        unknown: 'x',
+      });
+      fixture.destroy();
+      server = TestBed.createComponent(ServerHost);
+      await settleServer();
+
+      expect(queries()).toEqual([
+        {
+          query: 'sfax',
+          filters: { status: 'archived' },
+          sort: { column: 'name', direction: 'desc' },
+          pageIndex: 1,
+          pageSize: 25,
+        },
+      ]);
+      expect((q('list-filter') as HTMLInputElement).value).toBe('sfax');
+      expect(q('list-facet-status-archived')?.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('keeps what a person chose in the address, in place of the previous one', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+
+      q('list-facet-status-active')!.click();
+      q('list-header-name')!.click();
+      await settleServer();
+
+      expect(navigate).toHaveBeenLastCalledWith([], {
+        relativeTo: TestBed.inject(ActivatedRoute),
+        queryParams: { q: null, status: 'active', sort: 'name', page: null, size: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
     });
 
     it('says the list is empty, or that nothing matches what a person asked for', async () => {

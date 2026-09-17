@@ -12,8 +12,9 @@ namespace App\Module\Customers\Domain;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * What a customers list asks for: words found in the number, name, legal name, email or billing city, whatever their
- * case and accents, the choices that narrow it, and the order, always ending on the number so a page never shifts.
+ * What a customers list asks for: words found in the number, name, legal name, email, billing address or registration
+ * numbers, whatever their case and accents (under three characters, the number only), the choices that narrow it,
+ * and the order, always ending on the number so a page never shifts.
  */
 final readonly class CustomerSearch
 {

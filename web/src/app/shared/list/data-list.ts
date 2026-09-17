@@ -21,6 +21,7 @@ import {
   inject,
   input,
   linkedSignal,
+  type OnInit,
   output,
   signal,
   TemplateRef,
@@ -33,6 +34,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
+import { ActivatedRoute, type Params, Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
@@ -96,7 +98,10 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
  * and the pure functions in list-view.ts; what a person chose is kept through the presentation settings.
  *
  * A list the API pages (docs/SPEC.md § 7, lists at scale) is given its `total`: the rows are then one page, shown as
- * they come, and the list says through `queryChange` which words, filter options, sort and page it wants.
+ * they come, and the list says through `queryChange` which words, filter options, sort and page it wants. That state
+ * also lives in the address (`q`, one parameter per filter, `sort` as `name` or `-name`, `page` from 1, `size`), so a
+ * reload, a bookmark or a shared link opens the same page; each change replaces the address rather than adding to
+ * the history.
  */
 @Component({
   selector: 'app-data-list',
@@ -118,8 +123,10 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
   templateUrl: './data-list.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DataList<Row> {
+export class DataList<Row> implements OnInit {
   private readonly settings = inject(SettingsFacade);
+  private readonly router = inject(Router, { optional: true });
+  private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -170,8 +177,10 @@ export class DataList<Row> {
       visible: isColumnVisible(column, this.preferences()),
     })),
   );
+  /** A sort the address named: it wins over the one a person saved until they pick another. */
+  private readonly addressSort = signal<ListSort | null>(null);
   protected readonly sort = computed<ListSort | null>(
-    () => this.preferences().sort ?? this.descriptor().defaultSort ?? null,
+    () => this.addressSort() ?? this.preferences().sort ?? this.descriptor().defaultSort ?? null,
   );
   protected readonly filterable = computed(() =>
     this.descriptor().columns.some((column) => column.filterable),
@@ -285,6 +294,33 @@ export class DataList<Row> {
     });
   }
 
+  /** A list the API pages opens on what the address names; anything it does not recognise is left out. */
+  ngOnInit(): void {
+    const params = this.route?.snapshot.queryParamMap;
+    if (!this.byApi() || !params) return;
+    const descriptor = this.descriptor();
+    const words = params.get('q') ?? '';
+    this.query.set(words);
+    this.searched.set(words);
+    const chosen: ListFilterValues = {};
+    for (const filter of descriptor.filters ?? []) {
+      const value = params.get(filter.id);
+      if (filter.options.some((option) => option.value === value) && value !== null) {
+        chosen[filter.id] = value;
+      }
+    }
+    this.chosenFilters.set(chosen);
+    const sort = params.get('sort');
+    const column = sort?.replace(/^-/, '');
+    if (sort && descriptor.columns.some((known) => known.id === column && known.sortable)) {
+      this.addressSort.set({ column: column!, direction: sort.startsWith('-') ? 'desc' : 'asc' });
+    }
+    const size = Number(params.get('size'));
+    if (descriptor.pageSizes.includes(size)) this.pageSize.set(size);
+    const page = Number(params.get('page'));
+    if (Number.isInteger(page) && page > 1) this.pageIndex.set(page - 1);
+  }
+
   /**
    * Asks for another page unless it is the one already asked for, as an option picked again or a view with the same
    * choices would. The next rows answer a new question, so none of them "arrived".
@@ -302,6 +338,36 @@ export class DataList<Row> {
     this.seen = null;
     this.arrived.set(new Set());
     this.queryChange.emit(query);
+    this.keepInAddress(query);
+  }
+
+  /** Writes the state into the address, leaving it untouched when it already says so (as on opening). */
+  private keepInAddress(query: ListQuery): void {
+    if (!this.router || !this.route) return;
+    const descriptor = this.descriptor();
+    const defaultSort = descriptor.defaultSort ?? null;
+    const sorted =
+      query.sort === null ||
+      (query.sort.column === defaultSort?.column && query.sort.direction === defaultSort.direction)
+        ? null
+        : `${query.sort.direction === 'desc' ? '-' : ''}${query.sort.column}`;
+    const queryParams: Params = {
+      q: query.query === '' ? null : query.query,
+      ...Object.fromEntries(
+        (descriptor.filters ?? []).map((filter) => [filter.id, query.filters[filter.id] ?? null]),
+      ),
+      sort: sorted,
+      page: query.pageIndex === 0 ? null : String(query.pageIndex + 1),
+      size: query.pageSize === descriptor.pageSizes[0] ? null : String(query.pageSize),
+    };
+    const current = this.route.snapshot.queryParamMap;
+    if (Object.entries(queryParams).every(([key, value]) => current.get(key) === value)) return;
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /** The words take effect at once on a list with every row, after a pause on a list the API pages. */
@@ -418,6 +484,7 @@ export class DataList<Row> {
   }
 
   protected onSort(sort: Sort): void {
+    this.addressSort.set(null);
     this.save({
       sort: sort.direction === '' ? null : { column: sort.active, direction: sort.direction },
     });

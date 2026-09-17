@@ -33,6 +33,7 @@ doctrine:
             string_functions:
                 # A list's words, lower case without accents, as its trigram index reads them (docs/SPEC.md § 7).
                 SEARCH_TEXT: App\Shared\Infrastructure\Doctrine\SearchText
+                JSON_VALUES: App\Shared\Infrastructure\Doctrine\JsonValues
         filters:
             # docs/SPEC.md § 3 Tenancy: off until CompanyGuard acts for a company, lifted when the request ends.
             company:

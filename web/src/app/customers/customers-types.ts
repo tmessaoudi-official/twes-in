@@ -17,7 +17,7 @@ export interface CustomerSearch {
   /** Numbered from 1. */
   page: number;
   itemsPerPage: number;
-  /** Words found in the number, name, legal name, email or billing city; empty finds every customer. */
+  /** Words found in the number, name, legal name, email, billing address or registration numbers; empty finds all. */
   q: string;
   kind: CustomerKind | null;
   isActive: boolean | null;

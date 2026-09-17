@@ -102,6 +102,11 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     // Filtered: the shared company holds more customers than a page, and this one may sort onto the next.
     await page.getByTestId('list-filter').fill(number);
     await expect(page.getByTestId(`customer-${number}`)).toContainText(groupName);
+    // The API searched it, and the address keeps the search: a reload opens the same list.
+    await expect(page).toHaveURL(new RegExp(`[?&]q=${number}`));
+    await page.reload();
+    await expect(page.getByTestId('list-filter')).toHaveValue(number);
+    await expect(page.getByTestId(`customer-${number}`)).toBeVisible();
   } finally {
     await retire(page, number, groupName);
   }
