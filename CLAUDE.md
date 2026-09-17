@@ -220,3 +220,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
   toasts a save that changed nothing. `LiveRecord.savedHere` writes the answer into the controls (2026-09-17).
 - The shared Demo company outgrows a list page as e2e runs leave rows behind (52 customers on 2026-09-16, 25 a page): a
   scenario asserting its new row in a list filters the list first, or the row sorts onto page 2 and reads as missing.
+- Several unrelated e2e signing in and landing on `/two-factor` is Demo's `mfa_required` left `true` on this machine,
+  not a regression: the seed never sets it, so CI is green on the same commit. Read it with
+  `docker compose exec -T postgres psql -U twes -d twes -c "SELECT mfa_required FROM company WHERE name='Demo'"`.
+- Playwright's `error-context.md` snapshots the default `page` fixture, so a failure inside a second
+  `browser.newContext()` page shows another page entirely; read that page's last `screencast/page@<id>-*.jpeg` in the
+  trace zip instead. Its frame is what showed a form whose inputs had collapsed to nothing (2026-09-17).
+- `make gate`'s licence half is ELEVEN scripts (`.github/workflows/ci.yml`'s `licences` job), not
+  `dependency-licences.php` alone: running that one and calling the job green put a red on master (2026-09-17).
