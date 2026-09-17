@@ -11,13 +11,15 @@ import {
   signal,
 } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
-import type { FormDescriptor, FormField, FormSection, FormValues } from './form-types';
+import type { FieldConflict } from './form-merge';
+import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } from './form-types';
 import { applicableValues, applyVisibility, fieldApplies } from './form-visibility';
 
 /**
@@ -31,6 +33,7 @@ import { applicableValues, applyVisibility, fieldApplies } from './form-visibili
   selector: 'app-descriptor-form',
   imports: [
     ReactiveFormsModule,
+    MatButtonModule,
     MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
@@ -49,6 +52,11 @@ export class DescriptorForm {
   /** Shows the values with every field disabled, for someone who may read but not change them. */
   readonly readOnly = input(false);
   readonly submitted = output<FormValues>();
+  /** Fields another person's saved version just changed, highlighted for a moment (docs/SPEC.md § 7, 2026-09-17). */
+  readonly updated = input<ReadonlySet<string>>(new Set());
+  /** Fields both people changed: each shows the other version and a choice. */
+  readonly conflicts = input<readonly FieldConflict[]>([]);
+  readonly resolved = output<{ field: string; choice: 'theirs' | 'mine' }>();
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the messages. */
   private readonly revision = signal(0);
@@ -76,6 +84,18 @@ export class DescriptorForm {
     this.revision();
     const control = this.form().controls[field.id];
     return control?.touched ? fieldError(control, field) : null;
+  }
+
+  protected conflictFor(field: FormField): FieldConflict | null {
+    return this.conflicts().find((conflict) => conflict.field === field.id) ?? null;
+  }
+
+  /** A value as the field shows it: a choice by its label, a box as ticked or not. */
+  protected shown(field: FormField, value: FieldValue): string {
+    if (value === null || value === '') return '—';
+    if (field.kind === 'checkbox') return value === true ? '✓' : '✗';
+    const option = field.options?.find((candidate) => candidate.value === value);
+    return option ? option.label : String(value);
   }
 
   /** Unique per form on the page, so two forms with the same field ids never share a label. */

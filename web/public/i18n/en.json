@@ -1512,5 +1512,17 @@
     "offline": "You are offline: nothing can be saved for now.",
     "restored": "Connection restored.",
     "close": "Close"
+  },
+  "live": {
+    "changed_by": "{{name}} saved another version of this record while you were editing it.",
+    "changed_by_someone": "Another version of this record was saved while you were editing it.",
+    "conflicts": "Fields changed on both sides: {{count}}. Choose for each, or save to keep what you typed.",
+    "merged": "The fields you had not touched were updated; what you typed is kept.",
+    "reload": "Reload the saved version",
+    "theirs": "Saved version: {{value}}",
+    "take_theirs": "Take this one",
+    "keep_mine": "Keep mine",
+    "notice": "{{name}} changed this record.",
+    "notice_someone": "This record was changed."
   }
 }

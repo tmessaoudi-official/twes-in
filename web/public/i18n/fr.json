@@ -1512,5 +1512,17 @@
     "offline": "Vous êtes hors ligne : rien ne peut être enregistré pour l’instant.",
     "restored": "Connexion rétablie.",
     "close": "Fermer"
+  },
+  "live": {
+    "changed_by": "{{name}} a enregistré une autre version de cette fiche pendant que vous la modifiiez.",
+    "changed_by_someone": "Une autre version de cette fiche a été enregistrée pendant que vous la modifiiez.",
+    "conflicts": "Champs modifiés des deux côtés : {{count}}. Choisissez pour chacun, ou enregistrez pour garder votre saisie.",
+    "merged": "Les champs que vous n’aviez pas touchés ont été mis à jour ; votre saisie est conservée.",
+    "reload": "Recharger la version enregistrée",
+    "theirs": "Version enregistrée : {{value}}",
+    "take_theirs": "Prendre celle-ci",
+    "keep_mine": "Garder la mienne",
+    "notice": "{{name}} a modifié cette fiche.",
+    "notice_someone": "Cette fiche a été modifiée."
   }
 }

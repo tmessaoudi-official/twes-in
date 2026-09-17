@@ -1184,6 +1184,58 @@ body {
   color: var(--mat-sys-inverse-primary);
 }
 
+/* Row 49: another person's saved version, merged into an open editor. */
+.twes-field-updated {
+  animation: twes-field-updated 2.4s ease-out;
+  border-radius: 0.5rem;
+}
+
+@keyframes twes-field-updated {
+  from {
+    background-color: var(--mat-sys-secondary-container);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .twes-field-updated {
+    animation: none;
+    outline: 2px solid var(--mat-sys-secondary);
+    outline-offset: 2px;
+  }
+}
+
+.twes-field-conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.25rem 0.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
+  border-radius: 0.5rem;
+  background-color: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+  font: var(--mat-sys-body-small);
+}
+
+.twes-record-changed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.75rem 0.75rem 1rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: 0.75rem;
+  background-color: var(--mat-sys-tertiary-container);
+  color: var(--mat-sys-on-tertiary-container);
+}
+
+.twes-toast-notice .twes-toast-icon {
+  color: var(--mat-sys-inverse-primary);
+}
+
 .twes-toast-failure .twes-toast-icon {
   color: var(--twes-status-danger-dot, var(--mat-sys-error));
 }

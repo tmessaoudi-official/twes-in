@@ -8,9 +8,9 @@
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-# The page states: the session that ended, the sign-up request sent in place of its form, the slow request, and an
-# empty palette search.
-page_states=' login-expired signup-sent activity-slow command-empty '
+# The page states: the session that ended, the sign-up request sent in place of its form, the slow request, an empty
+# palette search, and a record another person saved while it was being edited here.
+page_states=' login-expired signup-sent activity-slow command-empty record-changed '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

@@ -26,6 +26,7 @@
               <div
                 class="flex flex-col gap-1 sm:pt-7"
                 [class]="spanClass(field)"
+                [class.twes-field-updated]="updated().has(field.id)"
                 [attr.data-testid]="'field-wrapper-' + field.id"
               >
                 <mat-checkbox [formControlName]="field.id" [attr.data-testid]="'field-' + field.id">
@@ -43,11 +44,41 @@
                     {{ error.key | translate: error.params }}
                   </span>
                 }
+                @if (conflictFor(field); as conflict) {
+                  <div
+                    class="twes-field-conflict"
+                    [attr.data-testid]="'field-conflict-' + field.id"
+                  >
+                    <span>{{
+                      'live.theirs'
+                        | translate: { value: (shown(field, conflict.theirs) | translate) }
+                    }}</span>
+                    <span class="flex flex-wrap gap-1">
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="resolved.emit({ field: field.id, choice: 'theirs' })"
+                        [attr.data-testid]="'field-take-theirs-' + field.id"
+                      >
+                        {{ 'live.take_theirs' | translate }}
+                      </button>
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="resolved.emit({ field: field.id, choice: 'mine' })"
+                        [attr.data-testid]="'field-keep-mine-' + field.id"
+                      >
+                        {{ 'live.keep_mine' | translate }}
+                      </button>
+                    </span>
+                  </div>
+                }
               </div>
             } @else {
               <div
                 class="flex min-w-0 flex-col gap-1.5"
                 [class]="spanClass(field)"
+                [class.twes-field-updated]="updated().has(field.id)"
                 [attr.data-testid]="'field-wrapper-' + field.id"
               >
                 <label
@@ -134,6 +165,35 @@
                     </mat-error>
                   }
                 </mat-form-field>
+                @if (conflictFor(field); as conflict) {
+                  <div
+                    class="twes-field-conflict"
+                    [attr.data-testid]="'field-conflict-' + field.id"
+                  >
+                    <span>{{
+                      'live.theirs'
+                        | translate: { value: (shown(field, conflict.theirs) | translate) }
+                    }}</span>
+                    <span class="flex flex-wrap gap-1">
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="resolved.emit({ field: field.id, choice: 'theirs' })"
+                        [attr.data-testid]="'field-take-theirs-' + field.id"
+                      >
+                        {{ 'live.take_theirs' | translate }}
+                      </button>
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="resolved.emit({ field: field.id, choice: 'mine' })"
+                        [attr.data-testid]="'field-keep-mine-' + field.id"
+                      >
+                        {{ 'live.keep_mine' | translate }}
+                      </button>
+                    </span>
+                  </div>
+                }
               </div>
             }
           }

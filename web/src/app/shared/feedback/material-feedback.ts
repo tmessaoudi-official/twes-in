@@ -6,6 +6,7 @@ import { Feedback } from './feedback';
 import { Toast, type ToastData } from './toast';
 
 export const SUCCESS_DURATION_MS = 4_000;
+export const NOTICE_DURATION_MS = 6_000;
 
 /**
  * Feedback as Material snack bars, one at a time, at the top of the window: the phone's navigation bar holds the
@@ -24,6 +25,17 @@ export class MaterialFeedback extends Feedback {
       verticalPosition: 'top',
       horizontalPosition: 'center',
       panelClass: ['twes-toast-panel', 'twes-toast-success'],
+    });
+  }
+
+  notice(key: string, params: Record<string, unknown> = {}): void {
+    this.snackBar.openFromComponent<Toast, ToastData>(Toast, {
+      data: { kind: 'notice', key, params },
+      politeness: 'polite',
+      duration: NOTICE_DURATION_MS,
+      verticalPosition: 'top',
+      horizontalPosition: 'center',
+      panelClass: ['twes-toast-panel', 'twes-toast-notice'],
     });
   }
 

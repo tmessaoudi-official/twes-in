@@ -8,7 +8,7 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
-import { MaterialFeedback, SUCCESS_DURATION_MS } from './material-feedback';
+import { MaterialFeedback, NOTICE_DURATION_MS, SUCCESS_DURATION_MS } from './material-feedback';
 import { Toast } from './toast';
 
 class StaticLoader implements TranslateLoader {
@@ -56,6 +56,18 @@ describe('MaterialFeedback', () => {
     expect(config?.politeness).toBe('assertive');
     expect(config?.duration).toBeUndefined();
     expect(config?.data).toEqual({ kind: 'failure', key: 'refused', params: {} });
+  });
+
+  it('says what someone else changed politely, a little longer, with its own look', () => {
+    const open = vi.spyOn(TestBed.inject(MatSnackBar), 'openFromComponent');
+    TestBed.inject(MaterialFeedback).notice('saved', { name: 'Acme' });
+
+    const config = open.mock.calls[0]?.[1];
+    expect(config?.politeness).toBe('polite');
+    expect(config?.duration).toBe(NOTICE_DURATION_MS);
+    expect(NOTICE_DURATION_MS).toBeGreaterThan(SUCCESS_DURATION_MS);
+    expect(config?.data).toEqual({ kind: 'notice', key: 'saved', params: { name: 'Acme' } });
+    expect(config?.panelClass).toContain('twes-toast-notice');
   });
 
   it('shows the translated message with a named way to close it', async () => {

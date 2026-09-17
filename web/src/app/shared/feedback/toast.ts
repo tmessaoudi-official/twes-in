@@ -8,7 +8,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
 
 export interface ToastData {
-  readonly kind: 'success' | 'failure';
+  readonly kind: 'success' | 'notice' | 'failure';
   readonly key: string;
   readonly params: Record<string, unknown>;
 }
@@ -20,7 +20,7 @@ export interface ToastData {
   template: `
     <div class="twes-toast" data-testid="toast" [attr.data-kind]="data.kind">
       <mat-icon aria-hidden="true" class="twes-toast-icon">{{
-        data.kind === 'success' ? 'check_circle' : 'error'
+        data.kind === 'success' ? 'check_circle' : data.kind === 'notice' ? 'sync' : 'error'
       }}</mat-icon>
       <span class="twes-toast-message">{{ data.key | translate: data.params }}</span>
       <button

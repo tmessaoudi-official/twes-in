@@ -7,11 +7,18 @@ import { RequestActivity } from '../feedback/request-activity';
 
 /** A Feedback a spec can read back: every toast it was asked for, in order. */
 export class RecordedFeedback extends Feedback {
-  readonly said: { kind: 'success' | 'failure'; key: string; params?: Record<string, unknown> }[] =
-    [];
+  readonly said: {
+    kind: 'success' | 'notice' | 'failure';
+    key: string;
+    params?: Record<string, unknown>;
+  }[] = [];
 
   success(key: string, params?: Record<string, unknown>): void {
     this.said.push({ kind: 'success', key, params });
+  }
+
+  notice(key: string, params?: Record<string, unknown>): void {
+    this.said.push({ kind: 'notice', key, params });
   }
 
   failure(key: string, params?: Record<string, unknown>): void {

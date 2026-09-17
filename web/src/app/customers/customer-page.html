@@ -23,6 +23,13 @@
   }
 
   @if (form(); as form) {
+    @if (sync.changedBy(); as changedBy) {
+      <app-record-changed
+        [changedBy]="changedBy"
+        [conflictCount]="sync.conflicts().length"
+        (reload)="sync.reloadSaved(form)"
+      />
+    }
     @if (descriptor(); as descriptor) {
       <mat-card>
         <mat-card-content>
@@ -31,6 +38,9 @@
             [form]="form"
             testId="customer-form"
             [readOnly]="!mayWrite()"
+            [updated]="sync.updated()"
+            [conflicts]="sync.conflicts()"
+            (resolved)="resolve(form, $event)"
             (submitted)="save($event)"
           >
             @if (mayWrite()) {

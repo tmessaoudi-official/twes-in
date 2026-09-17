@@ -32,12 +32,19 @@ import type {
   CustomerRow,
   CustomersError,
 } from './customers-types';
-import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { Feedback } from '../shared/feedback/feedback';
+import { LiveChanges, type LiveChange } from '../shared/realtime/live-changes';
+import {
+  provideQuietFeedback,
+  type RecordedFeedback,
+  successToasts,
+} from '../shared/testing/feedback';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       customers: { errors: { number_taken: 'Un autre client porte déjà ce numéro.' } },
+      live: { changed_by: '{{name}} a modifié cette fiche pendant votre saisie.' },
     });
   }
 }
@@ -119,6 +126,28 @@ describe('CustomerPage', () => {
     reset: vi.fn(),
     clearError: vi.fn(),
   };
+  let heard: { kinds: readonly string[]; handler: (changes: readonly LiveChange[]) => void }[] = [];
+  const live = {
+    on: (kinds: readonly string[], handler: (changes: readonly LiveChange[]) => void) =>
+      heard.push({ kinds, handler }),
+    reloadOn: vi.fn(),
+  };
+  /** Another person's save of this customer arrives: the API now holds `saved`. */
+  async function savedElsewhere(saved: CustomerRow): Promise<void> {
+    facade.loadCustomer.mockImplementationOnce(async () => customer.set(saved));
+    for (const listener of heard.filter((entry) => entry.kinds.includes('customer'))) {
+      listener.handler([
+        {
+          kind: 'customer',
+          id: saved.id,
+          action: 'customer.revised',
+          actor: { id: 'u2', name: 'Nadia' },
+        },
+      ]);
+    }
+    await vi.waitFor(() => expect(facade.loadCustomer).toHaveBeenLastCalledWith('c1', saved.id));
+    await settle();
+  }
   let fixture: ComponentFixture<CustomerPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -145,6 +174,7 @@ describe('CustomerPage', () => {
   }
 
   beforeEach(() => {
+    heard = [];
     error.set(null);
     customer.set(null);
     customFields.set([]);
@@ -171,6 +201,7 @@ describe('CustomerPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CustomersFacade, useValue: facade },
+        { provide: LiveChanges, useValue: live },
         { provide: PartySettings, useValue: partySettings },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -248,6 +279,47 @@ describe('CustomerPage', () => {
     await settle();
 
     expect(facade.createCustomer).not.toHaveBeenCalled();
+  });
+
+  it('shows what another person saved on a quiet form, and says who changed it', async () => {
+    customer.set(carthage);
+    await open('k1');
+
+    await savedElsewhere({ ...carthage, name: 'Carthage Conseil SARL' });
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Carthage Conseil SARL');
+    expect(q('field-wrapper-name')?.classList).toContain('twes-field-updated');
+    expect(q('record-changed')).toBeNull();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toContainEqual({
+      kind: 'notice',
+      key: 'live.notice',
+      params: { name: 'Nadia' },
+    });
+  });
+
+  it('while typing, keeps the typed field, updates the others, and offers the saved version where both changed', async () => {
+    customer.set(carthage);
+    await open('k1');
+    type('field-name', 'Carthage & associés');
+    type('field-email', 'contact@carthage.tn');
+
+    await savedElsewhere({ ...carthage, name: 'Carthage Conseil SARL', phone: '71 000 000' });
+
+    expect((q('field-name') as HTMLInputElement).value).toBe('Carthage & associés');
+    expect((q('field-phone') as HTMLInputElement).value).toBe('71 000 000');
+    expect(q('record-changed')?.textContent).toContain('Nadia');
+    expect(q('field-conflict-name')).not.toBeNull();
+    expect(q('field-conflict-email')).toBeNull();
+
+    q('field-take-theirs-name')!.click();
+    await settle();
+    expect((q('field-name') as HTMLInputElement).value).toBe('Carthage Conseil SARL');
+    expect(q('field-conflict-name')).toBeNull();
+
+    q('record-reload')!.click();
+    await settle();
+    expect((q('field-email') as HTMLInputElement).value).toBe('');
+    expect(q('record-changed')).toBeNull();
   });
 
   it('revises an existing customer and lists its contacts', async () => {
