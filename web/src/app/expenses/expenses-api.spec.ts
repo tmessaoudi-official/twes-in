@@ -70,6 +70,57 @@ describe('ExpensesApi', () => {
     });
   });
 
+  it('asks the API for one page of expenses, with what it searches, narrows and sorts by', async () => {
+    const pending = api.expenses('c1', {
+      page: 2,
+      itemsPerPage: 50,
+      q: '  gasoil  ',
+      status: 'recorded',
+      vendorId: 'v1',
+      categoryId: 'k1',
+      order: { key: 'amountGross', direction: 'desc' },
+    });
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/companies/c1/expenses' && candidate.method === 'GET',
+    );
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.get('page')).toBe('2');
+    expect(request.request.params.get('itemsPerPage')).toBe('50');
+    // Trimmed, so a trailing space is not a different search.
+    expect(request.request.params.get('q')).toBe('gasoil');
+    expect(request.request.params.get('status')).toBe('recorded');
+    expect(request.request.params.get('vendorId')).toBe('v1');
+    expect(request.request.params.get('categoryId')).toBe('k1');
+    expect(request.request.params.get('order[amountGross]')).toBe('desc');
+    request.flush({
+      member: [{ id: 'e1', description: 'Gasoil', amountGross: '119.000' }],
+      totalItems: 64,
+    });
+
+    const page = await pending;
+    expect(page.rows.map((row) => row.description)).toEqual(['Gasoil']);
+    expect(page.total).toBe(64);
+  });
+
+  it('refuses a page that came without its total, rather than showing one page as the whole list', async () => {
+    const pending = api.expenses('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      status: null,
+      vendorId: null,
+      categoryId: null,
+      order: null,
+    });
+    const request = http.expectOne(
+      (candidate) => candidate.url === '/api/companies/c1/expenses' && candidate.method === 'GET',
+    );
+    expect(request.request.params.has('q')).toBe(false);
+    expect(request.request.params.has('status')).toBe(false);
+    request.flush({ member: [] });
+    await expect(pending).rejects.toThrow();
+  });
+
   it('sends what was typed, records and pays on their own addresses', async () => {
     const created = api.createExpense('c1', fuel);
     const post = http.expectOne('/api/companies/c1/expenses');

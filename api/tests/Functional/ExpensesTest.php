@@ -288,6 +288,70 @@ final class ExpensesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $this->signedIn(['expense.read', 'expense.write']);
+        $fuel = $this->category('Carburant');
+        $rent = $this->category('Loyer');
+        // The kernel reboots between requests, so the company this case holds is detached by the time it is needed.
+        $company = $this->em()->find(Company::class, $this->company->getId());
+        self::assertInstanceOf(Company::class, $company);
+        $other = Vendor::create($company, 'FRN-0002', new VendorProfile('Immobilière du Lac'), new \DateTimeImmutable());
+        $this->em()->persist($other);
+        $this->em()->flush();
+        $otherId = $other->getId()->toRfc4122();
+
+        $this->postJson($this->path(), $this->expense(['categoryId' => $fuel]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $recorded = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($recorded).'/record', null);
+        self::assertResponseIsSuccessful();
+        $this->postJson($this->path(), $this->expense([
+            'date' => '2026-09-12',
+            'reference' => 'Q-88',
+            'description' => 'Loyer du dépôt',
+            'vendorId' => $otherId,
+            'categoryId' => $rent,
+            'amountNet' => '900',
+        ]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->path());
+        self::assertCount(2, $this->jsonList());
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+
+        $this->getJson($this->path().'?itemsPerPage=1');
+        self::assertCount(1, $this->jsonList());
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+
+        foreach ([
+            // The searchable text is the expense's own: what it is for, and the vendor's reference on it.
+            'q=loyer' => ['Loyer du dépôt'],
+            'q=GASOIL' => ['Gasoil septembre'],
+            'q=F-2026-118' => ['Gasoil septembre'],
+            'q=zzzz' => [],
+            'status=draft' => ['Loyer du dépôt'],
+            'status=recorded' => ['Gasoil septembre'],
+            'vendorId='.$otherId => ['Loyer du dépôt'],
+            'categoryId='.$fuel => ['Gasoil septembre'],
+            // The list reads the latest day first, so asking for the oldest is asking for the other end.
+            'order[date]=asc' => ['Gasoil septembre', 'Loyer du dépôt'],
+            'order[amountGross]=desc&itemsPerPage=1' => ['Loyer du dépôt'],
+            'order[vendor]=asc&itemsPerPage=1' => ['Loyer du dépôt'],
+        ] as $query => $descriptions) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($descriptions, array_column($this->jsonList(), 'description'), $query);
+        }
+
+        // A narrowing the API cannot honour is refused rather than quietly dropped, which would answer the whole list
+        // to a request that asked for part of it.
+        foreach (['status=spent-ish', 'vendorId=not-an-id', 'categoryId=not-an-id'] as $refused) {
+            $this->getJson($this->path().'?'.$refused);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $refused);
+        }
+    }
+
     private function category(string $name, ?string $parentId = null): string
     {
         $this->postJson($this->companyPath().'/expense-categories', ['name' => $name, 'parentId' => $parentId, 'isActive' => true]);

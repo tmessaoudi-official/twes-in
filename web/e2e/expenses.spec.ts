@@ -101,7 +101,10 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await expect(page.getByTestId('expense-paid')).toBeVisible();
     expect(await wcagViolations(page)).toEqual([]);
 
+    // The API pages this list and the shared company outgrows one page, so the row is searched for rather than
+    // expected among the newest few.
     await page.goto('/expenses');
+    await page.getByTestId('list-filter').fill(description);
     await expect(page.getByTestId('expenses-table')).toContainText(description);
   } finally {
     await retire(page, category);

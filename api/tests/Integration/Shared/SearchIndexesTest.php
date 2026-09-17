@@ -11,6 +11,8 @@ namespace App\Tests\Integration\Shared;
 
 use App\Module\Customers\Domain\Customer;
 use App\Module\Customers\Infrastructure\Doctrine\DoctrineCustomerRepository;
+use App\Module\Expenses\Domain\Expense;
+use App\Module\Expenses\Infrastructure\Doctrine\DoctrineExpenseRepository;
 use App\Module\Invoices\Domain\Invoice;
 use App\Module\Invoices\Infrastructure\Doctrine\DoctrineInvoiceRepository;
 use App\Module\Products\Domain\Product;
@@ -35,6 +37,7 @@ final class SearchIndexesTest extends KernelTestCase
         yield 'products' => [Product::class, 'p', DoctrineProductRepository::MATCHES_WORDS, 'idx_product_search'];
         yield 'vendors' => [Vendor::class, 'v', DoctrineVendorRepository::MATCHES_WORDS, 'idx_vendor_search'];
         yield 'invoices' => [Invoice::class, 'i', DoctrineInvoiceRepository::MATCHES_WORDS, 'idx_invoice_search'];
+        yield 'expenses' => [Expense::class, 'e', DoctrineExpenseRepository::MATCHES_WORDS, 'idx_expense_search'];
     }
 
     /** @param class-string $entity */

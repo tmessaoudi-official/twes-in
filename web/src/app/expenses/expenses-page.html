@@ -23,6 +23,8 @@
     <app-data-list
       [descriptor]="list"
       [rows]="rows()"
+      [total]="total()"
+      (queryChange)="onQuery($event)"
       testId="expenses-table"
       [rowTestId]="rowTestId"
       emptyKey="expenses.none"

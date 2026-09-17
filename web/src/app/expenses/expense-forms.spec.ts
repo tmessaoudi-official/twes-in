@@ -8,7 +8,9 @@ import {
   categoryListRows,
   expenseForm,
   expenseInput,
+  expenseSearch,
   expenseValues,
+  EXPENSES_LIST,
   paymentInput,
 } from './expense-forms';
 import type { ExpenseCategoryRow, ExpenseOptions } from './expenses-types';
@@ -41,6 +43,43 @@ const options: ExpenseOptions = {
 };
 
 describe('expense forms', () => {
+  describe('expenseSearch', () => {
+    const query = {
+      pageIndex: 0,
+      pageSize: 25,
+      query: '',
+      filters: {} as Record<string, string>,
+      sort: null,
+    };
+
+    it('asks for the page the list shows, numbered from one', () => {
+      expect(expenseSearch({ ...query, pageIndex: 3, pageSize: 100 })).toMatchObject({
+        page: 4,
+        itemsPerPage: 100,
+      });
+    });
+
+    it('passes a status it knows and drops one it does not', () => {
+      expect(expenseSearch({ ...query, filters: { status: 'recorded' } }).status).toBe('recorded');
+      expect(expenseSearch({ ...query, filters: { status: 'nonsense' } }).status).toBeNull();
+    });
+
+    it('passes the sort the column names, and leaves the API its own order otherwise', () => {
+      expect(
+        expenseSearch({ ...query, sort: { column: 'vendor', direction: 'asc' } }).order,
+      ).toEqual({ key: 'vendor', direction: 'asc' });
+      // The due day is worked out from the vendor's terms, so the API cannot order a page by it.
+      expect(
+        expenseSearch({ ...query, sort: { column: 'dueDate', direction: 'asc' } }).order,
+      ).toBeNull();
+    });
+
+    it('offers no sort on a column the API cannot answer', () => {
+      const dueDate = EXPENSES_LIST.columns.find((column) => column.id === 'dueDate');
+      expect(dueDate?.sortable ?? false).toBe(false);
+    });
+  });
+
   it('accepts a net amount with no more decimals than the currency has', () => {
     const tnd = new RegExp(`^${amountPattern(3)}$`);
     expect(['0', '12', '12.5', '12,500', '10000000000.125'].every((value) => tnd.test(value))).toBe(

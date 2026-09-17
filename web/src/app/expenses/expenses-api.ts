@@ -1,17 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  ApiCompaniesCompanyIdexpensesGetCollectionResponse,
   ExpenseAttachmentExpenseAttachmentRead,
   ExpenseCategoryExpenseCategoryRead,
   ExpenseCategoryExpenseCategoryWrite,
   ExpenseExpensePay,
   ExpenseExpenseRead,
   ExpenseExpenseWrite,
+  ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
 } from '../api/types.gen';
+import type { ListPage } from '../shared/list/list-types';
 import type {
   ExpenseAttachment,
   ExpenseCategoryInput,
@@ -20,6 +23,7 @@ import type {
   ExpenseOptions,
   ExpensePayment,
   ExpenseRow,
+  ExpenseSearch,
   ExpensesError,
 } from './expenses-types';
 
@@ -55,12 +59,19 @@ export class ExpensesApi {
     );
   }
 
-  async expenses(companyId: string): Promise<ExpenseRow[]> {
-    return this.guard(EXPENSE, async () =>
-      (await firstValueFrom(this.http.get<ExpenseExpenseRead[]>(path(companyId, 'expenses')))).map(
-        toExpense,
-      ),
-    );
+  /** One page of the company's expenses, searched, narrowed and sorted by the API. */
+  async expenses(companyId: string, search: ExpenseSearch): Promise<ListPage<ExpenseRow>> {
+    return this.guard(EXPENSE, async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdexpensesGetCollectionResponse>(
+          path(companyId, 'expenses'),
+          { headers: { Accept: 'application/ld+json' }, params: toSearchParams(search) },
+        ),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of expenses came without its total.');
+      return { rows: page.member.map(toExpense), total: page.totalItems };
+    });
   }
 
   async expense(companyId: string, id: string): Promise<ExpenseRow> {
@@ -245,7 +256,7 @@ const path = (companyId: string, collection: string, id?: string): string =>
 const attachmentsPath = (companyId: string, expenseId: string): string =>
   `${path(companyId, 'expenses', expenseId)}/attachments`;
 
-function toExpense(raw: ExpenseExpenseRead): ExpenseRow {
+function toExpense(raw: ExpenseExpenseRead | ExpenseJsonldExpenseRead): ExpenseRow {
   return {
     id: raw.id ?? '',
     status: raw.status ?? 'draft',
@@ -268,6 +279,18 @@ function toExpense(raw: ExpenseExpenseRead): ExpenseRow {
     notes: raw.notes ?? null,
     attachmentCount: raw.attachmentCount ?? 0,
   };
+}
+
+/** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
+function toSearchParams(search: ExpenseSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.status !== null) params = params.set('status', search.status);
+  if (search.vendorId !== null) params = params.set('vendorId', search.vendorId);
+  if (search.categoryId !== null) params = params.set('categoryId', search.categoryId);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
 }
 
 function toExpenseBody(input: ExpenseInput): ExpenseExpenseWrite {

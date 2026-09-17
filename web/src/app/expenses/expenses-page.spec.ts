@@ -57,8 +57,9 @@ describe('ExpensesPage', () => {
   const expenses = signal<readonly ExpenseRow[]>([fuel]);
   const facade = {
     expenses: expenses.asReadonly(),
+    total: signal(1).asReadonly(),
     error: signal<ExpensesError | null>(null).asReadonly(),
-    loadList: vi.fn(),
+    loadPage: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -77,7 +78,7 @@ describe('ExpensesPage', () => {
   }
 
   beforeEach(() => {
-    facade.loadList.mockReset().mockResolvedValue(undefined);
+    facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [ExpensesPage],
@@ -102,7 +103,6 @@ describe('ExpensesPage', () => {
 
   it("lists the company's expenses with their vendor, total and status, each opened by its identifier", async () => {
     await create();
-    expect(facade.loadList).toHaveBeenCalledWith('c1');
     const row = q('expense-e1')?.textContent ?? '';
     expect(row).toContain('Gasoil');
     expect(row).toContain('Sotumag');
@@ -110,6 +110,14 @@ describe('ExpensesPage', () => {
     expect(row).toContain('Comptabilisée');
     expect(q('expense-open-e1')?.getAttribute('href')).toBe('/expenses/e1');
     expect(q('expense-add')?.getAttribute('href')).toBe('/expenses/new');
+  });
+
+  it('asks the API for the page the list wants, rather than reading the whole ledger', async () => {
+    await create();
+    expect(facade.loadPage).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ page: 1, itemsPerPage: 25, q: '', status: null }),
+    );
   });
 
   it('offers a reader no new expense', async () => {

@@ -23,11 +23,14 @@ use App\Module\Expenses\Domain\Expense;
 use App\Module\Expenses\Domain\ExpenseCategory;
 use App\Module\Expenses\Domain\ExpenseCategoryRepository;
 use App\Module\Expenses\Domain\ExpenseRepository;
+use App\Module\Expenses\Domain\ExpenseSearch;
 use App\Module\Expenses\Domain\ExpenseTransitionRefused;
 use App\Module\Expenses\Domain\InvalidExpense;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Shared\Domain\PaymentMethod;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
@@ -67,6 +70,16 @@ final readonly class ManageExpenses
     public function list(Company $company): array
     {
         return $this->expenses->ofCompany($company->getId());
+    }
+
+    /**
+     * One page of the company's expenses, searched, narrowed and sorted by the database.
+     *
+     * @return Page<Expense>
+     */
+    public function search(Company $company, ExpenseSearch $search, PageRequest $page): Page
+    {
+        return $this->expenses->search($company->getId(), $search, $page);
     }
 
     /** @throws ExpenseNotFound */

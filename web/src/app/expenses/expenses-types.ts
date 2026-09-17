@@ -24,6 +24,26 @@ export const EXPENSE_STATUS_TONES: Readonly<Record<ExpenseStatus, StatusTone>> =
 
 export type PaymentMethod = 'transfer' | 'cash' | 'check' | 'card' | 'other';
 
+/**
+ * The sorts the API answers. The due day is not among them: it is the vendor's payment terms counted from the
+ * expense's day, worked out when the expense is read and not a column the database can order by.
+ */
+export type ExpenseSortKey =
+  'date' | 'description' | 'vendor' | 'category' | 'amountGross' | 'status';
+
+/** One page of the expenses list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+export interface ExpenseSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in what the expense is for or in the vendor's reference on it; empty finds all. */
+  q: string;
+  status: ExpenseStatus | null;
+  vendorId: string | null;
+  categoryId: string | null;
+  order: { key: ExpenseSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 export interface ExpenseRow {
   id: string;
   status: ExpenseStatus;

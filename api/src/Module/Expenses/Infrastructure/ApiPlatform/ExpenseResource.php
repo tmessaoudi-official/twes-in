@@ -16,6 +16,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Fiscal\Domain\Calculation\Decimal;
 use App\Module\Expenses\Application\ExpenseInput;
 use App\Module\Expenses\Domain\Expense;
@@ -40,6 +41,20 @@ use Symfony\Component\Validator\Constraints as Assert;
             provider: ExpenseCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: ['groups' => [self::READ]],
+            // One page at a time, with its total, which only JSON-LD carries.
+            outputFormats: ['jsonld' => ['application/ld+json']],
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in what the expense is for or in the vendor\'s reference on it, whatever their case and accents; under three characters, the exact reference only. The vendor\'s and the category\'s own names are not searched: narrow by vendorId or categoryId instead.'),
+                'status' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['draft', 'recorded', 'paid']]),
+                'vendorId' => new QueryParameter(schema: self::ID),
+                'categoryId' => new QueryParameter(schema: self::ID),
+                'order[date]' => new QueryParameter(schema: self::DIRECTION),
+                'order[description]' => new QueryParameter(schema: self::DIRECTION),
+                'order[vendor]' => new QueryParameter(schema: self::DIRECTION, description: 'By the vendor\'s current name; an expense with no vendor comes last whichever the direction.'),
+                'order[category]' => new QueryParameter(schema: self::DIRECTION, description: 'By the category\'s own name, not its parents\'; an expense with no category comes last whichever the direction.'),
+                'order[amountGross]' => new QueryParameter(schema: self::DIRECTION),
+                'order[status]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Get(
             uriTemplate: '/companies/{companyId}/expenses/{expenseId}',
@@ -96,6 +111,12 @@ final class ExpenseResource
     public const string READ = 'expense:read';
     public const string WRITE = 'expense:write';
     public const string PAY = 'expense:pay';
+
+    /** Which way one of the list's sorts reads. */
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
+
+    /** A parameter naming a row of another table. The format is what refuses anything else, with a 422. */
+    private const array ID = ['type' => 'string', 'format' => 'uuid'];
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]

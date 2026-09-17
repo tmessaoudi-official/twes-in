@@ -10,6 +10,7 @@ import type {
   ExpenseOptions,
   ExpensePayment,
   ExpenseRow,
+  ExpenseSearch,
   ExpensesError,
 } from './expenses-types';
 
@@ -23,10 +24,14 @@ export class ExpensesFacade {
   private readonly expenseSignal = signal<ExpenseRow | null>(null);
   private readonly attachmentsSignal = signal<readonly ExpenseAttachment[]>([]);
   private readonly categoriesSignal = signal<readonly ExpenseCategoryRow[]>([]);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<ExpensesError | null>(null);
 
   readonly expenses = this.expensesSignal.asReadonly();
+  /** How many expenses the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   readonly expense = this.expenseSignal.asReadonly();
   readonly attachments = this.attachmentsSignal.asReadonly();
@@ -34,8 +39,18 @@ export class ExpensesFacade {
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  async loadList(companyId: string): Promise<void> {
-    await this.read(async () => this.expensesSignal.set(await this.api.expenses(companyId)));
+  /**
+   * One page of the expenses the search finds. Only the latest search's answer is shown: typing sends one search per
+   * keystroke and they need not come back in order.
+   */
+  async loadPage(companyId: string, search: ExpenseSearch): Promise<void> {
+    const request = ++this.pageRequest;
+    await this.read(async () => {
+      const page = await this.api.expenses(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.expensesSignal.set(page.rows);
+      this.totalSignal.set(page.total);
+    });
   }
 
   /** What the expense screen needs: its options, and the expense with its files unless it is new. */

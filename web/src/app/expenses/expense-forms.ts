@@ -6,7 +6,7 @@ import type {
   FormDescriptor,
   FormValues,
 } from '../shared/form/form-types';
-import type { ListDescriptor } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   EXPENSE_STATUSES,
   type ExpenseCategoryInput,
@@ -15,6 +15,8 @@ import {
   type ExpenseOptions,
   type ExpensePayment,
   type ExpenseRow,
+  type ExpenseSearch,
+  type ExpenseSortKey,
   type PaymentMethod,
 } from './expenses-types';
 
@@ -74,9 +76,10 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
     },
     {
       id: 'dueDate',
+      // Not sortable: the due day is the vendor's terms counted from the expense's day, which is not a column the
+      // API can order a page by.
       label: `${FIELDS}.dueDate`,
       value: (row) => row.dueDate ?? '',
-      sortable: true,
       defaultHidden: true,
       width: 130,
     },
@@ -100,6 +103,31 @@ export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
     },
   ],
 };
+
+const SORT_KEYS: Readonly<Record<string, ExpenseSortKey>> = {
+  date: 'date',
+  description: 'description',
+  vendor: 'vendor',
+  category: 'category',
+  amountGross: 'amountGross',
+  status: 'status',
+};
+
+/** What the API is asked for the page of expenses the list shows. */
+export function expenseSearch(query: ListQuery): ExpenseSearch {
+  const status = EXPENSE_STATUSES.find((known) => known === query.filters['status']) ?? null;
+  const key = query.sort === null ? undefined : SORT_KEYS[query.sort.column];
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    status,
+    vendorId: null,
+    categoryId: null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
+}
 
 /** A net amount above zero with no more decimals than the currency has. */
 export function amountPattern(scale: number): string {
