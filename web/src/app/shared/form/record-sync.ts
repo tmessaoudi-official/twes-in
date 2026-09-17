@@ -21,7 +21,8 @@ export interface ChangedBy {
  * (docs/SPEC.md § 7, 2026-09-17). The page tracks the version it built its form from and each version it saves;
  * when another person's version arrives, the fields nobody touched here take it and are highlighted, typed fields
  * are kept, and a field both changed waits for a choice. `receive` answers `updated` when the form was quiet (the
- * page says so with a notice) and `editing` when something was being typed (the page shows the banner instead).
+ * page says so with a notice), `editing` when something was being typed (the page shows the banner instead), and
+ * `unchanged` when the saved version shows nothing new here.
  */
 export class RecordSync {
   private base: FormValues | null = null;
@@ -48,7 +49,7 @@ export class RecordSync {
     incoming: FormValues,
     actor: ChangedBy | null,
     parts: PartsOutcome = { updated: [], conflicts: [], typing: false },
-  ): 'updated' | 'editing' {
+  ): 'updated' | 'editing' | 'unchanged' {
     const base = this.base ?? incoming;
     const typing =
       parts.typing ||
@@ -58,8 +59,10 @@ export class RecordSync {
       );
     const outcome = mergeSavedVersion(form, base, incoming);
     this.base = incoming;
-    this.updatedSignal.set(new Set([...outcome.updated, ...parts.updated]));
+    const updated = [...outcome.updated, ...parts.updated];
     const arrived = [...outcome.conflicts, ...parts.conflicts];
+    if (updated.length === 0 && arrived.length === 0) return 'unchanged';
+    this.updatedSignal.set(new Set(updated));
     const pending = this.conflictsSignal().filter(
       (conflict) => !arrived.some((next) => next.field === conflict.field),
     );

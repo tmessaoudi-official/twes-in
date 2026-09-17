@@ -15,6 +15,7 @@ import type { SettingRow, SettingsError } from '../shared/settings/settings-type
 import { ArticleDefaults } from './article-defaults';
 import { ArticleSettings } from './article-settings-facade';
 import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -127,6 +128,49 @@ describe('ArticleDefaults', () => {
     expect(facade.save).toHaveBeenCalledWith('c1', { productCategoryId: 'k1' }, [
       { key: 'article.default_unit', value: 'HUR' },
     ]);
+  });
+
+  it('keeps what is typed when the chain is read again with the same content', async () => {
+    await open({ productId: 'p1' });
+    const input = q('field-article__default_unit') as HTMLInputElement;
+    input.value = 'KGM';
+    input.dispatchEvent(new Event('input'));
+
+    rows.set([{ ...unit, levels: [...unit.levels] }]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('field-article__default_unit') as HTMLInputElement).value).toBe('KGM');
+  });
+
+  it('shows the values of another subject once they are read', async () => {
+    await open({ productId: 'p1' });
+    facade.load.mockImplementation(async () => {
+      rows.set([{ ...unit, levels: [{ level: 'product_category', value: 'MTR' }] }]);
+    });
+
+    fixture.componentRef.setInput('subject', { productId: 'p2' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.load).toHaveBeenLastCalledWith('c1', { productId: 'p2' });
+    expect((q('field-article__default_unit') as HTMLInputElement).value).toBe('MTR');
+  });
+
+  it('takes a value another person saved into a quiet form', async () => {
+    await open({ productId: 'p1' });
+    facade.load.mockImplementation(async () => {
+      rows.set([{ ...unit, levels: [{ level: 'product_category', value: 'MTR' }] }]);
+    });
+
+    await announceSaved('setting', 'row-1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('field-article__default_unit') as HTMLInputElement).value).toBe('MTR');
   });
 
   it('offers to reset a value the product holds, and says why a change was refused', async () => {

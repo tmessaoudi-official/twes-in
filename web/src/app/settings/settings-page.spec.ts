@@ -15,6 +15,7 @@ import type { SettingRow, SettingsError } from '../shared/settings/settings-type
 import { CompanySettings } from './company-settings-facade';
 import { SettingsPage } from './settings-page';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -42,8 +43,9 @@ const terms: SettingRow = {
 };
 
 describe('SettingsPage', () => {
+  const rows = signal<readonly SettingRow[]>([terms]);
   const settings = {
-    rows: signal<readonly SettingRow[]>([terms]).asReadonly(),
+    rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<SettingsError | null>(null).asReadonly(),
     load: vi.fn(),
@@ -87,6 +89,7 @@ describe('SettingsPage', () => {
   }
 
   beforeEach(() => {
+    rows.set([terms]);
     settings.load.mockReset().mockResolvedValue(undefined);
     settings.save.mockReset().mockResolvedValue(true);
     settings.reset.mockReset().mockResolvedValue(true);
@@ -113,6 +116,30 @@ describe('SettingsPage', () => {
       { key: 'document.payment_terms_days', value: 60 },
     ]);
     expect(successToasts()).toContain('settings.saved');
+  });
+
+  it('keeps what is typed when the chain is read again with the same content', async () => {
+    await open();
+    const input = q('field-document__payment_terms_days') as HTMLInputElement;
+    input.value = '10';
+    input.dispatchEvent(new Event('input'));
+
+    rows.set([{ ...terms, levels: [...terms.levels] }]);
+    await settle();
+
+    expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('10');
+  });
+
+  it('takes a value another person saved into a quiet form', async () => {
+    await open();
+    settings.load.mockImplementation(async () => {
+      rows.set([{ ...terms, levels: [{ level: 'company', value: 60 }] }]);
+    });
+
+    await announceSaved('setting', 'row-1');
+    await settle();
+
+    expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('60');
   });
 
   it('resets a value the company holds to the level above', async () => {

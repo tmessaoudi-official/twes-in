@@ -15,6 +15,7 @@ import { CompanyProfileFacade } from './company-profile-facade';
 import { CompanyProfilePage } from './company-profile-page';
 import type { CompanyError, CompanyProfile } from './company-types';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -53,8 +54,9 @@ const profile: CompanyProfile = {
 };
 
 describe('CompanyProfilePage', () => {
+  const profileSignal = signal<CompanyProfile | null>(profile);
   const facade = {
-    profile: signal<CompanyProfile | null>(profile).asReadonly(),
+    profile: profileSignal.asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<CompanyError | null>(null).asReadonly(),
     load: vi.fn(),
@@ -96,6 +98,7 @@ describe('CompanyProfilePage', () => {
   }
 
   beforeEach(() => {
+    profileSignal.set(profile);
     facade.load.mockReset().mockResolvedValue(undefined);
     facade.save.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
@@ -128,6 +131,37 @@ describe('CompanyProfilePage', () => {
       }),
     );
     expect(successToasts()).toContain('company.profile.saved');
+  });
+
+  it('keeps what is typed when the profile is read again with the same content', async () => {
+    await open();
+    const legalName = q('field-legalName') as HTMLInputElement;
+    legalName.value = 'Demo SARL';
+    legalName.dispatchEvent(new Event('input'));
+
+    profileSignal.set({ ...profile, identifierFields: [...profile.identifierFields] });
+    await settle();
+
+    expect((q('field-legalName') as HTMLInputElement).value).toBe('Demo SARL');
+  });
+
+  it('takes what another person saved, and still shows what the API kept after saving here', async () => {
+    await open();
+    facade.load.mockImplementation(async () => {
+      profileSignal.set({ ...profile, legalName: 'Demo Tunisie SA' });
+    });
+
+    await announceSaved('company', 'c1');
+    await settle();
+    expect((q('field-legalName') as HTMLInputElement).value).toBe('Demo Tunisie SA');
+
+    facade.save.mockImplementation(async () => {
+      profileSignal.set({ ...profile, legalName: 'DEMO TUNISIE SA' });
+      return true;
+    });
+    q('profile-save')!.click();
+    await settle();
+    expect((q('field-legalName') as HTMLInputElement).value).toBe('DEMO TUNISIE SA');
   });
 
   it('does not send an identifier without the shape the preset expects', async () => {

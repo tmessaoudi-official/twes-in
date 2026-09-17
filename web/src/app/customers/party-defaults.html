@@ -15,10 +15,20 @@
   }
 
   @if (descriptor().sections.length > 0) {
+    @if (sync.changedBy(); as changedBy) {
+      <app-record-changed
+        [changedBy]="changedBy"
+        [conflictCount]="sync.conflicts().length"
+        (reload)="sync.reloadSaved(form())"
+      />
+    }
     <app-descriptor-form
       [descriptor]="descriptor()"
       [form]="form()"
       testId="party-defaults-form"
+      [updated]="sync.updated()"
+      [conflicts]="sync.conflicts()"
+      (resolved)="sync.resolve(form(), $event)"
       [readOnly]="!writable()"
       (submitted)="save($event)"
     >

@@ -19,6 +19,11 @@ export interface LiveRecordOptions {
   readonly reload: () => Promise<unknown>;
   /** The record as it is now saved, as the form's values; null when it cannot be shown. */
   readonly saved: () => FormValues | null;
+  /**
+   * Which announced changes are this record's; by default, those naming its id. A settings panel names its chain
+   * instead, since a setting is saved under its own row's id.
+   */
+  readonly matches?: (change: LiveChange) => boolean;
   /** What the page edits outside the form and merges as one field each, such as a document's lines. */
   readonly parts?: readonly LivePart[];
 }
@@ -58,7 +63,7 @@ export class LiveRecord extends RecordSync {
     form: DescriptorFormGroup,
     incoming: FormValues,
     actor: ChangedBy | null,
-  ): 'updated' | 'editing' {
+  ): 'updated' | 'editing' | 'unchanged' {
     const updated: string[] = [];
     const conflicts: FieldConflict[] = [];
     let typing = false;
@@ -130,8 +135,9 @@ export function liveRecord(options: LiveRecordOptions): LiveRecord {
 
   const receive = async (changes: readonly LiveChange[]): Promise<void> => {
     const id = options.id();
-    const change = changes.filter((candidate) => candidate.id === id).at(-1);
-    if (id === null || change === undefined) return;
+    const matches = options.matches ?? ((candidate: LiveChange) => candidate.id === id);
+    const change = changes.filter(matches).at(-1);
+    if (change === undefined || (options.matches === undefined && id === null)) return;
     const name = change.actor?.name;
     const said = name ? { name } : {};
     if (change.action.endsWith('.deleted')) {

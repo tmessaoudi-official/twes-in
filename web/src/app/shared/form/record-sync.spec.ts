@@ -100,4 +100,17 @@ describe('RecordSync', () => {
     expect(sync.conflicts()).toEqual([]);
     expect(sync.updated().size).toBe(0);
   });
+
+  it('says nothing changed when the saved version shows the same, typing or not', () => {
+    const form = group(saved);
+    const sync = new RecordSync();
+    sync.track(saved);
+    form.controls['phone'].setValue('0613');
+
+    const outcome = sync.receive(form, { ...saved }, nadia);
+
+    expect(outcome).toBe('unchanged');
+    expect(sync.changedBy()).toBeNull();
+    expect(form.controls['phone'].value).toBe('0613');
+  });
 });

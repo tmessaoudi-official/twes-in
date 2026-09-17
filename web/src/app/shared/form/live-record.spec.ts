@@ -23,7 +23,11 @@ describe('liveRecord', () => {
   let handlers: { kinds: readonly string[]; handler: (changes: readonly LiveChange[]) => void }[];
   let reloads: number;
 
-  function setUp(initial: FormValues = saved, parts: LivePart[] = []) {
+  function setUp(
+    initial: FormValues = saved,
+    parts: LivePart[] = [],
+    matches?: (change: LiveChange) => boolean,
+  ) {
     handlers = [];
     reloads = 0;
     TestBed.configureTestingModule({
@@ -53,6 +57,7 @@ describe('liveRecord', () => {
         },
         saved: current,
         parts,
+        ...(matches ? { matches } : {}),
       }),
     );
     TestBed.tick();
@@ -93,6 +98,24 @@ describe('liveRecord', () => {
     expect(page.feedback.said).toEqual([
       { kind: 'notice', key: 'live.notice', params: { name: 'Nadia' } },
     ]);
+  });
+
+  it('stays silent when the other save changed nothing this form shows', async () => {
+    const page = setUp();
+
+    await page.savedElsewhere({ ...saved });
+
+    expect(reloads).toBe(1);
+    expect(page.feedback.said).toEqual([]);
+  });
+
+  it('hears the changes a page says are its own, whatever record they name', async () => {
+    const page = setUp(saved, [], (change) => change.kind === 'customer');
+
+    await page.savedElsewhere({ ...saved, phone: '0698' }, { id: 'setting-row-7' });
+
+    expect(reloads).toBe(1);
+    expect(page.form()?.controls['phone'].value).toBe('0698');
   });
 
   it('says someone changed it when the actor has no name', async () => {

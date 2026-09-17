@@ -15,6 +15,7 @@ import type { SettingRow, SettingsError } from '../shared/settings/settings-type
 import { PartyDefaults } from './party-defaults';
 import { PartySettings } from './party-settings-facade';
 import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -109,6 +110,49 @@ describe('PartyDefaults', () => {
     expect(facade.save).toHaveBeenCalledWith('c1', { customerId: 'k1' }, [
       { key: 'document.payment_terms_days', value: 10 },
     ]);
+  });
+
+  it('keeps what is typed when the chain is read again with the same content', async () => {
+    await open();
+    const input = q('field-document__payment_terms_days') as HTMLInputElement;
+    input.value = '10';
+    input.dispatchEvent(new Event('input'));
+
+    rows.set([{ ...terms, levels: [...terms.levels] }]);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('10');
+  });
+
+  it('shows the values of another subject once they are read', async () => {
+    await open();
+    facade.load.mockImplementation(async () => {
+      rows.set([{ ...terms, levels: [{ level: 'customer_group', value: 60 }] }]);
+    });
+
+    fixture.componentRef.setInput('subject', { customerId: 'k2' });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(facade.load).toHaveBeenLastCalledWith('c1', { customerId: 'k2' });
+    expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('60');
+  });
+
+  it('takes a value another person saved into a quiet form', async () => {
+    await open();
+    facade.load.mockImplementation(async () => {
+      rows.set([{ ...terms, levels: [{ level: 'customer_group', value: 60 }] }]);
+    });
+
+    await announceSaved('setting', 'row-1');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('60');
   });
 
   it('offers to reset a value the customer holds, and says why a change was refused', async () => {
