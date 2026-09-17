@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -16,31 +16,41 @@ import { RequestActivity } from './request-activity';
   selector: 'app-activity-bar',
   imports: [MatButtonModule, MatIconModule, MatProgressBarModule, TranslatePipe],
   template: `
-    @if (activity.busy()) {
-      <mat-progress-bar
-        mode="indeterminate"
-        class="twes-activity-progress"
-        [attr.aria-label]="'feedback.loading' | translate"
-        data-testid="activity-progress"
-      />
-    }
-    @if (activity.offline()) {
-      <div class="twes-activity-notice" role="alert" data-testid="activity-offline">
-        <mat-icon aria-hidden="true">wifi_off</mat-icon>
-        <span>{{ 'feedback.offline' | translate }}</span>
-      </div>
-    } @else if (activity.unavailable()) {
-      <div class="twes-activity-notice" role="alert" data-testid="activity-unavailable">
-        <mat-icon aria-hidden="true">cloud_off</mat-icon>
-        <span>{{ 'feedback.unavailable' | translate: { seconds: activity.retryIn() } }}</span>
-        <button mat-button type="button" (click)="activity.retryNow()" data-testid="activity-retry">
-          {{ 'feedback.retry' | translate }}
-        </button>
-      </div>
-    } @else if (activity.slow()) {
-      <div class="twes-activity-notice" role="status" data-testid="activity-slow">
-        <mat-icon aria-hidden="true">hourglass_top</mat-icon>
-        <span>{{ 'feedback.slow' | translate }}</span>
+    @if (shown()) {
+      <!-- A named region, only while there is something to show: axe's region rule wants all content in a landmark. -->
+      <div role="region" [attr.aria-label]="'feedback.region' | translate">
+        @if (activity.busy()) {
+          <mat-progress-bar
+            mode="indeterminate"
+            class="twes-activity-progress"
+            [attr.aria-label]="'feedback.loading' | translate"
+            data-testid="activity-progress"
+          />
+        }
+        @if (activity.offline()) {
+          <div class="twes-activity-notice" role="alert" data-testid="activity-offline">
+            <mat-icon aria-hidden="true">wifi_off</mat-icon>
+            <span>{{ 'feedback.offline' | translate }}</span>
+          </div>
+        } @else if (activity.unavailable()) {
+          <div class="twes-activity-notice" role="alert" data-testid="activity-unavailable">
+            <mat-icon aria-hidden="true">cloud_off</mat-icon>
+            <span>{{ 'feedback.unavailable' | translate: { seconds: activity.retryIn() } }}</span>
+            <button
+              mat-button
+              type="button"
+              (click)="activity.retryNow()"
+              data-testid="activity-retry"
+            >
+              {{ 'feedback.retry' | translate }}
+            </button>
+          </div>
+        } @else if (activity.slow()) {
+          <div class="twes-activity-notice" role="status" data-testid="activity-slow">
+            <mat-icon aria-hidden="true">hourglass_top</mat-icon>
+            <span>{{ 'feedback.slow' | translate }}</span>
+          </div>
+        }
       </div>
     }
   `,
@@ -48,4 +58,11 @@ import { RequestActivity } from './request-activity';
 })
 export class ActivityBar {
   protected readonly activity = inject(RequestActivity);
+  protected readonly shown = computed(
+    () =>
+      this.activity.busy() ||
+      this.activity.offline() ||
+      this.activity.unavailable() ||
+      this.activity.slow(),
+  );
 }

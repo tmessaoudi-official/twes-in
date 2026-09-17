@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { signIn } from './session';
 
@@ -20,6 +21,11 @@ test('a slow request shows the bar and says it is taking long, then everything c
   await expect(page.getByTestId('activity-progress')).toBeVisible();
   await expect(page.getByTestId('activity-slow')).toBeVisible({ timeout: 12_000 });
   await expect(page.getByTestId('activity-slow')).toHaveAttribute('role', 'status');
+  // What the bar shows sits in a landmark like the rest of the page (CI met the bar outside one, 2026-09-17).
+  const outside = await new AxeBuilder({ page }).withRules(['region']).analyze();
+  expect(
+    outside.violations.flatMap((violation) => violation.nodes.map((node) => node.target.join(' '))),
+  ).toEqual([]);
   await expect(page.getByTestId('activity-progress')).toHaveCount(0, { timeout: 15_000 });
   await expect(page.getByTestId('activity-slow')).toHaveCount(0);
 });

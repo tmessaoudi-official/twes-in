@@ -1504,6 +1504,7 @@
     }
   },
   "feedback": {
+    "region": "Activité de l’application",
     "loading": "Chargement",
     "slow": "Cela prend plus de temps que d’habitude…",
     "unavailable": "Le service est momentanément injoignable. Nouvelle tentative dans {{seconds}} s.",

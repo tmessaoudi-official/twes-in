@@ -15,6 +15,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       feedback: {
+        region: 'Activité de l’application',
         loading: 'Chargement',
         slow: 'Cela prend plus de temps que d’habitude…',
         unavailable: 'Le service est injoignable. Nouvelle tentative dans {{seconds}} s.',
@@ -65,9 +66,29 @@ describe('ActivityBar', () => {
     };
   }
 
-  it('shows nothing while nothing is waited for', async () => {
+  it('shows nothing while nothing is waited for, not even an empty landmark', async () => {
     const { el } = await render();
     expect(el.textContent?.trim()).toBe('');
+    expect(el.querySelector('[role="region"]')).toBeNull();
+  });
+
+  it('keeps whatever it shows inside a named region, so no content sits outside a landmark', async () => {
+    const { fixture, el, find } = await render();
+    for (const show of [state.busy, state.slow, state.unavailable, state.offline]) {
+      show.set(true);
+      await fixture.whenStable();
+      const region = el.querySelector('[role="region"]');
+      expect(region?.getAttribute('aria-label')).toBe('Activité de l’application');
+      const shown = [
+        find('activity-progress'),
+        find('activity-slow'),
+        find('activity-unavailable'),
+        find('activity-offline'),
+      ].filter((node) => node !== null);
+      expect(shown.length).toBeGreaterThan(0);
+      expect(shown.every((node) => region?.contains(node))).toBe(true);
+      show.set(false);
+    }
   });
 
   it('draws a named progress bar while working, and says when it is slow', async () => {

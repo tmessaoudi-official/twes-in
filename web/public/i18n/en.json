@@ -1504,6 +1504,7 @@
     }
   },
   "feedback": {
+    "region": "Application activity",
     "loading": "Loading",
     "slow": "This is taking longer than usual…",
     "unavailable": "The service cannot be reached right now. Trying again in {{seconds}} s.",
