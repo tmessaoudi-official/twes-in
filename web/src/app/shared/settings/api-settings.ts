@@ -2,6 +2,7 @@
 
 import {
   computed,
+  DestroyRef,
   effect,
   inject,
   Injectable,
@@ -9,6 +10,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { LiveChanges } from '../realtime/live-changes';
 import { Session } from '../session/session';
 import { BrowserStorageSettings } from './browser-storage-settings';
 import { type SettingDefinition, SettingsFacade, UnregisteredSetting } from './settings-facade';
@@ -66,6 +68,12 @@ export class ApiSettings extends SettingsFacade {
       const scope = this.scope();
       untracked(() => void this.load(scope));
     });
+    // A setting changed in another tab, or for the whole company: read the chain again, showing what is known meanwhile.
+    inject(LiveChanges).on(
+      ['setting'],
+      () => void this.load(this.scope(), false),
+      inject(DestroyRef),
+    );
   }
 
   value<T>(setting: SettingDefinition<T>): Signal<T> {
@@ -109,9 +117,11 @@ export class ApiSettings extends SettingsFacade {
     });
   }
 
-  private async load(scope: Scope | null): Promise<void> {
-    this.pending = new Map();
-    this.state.set({ scope, known: new Map() });
+  private async load(scope: Scope | null, fresh = true): Promise<void> {
+    if (fresh) {
+      this.pending = new Map();
+      this.state.set({ scope, known: new Map() });
+    }
     if (scope === null) return;
 
     let rows: SettingRow[] = [];

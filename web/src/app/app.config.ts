@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import { tabInterceptor } from './shared/realtime/tab-interceptor';
 import { provideHttpClient, withInterceptors, withNoXsrfProtection } from '@angular/common/http';
 import {
   ApplicationConfig,
@@ -35,7 +36,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding()),
     // The API uses Symfony stateless CSRF (header only), not the cookie Angular built-in XSRF support echoes.
     provideHttpClient(
-      withInterceptors([csrfInterceptor, activityInterceptor]),
+      withInterceptors([csrfInterceptor, tabInterceptor, activityInterceptor]),
       withNoXsrfProtection(),
     ),
     // French first (Tunisia, France); English second. Files live in public/i18n/<lang>.json.

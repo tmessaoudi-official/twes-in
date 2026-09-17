@@ -11,6 +11,7 @@ describe('activityInterceptor', () => {
     started: vi.fn(),
     reached: vi.fn(),
     failed: vi.fn(),
+    quiet: vi.fn(() => false),
   };
   const done = vi.fn();
 
@@ -69,6 +70,14 @@ describe('activityInterceptor', () => {
       .expectOne('/api/settings/x')
       .error(new ProgressEvent('error'), { status: 0, statusText: 'Unknown Error' });
     expect(activity.failed).toHaveBeenCalledWith(0, '/api/settings/x');
+  });
+
+  it('leaves out a request started while a quiet reload runs', () => {
+    activity.quiet.mockReturnValueOnce(true);
+    http().get('/api/customers').subscribe();
+    backend().expectOne('/api/customers').flush([]);
+    expect(activity.started).not.toHaveBeenCalled();
+    expect(activity.reached).toHaveBeenCalledOnce();
   });
 
   it('ignores what is not the API, such as the translation files', () => {

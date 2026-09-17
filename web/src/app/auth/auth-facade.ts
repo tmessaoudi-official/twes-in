@@ -57,6 +57,19 @@ export class AuthFacade implements Session {
     }
   }
 
+  /**
+   * Reads the session again after another person changed what it holds (its role, the company's modules, the company
+   * itself: docs/SPEC.md § 7, 2026-09-17). Unlike load(), a failure keeps the session: a moment without the API is not
+   * a sign-out, and a session that really ended is noticed by the activity interceptor.
+   */
+  async refresh(): Promise<void> {
+    try {
+      this.signedIn(await this.api.me());
+    } catch {
+      // Kept as it was.
+    }
+  }
+
   async login(credentials: Credentials): Promise<LoginOutcome> {
     try {
       const answer = await this.api.login(credentials);

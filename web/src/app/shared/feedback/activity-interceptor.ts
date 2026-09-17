@@ -20,7 +20,8 @@ export const SILENT = new HttpContextToken<boolean>(() => false);
 export const activityInterceptor: HttpInterceptorFn = (request, next) => {
   if (!request.url.startsWith('/api/')) return next(request);
   const activity = inject(RequestActivity);
-  const done = request.context.get(SILENT) ? () => undefined : activity.started();
+  const done =
+    request.context.get(SILENT) || activity.quiet() ? () => undefined : activity.started();
   return next(request).pipe(
     tap({
       next: (event) => {

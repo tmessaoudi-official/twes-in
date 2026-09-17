@@ -4,6 +4,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   input,
@@ -13,6 +14,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { AmountPipe, MomentPipe } from '../shared/i18n/format-pipes';
 import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
@@ -66,5 +68,13 @@ export class StockMovementsPage {
         void this.facade.loadMovements(companyId, productId);
       }
     });
+    inject(LiveChanges).reloadOn(
+      ['stock', 'delivery_note'],
+      async () => {
+        const companyId = this.company()?.id;
+        if (companyId) await this.facade.loadMovements(companyId, this.productId() ?? null);
+      },
+      inject(DestroyRef),
+    );
   }
 }

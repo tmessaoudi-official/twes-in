@@ -6,7 +6,8 @@ import { NotificationsApi } from './notifications-api';
 import { NotificationsFacade } from './notifications-facade';
 import type { InboxEntry, InboxPage } from './notifications-types';
 import { notificationKey } from './notifications-types';
-import { REALTIME_CONNECTOR, type RealtimeConnector } from './realtime-connector';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { REALTIME_CONNECTOR, type RealtimeConnector } from '../shared/realtime/realtime-connector';
 
 const added: InboxEntry = {
   id: 'n1',
@@ -29,7 +30,7 @@ describe('NotificationsFacade', () => {
   const opened: {
     url: string;
     getToken: () => Promise<string>;
-    onPublication: () => void;
+    onPublication: (data: unknown) => void;
     disconnect: ReturnType<typeof vi.fn>;
   }[] = [];
   const connector: RealtimeConnector = (url, getToken, onPublication) => {
@@ -37,15 +38,18 @@ describe('NotificationsFacade', () => {
     opened.push(connection);
     return connection;
   };
+  const live = { receive: vi.fn() };
   let facade: NotificationsFacade;
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
+    live.receive.mockReset();
     opened.length = 0;
     TestBed.configureTestingModule({
       providers: [
         { provide: NotificationsApi, useValue: api },
         { provide: REALTIME_CONNECTOR, useValue: connector },
+        { provide: LiveChanges, useValue: live },
       ],
     });
     facade = TestBed.inject(NotificationsFacade);
@@ -83,14 +87,25 @@ describe('NotificationsFacade', () => {
     await expect(opened[0].getToken()).resolves.toBe('a-token');
   });
 
-  it('refreshes when something is published', async () => {
+  it('refreshes when a notification is published', async () => {
     api.list.mockResolvedValue(page([added], 1));
     facade.connect();
 
-    opened[0].onPublication();
+    opened[0].onPublication({ type: 'membership.added', payload: {} });
     await vi.waitFor(() => expect(facade.unread()).toBe(1));
 
     expect(api.list).toHaveBeenCalledOnce();
+    expect(live.receive).not.toHaveBeenCalled();
+  });
+
+  it('hands a change to data to the screens instead of reading the centre again', () => {
+    facade.connect();
+    const change = { type: 'changed', kind: 'customer', id: 'c1', action: 'customer.revised' };
+
+    opened[0].onPublication(change);
+
+    expect(live.receive).toHaveBeenCalledWith(change);
+    expect(api.list).not.toHaveBeenCalled();
   });
 
   it('closes the previous connection before opening another, so a company switch hears only the new channels', () => {

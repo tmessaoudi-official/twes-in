@@ -4,10 +4,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   OnInit,
   signal,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
@@ -25,6 +27,8 @@ import type { ModuleRow } from './modules-types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ModulesPage implements OnInit {
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly facade = inject(ModulesFacade);
   private readonly auth = inject(AuthFacade);
 
@@ -56,6 +60,7 @@ export class ModulesPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      this.live.reloadOn(['module'], () => this.facade.load(companyId), this.destroyRef);
       await this.facade.load(companyId);
     }
   }

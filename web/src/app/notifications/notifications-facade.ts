@@ -2,18 +2,21 @@
 
 import { DOCUMENT } from '@angular/common';
 import { inject, Injectable, signal } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
+import { REALTIME_CONNECTOR, type RealtimeConnection } from '../shared/realtime/realtime-connector';
 import { NotificationsApi } from './notifications-api';
 import type { InboxEntry } from './notifications-types';
-import { REALTIME_CONNECTOR, type RealtimeConnection } from './realtime-connector';
 
 /**
- * The notification centre as signals. The API's rows are the truth (docs/SPEC.md § 7, 2026-09-13): a publication
- * on the realtime connection carries no state here, it only says "read the centre again".
+ * The notification centre as signals, and the one realtime connection of the signed-in shell. The API's rows are
+ * the truth (docs/SPEC.md § 7, 2026-09-13): a notification carries no state here, it only says "read the centre
+ * again"; a change to data goes to LiveChanges for the screens showing it (§ 7, 2026-09-17).
  */
 @Injectable({ providedIn: 'root' })
 export class NotificationsFacade {
   private readonly api = inject(NotificationsApi);
   private readonly connector = inject(REALTIME_CONNECTOR);
+  private readonly live = inject(LiveChanges);
   private readonly document = inject(DOCUMENT);
   private readonly itemsSignal = signal<readonly InboxEntry[]>([]);
   private readonly unreadSignal = signal(0);
@@ -44,7 +47,13 @@ export class NotificationsFacade {
     this.connection = this.connector(
       `${scheme}://${host}/connection/websocket`,
       () => this.api.realtimeToken(),
-      () => void this.refresh(),
+      (data) => {
+        if (isChange(data)) {
+          this.live.receive(data);
+        } else {
+          void this.refresh();
+        }
+      },
     );
   }
 
@@ -70,4 +79,10 @@ export class NotificationsFacade {
     }
     await this.refresh();
   }
+}
+
+function isChange(data: unknown): boolean {
+  return (
+    typeof data === 'object' && data !== null && (data as { type?: unknown }).type === 'changed'
+  );
 }

@@ -38,6 +38,8 @@ export function provideQuietFeedback(): Provider[] {
         sessionExpired: signal(false),
         retryNow: () => undefined,
         acknowledgeExpiry: () => undefined,
+        quiet: () => false,
+        quietly: <T>(work: () => Promise<T>) => work(),
       },
     },
   ];

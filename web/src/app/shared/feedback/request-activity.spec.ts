@@ -37,6 +37,20 @@ describe('RequestActivity', () => {
 
   const activity = () => TestBed.inject(RequestActivity);
 
+  it('is quiet exactly while a quiet reload runs, however it ends', async () => {
+    let finish!: () => void;
+    const running = activity().quietly(() => new Promise<void>((resolve) => (finish = resolve)));
+    expect(activity().quiet()).toBe(true);
+    finish();
+    await running;
+    expect(activity().quiet()).toBe(false);
+
+    await activity()
+      .quietly(() => Promise.reject(new Error('refused')))
+      .catch(() => undefined);
+    expect(activity().quiet()).toBe(false);
+  });
+
   it('says nothing for a request that answers quickly, so a fast page never flickers', () => {
     const done = activity().started();
     vi.advanceTimersByTime(BUSY_AFTER_MS - 1);

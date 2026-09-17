@@ -32,6 +32,7 @@ export class RequestActivity {
   private slowTimer: ReturnType<typeof setTimeout> | null = null;
   private retryTimer: ReturnType<typeof setInterval> | null = null;
   private attempt = 0;
+  private quietRuns = 0;
   private check: Subscription | null = null;
 
   private readonly busySignal = signal(false);
@@ -64,6 +65,25 @@ export class RequestActivity {
         view.removeEventListener('online', online);
         this.stopRetrying();
       });
+    }
+  }
+
+  /** Whether a quiet reload is running: what it requests is not shown as activity. */
+  quiet(): boolean {
+    return this.quietRuns > 0;
+  }
+
+  /**
+   * Runs work nobody on the screen asked for, such as reading a list again after another person changed it
+   * (docs/SPEC.md § 7, 2026-09-17): its requests never show the activity bar, while a failure to reach the API is
+   * still noticed. A request the person makes meanwhile is quiet too, a moment the bar can spare.
+   */
+  async quietly<T>(work: () => Promise<T>): Promise<T> {
+    this.quietRuns++;
+    try {
+      return await work();
+    } finally {
+      this.quietRuns--;
     }
   }
 

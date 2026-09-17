@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  OnInit,
+} from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -27,6 +35,8 @@ import type { VendorRow } from './vendors-types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class VendorsPage implements OnInit {
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly facade = inject(VendorsFacade);
   private readonly auth = inject(AuthFacade);
 
@@ -40,6 +50,11 @@ export class VendorsPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      this.live.reloadOn(
+        ['vendor', 'expense_category', 'custom_field'],
+        () => this.facade.loadList(companyId),
+        this.destroyRef,
+      );
       await this.facade.loadList(companyId);
     }
   }

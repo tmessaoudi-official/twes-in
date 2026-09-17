@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, inject, OnInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  OnInit,
+} from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatSlideToggleChange, MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Router } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -19,6 +27,8 @@ import { Feedback } from '../shared/feedback/feedback';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CompanySecurityPage implements OnInit {
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly facade = inject(CompanySecurityFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
@@ -32,6 +42,7 @@ export class CompanySecurityPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      this.live.reloadOn(['company'], () => this.facade.load(companyId), this.destroyRef);
       await this.facade.load(companyId);
     }
   }

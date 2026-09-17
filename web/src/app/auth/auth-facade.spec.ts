@@ -76,6 +76,20 @@ describe('AuthFacade', () => {
     expect(facade.isAuthenticated()).toBe(false);
   });
 
+  it('refresh() takes what another person changed about this session, and keeps the session when the API cannot answer', async () => {
+    api.me.mockResolvedValueOnce(owner);
+    await facade.load();
+
+    api.me.mockResolvedValueOnce({ ...owner, modules: ['customers', 'invoices'] });
+    await facade.refresh();
+    expect(facade.me()?.modules).toEqual(['customers', 'invoices']);
+
+    api.me.mockRejectedValueOnce(new Error('offline'));
+    await facade.refresh();
+    expect(facade.isAuthenticated()).toBe(true);
+    expect(facade.me()?.modules).toEqual(['customers', 'invoices']);
+  });
+
   it('login() keeps the signed-in state, or reports the API error code', async () => {
     api.login.mockResolvedValue(owner);
     expect(await facade.login({ email: 'owner@example.test', password: 'pw' })).toEqual({

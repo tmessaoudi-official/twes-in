@@ -2,6 +2,8 @@
 
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { LiveChange } from '../realtime/live-changes';
+import { LiveChanges } from '../realtime/live-changes';
 import { Session } from '../session/session';
 import { ApiSettings } from './api-settings';
 import { BrowserStorageSettings } from './browser-storage-settings';
@@ -49,6 +51,7 @@ function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
 describe('ApiSettings', () => {
   const me = signal<{ user: { id: string }; company: { id: string } | null } | null>(null);
   let storage: PageMemoryStorage;
+  let heard: { kinds: readonly string[]; handler: (changes: readonly LiveChange[]) => void }[];
   let api: {
     chain: ReturnType<typeof vi.fn>;
     change: ReturnType<typeof vi.fn>;
@@ -63,6 +66,13 @@ describe('ApiSettings', () => {
         { provide: SETTINGS_STORAGE, useValue: storage },
         { provide: Session, useValue: { me } },
         { provide: SettingsApi, useValue: api },
+        {
+          provide: LiveChanges,
+          useValue: {
+            on: (kinds: readonly string[], handler: (changes: readonly LiveChange[]) => void) =>
+              heard.push({ kinds, handler }),
+          },
+        },
       ],
     });
     const facade = TestBed.inject(SettingsFacade);
@@ -79,6 +89,7 @@ describe('ApiSettings', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     storage = new PageMemoryStorage();
+    heard = [];
     me.set({ user: { id: 'u1' }, company: { id: 'c1' } });
     api = {
       chain: vi.fn().mockResolvedValue([]),
@@ -161,6 +172,24 @@ describe('ApiSettings', () => {
     await settle();
 
     expect(api.chain).toHaveBeenLastCalledWith('c2', 'presentation');
+    expect(scheme()).toBe('dark');
+  });
+
+  it('reads the chain again when a setting changes in another tab or for the whole company, showing the old value meanwhile', async () => {
+    api.chain.mockResolvedValue([row('presentation.scheme', 'light', at('user', 'light'))]);
+    const scheme = settings().value(PRESENTATION.scheme);
+    await settle();
+    const answer = deferred<SettingRow[]>();
+    api.chain.mockReturnValue(answer.promise);
+
+    const listener = heard.find((entry) => entry.kinds.includes('setting'));
+    listener?.handler([{ kind: 'setting', id: 's1', action: 'setting.changed', actor: null }]);
+    await settle();
+    expect(scheme()).toBe('light');
+
+    answer.resolve([row('presentation.scheme', 'light', at('user', 'dark'))]);
+    await settle();
+    expect(api.chain).toHaveBeenCalledTimes(2);
     expect(scheme()).toBe('dark');
   });
 

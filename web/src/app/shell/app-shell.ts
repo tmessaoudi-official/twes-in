@@ -5,6 +5,7 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   effect,
   inject,
   isDevMode,
@@ -30,6 +31,7 @@ import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
 import { ActivityBar } from '../shared/feedback/activity-bar';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { RequestActivity } from '../shared/feedback/request-activity';
 import {
   LANGUAGE_NAMES,
@@ -170,6 +172,12 @@ export class AppShell {
     // sign in with a word of why, instead of leaving every screen failing one request at a time. A refusal that landed
     // after the last redirect, while no shell was open, belongs to that ended session and must not eject a new one.
     this.activity.acknowledgeExpiry();
+    // What another person changed about this session (a role, a module switched, the company's name) shows at once.
+    inject(LiveChanges).reloadOn(
+      ['membership', 'role', 'module', 'company'],
+      () => this.auth.refresh(),
+      inject(DestroyRef),
+    );
     effect(() => {
       if (!this.activity.sessionExpired()) return;
       untracked(() => {

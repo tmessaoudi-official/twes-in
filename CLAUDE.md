@@ -105,7 +105,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   signed-in route is a child of it), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens,
   `ThemeFacade` (Automatique follows the device) and the scheme menu; `i18n/`: `LanguageFacade` and the language menu; `a11y/`: the
-  `appLabel` directive, one string for a control's accessible name and its tooltip; `testing/`: providers specs share (`provideQuietFeedback` records toasts); `feedback/`: the `Feedback` port (toasts), `RequestActivity` and its interceptor, the activity bar; `health/`: the API health client; `settings/`: the `SettingsFacade` port, its API adapter
+  `appLabel` directive, one string for a control's accessible name and its tooltip; `testing/`: providers specs share (`provideQuietFeedback` records toasts); `feedback/`: the `Feedback` port (toasts), `RequestActivity` and its interceptor, the activity bar; `health/`: the API health client; `realtime/`: the one Centrifugo connection's connector, the `X-Tab` interceptor naming this tab, and `LiveChanges` (a page calls `reloadOn(kinds, reload, destroyRef)` to read its data again, quietly, when another tab or member changes those kinds); `settings/`: the `SettingsFacade` port, its API adapter
   `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry
   every presentation key must be declared in; `list/`: `ListDescriptor`, the pure view
   functions and `DataList`; `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`

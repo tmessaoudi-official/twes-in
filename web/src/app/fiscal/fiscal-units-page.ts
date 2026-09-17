@@ -4,10 +4,12 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   OnInit,
   signal,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -43,6 +45,8 @@ import { Feedback } from '../shared/feedback/feedback';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FiscalUnitsPage implements OnInit {
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   private readonly fiscal = inject(FiscalFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
@@ -71,6 +75,7 @@ export class FiscalUnitsPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      this.live.reloadOn(['unit'], () => this.fiscal.loadUnits(companyId), this.destroyRef);
       await this.fiscal.loadUnits(companyId);
     }
   }

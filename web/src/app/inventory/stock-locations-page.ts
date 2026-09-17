@@ -4,12 +4,14 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
+  DestroyRef,
   inject,
   linkedSignal,
   OnInit,
   signal,
   untracked,
 } from '@angular/core';
+import { LiveChanges } from '../shared/realtime/live-changes';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { TranslatePipe } from '@ngx-translate/core';
@@ -51,6 +53,8 @@ import { Feedback } from '../shared/feedback/feedback';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StockLocationsPage implements OnInit {
+  private readonly live = inject(LiveChanges);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly tabs = INVENTORY_TABS;
   private readonly facade = inject(InventoryFacade);
   private readonly feedback = inject(Feedback);
@@ -111,6 +115,11 @@ export class StockLocationsPage implements OnInit {
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId) {
+      this.live.reloadOn(
+        ['stock_location', 'stock', 'delivery_note'],
+        () => this.facade.loadLocations(companyId),
+        this.destroyRef,
+      );
       await this.facade.loadLocations(companyId);
     }
   }

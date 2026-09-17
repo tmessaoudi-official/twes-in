@@ -9,18 +9,18 @@ export interface RealtimeConnection {
 
 /**
  * Opens one realtime connection. The server subscribes it to its channels from the token (docs/SPEC.md § 7,
- * 2026-09-13), so the caller names no channel: it only learns that something was published.
+ * 2026-09-13), so the caller names no channel: it hears what was published on any of them.
  */
 export type RealtimeConnector = (
   url: string,
   getToken: () => Promise<string>,
-  onPublication: () => void,
+  onPublication: (data: unknown) => void,
 ) => RealtimeConnection;
 
 /** Centrifugo's own client: asks for a token when it connects and again whenever the token expires. */
 export const centrifugeConnector: RealtimeConnector = (url, getToken, onPublication) => {
   const client = new Centrifuge(url, { getToken: () => getToken() });
-  client.on('publication', () => onPublication());
+  client.on('publication', (context) => onPublication(context.data));
   client.connect();
   return { disconnect: () => client.disconnect() };
 };
