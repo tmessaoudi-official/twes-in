@@ -30,6 +30,8 @@ export const KNOWN_NOTIFICATION_TYPES = [
   'invitation.accepted',
   'stock.delivery_note_lines_left_out',
   'stock.delivery_note_moved_no_stock',
+  'subscription.payment_declared',
+  'subscription.payment_decided',
 ] as const;
 
 /** "membership.added" → "notifications.types.membership_added"; an unknown type → the generic key. */
@@ -62,6 +64,16 @@ const RECORDS = new Map<string, NotificationRecord>([
   [
     'stock.delivery_note_moved_no_stock',
     { icon: 'inventory_2', route: '/stock/movements', permission: 'stock.read' },
+  ],
+  // An operator's: the company that declared it is not one of theirs, so it leads to the platform queue.
+  [
+    'subscription.payment_declared',
+    { icon: 'payments', route: '/platform', permission: 'platform.licensing.manage' },
+  ],
+  // An owner's: what the operator answered about the payment their own company declared.
+  [
+    'subscription.payment_decided',
+    { icon: 'payments', route: '/company/subscription', permission: 'subscription.read' },
   ],
 ]);
 

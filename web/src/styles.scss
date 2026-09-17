@@ -759,6 +759,16 @@ body {
   }
 }
 
+// A page shown before the shell that brings its own cards: it takes the width, with no second surface under it.
+// The card above holds one column of fields; a page's form lays out in two either way and would collapse in it.
+.twes-auth-page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  box-sizing: border-box;
+  width: min(56rem, 100%);
+}
+
 .twes-auth-intro {
   margin: 0;
   color: var(--mat-sys-on-surface-variant);

@@ -96,7 +96,8 @@
       "pending": "{{company}} is waiting for approval by the platform's team. You will receive an email as soon as it is approved.",
       "suspended": "{{company}} is suspended. Contact the platform's team to find out more.",
       "sign_out": "Sign out",
-      "locked": "{{company}} is closed until its subscription is settled. Contact us to reopen it."
+      "locked": "{{company}} is closed until its subscription is settled. Contact us to reopen it.",
+      "declare_payment": "Declare a payment"
     },
     "scene": {
       "invoice_number": "INV-2026-0142",
@@ -390,7 +391,8 @@
     "vendors": "Vendors",
     "expenses": "Expenses",
     "expense_categories": "Expense categories",
-    "company_security": "Security"
+    "company_security": "Security",
+    "subscription": "Subscription"
   },
   "shell": {
     "skip": "Skip to content",
@@ -439,7 +441,9 @@
       "invitation_received": "An invitation to join {{company}} is waiting in your email.",
       "stock_delivery_note_lines_left_out": "Delivery note {{number}} is validated, but some of its lines moved no stock (another unit, or no quantity).",
       "stock_delivery_note_moved_no_stock": "The stock of delivery note {{number}} could not be updated. Nothing moved: tell the platform administrator, who can replay it.",
-      "unknown": "New notification."
+      "unknown": "New notification.",
+      "subscription_payment_declared": "{{company}} declared a payment of {{amount}} {{currency}}.",
+      "subscription_payment_decided": "Your payment of {{amount}} {{currency}} was answered."
     }
   },
   "invitation": {
@@ -1525,13 +1529,24 @@
         "trial": "Trial",
         "paid": "Paid",
         "grace": "Grace",
-        "unpaid": "Unpaid"
+        "unpaid": "Unpaid",
+        "held": "Payment waiting"
       },
       "accesses": {
         "full": "Full access",
         "read_only": "Read-only",
         "locked": "Locked"
-      }
+      },
+      "hold_days": "Days a declared payment holds"
+    },
+    "payments": {
+      "title": "Payments to confirm",
+      "none": "No payment is waiting.",
+      "periods": "Periods covered",
+      "confirm": "Confirm",
+      "reject": "Reject",
+      "confirmed": "The payment was confirmed.",
+      "rejected": "The payment was rejected."
     }
   },
   "appearance": {
@@ -1574,7 +1589,64 @@
     "notice": {
       "ending": "Your subscription ends in {{days}} day(s). Declare your payment to extend it.",
       "grace": "Your subscription has expired. {{days}} day(s) left before the company becomes read-only.",
-      "read_only": "Subscription unpaid: you can view, print and export, but create or change nothing."
+      "read_only": "Subscription unpaid: you can view, print and export, but create or change nothing.",
+      "held": "Payment declared, waiting to be confirmed. The company stays open for {{days}} day(s)."
+    },
+    "title": "Subscription",
+    "unmanaged": "This company has no subscription to pay for.",
+    "covered_until": "Covered until",
+    "paid_through": "Paid through",
+    "price": "Price",
+    "days_left": "{{days}} day(s) left",
+    "stages": {
+      "trial": "Trial",
+      "paid": "Paid",
+      "grace": "Grace period",
+      "held": "Payment waiting",
+      "unpaid": "Unpaid"
+    },
+    "periods": {
+      "day": "{{count}} day(s)",
+      "month": "{{count}} month(s)",
+      "year": "{{count}} year(s)"
+    },
+    "errors": {
+      "not_managed": "This company has no subscription to pay for.",
+      "already_declared": "A payment is already waiting to be confirmed.",
+      "invalid": "This payment cannot be recorded as written.",
+      "refused": "The request was refused.",
+      "network": "The server did not answer."
+    },
+    "payment": {
+      "declare": "Declare a payment",
+      "declared": "Your payment was declared. You will hear from us once it is confirmed.",
+      "waiting": "A payment of {{amount}} {{currency}} was declared and is waiting to be confirmed.",
+      "history": "Declared payments",
+      "none": "No payment declared yet.",
+      "section": "Payment",
+      "section_hint": "Tell us what you paid; we confirm it once checked.",
+      "submit": "Declare",
+      "cancel": "Cancel",
+      "methods": {
+        "cash": "Cash",
+        "transfer": "Transfer",
+        "cheque": "Cheque",
+        "other": "Other"
+      },
+      "statuses": {
+        "declared": "Waiting",
+        "confirmed": "Confirmed",
+        "rejected": "Rejected"
+      },
+      "fields": {
+        "amount": "Amount",
+        "amount_hint": "Three decimals at most.",
+        "method": "Payment method",
+        "paidOn": "Payment date",
+        "reference": "Reference",
+        "reference_hint": "A receipt, transfer or cheque number.",
+        "note": "Note"
+      }
     }
   }
 }

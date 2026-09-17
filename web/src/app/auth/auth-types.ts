@@ -51,7 +51,7 @@ export const ALWAYS_PERMITTED: readonly string[] = ['subscription.read', 'subscr
 
 /** Where the working company stands in its subscription, so the application can warn before anything closes. */
 export interface CompanySubscription {
-  readonly stage: 'trial' | 'paid' | 'grace' | 'unpaid';
+  readonly stage: 'trial' | 'paid' | 'grace' | 'held' | 'unpaid';
   readonly coveredUntil: string;
   readonly graceEndsAt: string;
   /** Whole days before the stage changes; null once unpaid. */

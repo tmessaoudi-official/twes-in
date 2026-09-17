@@ -1,0 +1,130 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="subscription-title">
+    {{ 'licensing.title' | translate }}
+  </h1>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="subscription-error" class="text-error">
+      {{ 'licensing.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (!managed()) {
+    <p data-testid="subscription-unmanaged">{{ 'licensing.unmanaged' | translate }}</p>
+  } @else if (subscription(); as current) {
+    <mat-card appearance="outlined" data-testid="subscription-standing">
+      <mat-card-content>
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-wrap items-baseline justify-between gap-2">
+            <span class="text-xl font-medium" data-testid="subscription-stage">
+              {{ 'licensing.stages.' + current.stage | translate }}
+            </span>
+            @if (current.daysLeft !== null) {
+              <span data-testid="subscription-days-left">
+                {{ 'licensing.days_left' | translate: { days: current.daysLeft } }}
+              </span>
+            }
+          </div>
+
+          <dl class="grid gap-x-8 gap-y-2 sm:grid-cols-2">
+            <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
+              <dt class="text-sm">{{ 'licensing.covered_until' | translate }}</dt>
+              <dd class="font-medium" data-testid="subscription-covered-until">
+                {{ current.coveredUntil | date: 'mediumDate' }}
+              </dd>
+            </div>
+            @if (current.paidThrough) {
+              <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
+                <dt class="text-sm">{{ 'licensing.paid_through' | translate }}</dt>
+                <dd class="font-medium" data-testid="subscription-paid-through">
+                  {{ current.paidThrough | date: 'mediumDate' }}
+                </dd>
+              </div>
+            }
+            @if (current.price) {
+              <div class="flex justify-between gap-4 sm:flex-col sm:justify-start">
+                <dt class="text-sm">{{ 'licensing.price' | translate }}</dt>
+                <dd class="font-medium" data-testid="subscription-price">
+                  {{ current.price }} {{ current.currency }} /
+                  {{
+                    'licensing.periods.' + current.periodUnit
+                      | translate: { count: current.periodCount }
+                  }}
+                </dd>
+              </div>
+            }
+          </dl>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    @if (current.openPayment; as waiting) {
+      <p role="status" class="text-sm" data-testid="subscription-waiting">
+        {{
+          'licensing.payment.waiting'
+            | translate: { amount: waiting.amount, currency: waiting.currency }
+        }}
+      </p>
+    } @else if (current.canDeclare && !declaring()) {
+      <div>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="declare()"
+          data-testid="subscription-declare"
+        >
+          {{ 'licensing.payment.declare' | translate }}
+        </button>
+      </div>
+    }
+
+    @if (form(); as openForm) {
+      <mat-card appearance="outlined" data-testid="subscription-form-card">
+        <mat-card-content>
+          <app-descriptor-form
+            [descriptor]="descriptor"
+            [form]="openForm"
+            testId="payment-form"
+            (submitted)="submit($event)"
+          >
+            <div class="flex flex-wrap justify-end gap-2">
+              <button mat-button type="button" (click)="cancel()" data-testid="payment-cancel">
+                {{ 'licensing.payment.cancel' | translate }}
+              </button>
+              <button
+                mat-flat-button
+                type="submit"
+                [disabled]="busy()"
+                data-testid="payment-submit"
+              >
+                {{ 'licensing.payment.submit' | translate }}
+              </button>
+            </div>
+          </app-descriptor-form>
+        </mat-card-content>
+      </mat-card>
+    }
+
+    <section class="flex flex-col gap-3">
+      <h2 class="text-xl font-medium">{{ 'licensing.payment.history' | translate }}</h2>
+      @if (current.payments.length === 0) {
+        <p data-testid="subscription-no-payments">{{ 'licensing.payment.none' | translate }}</p>
+      } @else {
+        <ul class="flex flex-col gap-2" data-testid="subscription-payments">
+          @for (payment of current.payments; track payment.id) {
+            <li class="flex flex-wrap items-baseline justify-between gap-2 border-b py-2">
+              <span class="font-medium">{{ payment.amount }} {{ payment.currency }}</span>
+              <span class="text-sm">
+                {{ 'licensing.payment.methods.' + payment.method | translate }} ·
+                {{ payment.paidOn | date: 'mediumDate' }}
+              </span>
+              <span class="text-sm" [attr.data-testid]="'payment-status-' + payment.id">
+                {{ 'licensing.payment.statuses.' + payment.status | translate }}
+              </span>
+            </li>
+          }
+        </ul>
+      }
+    </section>
+  }
+</section>

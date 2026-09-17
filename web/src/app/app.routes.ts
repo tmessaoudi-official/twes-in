@@ -5,6 +5,7 @@ import {
   anonymousGuard,
   authGuard,
   awaitingApprovalGuard,
+  lockedSubscriptionGuard,
   operatorGuard,
   twoFactorGuard,
 } from './auth/auth-guard';
@@ -46,6 +47,14 @@ export const routes: Routes = [
     // The far end of a signup link, opened from a mail client with no session: outside both guards, like an invitation.
     path: 'signup/:token',
     loadComponent: () => import('./signup/finish-signup-page').then((m) => m.FinishSignupPage),
+  },
+  {
+    // A company its subscription locked: outside the shell like the page below, because the API refuses its members
+    // everything but reading the subscription and declaring a payment — which is what this page is for.
+    path: 'subscription',
+    canActivate: [lockedSubscriptionGuard],
+    loadComponent: () =>
+      import('./licensing/locked-subscription-page').then((m) => m.LockedSubscriptionPage),
   },
   {
     // A member of a company that is not active, pending approval or suspended: outside the shell, which could not load.
@@ -260,6 +269,13 @@ export const routes: Routes = [
           {
             path: 'company/modules',
             loadComponent: () => import('./company/modules-page').then((m) => m.ModulesPage),
+          },
+          {
+            // Reachable whatever the subscription says: a locked company reaches nothing else, and this is the
+            // way out of it (docs/SPEC.md § 7, 2026-09-17).
+            path: 'company/subscription',
+            loadComponent: () =>
+              import('./licensing/subscription-page').then((m) => m.SubscriptionPage),
           },
         ],
       },

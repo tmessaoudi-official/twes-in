@@ -195,6 +195,7 @@ describe('PlatformFacade', () => {
       currency: null,
       graceDays: null,
       unpaidMode: null,
+      holdDays: null,
     };
     const held = {
       companyId: 'c1',
@@ -239,6 +240,7 @@ describe('PlatformFacade', () => {
         currency: null,
         graceDays: null,
         unpaidMode: null,
+        holdDays: null,
       }),
     ).toBe(false);
     expect(facade.error()).toBe('refused');

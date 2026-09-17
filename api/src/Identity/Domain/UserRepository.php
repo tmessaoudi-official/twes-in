@@ -20,6 +20,13 @@ interface UserRepository
     /** @return list<User> the users whose address or display name holds that text, whatever its case, in address order */
     public function search(string $text, int $limit): array;
 
+    /**
+     * The accounts that run the platform, in address order: who hears of what a company declares.
+     *
+     * @return list<User>
+     */
+    public function platformOperators(): array;
+
     /** Makes the user and every change to it durable. */
     public function save(User $user): void;
 }

@@ -32,7 +32,13 @@ import type {
 } from './auth-types';
 
 const ACCESSES: readonly CompanyAccess[] = ['full', 'read_only', 'locked'];
-const STAGES: readonly CompanySubscription['stage'][] = ['trial', 'paid', 'grace', 'unpaid'];
+const STAGES: readonly CompanySubscription['stage'][] = [
+  'trial',
+  'paid',
+  'grace',
+  'held',
+  'unpaid',
+];
 
 /** Thrown by the adapter when the API refuses; carries the stable error code the API answered with. */
 export class AuthRefused extends Error {

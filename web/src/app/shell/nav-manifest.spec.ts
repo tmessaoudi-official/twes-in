@@ -144,7 +144,14 @@ describe('the navigation manifest', () => {
     ).toEqual([
       [
         'company',
-        ['company-profile', 'company-security', 'establishments', 'numbering', 'settings'],
+        [
+          'company-profile',
+          'company-security',
+          'establishments',
+          'numbering',
+          'subscription',
+          'settings',
+        ],
       ],
       ['fiscal', ['taxes', 'units']],
       ['team', ['members']],

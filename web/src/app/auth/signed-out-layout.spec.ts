@@ -29,13 +29,21 @@ class StaticLoader implements TranslateLoader {
 })
 class Host {}
 
+@Component({
+  imports: [SignedOutLayout],
+  template: `<app-signed-out-layout plain>
+    <h1 data-testid="plain-title">Abonnement</h1>
+  </app-signed-out-layout>`,
+})
+class PlainHost {}
+
 describe('SignedOutLayout', () => {
   const name = signal('nova-pay');
   const tagline = signal('Rien ne se perd.');
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Host],
+      imports: [Host, PlainHost],
       providers: [
         { provide: Brand, useValue: { name, tagline } },
         provideQuietFeedback(),
@@ -85,5 +93,30 @@ describe('SignedOutLayout', () => {
     expect(scheme).not.toBeNull();
     expect(scheme?.closest('.twes-auth-card')).toBeNull();
     expect(scheme?.closest('[aria-hidden="true"]')).toBeNull();
+  });
+
+  it('gives a page that brings its own cards the width, with no sign-in card around it', async () => {
+    // The sign-in card is 26.25rem and holds one column of fields. A whole page inside it lays its form out in two
+    // columns anyway — `sm:` is a viewport breakpoint, not the card's width — and the inputs collapse to nothing:
+    // a locked company could see the form and not type in it (2026-09-17).
+    const fixture = TestBed.createComponent(PlainHost);
+    await fixture.whenStable();
+    const title = (fixture.nativeElement as HTMLElement).querySelector(
+      '[data-testid="plain-title"]',
+    );
+
+    expect(title?.closest('.twes-auth-card')).toBeNull();
+    expect(title?.closest('.twes-auth-page')).not.toBeNull();
+  });
+
+  it('drops the scene behind a plain page, which is as wide as the space the scene wants', async () => {
+    // The scene's documents are placed around a card of 26.25rem. A page twice that runs under them: the heading
+    // came out behind an invoice and a delivery note lay over the form (2026-09-17, read off the e2e screenshot).
+    const fixture = TestBed.createComponent(PlainHost);
+    await fixture.whenStable();
+
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('[data-testid="auth-scene"]'),
+    ).toBeNull();
   });
 });

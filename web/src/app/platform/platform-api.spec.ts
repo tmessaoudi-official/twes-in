@@ -50,6 +50,7 @@ describe('PlatformApi', () => {
       currency: 'TND',
       graceDays: null,
       unpaidMode: null,
+      holdDays: null,
       stage: 'paid',
       access: 'full',
       coveredUntil: '2026-12-31T23:59:59+01:00',
@@ -80,6 +81,7 @@ describe('PlatformApi', () => {
       currency: null,
       graceDays: 10,
       unpaidMode: 'locked' as const,
+      holdDays: 3,
     };
     const saving = api.setSubscription('c1', terms);
     const put = http.expectOne('/api/platform/companies/c1/subscription');

@@ -30,8 +30,10 @@ const EMPTY_TERMS: SubscriptionTerms = {
   currency: null,
   graceDays: null,
   unpaidMode: null,
+  holdDays: null,
 };
 import { Feedback } from '../shared/feedback/feedback';
+import { SubscriptionFacade } from '../licensing/subscription-facade';
 
 /**
  * The operators' page: whether anyone may sign up, whether a company that signs up waits for approval, the
@@ -54,7 +56,12 @@ import { Feedback } from '../shared/feedback/feedback';
 })
 export class PlatformPage implements OnInit {
   private readonly platform = inject(PlatformFacade);
+  private readonly payments = inject(SubscriptionFacade);
   private readonly feedback = inject(Feedback);
+
+  protected readonly waitingPayments = this.payments.waiting;
+  /** How many periods each waiting payment is taken to cover, by declaration; one unless the operator says otherwise. */
+  protected readonly periodsFor = signal<Readonly<Record<string, number>>>({});
 
   protected readonly waiting = this.platform.waiting;
   protected readonly signup = this.platform.signup;
@@ -79,6 +86,29 @@ export class PlatformPage implements OnInit {
 
   async ngOnInit(): Promise<void> {
     await this.platform.load();
+    await this.payments.loadWaiting();
+  }
+
+  protected typedPeriods(declarationId: string, event: Event): void {
+    const periods = Number.parseInt(this.typed(event), 10);
+    this.periodsFor.update((held) => ({ ...held, [declarationId]: periods > 0 ? periods : 1 }));
+  }
+
+  /** Confirming carries the company's covered time forward by that many periods. */
+  protected async confirmPayment(declarationId: string): Promise<void> {
+    const periods = this.periodsFor()[declarationId] ?? 1;
+    if (await this.payments.confirm(declarationId, periods, null)) {
+      this.feedback.success('platform.payments.confirmed');
+      await this.platform.load();
+    }
+  }
+
+  /** Rejecting ends at once the hold the declaration kept on the company. */
+  protected async rejectPayment(declarationId: string): Promise<void> {
+    if (await this.payments.reject(declarationId, null)) {
+      this.feedback.success('platform.payments.rejected');
+      await this.platform.load();
+    }
   }
 
   protected async turn(key: SignupSwitch, value: boolean): Promise<void> {
@@ -144,6 +174,7 @@ export class PlatformPage implements OnInit {
             currency: held.currency,
             graceDays: held.graceDays,
             unpaidMode: held.unpaidMode,
+            holdDays: held.holdDays,
           },
     );
   }
@@ -159,6 +190,8 @@ export class PlatformPage implements OnInit {
           return { ...terms, periodUnit: PERIOD_UNITS.find((unit) => unit === value) ?? 'month' };
         case 'graceDays':
           return { ...terms, graceDays: '' === value ? null : Number.parseInt(value, 10) };
+        case 'holdDays':
+          return { ...terms, holdDays: '' === value ? null : Number.parseInt(value, 10) };
         case 'unpaidMode':
           return { ...terms, unpaidMode: UNPAID_MODES.find((mode) => mode === value) ?? null };
         default:

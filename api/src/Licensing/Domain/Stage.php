@@ -16,5 +16,7 @@ enum Stage: string
     case Paid = 'paid';
     /** Covered time has ended; access is still full until the grace period ends. */
     case Grace = 'grace';
+    /** Covered time and grace have both ended, but a declared payment waits for the operator's decision. */
+    case Held = 'held';
     case Unpaid = 'unpaid';
 }

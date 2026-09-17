@@ -21,6 +21,7 @@ parameters:
     app.invitation.accept_url: '%env(DEFAULT_URI)%/invitations/{token}'
     app.signup.link_url: '%env(DEFAULT_URI)%/signup/{token}'
     app.signup.login_url: '%env(DEFAULT_URI)%/login'
+    app.platform_url: '%env(DEFAULT_URI)%/platform'
     app.signup.valid_for: 'PT24H'
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
@@ -115,6 +116,14 @@ services:
     App\Tenancy\Application\Company\DecideCompanyApproval:
         arguments:
             $loginUrl: '%app.signup.login_url%'
+    App\Licensing\Application\ManagePayments:
+        arguments:
+            $loginUrl: '%app.signup.login_url%'
+            $platformUrl: '%app.platform_url%'
+    App\Licensing\Infrastructure\Mail\SymfonySubscriptionMailer:
+        arguments:
+            $sender: '%app.mail.sender%'
+            $productName: '%app.product_name%'
     App\Tenancy\Infrastructure\Mail\SymfonyCompanyApprovalMailer:
         arguments:
             $sender: '%app.mail.sender%'

@@ -238,6 +238,7 @@ function toSubscription(
     currency: read.currency ?? null,
     graceDays: read.graceDays ?? null,
     unpaidMode: read.unpaidMode ?? null,
+    holdDays: read.holdDays ?? null,
     stage: read.stage,
     access: read.access,
     coveredUntil: read.coveredUntil,

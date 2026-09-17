@@ -57,6 +57,9 @@ class Subscription implements CompanyOwned
     #[ORM\Column(length: 16, nullable: true)]
     private ?string $unpaidMode;
 
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $holdDays;
+
     #[ORM\Column(type: Types::DATETIMETZ_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -78,7 +81,11 @@ class Subscription implements CompanyOwned
         $this->updatedAt = $now;
     }
 
-    public function standingAt(\DateTimeImmutable $now, LicensingDefaults $defaults): Standing
+    /**
+     * @param \DateTimeImmutable|null $declaredAt when a payment the operator has not decided on waits, the moment it
+     *                                            was declared: it keeps the company open for the hold days
+     */
+    public function standingAt(\DateTimeImmutable $now, LicensingDefaults $defaults, ?\DateTimeImmutable $declaredAt = null): Standing
     {
         $terms = $this->getTerms();
         $coveredUntil = $terms->coveredUntil();
@@ -92,12 +99,33 @@ class Subscription implements CompanyOwned
         if ($now <= $graceEndsAt) {
             return new Standing(Stage::Grace, Access::Full, $coveredUntil, $graceEndsAt, self::daysBetween($now, $graceEndsAt));
         }
+        if (null !== $declaredAt) {
+            $heldUntil = $declaredAt->modify(\sprintf('+%d days', $terms->holdDays ?? $defaults->holdDays));
+            if ($now <= $heldUntil) {
+                return new Standing(Stage::Held, Access::Full, $coveredUntil, $graceEndsAt, self::daysBetween($now, $heldUntil));
+            }
+        }
         $access = match ($terms->unpaidMode ?? $defaults->unpaidMode) {
             UnpaidMode::ReadOnly => Access::ReadOnly,
             UnpaidMode::Locked => Access::Locked,
         };
 
         return new Standing(Stage::Unpaid, $access, $coveredUntil, $graceEndsAt, null);
+    }
+
+    /**
+     * Carries the covered time forward by whole billing periods, from where it ends or from today, whichever is later:
+     * paying now buys the time ahead, never time already spent unpaid.
+     */
+    public function coverPeriods(int $periods, \DateTimeImmutable $now): void
+    {
+        if ($periods < 1) {
+            throw new InvalidSubscription('A payment covers at least one period.');
+        }
+        $terms = $this->getTerms();
+        $from = max($terms->coveredUntil(), $now);
+        $this->paidUntil = $terms->period->after($from, $periods);
+        $this->updatedAt = $now;
     }
 
     public function getTerms(): SubscriptionTerms
@@ -110,6 +138,7 @@ class Subscription implements CompanyOwned
             $this->currency,
             $this->graceDays,
             null === $this->unpaidMode ? null : UnpaidMode::from($this->unpaidMode),
+            $this->holdDays,
         );
     }
 
@@ -143,6 +172,7 @@ class Subscription implements CompanyOwned
         $this->currency = $terms->currency;
         $this->graceDays = $terms->graceDays;
         $this->unpaidMode = $terms->unpaidMode?->value;
+        $this->holdDays = $terms->holdDays;
     }
 
     /** Whole days from one instant to a later one, a started day counting as one. */

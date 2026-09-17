@@ -2,7 +2,7 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from './auth-facade';
 import { SignedOutLayout } from './signed-out-layout';
@@ -13,7 +13,7 @@ import { SignedOutLayout } from './signed-out-layout';
  */
 @Component({
   selector: 'app-awaiting-approval-page',
-  imports: [SignedOutLayout, MatButtonModule, TranslatePipe],
+  imports: [SignedOutLayout, MatButtonModule, RouterLink, TranslatePipe],
   templateUrl: './awaiting-approval-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

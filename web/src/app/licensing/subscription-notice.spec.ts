@@ -23,6 +23,12 @@ describe('the subscription notice', () => {
     });
   });
 
+  it('says a declared payment is holding the company open, and for how long', () => {
+    expect(noticeFor('held', 5, 'full')).toEqual({ key: 'held', days: 5, tone: 'warn' });
+    // Held is a warning, not an alarm: nothing is closed while the operator has not answered.
+    expect(noticeFor('held', 5, 'full')?.tone).toBe('warn');
+  });
+
   it('speaks of what the company may do before what stage it is in', () => {
     // A company read-only for another reason than its own dates would still be told what it may do.
     expect(noticeFor('grace', 2, 'read_only')?.key).toBe('read_only');

@@ -24,6 +24,14 @@ final class InMemoryUsers implements UserRepository
         return $this->users[$id->toRfc4122()] ?? null;
     }
 
+    public function platformOperators(): array
+    {
+        $operators = array_values(array_filter($this->users, static fn (User $user): bool => $user->isPlatformOperator()));
+        usort($operators, static fn (User $a, User $b): int => strcmp($a->getEmail()->value, $b->getEmail()->value));
+
+        return $operators;
+    }
+
     public function ofEmail(Email $email): ?User
     {
         foreach ($this->users as $user) {

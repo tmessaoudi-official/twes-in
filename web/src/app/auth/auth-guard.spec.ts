@@ -15,6 +15,7 @@ import {
   anonymousGuard,
   authGuard,
   awaitingApprovalGuard,
+  lockedSubscriptionGuard,
   operatorGuard,
   twoFactorGuard,
 } from './auth-guard';
@@ -24,6 +25,7 @@ function facade(
   needsEnrolment = false,
   companyClosed = false,
   operator = false,
+  company: { status: string; access: string } | null = null,
 ) {
   return {
     status: () => status,
@@ -31,6 +33,7 @@ function facade(
     needsEnrolment: () => needsEnrolment,
     companyClosed: () => companyClosed,
     isPlatformOperator: () => operator,
+    me: () => (company === null ? null : { company }),
     load: vi.fn(),
   };
 }
@@ -73,6 +76,34 @@ describe('auth guards', () => {
     expect(await run(awaitingApprovalGuard, facade('authenticated', false, true))).toBe(true);
     expect(await run(awaitingApprovalGuard, facade('authenticated', false, false))).toBe('/');
     expect(await run(awaitingApprovalGuard, facade('anonymous'))).toBe('/login');
+  });
+
+  it('opens the subscription page to a company its subscription locked, and to no other', async () => {
+    const locked = { status: 'active', access: 'locked' };
+    expect(
+      await run(lockedSubscriptionGuard, facade('authenticated', false, true, false, locked)),
+    ).toBe(true);
+    // A company waiting for approval or suspended stays shut whatever it pays, so it is not let in here.
+    expect(
+      await run(
+        lockedSubscriptionGuard,
+        facade('authenticated', false, true, false, {
+          status: 'suspended',
+          access: 'locked',
+        }),
+      ),
+    ).toBe('/');
+    expect(
+      await run(
+        lockedSubscriptionGuard,
+        facade('authenticated', false, false, false, {
+          status: 'active',
+          access: 'full',
+        }),
+      ),
+    ).toBe('/');
+    expect(await run(lockedSubscriptionGuard, facade('authenticated'))).toBe('/');
+    expect(await run(lockedSubscriptionGuard, facade('anonymous'))).toBe('/login');
   });
 
   it('opens the platform page to its operators only', async () => {

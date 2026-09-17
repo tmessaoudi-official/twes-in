@@ -37,6 +37,23 @@ export const awaitingApprovalGuard: CanActivateFn = async () => {
   return auth.companyClosed() ? true : router.createUrlTree(['/']);
 };
 
+/**
+ * The subscription page a locked company reaches outside the shell. Only for a company its SUBSCRIPTION locked:
+ * a company pending approval or suspended by an operator is not let in, since declaring a payment would not open it.
+ */
+export const lockedSubscriptionGuard: CanActivateFn = async () => {
+  const auth = inject(AuthFacade);
+  const router = inject(Router);
+  if (!(await resolveStatus(auth))) {
+    return router.createUrlTree(['/login']);
+  }
+  const company = auth.me()?.company ?? null;
+
+  return company !== null && 'active' === company.status && 'locked' === company.access
+    ? true
+    : router.createUrlTree(['/']);
+};
+
 /** The platform page: its operators only; anybody else signed in lands on the home page. */
 export const operatorGuard: CanActivateFn = async () => {
   const auth = inject(AuthFacade);

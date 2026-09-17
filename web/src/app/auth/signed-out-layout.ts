@@ -23,5 +23,12 @@ import { SchemeMenu } from '../shared/theme/scheme-menu';
 export class SignedOutLayout {
   /** A page with more to show than one form (setting up a second factor) takes a wider card. */
   readonly wide = input(false, { transform: booleanAttribute });
+
+  /**
+   * A page that brings its own surfaces (the locked company's subscription, with its cards and its form) takes the
+   * width plainly instead: inside the card its form still lays out in two columns — `sm:` is the viewport's
+   * breakpoint, not the card's — and the inputs collapse to nothing (2026-09-17).
+   */
+  readonly plain = input(false, { transform: booleanAttribute });
   protected readonly brand = inject(Brand);
 }

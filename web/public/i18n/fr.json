@@ -96,7 +96,8 @@
       "pending": "{{company}} attend l'approbation de l'équipe de la plateforme. Vous recevrez un e-mail dès qu'elle sera approuvée.",
       "suspended": "{{company}} est suspendue. Contactez l'équipe de la plateforme pour en savoir plus.",
       "sign_out": "Se déconnecter",
-      "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir."
+      "locked": "{{company}} est fermée en attendant le règlement de l’abonnement. Contactez-nous pour la rouvrir.",
+      "declare_payment": "Déclarer un règlement"
     },
     "scene": {
       "invoice_number": "FA-2026-0142",
@@ -390,7 +391,8 @@
     "vendors": "Fournisseurs",
     "expenses": "Dépenses",
     "expense_categories": "Catégories de dépenses",
-    "company_security": "Sécurité"
+    "company_security": "Sécurité",
+    "subscription": "Abonnement"
   },
   "shell": {
     "skip": "Aller au contenu",
@@ -439,7 +441,9 @@
       "invitation_received": "Une invitation à rejoindre {{company}} vous attend dans votre messagerie.",
       "stock_delivery_note_lines_left_out": "Le bon de livraison {{number}} est validé, mais certaines de ses lignes n'ont pas sorti de stock (unité différente ou quantité absente).",
       "stock_delivery_note_moved_no_stock": "Le stock du bon de livraison {{number}} n'a pas pu être mis à jour. Rien n'a bougé : prévenez l'administrateur de la plateforme, qui peut le rejouer.",
-      "unknown": "Nouvelle notification."
+      "unknown": "Nouvelle notification.",
+      "subscription_payment_declared": "{{company}} a déclaré un règlement de {{amount}} {{currency}}.",
+      "subscription_payment_decided": "Votre règlement de {{amount}} {{currency}} a reçu une réponse."
     }
   },
   "invitation": {
@@ -1525,13 +1529,24 @@
         "trial": "Essai",
         "paid": "À jour",
         "grace": "Tolérance",
-        "unpaid": "Impayé"
+        "unpaid": "Impayé",
+        "held": "Règlement en attente"
       },
       "accesses": {
         "full": "Accès complet",
         "read_only": "Lecture seule",
         "locked": "Fermée"
-      }
+      },
+      "hold_days": "Jours d’attente de confirmation"
+    },
+    "payments": {
+      "title": "Règlements à confirmer",
+      "none": "Aucun règlement en attente.",
+      "periods": "Périodes couvertes",
+      "confirm": "Confirmer",
+      "reject": "Refuser",
+      "confirmed": "Le règlement a été confirmé.",
+      "rejected": "Le règlement a été refusé."
     }
   },
   "appearance": {
@@ -1574,7 +1589,64 @@
     "notice": {
       "ending": "Votre abonnement se termine dans {{days}} jour(s). Déclarez votre règlement pour le prolonger.",
       "grace": "Votre abonnement a expiré. Il vous reste {{days}} jour(s) avant que l’entreprise ne passe en lecture seule.",
-      "read_only": "Abonnement impayé : vous pouvez consulter, imprimer et exporter, mais plus rien créer ni modifier."
+      "read_only": "Abonnement impayé : vous pouvez consulter, imprimer et exporter, mais plus rien créer ni modifier.",
+      "held": "Règlement déclaré, en attente de confirmation. L’entreprise reste ouverte {{days}} jour(s)."
+    },
+    "title": "Abonnement",
+    "unmanaged": "Cette entreprise n’a pas d’abonnement à régler.",
+    "covered_until": "Couvert jusqu’au",
+    "paid_through": "Payé jusqu’au",
+    "price": "Prix",
+    "days_left": "{{days}} jour(s) restant(s)",
+    "stages": {
+      "trial": "Essai",
+      "paid": "À jour",
+      "grace": "Tolérance",
+      "held": "Règlement en attente",
+      "unpaid": "Impayé"
+    },
+    "periods": {
+      "day": "{{count}} jour(s)",
+      "month": "{{count}} mois",
+      "year": "{{count}} an(s)"
+    },
+    "errors": {
+      "not_managed": "Cette entreprise n’a pas d’abonnement à régler.",
+      "already_declared": "Un règlement est déjà en attente de confirmation.",
+      "invalid": "Ce règlement ne peut pas être enregistré tel quel.",
+      "refused": "L’opération a été refusée.",
+      "network": "Le serveur n’a pas répondu."
+    },
+    "payment": {
+      "declare": "Déclarer un règlement",
+      "declared": "Votre règlement a été déclaré. Vous serez prévenu dès qu’il sera confirmé.",
+      "waiting": "Règlement de {{amount}} {{currency}} déclaré, en attente de confirmation.",
+      "history": "Règlements déclarés",
+      "none": "Aucun règlement déclaré pour l’instant.",
+      "section": "Règlement",
+      "section_hint": "Indiquez ce que vous avez réglé ; nous le confirmons après vérification.",
+      "submit": "Déclarer",
+      "cancel": "Annuler",
+      "methods": {
+        "cash": "Espèces",
+        "transfer": "Virement",
+        "cheque": "Chèque",
+        "other": "Autre"
+      },
+      "statuses": {
+        "declared": "En attente",
+        "confirmed": "Confirmé",
+        "rejected": "Refusé"
+      },
+      "fields": {
+        "amount": "Montant",
+        "amount_hint": "Trois décimales au plus.",
+        "method": "Moyen de règlement",
+        "paidOn": "Date du règlement",
+        "reference": "Référence",
+        "reference_hint": "Numéro de reçu, de virement ou de chèque.",
+        "note": "Précision"
+      }
     }
   }
 }

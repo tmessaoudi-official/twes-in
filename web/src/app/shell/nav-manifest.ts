@@ -86,6 +86,14 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'company.settings',
   },
   {
+    key: 'subscription',
+    labelKey: 'nav.subscription',
+    icon: 'card_membership',
+    route: '/company/subscription',
+    section: 'company',
+    permission: 'subscription.read',
+  },
+  {
     key: 'settings',
     labelKey: 'nav.settings',
     icon: 'tune',

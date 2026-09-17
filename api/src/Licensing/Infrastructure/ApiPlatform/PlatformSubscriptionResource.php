@@ -96,12 +96,17 @@ final class PlatformSubscriptionResource
     #[Groups([self::READ, self::WRITE])]
     public ?int $graceDays = null;
 
+    /** How long this company's declared payment holds access while it waits; null follows the platform's. */
+    #[ApiProperty(schema: ['type' => ['integer', 'null'], 'minimum' => 0, 'maximum' => SubscriptionTerms::MAX_GRACE_DAYS])]
+    #[Groups([self::READ, self::WRITE])]
+    public ?int $holdDays = null;
+
     /** What this company gets once grace ends unpaid; null follows the platform's. */
     #[ApiProperty(schema: ['type' => ['string', 'null'], 'enum' => ['read_only', 'locked', null]])]
     #[Groups([self::READ, self::WRITE])]
     public ?string $unpaidMode = null;
 
-    #[ApiProperty(writable: false, required: true, schema: ['type' => 'string', 'enum' => ['trial', 'paid', 'grace', 'unpaid']])]
+    #[ApiProperty(writable: false, required: true, schema: ['type' => 'string', 'enum' => ['trial', 'paid', 'grace', 'held', 'unpaid']])]
     #[Groups([self::READ])]
     public string $stage = '';
 
@@ -140,6 +145,7 @@ final class PlatformSubscriptionResource
         $resource->price = $terms->price;
         $resource->currency = $terms->currency;
         $resource->graceDays = $terms->graceDays;
+        $resource->holdDays = $terms->holdDays;
         $resource->unpaidMode = $terms->unpaidMode?->value;
         $resource->stage = $standing->stage->value;
         $resource->access = $standing->access->value;
@@ -166,6 +172,7 @@ final class PlatformSubscriptionResource
             $this->currency,
             $this->graceDays,
             $mode,
+            $this->holdDays,
         );
     }
 

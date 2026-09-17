@@ -8,6 +8,8 @@ import {
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import { SubscriptionFacade } from '../licensing/subscription-facade';
+import type { WaitingPayment } from '../licensing/subscription-types';
 import { PlatformFacade } from './platform-facade';
 import { PlatformPage } from './platform-page';
 import type {
@@ -61,6 +63,15 @@ class StaticLoader implements TranslateLoader {
           countries: { TN: 'Tunisie', FR: 'France' },
           statuses: { pending: 'En attente', active: 'Active', suspended: 'Suspendue' },
         },
+        payments: {
+          title: 'Règlements à confirmer',
+          none: 'Aucun règlement en attente.',
+          periods: 'Périodes couvertes',
+          confirm: 'Confirmer',
+          reject: 'Refuser',
+          confirmed: 'Le règlement a été confirmé.',
+          rejected: 'Le règlement a été refusé.',
+        },
         errors: {
           not_found: 'Introuvable',
           refused: 'Refusé',
@@ -68,9 +79,26 @@ class StaticLoader implements TranslateLoader {
           own_account: 'Pas le vôtre',
         },
       },
+      licensing: { payment: { methods: { cash: 'Espèces' } } },
     });
   }
 }
+
+const declared: WaitingPayment = {
+  id: 'p1',
+  companyId: 'c1',
+  companyName: 'Nouvelle Société',
+  amount: '600.000',
+  currency: 'TND',
+  method: 'cash',
+  paidOn: '2026-09-16',
+  reference: 'REC-12',
+  note: null,
+  status: 'declared',
+  declaredAt: '2026-09-16T10:00:00+00:00',
+  decidedAt: null,
+  decisionNote: null,
+};
 
 const account: PlatformAccountRow = {
   id: 'u1',
@@ -99,6 +127,7 @@ describe('PlatformPage', () => {
   const accounts = signal<readonly PlatformAccountRow[]>([account]);
   const companies = signal<readonly PlatformCompanyRow[]>([row]);
   const subscription = signal<PlatformSubscriptionRow | null>(null);
+  const waitingPayments = signal<readonly WaitingPayment[]>([declared]);
   const openedSubscription = signal<string | null>(null);
   const facade = {
     waiting,
@@ -124,6 +153,12 @@ describe('PlatformPage', () => {
     saveSubscription: vi.fn(async () => true),
     stopSubscription: vi.fn(async () => true),
   };
+  const payments = {
+    waiting: waitingPayments.asReadonly(),
+    loadWaiting: vi.fn(async () => undefined),
+    confirm: vi.fn(async () => true),
+    reject: vi.fn(async () => true),
+  };
 
   beforeEach(async () => {
     waiting.set([row]);
@@ -131,6 +166,10 @@ describe('PlatformPage', () => {
     error.set(null);
     accounts.set([account]);
     companies.set([row]);
+    waitingPayments.set([declared]);
+    Object.values(payments)
+      .filter((value) => typeof value === 'function' && 'mockReset' in value)
+      .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
     Object.values(facade)
       .filter((value) => typeof value === 'function' && 'mockReset' in value)
       .forEach((fn) => (fn as ReturnType<typeof vi.fn>).mockReset().mockResolvedValue(true));
@@ -139,6 +178,7 @@ describe('PlatformPage', () => {
       providers: [
         ...provideQuietFeedback(),
         { provide: PlatformFacade, useValue: facade },
+        { provide: SubscriptionFacade, useValue: payments },
         provideTranslateService({
           lang: 'fr',
           fallbackLang: 'fr',
@@ -316,6 +356,46 @@ describe('PlatformPage', () => {
     await fixture.whenStable();
 
     expect(facade.inviteOwner).toHaveBeenCalledWith('c1', 'karim@example.test');
+  });
+
+  it('lists the payments waiting for a decision and answers one', async () => {
+    const { fixture, query } = await render();
+
+    const waiting = query('payment-p1')!;
+    expect(waiting.textContent).toContain('Nouvelle Société');
+    expect(waiting.textContent).toContain('600.000');
+    expect(waiting.textContent).toContain('Espèces');
+
+    // The operator says how many periods it covers before confirming; one unless they change it.
+    const periods = query<HTMLInputElement>('payment-periods-p1')!;
+    periods.value = '2';
+    periods.dispatchEvent(new Event('input'));
+    query<HTMLButtonElement>('payment-confirm-p1')!.click();
+    await fixture.whenStable();
+
+    expect(payments.confirm).toHaveBeenCalledWith('p1', 2, null);
+    // The companies list is read again, since a confirmation moves the company's covered time.
+    expect(facade.load).toHaveBeenCalled();
+    expect((TestBed.inject(Feedback) as RecordedFeedback).said).toEqual([
+      { kind: 'success', key: 'platform.payments.confirmed', params: undefined },
+    ]);
+  });
+
+  it('rejects a payment without asking for periods', async () => {
+    const { fixture, query } = await render();
+
+    query<HTMLButtonElement>('payment-reject-p1')!.click();
+    await fixture.whenStable();
+
+    expect(payments.reject).toHaveBeenCalledWith('p1', null);
+  });
+
+  it('says so when no payment waits', async () => {
+    waitingPayments.set([]);
+
+    const { query } = await render();
+
+    expect(query('platform-payments-empty')?.textContent).toContain('Aucun règlement en attente.');
   });
 
   it('names a refusal', async () => {

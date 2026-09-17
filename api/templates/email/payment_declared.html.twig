@@ -1,0 +1,19 @@
+{# The mail an operator receives the moment a company says it paid its subscription. Plain, inline-styled HTML. #}
+<!DOCTYPE html>
+<html lang="{{ app.request.locale|default('fr') }}">
+  <body style="font-family: system-ui, sans-serif; line-height: 1.5; color: #111;">
+    <h1 style="font-size: 20px;">{{ 'payment_declared.heading'|trans({'%company%': companyName}, 'emails') }}</h1>
+    <p>{{ 'payment_declared.intro'|trans({'%company%': companyName, '%amount%': amount, '%currency%': currency, '%date%': paidOn}, 'emails') }}</p>
+    <p>{{ 'payment_declared.method'|trans({'%method%': ('payment_declared.methods.' ~ method)|trans({}, 'emails')}, 'emails') }}</p>
+    {% if reference %}
+      <p>{{ 'payment_declared.reference'|trans({'%reference%': reference}, 'emails') }}</p>
+    {% endif %}
+    <p>
+      <a href="{{ platformUrl }}" style="display: inline-block; padding: 10px 16px; background: #1a56db; color: #fff; text-decoration: none; border-radius: 6px;">
+        {{ 'payment_declared.call_to_action'|trans({}, 'emails') }}
+      </a>
+    </p>
+    <p style="font-size: 12px; color: #888;">{{ 'payment_declared.sign_in_first'|trans({}, 'emails') }}</p>
+    <p style="font-size: 12px; color: #888;">{{ productName }}</p>
+  </body>
+</html>

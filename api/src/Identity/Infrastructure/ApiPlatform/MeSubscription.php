@@ -16,7 +16,7 @@ use App\Licensing\Domain\Standing;
 final readonly class MeSubscription
 {
     public function __construct(
-        #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['trial', 'paid', 'grace', 'unpaid']])] public string $stage,
+        #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['trial', 'paid', 'grace', 'held', 'unpaid']])] public string $stage,
         #[ApiProperty(required: true)] public string $coveredUntil,
         #[ApiProperty(required: true)] public string $graceEndsAt,
         /** whole days before the stage changes; null once unpaid */

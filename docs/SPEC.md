@@ -213,6 +213,19 @@ of the two it is with a 403; a stranger still gets the same 404. Only operators 
 `/api/platform/companies/{companyId}/subscription`, and the platform defaults are operator-only platform settings —
 declared in a business chain, a company's own admin could edit them.
 
+Payments are declared, not taken: many companies pay in cash. A company posts what it paid — amount, method, day,
+reference — to `/api/companies/{companyId}/subscription/payments`, one declaration waiting at a time (the use case
+checks, and a partial unique index holds it against a race). The declaration keeps the company open for the hold
+days, its own `holdDays` or the platform's `licensing.hold_days`, which gives the `held` stage; a confirmation
+carries the covered time forward by the periods the operator names, from where it ends or from today, whichever is
+later, and a rejection ends the hold at once. Operators are told in the app and by mail as soon as it is declared,
+owners as soon as it is decided, and every declaration is kept and audited whatever its answer.
+
+Because a locked company is closed out of the shell, the one page the API still allows it — its own subscription —
+is served OUTSIDE the shell at `/subscription`, with `lockedSubscriptionGuard` admitting exactly a company its
+subscription locked, and the awaiting page links to it. That route is the only UI path to `Access::ALWAYS`: a
+company that could not say it paid would have no way back, so do not fold it into `companyClosed`'s redirect.
+
 ### Modules [RULED 2026-09-09]
 
 Everything after the core is a module a company can switch on or off. A module is a backend
@@ -718,8 +731,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 61 | Product identity (§ 7 2026-09-17): an optional reference generated from a numbering series when left empty (previewed in the form, proposal to confirm), a barcode unique within the company when set, an EAN/UPC check digit verified | M | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 62 | Substitution groups (§ 7 2026-09-17): the business groups products that replace each other; the product page and a document line short of stock show the in-stock substitutes and swap in one click | M | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 63 | Scanner (§ 7 2026-09-17): a camera scan for the barcode field, a list's search and a document's lines; a phone paired to a laptop tab by a single-use, scan-only QR code, codes sent over the tab's realtime channel; iPhone Safari, HTTPS and the decoder's licence researched first | L | todo | - | api/src/** api/tests/** web/src/app/** web/e2e/** docs/** |
-| 65 | Subscriptions, slice 1 (§ 7 2026-09-17): the `Licensing` context, a subscription per company with its trial, billing period, price and paid-through date, the standing computed from those dates, the operator's platform endpoints and panel, an unpaid company read-only or locked in both access checks, the notice above every page | L | doing | - | api/src/Licensing/** api/src/Tenancy/Infrastructure/** api/src/Identity/Infrastructure/ApiPlatform/** api/migrations/** api/tests/** web/src/app/** |
-| 66 | Subscriptions, slice 2 (§ 7 2026-09-17): a company declares a cash payment with its method, date, reference and receipt; the operator is told in the app and by mail and confirms or rejects it from the platform page; a declaration holds the lock off for the configured days; the ledger is audited | L | todo | - | api/src/Licensing/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
+| 65 | Subscriptions, slice 1 (§ 7 2026-09-17): the `Licensing` context, a subscription per company with its trial, billing period, price and paid-through date, the standing computed from those dates, the operator's platform endpoints and panel, an unpaid company read-only or locked in both access checks, the notice above every page | L | done | 50d5494 | api/src/Licensing/** api/src/Tenancy/Infrastructure/** api/src/Identity/Infrastructure/ApiPlatform/** api/migrations/** api/tests/** web/src/app/** |
+| 66 | Subscriptions, slice 2 (§ 7 2026-09-17): a company declares a cash payment with its method, date, reference and receipt; the operator is told in the app and by mail and confirms or rejects it from the platform page; a declaration holds the lock off for the configured days; the ledger is audited; the page a locked company reaches outside the shell is its only way back | L | doing | - | api/src/Licensing/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 67 | Subscriptions, slice 3 (§ 7 2026-09-17): reminder mail before a period ends and while grace runs, on the row-56 scheduler worker; and operator hardening with owner-granted, time-boxed support access | M | todo | - | api/src/Licensing/** api/src/Identity/** api/tests/** web/src/app/** |
 | 64 | Import past invoices and delivery notes as a read-only archive keeping their original numbers, outside the gapless series (§ 7 2026-09-17) | L | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 <!-- /progress-block -->

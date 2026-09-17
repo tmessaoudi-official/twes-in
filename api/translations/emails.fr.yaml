@@ -25,3 +25,25 @@ company_approved:
     heading: '%company% est approuvée'
     intro: "L'équipe %product% a approuvé %company%. Vous et votre équipe pouvez vous connecter et commencer."
     call_to_action: 'Se connecter'
+payment_declared:
+    subject: '%company% a déclaré un règlement de %amount% %currency%'
+    heading: '%company% déclare avoir payé'
+    intro: "%company% a déclaré %amount% %currency% réglés le %date%."
+    method: 'Moyen : %method%.'
+    methods:
+        cash: 'espèces'
+        transfer: 'virement'
+        cheque: 'chèque'
+        other: 'autre'
+    reference: 'Référence : %reference%.'
+    call_to_action: 'Ouvrir la page plateforme'
+    sign_in_first: "La décision se prend connecté : ce lien ouvre la page, il ne confirme rien par lui-même."
+payment_decided:
+    confirmed_subject: 'Votre règlement a été confirmé'
+    rejected_subject: "Votre règlement n'a pas pu être confirmé"
+    confirmed_heading: 'Règlement de %amount% %currency% confirmé'
+    rejected_heading: 'Règlement de %amount% %currency% non confirmé'
+    rejected_intro: "Nous n'avons pas pu confirmer le règlement déclaré pour %company%."
+    paid_through: '%company% est réglée jusqu’au %date%.'
+    note: 'Note : %note%'
+    call_to_action: 'Ouvrir %product%'

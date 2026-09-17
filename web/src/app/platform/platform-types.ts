@@ -2,7 +2,7 @@
 
 /** Where a company stands in its subscription, as the platform's company list shows it. */
 export interface SubscriptionStanding {
-  readonly stage: 'trial' | 'paid' | 'grace' | 'unpaid';
+  readonly stage: 'trial' | 'paid' | 'grace' | 'held' | 'unpaid';
   readonly access: 'full' | 'read_only' | 'locked';
   readonly coveredUntil: string;
   readonly daysLeft: number | null;
@@ -19,6 +19,8 @@ export interface SubscriptionTerms {
   /** Null follows the platform's own. */
   readonly graceDays: number | null;
   readonly unpaidMode: 'read_only' | 'locked' | null;
+  /** How long a declared payment holds the company open while it waits; null follows the platform's own. */
+  readonly holdDays: number | null;
 }
 
 /** A company's subscription as the platform reads it back: its terms and where they leave it now. */

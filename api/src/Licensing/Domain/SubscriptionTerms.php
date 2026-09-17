@@ -27,12 +27,17 @@ final readonly class SubscriptionTerms
         public ?string $currency = null,
         public ?int $graceDays = null,
         public ?UnpaidMode $unpaidMode = null,
+        /** This company's hold days; null follows the platform's. */
+        public ?int $holdDays = null,
     ) {
         if (null === $trialEndsAt && null === $paidUntil) {
             throw new InvalidSubscription('A subscription covers a trial, a paid period, or both.');
         }
         if (null !== $graceDays && ($graceDays < 0 || $graceDays > self::MAX_GRACE_DAYS)) {
             throw new InvalidSubscription(\sprintf('A grace period lasts 0 to %d days.', self::MAX_GRACE_DAYS));
+        }
+        if (null !== $holdDays && ($holdDays < 0 || $holdDays > self::MAX_GRACE_DAYS)) {
+            throw new InvalidSubscription(\sprintf('A declared payment is held 0 to %d days.', self::MAX_GRACE_DAYS));
         }
         if (null !== $price && 1 !== preg_match(self::PRICE, $price)) {
             throw new InvalidSubscription('A price is a decimal amount with at most three decimals.');

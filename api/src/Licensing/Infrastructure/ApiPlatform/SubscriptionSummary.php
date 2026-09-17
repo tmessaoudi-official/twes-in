@@ -18,7 +18,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 final readonly class SubscriptionSummary
 {
     public function __construct(
-        #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['trial', 'paid', 'grace', 'unpaid']])]
+        #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['trial', 'paid', 'grace', 'held', 'unpaid']])]
         #[Groups([PlatformCompanyResource::READ])]
         public string $stage,
         #[ApiProperty(required: true, schema: ['type' => 'string', 'enum' => ['full', 'read_only', 'locked']])]

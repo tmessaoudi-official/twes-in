@@ -29,9 +29,10 @@ final class PlatformSettingsTest extends ApiTestCase
         $rows = $this->jsonList();
         $keys = array_column($rows, 'key');
         sort($keys);
-        self::assertSame(['licensing.grace_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled'], $keys);
+        self::assertSame(['licensing.grace_days', 'licensing.hold_days', 'licensing.unpaid_mode', 'signup.approval_required', 'signup.enabled'], $keys);
         $rows = array_column($rows, null, 'key');
         self::assertSame(7, $rows['licensing.grace_days']['value']);
+        self::assertSame(7, $rows['licensing.hold_days']['value']);
         self::assertSame('read_only', $rows['licensing.unpaid_mode']['value']);
         $rows = [$rows['signup.enabled'], $rows['signup.approval_required']];
         self::assertFalse($rows[0]['value']);

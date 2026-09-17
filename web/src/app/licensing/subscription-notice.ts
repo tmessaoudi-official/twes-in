@@ -7,7 +7,7 @@ import { AuthFacade } from '../auth/auth-facade';
 
 /** What the notice says, and how loudly. */
 export interface SubscriptionNotice {
-  readonly key: 'ending' | 'grace' | 'read_only';
+  readonly key: 'ending' | 'grace' | 'held' | 'read_only';
   readonly days: number;
   readonly tone: 'warn' | 'error';
 }
@@ -21,11 +21,13 @@ export const NOTICE_FROM_DAYS = 7;
  * nothing was settled. A locked company never reaches the shell, so it has no notice here.
  */
 export function noticeFor(
-  stage: 'trial' | 'paid' | 'grace' | 'unpaid' | null,
+  stage: 'trial' | 'paid' | 'grace' | 'held' | 'unpaid' | null,
   daysLeft: number | null,
   access: 'full' | 'read_only' | 'locked',
 ): SubscriptionNotice | null {
   if ('read_only' === access) return { key: 'read_only', days: 0, tone: 'error' };
+  // A declared payment is holding the company open: say so, and say for how long it does.
+  if ('held' === stage) return { key: 'held', days: daysLeft ?? 0, tone: 'warn' };
   if ('grace' === stage) return { key: 'grace', days: daysLeft ?? 0, tone: 'error' };
   if (
     ('trial' === stage || 'paid' === stage) &&

@@ -6,6 +6,12 @@
       <p data-testid="awaiting-locked">
         {{ 'auth.awaiting.locked' | translate: { company: company.name } }}
       </p>
+      @if (company.status === 'active') {
+        <!-- Only what a payment would open: a suspended company stays shut whatever it pays. -->
+        <a mat-flat-button routerLink="/subscription" data-testid="awaiting-declare">
+          {{ 'auth.awaiting.declare_payment' | translate }}
+        </a>
+      }
     } @else if (company.status === 'suspended') {
       <p data-testid="awaiting-suspended">
         {{ 'auth.awaiting.suspended' | translate: { company: company.name } }}

@@ -26,6 +26,14 @@ final readonly class DoctrineUserRepository implements UserRepository
         return $this->entityManager->find(User::class, $id);
     }
 
+    public function platformOperators(): array
+    {
+        /** @var list<User> $operators */
+        $operators = $this->entityManager->getRepository(User::class)->findBy(['isPlatformOperator' => true, 'isActive' => true], ['email' => 'ASC']);
+
+        return $operators;
+    }
+
     public function ofEmail(Email $email): ?User
     {
         return $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
