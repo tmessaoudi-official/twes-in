@@ -47,7 +47,10 @@ export class LiveRecord extends RecordSync {
   /** What each part showed when the form last stood on the saved version. */
   private readonly partBases = new Map<string, string>();
 
-  constructor(private readonly parts: readonly LivePart[] = []) {
+  constructor(
+    private readonly parts: readonly LivePart[] = [],
+    private readonly saved: () => FormValues | null = () => null,
+  ) {
     super();
   }
 
@@ -100,11 +103,29 @@ export class LiveRecord extends RecordSync {
     super.reloadSaved(form);
   }
 
+  /**
+   * This tab saved: the form shows what the API kept, in the shape it answered (a price at the currency's scale),
+   * so a later save elsewhere is compared with that and never mistaken for a change of what was typed here. The
+   * form keeps its controls, so nothing loses focus.
+   */
   savedHere(form: DescriptorFormGroup): void {
-    this.track(form.getRawValue());
+    const saved = this.saved();
+    if (saved === null) {
+      this.track(form.getRawValue());
+      form.markAsPristine();
+      return;
+    }
+    for (const [field, control] of Object.entries(form.controls)) {
+      if (field in saved && String(control.value ?? '') !== String(saved[field] ?? '')) {
+        control.setValue(saved[field], { emitEvent: false });
+      }
+    }
     form.markAsPristine();
-    // What this tab saved is what it shows, whatever shape the API gave the same content back in.
-    for (const part of this.parts) this.partBases.set(part.field, part.shown());
+    for (const part of this.parts) {
+      const theirs = part.saved();
+      if (theirs !== null && theirs !== part.shown()) part.take();
+    }
+    this.track(saved);
   }
 
   /** The choice made on one field both sides changed: the saved value, or what is typed here. */
@@ -124,7 +145,7 @@ export class LiveRecord extends RecordSync {
  * keeps what is typed and shows the banner. Call it in the page's injection context.
  */
 export function liveRecord(options: LiveRecordOptions): LiveRecord {
-  const sync = new LiveRecord(options.parts);
+  const sync = new LiveRecord(options.parts, options.saved);
   const activity = inject(RequestActivity);
   const feedback = inject(Feedback);
 

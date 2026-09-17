@@ -105,10 +105,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   signed-in route is a child of it), `shared/` for what several features use and which imports no feature (ESLint enforces it; `session/`: the `Session`
   port the auth facade answers; `theme/`: runtime accent colour tokens,
   `ThemeFacade` (Automatique follows the device) and the scheme menu; `i18n/`: `LanguageFacade` and the language menu; `a11y/`: the
-  `appLabel` directive, one string for a control's accessible name and its tooltip; `testing/`: providers specs share (`provideQuietFeedback` records toasts); `feedback/`: the `Feedback` port (toasts), `RequestActivity` and its interceptor, the activity bar; `health/`: the API health client; `realtime/`: the one Centrifugo connection's connector, the `X-Tab` interceptor naming this tab, and `LiveChanges` (a page calls `reloadOn(kinds, reload, destroyRef)` to read its data again, quietly, when another tab or member changes those kinds); `settings/`: the `SettingsFacade` port, its API adapter
+  `appLabel` directive, one string for a control's accessible name and its tooltip; `testing/`: providers specs share (`provideQuietFeedback` records toasts; `announceSaved` plays a live change); `feedback/`: the `Feedback` port (toasts), `RequestActivity` and its interceptor, the activity bar; `health/`: the API health client; `realtime/`: the one Centrifugo connection's connector, the `X-Tab` interceptor naming this tab, and `LiveChanges` (a page calls `reloadOn(kinds, reload, destroyRef)` to read its data again, quietly, when another tab or member changes those kinds); `settings/`: the `SettingsFacade` port, its API adapter
   `ApiSettings` (the presentation chain), the browser-storage adapter it keeps for signed-out pages, and the registry
   every presentation key must be declared in; `list/`: `ListDescriptor`, the pure view
-  functions and `DataList`; `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
+  functions and `DataList`; `form/`: `FormDescriptor`, `buildFormGroup` and `DescriptorForm`; `liveRecord`, which merges another person's save into an open editor field by field over `mergeSavedVersion` and `RecordSync`, with the `RecordChanged` banner and `PartConflict` for what merges as one field, such as a document's lines), files named by role: `*-page.ts`, `*-facade.ts` (signals, what components inject), `*-api.ts`
   (the only importer of the generated types), `*-types.ts`, `auth-guard.ts`, `csrf-interceptor.ts`; translations in
   `public/i18n/{fr,en}.json` with a parity test.
 - `api/translations/*.{fr,en}.yaml` — the only strings the API itself emits: the invitation mail (`emails`), fiscal
@@ -206,5 +206,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   needs the inverse side maintained in the entity beside the owning assignment, as the other collections here are
   (2026-09-16, `Invoice::creditNoteFor`). Adding the inverse side alone is a mapping change, not a migration: the
   owning column and its index already exist.
+- An editor that keeps its form after saving must show what the API kept, not what was typed: a later comparison with
+  the saved version otherwise reads `1300` against `1300.000` as a change and highlights a field nobody touched, or
+  toasts a save that changed nothing. `LiveRecord.savedHere` writes the answer into the controls (2026-09-17).
 - The shared Demo company outgrows a list page as e2e runs leave rows behind (52 customers on 2026-09-16, 25 a page): a
   scenario asserting its new row in a list filters the list first, or the row sorts onto page 2 and reads as missing.

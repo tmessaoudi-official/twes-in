@@ -67,6 +67,7 @@ describe('liveRecord', () => {
       form,
       sync,
       feedback,
+      current,
       savedElsewhere: async (values: FormValues | null, change: Partial<LiveChange> = {}) => {
         next = values;
         handlers[0].handler([
@@ -164,6 +165,33 @@ describe('liveRecord', () => {
     expect(page.sync.conflicts()).toEqual([]);
   });
 
+  it('shows a saved value as the API answered it, so a later save elsewhere highlights only what it changed', async () => {
+    const page = setUp();
+    const form = page.form() as DescriptorFormGroup;
+    form.controls['name'].setValue('durand sarl');
+    form.markAsDirty();
+    page.current.set({ ...saved, name: 'DURAND SARL' });
+
+    page.sync.savedHere(form);
+
+    expect(form.controls['name'].value).toBe('DURAND SARL');
+    expect(form.dirty).toBe(false);
+    await page.savedElsewhere({ name: 'DURAND SARL', phone: '0698' });
+    expect([...page.sync.updated()]).toEqual(['phone']);
+  });
+
+  it('stays silent when the other save changed nothing, after this tab saved a value the API reshaped', async () => {
+    const page = setUp();
+    const form = page.form() as DescriptorFormGroup;
+    form.controls['name'].setValue('durand sarl');
+    page.current.set({ ...saved, name: 'DURAND SARL' });
+    page.sync.savedHere(form);
+
+    await page.savedElsewhere({ ...saved, name: 'DURAND SARL' });
+
+    expect(page.feedback.said).toEqual([]);
+  });
+
   it('merges against the form it was rebuilt from, and against what this tab saved', async () => {
     const page = setUp();
     page.form.set(group({ ...saved, phone: '0600' }));
@@ -175,6 +203,7 @@ describe('liveRecord', () => {
     const form = page.form() as DescriptorFormGroup;
     form.controls['phone'].setValue('0611');
     form.markAsDirty();
+    page.current.set({ name: 'Durand SARL', phone: '0611' });
     page.sync.savedHere(form);
     expect(form.dirty).toBe(false);
 
@@ -223,15 +252,18 @@ describe('liveRecord', () => {
       expect(page.sync.changedBy()).toBeNull();
     });
 
-    it('stands on what this tab shows once it saved, in whatever shape the API answered', async () => {
+    it('shows the lines as the API answered once this tab saved them, and takes nothing more later', async () => {
       const { state, part } = lines('A');
       const page = setUp(saved, [part]);
       state.shown = 'B typed';
       state.saved = 'B as answered';
       page.sync.savedHere(page.form() as DescriptorFormGroup);
+      expect(state.shown).toBe('B as answered');
 
       await page.savedElsewhere({ ...saved, phone: '0698' });
 
+      expect(state.taken).toBe(1);
+      expect([...page.sync.updated()]).toEqual(['phone']);
       expect(page.sync.changedBy()).toBeNull();
     });
 
