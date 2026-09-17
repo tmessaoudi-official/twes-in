@@ -17,6 +17,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   request, a user-visible product decision, or anything that would weaken an invariant below,
   always through `AskUserQuestion` with the recommended option first and a visible
   "none of these" escape.
+- **Official best practices, for every tool** (developer ruling, 2026-09-17): Symfony, PHP, Monolog, API Platform,
+  Doctrine, Angular, TypeScript and the rest are used as their own documentation recommends; a departure is recorded
+  in `docs/SPEC.md` § 7 with its reason, and a gap found is fixed, not worked around.
 - **TDD is not optional.** Failing test first for every behaviour; money arithmetic, tax
   components and state transitions always. Tests are executed, and their output is pasted.
 - **Done means CI green** against the definition of done in `docs/SPEC.md` § 5. Never commit
