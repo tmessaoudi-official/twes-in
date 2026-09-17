@@ -16,7 +16,10 @@ use App\Fiscal\Application\Preset\IdentifierRules;
 use App\Module\Vendors\Domain\InvalidVendor;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\Module\Vendors\Domain\VendorSearch;
 use App\Shared\Application\Transactions;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
@@ -41,6 +44,12 @@ final readonly class ManageVendors
         private ExpenseCategoryDirectory $expenseCategories,
         private Transactions $transactions,
     ) {
+    }
+
+    /** @return Page<Vendor> */
+    public function search(Company $company, VendorSearch $search, PageRequest $page): Page
+    {
+        return $this->vendors->search($company->getId(), $search, $page);
     }
 
     /** @return list<Vendor> */

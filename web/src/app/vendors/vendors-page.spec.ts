@@ -14,6 +14,8 @@ import {
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { provideQuietFeedback } from '../shared/testing/feedback';
+import { announceSaved } from '../shared/testing/live';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
   PageMemoryStorage,
@@ -56,9 +58,10 @@ const sotumag: VendorRow = {
 describe('VendorsPage', () => {
   const facade = {
     vendors: signal<readonly VendorRow[]>([sotumag]).asReadonly(),
+    total: signal(1).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
-    loadList: vi.fn(),
+    loadPage: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -76,11 +79,12 @@ describe('VendorsPage', () => {
   }
 
   beforeEach(async () => {
-    facade.loadList.mockReset().mockResolvedValue(undefined);
+    facade.loadPage.mockReset().mockResolvedValue(undefined);
     auth.hasPermission.mockReset().mockReturnValue(true);
     TestBed.configureTestingModule({
       imports: [VendorsPage],
       providers: [
+        ...provideQuietFeedback(),
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
@@ -102,7 +106,13 @@ describe('VendorsPage', () => {
   });
 
   it("lists the company's vendors with their city, terms and status in words", () => {
-    expect(facade.loadList).toHaveBeenCalledWith('c1');
+    expect(facade.loadPage).toHaveBeenCalledWith('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      isActive: null,
+      order: { key: 'number', direction: 'asc' },
+    });
     const row = q('vendor-FRN-0001')?.textContent ?? '';
     expect(row).toContain('Sotumag');
     expect(row).toContain('Ben Arous');
@@ -112,6 +122,14 @@ describe('VendorsPage', () => {
       'neutral',
     );
     expect(q('vendor-open-FRN-0001')?.getAttribute('href')).toBe('/vendors/v1');
+  });
+
+  it('reads the page shown again when vendors change elsewhere', async () => {
+    facade.loadPage.mockClear();
+
+    await announceSaved('vendor', 'v9');
+
+    expect(facade.loadPage).toHaveBeenCalledWith('c1', expect.objectContaining({ page: 1 }));
   });
 
   it('offers a new vendor to a writer only', async () => {

@@ -22,6 +22,9 @@ use Doctrine\ORM\Query\TokenType;
  */
 final class SearchText extends FunctionNode
 {
+    /** Fewer characters than a trigram find only the row numbered so, whatever the case (docs/SPEC.md § 7). */
+    public const int SHORTEST = 3;
+
     /** @var list<Node> */
     private array $parts = [];
 

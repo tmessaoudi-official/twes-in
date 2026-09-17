@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Vendors\Application\VendorInput;
 use App\Module\Vendors\Domain\InvalidVendor;
 use App\Module\Vendors\Domain\Vendor;
@@ -37,9 +38,19 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(
             uriTemplate: '/companies/{companyId}/vendors',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: VendorCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: self::NORMALIZATION,
+            parameters: [
+                'q' => new QueryParameter(schema: ['type' => 'string', 'maxLength' => 100], description: 'Words found in the number, name, legal name, email, address or registration numbers, whatever their case and accents; under three characters, the exact number only.'),
+                'isActive' => new QueryParameter(schema: ['type' => 'boolean'], castToNativeType: true),
+                'order[number]' => new QueryParameter(schema: self::DIRECTION),
+                'order[name]' => new QueryParameter(schema: self::DIRECTION),
+                'order[city]' => new QueryParameter(schema: self::DIRECTION),
+                'order[paymentTermsDays]' => new QueryParameter(schema: self::DIRECTION),
+                'order[isActive]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Get(
             uriTemplate: '/companies/{companyId}/vendors/{vendorId}',
@@ -68,6 +79,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 final class VendorResource
 {
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
     public const string READ = 'vendor:read';
     public const string WRITE = 'vendor:write';
 

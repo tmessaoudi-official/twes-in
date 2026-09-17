@@ -3,7 +3,9 @@
 import { TestBed } from '@angular/core/testing';
 import { VendorsApi, VendorsRefused } from './vendors-api';
 import { VendorsFacade } from './vendors-facade';
-import type { VendorInput, VendorOptions, VendorRow } from './vendors-types';
+import type { VendorInput, VendorOptions, VendorRow, VendorSearch } from './vendors-types';
+
+const everyVendor: VendorSearch = { page: 1, itemsPerPage: 25, q: '', isActive: null, order: null };
 
 const input: VendorInput = {
   number: 'FRN-0001',
@@ -39,14 +41,30 @@ describe('VendorsFacade', () => {
     facade = TestBed.inject(VendorsFacade);
   });
 
-  it("lists the company's vendors", async () => {
-    api.vendors.mockResolvedValue([sotumag]);
+  it("reads one page of the company's vendors with the total the paginator counts", async () => {
+    api.vendors.mockResolvedValue({ rows: [sotumag], total: 40 });
 
-    await facade.loadList('c1');
+    await facade.loadPage('c1', everyVendor);
 
-    expect(api.vendors).toHaveBeenCalledWith('c1');
+    expect(api.vendors).toHaveBeenCalledWith('c1', everyVendor);
     expect(facade.vendors()).toEqual([sotumag]);
+    expect(facade.total()).toBe(40);
     expect(facade.error()).toBeNull();
+  });
+
+  it('keeps the page of the last search when an earlier one answers after it', async () => {
+    let answerFirst: (page: { rows: VendorRow[]; total: number }) => void = () => undefined;
+    api.vendors
+      .mockReturnValueOnce(new Promise((resolve) => (answerFirst = resolve)))
+      .mockResolvedValueOnce({ rows: [sotumag], total: 1 });
+
+    const first = facade.loadPage('c1', everyVendor);
+    await facade.loadPage('c1', { ...everyVendor, q: 'sotumag' });
+    answerFirst({ rows: [sotumag, { ...sotumag, id: 'v2' }], total: 2 });
+    await first;
+
+    expect(facade.vendors()).toEqual([sotumag]);
+    expect(facade.total()).toBe(1);
   });
 
   it('reads only the options for a new vendor, and the vendor too for an existing one', async () => {

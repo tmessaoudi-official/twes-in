@@ -3,6 +3,20 @@
 /** Why the API refused, as the vendors screens translate it. */
 export type VendorsError = 'network' | 'not_found' | 'number_taken' | 'invalid';
 
+/** What the API sorts vendors by. */
+export type VendorSortKey = 'number' | 'name' | 'city' | 'paymentTermsDays' | 'isActive';
+
+/** One page of the vendors list as the API searches, narrows and sorts it (docs/SPEC.md § 7, lists at scale). */
+export interface VendorSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the number, name, legal name, email, address or registration numbers; empty finds all. */
+  q: string;
+  isActive: boolean | null;
+  order: { key: VendorSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 export interface VendorAddress {
   line1: string | null;
   line2: string | null;

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { VENDORS_LIST, vendorForm, vendorInput, vendorValues } from './vendor-forms';
+import { VENDORS_LIST, vendorForm, vendorInput, vendorSearch, vendorValues } from './vendor-forms';
 import type { VendorOptions, VendorRow } from './vendors-types';
 
 const options: VendorOptions = {
@@ -38,6 +38,36 @@ const sotumag: VendorRow = {
 };
 
 describe('vendor forms', () => {
+  it('asks the API for the page, words, status and sort the list shows, and sorts only by what it sorts', () => {
+    expect(
+      vendorSearch({
+        query: 'sotu',
+        filters: { status: 'inactive' },
+        sort: { column: 'status', direction: 'desc' },
+        pageIndex: 1,
+        pageSize: 50,
+      }),
+    ).toEqual({
+      page: 2,
+      itemsPerPage: 50,
+      q: 'sotu',
+      isActive: false,
+      order: { key: 'isActive', direction: 'desc' },
+    });
+    const sortable = VENDORS_LIST.columns.filter((column) => column.sortable);
+    for (const column of sortable) {
+      expect(
+        vendorSearch({
+          query: '',
+          filters: {},
+          sort: { column: column.id, direction: 'asc' },
+          pageIndex: 0,
+          pageSize: 25,
+        }).order,
+      ).not.toBeNull();
+    }
+  });
+
   it('lists vendors by number with their city, payment terms and whether they are active', () => {
     expect(VENDORS_LIST.columns.map((column) => column.id)).toEqual([
       'number',

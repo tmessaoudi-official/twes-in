@@ -4,7 +4,9 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { VendorsApi, VendorsRefused } from './vendors-api';
-import type { VendorInput } from './vendors-types';
+import type { VendorInput, VendorSearch } from './vendors-types';
+
+const everyVendor: VendorSearch = { page: 1, itemsPerPage: 25, q: '', isActive: null, order: null };
 
 const sotumag: VendorInput = {
   number: 'FRN-0001',
@@ -58,6 +60,35 @@ describe('VendorsApi', () => {
     });
 
     expect(await pending).toEqual({ ...sotumag, id: 'v 1' });
+  });
+
+  it('reads one page of vendors as the API searched, narrowed and sorted it, with the total', async () => {
+    const pending = api.vendors('c1', {
+      page: 3,
+      itemsPerPage: 50,
+      q: ' générale ',
+      isActive: true,
+      order: { key: 'paymentTermsDays', direction: 'desc' },
+    });
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/vendors');
+    expect(request.request.headers.get('Accept')).toBe('application/ld+json');
+    expect(request.request.params.toString()).toBe(
+      'page=3&itemsPerPage=50&q=g%C3%A9n%C3%A9rale&isActive=true&order%5BpaymentTermsDays%5D=desc',
+    );
+    request.flush({ member: [{ id: 'v1', number: 'FRN-0001', name: 'Sotumag' }], totalItems: 101 });
+
+    const page = await pending;
+    expect(page.total).toBe(101);
+    expect(page.rows.map((row) => [row.id, row.name])).toEqual([['v1', 'Sotumag']]);
+  });
+
+  it('leaves out of the query what the list does not narrow by', async () => {
+    const pending = api.vendors('c1', everyVendor);
+    const request = http.expectOne((req) => req.url === '/api/companies/c1/vendors');
+    expect(request.request.params.toString()).toBe('page=1&itemsPerPage=25');
+    request.flush({ member: [], totalItems: 0 });
+
+    await expect(pending).resolves.toEqual({ rows: [], total: 0 });
   });
 
   it('sends a vendor with flat address fields', async () => {

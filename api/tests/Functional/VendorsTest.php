@@ -12,6 +12,7 @@ namespace App\Tests\Functional;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorProfile;
+use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -147,6 +148,40 @@ final class VendorsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
         $this->getJson('/api/companies/'.$globex->getId()->toRfc4122().'/vendors');
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    public function testTheListIsAPageSearchedNarrowedAndSortedByTheApi(): void
+    {
+        $now = new \DateTimeImmutable();
+        foreach (range(1, 27) as $n) {
+            $this->em()->persist(Vendor::create($this->company, \sprintf('FRN-%04d', $n), new VendorProfile('Fournisseur '.$n), $now));
+        }
+        $this->em()->persist(Vendor::create($this->company, 'FRN-0100', new VendorProfile('Société Générale d’Emballage', identifiers: ['matricule_fiscal' => '7654321B/A/M/000'], email: 'achats@sge.tn', address: new PostalAddress('4, rue de Marseille', null, '1000', 'Tunis'), paymentTermsDays: 60), $now));
+        $retired = Vendor::create($this->company, 'FRN-0101', new VendorProfile('Zitouna Bureautique', paymentTermsDays: 15), $now);
+        $retired->revise('FRN-0101', new VendorProfile('Zitouna Bureautique', paymentTermsDays: 15), false, $now);
+        $this->em()->persist($retired);
+        $this->em()->flush();
+        $this->signedIn(['vendor.read']);
+
+        $this->getJson($this->path());
+        self::assertCount(25, $this->jsonList());
+        self::assertSame(29, $this->jsonPage()['totalItems']);
+
+        foreach ([
+            'q=generale' => ['FRN-0100'],
+            'q=marseille' => ['FRN-0100'],
+            'q=7654321' => ['FRN-0100'],
+            'q=sge.tn' => ['FRN-0100'],
+            'q=fr' => [],
+            'isActive=false' => ['FRN-0101'],
+            'order[paymentTermsDays]=desc&itemsPerPage=2' => ['FRN-0100', 'FRN-0101'],
+            'order[name]=desc&itemsPerPage=1' => ['FRN-0101'],
+            'order[city]=asc&itemsPerPage=1' => ['FRN-0100'],
+        ] as $query => $numbers) {
+            $this->getJson($this->path().'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($numbers, array_column($this->jsonList(), 'number'), $query);
+        }
     }
 
     /**

@@ -224,6 +224,8 @@ final class CustomersTest extends ApiTestCase
             'q=ca' => [],
             'q=k9' => ['K9'],
             'order[city]=asc&isActive=true' => ['CLI-0001', 'CLI-0002', 'K9'],
+            'order[city]=desc&isActive=true' => ['CLI-0002', 'CLI-0001', 'K9'],
+            'order[customerGroup]=desc' => ['CLI-0001', 'CLI-0003', 'CLI-0002', 'K9'],
             'q=nobody' => [],
             'kind=individual' => ['CLI-0002', 'K9'],
             'isActive=false' => ['CLI-0003'],

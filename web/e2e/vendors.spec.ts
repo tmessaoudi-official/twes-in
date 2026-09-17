@@ -15,11 +15,18 @@ async function retire(page: Page, number: string): Promise<void> {
     async ([csrf, vendorNumber]) => {
       const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } };
       const base = `/api/companies/${me.company.id}`;
-      const vendors = (await (await fetch(`${base}/vendors`)).json()) as {
-        id: string;
-        number: string;
-      }[];
-      const vendor = vendors.find((row) => row.number === vendorNumber);
+      // The list is paged: the vendor is found by its number, then read whole as the single record it is.
+      const listed = (await (
+        await fetch(`${base}/vendors?q=${encodeURIComponent(vendorNumber)}`)
+      ).json()) as { member: { id: string; number: string }[] };
+      const hit = listed.member.find((row) => row.number === vendorNumber);
+      const vendor =
+        hit === undefined
+          ? undefined
+          : ((await (await fetch(`${base}/vendors/${hit.id}`)).json()) as {
+              id: string;
+              number: string;
+            });
       if (vendor) {
         // The write shape has no id: a body naming one is refused.
         const { id, ...fields } = vendor;
@@ -65,6 +72,9 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/vendors');
+    // Filtered: the shared company holds more vendors than a page, and the API searches the words.
+    await page.getByTestId('list-filter').fill(number);
+    await expect(page).toHaveURL(new RegExp(`[?&]q=${number}`));
     const row = page.getByTestId(`vendor-${number}`);
     await expect(row).toContainText(name);
     await expect(row).toContainText('Ben Arous');

@@ -1,14 +1,23 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
+  ApiCompaniesCompanyIdvendorsGetCollectionResponse,
+  VendorJsonldVendorRead,
   VendorOptionsVendorOptionsRead,
   VendorVendorRead,
   VendorVendorWrite,
 } from '../api/types.gen';
-import type { VendorInput, VendorOptions, VendorRow, VendorsError } from './vendors-types';
+import type { ListPage } from '../shared/list/list-types';
+import type {
+  VendorInput,
+  VendorOptions,
+  VendorRow,
+  VendorSearch,
+  VendorsError,
+} from './vendors-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
 export class VendorsRefused extends Error {
@@ -33,12 +42,22 @@ export class VendorsApi {
     );
   }
 
-  async vendors(companyId: string): Promise<VendorRow[]> {
-    return this.guard(async () =>
-      (await firstValueFrom(this.http.get<VendorVendorRead[]>(path(companyId, 'vendors')))).map(
-        toVendor,
-      ),
-    );
+  /** One page of the vendors the search finds, as Hydra carries it: the rows and the total. */
+  async vendors(companyId: string, search: VendorSearch): Promise<ListPage<VendorRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdvendorsGetCollectionResponse>(
+          path(companyId, 'vendors'),
+          {
+            headers: { Accept: 'application/ld+json' },
+            params: toSearchParams(search),
+          },
+        ),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of vendors came without its total.');
+      return { rows: page.member.map(toVendor), total: page.totalItems };
+    });
   }
 
   async vendor(companyId: string, id: string): Promise<VendorRow> {
@@ -96,7 +115,16 @@ function codeOf(error: unknown): VendorsError {
 const path = (companyId: string, collection: string, id?: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}/${collection}${id === undefined ? '' : `/${encodeURIComponent(id)}`}`;
 
-function toVendor(raw: VendorVendorRead): VendorRow {
+function toSearchParams(search: VendorSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.isActive !== null) params = params.set('isActive', search.isActive);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
+function toVendor(raw: VendorVendorRead | VendorJsonldVendorRead): VendorRow {
   return {
     id: raw.id ?? '',
     number: raw.number ?? '',

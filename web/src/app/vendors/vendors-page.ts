@@ -15,9 +15,10 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
 import { StatusBadge } from '../shared/ui/status-badge';
-import { VENDORS_LIST } from './vendor-forms';
+import type { ListQuery } from '../shared/list/list-types';
+import { VENDORS_LIST, vendorSearch } from './vendor-forms';
 import { VendorsFacade } from './vendors-facade';
-import type { VendorRow } from './vendors-types';
+import type { VendorRow, VendorSearch } from './vendors-types';
 
 /** The vendors of the company being worked in. */
 @Component({
@@ -42,20 +43,32 @@ export class VendorsPage implements OnInit {
 
   protected readonly list = VENDORS_LIST;
   protected readonly rows = this.facade.vendors;
+  protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly mayWrite = computed(() => this.auth.hasPermission('vendor.write'));
   protected readonly rowTestId = (row: VendorRow): string => `vendor-${row.number}`;
 
-  async ngOnInit(): Promise<void> {
+  /** The page the list shows last asked for; a change elsewhere reads it again. */
+  private search: VendorSearch | null = null;
+
+  ngOnInit(): void {
     const companyId = this.company()?.id;
     if (companyId) {
       this.live.reloadOn(
         ['vendor', 'expense_category', 'custom_field'],
-        () => this.facade.loadList(companyId),
+        async () => {
+          if (this.search !== null) await this.facade.loadPage(companyId, this.search);
+        },
         this.destroyRef,
       );
-      await this.facade.loadList(companyId);
     }
+  }
+
+  protected onQuery(query: ListQuery): void {
+    const companyId = this.company()?.id;
+    if (!companyId) return;
+    this.search = vendorSearch(query);
+    void this.facade.loadPage(companyId, this.search);
   }
 }

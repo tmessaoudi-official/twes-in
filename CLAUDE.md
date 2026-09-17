@@ -93,7 +93,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   S3-compatible bucket, which refuses to start without its own variables),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
   "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
-  scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
+  scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider
+  uses `Shared/Infrastructure/ApiPlatform/Paging`, its repository `ListOrder` and the `SEARCH_TEXT` expression its trigram
+  index is built on, and `SearchIndexesTest` names the pair). Domain: entities with Doctrine attributes, value objects (`Email`), repository interfaces.
   Application: use cases and ports (no framework import; `tests/Architecture/` enforces it). Infrastructure: Doctrine
   repositories, Symfony security (`SecurityUser` snapshot, `UserProvider`, handlers, listeners, `CsrfRequestListener`),
   API Platform resources (`Me`) and the OpenAPI decorator, the console command, the session handler. Every port has one

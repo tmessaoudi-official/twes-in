@@ -34,12 +34,8 @@ final class InMemoryCustomers implements CustomerRepository
     {
         $found = array_values(array_filter($this->ofCompany($companyId), static function (Customer $c) use ($search): bool {
             $profile = $c->getProfile();
-            $words = mb_strtolower(trim($search->text ?? ''));
-            $text = match (true) {
-                '' === $words => true,
-                mb_strlen($words) < 3 => mb_strtolower($c->getNumber()) === $words,
-                default => str_contains(mb_strtolower(implode(' ', [$c->getNumber(), $profile->name, $profile->legalName, $profile->email, $profile->billingAddress->line1, $profile->billingAddress->postalCode, $profile->billingAddress->city, ...array_values($profile->identifiers)])), $words),
-            };
+            $address = $profile->billingAddress;
+            $text = InMemorySearch::finds($search->text, $c->getNumber(), [$profile->name, $profile->legalName, $profile->email, $address->line1, $address->postalCode, $address->city, ...array_values($profile->identifiers)]);
 
             return $text
                 && (null === $search->kind || $profile->kind === $search->kind)

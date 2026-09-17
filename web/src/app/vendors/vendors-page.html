@@ -22,6 +22,8 @@
   <app-data-list
     [descriptor]="list"
     [rows]="rows()"
+    [total]="total()"
+    (queryChange)="onQuery($event)"
     testId="vendors-table"
     [rowTestId]="rowTestId"
     emptyKey="vendors.none"

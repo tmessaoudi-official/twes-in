@@ -2,26 +2,46 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { VendorsApi, VendorsRefused } from './vendors-api';
-import type { VendorInput, VendorOptions, VendorRow, VendorsError } from './vendors-types';
+import type {
+  VendorInput,
+  VendorOptions,
+  VendorRow,
+  VendorSearch,
+  VendorsError,
+} from './vendors-types';
 
 /** The vendors of the company being worked in, and the one open in the form. */
 @Injectable({ providedIn: 'root' })
 export class VendorsFacade {
   private readonly api = inject(VendorsApi);
   private readonly vendorsSignal = signal<readonly VendorRow[]>([]);
+  private readonly totalSignal = signal(0);
+  private pageRequest = 0;
   private readonly optionsSignal = signal<VendorOptions | null>(null);
   private readonly vendorSignal = signal<VendorRow | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<VendorsError | null>(null);
 
   readonly vendors = this.vendorsSignal.asReadonly();
+  /** How many vendors the last search found in all, the page shown being one part of them. */
+  readonly total = this.totalSignal.asReadonly();
   readonly options = this.optionsSignal.asReadonly();
   readonly vendor = this.vendorSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
-  async loadList(companyId: string): Promise<void> {
-    await this.read(async () => this.vendorsSignal.set(await this.api.vendors(companyId)));
+  /**
+   * One page of the vendors the search finds. Only the latest search's answer is shown: typing sends one search per
+   * pause, and an earlier one answering late would otherwise put back rows the words no longer find.
+   */
+  async loadPage(companyId: string, search: VendorSearch): Promise<void> {
+    const request = ++this.pageRequest;
+    await this.read(async () => {
+      const page = await this.api.vendors(companyId, search);
+      if (request !== this.pageRequest) return;
+      this.vendorsSignal.set(page.rows);
+      this.totalSignal.set(page.total);
+    });
   }
 
   /** What the vendor form needs: its options, and the vendor unless it is new. */

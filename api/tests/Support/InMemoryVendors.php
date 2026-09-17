@@ -11,6 +11,9 @@ namespace App\Tests\Support;
 
 use App\Module\Vendors\Domain\Vendor;
 use App\Module\Vendors\Domain\VendorRepository;
+use App\Module\Vendors\Domain\VendorSearch;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use Symfony\Component\Uid\Uuid;
 
 final class InMemoryVendors implements VendorRepository
@@ -24,6 +27,20 @@ final class InMemoryVendors implements VendorRepository
         usort($mine, static fn (Vendor $a, Vendor $b) => $a->getNumber() <=> $b->getNumber());
 
         return $mine;
+    }
+
+    /** Narrows as the database does; sorts by number only, which is all the unit tests ask for. */
+    public function search(Uuid $companyId, VendorSearch $search, PageRequest $page): Page
+    {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Vendor $v) use ($search): bool {
+            $profile = $v->getProfile();
+            $address = $profile->address;
+
+            return InMemorySearch::finds($search->text, $v->getNumber(), [$profile->name, $profile->legalName, $profile->email, $address->line1, $address->postalCode, $address->city, ...array_values($profile->identifiers)])
+                && (null === $search->active || $v->isActive() === $search->active);
+        }));
+
+        return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Vendor
