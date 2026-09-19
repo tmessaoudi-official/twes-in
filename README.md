@@ -9,12 +9,11 @@ work is delivered here.
 
 ## Run it
 
-Needs Docker with Compose, PHP 8.5 with Composer, and Node 26 (`web/.nvmrc`).
-
 ```sh
 make up          # web http://localhost:8090 · api http://localhost:8091/api · mailpit http://localhost:8092
-make gate        # licence gates, API gate (style, PHPStan, PHPUnit), web gate (lint, format, tests, build)
-make e2e         # Playwright against the running stack
 ```
 
-Host ports come from `.env`; override them in your shell or a copy of that file.
+- **`docs/START.md`**: bringing the stack up, signing in, creating every kind of user, what data a new stack
+  holds, starting clean (`make reset`) and running the checks (`make gate`, `make e2e`).
+- **`docs/UPDATE.md`**: every version the project depends on, where it is written and how to bump it
+  (`make versions` prints the current ones).

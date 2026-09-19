@@ -1,6 +1,6 @@
 # Developer entry points. Everything here is also what CI runs (.github/workflows/ci.yml).
 SHELL := /bin/sh
-.PHONY: up down logs migrate seed operator-code api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
+.PHONY: up down reset logs migrate seed operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
 
 up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094), then seed
 	docker compose up -d --build --wait
@@ -24,6 +24,18 @@ api-types: api-openapi   ## regenerate web/src/app/api (types only, gitignored)
 down:          ## stop it, keep the database volume
 	docker compose down
 
+reset:         ## DESTRUCTIVE clean start (docs/START.md): deletes the database and stored files (both volumes), the host caches and the e2e session, then make up. Asks first; CONFIRM=yes skips the question.
+	@if [ "$(CONFIRM)" != yes ]; then \
+		printf 'make reset deletes the database and the stored files (issued PDFs) of compose project %s, api/var/cache and the saved e2e session. Type yes to go on: ' "$${COMPOSE_PROJECT_NAME:-twes-in}"; \
+		read -r answer; [ "$$answer" = yes ] || { echo 'Nothing deleted.'; exit 1; }; \
+	fi
+	docker compose down --volumes --remove-orphans
+	rm -rf api/var/cache api/var/openapi.json web/src/app/api web/playwright/.auth
+	$(MAKE) up
+
+versions:      ## every version pin, read from the file that holds it (docs/UPDATE.md says where each is copied and how to bump it)
+	bash scripts/versions.sh
+
 logs:
 	docker compose logs -f --tail=100
 
@@ -36,6 +48,7 @@ gate-licences:
 	bash scripts/gates/tests/icon-buttons-named.test.sh
 	bash scripts/gates/tests/outcomes-as-toasts.test.sh
 	bash scripts/gates/tests/compose-log-rotation.test.sh
+	bash scripts/gates/tests/version-pins.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
@@ -43,6 +56,7 @@ gate-licences:
 	bash scripts/gates/icon-buttons-named.sh
 	bash scripts/gates/outcomes-as-toasts.sh
 	bash scripts/gates/compose-log-rotation.sh
+	bash scripts/gates/version-pins.sh
 
 gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
 	cd api && composer gate
