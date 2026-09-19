@@ -4,7 +4,9 @@
   "include": [
     "e2e/**/*.ts",
     "e2e-design/**/*.ts",
+    "e2e-gallery/**/*.ts",
     "playwright.config.ts",
-    "playwright.design.config.ts"
+    "playwright.design.config.ts",
+    "playwright.gallery.config.ts"
   ]
 }

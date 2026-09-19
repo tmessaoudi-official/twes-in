@@ -247,6 +247,9 @@ make e2e              # Playwright against the running stack (make up first)
   before `make gate-web`, or the OpenAPI export is stale.
 - `make e2e` targets http://127.0.0.1:8090. For another port: `BASE_URL=http://127.0.0.1:<port> make e2e`.
 - `make versions` prints every version pin (see `docs/UPDATE.md`).
+- `make gallery` screenshots every screen of the running stack, desktop and phone, light and dark, into
+  `var/claude/gallery/` with a `manifest.json` (what was captured, and what could not be opened). It checks nothing;
+  it is for looking at the screens together.
 
 ## 8. A second stack next to the first
 

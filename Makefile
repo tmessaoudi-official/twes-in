@@ -1,6 +1,6 @@
 # Developer entry points. Everything here is also what CI runs (.github/workflows/ci.yml).
 SHELL := /bin/sh
-.PHONY: up down reset logs migrate seed operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e notices
+.PHONY: up down reset logs migrate seed operator-code versions api-openapi api-types gate gate-api gate-web gate-licences test-api test-web e2e gallery notices
 
 up:            ## build and start the whole stack (web :8090, api :8091, mailpit :8092, postgres :5433, gotenberg :8094), then seed
 	docker compose up -d --build --wait
@@ -74,6 +74,9 @@ test-web:
 
 e2e:           ## needs the full stack up
 	cd web && npx playwright test
+
+gallery:       ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up)
+	cd web && npx playwright test -c playwright.gallery.config.ts
 
 notices:       ## regenerate THIRD-PARTY-NOTICES.md after any dependency change
 	php scripts/notices/generate-third-party-notices.php
