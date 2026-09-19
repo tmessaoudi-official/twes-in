@@ -23,4 +23,9 @@ out=$(bash "$GATE" --root "$d" 2>&1); check "the two named exceptions pass: a QR
 d=$(repo); printf '.a { color: #abc; }\n' > "$d/web/src/app/x/new.scss"
 out=$(bash "$GATE" --root "$d" 2>&1); check "a file not yet staged is read too" $? 1 "$out" "web/src/app/x/new.scss:1"
 d=$(repo); out=$(bash "$GATE" --root "$d" 2>&1); check "an empty tree is reported, not read as a pass over nothing" $? 0 "$out" "OK — 0 files"
+tokens() { mkdir -p "$1/web/src"; printf '@theme inline {\n  --color-primary: var(--mat-sys-primary);\n  --color-on-surface: var(--mat-sys-on-surface);\n  --color-surface-container-high: var(--mat-sys-surface-container-high);\n}\n' > "$1/web/src/tailwind.css"; }
+d=$(repo); tokens "$d"; printf '<ol>\n  <li [class.bg-surface-container-highest]="!current">x</li>\n</ol>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "a colour class naming a token tailwind.css lacks is caught: Tailwind emits nothing for it" $? 1 "$out" "web/src/app/x/a.html:2 unknown colour token surface-container-highest"
+d=$(repo); tokens "$d"; printf '<span class="hover:bg-primary text-on-surface/60" [class.bg-surface-container-high]="on">x</span>\n' > "$d/web/src/app/x/a.html"; git -C "$d" add -A
+out=$(bash "$GATE" --root "$d" 2>&1); check "defined tokens pass with a variant, an opacity or a class binding" $? 0 "$out" "OK — 1 files"
 echo; echo "$pass passed, $fail failed"; [[ $fail -eq 0 ]]
