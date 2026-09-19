@@ -273,7 +273,8 @@ make e2e              # Playwright against the running stack (make up first)
 - `make versions` prints every version pin (see `docs/UPDATE.md`).
 - `make gallery` screenshots every screen of the running stack, desktop and phone, light and dark, into
   `var/claude/gallery/` with a `manifest.json` (what was captured, and what could not be opened). It checks nothing;
-  it is for looking at the screens together.
+  it is for looking at the screens together. It shows a `make fixtures` company, Carthage Conseil unless
+  `GALLERY_COMPANY` names the other, and signs in on its own session with a fresh code, so it waits up to 30 s.
 
 ## 8. A second stack next to the first
 

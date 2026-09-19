@@ -78,7 +78,7 @@ test-web:
 e2e:           ## needs the full stack up
 	cd web && npx playwright test
 
-gallery:       ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up)
+gallery:       ## every screen, desktop and phone, light and dark, into var/claude/gallery (needs the full stack up and make fixtures; GALLERY_COMPANY picks the company)
 	cd web && npx playwright test -c playwright.gallery.config.ts
 
 notices:       ## regenerate THIRD-PARTY-NOTICES.md after any dependency change

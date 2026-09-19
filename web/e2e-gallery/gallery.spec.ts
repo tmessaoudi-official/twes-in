@@ -2,13 +2,15 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type Page, test } from '@playwright/test';
 import { forgetPresentationChoices } from '../e2e/presentation';
-import { signIn } from '../e2e/session';
+import { signInWithCode } from '../e2e/session';
 
 // Every screen as it is, for a design review (see playwright.gallery.config.ts): each route at desktop and phone
 // width, in the light and the dark scheme. The scheme follows the device, as it does for anyone who never chose
 // one, so the operator's own presentation choices are forgotten first. A record page opens the first row of its
 // list; a screen that redirects is captured where it lands, and the manifest says so.
 const OUT = process.env['GALLERY_DIR'] ?? '../var/claude/gallery';
+// The company whose screens are captured: one of `make fixtures`, so every list and record has rows to show.
+const COMPANY = process.env['GALLERY_COMPANY'] ?? 'Carthage Conseil';
 
 interface Screen {
   key: string;
@@ -182,6 +184,31 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
   }
 }
 
+/**
+ * Moves this page's session to the named company, as the company switcher does. The session is the gallery's own:
+ * moving the one the e2e setup saved would leave every later scenario acting for the wrong company.
+ */
+async function workIn(page: Page, name: string): Promise<void> {
+  const outcome = await page.evaluate(async (wanted) => {
+    const headers = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'csrf-token': crypto.randomUUID(),
+    };
+    const listed = await fetch('/api/me/companies', { headers });
+    const companies = (await listed.json()) as { companyId: string; name: string | null }[];
+    const company = companies.find((each) => each.name === wanted);
+    if (company === undefined) return `no company named ${wanted}: run make fixtures`;
+    const switched = await fetch('/api/me/company', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ companyId: company.companyId }),
+    });
+    return switched.ok ? 'ok' : `switching answered ${switched.status}`;
+  }, name);
+  if (outcome !== 'ok') throw new Error(outcome);
+}
+
 test('every screen, desktop and phone, light and dark', async ({ browser, page }) => {
   mkdirSync(OUT, { recursive: true });
   page.setDefaultNavigationTimeout(20_000);
@@ -190,7 +217,8 @@ test('every screen, desktop and phone, light and dark', async ({ browser, page }
   await captureAll(signedOut, SIGNED_OUT);
   await signedOut.close();
 
-  await signIn(page);
+  await signInWithCode(page);
+  await workIn(page, COMPANY);
   await forgetPresentationChoices(page);
   await captureAll(page, SIGNED_IN);
 
