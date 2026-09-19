@@ -134,9 +134,33 @@ On an empty database it prints exactly that:
      customer tax regimes of TN, tax components of Demo, units of Demo, establishments of Demo, numbering series of Demo.
 ```
 
-**There are no demo fixtures yet.** No customers, products, invoices or other business rows are loaded. Fixtures
-(DoctrineFixturesBundle with Foundry, as Symfony recommends) are the goal planned right after import and export. Until
-then, a new stack is empty and you add data by hand in the application, or by import once it ships.
+The seed loads no business rows. **`make fixtures`** adds two demo companies, which the operator owns:
+
+| Company | Country, currency | What it holds |
+|---|---|---|
+| Carthage Conseil | Tunisia, TND, `Africa/Tunis` | 30 customers (2 deactivated, 2 abroad, 6 key accounts subject to the 1 % withholding), 30 products and services, stock, 8 vendors |
+| Atelier Mercier | France, EUR, `Europe/Paris` | the same shape: a cabinetmaker's workshop, with EU and non-EU customers |
+
+Each company has five months of activity, ending a few days before the load. This includes:
+
+- 28 issued invoices: paid, part paid, overdue, credited in full, and not yet due. There are also two drafts and a
+  cancelled draft.
+- Six delivery notes, one in each state, including one invoiced.
+- Stock received and moved by those deliveries.
+- Sixteen expenses: drafts, recorded and paid.
+
+Dates are relative to the day you load, and nothing else varies: every load writes the same rows. The dataset is
+`api/src/DataFixtures/` (DoctrineFixturesBundle, dev and test only). Every row is written through the application's
+use cases, so numbers, totals, PDFs and the audit trail are what the product itself would have made. A load is
+therefore also a smoke test of those workflows.
+
+- Run it after `make seed`: the companies belong to `operator@twes.local`, and without it the load refuses.
+- It only appends. A company that already exists is left as it is, so a second `make fixtures` changes nothing.
+  To reload, start clean (§ 6).
+- Never run `bin/console doctrine:fixtures:load` without `--append`: that form **empties the whole database** first,
+  including the operator and Demo.
+
+Demo stays empty of business rows; the e2e suite writes into it.
 
 Two things to know about Demo on a stack that already ran tests:
 

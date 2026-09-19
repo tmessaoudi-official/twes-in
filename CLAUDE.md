@@ -86,6 +86,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   real). A service picks its channel with `#[WithMonologChannel]`; list them with `bin/console debug:autowiring logger`.
 - `docs/fiscal/<CC>.md` — sourced fiscal rules per country; `api/config/fiscal/<CC>.yaml` — the preset.
 - `docs/spec/pricing-vectors.json` — the calculator's fixture set.
+- `api/src/DataFixtures/` — the demo dataset (`make fixtures`, `docs/START.md` § 4), DoctrineFixturesBundle's own place,
+  outside the contexts: `DemoCatalogue` is the data, `DemoCompanies` writes it through the use cases only, `Timeline`
+  runs dated steps in order under a moved clock. A new workflow or state belongs in it; `DemoFixturesTest` loads it.
 - `api/src/<Context>/{Domain,Application,Infrastructure}/` — `Identity`, `Tenancy`, `Audit`, `Inbox` (the notification
   centre behind the `Notifications` port), `Fiscal`, `Settings` (the settings engine: declarations collected from every
   `DeclaresSettings` service, the three chains, `ReadSetting`), `ModuleRegistry` (the catalogue collected from every
@@ -130,7 +133,7 @@ tables, essay gotchas) was retired with the reset. What applies here:
   start, then `seed`: operator `operator@twes.local` / `twes-operator-dev`, authenticator secret
   `JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`, `make operator-code` prints its current code; Playwright signs the operator in once, `web/e2e/session.ts`; `web/e2e/axe.ts` is the one WCAG scan, waiting for a fresh toast, and `web/e2e/toast.ts` the announced toast), `make gate` (licences + `composer gate`
   + `npm run gate`, which starts by regenerating the types; `composer test` migrates the test database first),
-  `make e2e` (Playwright against the running stack).
+  `make e2e` (Playwright against the running stack), `make fixtures` (the demo companies, appended after `seed`).
   These are exactly CI's jobs; run the gate chain AFTER `git add -A`, because the SPDX gate and
   `git ls-files` see staged files and a cached-only enumeration misses a brand-new one.
 - Node 26 for the web tier (`web/.nvmrc`). On this machine it is nvm's

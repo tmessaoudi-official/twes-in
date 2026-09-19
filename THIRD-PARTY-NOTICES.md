@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 105 runtime, 52 dev
+## api (Composer) — 105 runtime, 54 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -21,9 +21,11 @@ not compiled into what we distribute, and are not listed here.
 | composer/xdebug-handler | 3.0.5 | MIT | dev |
 | dama/doctrine-test-bundle | 8.6.0 | MIT | dev |
 | doctrine/collections | 3.1.0 | MIT | runtime |
+| doctrine/data-fixtures | 2.2.1 | MIT | dev |
 | doctrine/dbal | 4.4.4 | MIT | runtime |
 | doctrine/deprecations | 1.1.6 | MIT | runtime |
 | doctrine/doctrine-bundle | 3.3.2 | MIT | runtime |
+| doctrine/doctrine-fixtures-bundle | 4.3.1 | MIT | dev |
 | doctrine/doctrine-migrations-bundle | 4.0.1 | MIT | runtime |
 | doctrine/event-manager | 2.1.1 | MIT | runtime |
 | doctrine/inflector | 2.1.0 | MIT | runtime |
