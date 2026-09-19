@@ -101,7 +101,7 @@
     },
     "scene": {
       "invoice_number": "FA-2026-0142",
-      "paid": "Payée",
+      "paid": "Soldée",
       "invoice_customer": "Nord Logistique",
       "total": "Total TTC",
       "invoice_amount": "1 428,000 TND",

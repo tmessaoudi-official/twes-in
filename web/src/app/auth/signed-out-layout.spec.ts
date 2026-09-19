@@ -16,7 +16,7 @@ import { SignedOutLayout } from './signed-out-layout';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
-    return of({ auth: { scene: { paid: 'Payée', payment: 'Paiement reçu' } } });
+    return of({ auth: { scene: { paid: 'Soldée', payment: 'Paiement reçu' } } });
   }
 }
 

@@ -101,7 +101,7 @@
     },
     "scene": {
       "invoice_number": "INV-2026-0142",
-      "paid": "Paid",
+      "paid": "Settled",
       "invoice_customer": "Nord Logistique",
       "total": "Total incl. tax",
       "invoice_amount": "1,428.000 TND",

@@ -16,7 +16,13 @@ function keysOf(value: unknown, prefix = ''): string[] {
 }
 
 const files: Record<string, unknown> = { fr, en };
-const paidStatus = [fr.invoices.statuses.paid, en.invoices.statuses.paid];
+// The sign-in page's sample invoice wears the same badge as a real one, so it reads the same.
+const paidStatus = [
+  fr.invoices.statuses.paid,
+  en.invoices.statuses.paid,
+  fr.auth.scene.paid,
+  en.auth.scene.paid,
+];
 
 function load(lang: string): unknown {
   return files[lang];
@@ -56,6 +62,6 @@ describe('translation files', () => {
   // docs/SPEC.md § 7, 2026-09-19: the stored status is `paid` whether payments, credit notes or both brought the amount
   // due to zero, so it reads as settled: a fully credited invoice reading "Payée" said the customer paid what they did not.
   it('an invoice with nothing left due reads settled, not paid', () => {
-    expect(paidStatus).toEqual(['Soldée', 'Settled']);
+    expect(paidStatus).toEqual(['Soldée', 'Settled', 'Soldée', 'Settled']);
   });
 });
