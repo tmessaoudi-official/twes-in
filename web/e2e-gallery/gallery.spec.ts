@@ -162,6 +162,16 @@ async function captureAll(page: Page, screens: Screen[]): Promise<void> {
           missed.push(`${screen.key} ${viewport.name} ${scheme}: ${String(error).split('\n')[0]}`);
           continue;
         }
+        if (viewport.name === 'phone') {
+          // A full-page capture draws a fixed element where the viewport put it, so the phone's bottom bar would sit
+          // mid-picture over whatever is there. Back in the flow, it closes the page, where scrolling meets it. Set
+          // through the CSSOM: the page's Content-Security-Policy rightly refuses an injected <style>.
+          await page.evaluate(() => {
+            document
+              .querySelector<HTMLElement>('.twes-bottom-bar')
+              ?.style.setProperty('position', 'static', 'important');
+          });
+        }
         const file = `${screen.key}--${viewport.name}--${scheme}.jpg`;
         await page.screenshot({
           path: `${OUT}/${file}`,

@@ -143,8 +143,8 @@ The seed loads no business rows. **`make fixtures`** adds two demo companies, wh
 
 Each company has five months of activity, ending a few days before the load. This includes:
 
-- 28 issued invoices: paid, part paid, overdue, credited in full, and not yet due. There are also two drafts and a
-  cancelled draft.
+- 29 issued invoices, one of them drafted from a delivery note: paid, part paid, overdue, credited in full, and not
+  yet due. There are also two drafts and a cancelled draft.
 - Six delivery notes, one in each state, including one invoiced.
 - Stock received and moved by those deliveries.
 - Sixteen expenses: drafts, recorded and paid.
