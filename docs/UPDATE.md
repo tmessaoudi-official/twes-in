@@ -62,7 +62,7 @@ make versions
 | **Angular** (major, e.g. 22) | `web/package.json`: every `@angular/*` | all `@angular/*` share a major (**gate**). `angular-eslint` follows Angular's major (**by hand**) | `cd web && npx ng update @angular/core @angular/cli @angular/cdk @angular/material`, one major at a time. It runs the official migrations. Then `npm install angular-eslint@<same major>` | `typescript` must stay in the range Angular supports: `ng update` says so |
 | **Other npm packages** | `web/package.json` → `web/package-lock.json` | none | `cd web && npm install <package>@<version>` | `@ngx-translate/core` and `@ngx-translate/http-loader` bump together, as do `eslint` and `@eslint/js`, and `tailwindcss` and `@tailwindcss/postcss`. `@hey-api/openapi-ts` generates the API types: the types are gitignored, so after a bump `make gate-web` (which regenerates them and builds) is what shows a changed shape |
 | **Playwright** | `web/package.json`: `@playwright/test` | the browser build it downloads (**by hand**) | `npm install -D @playwright/test@<v>`, then `npx playwright install chromium` | On this machine that install can hang over IPv6. The manual install is in `docs/START.md` § 1. CI installs its own browser |
-| **GitHub Actions** | `.github/workflows/ci.yml`: every `uses: <action>@<major>` | none | Change the major | Read the action's release notes: a major can drop inputs (`upload-artifact` changed artifact semantics before) |
+| **GitHub Actions** | `.github/workflows/ci.yml`: every `uses: <action>@<major>` | none | Change the major | Read the action's release notes: a major can drop or change inputs |
 
 ### Not pinned here on purpose
 

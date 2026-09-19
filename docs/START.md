@@ -38,10 +38,11 @@ opcache bcmath`, Composer, and Node at the major in `web/.nvmrc`. Then, once and
 `php-master` (8.6-dev), which php-cs-fixer refuses. Put these first:
 
 ```sh
-export PATH="/stack/tools/phpbrew/php/php-8.5.10/bin:$(echo /stack/tools/nvm/versions/node/v26.*/bin):$PATH"
+export PATH="$(echo /stack/tools/phpbrew/php/php-8.5.*/bin):$(echo /stack/tools/nvm/versions/node/v26.*/bin):$PATH"
 ```
 
-The PHP patch in that path is what phpbrew installed. `ls /stack/tools/phpbrew/php/` shows what is there.
+The globs pick the one PHP 8.5 and Node 26 installed there (`ls /stack/tools/phpbrew/php/` shows them). After a major
+or minor bump (`docs/UPDATE.md`), change the two numbers in the globs.
 
 **If `npx playwright install chromium` hangs** (the IPv6 route to Google's storage is dead on this machine), install the
 browser by hand:
