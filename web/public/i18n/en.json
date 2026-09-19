@@ -854,8 +854,8 @@
         "description": "Say what is invoiced.",
         "quantity": "A quantity above zero, with no more decimals than its unit counts (three at most).",
         "unitId": "Choose a unit.",
-        "unitPriceNet": "A price from 0, with at most four decimals and a point.",
-        "discountRate": "A percentage from 0 to 100, with at most three decimals and a point."
+        "unitPriceNet": "A price from 0, with at most four decimals.",
+        "discountRate": "A percentage from 0 to 100, with at most three decimals."
       }
     },
     "document_taxes": {
@@ -1025,7 +1025,7 @@
         "description": "Say what is delivered.",
         "quantity": "A quantity above zero, with no more decimals than its unit counts (at most three).",
         "unitId": "Choose a unit.",
-        "unitPriceNet": "A price from 0, with up to four decimals and a point."
+        "unitPriceNet": "A price from 0, with up to four decimals."
       }
     },
     "totals": {

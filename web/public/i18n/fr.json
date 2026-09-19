@@ -854,8 +854,8 @@
         "description": "Indiquez ce qui est facturé.",
         "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
-        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales et un point.",
-        "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales et un point."
+        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
+        "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales."
       }
     },
     "document_taxes": {
@@ -1025,7 +1025,7 @@
         "description": "Indiquez ce qui est livré.",
         "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
-        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales et un point."
+        "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales."
       }
     },
     "totals": {

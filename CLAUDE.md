@@ -227,6 +227,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   toasts a save that changed nothing. `LiveRecord.savedHere` writes the answer into the controls (2026-09-17).
 - The shared Demo company outgrows a list page as e2e runs leave rows behind (52 customers on 2026-09-16, 25 a page): a
   scenario asserting its new row in a list filters the list first, or the row sorts onto page 2 and reads as missing.
+- Every company screen failing in a local `make e2e` after `make fixtures` is the operator's three memberships, not a
+  regression: a login picks a working company only for a single membership (`ChooseWorkingCompany`), so the saved
+  session reads "membre d'aucune entreprise". CI seeds Demo alone and stays green; let it arbitrate (2026-09-19).
 - Several unrelated e2e signing in and landing on `/two-factor` is Demo's `mfa_required` left `true` on this machine,
   not a regression: the seed never sets it, so CI is green on the same commit. Read it with
   `docker compose exec -T postgres psql -U twes -d twes -c "SELECT mfa_required FROM company WHERE name='Demo'"`.

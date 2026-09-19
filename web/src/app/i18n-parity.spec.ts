@@ -61,6 +61,12 @@ describe('translation files', () => {
 
   // docs/SPEC.md § 7, 2026-09-19: the stored status is `paid` whether payments, credit notes or both brought the amount
   // due to zero, so it reads as settled: a fully credited invoice reading "Payée" said the customer paid what they did not.
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal field takes a comma or a point, so no message may ask for a point.
+  it('no message asks for a decimal point', () => {
+    expect(JSON.stringify(load('fr'))).not.toMatch(/décimales et un point/);
+    expect(JSON.stringify(load('en'))).not.toMatch(/decimals and a point/);
+  });
+
   it('an invoice with nothing left due reads settled, not paid', () => {
     expect(paidStatus).toEqual(['Soldée', 'Settled', 'Soldée', 'Settled']);
   });
