@@ -73,6 +73,9 @@ services:
         # Every module's manifest reaches the one catalogue (docs/SPEC.md § 3 Modules).
         App\ModuleRegistry\Application\DeclaresModule:
             tags: ['app.modules.declarations']
+        # Every module's import subjects reach the one catalogue (docs/SPEC.md § 7, 2026-09-17).
+        App\ImportExport\Application\DeclaresImport:
+            tags: ['app.import.declarations']
 
     # makes classes in src/ available to be used as services
     # this creates a service per class whose id is the fully-qualified class name
@@ -89,6 +92,9 @@ services:
     App\ModuleRegistry\Application\ModuleCatalog:
         arguments:
             $declarations: !tagged_iterator app.modules.declarations
+    App\ImportExport\Application\ImportCatalogue:
+        arguments:
+            $declarations: !tagged_iterator app.import.declarations
     App\ModuleRegistry\Infrastructure\ApiPlatform\ModuleOwnership:
         arguments:
             $declarations: !tagged_iterator app.modules.declarations

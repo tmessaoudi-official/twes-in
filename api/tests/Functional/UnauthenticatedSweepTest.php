@@ -35,10 +35,12 @@ final class UnauthenticatedSweepTest extends ApiTestCase
     /** A value each path placeholder accepts, so a request reaches the firewall rather than a 404 from the router. */
     private const array PLACEHOLDERS = [
         '_format' => 'json',
+        'format' => 'csv',
         'index' => 'index',
         'key' => 'signup.enabled',
         'moduleKey' => 'customers',
         'status' => '404',
+        'subject' => 'customers',
         'token' => 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     ];
 
