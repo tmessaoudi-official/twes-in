@@ -35,7 +35,7 @@ class StaticLoader implements TranslateLoader {
           issued: 'Émise',
           overdue: 'En retard',
           partially_paid: 'Partiellement payée',
-          paid: 'Payée',
+          paid: 'Soldée',
         },
         errors: { network: 'Le serveur est injoignable.' },
       },

@@ -186,7 +186,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
 
     await page.getByTestId('invoice-corrects').click();
     await expect(page).toHaveURL(invoiceUrl);
-    await expect(page.getByTestId('invoice-status')).toContainText(/Payée|Paid/);
+    await expect(page.getByTestId('invoice-status')).toContainText(/Soldée|Settled/);
     await expect(page.getByTestId('invoice-amount-due')).toContainText(/^\s*0,000/);
     await expect(page.getByTestId('invoice-payment-record')).toHaveCount(0);
 

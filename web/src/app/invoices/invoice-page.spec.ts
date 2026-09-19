@@ -32,7 +32,7 @@ class StaticLoader implements TranslateLoader {
     return of({
       invoices: {
         errors: { invalid: 'Refusé.' },
-        statuses: { draft: 'Brouillon', issued: 'Émise', overdue: 'En retard', paid: 'Payée' },
+        statuses: { draft: 'Brouillon', issued: 'Émise', overdue: 'En retard', paid: 'Soldée' },
         types: { credit_note: 'Avoir' },
         credit_note_draft_title: 'Avoir en brouillon',
         fixed: { issued: 'Émis, il se corrige par un avoir.' },
