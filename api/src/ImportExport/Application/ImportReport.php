@@ -13,9 +13,9 @@ namespace App\ImportExport\Application;
 final readonly class ImportReport
 {
     /**
-     * @param list<int>                                                    $created
-     * @param list<int>                                                    $updated
-     * @param list<array{line: int, column: string|null, message: string}> $rejected
+     * @param list<int>                                                                                                     $created
+     * @param list<int>                                                                                                     $updated
+     * @param list<array{line: int, column: string|null, code: string, params: array<string, string|int>, message: string}> $rejected
      */
     public function __construct(
         public bool $committed,

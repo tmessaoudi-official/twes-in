@@ -37,33 +37,35 @@ final class CustomFieldValuesTest extends TestCase
 
     public function testRefusesAKeyNoFieldDeclares(): void
     {
-        self::assertRefused('colour', static fn () => CustomFieldValues::checked(self::rules(), ['sector' => 'retail', 'colour' => 'blue'], []));
+        self::assertRefused('colour', static fn () => CustomFieldValues::checked(self::rules(), ['sector' => 'retail', 'colour' => 'blue'], []), 'unknown_custom_field', ['key' => 'colour']);
     }
 
     public function testRefusesARequiredFieldLeftEmpty(): void
     {
-        self::assertRefused('sector', static fn () => CustomFieldValues::checked(self::rules(), ['sector' => ''], []));
-        self::assertRefused('sector', static fn () => CustomFieldValues::checked(self::rules(), [], ['sector' => 'retail']));
+        self::assertRefused('sector', static fn () => CustomFieldValues::checked(self::rules(), ['sector' => ''], []), 'value_required');
+        self::assertRefused('sector', static fn () => CustomFieldValues::checked(self::rules(), [], ['sector' => 'retail']), 'value_required');
     }
 
-    /** @return iterable<string, array{string, mixed}> */
+    /** @return iterable<string, array{string, mixed, string, array<string, string|int>}> */
     public static function mistyped(): iterable
     {
-        yield 'a choice not offered' => ['sector', 'export'];
-        yield 'a choice that is not a string' => ['sector', 1];
-        yield 'text that is a number' => ['account_manager', 12];
-        yield 'text too long' => ['account_manager', str_repeat('a', 2001)];
-        yield 'a number written as text' => ['credit_limit', '12'];
-        yield 'a number that is a boolean' => ['credit_limit', true];
-        yield 'a date that does not exist' => ['client_since', '2026-02-30'];
-        yield 'a date in another format' => ['client_since', '14/09/2026'];
-        yield 'a boolean written as text' => ['vip', 'yes'];
+        $choices = ['choices' => 'retail, wholesale'];
+        yield 'a choice not offered' => ['sector', 'export', 'not_one_of', $choices];
+        yield 'a choice that is not a string' => ['sector', 1, 'not_one_of', $choices];
+        yield 'text that is a number' => ['account_manager', 12, 'invalid_text', ['max' => 2000]];
+        yield 'text too long' => ['account_manager', str_repeat('a', 2001), 'invalid_text', ['max' => 2000]];
+        yield 'a number written as text' => ['credit_limit', '12', 'not_a_number', []];
+        yield 'a number that is a boolean' => ['credit_limit', true, 'not_a_number', []];
+        yield 'a date that does not exist' => ['client_since', '2026-02-30', 'not_a_date', []];
+        yield 'a date in another format' => ['client_since', '14/09/2026', 'not_a_date', []];
+        yield 'a boolean written as text' => ['vip', 'yes', 'not_a_boolean', []];
     }
 
+    /** @param array<string, string|int> $params */
     #[DataProvider('mistyped')]
-    public function testRefusesAValueOfTheWrongType(string $key, mixed $value): void
+    public function testRefusesAValueOfTheWrongType(string $key, mixed $value, string $code, array $params): void
     {
-        self::assertRefused($key, static fn () => CustomFieldValues::checked(self::rules(), ['sector' => 'retail', $key => $value], []));
+        self::assertRefused($key, static fn () => CustomFieldValues::checked(self::rules(), ['sector' => 'retail', $key => $value], []), $code, $params);
     }
 
     public function testARetiredFieldKeepsWhatWasStoredAndIgnoresWhatIsSent(): void
@@ -80,7 +82,7 @@ final class CustomFieldValuesTest extends TestCase
     public function testAStoredValueResentUnchangedStaysAfterItsChoiceIsWithdrawn(): void
     {
         self::assertSame(['sector' => 'export'], CustomFieldValues::checked(self::rules(), ['sector' => 'export'], ['sector' => 'export']));
-        self::assertRefused('sector', static fn () => CustomFieldValues::checked(self::rules(), ['sector' => 'export'], ['sector' => 'retail']));
+        self::assertRefused('sector', static fn () => CustomFieldValues::checked(self::rules(), ['sector' => 'export'], ['sector' => 'retail']), 'not_one_of', ['choices' => 'retail, wholesale']);
     }
 
     /** @return list<CustomFieldRule> */
@@ -95,12 +97,14 @@ final class CustomFieldValuesTest extends TestCase
         ];
     }
 
-    private static function assertRefused(string $key, \Closure $check): void
+    /** @param array<string, string|int> $params */
+    private static function assertRefused(string $key, \Closure $check, string $code, array $params = []): void
     {
         try {
             $check();
         } catch (InvalidCustomFieldValue $refused) {
             self::assertSame('customFields.'.$key, $refused->field);
+            self::assertSame([$code, $params], [$refused->reason, $refused->params]);
             self::assertNotSame('', $refused->getMessage());
 
             return;

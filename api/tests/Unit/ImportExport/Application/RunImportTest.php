@@ -75,13 +75,13 @@ final class RunImportTest extends TestCase
 
     public function testOneRejectedRowCommitsNothingAndEveryOtherRowIsStillChecked(): void
     {
-        $this->declaration->refuse['A-2'] = new RowRejected('name', 'Too short.');
+        $this->declaration->refuse['A-2'] = new RowRejected('name', 'Too short.', 'too_short', ['min' => 2]);
 
         $report = $this->importRows([1 => ['number', 'name'], 2 => ['A-1', 'Alpha'], 3 => ['A-2', 'B'], 4 => ['A-3', 'Gamma']]);
 
         self::assertFalse($report->committed);
         self::assertSame([2, 4], $report->created);
-        self::assertSame([['line' => 3, 'column' => 'name', 'message' => 'Too short.']], $report->rejected);
+        self::assertSame([['line' => 3, 'column' => 'name', 'code' => 'too_short', 'params' => ['min' => 2], 'message' => 'Too short.']], $report->rejected);
         self::assertSame(0, $this->transactions->committed);
     }
 
@@ -90,7 +90,7 @@ final class RunImportTest extends TestCase
         $report = $this->importRows([1 => ['number', 'name'], 2 => ['A-1', 'Alpha'], 3 => ['A-1', 'Alpha again']]);
 
         self::assertSame([2], $report->created);
-        self::assertSame([['line' => 3, 'column' => 'number', 'message' => 'Line 2 of the file already has this number.']], $report->rejected);
+        self::assertSame([['line' => 3, 'column' => 'number', 'code' => 'duplicate_in_file', 'params' => ['line' => 2], 'message' => 'Line 2 of the file already has this number.']], $report->rejected);
         self::assertSame([2], array_keys($this->declaration->seen), 'the duplicate never reaches the subject');
     }
 

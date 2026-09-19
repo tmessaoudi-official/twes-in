@@ -95,7 +95,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `DeclaresModule` service, `module_state`, the 404 guard for a switched-off module's resources and plain controllers),
   `CustomFields`, `Files` (the `file` table and the `FileStorage` port on Flysystem, on whichever filesystem
   `FILES_STORAGE` names: `local`, a volume under `FILES_DIRECTORY`, which `api/.env` ships, or `s3`, any
-  S3-compatible bucket, which refuses to start without its own variables),
+  S3-compatible bucket, which refuses to start without its own variables), `ImportExport` (a module declares an
+  import with `DeclaresImport`; `RunImport` reads the file, the guide at `GET .../imports/{subject}` describes its
+  columns, and every rejected row carries a `code` and `params` the screen translates, from a refusal's `reason`),
   and the modules one level down in `api/src/Module/<Name>/`, `Shared` (docs/SPEC.md § 3
   "Architecture style"; `Shared/Domain/CompanyOwned` marks an entity the `Shared/Infrastructure/Doctrine/CompanyFilter`
   scopes to the company a request acts for, and `tests/Architecture/CompanyColumnTest` requires it; a paged list's provider

@@ -145,22 +145,22 @@ final readonly class ManageCustomers
         $kept = null !== $current && $current->getTaxRegime()->getCode() === $code;
         $regime = $offered || $kept ? $this->regimes->ofPresetAndCode($company->getFiscalPreset(), $code) : null;
         if (null === $regime) {
-            throw new InvalidCustomer('taxRegime', \sprintf('The %s preset offers customers no regime "%s".', $preset->country, $code));
+            throw new InvalidCustomer('taxRegime', \sprintf('The %s preset offers customers no regime "%s".', $preset->country, $code), 'unknown_tax_regime', ['code' => $code]);
         }
 
         $group = null;
         if (null !== $input->customerGroupId) {
             $group = $this->groups->ofIdInCompany($input->customerGroupId, $company->getId())
-                ?? throw new InvalidCustomer('customerGroupId', 'No customer group of this company has this id.');
+                ?? throw new InvalidCustomer('customerGroupId', 'No customer group of this company has this id.', 'unknown_group_id');
         }
 
         foreach ($input->defaultTaxComponentIds as $taxId) {
             $tax = $this->taxes->ofIdInCompany($taxId, $company->getId());
             if (null === $tax || !$tax->isActive()) {
-                throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('No active tax of this company has the id %s.', $taxId->toRfc4122()));
+                throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('No active tax of this company has the id %s.', $taxId->toRfc4122()), 'unknown_tax', ['id' => $taxId->toRfc4122()]);
             }
             if (\in_array($tax->getFamily(), $regime->getExcludedFamilies(), true)) {
-                throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('The %s regime does not charge %s.', $regime->getCode(), $tax->getCode()));
+                throw new InvalidCustomer('defaultTaxComponentIds', \sprintf('The %s regime does not charge %s.', $regime->getCode(), $tax->getCode()), 'regime_excludes_tax', ['regime' => $regime->getCode(), 'tax' => $tax->getCode()]);
             }
         }
 
@@ -168,7 +168,7 @@ final readonly class ManageCustomers
         $domesticBusiness = CustomerKind::Company === $input->profile->kind && (null === $country || $country === $company->getCountryCode());
         $refusal = IdentifierRules::refusal($preset, $input->profile->identifiers, $domesticBusiness ? IdentifierRules::BUSINESS_CUSTOMER : '');
         if (null !== $refusal) {
-            throw new InvalidCustomer(...$refusal);
+            throw new InvalidCustomer($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }
 
         return [$group, $regime];
@@ -181,7 +181,7 @@ final readonly class ManageCustomers
         try {
             return CustomFieldValues::checked($rules, $input->customFields, $current?->getCustomFields() ?? []);
         } catch (InvalidCustomFieldValue $refused) {
-            throw new InvalidCustomer($refused->field, $refused->getMessage());
+            throw new InvalidCustomer($refused->field, $refused->getMessage(), $refused->reason, $refused->params);
         }
     }
 

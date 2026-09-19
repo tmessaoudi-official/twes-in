@@ -55,7 +55,7 @@ final readonly class CustomerProfile
     ) {
         $name = trim($name);
         if ('' === $name || mb_strlen($name) > self::NAME_MAX) {
-            throw new InvalidCustomer('name', \sprintf('A customer is named in 1 to %d characters.', self::NAME_MAX));
+            throw new InvalidCustomer('name', \sprintf('A customer is named in 1 to %d characters.', self::NAME_MAX), 'invalid_length', ['min' => 1, 'max' => self::NAME_MAX]);
         }
         $this->name = $name;
         $this->legalName = self::text($legalName);
@@ -109,7 +109,7 @@ final readonly class CustomerProfile
             return null;
         }
         if (1 !== preg_match(self::RATE, $rate, $parts) || (float) $rate > 100) {
-            throw new InvalidCustomer('defaultDiscountRate', 'A discount rate is a percentage from 0 to 100 with at most three decimals.');
+            throw new InvalidCustomer('defaultDiscountRate', 'A discount rate is a percentage from 0 to 100 with at most three decimals.', 'invalid_rate');
         }
 
         return $parts[1].'.'.str_pad($parts[2] ?? '', 3, '0');

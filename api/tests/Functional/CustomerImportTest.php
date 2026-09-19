@@ -117,7 +117,11 @@ final class CustomerImportTest extends ApiTestCase
         $report = $this->json();
         self::assertFalse($report['committed']);
         self::assertSame([2], $report['created'], 'what the valid rows would have done');
-        self::assertSame([['line' => 4, 'column' => 'customer_group', 'message' => 'The company has no customer group named "Inconnus". Create it first.']], $report['rejected'], 'the line the author sees, the empty one counted');
+        self::assertSame(
+            [['line' => 4, 'column' => 'customer_group', 'code' => 'unknown_group', 'params' => ['name' => 'Inconnus'], 'message' => 'The company has no customer group named "Inconnus". Create it first.']],
+            $report['rejected'],
+            'the line the author sees, the empty one counted',
+        );
         self::assertSame(0, $this->customers(), 'the valid row was not stored either');
     }
 
@@ -131,6 +135,46 @@ final class CustomerImportTest extends ApiTestCase
         $rejected = $this->arrayAt($this->json(), 'rejected');
         self::assertIsArray($rejected[0] ?? null);
         self::assertSame('matricule_fiscal', $rejected[0]['column'] ?? null);
+        self::assertSame(['identifier_required', ['identifier' => 'matricule_fiscal']], [$rejected[0]['code'] ?? null, $rejected[0]['params'] ?? null]);
+    }
+
+    /**
+     * A refusal reaches the person in their language through a stable code and its parameters, whichever rule made
+     * it: the importer's own, the customer form's, a custom field's, or the file repeating a number (docs/SPEC.md
+     * § 7, 2026-09-19).
+     */
+    public function testEveryRejectedRowCarriesACodeAndItsParameters(): void
+    {
+        $this->signedIn(['customer.read', 'customer.write']);
+
+        $this->import(
+            "number,name,kind,tax_regime_code,default_tax_codes,default_discount_rate,active,custom.employees\n"
+            .",Sans numéro,individual,,,,,\n"
+            ."CLI-0003,Robot,robot,,,,,\n"
+            ."CLI-0004,Régime,individual,exotique,,,,\n"
+            ."CLI-0005,Taxe,individual,,XX,,,\n"
+            ."CLI-0006,Remise,individual,,,150,,\n"
+            ."CLI-0007,Actif,individual,,,,peut-être,\n"
+            ."CLI-0008,Salariés,individual,,,,,beaucoup\n"
+            ."CLI-0003,Double,individual,,,,,\n",
+            dryRun: true,
+        );
+
+        self::assertResponseIsSuccessful();
+        $rejected = array_map(
+            static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [],
+            $this->arrayAt($this->json(), 'rejected'),
+        );
+        self::assertSame([
+            [2, 'number', 'value_required', []],
+            [3, 'kind', 'not_one_of', ['choices' => 'company, individual']],
+            [4, 'tax_regime_code', 'unknown_tax_regime', ['code' => 'exotique']],
+            [5, 'default_tax_codes', 'unknown_tax_code', ['code' => 'XX']],
+            [6, 'default_discount_rate', 'invalid_rate', []],
+            [7, 'active', 'not_yes_or_no', []],
+            [8, 'custom.employees', 'not_a_number', []],
+            [9, 'number', 'duplicate_in_file', ['line' => 3]],
+        ], $rejected);
     }
 
     public function testCreateModeRefusesAKnownNumberAndUpsertFillsInOnlyTheCellsTheRowHas(): void
@@ -141,7 +185,7 @@ final class CustomerImportTest extends ApiTestCase
         $second = "number,name,email,custom.employees\nCLI-0001,Carthage Conseil Group,,\n";
 
         $this->import($second, dryRun: true);
-        self::assertSame([['line' => 2, 'column' => 'number', 'message' => 'A customer already has this number. Import in "create and update" mode to update it.']], $this->json()['rejected']);
+        self::assertSame([['line' => 2, 'column' => 'number', 'code' => 'already_exists', 'params' => [], 'message' => 'A customer already has this number. Import in "create and update" mode to update it.']], $this->json()['rejected']);
 
         $this->import($second, mode: 'upsert');
 

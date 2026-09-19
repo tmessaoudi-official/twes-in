@@ -50,7 +50,7 @@ final readonly class ReviseCompanyProfile
 
         $refusal = IdentifierRules::refusal($preset, $profile->identifiers, IdentifierRules::COMPANY);
         if (null !== $refusal) {
-            throw new InvalidCompanyProfile(...$refusal);
+            throw new InvalidCompanyProfile($refusal->field, $refusal->message);
         }
 
         return $this->transactions->run(function () use ($company, $profile, $actorUserId): Company {

@@ -22,13 +22,15 @@ final readonly class ImportColumn
 {
     /**
      * @param string      $key      what the importer matches on, stable across languages
-     * @param string      $heading  the translation key for what a person reads
+     * @param string      $heading  what a person reads, as `$headingIs` says it is written: a key of the screen's
+     *                              catalogue, a key of the API's fiscal one, or the company's own words
      * @param bool        $required whether a row lacking a value here is rejected rather than imported
      * @param string|null $example  a value in the shape expected, shown BESIDE the download on screen and never
      *                              written into the file: an example row in the template is imported as a real
      *                              customer by whoever forgets to delete it
      * @param string|null $note     a translation key for what a person needs to know to fill it in: the values
-     *                              accepted, the format of a date or a rate, or where a code comes from
+     *                              accepted, the format of a date or a rate, or where a code comes from; a key of
+     *                              the screen's catalogue
      */
     public function __construct(
         public string $key,
@@ -36,6 +38,7 @@ final readonly class ImportColumn
         public bool $required = false,
         public ?string $example = null,
         public ?string $note = null,
+        public ImportHeading $headingIs = ImportHeading::ScreenText,
     ) {
     }
 }

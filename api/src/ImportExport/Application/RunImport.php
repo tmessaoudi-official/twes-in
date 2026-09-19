@@ -65,7 +65,7 @@ final readonly class RunImport
         foreach ($records as $record) {
             $key = $record->value($identity);
             if (null !== $key && isset($firstLineOf[$key])) {
-                $rejected[] = ['line' => $record->line, 'column' => $identity, 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$key], $identity)];
+                $rejected[] = ['line' => $record->line, 'column' => $identity, 'code' => 'duplicate_in_file', 'params' => ['line' => $firstLineOf[$key]], 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$key], $identity)];
                 continue;
             }
             if (null !== $key) {
@@ -78,7 +78,7 @@ final readonly class RunImport
                     RowImported::Updated => $updated[] = $record->line,
                 };
             } catch (RowRejected $refused) {
-                $rejected[] = ['line' => $record->line, 'column' => $refused->column, 'message' => $refused->getMessage()];
+                $rejected[] = ['line' => $record->line, 'column' => $refused->column, 'code' => $refused->reason, 'params' => $refused->params, 'message' => $refused->getMessage()];
             }
         }
 

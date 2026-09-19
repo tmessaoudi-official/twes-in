@@ -36,7 +36,7 @@ final class CustomFieldValues
         }
         foreach (array_keys($submitted) as $key) {
             if (!isset($byKey[(string) $key])) {
-                throw new InvalidCustomFieldValue('customFields.'.$key, \sprintf('No custom field "%s" is declared.', $key));
+                throw new InvalidCustomFieldValue('customFields.'.$key, \sprintf('No custom field "%s" is declared.', $key), 'unknown_custom_field', ['key' => (string) $key]);
             }
         }
 
@@ -56,7 +56,7 @@ final class CustomFieldValues
             }
             if (null === $value || '' === $value) {
                 if ($rule->required) {
-                    throw new InvalidCustomFieldValue('customFields.'.$key, 'This field is required.');
+                    throw new InvalidCustomFieldValue('customFields.'.$key, 'This field is required.', 'value_required');
                 }
                 continue;
             }
@@ -70,18 +70,22 @@ final class CustomFieldValues
     private static function check(CustomFieldRule $rule, mixed $value): string|int|float|bool
     {
         return match ($rule->type) {
-            CustomFieldType::Text => \is_string($value) && mb_strlen($value) <= self::TEXT_MAX ? $value : self::refuse($rule, \sprintf('Text of at most %d characters.', self::TEXT_MAX)),
-            CustomFieldType::Number => \is_int($value) || (\is_float($value) && is_finite($value)) ? $value : self::refuse($rule, 'A number.'),
-            CustomFieldType::Date => \is_string($value) && self::isDate($value) ? $value : self::refuse($rule, 'A date written YYYY-MM-DD.'),
-            CustomFieldType::Bool => \is_bool($value) ? $value : self::refuse($rule, 'True or false.'),
-            CustomFieldType::Choice => \is_string($value) && \in_array($value, $rule->choices, true) ? $value : self::refuse($rule, \sprintf('One of: %s.', implode(', ', $rule->choices))),
+            CustomFieldType::Text => \is_string($value) && mb_strlen($value) <= self::TEXT_MAX ? $value : self::refuse($rule, \sprintf('Text of at most %d characters.', self::TEXT_MAX), 'invalid_text', ['max' => self::TEXT_MAX]),
+            CustomFieldType::Number => \is_int($value) || (\is_float($value) && is_finite($value)) ? $value : self::refuse($rule, 'A number.', 'not_a_number'),
+            CustomFieldType::Date => \is_string($value) && self::isDate($value) ? $value : self::refuse($rule, 'A date written YYYY-MM-DD.', 'not_a_date'),
+            CustomFieldType::Bool => \is_bool($value) ? $value : self::refuse($rule, 'True or false.', 'not_a_boolean'),
+            CustomFieldType::Choice => \is_string($value) && \in_array($value, $rule->choices, true) ? $value : self::refuse($rule, \sprintf('One of: %s.', implode(', ', $rule->choices)), 'not_one_of', ['choices' => implode(', ', $rule->choices)]),
         };
     }
 
-    /** @throws InvalidCustomFieldValue */
-    private static function refuse(CustomFieldRule $rule, string $message): never
+    /**
+     * @param array<string, string|int> $params
+     *
+     * @throws InvalidCustomFieldValue
+     */
+    private static function refuse(CustomFieldRule $rule, string $message, string $reason, array $params = []): never
     {
-        throw new InvalidCustomFieldValue('customFields.'.$rule->key, $message);
+        throw new InvalidCustomFieldValue('customFields.'.$rule->key, $message, $reason, $params);
     }
 
     private static function isDate(string $value): bool

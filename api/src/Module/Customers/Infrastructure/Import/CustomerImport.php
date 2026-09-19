@@ -17,6 +17,7 @@ use App\Fiscal\Application\Preset\FiscalPresets;
 use App\Fiscal\Domain\TaxComponentRepository;
 use App\ImportExport\Application\DeclaresImport;
 use App\ImportExport\Application\ImportColumn;
+use App\ImportExport\Application\ImportHeading;
 use App\ImportExport\Application\ImportMode;
 use App\ImportExport\Application\ImportRecord;
 use App\ImportExport\Application\ImportSubject;
@@ -111,10 +112,10 @@ final readonly class CustomerImport implements DeclaresImport
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
     {
-        $number = $record->value('number') ?? throw new RowRejected('number', 'A customer is found again by its number, so every row needs one.');
+        $number = $record->value('number') ?? throw new RowRejected('number', 'A customer is found again by its number, so every row needs one.', 'value_required');
         $existing = $this->customers->ofNumberInCompany($number, $company->getId());
         if (null !== $existing && ImportMode::Create === $mode) {
-            throw new RowRejected('number', 'A customer already has this number. Import in "create and update" mode to update it.');
+            throw new RowRejected('number', 'A customer already has this number. Import in "create and update" mode to update it.', 'already_exists');
         }
 
         $written = null;
@@ -128,9 +129,9 @@ final readonly class CustomerImport implements DeclaresImport
 
             return RowImported::Updated;
         } catch (InvalidCustomer $refused) {
-            throw new RowRejected(self::columnOf($refused->field), $refused->getMessage());
+            throw new RowRejected(self::columnOf($refused->field), $refused->getMessage(), $refused->reason, $refused->params);
         } catch (CustomerNumberTaken) {
-            throw new RowRejected('number', 'A customer already has this number.');
+            throw new RowRejected('number', 'A customer already has this number.', 'already_exists');
         } finally {
             // Doctrine's batch processing: every flush walks every managed entity, so a row's customer stays out of
             // the unit of work once written, or a file costs the square of its length. Nothing reads it back here.
@@ -161,7 +162,7 @@ final readonly class CustomerImport implements DeclaresImport
         return new CustomerInput(
             $record->value('number') ?? '',
             new CustomerProfile(
-                null === $kind ? ($profile->kind ?? CustomerKind::Company) : (CustomerKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".')),
+                null === $kind ? ($profile->kind ?? CustomerKind::Company) : (CustomerKind::tryFrom(strtolower($kind)) ?? throw new RowRejected('kind', 'A customer is a "company" or an "individual".', 'not_one_of', ['choices' => implode(', ', array_column(CustomerKind::cases(), 'value'))])),
                 $record->value('name') ?? $profile->name ?? '',
                 $record->value('legal_name') ?? $profile?->legalName,
                 $identifiers,
@@ -206,7 +207,7 @@ final readonly class CustomerImport implements DeclaresImport
         }
 
         return $this->groups->ofNameInCompany($name, $company->getId())?->getId()
-            ?? throw new RowRejected('customer_group', \sprintf('The company has no customer group named "%s". Create it first.', $name));
+            ?? throw new RowRejected('customer_group', \sprintf('The company has no customer group named "%s". Create it first.', $name), 'unknown_group', ['name' => $name]);
     }
 
     /** @return list<Uuid> */
@@ -220,7 +221,7 @@ final readonly class CustomerImport implements DeclaresImport
         $ids = [];
         foreach (preg_split('/[\s;,]+/', $codes, -1, \PREG_SPLIT_NO_EMPTY) ?: [] as $code) {
             $ids[] = $this->taxes->ofCodeInCompany($code, $company->getId())?->getId()
-                ?? throw new RowRejected('default_tax_codes', \sprintf('The company has no tax coded "%s".', $code));
+                ?? throw new RowRejected('default_tax_codes', \sprintf('The company has no tax coded "%s".', $code), 'unknown_tax_code', ['code' => $code]);
         }
 
         return $ids;
@@ -241,8 +242,8 @@ final readonly class CustomerImport implements DeclaresImport
                 continue;
             }
             $values[$field->getKey()] = match ($field->getType()) {
-                CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.'),
-                CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.'),
+                CustomFieldType::Number => self::number($cell) ?? throw new RowRejected($column, 'A number.', 'not_a_number'),
+                CustomFieldType::Bool => self::yesNo($record, $column) ?? throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
                 default => $cell,
             };
         }
@@ -294,7 +295,7 @@ final readonly class CustomerImport implements DeclaresImport
     {
         $columns = [];
         foreach ($this->presets->get($company->getFiscalPreset())->identifiers as $identifier) {
-            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, null, 'import.identifier_note');
+            $columns[] = new ImportColumn($identifier->key, $identifier->labelKey, false, null, 'import.identifier_note', ImportHeading::FiscalLabel);
         }
 
         return $columns;
@@ -319,6 +320,7 @@ final readonly class CustomerImport implements DeclaresImport
                 $field->getLabel(),
                 $field->isRequired(),
                 self::exampleOf($field),
+                headingIs: ImportHeading::Label,
             );
         }
 
@@ -356,7 +358,7 @@ final readonly class CustomerImport implements DeclaresImport
         return match (true) {
             \in_array($cell, self::YES, true) => true,
             \in_array($cell, self::NO, true) => false,
-            default => throw new RowRejected($column, 'Yes or no.'),
+            default => throw new RowRejected($column, 'Yes or no.', 'not_yes_or_no'),
         };
     }
 

@@ -21,14 +21,12 @@ final class IdentifierRules
     private const array HOLDERS = [self::COMPANY => 'a company', self::BUSINESS_CUSTOMER => 'a business customer'];
 
     /**
-     * The first rule the values break, as the field it names and why; null when they break none.
+     * The first rule the values break; null when they break none.
      *
      * @param array<string, string> $values registration numbers by identifier key, blank ones already left out
      * @param string                $holder one of the holder constants, or '' for someone the preset requires nothing of
-     *
-     * @return array{string, string}|null
      */
-    public static function refusal(FiscalPreset $preset, array $values, string $holder): ?array
+    public static function refusal(FiscalPreset $preset, array $values, string $holder): ?IdentifierRefusal
     {
         $known = [];
         foreach ($preset->identifiers as $identifier) {
@@ -37,20 +35,20 @@ final class IdentifierRules
             $value = $values[$identifier->key] ?? null;
             if (null === $value) {
                 if ('' !== $holder && \in_array($holder, $identifier->requiredFor, true)) {
-                    return [$field, \sprintf('The %s preset requires %s to carry its %s.', $preset->country, self::HOLDERS[$holder] ?? $holder, $identifier->key)];
+                    return new IdentifierRefusal($field, \sprintf('The %s preset requires %s to carry its %s.', $preset->country, self::HOLDERS[$holder] ?? $holder, $identifier->key), 'identifier_required', ['identifier' => $identifier->key]);
                 }
                 continue;
             }
             if (1 !== preg_match('#'.str_replace('#', '\#', $identifier->pattern).'#u', $value)) {
-                return [$field, \sprintf('This %s does not have the shape the %s preset expects.', $identifier->key, $preset->country)];
+                return new IdentifierRefusal($field, \sprintf('This %s does not have the shape the %s preset expects.', $identifier->key, $preset->country), 'identifier_shape', ['identifier' => $identifier->key]);
             }
             if (null !== $identifier->check && !$identifier->check->accepts($value)) {
-                return [$field, \sprintf('This %s fails its check digits.', $identifier->key)];
+                return new IdentifierRefusal($field, \sprintf('This %s fails its check digits.', $identifier->key), 'identifier_checksum', ['identifier' => $identifier->key]);
             }
         }
         foreach (array_keys($values) as $key) {
             if (!\in_array($key, $known, true)) {
-                return ["identifiers.$key", \sprintf('The %s preset knows no identifier "%s".', $preset->country, $key)];
+                return new IdentifierRefusal("identifiers.$key", \sprintf('The %s preset knows no identifier "%s".', $preset->country, $key), 'unknown_identifier', ['identifier' => $key]);
             }
         }
 

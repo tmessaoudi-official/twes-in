@@ -232,7 +232,7 @@ class Customer implements CompanyOwned
     private function groupOfThisCompany(?CustomerGroup $group): ?CustomerGroup
     {
         if (null !== $group && !$group->getCompany()->getId()->equals($this->company->getId())) {
-            throw new InvalidCustomer('customerGroupId', 'A customer belongs to a group of its own company.');
+            throw new InvalidCustomer('customerGroupId', 'A customer belongs to a group of its own company.', 'unknown_group_id');
         }
 
         return $group;
@@ -241,7 +241,7 @@ class Customer implements CompanyOwned
     private function regimeOfThisPreset(CustomerTaxRegime $regime): CustomerTaxRegime
     {
         if ($regime->getFiscalPreset() !== $this->company->getFiscalPreset()) {
-            throw new InvalidCustomer('taxRegime', \sprintf('The %s preset offers no regime "%s" of the %s preset.', $this->company->getFiscalPreset(), $regime->getCode(), $regime->getFiscalPreset()));
+            throw new InvalidCustomer('taxRegime', \sprintf('The %s preset offers no regime "%s" of the %s preset.', $this->company->getFiscalPreset(), $regime->getCode(), $regime->getFiscalPreset()), 'unknown_tax_regime', ['code' => $regime->getCode()]);
         }
 
         return $regime;
@@ -251,7 +251,7 @@ class Customer implements CompanyOwned
     {
         $number = trim($number);
         if (1 !== preg_match(self::NUMBER, $number)) {
-            throw new InvalidCustomer('number', \sprintf('"%s" is not a customer number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number));
+            throw new InvalidCustomer('number', \sprintf('"%s" is not a customer number: 1 to 32 letters, digits, dots, dashes, slashes or underscores.', $number), 'invalid_customer_number', ['max' => 32]);
         }
 
         return $number;
