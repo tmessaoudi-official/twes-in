@@ -60,6 +60,24 @@ const rows = [terms, language, unit];
 const customer = { id: 'customer-defaults', level: 'customer', chains: ['parties'] } as const;
 
 describe('settings at a level', () => {
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal or a money setting shows and takes the locale's decimal separator.
+  it('asks a decimal or a money setting as a decimal field', () => {
+    const rate = row({
+      key: 'document.late_rate',
+      chain: 'parties',
+      type: 'decimal',
+      value: '1.5',
+    });
+    const fee = row({ key: 'document.late_fee', chain: 'parties', type: 'money', value: '10.000' });
+    const fields = settingsForm([rate, fee], customer).sections.flatMap(
+      (section) => section.fields,
+    );
+    expect(fields.map((field) => [field.id, field.kind])).toEqual([
+      ['document__late_rate', 'decimal'],
+      ['document__late_fee', 'decimal'],
+    ]);
+  });
+
   it('renders the settings that level may hold, in the chains asked for', () => {
     const form = settingsForm(rows, customer);
 

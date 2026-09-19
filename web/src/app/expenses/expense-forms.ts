@@ -129,9 +129,9 @@ export function expenseSearch(query: ListQuery): ExpenseSearch {
   };
 }
 
-/** A net amount above zero with no more decimals than the currency has. */
+/** A net amount above zero with no more decimals than the currency has, as the decimal field hands it over. */
 export function amountPattern(scale: number): string {
-  return scale > 0 ? `(0|[1-9][0-9]{0,10})([.,][0-9]{1,${scale}})?` : '(0|[1-9][0-9]{0,10})';
+  return scale > 0 ? `(0|[1-9][0-9]{0,10})([.][0-9]{1,${scale}})?` : '(0|[1-9][0-9]{0,10})';
 }
 
 /** Each category under its parents' names, in the order a tree reads. */
@@ -260,7 +260,7 @@ function offeredExpenseForm(options: ExpenseOptions): FormDescriptor {
           {
             id: 'amountNet',
             label: `${FIELDS}.amountNet`,
-            kind: 'text',
+            kind: 'decimal',
             required: true,
             maxLength: 16,
             pattern: amountPattern(options.currencyScale),
@@ -320,9 +320,7 @@ export function expenseInput(values: FormValues): ExpenseInput {
     description: String(values['description'] ?? '').trim(),
     vendorId: text(values['vendorId']),
     categoryId: text(values['categoryId']),
-    amountNet: String(values['amountNet'] ?? '')
-      .trim()
-      .replace(',', '.'),
+    amountNet: String(values['amountNet'] ?? '').trim(),
     taxComponentId: text(values['taxComponentId']),
     notes: text(values['notes']),
   };

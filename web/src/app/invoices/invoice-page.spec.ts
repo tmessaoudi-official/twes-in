@@ -283,6 +283,22 @@ describe('InvoicePage', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('titles an invoice still loading as nothing, never as a new one', async () => {
+    await open('i1');
+
+    const title = q('invoice-title');
+    expect(title?.textContent?.trim()).toBe('');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('titles the page for a new invoice as new', async () => {
+    await open(undefined);
+
+    expect(q('invoice-title')?.textContent).toContain('invoices.new_title');
+    expect(q('invoice-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it('drafts an invoice for a customer, with the document taxes it would be charged, then opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
@@ -321,6 +337,34 @@ describe('InvoicePage', () => {
       expect(navigate).toHaveBeenCalledWith(['/invoices', 'i9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('invoices.saved');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
+  it('shows a line’s figures with a decimal comma, and sends a typed comma as a point', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    await choose('field-customerId', 'CLI-2 · Méditerranée');
+    await choose('line-0-product', 'ART-1 · Conception');
+    expect((q('line-0-price') as HTMLInputElement).value).toBe('1800,000');
+
+    type('line-0-quantity', '2,000');
+    type('line-0-price', '1800,5');
+    type('line-0-discount', '7,5');
+    q('invoice-save')!.click();
+    await settle();
+
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        lines: [
+          expect.objectContaining({
+            quantity: '2.000',
+            unitPriceNet: '1800.5',
+            discountRate: '7.5',
+          }),
+        ],
+      }),
+    );
   });
 
   it('gives lines whose discount nobody typed the discount of the customer chosen', async () => {
@@ -450,16 +494,16 @@ describe('InvoicePage', () => {
   it('records a payment on the company’s today, for what is still due unless changed', async () => {
     invoice.set(issued);
     await open('i1');
-    expect((q('field-amount') as HTMLInputElement).value).toBe('1121.570');
+    expect((q('field-amount') as HTMLInputElement).value).toBe('1121,570');
     expect((q('field-date') as HTMLInputElement).value).toBe(todayIn('Africa/Tunis'));
 
-    type('field-amount', '500');
+    type('field-amount', '500,5');
     type('field-reference', 'CHQ 12');
     q('invoice-payment-record')!.click();
     await settle();
     expect(facade.recordPayment).toHaveBeenCalledWith('c1', 'i1', {
       date: todayIn('Africa/Tunis'),
-      amount: '500',
+      amount: '500.5',
       method: 'transfer',
       reference: 'CHQ 12',
       notes: null,

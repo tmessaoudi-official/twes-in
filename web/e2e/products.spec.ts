@@ -87,14 +87,15 @@ test('a product is filed in a category, priced at the currency scale and revised
     await page.getByRole('option', { name: categoryName }).click();
     await page.getByTestId('field-unitId').click();
     await page.getByRole('option', { name: /^HUR · / }).click();
-    await page.getByTestId('field-unitPriceNet').fill('120.5');
+    // docs/SPEC.md § 7, 2026-09-19 21:55: a decimal comma is a price, whatever the interface language.
+    await page.getByTestId('field-unitPriceNet').fill('120,5');
     await page.getByRole('checkbox', { name: /19/ }).check();
     expect(await wcagViolations(page)).toEqual([]);
     await page.getByTestId('product-save').click();
 
     await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('product-title')).toContainText(reference);
-    await expect(page.getByTestId('field-unitPriceNet')).toHaveValue('120.500');
+    await expect(page.getByTestId('field-unitPriceNet')).toHaveValue(/^120[,.]500$/);
     // docs/SPEC.md § 8 row 23 (review C8): the saved product's own screen, whose id only this scenario holds.
     expect(await wcagViolations(page)).toEqual([]);
 

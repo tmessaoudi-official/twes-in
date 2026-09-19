@@ -1,7 +1,11 @@
 <section class="flex max-w-5xl flex-col gap-6">
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
-      <h1 class="text-3xl font-semibold" data-testid="invoice-title">
+      <h1
+        class="text-3xl font-semibold"
+        data-testid="invoice-title"
+        [attr.aria-hidden]="!current() && id() !== null ? true : null"
+      >
         @if (current(); as invoice) {
           @if (invoice.number; as number) {
             {{ number }}
@@ -10,7 +14,7 @@
           } @else {
             {{ 'invoices.draft_title' | translate }}
           }
-        } @else {
+        } @else if (id() === null) {
           {{ 'invoices.new_title' | translate }}
         }
       </h1>

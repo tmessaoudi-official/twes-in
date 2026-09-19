@@ -281,7 +281,7 @@ describe('the movement form', () => {
     expect(fields.map((field) => [field.id, field.kind, field.required ?? false])).toEqual([
       ['productId', 'select', true],
       ['locationId', 'select', true],
-      ['quantity', 'text', true],
+      ['quantity', 'decimal', true],
     ]);
     expect(fields[0]?.options?.map((option) => option.label)).toEqual([
       'ART-1 — Portable',
@@ -301,7 +301,7 @@ describe('the movement form', () => {
     const one: StockOptions = { ...options, products: options.products.slice(1) };
     expect(movementValues([site], one)['productId']).toBe('p2');
     expect(
-      movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1,5 ' }),
+      movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
     ).toEqual({
       operation: 'receive',
       productId: 'p2',

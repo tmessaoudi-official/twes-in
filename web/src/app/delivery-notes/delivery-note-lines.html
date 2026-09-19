@@ -54,7 +54,7 @@
             <input
               matInput
               formControlName="quantity"
-              inputmode="decimal"
+              appDecimal
               required
               [attr.data-testid]="'line-' + i + '-quantity'"
             />
@@ -98,7 +98,7 @@
             <input
               matInput
               formControlName="unitPriceNet"
-              inputmode="decimal"
+              appDecimal
               required
               [attr.data-testid]="'line-' + i + '-price'"
             />

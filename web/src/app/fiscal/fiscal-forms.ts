@@ -28,7 +28,7 @@ function valueFields(
       {
         id: 'rate',
         label: 'fiscal.taxes.rate',
-        kind: 'text',
+        kind: 'decimal',
         required: true,
         pattern: RATE,
         hint: 'fiscal.taxes.rate_hint',
@@ -36,14 +36,20 @@ function valueFields(
       withRate,
     ),
     visible(
-      { id: 'amount', label: 'fiscal.taxes.amount', kind: 'text', required: true, pattern: AMOUNT },
+      {
+        id: 'amount',
+        label: 'fiscal.taxes.amount',
+        kind: 'decimal',
+        required: true,
+        pattern: AMOUNT,
+      },
       ['stamp'],
     ),
     visible(
       {
         id: 'threshold',
         label: 'fiscal.taxes.threshold',
-        kind: 'text',
+        kind: 'decimal',
         required: true,
         pattern: AMOUNT,
         hint: 'fiscal.taxes.threshold_hint',

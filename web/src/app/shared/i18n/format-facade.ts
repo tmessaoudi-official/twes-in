@@ -7,7 +7,8 @@ import { LanguageFacade } from './language-facade';
 
 /**
  * How figures read on screen: amounts and days in the interface language for the working company's country, so a
- * Tunisian company reads "2 975,000" and "05/09/2026". Inputs and the API keep their own format (`atScale`).
+ * Tunisian company reads "2 975,000" and "05/09/2026". A decimal field shows the same separator, ungrouped, while its
+ * control and the API keep the point (`DecimalInput`, docs/SPEC.md § 7, 2026-09-19).
  */
 @Injectable({ providedIn: 'root' })
 export class FormatFacade {

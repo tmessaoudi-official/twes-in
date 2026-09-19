@@ -211,6 +211,22 @@ describe('CustomerPage', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('titles a customer still loading as nothing, never as a new one', async () => {
+    await open('k1');
+
+    const title = q('customer-title');
+    expect(title?.textContent?.trim()).toBe('');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('titles the page for a new customer as new', async () => {
+    await open(undefined);
+
+    expect(q('customer-title')?.textContent).toContain('customers.new_title');
+    expect(q('customer-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it('creates a customer, then opens it by its identifier', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

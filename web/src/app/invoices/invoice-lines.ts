@@ -18,6 +18,7 @@ import {
   offeredLineTaxes,
 } from './invoice-forms';
 import type { CustomerOption, InvoiceOptions, TaxFamily, TaxOption } from './invoices-types';
+import { DecimalInput } from '../shared/form/decimal-input';
 
 type CheckedField = keyof Omit<
   LineControls,
@@ -43,6 +44,7 @@ type CheckedField = keyof Omit<
     MatInputModule,
     MatSelectModule,
     TranslatePipe,
+    DecimalInput,
     AmountPipe,
   ],
   templateUrl: './invoice-lines.html',

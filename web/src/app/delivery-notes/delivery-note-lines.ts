@@ -17,6 +17,7 @@ import {
   offeredTaxes,
 } from './delivery-note-forms';
 import type { DeliveryNoteOptions, LineTaxOption, TaxFamily } from './delivery-notes-types';
+import { DecimalInput } from '../shared/form/decimal-input';
 
 type CheckedField = keyof Omit<LineControls, 'productId' | 'taxComponentIds'>;
 
@@ -35,6 +36,7 @@ type CheckedField = keyof Omit<LineControls, 'productId' | 'taxComponentIds'>;
     MatInputModule,
     MatSelectModule,
     TranslatePipe,
+    DecimalInput,
   ],
   templateUrl: './delivery-note-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -259,7 +259,7 @@ export function invoiceForm(
         {
           id: 'discountAmount',
           label: `${FIELDS}.discountAmount`,
-          kind: 'text',
+          kind: 'decimal',
           maxLength: 16,
           pattern: AMOUNT_PATTERN,
           hint: 'invoices.form.discount_hint',
@@ -515,7 +515,7 @@ export function paymentForm(): FormDescriptor {
           {
             id: 'amount',
             label: 'invoices.payments.amount',
-            kind: 'text',
+            kind: 'decimal',
             required: true,
             maxLength: 16,
             pattern: AMOUNT_PATTERN,

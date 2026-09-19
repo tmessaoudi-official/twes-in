@@ -5,6 +5,8 @@ export type FieldKind =
   | 'email'
   | 'tel'
   | 'number'
+  /** An amount, a quantity or a rate as the API writes it ("890.000"), shown and typed the locale's way. */
+  | 'decimal'
   | 'date'
   | 'textarea'
   | 'select'

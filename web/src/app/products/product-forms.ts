@@ -261,7 +261,7 @@ export function productForm(
         {
           id: 'unitPriceNet',
           label: `${FIELDS}.unitPriceNet`,
-          kind: 'text',
+          kind: 'decimal',
           required: true,
           maxLength: 15,
           pattern: PRICE_PATTERN,
@@ -270,7 +270,7 @@ export function productForm(
         {
           id: 'costPrice',
           label: `${FIELDS}.costPrice`,
-          kind: 'text',
+          kind: 'decimal',
           maxLength: 15,
           pattern: PRICE_PATTERN,
           hint: 'products.form.cost_hint',

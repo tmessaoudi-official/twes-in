@@ -1,9 +1,13 @@
 <section class="flex max-w-4xl flex-col gap-6">
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="product-title">
+    <h1
+      class="text-3xl font-semibold"
+      data-testid="product-title"
+      [attr.aria-hidden]="!current() && id() !== null ? true : null"
+    >
       @if (current(); as product) {
         {{ product.reference }} · {{ product.name }}
-      } @else {
+      } @else if (id() === null) {
         {{ 'products.new_title' | translate }}
       }
     </h1>

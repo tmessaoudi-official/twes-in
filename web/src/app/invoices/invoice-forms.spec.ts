@@ -311,6 +311,17 @@ describe('invoice forms', () => {
     ).toBeNull();
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: amounts show and take the locale's decimal separator.
+  it('asks the document discount and a payment’s amount as decimals', () => {
+    const decimals = (form: ReturnType<typeof paymentForm>) =>
+      form.sections
+        .flatMap((section) => section.fields)
+        .filter((field) => field.kind === 'decimal')
+        .map((field) => field.id);
+    expect(decimals(invoiceForm(options, null))).toEqual(['discountAmount']);
+    expect(decimals(paymentForm())).toEqual(['amount']);
+  });
+
   it('records a payment on today with the amount still due, and sends it trimmed', () => {
     const form = paymentForm();
     expect(form.sections.flatMap((s) => s.fields).map((f) => f.id)).toEqual([

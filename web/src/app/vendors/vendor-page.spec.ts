@@ -134,6 +134,22 @@ describe('VendorPage', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('titles a vendor still loading as nothing, never as a new one', async () => {
+    await open('v1');
+
+    const title = q('vendor-title');
+    expect(title?.textContent?.trim()).toBe('');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('titles the page for a new vendor as new', async () => {
+    await open(undefined);
+
+    expect(q('vendor-title')?.textContent).toContain('vendors.new_title');
+    expect(q('vendor-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it('creates a vendor without registration numbers, then opens it by its identifier', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

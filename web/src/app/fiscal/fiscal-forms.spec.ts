@@ -41,6 +41,15 @@ describe('fiscal forms', () => {
     }
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a rate, a fixed amount and a threshold show and take the locale's decimal separator.
+  it('asks every value of a tax as a decimal', () => {
+    const decimals = TAX_CREATE_FORM.sections
+      .flatMap((section) => section.fields)
+      .filter((field) => field.kind === 'decimal')
+      .map((field) => field.id);
+    expect(decimals).toEqual(['rate', 'amount', 'threshold']);
+  });
+
   it.each<[TaxFamily, string[]]>([
     ['vat', ['rate']],
     ['levy', ['rate', 'entersVatBase']],

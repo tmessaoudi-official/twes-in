@@ -3,6 +3,8 @@
 import {
   atScale,
   dayKey,
+  decimalShown,
+  decimalTyped,
   formatAmount,
   formatDay,
   formatLongDay,
@@ -24,6 +26,35 @@ describe('atScale', () => {
     expect(atScale('12.0000', 2)).toBe('12.00');
     expect(atScale('7.0000', 0)).toBe('7');
     expect(atScale('7.5000', 0)).toBe('7.5');
+  });
+});
+
+describe('a decimal field', () => {
+  // docs/SPEC.md § 7, 2026-09-19 21:55: the field shows the screen's decimal separator, never grouped, and takes either.
+  it('shows the API value with the locale’s decimal separator and no grouping', () => {
+    expect(decimalShown('890.000', 'fr-TN')).toBe('890,000');
+    expect(decimalShown('1234567.5', 'fr')).toBe('1234567,5');
+    expect(decimalShown('-12.5', 'fr')).toBe('-12,5');
+    expect(decimalShown('890.000', 'en-TN')).toBe('890.000');
+    expect(decimalShown('42', 'fr')).toBe('42');
+  });
+
+  it('shows what is not a decimal as it came', () => {
+    expect(decimalShown('', 'fr')).toBe('');
+    expect(decimalShown('12,5,3', 'fr')).toBe('12,5,3');
+  });
+
+  it('reads a comma or a point as the API’s point, whatever the locale', () => {
+    expect(decimalTyped('890,5')).toBe('890.5');
+    expect(decimalTyped('890.5')).toBe('890.5');
+    expect(decimalTyped(' 12,25 ')).toBe('12.25');
+    expect(decimalTyped('')).toBe('');
+  });
+
+  it('leaves what cannot be a decimal for the pattern to refuse', () => {
+    expect(decimalTyped('12,5,3')).toBe('12,5,3');
+    expect(decimalTyped('1 234,5')).toBe('1 234,5');
+    expect(decimalTyped('abc')).toBe('abc');
   });
 });
 

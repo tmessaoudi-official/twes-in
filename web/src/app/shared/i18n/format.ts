@@ -6,9 +6,9 @@ const DAY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const MOMENT = /^\d{4}-\d{2}-\d{2}T/;
 
 /**
- * An amount as the API takes it and an input holds it: at the currency's scale, and finer only when the value itself
- * is ("0.0045" per unit). Nothing is rounded here; the API computes every figure, and trailing zeros past the scale
- * are dropped.
+ * An amount as the API takes it and a form control holds it: at the currency's scale, and finer only when the value
+ * itself is ("0.0045" per unit). Nothing is rounded here; the API computes every figure, and trailing zeros past the
+ * scale are dropped. The field shows it through `decimalShown`.
  */
 export function atScale(value: string, scale: number): string {
   const [units = '', decimals = ''] = value.split('.');
@@ -16,6 +16,21 @@ export function atScale(value: string, scale: number): string {
   const shown =
     significant.length > scale ? significant : decimals.slice(0, scale).padEnd(scale, '0');
   return shown === '' ? units : `${units}.${shown}`;
+}
+
+/**
+ * A decimal field's text for the API's value: the locale's decimal separator and nothing else, never grouped, so
+ * "890.000" shows "890,000" in French and a typed "1,234" can never mean a thousand (docs/SPEC.md § 7, 2026-09-19).
+ * What is not a decimal shows as it came.
+ */
+export function decimalShown(value: string, locale: string): string {
+  return DECIMAL.test(value) ? value.replace('.', numberFormat(locale).decimal) : value;
+}
+
+/** What a person typed in a decimal field, as the API reads it: a comma or a point; anything else is left to refuse. */
+export function decimalTyped(text: string): string {
+  const trimmed = text.trim();
+  return /^-?\d+,\d+$/.test(trimmed) ? trimmed.replace(',', '.') : trimmed;
 }
 
 /**

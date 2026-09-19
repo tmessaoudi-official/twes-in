@@ -153,6 +153,22 @@ describe('ProductPage', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('titles a product still loading as nothing, never as a new one', async () => {
+    await open('p1');
+
+    const title = q('product-title');
+    expect(title?.textContent?.trim()).toBe('');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('titles the page for a new product as new', async () => {
+    await open(undefined);
+
+    expect(q('product-title')?.textContent).toContain('products.new_title');
+    expect(q('product-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it('creates a product in the preselected unit, then opens it by its identifier', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
@@ -186,11 +202,27 @@ describe('ProductPage', () => {
     await open(undefined);
     type('field-reference', 'ART-009');
     type('field-name', 'Souris');
-    type('field-unitPriceNet', '25,5');
+    type('field-unitPriceNet', '25,12345');
     q('product-save')!.click();
     await settle();
 
     expect(facade.createProduct).not.toHaveBeenCalled();
+  });
+
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a French decimal comma is a price, sent as the API's point.
+  it('sends a price typed with a decimal comma', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    type('field-reference', 'ART-009');
+    type('field-name', 'Souris');
+    type('field-unitPriceNet', '25,5');
+    q('product-save')!.click();
+    await settle();
+
+    expect(facade.createProduct).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ unitPriceNet: '25.5' }),
+    );
   });
 
   it('revises a product shown at the currency scale and says it was saved', async () => {
@@ -200,7 +232,7 @@ describe('ProductPage', () => {
     expect(articleSettings.load).toHaveBeenCalledWith('c1', { productId: 'p1' });
     expect(q('article-defaults')).not.toBeNull();
     expect(q('product-title')?.textContent).toContain('ART-001');
-    expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('1250.500');
+    expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('1250,500');
 
     type('field-unitPriceNet', '1300');
     q('product-save')!.click();
@@ -260,7 +292,7 @@ describe('ProductPage', () => {
     fixture.componentRef.setInput('productId', 'p2');
     await settle();
 
-    expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('10.000');
+    expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('10,000');
   });
 
   it('says why the API refused', async () => {

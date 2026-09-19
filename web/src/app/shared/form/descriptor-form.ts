@@ -6,6 +6,7 @@ import {
   effect,
   ElementRef,
   inject,
+  Injector,
   input,
   output,
   signal,
@@ -17,6 +18,8 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
+import { FormatFacade } from '../i18n/format-facade';
+import { DecimalInput } from './decimal-input';
 import { type DescriptorFormGroup, type FieldError, fieldError } from './form-builder';
 import type { FieldConflict } from './form-merge';
 import type { FieldValue, FormDescriptor, FormField, FormSection, FormValues } from './form-types';
@@ -39,12 +42,14 @@ import { applicableValues, applyVisibility, fieldApplies } from './form-visibili
     MatInputModule,
     MatSelectModule,
     TranslatePipe,
+    DecimalInput,
   ],
   templateUrl: './descriptor-form.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class DescriptorForm {
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
 
   readonly descriptor = input.required<FormDescriptor>();
   readonly form = input.required<DescriptorFormGroup>();
@@ -90,10 +95,13 @@ export class DescriptorForm {
     return this.conflicts().find((conflict) => conflict.field === field.id) ?? null;
   }
 
-  /** A value as the field shows it: a choice by its label, a box as ticked or not. */
+  /** A value as the field shows it: a choice by its label, a box as ticked or not, a decimal as the locale writes it. */
   protected shown(field: FormField, value: FieldValue): string {
     if (value === null || value === '') return '—';
     if (field.kind === 'checkbox') return value === true ? '✓' : '✗';
+    // Asked for only here, so a form with no decimal field never needs the session behind the format.
+    if (field.kind === 'decimal')
+      return this.injector.get(FormatFacade).amount(String(value), null);
     const option = field.options?.find((candidate) => candidate.value === value);
     return option ? option.label : String(value);
   }

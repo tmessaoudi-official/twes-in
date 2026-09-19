@@ -153,6 +153,17 @@ describe('product forms', () => {
     ]);
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: prices show and take the locale's decimal separator.
+  it('asks both prices as decimals', () => {
+    const fields = productForm(options, [laptops, hardware], [warranty]).sections.flatMap(
+      (section) => section.fields,
+    );
+    expect(fields.filter((field) => field.kind === 'decimal').map((field) => field.id)).toEqual([
+      'unitPriceNet',
+      'costPrice',
+    ]);
+  });
+
   it('offers the active units, the line taxes, the categories by path and the custom fields', () => {
     const form = productForm(options, [laptops, hardware], [warranty]);
     const fields = form.sections.flatMap((section) => section.fields);

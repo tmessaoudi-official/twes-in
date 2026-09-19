@@ -1,9 +1,13 @@
 <section class="flex max-w-4xl flex-col gap-6">
   <div class="flex flex-wrap items-center justify-between gap-4">
-    <h1 class="text-3xl font-semibold" data-testid="customer-title">
+    <h1
+      class="text-3xl font-semibold"
+      data-testid="customer-title"
+      [attr.aria-hidden]="!current() && id() !== null ? true : null"
+    >
       @if (current(); as customer) {
         {{ customer.number }} · {{ customer.name }}
-      } @else {
+      } @else if (id() === null) {
         {{ 'customers.new_title' | translate }}
       }
     </h1>

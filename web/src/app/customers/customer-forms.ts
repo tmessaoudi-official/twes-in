@@ -301,7 +301,7 @@ export function customerForm(
         {
           id: 'defaultDiscountRate',
           label: `${FIELDS}.defaultDiscountRate`,
-          kind: 'text',
+          kind: 'decimal',
           maxLength: 7,
           pattern: '[0-9]{1,3}([.][0-9]{1,3})?',
           hint: 'customers.form.discount_hint',

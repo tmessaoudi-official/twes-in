@@ -133,6 +133,18 @@
                         [attr.data-testid]="'field-' + field.id"
                       />
                     }
+                    @case ('decimal') {
+                      <input
+                        matInput
+                        appDecimal
+                        [id]="controlId(field)"
+                        type="text"
+                        [formControlName]="field.id"
+                        [required]="field.required ?? false"
+                        [attr.maxlength]="field.maxLength ?? null"
+                        [attr.data-testid]="'field-' + field.id"
+                      />
+                    }
                     @case ('colour') {
                       <input
                         matInput

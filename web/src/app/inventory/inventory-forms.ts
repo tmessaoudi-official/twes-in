@@ -21,8 +21,8 @@ const LOCATION_FIELDS = 'inventory.locations.fields';
 const STOCK_FIELDS = 'inventory.stock.fields';
 /** The API's shape of a location code. */
 const CODE_PATTERN = '[A-Za-z0-9._\\-]{1,32}';
-/** A quantity as a person types it, with a point or a comma: at most eleven digits, then at most three decimals. */
-const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.,][0-9]{1,3})?';
+/** A quantity as the decimal field hands it over: at most eleven digits, then at most three decimals. */
+const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,3})?';
 /** Decimals shown for a product the options no longer list (inactive, or no longer kept): the API's own three. */
 const API_DECIMALS = 3;
 
@@ -454,7 +454,7 @@ export function movementForm(
           {
             id: 'quantity',
             label: `${STOCK_FIELDS}.quantity`,
-            kind: 'text',
+            kind: 'decimal',
             required: true,
             pattern: QUANTITY_PATTERN,
             hint: `inventory.movement.quantity_hint.${operation}`,
@@ -488,7 +488,7 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     operation,
     productId: text(values['productId']),
     locationId: text(values['locationId']),
-    quantity: text(values['quantity']).replace(',', '.'),
+    quantity: text(values['quantity']),
   };
 }
 

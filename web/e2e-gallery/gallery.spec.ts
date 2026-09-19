@@ -127,6 +127,10 @@ async function settle(page: Page): Promise<void> {
   // The realtime connection never idles; what matters is that the page's own requests have answered.
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined);
   await page.evaluate(() => document.fonts.ready);
+  // A record's page keeps its title hidden until the record has arrived (docs/SPEC.md § 7, 2026-09-19 21:55), and the
+  // bar shows while anything is still loading: a page that never gets there is reported missed, not pictured half-drawn.
+  await page.locator('h1[aria-hidden="true"]').waitFor({ state: 'detached', timeout: 15_000 });
+  await page.getByTestId('activity-progress').waitFor({ state: 'detached', timeout: 15_000 });
   // The activity bar and any toast would otherwise sit in the picture.
   await page.waitForTimeout(400);
 }

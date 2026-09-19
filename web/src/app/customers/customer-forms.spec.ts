@@ -142,6 +142,14 @@ describe('customer forms', () => {
     ]);
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: the discount rate shows and takes the locale's decimal separator.
+  it('asks the default discount rate as a decimal', () => {
+    const fields = customerForm(options, groups).sections.flatMap((section) => section.fields);
+    expect(fields.filter((field) => field.kind === 'decimal').map((field) => field.id)).toEqual([
+      'defaultDiscountRate',
+    ]);
+  });
+
   it("builds the form from the company's preset, groups and taxes", () => {
     const form = customerForm(options, groups);
     const fields = form.sections.flatMap((section) => section.fields);

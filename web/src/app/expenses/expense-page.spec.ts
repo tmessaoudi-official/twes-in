@@ -192,6 +192,22 @@ describe('ExpensePage', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('titles an expense still loading as nothing, never as a new one', async () => {
+    await open('x1');
+
+    const title = q('expense-title');
+    expect(title?.textContent?.trim()).toBe('');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('titles the page for a new expense as new', async () => {
+    await open(undefined);
+
+    expect(q('expense-title')?.textContent).toContain('expenses.new_title');
+    expect(q('expense-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it("creates an expense filed under the vendor's usual category, then opens it by its identifier", async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);

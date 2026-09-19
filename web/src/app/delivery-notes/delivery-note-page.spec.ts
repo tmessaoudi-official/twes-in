@@ -207,6 +207,22 @@ describe('DeliveryNotePage', () => {
     });
   });
 
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
+  it('titles a delivery note still loading as nothing, never as a new one', async () => {
+    await open('n1');
+
+    const title = q('delivery-note-title');
+    expect(title?.textContent?.trim()).toBe('');
+    expect(title?.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('titles the page for a new delivery note as new', async () => {
+    await open(undefined);
+
+    expect(q('delivery-note-title')?.textContent).toContain('delivery_notes.new_title');
+    expect(q('delivery-note-title')?.getAttribute('aria-hidden')).toBeNull();
+  });
+
   it('drafts a note for a customer with a line filled from a product, then opens it', async () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
@@ -241,6 +257,27 @@ describe('DeliveryNotePage', () => {
       expect(navigate).toHaveBeenCalledWith(['/delivery-notes', 'n9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('delivery_notes.saved');
+  });
+
+  // docs/SPEC.md § 7, 2026-09-19 21:55: a line's figures show the French decimal comma and take a comma or a point.
+  it('shows a line’s price with a decimal comma, and sends a typed comma as a point', async () => {
+    vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    await open(undefined);
+    await choose('field-customerId', 'CLI-1 · Carthage');
+    await choose('line-0-product', 'ART-1 · Portable 14"');
+    expect((q('line-0-price') as HTMLInputElement).value).toBe('1250,000');
+
+    type('line-0-quantity', '2,000');
+    type('line-0-price', '1250,5');
+    q('delivery-note-save')!.click();
+    await settle();
+
+    expect(facade.create).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({
+        lines: [expect.objectContaining({ quantity: '2.000', unitPriceNet: '1250.5' })],
+      }),
+    );
   });
 
   it('does not send a line the API would refuse, and says what is wrong with it', async () => {

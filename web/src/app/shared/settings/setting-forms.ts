@@ -118,7 +118,7 @@ function fieldOf(row: SettingRow): FormField {
       return { id, label, kind: 'number', required: true, ...bounds(row) };
     case 'decimal':
     case 'money':
-      return { id, label, kind: 'text', required: true, pattern: DECIMAL };
+      return { id, label, kind: 'decimal', required: true, pattern: DECIMAL };
     case 'enum':
       return {
         id,

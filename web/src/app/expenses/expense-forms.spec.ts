@@ -82,10 +82,13 @@ describe('expense forms', () => {
 
   it('accepts a net amount with no more decimals than the currency has', () => {
     const tnd = new RegExp(`^${amountPattern(3)}$`);
-    expect(['0', '12', '12.5', '12,500', '10000000000.125'].every((value) => tnd.test(value))).toBe(
+    expect(['0', '12', '12.5', '12.500', '10000000000.125'].every((value) => tnd.test(value))).toBe(
       true,
     );
-    expect(['12.5000', '-3', '012', '1e3', ''].some((value) => tnd.test(value))).toBe(false);
+    // A typed comma never reaches the control: the decimal field hands it over as a point.
+    expect(['12.5000', '12,500', '-3', '012', '1e3', ''].some((value) => tnd.test(value))).toBe(
+      false,
+    );
     expect(new RegExp(`^${amountPattern(0)}$`).test('12.5')).toBe(false);
   });
 
@@ -100,6 +103,14 @@ describe('expense forms', () => {
     expect(categoryLabels([{ ...vehicles, parentId: 'k2' }, fuel]).get('k2')).toContain(
       'Carburant',
     );
+  });
+
+  // docs/SPEC.md § 7, 2026-09-19 21:55: the amount shows and takes the locale's decimal separator.
+  it('asks the net amount as a decimal', () => {
+    const fields = expenseForm(options).sections.flatMap((section) => section.fields);
+    expect(fields.filter((field) => field.kind === 'decimal').map((field) => field.id)).toEqual([
+      'amountNet',
+    ]);
   });
 
   it('offers the vendors, categories and rates the company has, each optional', () => {
@@ -127,7 +138,7 @@ describe('expense forms', () => {
         description: ' Gasoil ',
         vendorId: '',
         categoryId: 'k2',
-        amountNet: ' 100,5 ',
+        amountNet: ' 100.5 ',
         taxComponentId: '',
         notes: '',
       }),
