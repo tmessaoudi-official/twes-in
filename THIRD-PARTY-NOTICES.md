@@ -7,7 +7,7 @@ permissive under the policy in that file, as enforced by `scripts/gates/dependen
 Base images and service containers (PostgreSQL, nginx, Gotenberg, Mailpit, FrankenPHP) are aggregated,
 not compiled into what we distribute, and are not listed here.
 
-## api (Composer) — 105 runtime, 51 dev
+## api (Composer) — 105 runtime, 52 dev
 
 | Package | Version | Licence | Role |
 |---|---|---|---|
@@ -160,6 +160,7 @@ not compiled into what we distribute, and are not listed here.
 | symfony/var-dumper | 8.1.6 | MIT | runtime |
 | symfony/var-exporter | 8.1.6 | MIT | runtime |
 | symfony/web-link | 8.1.0 | MIT | runtime |
+| symfony/web-profiler-bundle | 8.1.7 | MIT | dev |
 | symfony/yaml | 8.1.6 | MIT | runtime |
 | theseer/tokenizer | 2.0.1 | BSD-3-Clause | dev |
 | twig/twig | 3.28.0 | BSD-3-Clause | runtime |

@@ -9,7 +9,9 @@ doctrine:
         # either here or in the DATABASE_URL env var (see .env file)
         #server_version: '16'
 
-        profiling_collect_backtrace: '%kernel.debug%'
+        # The recipe's '%kernel.debug%' keeps a backtrace for every query of a request: an import of 1000 rows ran
+        # past 128 MB on them alone (docs/SPEC.md § 7, 2026-09-19). The profiler still lists every query and its time.
+        profiling_collect_backtrace: false
 
         # Value objects stored through custom mapping types (docs/SPEC.md § 3 Architecture style).
         types:
