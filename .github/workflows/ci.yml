@@ -30,6 +30,7 @@ jobs:
       - run: bash scripts/gates/tests/outcomes-as-toasts.test.sh
       - run: bash scripts/gates/tests/compose-log-rotation.test.sh
       - run: bash scripts/gates/tests/version-pins.test.sh
+      - run: bash scripts/gates/tests/design-tokens.test.sh
       # The self-hosted logrotate configuration, rotated for real (docs/SPEC.md § 7, 2026-09-17).
       - run: command -v logrotate || (sudo apt-get update && sudo apt-get install -y logrotate)
       - run: bash infra/self-hosted/tests/logrotate.test.sh
@@ -41,6 +42,7 @@ jobs:
       - run: bash scripts/gates/compose-log-rotation.sh
       # Every copy of a version pin agrees: a bump that moves one copy builds one thing and tests another (docs/UPDATE.md).
       - run: bash scripts/gates/version-pins.sh
+      - run: bash scripts/gates/design-tokens.sh
 
   # WHY: the API tier's gate — code style, PHPStan at level max, PHPUnit against a REAL PostgreSQL 18,
   # because money and tenancy bugs live in SQL and a mocked database cannot show them.
