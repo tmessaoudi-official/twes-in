@@ -39,6 +39,9 @@ final readonly class DoctrineAuditTrail implements AuditTrail
         $row = new AuditLog($entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->changes, $this->clock->now(), $this->requestStack->getCurrentRequest()?->getClientIp(), $entry->companyId);
         $this->entityManager->persist($row);
         $this->entityManager->flush();
+        // Append-only and never read back in the request: managed, it would be walked by every later flush, and a
+        // request writing many (an import) would cost the square of their number.
+        $this->entityManager->detach($row);
         $this->liveChanges->stage(new LiveChange($entry->entityType, $entry->entityId, $entry->action, $entry->actorUserId, $entry->companyId));
     }
 }

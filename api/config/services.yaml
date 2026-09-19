@@ -23,6 +23,9 @@ parameters:
     app.signup.login_url: '%env(DEFAULT_URI)%/login'
     app.platform_url: '%env(DEFAULT_URI)%/platform'
     app.signup.valid_for: 'PT24H'
+    # Rows one import takes, header excluded: one file is one unit of work, run inside the request, so it must finish
+    # well within PHP's 30 seconds; 2500 rows measured 10.4 s on release PHP (docs/SPEC.md § 7, 2026-09-19).
+    app.import.max_rows: 2000
     # Mail the API sends itself.
     app.mail.sender: '%env(MAILER_SENDER)%'
     app.product_name: 'twes-in'
@@ -95,6 +98,9 @@ services:
     App\ImportExport\Application\ImportCatalogue:
         arguments:
             $declarations: !tagged_iterator app.import.declarations
+    App\ImportExport\Application\RunImport:
+        arguments:
+            $maxRows: '%app.import.max_rows%'
     App\ModuleRegistry\Infrastructure\ApiPlatform\ModuleOwnership:
         arguments:
             $declarations: !tagged_iterator app.modules.declarations

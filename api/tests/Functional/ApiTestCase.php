@@ -122,12 +122,16 @@ abstract class ApiTestCase extends WebTestCase
         $this->client->request('POST', $path, [], [], $headers, null === $body ? null : json_encode($body, \JSON_THROW_ON_ERROR));
     }
 
-    /** A file sent the way the SPA's FormData does: one multipart part under `$field`. */
-    protected function uploadFile(string $path, string $name, string $contents, string $field = 'file'): void
+    /**
+     * A file sent the way the SPA's FormData does: one multipart part under `$field`.
+     *
+     * @param array<string, string> $parameters form fields sent beside the file
+     */
+    protected function uploadFile(string $path, string $name, string $contents, string $field = 'file', array $parameters = []): void
     {
         $tmp = (string) tempnam(sys_get_temp_dir(), 'upload');
         file_put_contents($tmp, $contents);
-        $this->client->request('POST', $path, [], [$field => new UploadedFile($tmp, $name, null, null, true)], [
+        $this->client->request('POST', $path, $parameters, [$field => new UploadedFile($tmp, $name, null, null, true)], [
             'HTTP_ACCEPT' => 'application/json',
             'HTTP_'.strtoupper(str_replace('-', '_', CsrfRequestListener::HEADER)) => self::CSRF_TOKEN,
         ]);

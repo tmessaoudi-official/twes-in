@@ -277,6 +277,7 @@ the next build or gate.
 | e2e fails at `browserType.launch: Executable doesn't exist` | Playwright's browser is missing: § 1 |
 | The api image fails at `cache:clear` ("Cannot autowire service …") | Work in progress in the working tree went into the build (§ 2). Finish it, or bring up a clean worktree |
 | The api container restarts in a loop | A migration failed: `docker compose logs api` shows which, and the container refuses to serve until it passes |
+| An API answer is wrong, slow or refused, and the log does not say why | Open the profiler, development only: <http://localhost:8091/_profiler> lists the last requests, and every answer carries an `X-Debug-Token-Link` header to its own. It shows which voter decided, the listeners in order and their time, every query and their count, and the timeline. Imports are not profiled (§ 7 of `docs/SPEC.md`, 2026-09-19) |
 
 **Measured on this machine** (2026-09-19, a fresh compose project from a clean checkout of the committed tree):
 `make reset CONFIRM=yes` to six healthy services and a seeded database took **104 s**, with the base images already

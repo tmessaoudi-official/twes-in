@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\ImportExport\Application;
 
 use App\Tenancy\Domain\Company;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * A module says what of its own can be imported, from inside its own directory, the way it already declares its
@@ -32,4 +33,18 @@ interface DeclaresImport
 
     /** The columns as they are for THIS company: its preset's registration numbers, its own custom fields. */
     public function subjectFor(Company $company): ImportSubject;
+
+    /**
+     * The column a row is found again by (a customer's number, a product's reference): two rows of one file naming the
+     * same value are one thing twice, and the second is rejected before it reaches import().
+     */
+    public function identityColumn(): string;
+
+    /**
+     * Creates or, in upsert mode, updates what one row describes, through the same use case a person's form uses.
+     * Runs inside the import's unit of work, which RunImport rolls back for a preview or a file with a rejected row.
+     *
+     * @throws RowRejected naming the column at fault, for anything the row asks that the subject's rules refuse
+     */
+    public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported;
 }
