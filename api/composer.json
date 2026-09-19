@@ -85,10 +85,12 @@
     "lint": "php-cs-fixer check --diff",
     "lint:fix": "php-cs-fixer fix",
     "stan": [
+      "Composer\\Config::disableProcessTimeout",
       "bin/console cache:warmup --env=test --no-interaction",
       "phpstan analyse --memory-limit=1G --no-progress"
     ],
     "test": [
+      "Composer\\Config::disableProcessTimeout",
       "bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration --env=test",
       "phpunit"
     ],
