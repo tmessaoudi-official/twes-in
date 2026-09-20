@@ -152,6 +152,9 @@ export function establishmentInput(values: FormValues): EstablishmentInput {
 
 const COLUMNS = 'company.numbering.columns';
 
+// The widths are what each column HOLDS, not the 160 px every column takes by default: six of those plus the
+// actions want 1056 px where the settings pane offers 968, which is what cut this table (row 73's balance pass,
+// design review finding 10, measured 2026-09-20).
 export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
   id: 'company-numbering-series',
   rowId: (row) => row.id,
@@ -159,6 +162,7 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
   columns: [
     {
       id: 'establishment',
+      width: 120,
       label: `${COLUMNS}.establishment`,
       value: (row) => row.establishmentCode,
       sortable: true,
@@ -167,20 +171,27 @@ export const SERIES_LIST: ListDescriptor<NumberingSeriesRow> = {
     },
     {
       id: 'documentType',
+      width: 150,
       label: `${COLUMNS}.documentType`,
       value: (row) => row.documentType,
       sortable: true,
       hideable: false,
     },
-    { id: 'format', label: `${COLUMNS}.format`, value: (row) => row.format },
+    { id: 'format', width: 190, label: `${COLUMNS}.format`, value: (row) => row.format },
     {
       id: 'nextNumber',
+      width: 120,
       label: `${COLUMNS}.nextNumber`,
       value: (row) => row.nextNumber,
       align: 'end',
     },
-    { id: 'resetPeriod', label: `${COLUMNS}.resetPeriod`, value: (row) => row.resetPeriod },
-    { id: 'preview', label: `${COLUMNS}.preview`, value: (row) => row.preview },
+    {
+      id: 'resetPeriod',
+      width: 130,
+      label: `${COLUMNS}.resetPeriod`,
+      value: (row) => row.resetPeriod,
+    },
+    { id: 'preview', width: 150, label: `${COLUMNS}.preview`, value: (row) => row.preview },
   ],
 };
 

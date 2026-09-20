@@ -18,8 +18,6 @@ interface Screen {
   path: string;
   /** For a record page: the list whose first row opens it. */
   firstRowOf?: string;
-  /** The test id prefix of that list's open link (`customer-open-<number>`). */
-  openLink?: string;
 }
 
 const SIGNED_OUT: Screen[] = [
@@ -36,7 +34,6 @@ const SIGNED_IN: Screen[] = [
     group: 'Clients',
     path: '',
     firstRowOf: '/customers',
-    openLink: 'customer-open-',
   },
   { key: 'customer-new', group: 'Clients', path: '/customers/new' },
   { key: 'customer-groups', group: 'Clients', path: '/customers/groups' },
@@ -46,7 +43,6 @@ const SIGNED_IN: Screen[] = [
     group: 'Produits',
     path: '',
     firstRowOf: '/products',
-    openLink: 'product-open-',
   },
   { key: 'product-new', group: 'Produits', path: '/products/new' },
   { key: 'product-categories', group: 'Produits', path: '/products/categories' },
@@ -56,7 +52,6 @@ const SIGNED_IN: Screen[] = [
     group: 'Factures',
     path: '',
     firstRowOf: '/invoices',
-    openLink: 'invoice-open-',
   },
   { key: 'invoice-new', group: 'Factures', path: '/invoices/new' },
   { key: 'delivery-notes', group: 'Bons de livraison', path: '/delivery-notes' },
@@ -65,7 +60,6 @@ const SIGNED_IN: Screen[] = [
     group: 'Bons de livraison',
     path: '',
     firstRowOf: '/delivery-notes',
-    openLink: 'delivery-note-open-',
   },
   { key: 'delivery-note-new', group: 'Bons de livraison', path: '/delivery-notes/new' },
   { key: 'stock', group: 'Stock', path: '/stock' },
@@ -77,7 +71,6 @@ const SIGNED_IN: Screen[] = [
     group: 'Fournisseurs',
     path: '',
     firstRowOf: '/vendors',
-    openLink: 'vendor-open-',
   },
   { key: 'vendor-new', group: 'Fournisseurs', path: '/vendors/new' },
   { key: 'expenses', group: 'Dépenses', path: '/expenses' },
@@ -86,7 +79,6 @@ const SIGNED_IN: Screen[] = [
     group: 'Dépenses',
     path: '',
     firstRowOf: '/expenses',
-    openLink: 'expense-open-',
   },
   { key: 'expense-new', group: 'Dépenses', path: '/expenses/new' },
   { key: 'expense-categories', group: 'Dépenses', path: '/expenses/categories' },
@@ -142,8 +134,9 @@ async function open(page: Page, screen: Screen): Promise<boolean> {
   }
   await page.goto(screen.firstRowOf);
   await settle(page);
-  // A row opens its record through the link in its actions.
-  const link = page.locator(`a[data-testid^="${screen.openLink}"]`).first();
+  // A row IS a link on the column that names it (docs/SPEC.md § 7, 2026-09-19 23:16, row 71): there is no longer
+  // an "Ouvrir" in its actions, and a list without a link has no record page to picture.
+  const link = page.locator('a[data-testid^="list-link-"]').first();
   if ((await link.count()) === 0) return false;
   await link.click();
   await page.waitForURL((url) => url.pathname !== screen.firstRowOf, { timeout: 15_000 });

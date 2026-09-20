@@ -888,6 +888,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   not built here. Row 73's second half, the balance pass (design review finding 10, dense vs empty per screen),
   stays open: it is measured on the gallery, which the rows above have changed.
 
+- [2026-09-20 18:55] AGREED: **the balance pass is two measured corrections, not a redesign** (design review finding
+  10, re-measured on the gallery after rows 70-73 changed the layouts: every screen at 1440 × 900, reporting the
+  content column's width, the page's height and what each table's columns ask for against the room they are given).
+  **A page whose content is a list is no longer capped**: ten settings and reference pages carried `max-w-4xl` or
+  `max-w-5xl` while their area offered more, which is half of what "half empty yet its table cut" described.
+  **A column declares the width it HOLDS**: every column took the 160 px default whatever it carried, so six of them
+  plus the row actions asked for 1056 px where the settings pane offers 968 — the numbering, custom-fields and tax
+  tables were each cut by 90 to 162 px, with "Prochain numéro" showing as `AV-202`. They now ask 966 and fit.
+  **A form page's cap goes from 896 px to 1152**: measured, its fields were 250 px wide and already overflowing
+  their own box by 7 px, inside a content area of 1152. What the pass did NOT do is shorten the long forms: the
+  customer record is 2479 px because it has some fifty fields, and the answer to that is the tabs of 23:18 and the
+  per-screen actions of row 45, not a layout trick. The gallery itself was stale and is fixed in the same change —
+  it opened a record through the "Ouvrir" link row 71 deleted, so every record page would have been reported
+  missed; it now follows the row's own link, and all 41 screens were reached.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -966,7 +981,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 70 | The shell after the design review (§ 7 2026-09-19 23:19-23:22, findings 5-8): the header search left-aligned and filling to the right-hand controls, capped near 800 px, its placeholder naming what it finds; the phone header showing the working company in the wordmark's place; the settings area as the app's 80 px rail plus the settings menu docked against it; the top bar's gear removed, settings from the sidebar only | M | done | - | web/src/app/shell/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | done | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
 | 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | done | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
-| 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut, plus Contacts on the customer page); then the balance pass (finding 10) re-measured on the gallery | M | doing | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
+| 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut, plus Contacts on the customer page); then the balance pass (finding 10) re-measured on the gallery | M | done | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
 | 74 | Stock moves and losses (§ 7 2026-09-19): a move inside an establishment (whole or partial, out and in linked), a write-off with a required reason, note and photo, a quarantine location kind, both in the movements list and reports; the VAT effect of a loss sourced in docs/fiscal first | L | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** web/public/i18n/** web/e2e/** |
 | 75 | Country pack (§ 7 2026-09-20): taxes and levies, mentions per situation AND per language, identifiers with their named check strategies, numbering constraints, formats, rounding, archive duration; the strategy registry; a conformance test loading every pack; rows 44 and 46 folded in | L | todo | - | api/config/fiscal/** api/src/Fiscal/** api/tests/** docs/fiscal/** |
 | 76 | Catalogue (§ 7 2026-09-20): a family with axis values gathering variants that stay products; purchase, stock and sales units with conversion; one second-language name printed when the document is in that language | L | todo | - | api/src/Module/Products/** api/migrations/** api/tests/** web/src/app/products/** web/public/i18n/** |

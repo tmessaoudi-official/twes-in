@@ -14,6 +14,8 @@ const FIELDS = 'company.custom_fields.fields';
 /** The API's rule for a key, anchored by the form. */
 const KEY_PATTERN = '[a-z][a-z0-9_]{0,39}';
 
+// Widths that match what each column holds — a yes/no and an order number do not need a name's room, and six
+// default columns overflowed the settings pane (row 73's balance pass, finding 10).
 export const DEFINITIONS_LIST: ListDescriptor<CustomFieldDefinition> = {
   id: 'company-custom-fields',
   rowId: (row) => row.id,
@@ -22,6 +24,7 @@ export const DEFINITIONS_LIST: ListDescriptor<CustomFieldDefinition> = {
   columns: [
     {
       id: 'key',
+      width: 160,
       label: `${FIELDS}.key`,
       value: (row) => row.key,
       sortable: true,
@@ -30,26 +33,30 @@ export const DEFINITIONS_LIST: ListDescriptor<CustomFieldDefinition> = {
     },
     {
       id: 'label',
+      width: 210,
       label: `${FIELDS}.label`,
       value: (row) => row.label,
       sortable: true,
       filterable: true,
     },
-    { id: 'type', label: `${FIELDS}.type`, value: (row) => row.type, sortable: true },
+    { id: 'type', width: 130, label: `${FIELDS}.type`, value: (row) => row.type, sortable: true },
     {
       id: 'required',
+      width: 100,
       label: `${FIELDS}.required`,
       value: (row) => (row.required ? 1 : 0),
       sortable: true,
     },
     {
       id: 'status',
+      width: 120,
       label: `${FIELDS}.isActive`,
       value: (row) => (row.isActive ? 'active' : 'retired'),
       sortable: true,
     },
     {
       id: 'sortOrder',
+      width: 100,
       label: `${FIELDS}.sortOrder`,
       value: (row) => row.sortOrder,
       sortable: true,

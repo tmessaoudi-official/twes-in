@@ -196,6 +196,8 @@ export function taxInput(
   };
 }
 
+// Widths that match what each column holds (row 73's balance pass, finding 10): a code, a rate and two yes/no
+// columns asked for a name's room and the table was cut in the settings pane.
 export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
   id: 'fiscal-taxes',
   rowId: (row) => row.id,
@@ -203,6 +205,7 @@ export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
   columns: [
     {
       id: 'code',
+      width: 110,
       label: 'fiscal.taxes.code',
       value: (row) => row.code,
       sortable: true,
@@ -211,20 +214,29 @@ export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
     },
     {
       id: 'name',
+      width: 230,
       label: 'fiscal.taxes.name',
       value: (row) => row.name,
       sortable: true,
       filterable: true,
     },
-    { id: 'family', label: 'fiscal.taxes.family', value: (row) => row.family, sortable: true },
+    {
+      id: 'family',
+      width: 130,
+      label: 'fiscal.taxes.family',
+      value: (row) => row.family,
+      sortable: true,
+    },
     {
       id: 'value',
+      width: 110,
       label: 'fiscal.taxes.value',
       value: (row) => row.rate ?? row.amount,
       align: 'end',
     },
     {
       id: 'threshold',
+      width: 120,
       label: 'fiscal.taxes.threshold',
       value: (row) => row.threshold,
       align: 'end',
@@ -232,6 +244,7 @@ export const TAX_LIST: ListDescriptor<TaxComponentRow> = {
     },
     {
       id: 'isDefault',
+      width: 110,
       label: 'fiscal.taxes.is_default',
       value: (row) => (row.isDefault ? 1 : 0),
       sortable: true,
