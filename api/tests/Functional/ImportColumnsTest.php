@@ -12,6 +12,8 @@ namespace App\Tests\Functional;
 use App\CustomFields\Domain\CustomFieldDefinition;
 use App\CustomFields\Domain\CustomFieldEntity;
 use App\CustomFields\Domain\CustomFieldType;
+use App\ImportExport\Application\ImportCatalogue;
+use App\ImportExport\Application\ImportHeading;
 use App\Tenancy\Domain\Company;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -21,6 +23,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class ImportColumnsTest extends ApiTestCase
 {
+    /** @var array<string, array<string, mixed>> each language file, read at most once */
+    private static array $words = [];
+
     private Company $company;
 
     protected function setUp(): void
@@ -69,6 +74,27 @@ final class ImportColumnsTest extends ApiTestCase
         self::assertSame('number', array_key_first($columns), 'in the order of the template');
     }
 
+    /** Every subject's columns, so a column added to any importer without its words is caught here. */
+    public function testEveryColumnsHeadingAndNoteExistsInBothLanguages(): void
+    {
+        $catalogue = static::getContainer()->get(ImportCatalogue::class);
+        self::assertInstanceOf(ImportCatalogue::class, $catalogue);
+        $checked = 0;
+        foreach ($catalogue->keys() as $subject) {
+            foreach ($catalogue->declaration($subject)->subjectFor($this->company)->columns as $column) {
+                if (ImportHeading::ScreenText === $column->headingIs) {
+                    $this->assertScreenKeyTranslated($column->heading);
+                    ++$checked;
+                }
+                if (null !== $column->note) {
+                    $this->assertScreenKeyTranslated($column->note);
+                    ++$checked;
+                }
+            }
+        }
+        self::assertGreaterThan(40, $checked, 'the subjects were enumerated, not skipped');
+    }
+
     public function testSomebodyWhoCannotWriteCustomersIsAnsweredAsAStranger(): void
     {
         $this->signedIn(['customer.read']);
@@ -98,5 +124,49 @@ final class ImportColumnsTest extends ApiTestCase
     private function path(string $subject): string
     {
         return '/api/companies/'.$this->company->getId()->toRfc4122().'/imports/'.$subject;
+    }
+
+    /**
+     * Every heading and note a column declares as the screen's own (`ImportHeading::ScreenText`) exists in both
+     * language files, so a new column cannot reach the guide as a raw key like `import.products.barcode`.
+     *
+     * This is the one place both tiers are visible at once: the keys are written in PHP and read from
+     * `web/public/i18n`, and nothing on either side alone can see the pair. A column added without its words fails
+     * here rather than in front of a person filling in a spreadsheet.
+     */
+    private function assertScreenKeyTranslated(string $key): void
+    {
+        foreach (['fr', 'en'] as $language) {
+            $words = self::translations($language);
+            foreach (explode('.', $key) as $step) {
+                self::assertIsArray($words, \sprintf('"%s" is a leaf before "%s" in %s', $key, $step, $language));
+                self::assertArrayHasKey($step, $words, \sprintf('"%s" is missing from web/public/i18n/%s.json', $key, $language));
+                $words = $words[$step];
+            }
+            self::assertIsString($words, \sprintf('"%s" is not a sentence in %s', $key, $language));
+            self::assertNotSame('', trim($words), \sprintf('"%s" is empty in %s', $key, $language));
+        }
+    }
+
+    /**
+     * Read once per language: a guide's columns ask for hundreds of keys, and the files do not change under a run.
+     *
+     * @return array<string, mixed>
+     */
+    private static function translations(string $language): array
+    {
+        if (!isset(self::$words[$language])) {
+            $path = \dirname(__DIR__, 3).'/web/public/i18n/'.$language.'.json';
+            self::assertFileExists($path);
+            $read = json_decode((string) file_get_contents($path), true, 512, \JSON_THROW_ON_ERROR);
+            self::assertIsArray($read);
+            $keyed = [];
+            foreach ($read as $key => $value) {
+                $keyed[(string) $key] = $value;
+            }
+            self::$words[$language] = $keyed;
+        }
+
+        return self::$words[$language];
     }
 }
