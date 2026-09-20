@@ -13,6 +13,7 @@ use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Inventory\Domain\StockMovement;
 use Symfony\Component\Serializer\Attribute\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -28,9 +29,23 @@ use Symfony\Component\Validator\Constraints as Assert;
     operations: [
         new GetCollection(
             uriTemplate: '/companies/{companyId}/stock-movements',
+            outputFormats: ['jsonld' => ['application/ld+json']],
             provider: StockMovementCollectionProvider::class,
             security: 'is_granted("ROLE_USER")',
             normalizationContext: ['groups' => [self::READ]],
+            parameters: [
+                'q' => new QueryParameter(description: "Words found in the product's reference or name or the location's code or name."),
+                'productId' => new QueryParameter(schema: self::ID, description: 'Only what moved this product.'),
+                'locationId' => new QueryParameter(schema: self::ID, description: 'Only what moved at this location.'),
+                'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']], description: 'Only what moved this way.'),
+                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_DELIVERY_NOTE]], description: 'Only what this kind of document moved.'),
+                'order[movedAt]' => new QueryParameter(schema: self::DIRECTION),
+                'order[product]' => new QueryParameter(schema: self::DIRECTION),
+                'order[location]' => new QueryParameter(schema: self::DIRECTION),
+                'order[kind]' => new QueryParameter(schema: self::DIRECTION),
+                'order[quantity]' => new QueryParameter(schema: self::DIRECTION),
+                'order[source]' => new QueryParameter(schema: self::DIRECTION),
+            ],
         ),
         new Post(
             uriTemplate: '/companies/{companyId}/stock-movements',
@@ -44,6 +59,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 final class StockMovementResource
 {
+    private const array DIRECTION = ['type' => 'string', 'enum' => ['asc', 'desc']];
+    private const array ID = ['type' => 'string', 'format' => 'uuid'];
+
     public const string READ = 'stock_movement:read';
     public const string WRITE = 'stock_movement:write';
     public const string RECEIVE = 'receive';

@@ -117,18 +117,46 @@ describe('InventoryApi', () => {
     expect(await named).toEqual([]);
   });
 
-  it("reads one product's movements, or the company's latest", async () => {
-    const one = api.movements('c1', 'p 1');
-    http
-      .expectOne(
-        (request) => request.urlWithParams === '/api/companies/c1/stock-movements?productId=p%201',
-      )
-      .flush([received]);
-    expect(await one).toEqual([received]);
+  it('asks for one page of movements, sending only what the search narrows to', async () => {
+    const narrowed = api.movements('c1', {
+      page: 2,
+      itemsPerPage: 25,
+      q: ' portable ',
+      productId: 'p 1',
+      locationId: null,
+      kind: 'in',
+      sourceType: null,
+      order: { key: 'quantity', direction: 'asc' },
+    });
+    const asked = http.expectOne((request) => request.url === '/api/companies/c1/stock-movements');
+    expect(asked.request.headers.get('Accept')).toBe('application/ld+json');
+    expect([...asked.request.params.keys()].sort()).toEqual([
+      'itemsPerPage',
+      'kind',
+      'order[quantity]',
+      'page',
+      'productId',
+      'q',
+    ]);
+    // The words are sent trimmed, and what the search left out is left out rather than sent empty.
+    expect(asked.request.params.get('q')).toBe('portable');
+    asked.flush({ member: [received], totalItems: 40 });
+    expect(await narrowed).toEqual({ rows: [received], total: 40 });
 
-    const all = api.movements('c1', null);
-    http.expectOne('/api/companies/c1/stock-movements').flush([]);
-    expect(await all).toEqual([]);
+    const all = api.movements('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      productId: null,
+      locationId: null,
+      kind: null,
+      sourceType: null,
+      order: null,
+    });
+    const plain = http.expectOne((request) => request.url === '/api/companies/c1/stock-movements');
+    expect([...plain.request.params.keys()].sort()).toEqual(['itemsPerPage', 'page']);
+    plain.flush({ member: [], totalItems: 0 });
+    expect(await all).toEqual({ rows: [], total: 0 });
   });
 
   it('creates, revises and deletes a location, and says a code is taken or a location in use', async () => {

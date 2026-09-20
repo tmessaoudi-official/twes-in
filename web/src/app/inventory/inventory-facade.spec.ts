@@ -32,6 +32,16 @@ const SEARCH = {
   establishmentId: null,
   order: null,
 } as const;
+const MOVEMENTS_SEARCH = {
+  page: 1,
+  itemsPerPage: 25,
+  q: '',
+  productId: 'p1',
+  locationId: null,
+  kind: null,
+  sourceType: null,
+  order: null,
+} as const;
 const level: StockLevelRow = {
   id: 'p1:l1',
   productId: 'p1',
@@ -93,11 +103,26 @@ describe('InventoryFacade', () => {
     expect(facade.error()).toBeNull();
   });
 
-  it("reads one product's movements, which name what they moved themselves", async () => {
-    await facade.loadMovements('c1', 'p1');
+  it("reads one page of a product's movements, and says how many there are in all", async () => {
+    api.movements.mockResolvedValue({ rows: [], total: 7 });
 
-    expect(api.movements).toHaveBeenCalledWith('c1', 'p1');
+    await facade.loadMovements('c1', MOVEMENTS_SEARCH);
+
+    expect(api.movements).toHaveBeenCalledWith('c1', MOVEMENTS_SEARCH);
+    expect(facade.movementsTotal()).toBe(7);
     expect(api.levels).not.toHaveBeenCalled();
+  });
+
+  it('reads the movements page in hand again, and does nothing before the list has asked for one', async () => {
+    api.movements.mockResolvedValue({ rows: [], total: 0 });
+
+    await facade.reloadMovements('c1');
+    expect(api.movements).not.toHaveBeenCalled();
+
+    await facade.loadMovements('c1', MOVEMENTS_SEARCH);
+    await facade.reloadMovements('c1');
+    expect(api.movements).toHaveBeenCalledTimes(2);
+    expect(api.movements).toHaveBeenLastCalledWith('c1', MOVEMENTS_SEARCH);
   });
 
   it('records a receipt, then reads the page it was recorded on again', async () => {

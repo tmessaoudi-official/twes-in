@@ -15,7 +15,9 @@ use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
+use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
 use App\Module\Products\Domain\ProductDetails;
@@ -26,6 +28,8 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
+use App\Shared\Domain\Page;
+use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tests\Support\FakeTransactions;
@@ -166,7 +170,7 @@ final class KeepStockTest extends TestCase
         $this->keep->count($this->company, $this->laptop->getId(), $this->site->getId(), '-1', null);
     }
 
-    public function testAProductsMovementsAreListedNewestFirst(): void
+    public function testAProductsMovementsAreListedNewestFirstAPageAtATime(): void
     {
         $this->track(SettingAddress::company($this->company), true);
         $received = $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '5', null);
@@ -176,10 +180,25 @@ final class KeepStockTest extends TestCase
         $this->clock->modify('+1 hour');
         $cable = $this->keep->receive($this->company, $this->cable->getId(), $this->site->getId(), '2', null);
 
-        self::assertSame([$counted, $received], $this->keep->movementsOf($this->company, $this->laptop->getId()));
-        self::assertSame([$cable, $counted, $received], $this->keep->movementsOf($this->company, null), 'without a product, the company\'s latest');
-        self::assertSame([], $this->keep->movementsOf($this->company, $this->support->getId()));
-        self::assertSame([], $this->keep->movementsOf(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $this->laptop->getId()));
+        $ofLaptop = new StockMovementSearch($this->laptop->getId());
+        self::assertSame([$counted, $received], $this->page($ofLaptop)->items);
+        self::assertSame([$cable, $counted, $received], $this->page(new StockMovementSearch())->items, "without a product, the company's own");
+        self::assertSame([], $this->page(new StockMovementSearch($this->support->getId()))->items);
+
+        // A page says how many there are in all, so a screen showing two of three says three rather than two.
+        $first = $this->page($ofLaptop, new PageRequest(1, 1));
+        self::assertSame([[$counted], 2], [$first->items, $first->total]);
+        $second = $this->page($ofLaptop, new PageRequest(2, 1));
+        self::assertSame([[$received], 2], [$second->items, $second->total]);
+
+        $other = new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis');
+        self::assertSame([], $this->keep->searchMovements($other, $ofLaptop, new PageRequest(1, 25))->items);
+    }
+
+    /** @return Page<StockMovement> */
+    private function page(StockMovementSearch $search, ?PageRequest $request = null): Page
+    {
+        return $this->keep->searchMovements($this->company, $search, $request ?? new PageRequest(1, 25));
     }
 
     private function track(SettingAddress $address, bool $on): void

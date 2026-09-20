@@ -49,8 +49,8 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         $search = new StockLevelSearch(
             Paging::text($operation),
             // The `uuid` format has already refused anything that is not an identifier, with a 422.
-            self::identifier($operation, 'locationId'),
-            self::identifier($operation, 'establishmentId'),
+            Paging::identifier($operation, 'locationId'),
+            Paging::identifier($operation, 'establishmentId'),
             Paging::order($operation, StockLevelSearch::SORTS),
         );
         $page = $this->stock->searchLevels($company, $search, $this->paging->request($operation, $context));
@@ -94,12 +94,5 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         $row->id = $row->productId.':'.$row->locationId;
 
         return $row;
-    }
-
-    private static function identifier(Operation $operation, string $key): ?Uuid
-    {
-        $value = Paging::value($operation, $key);
-
-        return \is_string($value) ? Uuid::fromString($value) : null;
     }
 }

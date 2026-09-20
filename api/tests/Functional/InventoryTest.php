@@ -140,6 +140,33 @@ final class InventoryTest extends ApiTestCase
         self::assertSame([$level], $shown);
         $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId);
         self::assertSame(['adjustment', 'in'], array_column($this->jsonList(), 'kind'));
+        // The movements table is the one that grows without end, so the API pages it and says how many there are
+        // rather than answering a capped heap for the browser to cut up (docs/SPEC.md row 55 (b)).
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+        // And the database is what pages it: a page of one answers one row while still saying there are two. Reading
+        // the count off the rows would say one, and capping without a count would say two rows on every page.
+        $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId.'&itemsPerPage=1');
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+        self::assertSame(['adjustment'], array_column($this->jsonList(), 'kind'), 'newest first, one to a page');
+        // And every filter the screen offers is answered by the API, not by the page it sent: one that narrowed the
+        // page alone would call a page of two the whole result, which is the untruth the cap above already was.
+        foreach ([
+            'q=Portable' => ['adjustment', 'in'],
+            'q=nothing-here' => [],
+            'kind=in' => ['in'],
+            'sourceType=count' => ['adjustment'],
+            'order[quantity]=asc' => ['adjustment', 'in'],
+            'order[quantity]=desc' => ['in', 'adjustment'],
+        ] as $query => $expected) {
+            $this->getJson($this->path('stock-movements').'?'.$query);
+            self::assertResponseIsSuccessful($query);
+            self::assertSame($expected, array_column($this->jsonList(), 'kind'), $query);
+            self::assertSame(\count($expected), $this->jsonPage()['totalItems'], $query);
+        }
+        // A filter naming one record is a claim that the record exists: something that is not an id is refused by the
+        // parameter's own declaration, not ignored, or the answer is the whole list wearing the look of a filtered one.
+        $this->getJson($this->path('stock-movements').'?productId=not-an-id');
+        self::assertResponseStatusCodeSame(422);
 
         $this->getJson($this->path('stock-options'));
         self::assertResponseIsSuccessful();

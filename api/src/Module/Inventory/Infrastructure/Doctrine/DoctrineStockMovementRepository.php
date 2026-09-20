@@ -13,12 +13,15 @@ use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use App\Shared\Infrastructure\Doctrine\ListOrder;
 use App\Shared\Infrastructure\Doctrine\SearchText;
 use BcMath\Number;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\QueryBuilder;
+use Doctrine\ORM\Tools\Pagination\Paginator;
 use Symfony\Component\Uid\Uuid;
 
 final readonly class DoctrineStockMovementRepository implements StockMovementRepository
@@ -27,6 +30,14 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
     private const string MATCHES_WORDS = "SEARCH_TEXT(p.reference, p.name, l.code, l.name) LIKE CONCAT('%', SEARCH_TEXT(:text), '%')";
 
     /** The DQL each sort key reads; every one is non-empty, so none needs a hidden CASE the way a nullable does. */
+    private const array MOVEMENTS_SORTED = [
+        'movedAt' => 'm.at',
+        'product' => 'p.name',
+        'location' => 'l.code',
+        'kind' => 'm.kind',
+        'quantity' => 'm.quantity',
+        'source' => 'm.sourceType',
+    ];
     private const array SORTED_BY = ['reference' => 'p.reference', 'product' => 'p.name', 'location' => 'l.code', 'quantity' => 'SUM(m.quantity)'];
 
     public function __construct(private EntityManagerInterface $entityManager)
@@ -46,14 +57,38 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $this->entityManager->getRepository(StockMovement::class)->findBy(['sourceType' => $sourceType, 'sourceId' => $sourceId, 'company' => $companyId], ['at' => 'ASC', 'id' => 'ASC']);
     }
 
-    public function ofCompany(Uuid $companyId, int $limit): array
+    public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page
     {
-        return $this->entityManager->getRepository(StockMovement::class)->findBy(['company' => $companyId], ['at' => 'DESC', 'id' => 'DESC'], $limit);
-    }
+        // The product and the location are joined whatever the search asks: every row names both, so this is the read
+        // the list needs anyway rather than a join the filters added.
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('m')->from(StockMovement::class, 'm')
+            ->join('m.product', 'p')->join('m.location', 'l')
+            ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
+        if (null !== $search->product) {
+            $query->andWhere('m.product = :product')->setParameter('product', $search->product, 'uuid');
+        }
+        if (null !== $search->location) {
+            $query->andWhere('m.location = :location')->setParameter('location', $search->location, 'uuid');
+        }
+        if (null !== $search->kind) {
+            $query->andWhere('m.kind = :kind')->setParameter('kind', $search->kind->value);
+        }
+        if (null !== $search->sourceType) {
+            $query->andWhere('m.sourceType = :sourceType')->setParameter('sourceType', $search->sourceType);
+        }
+        self::narrowToWords($query, $search->text);
+        // `id` breaks the tie: two movements of the same moment are common, and a page boundary that falls between
+        // them would otherwise show one row twice and hide another.
+        ListOrder::apply($query, $search->order, self::MOVEMENTS_SORTED, [], 'm.at', 'DESC')
+            ->addOrderBy('m.id', 'DESC')
+            ->setFirstResult($page->offset())->setMaxResults($page->size);
 
-    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array
-    {
-        return $this->entityManager->getRepository(StockMovement::class)->findBy(['product' => $productId, 'company' => $companyId], ['at' => 'DESC', 'id' => 'DESC'], $limit);
+        $paginator = new Paginator($query, fetchJoinCollection: false);
+        /** @var list<StockMovement> $movements */
+        $movements = iterator_to_array($paginator, false);
+
+        return new Page($movements, \count($paginator), $page);
     }
 
     /** A transaction-scoped advisory lock: stock is a sum of rows, so there is no one row to lock. */
@@ -149,6 +184,23 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         };
     }
 
+    /**
+     * The words a person typed, over a product's and a location's own words — the same expression for a stock list and
+     * for a movements list, because a person types the same thing into both boxes and expects the same rows back.
+     *
+     * Shorter than the index's shortest word, the words are read as a reference or a code instead: a trigram index
+     * cannot serve two letters, and a person typing that few means a code, not a search.
+     */
+    private static function narrowToWords(QueryBuilder $query, ?string $text): void
+    {
+        $words = trim($text ?? '');
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(p.reference) = LOWER(:reference) OR LOWER(l.code) = LOWER(:reference)')->setParameter('reference', $words);
+        }
+    }
+
     /** What a stock list is read from and narrowed by, before it is either grouped or counted. */
     private function levelsQuery(Uuid $companyId, StockLevelSearch $search): QueryBuilder
     {
@@ -156,12 +208,7 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
             ->from(StockMovement::class, 'm')
             ->join('m.product', 'p')->join('m.location', 'l')
             ->where('m.company = :company')->setParameter('company', $companyId, 'uuid');
-        $words = trim($search->text ?? '');
-        if (mb_strlen($words) >= SearchText::SHORTEST) {
-            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
-        } elseif ('' !== $words) {
-            $query->andWhere('LOWER(p.reference) = LOWER(:reference) OR LOWER(l.code) = LOWER(:reference)')->setParameter('reference', $words);
-        }
+        self::narrowToWords($query, $search->text);
         if (null !== $search->location) {
             $query->andWhere('m.location = :locationId')->setParameter('locationId', $search->location, 'uuid');
         }

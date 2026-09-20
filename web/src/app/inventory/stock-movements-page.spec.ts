@@ -79,9 +79,12 @@ describe('StockMovementsPage', () => {
     levels: signal<readonly StockLevelRow[]>([]).asReadonly(),
     locations: signal<readonly StockLocationRow[]>([site]).asReadonly(),
     movements: signal<readonly StockMovementRow[]>([delivered]).asReadonly(),
+    movementsTotal: signal(1).asReadonly(),
     busy: signal(false).asReadonly(),
     error: signal<InventoryError | null>(null).asReadonly(),
     loadMovements: vi.fn(),
+    reloadMovements: vi.fn(),
+    loadLocations: vi.fn(),
   };
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
@@ -99,7 +102,9 @@ describe('StockMovementsPage', () => {
   }
 
   beforeEach(() => {
-    facade.loadMovements.mockReset().mockResolvedValue(undefined);
+    for (const call of [facade.loadMovements, facade.reloadMovements, facade.loadLocations]) {
+      call.mockReset().mockResolvedValue(undefined);
+    }
     TestBed.configureTestingModule({
       imports: [StockMovementsPage],
       providers: [
@@ -126,7 +131,10 @@ describe('StockMovementsPage', () => {
     fixture.componentRef.setInput('productId', 'p1');
     await settle();
 
-    expect(facade.loadMovements).toHaveBeenCalledWith('c1', 'p1');
+    expect(facade.loadMovements).toHaveBeenCalledWith(
+      'c1',
+      expect.objectContaining({ productId: 'p1' }),
+    );
     const row = q('stock-movement-m1')?.textContent ?? '';
     expect(row).toContain('ART-1 — Portable');
     expect(row).toContain('000 — Siège');
@@ -138,12 +146,25 @@ describe('StockMovementsPage', () => {
 
   it("reads the company's latest movements when no product is named, and again when one is", async () => {
     await settle();
-    expect(facade.loadMovements).toHaveBeenLastCalledWith('c1', null);
+    // The list asks first, and the page it asks for is what the API is sent — never the whole history.
+    expect(facade.loadMovements).toHaveBeenLastCalledWith('c1', {
+      page: 1,
+      itemsPerPage: 25,
+      q: '',
+      productId: null,
+      locationId: null,
+      kind: null,
+      sourceType: null,
+      order: { key: 'movedAt', direction: 'desc' },
+    });
     expect(q('stock-movements-all')).toBeNull();
 
     fixture.componentRef.setInput('productId', 'p1');
     await settle();
-    expect(facade.loadMovements).toHaveBeenLastCalledWith('c1', 'p1');
+    expect(facade.loadMovements).toHaveBeenLastCalledWith(
+      'c1',
+      expect.objectContaining({ productId: 'p1', page: 1 }),
+    );
   });
 
   it('sits among the stock screens', async () => {

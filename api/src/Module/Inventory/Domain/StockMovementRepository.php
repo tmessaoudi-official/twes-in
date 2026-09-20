@@ -21,12 +21,6 @@ interface StockMovementRepository
     /** @return list<StockMovement> what one document moved in a company, in the order it was written */
     public function ofSource(string $sourceType, Uuid $sourceId, Uuid $companyId): array;
 
-    /** @return list<StockMovement> a company's latest movements, newest first */
-    public function ofCompany(Uuid $companyId, int $limit): array;
-
-    /** @return list<StockMovement> a product's latest movements in a company, newest first */
-    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array;
-
     /**
      * Holds the stock of a product at a location until the current transaction ends, so a count that reads it and a
      * delivery that takes from it run one after the other; a count would otherwise record its difference from a stock
@@ -51,6 +45,15 @@ interface StockMovementRepository
      * @return Page<StockLevel>
      */
     public function searchLevels(Uuid $companyId, StockLevelSearch $search, PageRequest $page): Page;
+
+    /**
+     * One page of a company's movements, newest first, narrowed to a product or a location.
+     *
+     * Rows of the table itself, so unlike searchLevels the total is a count and the page is bounded end to end.
+     *
+     * @return Page<StockMovement>
+     */
+    public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page;
 
     /** How many movements a location has seen. */
     public function countAt(Uuid $locationId): int;

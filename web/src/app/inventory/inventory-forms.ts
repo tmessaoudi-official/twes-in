@@ -10,11 +10,15 @@ import {
   type StockLocationInput,
   type StockLocationRow,
   type StockMovementInput,
+  type StockMovementKind,
   type StockMovementRow,
+  type StockMovementSearch,
+  type StockMovementSortKey,
   type StockOperation,
   type StockOptions,
   type StockSearch,
   type StockSortKey,
+  type StockSourceType,
 } from './inventory-types';
 
 const LOCATION_FIELDS = 'inventory.locations.fields';
@@ -103,6 +107,43 @@ export function movementListRows(
       labels.get(movement.locationId) ?? `${movement.locationCode} — ${movement.locationName}`,
   }));
 }
+
+/** A movements column a person sorted by, as the API names that sort; a column absent here is not sorted by the API. */
+const MOVEMENT_SORT_KEYS: Readonly<Record<string, StockMovementSortKey>> = {
+  at: 'movedAt',
+  product: 'product',
+  location: 'location',
+  kind: 'kind',
+  quantity: 'quantity',
+  source: 'source',
+};
+
+/**
+ * What the movements list asks the API for. Both faceted filters are sent, not applied here: the list shows the page
+ * the API answered, so a filter kept on this side would narrow that page alone and read as the whole history.
+ */
+export function movementSearch(query: ListQuery): StockMovementSearch {
+  const key = query.sort === null ? undefined : MOVEMENT_SORT_KEYS[query.sort.column];
+  const kind = query.filters['kind'] ?? '';
+  const sourceType = query.filters['source'] ?? '';
+  return {
+    page: query.pageIndex + 1,
+    itemsPerPage: query.pageSize,
+    q: query.query,
+    productId: null,
+    locationId: null,
+    kind: isMovementKind(kind) ? kind : null,
+    sourceType: isSourceType(sourceType) ? sourceType : null,
+    order:
+      query.sort === null || key === undefined ? null : { key, direction: query.sort.direction },
+  };
+}
+
+const isMovementKind = (value: string): value is StockMovementKind =>
+  (STOCK_MOVEMENT_KINDS as readonly string[]).includes(value);
+
+const isSourceType = (value: string): value is StockSourceType =>
+  (STOCK_SOURCE_TYPES as readonly string[]).includes(value);
 
 const SORT_KEYS: Readonly<Record<string, StockSortKey>> = {
   reference: 'reference',

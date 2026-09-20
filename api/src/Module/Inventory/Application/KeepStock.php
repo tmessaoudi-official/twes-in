@@ -16,6 +16,7 @@ use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
@@ -38,9 +39,6 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class KeepStock
 {
-    /** How many of a product's movements are listed at once, newest first. */
-    public const int MOVEMENTS_LISTED = 200;
-
     public function __construct(
         private StockMovementRepository $movements,
         private StockLocationRepository $locations,
@@ -105,12 +103,17 @@ final readonly class KeepStock
         return $this->movements->searchLevels($company->getId(), $search, $page);
     }
 
-    /** @return list<StockMovement> the latest of one product's, or of all the company's, newest first; none for another company's product */
-    public function movementsOf(Company $company, ?Uuid $productId): array
+    /**
+     * One page of a company's movements, narrowed and ordered as the list asked (docs/SPEC.md row 55 (b)).
+     *
+     * This replaced a reader that answered the latest two hundred for the browser to cut up: a company past that cap
+     * simply stopped seeing its older history, and no amount of paging in the browser can show what was never sent.
+     *
+     * @return Page<StockMovement>
+     */
+    public function searchMovements(Company $company, StockMovementSearch $search, PageRequest $page): Page
     {
-        return null === $productId
-            ? $this->movements->ofCompany($company->getId(), self::MOVEMENTS_LISTED)
-            : $this->movements->ofProduct($productId, $company->getId(), self::MOVEMENTS_LISTED);
+        return $this->movements->searchMovements($company->getId(), $search, $page);
     }
 
     /** @return array{Product, StockLocation} */

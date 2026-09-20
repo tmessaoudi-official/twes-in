@@ -13,6 +13,7 @@ use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLevelSearch;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementRepository;
+use App\Module\Inventory\Domain\StockMovementSearch;
 use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
@@ -42,28 +43,6 @@ final class InMemoryStockMovements implements StockMovementRepository
             $this->movements,
             static fn (StockMovement $m) => $m->getSourceType() === $sourceType && true === $m->getSourceId()?->equals($sourceId) && $m->getCompany()->getId()->equals($companyId),
         ));
-    }
-
-    public function ofCompany(Uuid $companyId, int $limit): array
-    {
-        return self::newestFirst(array_filter($this->movements, static fn (StockMovement $m) => $m->getCompany()->getId()->equals($companyId)), $limit);
-    }
-
-    public function ofProduct(Uuid $productId, Uuid $companyId, int $limit): array
-    {
-        return self::newestFirst(array_filter($this->movements, static fn (StockMovement $m) => $m->getProduct()->getId()->equals($productId) && $m->getCompany()->getId()->equals($companyId)), $limit);
-    }
-
-    /**
-     * @param array<int, StockMovement> $movements
-     *
-     * @return list<StockMovement>
-     */
-    private static function newestFirst(array $movements, int $limit): array
-    {
-        usort($movements, static fn (StockMovement $a, StockMovement $b) => [$b->getAt(), $b->getId()->toRfc4122()] <=> [$a->getAt(), $a->getId()->toRfc4122()]);
-
-        return \array_slice($movements, 0, $limit);
     }
 
     public function lockStockOf(Uuid $productId, Uuid $locationId): void
@@ -112,6 +91,26 @@ final class InMemoryStockMovements implements StockMovementRepository
         $levels = $this->levels($companyId);
 
         return new Page(\array_slice($levels, $page->offset(), $page->size), \count($levels), $page);
+    }
+
+    public function searchMovements(Uuid $companyId, StockMovementSearch $search, PageRequest $page): Page
+    {
+        $words = mb_strtolower(trim($search->text ?? ''));
+        $matching = array_values(array_filter(
+            $this->movements,
+            static fn (StockMovement $m) => $m->getCompany()->getId()->equals($companyId)
+                && (null === $search->product || $m->getProduct()->getId()->equals($search->product))
+                && (null === $search->location || $m->getLocation()->getId()->equals($search->location))
+                && (null === $search->kind || $m->getKind() === $search->kind)
+                && (null === $search->sourceType || $m->getSourceType() === $search->sourceType)
+                && ('' === $words || str_contains(mb_strtolower(
+                    $m->getProduct()->getReference().' '.$m->getProduct()->getDetails()->name.' '.$m->getLocation()->getCode().' '.$m->getLocation()->getName(),
+                ), $words)),
+        ));
+        // Newest first, as the database orders it, so a test reads the same order either side of the port.
+        usort($matching, static fn (StockMovement $a, StockMovement $b) => $b->getAt() <=> $a->getAt());
+
+        return new Page(\array_slice($matching, $page->offset(), $page->size), \count($matching), $page);
     }
 
     public function countAt(Uuid $locationId): int

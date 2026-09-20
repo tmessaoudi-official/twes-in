@@ -60,6 +60,28 @@ export interface StockSearch {
   order: { key: StockSortKey; direction: 'asc' | 'desc' } | null;
 }
 
+/** The sorts the API answers for a movements list. */
+export type StockMovementSortKey =
+  'movedAt' | 'product' | 'location' | 'kind' | 'quantity' | 'source';
+
+/**
+ * One page of the movements list as the API narrows, sorts and pages it (docs/SPEC.md § 7, row 55 (b)). Every filter
+ * the screen offers is here: the list shows the page it was sent, so one the API did not answer would narrow that
+ * page alone and read as the whole result.
+ */
+export interface StockMovementSearch {
+  /** Numbered from 1. */
+  page: number;
+  itemsPerPage: number;
+  /** Words found in the product's reference or name or the location's code or name; empty finds all. */
+  q: string;
+  productId: string | null;
+  locationId: string | null;
+  kind: StockMovementKind | null;
+  sourceType: StockSourceType | null;
+  order: { key: StockMovementSortKey; direction: 'asc' | 'desc' } | null;
+}
+
 /** What is on hand of one product at one location: the sum of its movements, which may fall below zero. */
 export interface StockLevelRow {
   /** The product and the location together: a row is the pair, and neither alone names it. */

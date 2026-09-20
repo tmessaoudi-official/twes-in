@@ -5,7 +5,9 @@ import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdstockLevelsGetCollectionResponse,
+  ApiCompaniesCompanyIdstockMovementsGetCollectionResponse,
   StockLevelJsonldStockLevelRead,
+  StockMovementJsonldStockMovementRead,
   StockLocationStockLocationRead,
   StockLocationStockLocationWrite,
   StockMovementStockMovementRead,
@@ -28,6 +30,7 @@ import {
   API_DECIMALS,
   type StockOptions,
   type StockProductOption,
+  type StockMovementSearch,
   type StockSearch,
 } from './inventory-types';
 
@@ -100,18 +103,22 @@ export class InventoryApi {
     );
   }
 
-  /** One product's movements, or the company's latest when no product is named; newest first. */
-  async movements(companyId: string, productId: string | null): Promise<StockMovementRow[]> {
-    const params = productId === null ? undefined : new HttpParams().set('productId', productId);
-    return this.guard(async () =>
-      (
-        await firstValueFrom(
-          this.http.get<StockMovementStockMovementRead[]>(path(companyId, 'stock-movements'), {
-            params,
-          }),
-        )
-      ).map(toMovement),
-    );
+  /** One page of the company's movements, narrowed, sorted and paged by the API; newest first by default. */
+  async movements(
+    companyId: string,
+    search: StockMovementSearch,
+  ): Promise<ListPage<StockMovementRow>> {
+    return this.guard(async () => {
+      const page = await firstValueFrom(
+        this.http.get<ApiCompaniesCompanyIdstockMovementsGetCollectionResponse>(
+          path(companyId, 'stock-movements'),
+          { headers: { Accept: 'application/ld+json' }, params: toMovementParams(search) },
+        ),
+      );
+      if (page.totalItems === undefined)
+        throw new Error('A page of movements came without its total.');
+      return { rows: page.member.map(toMovement), total: page.totalItems };
+    });
   }
 
   /** 409 when another location of the establishment has the code; 422 naming the field the API refused. */
@@ -215,6 +222,19 @@ function toSearchParams(search: StockSearch): HttpParams {
   return params;
 }
 
+/** Only what the search asks for: an absent parameter is the API's own default, never an empty one. */
+function toMovementParams(search: StockMovementSearch): HttpParams {
+  let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
+  if (search.q.trim() !== '') params = params.set('q', search.q.trim());
+  if (search.productId !== null) params = params.set('productId', search.productId);
+  if (search.locationId !== null) params = params.set('locationId', search.locationId);
+  if (search.kind !== null) params = params.set('kind', search.kind);
+  if (search.sourceType !== null) params = params.set('sourceType', search.sourceType);
+  if (search.order !== null)
+    params = params.set(`order[${search.order.key}]`, search.order.direction);
+  return params;
+}
+
 function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
   return {
     id: raw.id ?? '',
@@ -245,7 +265,9 @@ function toLocation(raw: StockLocationStockLocationRead): StockLocationRow {
   };
 }
 
-function toMovement(raw: StockMovementStockMovementRead): StockMovementRow {
+function toMovement(
+  raw: StockMovementStockMovementRead | StockMovementJsonldStockMovementRead,
+): StockMovementRow {
   return {
     id: raw.id ?? '',
     productId: raw.productId ?? '',

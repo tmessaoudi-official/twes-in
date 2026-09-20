@@ -10,6 +10,7 @@ import type {
   StockLocationRow,
   StockMovementInput,
   StockMovementRow,
+  StockMovementSearch,
   StockOptions,
   StockProductOption,
   StockSearch,
@@ -27,6 +28,10 @@ export class InventoryFacade {
   private search: StockSearch | null = null;
   private readonly locationsSignal = signal<readonly StockLocationRow[]>([]);
   private readonly movementsSignal = signal<readonly StockMovementRow[]>([]);
+  private readonly movementsTotalSignal = signal(0);
+  private movementsRequest = 0;
+  /** What the movements list last asked for, so a movement arriving elsewhere reads that same page again. */
+  private movementsSearch: StockMovementSearch | null = null;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InventoryError | null>(null);
 
@@ -36,6 +41,8 @@ export class InventoryFacade {
   readonly total = this.totalSignal.asReadonly();
   readonly locations = this.locationsSignal.asReadonly();
   readonly movements = this.movementsSignal.asReadonly();
+  /** How many movements the last search found in all, the page shown being one part of them. */
+  readonly movementsTotal = this.movementsTotalSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -81,20 +88,28 @@ export class InventoryFacade {
     });
   }
 
-  /** One product's movements, or the company's latest; each names the product and location it moved. */
-  async loadMovements(companyId: string, productId: string | null): Promise<void> {
+  /**
+   * One page of the movements the search finds. Only the latest search's answer is shown, for the same reason the
+   * stock list does it: typing sends one search per keystroke and they need not come back in order.
+   */
+  async loadMovements(companyId: string, search: StockMovementSearch): Promise<void> {
+    const request = ++this.movementsRequest;
+    this.movementsSearch = search;
     await this.read(async () => {
-      const [options, locations, movements] = await Promise.all([
-        this.api.options(companyId),
-        this.api.locations(companyId),
-        this.api.movements(companyId, productId),
-      ]);
-      this.optionsSignal.set(options);
-      this.locationsSignal.set(locations);
-      this.movementsSignal.set(movements);
+      const page = await this.api.movements(companyId, search);
+      if (request !== this.movementsRequest) return;
+      this.movementsSignal.set(page.rows);
+      this.movementsTotalSignal.set(page.total);
     });
   }
 
+  /** The movements page in hand, read again: what a live change brought belongs on that page or does not. */
+  async reloadMovements(companyId: string): Promise<void> {
+    const search = this.movementsSearch;
+    if (search !== null) await this.loadMovements(companyId, search);
+  }
+
+  /** What the locations and movements screens need besides their rows: the locations a row names, and the options. */
   async loadLocations(companyId: string): Promise<void> {
     await this.read(async () => {
       const [options, locations] = await Promise.all([

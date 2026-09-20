@@ -73,6 +73,21 @@ final readonly class Paging
     }
 
     /**
+     * The one uuid a parameter named, or null when the request left it out — which is what an omitted parameter reads
+     * as here: `getValue()` answers a "not found" object rather than a null, so anything but a string is an absence.
+     *
+     * Refusing a value that is not an id is not this method's job, and must not be: a parameter declared
+     * `format: uuid` is validated by API Platform before a provider is ever called, which answers 422 naming the
+     * parameter. A second refusal here would be a branch nothing can reach.
+     */
+    public static function identifier(Operation $operation, string $key): ?Uuid
+    {
+        $value = self::value($operation, $key);
+
+        return \is_string($value) && Uuid::isValid($value) ? Uuid::fromString($value) : null;
+    }
+
+    /**
      * The uuids a parameter named. A value that is not a uuid is left out rather than refused: a form asking about a
      * record that no longer exists should read as "not found", not as a bad request.
      *
