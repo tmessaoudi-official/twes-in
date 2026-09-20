@@ -43,6 +43,25 @@ final class InMemoryVendors implements VendorRepository
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
+    public function pick(Uuid $companyId, string $words, int $limit): array
+    {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Vendor $v) use ($words): bool {
+            $profile = $v->getProfile();
+
+            return $v->isActive() && InMemorySearch::finds($words, $v->getNumber(), [$profile->name, $profile->legalName, $profile->email]);
+        }));
+
+        return \array_slice($found, 0, $limit);
+    }
+
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        return array_values(array_filter(
+            $this->ofCompany($companyId),
+            static fn (Vendor $v): bool => \in_array($v->getId()->toRfc4122(), array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids), true),
+        ));
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Vendor
     {
         foreach ($this->ofCompany($companyId) as $vendor) {

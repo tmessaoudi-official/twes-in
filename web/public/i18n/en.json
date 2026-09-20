@@ -496,6 +496,8 @@
   "form": {
     "optional": "optional",
     "no_value": "None",
+    "none": "None",
+    "none_found": "Nothing found.",
     "errors": {
       "required": "This field is required.",
       "email": "Enter a valid email address.",
@@ -1359,7 +1361,8 @@
     "form": {
       "reference_hint": "The number on the vendor's invoice or receipt.",
       "no_vendor": "No vendor",
-      "vendor_hint": "Only active vendors are offered. Choosing one fills an empty category with the vendor's usual one.",
+      "no_vendor_found": "No vendor found.",
+      "vendor_hint": "Type the number or the name; only active vendors are offered. Choosing one fills an empty category with the vendor's usual one.",
       "no_category": "No category",
       "category_hint": "Only active categories are offered.",
       "net_hint": "Before tax, with no more decimals than the currency has.",

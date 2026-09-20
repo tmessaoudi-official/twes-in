@@ -272,7 +272,7 @@ test('stock received at a location leaves with a validated delivery note and ret
     await page.goto('/stock');
     await page.getByTestId('stock-receive').click();
     // Typed, not scrolled to: the picker answers the few that match, and only goods whose stock is kept.
-    await page.getByTestId('stock-movement-product').fill(reference);
+    await page.getByTestId('field-productId').fill(reference);
     await page.getByRole('option', { name: `${reference} · Carton ${reference}` }).click();
     await page.getByTestId('field-locationId').click();
     await page.getByRole('option', { name: defaultLocation, exact: true }).click();

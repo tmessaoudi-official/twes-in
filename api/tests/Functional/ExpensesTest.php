@@ -48,9 +48,48 @@ final class ExpensesTest extends ApiTestCase
         self::assertContains('FODEC', $codes);
         self::assertNotContains('TIMBRE', $codes, 'only a rate on the net taxes an expense');
         self::assertNotContains('RS1', $codes);
-        $vendor = $this->arrayAt($options, 'vendors')[0];
-        self::assertIsArray($vendor);
-        self::assertSame(['FRN-0001', 'Sotumag', 30, null], [$vendor['number'], $vendor['name'], $vendor['paymentTermsDays'], $vendor['defaultExpenseCategoryId']]);
+        self::assertArrayNotHasKey('vendors', $options, 'the book is asked for a few at a time, not handed over');
+    }
+
+    /**
+     * The vendors the expense form offers while a person types (docs/SPEC.md § 7, 2026-09-17, ruling 3), under the
+     * EXPENSE's permission: writing an expense is enough, reading the vendor book is not asked for. A vendor already
+     * named is answered by id whether or not it is still active — an expense recorded last year still names who it
+     * was paid to.
+     */
+    public function testTheVendorPickerAnswersTheFewTheExpenseFormNeeds(): void
+    {
+        $retired = Vendor::create($this->company, 'FRN-9999', new VendorProfile('Ancienne Papeterie'), new \DateTimeImmutable());
+        $retired->revise('FRN-9999', new VendorProfile('Ancienne Papeterie'), false, new \DateTimeImmutable());
+        $this->em()->persist($retired);
+        $this->em()->flush();
+        $this->signedIn(['expense.read']);
+
+        $this->getJson($this->companyPath().'/expense-options/vendors?q=sotumag');
+
+        self::assertResponseIsSuccessful();
+        $picks = $this->jsonList();
+        self::assertCount(1, $picks);
+        self::assertSame(['id', 'number', 'name', 'paymentTermsDays', 'defaultExpenseCategoryId'], array_keys($picks[0]));
+        self::assertSame(['FRN-0001', 'Sotumag', 30, null], [$picks[0]['number'], $picks[0]['name'], $picks[0]['paymentTermsDays'], $picks[0]['defaultExpenseCategoryId']]);
+
+        $this->getJson($this->companyPath().'/expense-options/vendors');
+        self::assertResponseIsSuccessful();
+        self::assertSame(['FRN-0001'], array_column($this->jsonList(), 'number'), 'a retired vendor is not offered');
+
+        $this->getJson($this->companyPath().'/expense-options/vendors?ids[]='.$retired->getId()->toRfc4122());
+        self::assertResponseIsSuccessful();
+        self::assertSame(['FRN-9999'], array_column($this->jsonList(), 'number'), 'but is answered where an expense names it');
+    }
+
+    /** The placement's whole point, and its mirror: the vendor book's own permission does not open this. */
+    public function testTheVendorPermissionDoesNotAnswerTheExpenseFormsPicker(): void
+    {
+        $this->signedIn(['vendor.read']);
+
+        $this->getJson($this->companyPath().'/expense-options/vendors');
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     public function testCategoriesFormATreeNamedOnceAndAreDeactivatedNeverDeleted(): void
@@ -235,10 +274,10 @@ final class ExpensesTest extends ApiTestCase
         $this->sendJson('PUT', $vendorPath, [...$body, 'defaultExpenseCategoryId' => $fuel]);
         self::assertResponseIsSuccessful();
         self::assertSame($fuel, $this->json()['defaultExpenseCategoryId']);
-        $this->getJson($this->companyPath().'/expense-options');
-        $vendor = $this->arrayAt($this->json(), 'vendors')[0] ?? null;
+        $this->getJson($this->companyPath().'/expense-options/vendors');
+        $vendor = $this->jsonList()[0] ?? null;
         self::assertIsArray($vendor);
-        self::assertSame($fuel, $vendor['defaultExpenseCategoryId'] ?? null);
+        self::assertSame($fuel, $vendor['defaultExpenseCategoryId'] ?? null, 'the picker carries where this vendor\'s expenses go');
     }
 
     public function testAReaderOnlyReadsAnotherCompanySeesNothingAndASwitchedOffModuleAnswersNotFound(): void

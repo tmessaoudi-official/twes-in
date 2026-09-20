@@ -272,25 +272,32 @@ describe('locationValues and locationInput', () => {
 });
 
 describe('the movement form', () => {
-  it('asks where and how much, and asks the product elsewhere', () => {
+  it('asks which product, where and how much, the product as a picker', () => {
     const form = movementForm('count', [zone, site]);
     const fields = fieldsOf(form);
 
     expect(fields.map((field) => [field.id, field.kind, field.required ?? false])).toEqual([
+      ['productId', 'pick', true],
       ['locationId', 'select', true],
       ['quantity', 'decimal', true],
     ]);
-    // The product is a picker on the page, never a field in this descriptor: a catalogue is not a dropdown.
-    expect(fields.map((field) => field.id)).not.toContain('productId');
+    // A catalogue is not a dropdown: the descriptor carries no product options, and stays data.
+    expect(fields[0]?.options).toBeUndefined();
     expect(() => JSON.stringify(form)).not.toThrow();
-    expect(fields[0]?.options?.map((option) => option.value)).toEqual(['l1', 'l2']);
-    expect(fields[1]?.hint).toBe('inventory.movement.quantity_hint.count');
+    expect(fields[1]?.options?.map((option) => option.value)).toEqual(['l1', 'l2']);
+    expect(fields[2]?.hint).toBe('inventory.movement.quantity_hint.count');
   });
 
-  it('starts at the first default location, and sends a decimal comma as a point', () => {
-    expect(movementValues([zone, depot, site])).toEqual({ locationId: 'l1', quantity: '' });
-    expect(movementValues([])).toEqual({ locationId: '', quantity: '' });
-    expect(movementInput('receive', { locationId: 'l2', quantity: ' 1.5 ' }, 'p2')).toEqual({
+  it('starts on no product at the first default location, and sends a decimal comma as a point', () => {
+    expect(movementValues([zone, depot, site])).toEqual({
+      productId: '',
+      locationId: 'l1',
+      quantity: '',
+    });
+    expect(movementValues([])).toEqual({ productId: '', locationId: '', quantity: '' });
+    expect(
+      movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
+    ).toEqual({
       operation: 'receive',
       productId: 'p2',
       locationId: 'l2',

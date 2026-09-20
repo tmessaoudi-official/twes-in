@@ -496,6 +496,8 @@
   "form": {
     "optional": "facultatif",
     "no_value": "Aucune valeur",
+    "none": "Aucun",
+    "none_found": "Aucun résultat.",
     "errors": {
       "required": "Ce champ est obligatoire.",
       "email": "Saisissez une adresse e-mail valide.",
@@ -1359,7 +1361,8 @@
     "form": {
       "reference_hint": "Le numéro figurant sur la facture ou le reçu du fournisseur.",
       "no_vendor": "Aucun fournisseur",
-      "vendor_hint": "Seuls les fournisseurs actifs sont proposés. En choisir un remplit une catégorie vide avec sa catégorie habituelle.",
+      "no_vendor_found": "Aucun fournisseur trouvé.",
+      "vendor_hint": "Tapez le numéro ou le nom ; seuls les fournisseurs actifs sont proposés. En choisir un remplit une catégorie vide avec sa catégorie habituelle.",
       "no_category": "Aucune catégorie",
       "category_hint": "Seules les catégories actives sont proposées.",
       "net_hint": "Hors taxes, sans plus de décimales que la devise n’en compte.",

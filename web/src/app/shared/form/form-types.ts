@@ -10,6 +10,13 @@ export type FieldKind =
   | 'date'
   | 'textarea'
   | 'select'
+  /**
+   * One record out of a book too long to offer whole: the form asks the API for the few that match what is typed
+   * (docs/SPEC.md § 7, 2026-09-17, ruling 3). The control holds the chosen record's id, as a select's would; where
+   * the rows come from is not in the descriptor, because a descriptor is data — the screen passes a `pickers` map
+   * to `DescriptorForm` beside it.
+   */
+  | 'pick'
   | 'checkbox'
   /** A `#rrggbb` colour, picked with the browser's colour control. */
   | 'colour';
@@ -48,6 +55,9 @@ export interface FormField {
   pattern?: string;
   /** Required for `select`. */
   options?: FieldOption[];
+  /** For a `pick` that may name nothing: what that answer reads as, and what an empty answer reads as. */
+  noneLabel?: string;
+  noneFoundLabel?: string;
   hint?: string;
   /** How many of the section's two grid columns the field spans on a wide screen; phones always use one. */
   span?: 1 | 2;

@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { ExpensesApi, ExpensesRefused } from './expenses-api';
+import type { PickAsked } from '../shared/form/pick-api';
 import type {
   ExpenseAttachment,
   ExpenseCategoryInput,
@@ -12,6 +13,7 @@ import type {
   ExpenseRow,
   ExpenseSearch,
   ExpensesError,
+  ExpenseVendorOption,
 } from './expenses-types';
 
 /** The expenses of the company being worked in, their categories, and the expense open with its files. */
@@ -138,6 +140,20 @@ export class ExpensesFacade {
       () => this.api.reviseCategory(companyId, id, input),
       async () => this.categoriesSignal.set(await this.api.categories(companyId)),
     );
+  }
+
+  /**
+   * The few vendors a person means while typing, and — by id — the one an expense already names, active or not. A
+   * search that fails answers nothing and says so in `error`, rather than reading as "no such vendor".
+   */
+  async pickVendors(companyId: string, asked: PickAsked): Promise<ExpenseVendorOption[]> {
+    // A picker never marks the screen busy, because a person is typing while it runs.
+    try {
+      return await this.api.pickVendors(companyId, asked);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return [];
+    }
   }
 
   clearError(): void {

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 
 // G9 through the real stack: in the seeded Tunisian company, the owner files a category, adds an expense under it with
@@ -44,6 +44,9 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
   const category = `Carburant ${run}`;
   const description = `Gasoil ${run}`;
   await signIn(page);
+  // The operator belongs to several companies once the demo fixtures are loaded, and a sign-in only picks one
+  // for a single membership — so the session is put into a company explicitly rather than left on the chooser.
+  await inACompany(page, CSRF);
   try {
     await page.goto('/expenses/categories');
     await page.getByTestId('expense-category-add').click();

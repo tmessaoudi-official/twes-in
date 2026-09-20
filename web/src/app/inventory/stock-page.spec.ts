@@ -180,7 +180,7 @@ describe('StockPage', () => {
   it('records goods received at the default location, of the product that was picked', async () => {
     q('stock-receive')!.click();
     await settle();
-    await pick('stock-movement-product', 'ART-1 · Portable');
+    await pick('field-productId', 'ART-1 · Portable');
     type('field-quantity', '10');
     q('stock-movement-save')!.click();
     await settle();
@@ -199,7 +199,7 @@ describe('StockPage', () => {
     facade.record.mockResolvedValue(false);
     q('stock-count')!.click();
     await settle();
-    await pick('stock-movement-product', 'ART-1 · Portable');
+    await pick('field-productId', 'ART-1 · Portable');
     type('field-quantity', '7');
     q('stock-movement-save')!.click();
     error.set('invalid');
@@ -216,10 +216,10 @@ describe('StockPage', () => {
   });
 
   /**
-   * The product is not a field of the form, so nothing marks it as missing: without this the save would be dropped
-   * in silence. A page holding the catalogue used to start on the only product there was; a picker cannot guess.
+   * The product is a required field like any other: a page holding the catalogue used to start on the only product
+   * there was, and a picker cannot guess. Refusing it says so where the field is, rather than dropping the save.
    */
-  it('says which product is missing rather than recording nothing', async () => {
+  it('refuses to record a movement that names no product', async () => {
     q('stock-receive')!.click();
     await settle();
     type('field-quantity', '4');
@@ -227,10 +227,9 @@ describe('StockPage', () => {
     await settle();
 
     expect(facade.record).not.toHaveBeenCalled();
-    expect(q('stock-movement-product-error')?.textContent).toContain('Nommez le produit');
+    expect(q('field-error-productId')).not.toBeNull();
 
-    await pick('stock-movement-product', 'ART-2 · Écran');
-    expect(q('stock-movement-product-error')).toBeNull();
+    await pick('field-productId', 'ART-2 · Écran');
     q('stock-movement-save')!.click();
     await settle();
 

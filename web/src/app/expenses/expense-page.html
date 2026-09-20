@@ -114,6 +114,7 @@
           <app-descriptor-form
             [descriptor]="descriptor"
             [form]="form"
+            [pickers]="{ vendorId: { search: searchVendors, value: vendorShown() } }"
             [updated]="sync.updated()"
             [conflicts]="sync.conflicts()"
             (resolved)="sync.resolve(form, $event)"

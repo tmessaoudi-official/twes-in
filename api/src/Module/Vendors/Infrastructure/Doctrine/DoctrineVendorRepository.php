@@ -62,6 +62,30 @@ final readonly class DoctrineVendorRepository implements VendorRepository
         return new Page($vendors, \count($paginator), $page);
     }
 
+    public function pick(Uuid $companyId, string $words, int $limit): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('v')->from(Vendor::class, 'v')
+            ->where('v.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('v.isActive = true');
+        $words = trim($words);
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(v.number) = LOWER(:number)')->setParameter('number', $words);
+        }
+
+        /** @var list<Vendor> $vendors */
+        $vendors = $query->orderBy('v.number', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+
+        return $vendors;
+    }
+
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        return [] === $ids ? [] : $this->entityManager->getRepository(Vendor::class)->findBy(['id' => $ids, 'company' => $companyId]);
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Vendor
     {
         $vendor = $this->entityManager->find(Vendor::class, $id);

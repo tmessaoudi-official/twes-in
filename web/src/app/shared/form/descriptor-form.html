@@ -91,92 +91,118 @@
                     <span class="twes-field-optional">· {{ 'form.optional' | translate }}</span>
                   }
                 </label>
-                <mat-form-field>
-                  @switch (field.kind) {
-                    @case ('textarea') {
-                      <textarea
-                        matInput
-                        [id]="controlId(field)"
-                        rows="3"
-                        [formControlName]="field.id"
-                        [required]="field.required ?? false"
-                        [attr.maxlength]="field.maxLength ?? null"
-                        [attr.data-testid]="'field-' + field.id"
-                      ></textarea>
-                    }
-                    @case ('select') {
-                      <mat-select
-                        [id]="controlId(field)"
-                        [aria-labelledby]="controlId(field) + '-label'"
-                        [formControlName]="field.id"
-                        [required]="field.required ?? false"
-                        [attr.data-testid]="'field-' + field.id"
-                      >
-                        @for (option of field.options ?? []; track option.value) {
-                          <mat-option [value]="option.value">{{
-                            option.label | translate
-                          }}</mat-option>
-                        }
-                      </mat-select>
-                    }
-                    @case ('number') {
-                      <!-- A static type="number" is what gives the control a number rather than a string. -->
-                      <input
-                        matInput
-                        [id]="controlId(field)"
-                        type="number"
-                        inputmode="decimal"
-                        [formControlName]="field.id"
-                        [required]="field.required ?? false"
-                        [attr.min]="field.min ?? null"
-                        [attr.max]="field.max ?? null"
-                        [attr.data-testid]="'field-' + field.id"
-                      />
-                    }
-                    @case ('decimal') {
-                      <input
-                        matInput
-                        appDecimal
-                        [id]="controlId(field)"
-                        type="text"
-                        [formControlName]="field.id"
-                        [required]="field.required ?? false"
-                        [attr.maxlength]="field.maxLength ?? null"
-                        [attr.data-testid]="'field-' + field.id"
-                      />
-                    }
-                    @case ('colour') {
-                      <input
-                        matInput
-                        [id]="controlId(field)"
-                        type="color"
-                        [formControlName]="field.id"
-                        [required]="field.required ?? false"
-                        [attr.data-testid]="'field-' + field.id"
-                      />
-                    }
-                    @default {
-                      <input
-                        matInput
-                        [id]="controlId(field)"
-                        [type]="field.kind"
-                        [formControlName]="field.id"
-                        [required]="field.required ?? false"
-                        [attr.maxlength]="field.maxLength ?? null"
-                        [attr.autocomplete]="field.autocomplete ?? null"
-                        [attr.data-testid]="'field-' + field.id"
-                      />
-                    }
-                  }
-                  @if (field.hint) {
-                    <mat-hint>{{ field.hint | translate }}</mat-hint>
-                  }
+                @if (field.kind === 'pick' && pickerFor(field); as picker) {
+                  <app-pick-field
+                    [label]="field.label | translate"
+                    [labelInside]="false"
+                    [inputId]="controlId(field)"
+                    [testId]="'field-' + field.id"
+                    [search]="picker.search"
+                    [value]="picker.value"
+                    [disabled]="readOnly()"
+                    [clearable]="!field.required"
+                    [noneLabel]="field.noneLabel ?? 'form.none' | translate"
+                    [noneFoundLabel]="field.noneFoundLabel ?? 'form.none_found' | translate"
+                    [hint]="field.hint ? (field.hint | translate) : ''"
+                    (picked)="takePicked(field, $event)"
+                  />
                   @if (errorFor(field); as error) {
-                    <mat-error [attr.data-testid]="'field-error-' + field.id">
+                    <span
+                      role="alert"
+                      class="px-2 text-xs text-error"
+                      [attr.data-testid]="'field-error-' + field.id"
+                    >
                       {{ error.key | translate: error.params }}
-                    </mat-error>
+                    </span>
                   }
-                </mat-form-field>
+                } @else {
+                  <mat-form-field>
+                    @switch (field.kind) {
+                      @case ('textarea') {
+                        <textarea
+                          matInput
+                          [id]="controlId(field)"
+                          rows="3"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.maxlength]="field.maxLength ?? null"
+                          [attr.data-testid]="'field-' + field.id"
+                        ></textarea>
+                      }
+                      @case ('select') {
+                        <mat-select
+                          [id]="controlId(field)"
+                          [aria-labelledby]="controlId(field) + '-label'"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.data-testid]="'field-' + field.id"
+                        >
+                          @for (option of field.options ?? []; track option.value) {
+                            <mat-option [value]="option.value">{{
+                              option.label | translate
+                            }}</mat-option>
+                          }
+                        </mat-select>
+                      }
+                      @case ('number') {
+                        <!-- A static type="number" is what gives the control a number rather than a string. -->
+                        <input
+                          matInput
+                          [id]="controlId(field)"
+                          type="number"
+                          inputmode="decimal"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.min]="field.min ?? null"
+                          [attr.max]="field.max ?? null"
+                          [attr.data-testid]="'field-' + field.id"
+                        />
+                      }
+                      @case ('decimal') {
+                        <input
+                          matInput
+                          appDecimal
+                          [id]="controlId(field)"
+                          type="text"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.maxlength]="field.maxLength ?? null"
+                          [attr.data-testid]="'field-' + field.id"
+                        />
+                      }
+                      @case ('colour') {
+                        <input
+                          matInput
+                          [id]="controlId(field)"
+                          type="color"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.data-testid]="'field-' + field.id"
+                        />
+                      }
+                      @default {
+                        <input
+                          matInput
+                          [id]="controlId(field)"
+                          [type]="field.kind"
+                          [formControlName]="field.id"
+                          [required]="field.required ?? false"
+                          [attr.maxlength]="field.maxLength ?? null"
+                          [attr.autocomplete]="field.autocomplete ?? null"
+                          [attr.data-testid]="'field-' + field.id"
+                        />
+                      }
+                    }
+                    @if (field.hint) {
+                      <mat-hint>{{ field.hint | translate }}</mat-hint>
+                    }
+                    @if (errorFor(field); as error) {
+                      <mat-error [attr.data-testid]="'field-error-' + field.id">
+                        {{ error.key | translate: error.params }}
+                      </mat-error>
+                    }
+                  </mat-form-field>
+                }
                 @if (conflictFor(field); as conflict) {
                   <div
                     class="twes-field-conflict"

@@ -96,6 +96,7 @@ export interface ExpenseCategoryRow {
 
 export type ExpenseCategoryInput = Omit<ExpenseCategoryRow, 'id'>;
 
+/** One vendor as the expense form's picker answers it. */
 export interface ExpenseVendorOption {
   id: string;
   number: string;
@@ -111,11 +112,13 @@ export interface ExpenseTaxOption {
   rate: string;
 }
 
-/** What the expense form offers: the currency, the active vendors and categories, the rates on the net. */
+/**
+ * What the expense form offers: the currency, the active categories, the rates on the net. The VENDORS are asked
+ * for a few at a time through the picker instead (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ */
 export interface ExpenseOptions {
   currency: string;
   currencyScale: number;
-  vendors: ExpenseVendorOption[];
   categories: Omit<ExpenseCategoryRow, 'isActive'>[];
   taxes: ExpenseTaxOption[];
   paymentMethods: PaymentMethod[];

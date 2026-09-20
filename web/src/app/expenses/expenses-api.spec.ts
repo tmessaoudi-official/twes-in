@@ -207,20 +207,42 @@ describe('ExpensesApi', () => {
     http.expectOne('/api/companies/c1/expense-options').flush({
       currency: 'TND',
       currencyScale: 3,
-      vendors: [
-        {
-          id: 'v1',
-          number: 'FRN-1',
-          name: 'Sotumag',
-          paymentTermsDays: 30,
-          defaultExpenseCategoryId: 'k1',
-        },
-      ],
       categories: [{ id: 'k1', name: 'Carburant', parentId: null }],
       taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
       paymentMethods: ['transfer', 'cash'],
     });
-    expect(await options).toMatchObject({ currencyScale: 3, paymentMethods: ['transfer', 'cash'] });
+    expect(await options).toEqual({
+      currency: 'TND',
+      currencyScale: 3,
+      categories: [{ id: 'k1', name: 'Carburant', parentId: null }],
+      taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
+      paymentMethods: ['transfer', 'cash'],
+    });
+
+    // The book of suppliers is asked for a few at a time, never handed over with the options.
+    const picked = api.pickVendors('c1', { words: ' sotu ' });
+    const ask = http.expectOne(
+      (request) => request.url === '/api/companies/c1/expense-options/vendors',
+    );
+    expect(ask.request.params.get('q')).toBe('sotu');
+    ask.flush([
+      {
+        id: 'v1',
+        number: 'FRN-1',
+        name: 'Sotumag',
+        paymentTermsDays: 30,
+        defaultExpenseCategoryId: 'k1',
+      },
+    ]);
+    expect(await picked).toEqual([
+      {
+        id: 'v1',
+        number: 'FRN-1',
+        name: 'Sotumag',
+        paymentTermsDays: 30,
+        defaultExpenseCategoryId: 'k1',
+      },
+    ]);
 
     const categories = api.categories('c1');
     http

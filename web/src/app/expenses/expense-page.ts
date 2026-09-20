@@ -18,6 +18,7 @@ import { Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import type { PickOption } from '../shared/form/pick-field';
 import { liveRecord } from '../shared/form/live-record';
 import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
@@ -34,7 +35,11 @@ import {
   paymentValues,
 } from './expense-forms';
 import { ExpensesFacade } from './expenses-facade';
-import { EXPENSE_STATUS_TONES, type ExpenseAttachment } from './expenses-types';
+import {
+  EXPENSE_STATUS_TONES,
+  type ExpenseAttachment,
+  type ExpenseVendorOption,
+} from './expenses-types';
 import { Feedback } from '../shared/feedback/feedback';
 
 /**
@@ -127,6 +132,25 @@ export class ExpensePage {
       return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
     },
   });
+  /**
+   * Which vendor the form names, as the picker answered it. The form carries the id; this is what the box READS,
+   * which the form cannot know — an expense read from the API says it, and a search says it for a new one.
+   */
+  private readonly vendor = signal<ExpenseVendorOption | null>(null);
+  protected readonly vendorShown = computed(() => {
+    const vendor = this.vendor();
+    return vendor === null ? null : { id: vendor.id, code: vendor.number, name: vendor.name };
+  });
+  /** Every vendor the picker has answered, so what the form names can be read back from its id. */
+  private readonly known = new Map<string, ExpenseVendorOption>();
+  protected readonly searchVendors = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickVendors(companyId, { words });
+    for (const vendor of found) this.known.set(vendor.id, vendor);
+    return found.map((vendor) => ({ id: vendor.id, code: vendor.number, name: vendor.name }));
+  };
+
   protected readonly paymentDescriptor = computed(() => {
     const options = this.facade.options();
     return options === null ? null : paymentForm(options);
@@ -152,7 +176,7 @@ export class ExpensePage {
         }
       });
     });
-    // Choosing a vendor fills an empty category with the one that vendor's expenses usually go to.
+    // The picker shows what the form names, and choosing a vendor fills an empty category with that vendor's usual one.
     effect((onCleanup) => {
       const form = this.form();
       if (form === null) return;
@@ -160,13 +184,35 @@ export class ExpensePage {
         .get('vendorId')
         ?.valueChanges.pipe(takeUntilDestroyed(this.destroyRef))
         .subscribe((vendorId) => {
+          const vendor = typeof vendorId === 'string' ? (this.known.get(vendorId) ?? null) : null;
+          this.vendor.set(vendor);
           const category = form.get('categoryId');
-          const vendor = this.facade.options()?.vendors.find((row) => row.id === vendorId);
           if (category && !category.value && vendor?.defaultExpenseCategoryId) {
             category.setValue(vendor.defaultExpenseCategoryId);
           }
         });
       onCleanup(() => subscription?.unsubscribe());
+    });
+
+    // An expense opened on an existing vendor is read back by id, retired or not: the book is never read whole.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const current = this.current();
+      if (!companyId || current === undefined || current === null) return;
+      const vendorId = current.vendorId;
+      untracked(async () => {
+        if (vendorId === null) {
+          this.vendor.set(null);
+          return;
+        }
+        if (this.vendor()?.id === vendorId) return;
+        const known = this.known.get(vendorId);
+        const [found] = known
+          ? [known]
+          : await this.facade.pickVendors(companyId, { ids: [vendorId] });
+        if (found) this.known.set(found.id, found);
+        this.vendor.set(found ?? null);
+      });
     });
   }
 

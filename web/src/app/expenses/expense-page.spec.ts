@@ -28,7 +28,9 @@ import type {
   ExpenseOptions,
   ExpenseRow,
   ExpensesError,
+  ExpenseVendorOption,
 } from './expenses-types';
+import type { PickAsked } from '../shared/form/pick-api';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
@@ -43,18 +45,19 @@ class StaticLoader implements TranslateLoader {
   }
 }
 
+/** What the picker answers: the page holds no book of suppliers, so a vendor exists here only once it is picked. */
+const vendors: ExpenseVendorOption[] = [
+  {
+    id: 'v1',
+    number: 'FRN-1',
+    name: 'Sotumag',
+    paymentTermsDays: 30,
+    defaultExpenseCategoryId: 'k2',
+  },
+];
 const options: ExpenseOptions = {
   currency: 'TND',
   currencyScale: 3,
-  vendors: [
-    {
-      id: 'v1',
-      number: 'FRN-1',
-      name: 'Sotumag',
-      paymentTermsDays: 30,
-      defaultExpenseCategoryId: 'k2',
-    },
-  ],
   categories: [
     { id: 'k1', name: 'Véhicules', parentId: null },
     { id: 'k2', name: 'Carburant', parentId: 'k1' },
@@ -102,6 +105,9 @@ describe('ExpensePage', () => {
     attachments: attachments.asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
+    pickVendors: vi.fn(async (_companyId: string, asked: PickAsked) =>
+      'ids' in asked ? vendors.filter((each) => asked.ids.includes(each.id)) : vendors,
+    ),
     loadExpense: vi.fn(),
     createExpense: vi.fn(),
     reviseExpense: vi.fn(),
@@ -141,6 +147,17 @@ describe('ExpensePage', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     fixture.detectChanges();
+  }
+
+  async function pick(testId: string, label: string): Promise<void> {
+    (q(testId) as HTMLInputElement).dispatchEvent(new Event('focusin'));
+    await settle();
+    const option = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
+      (each) => each.textContent?.trim() === label,
+    );
+    expect(option, label).toBeDefined();
+    option!.click();
+    await settle();
   }
 
   function type(testId: string, value: string): void {
@@ -215,7 +232,7 @@ describe('ExpensePage', () => {
 
     type('field-description', 'Gasoil');
     type('field-amountNet', '100,5');
-    form().get('vendorId')!.setValue('v1');
+    await pick('field-vendorId', 'FRN-1 · Sotumag');
     expect(form().get('categoryId')!.value).toBe('k2');
     q('expense-save')!.click();
     await settle();

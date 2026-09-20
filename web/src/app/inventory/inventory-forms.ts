@@ -407,8 +407,9 @@ export function locationInput(values: FormValues): StockLocationInput {
 }
 
 /**
- * Goods received, or what a count found: where, and how much. The PRODUCT is not a field here — a catalogue is not a
- * dropdown, so the page asks for it through a picker beside this form (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ * Goods received, or what a count found: which product, where, and how much. The product is a `pick`, not a select:
+ * a catalogue is not a dropdown, so the form asks the API for the few that match what is typed (docs/SPEC.md § 7,
+ * 2026-09-17, ruling 3), and the page passes that search to `DescriptorForm` beside this descriptor.
  */
 export function movementForm(
   operation: StockOperation,
@@ -421,6 +422,15 @@ export function movementForm(
         id: 'movement',
         title: `inventory.movement.${operation}`,
         fields: [
+          {
+            id: 'productId',
+            label: `${STOCK_FIELDS}.product`,
+            kind: 'pick',
+            required: true,
+            span: 2,
+            noneFoundLabel: 'inventory.stock.no_product_found',
+            hint: 'inventory.stock.product_hint',
+          },
           {
             id: 'locationId',
             label: `${STOCK_FIELDS}.location`,
@@ -442,21 +452,20 @@ export function movementForm(
   };
 }
 
-/** A new movement starts at the first default location, the one goods go to when nothing else is said. */
+/**
+ * A new movement starts at the first default location, the one goods go to when nothing else is said, and on no
+ * product: a picker cannot guess which of a catalogue was meant.
+ */
 export function movementValues(locations: readonly StockLocationRow[]): FormValues {
   const byId = new Map(locations.map((location) => [location.id, location]));
   const first = [...locationLabels(locations).keys()].find((id) => byId.get(id)?.isDefault);
-  return { locationId: first ?? '', quantity: '' };
+  return { productId: '', locationId: first ?? '', quantity: '' };
 }
 
-export function movementInput(
-  operation: StockOperation,
-  values: FormValues,
-  productId: string,
-): StockMovementInput {
+export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {
   return {
     operation,
-    productId,
+    productId: text(values['productId']),
     locationId: text(values['locationId']),
     quantity: text(values['quantity']),
   };

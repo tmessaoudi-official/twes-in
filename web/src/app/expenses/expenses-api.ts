@@ -13,8 +13,10 @@ import type {
   ExpenseExpenseWrite,
   ExpenseJsonldExpenseRead,
   ExpenseOptionsExpenseOptionsRead,
+  ExpenseVendorPickExpenseVendorPickRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import type {
   ExpenseAttachment,
   ExpenseCategoryInput,
@@ -25,6 +27,7 @@ import type {
   ExpenseRow,
   ExpenseSearch,
   ExpensesError,
+  ExpenseVendorOption,
 } from './expenses-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -57,6 +60,28 @@ export class ExpensesApi {
         ),
       ),
     );
+  }
+
+  /**
+   * The few vendors a person means, or — given ids — exactly the one an expense already names, retired or not. The
+   * book is never read whole (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+   */
+  async pickVendors(companyId: string, asked: PickAsked): Promise<ExpenseVendorOption[]> {
+    return this.guard(EXPENSE, async () => {
+      const rows = await firstValueFrom(
+        this.http.get<ExpenseVendorPickExpenseVendorPickRead[]>(
+          `${path(companyId, 'expense-options')}/vendors`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((vendor) => ({
+        id: vendor.id ?? '',
+        number: vendor.number,
+        name: vendor.name,
+        paymentTermsDays: vendor.paymentTermsDays ?? null,
+        defaultExpenseCategoryId: vendor.defaultExpenseCategoryId ?? null,
+      }));
+    });
   }
 
   /** One page of the company's expenses, searched, narrowed and sorted by the API. */
@@ -320,7 +345,6 @@ function toOptions(raw: ExpenseOptionsExpenseOptionsRead): ExpenseOptions {
   return {
     currency: raw.currency ?? '',
     currencyScale: raw.currencyScale ?? 2,
-    vendors: (raw.vendors ?? []).map((vendor) => ({ ...vendor })),
     categories: (raw.categories ?? []).map((category) => ({ ...category })),
     taxes: (raw.taxes ?? []).map((tax) => ({ ...tax })),
     paymentMethods: [...(raw.paymentMethods ?? [])],

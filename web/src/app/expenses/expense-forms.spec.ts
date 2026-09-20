@@ -28,15 +28,6 @@ const office: ExpenseCategoryRow = { id: 'k4', name: 'Bureau', parentId: null, i
 const options: ExpenseOptions = {
   currency: 'TND',
   currencyScale: 3,
-  vendors: [
-    {
-      id: 'v1',
-      number: 'FRN-1',
-      name: 'Sotumag',
-      paymentTermsDays: 30,
-      defaultExpenseCategoryId: 'k2',
-    },
-  ],
   categories: [vehicles, fuel],
   taxes: [{ id: 't1', code: 'TVA19', name: 'TVA', rate: '19.000' }],
   paymentMethods: ['transfer', 'cash'],
@@ -113,13 +104,13 @@ describe('expense forms', () => {
     ]);
   });
 
-  it('offers the vendors, categories and rates the company has, each optional', () => {
+  it('offers the categories and rates the company has, each optional, and asks the vendor', () => {
     const fields = expenseForm(options).sections.flatMap((section) => section.fields);
     const byId = new Map(fields.map((field) => [field.id, field]));
-    expect(byId.get('vendorId')?.options).toEqual([
-      { value: '', label: 'expenses.form.no_vendor' },
-      { value: 'v1', label: 'FRN-1 · Sotumag' },
-    ]);
+    // A book of suppliers is not a dropdown: the vendor is asked for, so the descriptor carries no list of them.
+    expect(byId.get('vendorId')?.kind).toBe('pick');
+    expect(byId.get('vendorId')?.options).toBeUndefined();
+    expect(byId.get('vendorId')?.noneLabel).toBe('expenses.form.no_vendor');
     expect(byId.get('categoryId')?.options?.map((option) => option.label)).toEqual([
       'expenses.form.no_category',
       'Véhicules',
@@ -182,7 +173,7 @@ describe('expense forms', () => {
     });
   });
 
-  it("still names an expense's vendor, category and tax once they are no longer offered", () => {
+  it("still names an expense's category and tax once they are no longer offered", () => {
     const fields = (row: Parameters<typeof expenseForm>[1]) =>
       new Map(
         expenseForm(options, row)
@@ -197,7 +188,8 @@ describe('expense forms', () => {
       taxComponentId: 't9',
       taxRate: '7.000',
     });
-    expect(kept.get('vendorId')).toContainEqual(['v7', 'Ancien fournisseur']);
+    // The vendor is a picker: what the expense says is shown by the page, not added to a list of options here.
+    expect(kept.get('vendorId')).toBeUndefined();
     expect(kept.get('categoryId')).toContainEqual(['k9', 'Péages']);
     expect(kept.get('taxComponentId')).toContainEqual(['t9', '7 %']);
 
@@ -209,7 +201,6 @@ describe('expense forms', () => {
       taxComponentId: null,
       taxRate: null,
     });
-    expect(offered.get('vendorId')).toHaveLength(2);
     expect(offered.get('categoryId')).toHaveLength(3);
     expect(offered.get('taxComponentId')).toHaveLength(2);
   });

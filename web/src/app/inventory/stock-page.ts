@@ -5,6 +5,7 @@ import {
   Component,
   computed,
   DestroyRef,
+  effect,
   inject,
   linkedSignal,
   OnInit,
@@ -18,7 +19,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
-import { PickField, type PickOption } from '../shared/form/pick-field';
+import type { PickOption } from '../shared/form/pick-field';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { AmountPipe } from '../shared/i18n/format-pipes';
@@ -54,7 +55,6 @@ import { Feedback } from '../shared/feedback/feedback';
     DataListCell,
     DataListRowActions,
     DescriptorForm,
-    PickField,
     StatusBadge,
   ],
   templateUrl: './stock-page.html',
@@ -86,18 +86,19 @@ export class StockPage implements OnInit {
     return operation === null ? null : movementForm(operation, this.facade.locations());
   });
 
-  /** Which product the movement is of, as the picker answered it; the catalogue is never held here. */
-  protected readonly product = signal<StockProductOption | null>(null);
+  /**
+   * Which product the form names, as the picker answered it — the catalogue is never held here. The form owns the
+   * id; this is what the box READS, which the form cannot know, and what it must read again after a rebuild.
+   */
+  private readonly product = signal<StockProductOption | null>(null);
   protected readonly productShown = computed(() => {
     const product = this.product();
     return product === null
       ? null
       : { id: product.id, code: product.reference, name: product.name };
   });
-  /** Every product the picker has answered, so what is chosen can be found again from the option's id. */
+  /** Every product the picker has answered, so what is chosen can be found again from the id in the form. */
   private readonly known = new Map<string, StockProductOption>();
-  /** Set when saving was asked for with no product named, since it is not a field the form can mark. */
-  protected readonly productMissing = signal(false);
   protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
     const companyId = this.company()?.id;
     if (!companyId) return [];
@@ -110,11 +111,6 @@ export class StockPage implements OnInit {
     }));
   };
 
-  protected chooseProduct(option: PickOption | null): void {
-    const product = option === null ? null : (this.known.get(option.id) ?? null);
-    this.product.set(product);
-    this.productMissing.set(product === null);
-  }
   /**
    * The form of the movement being recorded. Options or locations arriving while it is open rebuild it over what was
    * typed; switching between a receipt and a count starts afresh.
@@ -136,6 +132,20 @@ export class StockPage implements OnInit {
       );
     },
   });
+
+  constructor() {
+    // The picker shows what the form names: the form carries the id, and only this page knows how that id reads.
+    effect((onCleanup) => {
+      const form = this.form();
+      if (form === null) return;
+      const subscription = form.get('productId')?.valueChanges.subscribe((productId) => {
+        this.product.set(
+          typeof productId === 'string' ? (this.known.get(productId) ?? null) : null,
+        );
+      });
+      onCleanup(() => subscription?.unsubscribe());
+    });
+  }
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */
   private search: StockSearch | null = null;
@@ -169,7 +179,6 @@ export class StockPage implements OnInit {
   protected open(operation: StockOperation): void {
     this.facade.clearError();
     this.product.set(null);
-    this.productMissing.set(false);
     this.operation.set(operation);
   }
 
@@ -181,10 +190,8 @@ export class StockPage implements OnInit {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     const operation = this.operation();
-    const productId = this.product()?.id ?? '';
-    this.productMissing.set(productId === '');
-    if (!companyId || operation === null || productId === '' || this.busy()) return;
-    if (await this.facade.record(companyId, movementInput(operation, values, productId))) {
+    if (!companyId || operation === null || this.busy()) return;
+    if (await this.facade.record(companyId, movementInput(operation, values))) {
       this.operation.set(null);
       this.feedback.success('inventory.stock.recorded');
     }

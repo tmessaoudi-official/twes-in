@@ -16,8 +16,11 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * What the expense form offers, read with expense.read alone: the company's currency and its decimals, its active
- * vendors with their terms and default category, its active categories, the rates on the net that may tax an expense,
- * and the ways an expense is paid.
+ * categories, the rates on the net that may tax an expense, and the ways an expense is paid.
+ *
+ * The VENDORS are no longer here — they are asked for a few at a time through the picker beside this
+ * (docs/SPEC.md § 7, 2026-09-17, ruling 3). A book of suppliers is not a dropdown, and an expense already carries
+ * its vendor's name, so a form opens on one without reading the book.
  */
 #[ApiResource(
     shortName: 'ExpenseOptions',
@@ -40,24 +43,6 @@ final class ExpenseOptionsResource
 
     #[Groups([self::READ])]
     public int $currencyScale = 2;
-
-    /** @var list<array{id: string, number: string, name: string, paymentTermsDays: int|null, defaultExpenseCategoryId: string|null}> */
-    #[ApiProperty(schema: [
-        'type' => 'array',
-        'items' => [
-            'type' => 'object',
-            'required' => ['id', 'number', 'name', 'paymentTermsDays', 'defaultExpenseCategoryId'],
-            'properties' => [
-                'id' => ['type' => 'string'],
-                'number' => ['type' => 'string'],
-                'name' => ['type' => 'string'],
-                'paymentTermsDays' => ['type' => ['integer', 'null']],
-                'defaultExpenseCategoryId' => ['type' => ['string', 'null']],
-            ],
-        ],
-    ])]
-    #[Groups([self::READ])]
-    public array $vendors = [];
 
     /** @var list<array{id: string, name: string, parentId: string|null}> */
     #[ApiProperty(schema: [

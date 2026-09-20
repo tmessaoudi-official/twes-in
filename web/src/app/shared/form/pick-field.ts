@@ -49,11 +49,17 @@ export const PICK_PAUSE_MS = 300;
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <mat-form-field class="w-full">
-      <mat-label>{{ label() }}</mat-label>
+      @if (labelInside()) {
+        <mat-label>{{ label() }}</mat-label>
+      }
+      <!-- The id below is matInput's own input, as every other field of a descriptor form binds it: an
+           attribute binding is overwritten by matInput's host binding, which leaves the form's label
+           pointing at nothing. Material falls back to its own generated id when this is empty. -->
       <input
         matInput
         [formControl]="typed"
         [matAutocomplete]="list"
+        [id]="inputId()"
         [attr.data-testid]="testId()"
         [attr.aria-describedby]="hint() === '' ? null : testId() + '-hint'"
         autocomplete="off"
@@ -100,6 +106,13 @@ export class PickField {
   readonly noneFoundLabel = input('—');
   /** A line under the box saying what to type; left out, the input describes nothing, which is what axe asks. */
   readonly hint = input('');
+  /**
+   * Whether this field draws its own label inside the box. A picker standing alone does; one inside a descriptor
+   * form does not, because that form already writes every field's label above its box, with "· optional" beside it.
+   */
+  readonly labelInside = input(true);
+  /** The id the surrounding form's `<label for>` points at, when the label lives outside. */
+  readonly inputId = input('');
 
   readonly picked = output<PickOption | null>();
 

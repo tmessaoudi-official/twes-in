@@ -156,9 +156,10 @@ export function categoryLabels(
 }
 
 /**
- * The expense form, from what the company offers: its active vendors and categories and the rates on the net. The
- * API works the tax and the gross out and checks everything again. An expense keeps showing a vendor, category or
- * tax it was filed with after that one stops being offered.
+ * The expense form, from what the company offers: its active categories and the rates on the net. The vendor is
+ * asked for a few at a time instead (see the `pick` field below). The API works the tax and the gross out and
+ * checks everything again. An expense keeps showing a category or tax it was filed with after that one stops
+ * being offered, and its vendor whether or not that vendor is still active.
  */
 export function expenseForm(
   options: ExpenseOptions,
@@ -166,8 +167,8 @@ export function expenseForm(
 ): FormDescriptor {
   const descriptor = offeredExpenseForm(options);
   if (current === null) return descriptor;
+  // The vendor is not here: a picker shows what the expense itself says, so nothing has to be added to its options.
   const chosen: Record<string, readonly [string | null, string]> = {
-    vendorId: [current.vendorId, current.vendorName ?? current.vendorId ?? ''],
     categoryId: [current.categoryId, current.categoryName ?? current.categoryId ?? ''],
     taxComponentId: [
       current.taxComponentId,
@@ -226,16 +227,13 @@ function offeredExpenseForm(options: ExpenseOptions): FormDescriptor {
             span: 2,
           },
           {
+            // A book of suppliers is not a dropdown: the form asks for the few that match what is typed, and the
+            // page passes that search beside this descriptor (docs/SPEC.md § 7, 2026-09-17, ruling 3).
             id: 'vendorId',
             label: `${FIELDS}.vendorId`,
-            kind: 'select',
-            options: [
-              none('expenses.form.no_vendor'),
-              ...options.vendors.map((vendor) => ({
-                value: vendor.id,
-                label: `${vendor.number} · ${vendor.name}`,
-              })),
-            ],
+            kind: 'pick',
+            noneLabel: 'expenses.form.no_vendor',
+            noneFoundLabel: 'expenses.form.no_vendor_found',
             hint: 'expenses.form.vendor_hint',
           },
           {

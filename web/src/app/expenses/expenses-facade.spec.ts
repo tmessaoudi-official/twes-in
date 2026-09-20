@@ -40,7 +40,6 @@ const receipt: ExpenseAttachment = {
 const options: ExpenseOptions = {
   currency: 'TND',
   currencyScale: 3,
-  vendors: [],
   categories: [],
   taxes: [],
   paymentMethods: ['transfer'],

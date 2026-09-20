@@ -19,11 +19,14 @@ const BOLT: PickOption = { id: 'p2', code: 'BOU-001', name: 'Boulon inox' };
       [clearable]="true"
       noneLabel="Aucun produit"
       noneFoundLabel="Rien trouvé"
+      [inputId]="outside() ? 'expense-form-vendorId' : ''"
+      [labelInside]="!outside()"
       (picked)="taken.set($event)"
     />
   `,
 })
 class Host {
+  readonly outside = signal(false);
   readonly chosen = signal<PickOption | null>(null);
   readonly taken = signal<PickOption | null | undefined>(undefined);
   readonly asked: string[] = [];
@@ -137,6 +140,28 @@ describe('PickField', () => {
     await settle();
 
     expect(options().map((o) => o.textContent?.trim())).toContain('Rien trouvé');
+  });
+
+  /**
+   * Inside a descriptor form every field's label sits ABOVE its box, with "· facultatif" beside it. A picker there
+   * takes that label instead of drawing its own inside the box, and wears the id the label points at, so what names
+   * it is the one label a person reads.
+   */
+  it('leaves its label to the form around it when that form names the control', async () => {
+    host.outside.set(true);
+    await settle();
+
+    const input = fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement;
+    expect(input.id).toBe('expense-form-vendorId');
+    expect(fixture.nativeElement.querySelector('mat-label')).toBeNull();
+  });
+
+  /** Standing alone it names itself, and keeps the id Material gives every input of its own accord. */
+  it('draws its own label when nothing else names it', () => {
+    expect(fixture.nativeElement.querySelector('mat-label')?.textContent).toContain('Produit');
+    expect(
+      (fixture.nativeElement.querySelector('[data-testid="pick"]') as HTMLInputElement).id,
+    ).not.toBe('expense-form-vendorId');
   });
 
   /** The field never looks a record up: what it shows is what the record itself says. */
