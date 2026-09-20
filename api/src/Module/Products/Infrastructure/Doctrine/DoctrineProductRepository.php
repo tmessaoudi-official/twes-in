@@ -63,6 +63,25 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return new Page($products, \count($paginator), $page);
     }
 
+    public function pick(Uuid $companyId, string $words, int $limit): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('p')->from(Product::class, 'p')
+            ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('p.isActive = true');
+        $words = trim($words);
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(p.reference) = LOWER(:reference)')->setParameter('reference', $words);
+        }
+
+        /** @var list<Product> $products */
+        $products = $query->orderBy('p.reference', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+
+        return $products;
+    }
+
     public function ofIdsInCompany(array $ids, Uuid $companyId): array
     {
         return [] === $ids ? [] : $this->entityManager->getRepository(Product::class)->findBy(['id' => $ids, 'company' => $companyId]);

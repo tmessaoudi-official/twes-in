@@ -43,6 +43,18 @@ final class InMemoryProducts implements ProductRepository
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
+    public function pick(Uuid $companyId, string $words, int $limit): array
+    {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Product $p) use ($words): bool {
+            $details = $p->getDetails();
+
+            return $p->isActive() && InMemorySearch::finds($words, $p->getReference(), [$details->name, $details->barcode]);
+        }));
+        usort($found, static fn (Product $a, Product $b): int => $a->getReference() <=> $b->getReference());
+
+        return \array_slice($found, 0, $limit);
+    }
+
     public function ofIdsInCompany(array $ids, Uuid $companyId): array
     {
         $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);

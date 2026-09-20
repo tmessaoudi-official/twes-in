@@ -82,6 +82,26 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         return null !== $customer && $customer->getCompany()->getId()->equals($companyId) ? $customer : null;
     }
 
+    public function pick(Uuid $companyId, string $words, int $limit): array
+    {
+        $query = $this->entityManager->createQueryBuilder()
+            ->select('c', 'r')->from(Customer::class, 'c')
+            ->join('c.taxRegime', 'r')
+            ->where('c.company = :company')->setParameter('company', $companyId, 'uuid')
+            ->andWhere('c.isActive = true');
+        $words = trim($words);
+        if (mb_strlen($words) >= SearchText::SHORTEST) {
+            $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));
+        } elseif ('' !== $words) {
+            $query->andWhere('LOWER(c.number) = LOWER(:number)')->setParameter('number', $words);
+        }
+
+        /** @var list<Customer> $customers */
+        $customers = $query->orderBy('c.number', 'ASC')->setMaxResults($limit)->getQuery()->getResult();
+
+        return $customers;
+    }
+
     public function ofNumberInCompany(string $number, Uuid $companyId): ?Customer
     {
         return $this->entityManager->getRepository(Customer::class)->findOneBy(['company' => $companyId, 'number' => $number]);

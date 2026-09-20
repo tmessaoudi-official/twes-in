@@ -28,6 +28,15 @@ interface ProductRepository
     /** @return Page<Product> one page of the company's products that the search finds, in its order */
     public function search(Uuid $companyId, ProductSearch $search, PageRequest $page): Page;
 
+    /**
+     * The first few ACTIVE products a person picking one in a form would mean, by reference. It searches on the same
+     * expression the list does, so the same index serves it, and it counts nothing: a picker asks again on every
+     * keystroke, and a total over a large catalogue is the cost that buys nothing here (docs/SPEC.md § 7, 2026-09-17).
+     *
+     * @return list<Product>
+     */
+    public function pick(Uuid $companyId, string $words, int $limit): array;
+
     /** Null for a product that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product;
 

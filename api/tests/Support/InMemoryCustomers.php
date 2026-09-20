@@ -46,6 +46,19 @@ final class InMemoryCustomers implements CustomerRepository
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
+    public function pick(Uuid $companyId, string $words, int $limit): array
+    {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Customer $c) use ($words): bool {
+            $profile = $c->getProfile();
+            $address = $profile->billingAddress;
+
+            return $c->isActive() && InMemorySearch::finds($words, $c->getNumber(), [$profile->name, $profile->legalName, $profile->email, $address->line1, $address->postalCode, $address->city, ...array_values($profile->identifiers)]);
+        }));
+        usort($found, static fn (Customer $a, Customer $b): int => $a->getNumber() <=> $b->getNumber());
+
+        return \array_slice($found, 0, $limit);
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer
     {
         foreach ($this->ofCompany($companyId) as $customer) {
