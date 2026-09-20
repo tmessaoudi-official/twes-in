@@ -65,7 +65,7 @@ test('an expense is filed with its VAT and receipt, recorded, then paid', async 
     await page.getByTestId('field-taxComponentId').click();
     await page.getByRole('option', { name: /\(19 %\)$/ }).click();
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('expense-save').click();
+    await page.getByTestId('record-save').click();
 
     await expect(page).toHaveURL(/\/expenses\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('expense-title')).toContainText(description);

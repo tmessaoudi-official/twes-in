@@ -86,12 +86,16 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     await page.getByTestId('field-customerGroupId').click();
     await page.getByRole('option', { name: groupName }).click();
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('customer-save').click();
+    await page.getByTestId('record-save').click();
 
     await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('customer-title')).toContainText(number);
+
+    // The record splits into tabs (design review finding 4), so its defaults and its contacts are each one click away.
+    await page.getByRole('tab', { name: 'Valeurs par défaut' }).click();
     await expect(page.getByTestId(TERMS)).toHaveValue('45');
 
+    await page.getByRole('tab', { name: 'Contacts' }).click();
     await page.getByTestId('contact-add').click();
     await page.getByTestId('field-firstName').fill('Leila');
     await page.getByTestId('field-lastName').fill('Ben Salah');

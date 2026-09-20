@@ -1,5 +1,7 @@
 <section class="flex max-w-4xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <!-- The bar stays in view while the page scrolls: the save sat below the first screen
+       (design review finding 4). -->
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
         class="text-3xl font-semibold"
@@ -27,7 +29,17 @@
         </p>
       }
     </div>
-    <a mat-button routerLink="/expenses">{{ 'expenses.back' | translate }}</a>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (mayWrite() && isDraft()) {
+        <app-record-bar
+          [changes]="changes()"
+          [busy]="busy()"
+          (save)="saveFromBar()"
+          (revert)="revert()"
+        />
+      }
+      <a mat-button routerLink="/expenses">{{ 'expenses.back' | translate }}</a>
+    </div>
   </div>
 
   @if (!company()) {
@@ -149,14 +161,6 @@
                     {{ 'expenses.actions.record' | translate }}
                   </button>
                 }
-                <button
-                  mat-flat-button
-                  type="submit"
-                  [disabled]="busy()"
-                  data-testid="expense-save"
-                >
-                  {{ 'expenses.save' | translate }}
-                </button>
               </div>
             }
           </app-descriptor-form>

@@ -135,7 +135,7 @@ test('an open customer takes what another person saved, and keeps what is being 
   await watcher.getByTestId('field-number').fill(number);
   await watcher.getByTestId('field-name').fill(`Live ${run}`);
   await watcher.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
-  await watcher.getByTestId('customer-save').click();
+  await watcher.getByTestId('record-save').click();
   await expect(watcher).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
   await expect(watcher.getByTestId('customer-title')).toContainText(number);
   await watcher.evaluate(() => ((window as unknown as { liveMarker: boolean }).liveMarker = true));

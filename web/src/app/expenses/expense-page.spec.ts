@@ -234,7 +234,7 @@ describe('ExpensePage', () => {
     type('field-amountNet', '100,5');
     await pick('field-vendorId', 'FRN-1 · Sotumag');
     expect(form().get('categoryId')!.value).toBe('k2');
-    q('expense-save')!.click();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createExpense).toHaveBeenCalledWith(
@@ -261,7 +261,8 @@ describe('ExpensePage', () => {
 
     type('field-description', 'Gasoil');
     type('field-amountNet', '100.5555');
-    q('expense-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
     expect(facade.createExpense).not.toHaveBeenCalled();
   });
@@ -296,7 +297,7 @@ describe('ExpensePage', () => {
     await open('e1');
 
     expect(q('expense-fixed')).not.toBeNull();
-    expect(q('expense-save')).toBeNull();
+    expect(q('record-save')).toBeNull();
     expect(q('expense-delete')).toBeNull();
     expect((q('field-description') as HTMLInputElement).disabled).toBe(true);
 
@@ -389,7 +390,7 @@ describe('ExpensePage', () => {
     await open('e1');
     facade.reviseExpense.mockResolvedValue(null);
     error.set('not_draft');
-    q('expense-save')!.click();
+    q('record-save')!.click();
     await settle();
     expect(successToasts()).toEqual([]);
     expect(q('expense-error')?.textContent).toContain('brouillon');
@@ -402,7 +403,7 @@ describe('ExpensePage', () => {
     await open('e1');
 
     expect(q('expense-read-only')).not.toBeNull();
-    expect(q('expense-save')).toBeNull();
+    expect(q('record-save')).toBeNull();
     expect(q('expense-attach')).toBeNull();
     expect(q('expense-detach-recu.pdf')).toBeNull();
     expect(q('expense-attachment-open-recu.pdf')).not.toBeNull();

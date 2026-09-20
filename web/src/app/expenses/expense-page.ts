@@ -41,6 +41,8 @@ import {
   type ExpenseVendorOption,
 } from './expenses-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { RecordBar } from '../shared/form/record-bar';
 
 /**
  * One expense: a draft to fill in, revise, attach receipts to and record; a recorded one to pay. A new expense takes
@@ -54,6 +56,7 @@ import { Feedback } from '../shared/feedback/feedback';
     RouterLink,
     TranslatePipe,
     DescriptorForm,
+    RecordBar,
     RecordChanged,
     StatusBadge,
     AmountPipe,
@@ -132,6 +135,13 @@ export class ExpensePage {
       return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
     },
   });
+
+  /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
+  protected readonly savedValues = computed(() => {
+    const current = this.current();
+    return current ? expenseValues(current, todayIn(this.company()?.timezone)) : null;
+  });
+  protected readonly changes = unsavedChanges(this.form, this.savedValues);
   /**
    * Which vendor the form names, as the picker answered it. The form carries the id; this is what the box READS,
    * which the form cannot know — an expense read from the API says it, and a search says it for a new one.
@@ -224,6 +234,23 @@ export class ExpensePage {
   protected attachmentUrl(attachment: ExpenseAttachment): string {
     const companyId = this.company()?.id ?? '';
     return this.facade.attachmentUrl(companyId, this.id() ?? '', attachment.id);
+  }
+
+  /** From the bar beside the title, which holds no form of its own. */
+  protected saveFromBar(): void {
+    const form = this.form();
+    if (form === null) return;
+    if (form.invalid) {
+      form.markAllAsTouched();
+      return;
+    }
+    void this.save(form.getRawValue());
+  }
+
+  protected revert(): void {
+    const form = this.form();
+    const saved = this.savedValues();
+    if (form !== null && saved !== null) revertToSaved(form, saved);
   }
 
   protected async save(values: FormValues): Promise<void> {

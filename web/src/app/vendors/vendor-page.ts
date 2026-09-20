@@ -22,6 +22,8 @@ import type { FormValues } from '../shared/form/form-types';
 import { vendorForm, vendorInput, vendorValues } from './vendor-forms';
 import { VendorsFacade } from './vendors-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { RecordBar } from '../shared/form/record-bar';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
 @Component({
@@ -32,6 +34,7 @@ import { Feedback } from '../shared/feedback/feedback';
     RouterLink,
     TranslatePipe,
     DescriptorForm,
+    RecordBar,
     RecordChanged,
   ],
   templateUrl: './vendor-page.html',
@@ -101,6 +104,14 @@ export class VendorPage {
     },
   });
 
+  /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
+  protected readonly savedValues = computed(() => {
+    const current = this.current();
+    const options = this.facade.options();
+    return current && options ? vendorValues(current, options) : null;
+  });
+  protected readonly changes = unsavedChanges(this.form, this.savedValues);
+
   constructor() {
     effect(() => {
       const companyId = this.company()?.id;
@@ -111,6 +122,23 @@ export class VendorPage {
         }
       });
     });
+  }
+
+  /** From the bar beside the title, which holds no form of its own. */
+  protected saveFromBar(): void {
+    const form = this.form();
+    if (form === null) return;
+    if (form.invalid) {
+      form.markAllAsTouched();
+      return;
+    }
+    void this.save(form.getRawValue());
+  }
+
+  protected revert(): void {
+    const form = this.form();
+    const saved = this.savedValues();
+    if (form !== null && saved !== null) revertToSaved(form, saved);
   }
 
   protected async save(values: FormValues): Promise<void> {

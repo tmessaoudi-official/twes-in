@@ -43,7 +43,10 @@ import {
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      customers: { errors: { number_taken: 'Un autre client porte déjà ce numéro.' } },
+      customers: {
+        errors: { number_taken: 'Un autre client porte déjà ce numéro.' },
+        tabs: { record: 'Fiche', defaults: 'Valeurs par défaut', contacts: 'Contacts' },
+      },
       live: { changed_by: '{{name}} a modifié cette fiche pendant votre saisie.' },
     });
   }
@@ -165,6 +168,15 @@ describe('CustomerPage', () => {
     fixture.detectChanges();
   }
 
+  /** A long record is in tabs, so reaching a section means opening its tab, as a person does. */
+  async function openTab(label: string): Promise<void> {
+    const tab = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
+    ).find((candidate) => (candidate.textContent ?? '').includes(label));
+    tab!.click();
+    await settle();
+  }
+
   function type(testId: string, value: string): void {
     const input = q(testId) as HTMLInputElement;
     input.value = value;
@@ -247,7 +259,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
-    q('customer-save')!.click();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createCustomer).toHaveBeenCalledWith(
@@ -287,7 +299,7 @@ describe('CustomerPage', () => {
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567A/B/M/000');
     type('field-custom__sector', ' Gros ');
-    q('customer-save')!.click();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createCustomer).toHaveBeenCalledWith(
@@ -301,7 +313,7 @@ describe('CustomerPage', () => {
     type('field-number', 'CLI-0009');
     type('field-name', 'Carthage Conseil');
     type('field-identifier__matricule_fiscal', '1234567');
-    q('customer-save')!.click();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createCustomer).not.toHaveBeenCalled();
@@ -348,6 +360,66 @@ describe('CustomerPage', () => {
     expect(q('record-changed')).toBeNull();
   });
 
+  it('splits a long record into tabs, each holding its own section and its own save', async () => {
+    // Design review finding 4: this page measured 3165 px with two saves below the first screen.
+    customer.set(carthage);
+    await open('k1');
+
+    expect(q('customer-tabs')).not.toBeNull();
+    expect(q('customer-tab-record')).not.toBeNull();
+    expect(q('customer-form')).not.toBeNull();
+    // A tab nobody has opened holds nothing yet, which is the point of splitting the page.
+    expect(q('customer-contacts')).toBeNull();
+
+    await openTab('Contacts');
+    expect(q('customer-contacts')).not.toBeNull();
+
+    // The defaults are their own panel with its own save; the bar beside the title saves the record.
+    await openTab('Valeurs par défaut');
+    expect(q('customer-tab-defaults')).not.toBeNull();
+    expect(q('party-defaults')).not.toBeNull();
+  });
+
+  it('saves from the bar beside the title, which is inert until something changed', async () => {
+    // Design review finding 4, measured: every long form's save sat below the first screen, this page at 3165 px
+    // with two of them.
+    customer.set(carthage);
+    await open('k1');
+
+    expect((q('record-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(q('record-changes')).toBeNull();
+    expect(q('record-revert')).toBeNull();
+
+    type('field-email', 'compta@carthage.tn');
+    await settle();
+    expect((q('record-save') as HTMLButtonElement).disabled).toBe(false);
+    expect(q('record-changes')?.getAttribute('data-count')).toBe('1');
+
+    // Typing it back to what was saved is not a change, whatever Angular's own `dirty` says.
+    type('field-email', carthage.email ?? '');
+    await settle();
+    expect(q('record-changes')).toBeNull();
+    expect((q('record-save') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('puts every field back to what was saved, and nothing is left to save', async () => {
+    customer.set(carthage);
+    await open('k1');
+
+    type('field-email', 'compta@carthage.tn');
+    type('field-name', 'Carthage SA');
+    await settle();
+    expect(q('record-changes')?.getAttribute('data-count')).toBe('2');
+
+    q('record-revert')!.click();
+    await settle();
+
+    expect((q('field-email') as HTMLInputElement).value).toBe(carthage.email ?? '');
+    expect((q('field-name') as HTMLInputElement).value).toBe(carthage.name);
+    expect(q('record-changes')).toBeNull();
+    expect(facade.reviseCustomer).not.toHaveBeenCalled();
+  });
+
   it('revises an existing customer and lists its contacts', async () => {
     customer.set(carthage);
     await open('k1');
@@ -355,10 +427,13 @@ describe('CustomerPage', () => {
     expect(facade.loadCustomer).toHaveBeenCalledWith('c1', 'k1');
     expect(partySettings.load).toHaveBeenCalledWith('c1', { customerId: 'k1' });
     expect((q('field-number') as HTMLInputElement).value).toBe('CLI-0001');
+    await openTab('Contacts');
     expect(q('contact-leila@carthage.tn')?.textContent).toContain('Leila Ben Salah');
 
     type('field-email', 'compta@carthage.tn');
-    q('customer-save')!.click();
+    // The save comes alive only once something changed, so the change has to be seen before it is clicked.
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.reviseCustomer).toHaveBeenCalledWith(
@@ -373,6 +448,7 @@ describe('CustomerPage', () => {
     customer.set(carthage);
     await open('k1');
 
+    await openTab('Contacts');
     q('contact-add')!.click();
     await settle();
     type('field-firstName', 'Karim');
@@ -403,7 +479,7 @@ describe('CustomerPage', () => {
     customer.set({ ...carthage });
     optionsSignal.set({ ...options, regimes: [...options.regimes], taxes: [...options.taxes] });
     await settle();
-    q('customer-save')!.click();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.reviseCustomer).toHaveBeenCalledWith(
@@ -437,8 +513,9 @@ describe('CustomerPage', () => {
     customer.set(carthage);
     await open('k1');
 
-    expect(q('customer-save')).toBeNull();
+    expect(q('record-save')).toBeNull();
     expect((q('field-number') as HTMLInputElement).disabled).toBe(true);
+    await openTab('Contacts');
     expect(q('contact-add')).toBeNull();
     expect(q('row-more-p1')).toBeNull();
   });

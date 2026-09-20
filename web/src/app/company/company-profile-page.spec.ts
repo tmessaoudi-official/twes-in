@@ -119,7 +119,8 @@ describe('CompanyProfilePage', () => {
     const legalName = q('field-legalName') as HTMLInputElement;
     legalName.value = 'Demo SARL';
     legalName.dispatchEvent(new Event('input'));
-    q('profile-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.save).toHaveBeenCalledWith(
@@ -159,7 +160,12 @@ describe('CompanyProfilePage', () => {
       profileSignal.set({ ...profile, legalName: 'DEMO TUNISIE SA' });
       return true;
     });
-    q('profile-save')!.click();
+    // The bar saves only what has changed, so there has to be a change to save.
+    const legalName = q('field-legalName') as HTMLInputElement;
+    legalName.value = 'Demo Tunisie SA ';
+    legalName.dispatchEvent(new Event('input'));
+    await settle();
+    q('record-save')!.click();
     await settle();
     expect((q('field-legalName') as HTMLInputElement).value).toBe('DEMO TUNISIE SA');
   });
@@ -169,7 +175,8 @@ describe('CompanyProfilePage', () => {
     const identifier = q('field-identifier__matricule_fiscal') as HTMLInputElement;
     identifier.value = '1234567';
     identifier.dispatchEvent(new Event('input'));
-    q('profile-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.save).not.toHaveBeenCalled();

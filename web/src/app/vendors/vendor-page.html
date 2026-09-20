@@ -1,5 +1,7 @@
 <section class="flex max-w-4xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <!-- The bar stays in view while the page scrolls: the save sat below the first screen
+       (design review finding 4). -->
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <h1
       class="text-3xl font-semibold"
       data-testid="vendor-title"
@@ -11,7 +13,17 @@
         {{ 'vendors.new_title' | translate }}
       }
     </h1>
-    <a mat-button routerLink="/vendors">{{ 'vendors.back' | translate }}</a>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (mayWrite()) {
+        <app-record-bar
+          [changes]="changes()"
+          [busy]="busy()"
+          (save)="saveFromBar()"
+          (revert)="revert()"
+        />
+      }
+      <a mat-button routerLink="/vendors">{{ 'vendors.back' | translate }}</a>
+    </div>
   </div>
 
   @if (!company()) {
@@ -47,13 +59,6 @@
             [readOnly]="!mayWrite()"
             (submitted)="save($event)"
           >
-            @if (mayWrite()) {
-              <div class="flex flex-wrap justify-end gap-2">
-                <button mat-flat-button type="submit" [disabled]="busy()" data-testid="vendor-save">
-                  {{ 'vendors.save' | translate }}
-                </button>
-              </div>
-            }
           </app-descriptor-form>
         </mat-card-content>
       </mat-card>

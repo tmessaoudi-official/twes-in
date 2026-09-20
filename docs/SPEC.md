@@ -873,6 +873,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   form. Recording a payment and choosing a delivery day are both asked in dialogs, which is also what takes the
   date field out of the delivery note's bar.
 
+- [2026-09-20 18:20] AGREED: **row 73's record half built as ruled, with one departure and one honest definition of
+  "changed".** Every record page — client, produit, fournisseur, dépense, profil de l'entreprise — saves from
+  `RecordBar` in the same sticky bar as its title: "Enregistrer" is the primary button and is INERT until something
+  changed, beside "Annuler les modifications" and an announced count of what is unsaved. What counts as a change is
+  measured against **what the API last answered**, not against Angular's `dirty` and not against a control's
+  `defaultValue`: `dirty` says a field was touched, so typing a character and deleting it again would have left the
+  page claiming an unsaved change, and `defaultValue` is `null` on every control that is not `nonNullable`, which
+  would have called each optional field changed from the moment the page opened. "Annuler les modifications" puts
+  the form back to that same answer. The departure: the ruling's tab list names "Fiche and Valeurs par défaut now,
+  Documents and Historique when they exist", and the customer page has a **third tab, Contacts** — its contacts
+  section is a list with its own editor and would otherwise be the very thing the ruling removed, a second section
+  below the first screen. The rest of the ruling's clause, **leaving with changes asks first**, is row 45's and is
+  not built here. Row 73's second half, the balance pass (design review finding 10, dense vs empty per screen),
+  stays open: it is measured on the gallery, which the rows above have changed.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -951,7 +966,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 70 | The shell after the design review (§ 7 2026-09-19 23:19-23:22, findings 5-8): the header search left-aligned and filling to the right-hand controls, capped near 800 px, its placeholder naming what it finds; the phone header showing the working company in the wordmark's place; the settings area as the app's 80 px rail plus the settings menu docked against it; the top bar's gear removed, settings from the sidebar only | M | done | - | web/src/app/shell/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | done | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
 | 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | done | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
-| 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut); then the balance pass (finding 10) re-measured on the gallery | M | todo | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
+| 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut, plus Contacts on the customer page); then the balance pass (finding 10) re-measured on the gallery | M | doing | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
 | 74 | Stock moves and losses (§ 7 2026-09-19): a move inside an establishment (whole or partial, out and in linked), a write-off with a required reason, note and photo, a quarantine location kind, both in the movements list and reports; the VAT effect of a loss sourced in docs/fiscal first | L | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** web/public/i18n/** web/e2e/** |
 | 75 | Country pack (§ 7 2026-09-20): taxes and levies, mentions per situation AND per language, identifiers with their named check strategies, numbering constraints, formats, rounding, archive duration; the strategy registry; a conformance test loading every pack; rows 44 and 46 folded in | L | todo | - | api/config/fiscal/** api/src/Fiscal/** api/tests/** docs/fiscal/** |
 | 76 | Catalogue (§ 7 2026-09-20): a family with axis values gathering variants that stay products; purchase, stock and sales units with conversion; one second-language name printed when the document is in that language | L | todo | - | api/src/Module/Products/** api/migrations/** api/tests/** web/src/app/products/** web/public/i18n/** |

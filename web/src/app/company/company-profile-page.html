@@ -1,7 +1,19 @@
 <section class="flex max-w-4xl flex-col gap-6">
-  <h1 class="text-3xl font-semibold" data-testid="profile-title">
-    {{ 'company.profile.title' | translate }}
-  </h1>
+  <!-- The bar stays in view while the page scrolls: the save sat below the first screen
+       (design review finding 4). -->
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
+    <h1 class="text-3xl font-semibold" data-testid="profile-title">
+      {{ 'company.profile.title' | translate }}
+    </h1>
+    @if (mayManage()) {
+      <app-record-bar
+        [changes]="changes()"
+        [busy]="busy()"
+        (save)="saveFromBar()"
+        (revert)="revert()"
+      />
+    }
+  </div>
 
   @if (!company()) {
     <p data-testid="profile-no-company">{{ 'company.profile.no_company' | translate }}</p>
@@ -36,16 +48,6 @@
               (resolved)="sync.resolve(form, $event)"
               (submitted)="save($event)"
             >
-              <div class="flex justify-end">
-                <button
-                  mat-flat-button
-                  type="submit"
-                  [disabled]="busy()"
-                  data-testid="profile-save"
-                >
-                  {{ 'company.profile.save' | translate }}
-                </button>
-              </div>
             </app-descriptor-form>
           </mat-card-content>
         </mat-card>

@@ -583,6 +583,10 @@
     "more_actions": "Autres actions"
   },
   "form": {
+    "save": "Enregistrer",
+    "revert": "Annuler les modifications",
+    "unsaved": "{{count}} modifications non enregistrées",
+    "one_unsaved": "1 modification non enregistrée",
     "nothing_filled": "Ce document ne renseigne aucun de ces champs.",
     "yes": "Oui",
     "no": "Non",
@@ -738,6 +742,11 @@
     }
   },
   "customers": {
+    "tabs": {
+      "record": "Fiche",
+      "defaults": "Valeurs par défaut",
+      "contacts": "Contacts"
+    },
     "title": "Clients",
     "add": "Nouveau client",
     "none": "Aucun client pour l’instant.",
@@ -1155,6 +1164,10 @@
     }
   },
   "products": {
+    "tabs": {
+      "record": "Fiche",
+      "defaults": "Valeurs par défaut"
+    },
     "title": "Produits",
     "add": "Nouveau produit",
     "none": "Aucun produit pour l’instant.",

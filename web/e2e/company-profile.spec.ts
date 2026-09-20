@@ -74,7 +74,7 @@ test("the owner fills the company's profile with the identifier its preset requi
     await legalName.fill(name);
     await page.getByTestId('field-identifier__matricule_fiscal').fill('1234567A/B/M/000');
     await page.getByTestId('field-iban').fill('TN59 1000 6035 1835 9847 8831');
-    await page.getByTestId('profile-save').click();
+    await page.getByTestId('record-save').click();
     await expect(toast(page)).toContainText('Le profil a été enregistré.');
 
     await page.reload();

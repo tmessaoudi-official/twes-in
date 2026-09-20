@@ -159,7 +159,8 @@ describe('VendorPage', () => {
     type('field-name', 'Sotumag');
     type('field-iban', 'TN59 1000 6035 1835 9847 8831');
     type('field-paymentTermsDays', '30');
-    q('vendor-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createVendor).toHaveBeenCalledWith(
@@ -183,13 +184,15 @@ describe('VendorPage', () => {
     type('field-number', 'FRN-0009');
     type('field-name', 'Sotumag');
     type('field-identifier__matricule_fiscal', '1234567');
-    q('vendor-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
     expect(facade.createVendor).not.toHaveBeenCalled();
 
     type('field-identifier__matricule_fiscal', '');
     type('field-paymentTermsDays', 'soon');
-    q('vendor-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
     expect(facade.createVendor).not.toHaveBeenCalled();
   });
@@ -202,7 +205,8 @@ describe('VendorPage', () => {
     expect((q('field-paymentTermsDays') as HTMLInputElement).value).toBe('30');
 
     type('field-email', 'compta@sotumag.tn');
-    q('vendor-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
     expect(facade.reviseVendor).toHaveBeenCalledWith(
       'c1',
@@ -213,7 +217,7 @@ describe('VendorPage', () => {
 
     facade.reviseVendor.mockResolvedValue(null);
     error.set('number_taken');
-    q('vendor-save')!.click();
+    q('record-save')!.click();
     await settle();
     expect(successToasts()).toEqual(['vendors.saved']);
     expect(q('vendor-error')?.textContent).toContain('Un autre fournisseur porte déjà ce numéro.');
@@ -243,6 +247,6 @@ describe('VendorPage', () => {
     await open('v1');
 
     expect(q('vendor-read-only')).not.toBeNull();
-    expect(q('vendor-save')).toBeNull();
+    expect(q('record-save')).toBeNull();
   });
 });

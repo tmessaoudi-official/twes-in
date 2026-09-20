@@ -57,7 +57,7 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     await page.getByTestId('field-iban').fill('tn59 1000 6035 1835 9847 8831');
     await page.getByTestId('field-paymentTermsDays').fill('30');
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('vendor-save').click();
+    await page.getByTestId('record-save').click();
 
     await expect(page).toHaveURL(/\/vendors\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('vendor-title')).toContainText(number);
@@ -67,7 +67,7 @@ test('a vendor is added with its bank account and terms, then revised', async ({
     // Creating said "saved" too: let that toast go, or the next check reads it instead of the revision's.
     await expect(page.getByTestId('toast')).toHaveCount(0, { timeout: 10_000 });
     await page.getByTestId('field-email').fill('compta@sotumag.tn');
-    await page.getByTestId('vendor-save').click();
+    await page.getByTestId('record-save').click();
     await expect(toast(page)).toContainText('Le fournisseur a été enregistré.');
     expect(await wcagViolations(page)).toEqual([]);
 

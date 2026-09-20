@@ -87,7 +87,7 @@ test('a custom field declared for customers is filled in on a customer and kept'
     await page.getByTestId(field).click();
     await page.getByRole('option', { name: 'Gros' }).click();
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('customer-save').click();
+    await page.getByTestId('record-save').click();
 
     await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
     await page.reload();

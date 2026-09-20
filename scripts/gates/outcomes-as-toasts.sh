@@ -11,8 +11,9 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 # The page states: the session that ended, the sign-up request sent in place of its form, the slow request, an empty
 # palette search, a record another person saved while it was being edited here, and a declared payment waiting for the
 # operator's decision — that one is what the subscription IS until it is answered, days after the toast that said the
-# declaration was recorded (2026-09-17).
-page_states=' login-expired signup-sent activity-slow command-empty record-changed subscription-waiting '
+# declaration was recorded (2026-09-17) — and how much of the open record is unsaved, which is what the form IS until
+# it is saved or discarded and the only thing on the page saying it was left half-filled (2026-09-19 23:18, row 73).
+page_states=' login-expired signup-sent activity-slow command-empty record-changed record-changes subscription-waiting '
 mapfile -t files < <(git -C "$root" ls-files -- 'web/src/app/*.html' 'web/src/app/*.ts' | grep -v '\.spec\.ts$')
 result=$(cd "$root" && perl -0777 -ne '
   while (/<[a-z][\w-]*\b[^>]*?\brole="status"[^>]*>/sg) {

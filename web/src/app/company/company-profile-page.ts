@@ -21,11 +21,20 @@ import type { FormValues } from '../shared/form/form-types';
 import { profileChanges, profileForm, profileValues } from './company-profile-form';
 import { CompanyProfileFacade } from './company-profile-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { RecordBar } from '../shared/form/record-bar';
 
 /** What the company's documents say about it, revised by whoever holds the settings permission. */
 @Component({
   selector: 'app-company-profile-page',
-  imports: [MatButtonModule, MatCardModule, TranslatePipe, DescriptorForm, RecordChanged],
+  imports: [
+    MatButtonModule,
+    MatCardModule,
+    TranslatePipe,
+    DescriptorForm,
+    RecordBar,
+    RecordChanged,
+  ],
   templateUrl: './company-profile-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -75,11 +84,35 @@ export class CompanyProfilePage implements OnInit {
     },
   });
 
+  /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
+  protected readonly savedValues = computed(() => {
+    const profile = this.facade.profile();
+    return profile ? profileValues(profile) : null;
+  });
+  protected readonly changes = unsavedChanges(this.form, this.savedValues);
+
   async ngOnInit(): Promise<void> {
     const companyId = this.company()?.id;
     if (companyId && this.mayManage()) {
       await this.facade.load(companyId);
     }
+  }
+
+  /** From the bar beside the title, which holds no form of its own. */
+  protected saveFromBar(): void {
+    const form = this.form();
+    if (form === null) return;
+    if (form.invalid) {
+      form.markAllAsTouched();
+      return;
+    }
+    void this.save(form.getRawValue());
+  }
+
+  protected revert(): void {
+    const form = this.form();
+    const saved = this.savedValues();
+    if (form !== null && saved !== null) revertToSaved(form, saved);
   }
 
   protected async save(values: FormValues): Promise<void> {

@@ -35,6 +35,9 @@ import { CustomersFacade } from './customers-facade';
 import { PartyDefaults } from './party-defaults';
 import type { ContactRow } from './customers-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { RecordBar } from '../shared/form/record-bar';
+import { MatTabsModule } from '@angular/material/tabs';
 
 /** One customer: a new one to fill in, or an existing one with the people to write to there. */
 @Component({
@@ -47,6 +50,8 @@ import { Feedback } from '../shared/feedback/feedback';
     DataList,
     DataListCell,
     DescriptorForm,
+    MatTabsModule,
+    RecordBar,
     PartyDefaults,
     RecordChanged,
   ],
@@ -125,6 +130,14 @@ export class CustomerPage {
     },
   });
 
+  /** What the form holds that the API has not been told yet; the bar beside the title shows it. */
+  protected readonly savedValues = computed(() => {
+    const current = this.current();
+    const options = this.facade.options();
+    return current && options ? customerValues(current, options, this.facade.customFields()) : null;
+  });
+  protected readonly changes = unsavedChanges(this.form, this.savedValues);
+
   /** The subject of the defaults panel: the customer once it exists. */
   protected readonly defaultsSubject = computed(() => {
     const current = this.current();
@@ -175,6 +188,23 @@ export class CustomerPage {
         }
       });
     });
+  }
+
+  /** From the bar beside the title, which holds no form of its own. */
+  protected saveFromBar(): void {
+    const form = this.form();
+    if (form === null) return;
+    if (form.invalid) {
+      form.markAllAsTouched();
+      return;
+    }
+    void this.save(form.getRawValue());
+  }
+
+  protected revert(): void {
+    const form = this.form();
+    const saved = this.savedValues();
+    if (form !== null && saved !== null) revertToSaved(form, saved);
   }
 
   protected async save(values: FormValues): Promise<void> {

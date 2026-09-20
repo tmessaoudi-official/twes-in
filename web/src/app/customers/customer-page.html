@@ -1,5 +1,7 @@
 <section class="flex max-w-4xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <!-- The bar stays in view while the page scrolls: the save sat below the first screen, at 3165 px with two of
+       them on this page (design review finding 4). -->
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <h1
       class="text-3xl font-semibold"
       data-testid="customer-title"
@@ -11,7 +13,17 @@
         {{ 'customers.new_title' | translate }}
       }
     </h1>
-    <a mat-button routerLink="/customers">{{ 'customers.back' | translate }}</a>
+    <div class="flex flex-wrap items-center gap-2">
+      @if (mayWrite()) {
+        <app-record-bar
+          [changes]="changes()"
+          [busy]="busy()"
+          (save)="saveFromBar()"
+          (revert)="revert()"
+        />
+      }
+      <a mat-button routerLink="/customers">{{ 'customers.back' | translate }}</a>
+    </div>
   </div>
 
   @if (!company()) {
@@ -26,115 +38,126 @@
     </p>
   }
 
-  @if (form(); as form) {
-    @if (sync.changedBy(); as changedBy) {
-      <app-record-changed
-        [changedBy]="changedBy"
-        [conflictCount]="sync.conflicts().length"
-        (reload)="sync.reloadSaved(form)"
-      />
-    }
-    @if (descriptor(); as descriptor) {
-      <mat-card>
-        <mat-card-content>
-          <app-descriptor-form
-            [descriptor]="descriptor"
-            [form]="form"
-            testId="customer-form"
-            [readOnly]="!mayWrite()"
-            [updated]="sync.updated()"
-            [conflicts]="sync.conflicts()"
-            (resolved)="sync.resolve(form, $event)"
-            (submitted)="save($event)"
-          >
-            @if (mayWrite()) {
-              <div class="flex flex-wrap justify-end gap-2">
-                <button
-                  mat-flat-button
-                  type="submit"
-                  [disabled]="busy()"
-                  data-testid="customer-save"
+  <!-- A long record splits into tabs, each saving its own (design review finding 4): this page measured
+       3165 px with two saves below the first screen. -->
+  <mat-tab-group data-testid="customer-tabs" [preserveContent]="true">
+    <mat-tab [label]="'customers.tabs.record' | translate">
+      <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-record">
+        @if (form(); as form) {
+          @if (sync.changedBy(); as changedBy) {
+            <app-record-changed
+              [changedBy]="changedBy"
+              [conflictCount]="sync.conflicts().length"
+              (reload)="sync.reloadSaved(form)"
+            />
+          }
+          @if (descriptor(); as descriptor) {
+            <mat-card>
+              <mat-card-content>
+                <app-descriptor-form
+                  [descriptor]="descriptor"
+                  [form]="form"
+                  testId="customer-form"
+                  [readOnly]="!mayWrite()"
+                  [updated]="sync.updated()"
+                  [conflicts]="sync.conflicts()"
+                  (resolved)="sync.resolve(form, $event)"
+                  (submitted)="save($event)"
                 >
-                  {{ 'customers.save' | translate }}
-                </button>
-              </div>
-            }
-          </app-descriptor-form>
-        </mat-card-content>
-      </mat-card>
-    }
-  }
-
-  @if (defaultsSubject(); as subject) {
-    <mat-card>
-      <mat-card-content>
-        <app-party-defaults [subject]="subject" />
-      </mat-card-content>
-    </mat-card>
-  }
-
-  @if (current()) {
-    <section
-      class="flex flex-col gap-4"
-      data-testid="customer-contacts"
-      aria-labelledby="customer-contacts-title"
-    >
-      <div class="flex flex-wrap items-center justify-between gap-4">
-        <h2 id="customer-contacts-title" class="text-xl font-semibold">
-          {{ 'customers.contacts.title' | translate }}
-        </h2>
-        @if (mayWrite() && contactEditing() === null) {
-          <button mat-button type="button" (click)="openContact('new')" data-testid="contact-add">
-            {{ 'customers.contacts.add' | translate }}
-          </button>
+                </app-descriptor-form>
+              </mat-card-content>
+            </mat-card>
+          }
         }
       </div>
-
-      @if (contactForm(); as contactForm) {
-        <mat-card>
-          <mat-card-content>
-            <app-descriptor-form
-              [descriptor]="contactDescriptor"
-              [form]="contactForm"
-              testId="contact-form"
-              (submitted)="saveContact($event)"
+    </mat-tab>
+    @if (defaultsSubject()) {
+      <mat-tab [label]="'customers.tabs.defaults' | translate">
+        <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-defaults">
+          @if (defaultsSubject(); as subject) {
+            <mat-card>
+              <mat-card-content>
+                <app-party-defaults [subject]="subject" />
+              </mat-card-content>
+            </mat-card>
+          }
+        </div>
+      </mat-tab>
+    }
+    @if (current()) {
+      <mat-tab [label]="'customers.tabs.contacts' | translate">
+        <div class="flex flex-col gap-6 pt-4" data-testid="customer-tab-contacts">
+          @if (current()) {
+            <section
+              class="flex flex-col gap-4"
+              data-testid="customer-contacts"
+              aria-labelledby="customer-contacts-title"
             >
-              <div class="flex flex-wrap justify-end gap-2">
-                <button
-                  mat-button
-                  type="button"
-                  (click)="cancelContact()"
-                  data-testid="contact-cancel"
-                >
-                  {{ 'customers.cancel' | translate }}
-                </button>
-                <button
-                  mat-flat-button
-                  type="submit"
-                  [disabled]="busy()"
-                  data-testid="contact-save"
-                >
-                  {{ 'customers.contacts.save' | translate }}
-                </button>
+              <div class="flex flex-wrap items-center justify-between gap-4">
+                <h2 id="customer-contacts-title" class="text-xl font-semibold">
+                  {{ 'customers.contacts.title' | translate }}
+                </h2>
+                @if (mayWrite() && contactEditing() === null) {
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="openContact('new')"
+                    data-testid="contact-add"
+                  >
+                    {{ 'customers.contacts.add' | translate }}
+                  </button>
+                }
               </div>
-            </app-descriptor-form>
-          </mat-card-content>
-        </mat-card>
-      }
 
-      <app-data-list
-        [descriptor]="contactList()"
-        [rows]="contacts()"
-        testId="contacts-table"
-        [rowTestId]="contactTestId"
-        emptyKey="customers.contacts.none"
-        emptyTestId="contacts-empty"
-      >
-        <ng-template appDataListCell="isPrimary" let-row>
-          {{ row.isPrimary ? ('customers.contacts.primary' | translate) : '' }}
-        </ng-template>
-        @if (mayWrite()) {}
-      </app-data-list>
-    </section>
-  }
+              @if (contactForm(); as contactForm) {
+                <mat-card>
+                  <mat-card-content>
+                    <app-descriptor-form
+                      [descriptor]="contactDescriptor"
+                      [form]="contactForm"
+                      testId="contact-form"
+                      (submitted)="saveContact($event)"
+                    >
+                      <div class="flex flex-wrap justify-end gap-2">
+                        <button
+                          mat-button
+                          type="button"
+                          (click)="cancelContact()"
+                          data-testid="contact-cancel"
+                        >
+                          {{ 'customers.cancel' | translate }}
+                        </button>
+                        <button
+                          mat-flat-button
+                          type="submit"
+                          [disabled]="busy()"
+                          data-testid="contact-save"
+                        >
+                          {{ 'customers.contacts.save' | translate }}
+                        </button>
+                      </div>
+                    </app-descriptor-form>
+                  </mat-card-content>
+                </mat-card>
+              }
+
+              <app-data-list
+                [descriptor]="contactList()"
+                [rows]="contacts()"
+                testId="contacts-table"
+                [rowTestId]="contactTestId"
+                emptyKey="customers.contacts.none"
+                emptyTestId="contacts-empty"
+              >
+                <ng-template appDataListCell="isPrimary" let-row>
+                  {{ row.isPrimary ? ('customers.contacts.primary' | translate) : '' }}
+                </ng-template>
+                @if (mayWrite()) {}
+              </app-data-list>
+            </section>
+          }
+        </div>
+      </mat-tab>
+    }
+  </mat-tab-group>
 </section>

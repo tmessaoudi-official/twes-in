@@ -583,6 +583,10 @@
     "more_actions": "More actions"
   },
   "form": {
+    "save": "Save",
+    "revert": "Discard changes",
+    "unsaved": "{{count}} unsaved changes",
+    "one_unsaved": "1 unsaved change",
     "nothing_filled": "This document fills none of these fields in.",
     "yes": "Yes",
     "no": "No",
@@ -738,6 +742,11 @@
     }
   },
   "customers": {
+    "tabs": {
+      "record": "Record",
+      "defaults": "Defaults",
+      "contacts": "Contacts"
+    },
     "title": "Customers",
     "add": "New customer",
     "none": "No customers yet.",
@@ -1155,6 +1164,10 @@
     }
   },
   "products": {
+    "tabs": {
+      "record": "Record",
+      "defaults": "Defaults"
+    },
     "title": "Products",
     "add": "New product",
     "none": "No products yet.",

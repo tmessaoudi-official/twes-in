@@ -107,6 +107,15 @@ describe('ProductPage', () => {
     fixture.detectChanges();
   }
 
+  /** A long record is in tabs, so reaching a section means opening its tab, as a person does. */
+  async function openTab(label: string): Promise<void> {
+    const tab = Array.from(
+      fixture.nativeElement.querySelectorAll('[role="tab"]') as NodeListOf<HTMLElement>,
+    ).find((candidate) => (candidate.textContent ?? '').includes(label));
+    tab!.click();
+    await settle();
+  }
+
   function type(testId: string, value: string): void {
     const input = q(testId) as HTMLInputElement;
     input.value = value;
@@ -178,7 +187,8 @@ describe('ProductPage', () => {
     type('field-reference', 'ART-009');
     type('field-name', 'Souris');
     type('field-unitPriceNet', '25.5');
-    q('product-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createProduct).toHaveBeenCalledWith(
@@ -203,7 +213,8 @@ describe('ProductPage', () => {
     type('field-reference', 'ART-009');
     type('field-name', 'Souris');
     type('field-unitPriceNet', '25,12345');
-    q('product-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createProduct).not.toHaveBeenCalled();
@@ -216,7 +227,8 @@ describe('ProductPage', () => {
     type('field-reference', 'ART-009');
     type('field-name', 'Souris');
     type('field-unitPriceNet', '25,5');
-    q('product-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.createProduct).toHaveBeenCalledWith(
@@ -230,12 +242,12 @@ describe('ProductPage', () => {
     await open('p1');
     expect(facade.loadProduct).toHaveBeenCalledWith('c1', 'p1');
     expect(articleSettings.load).toHaveBeenCalledWith('c1', { productId: 'p1' });
-    expect(q('article-defaults')).not.toBeNull();
     expect(q('product-title')?.textContent).toContain('ART-001');
     expect((q('field-unitPriceNet') as HTMLInputElement).value).toBe('1250,500');
 
     type('field-unitPriceNet', '1300');
-    q('product-save')!.click();
+    await settle();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.reviseProduct).toHaveBeenCalledWith(
@@ -244,6 +256,10 @@ describe('ProductPage', () => {
       expect.objectContaining({ unitPriceNet: '1300', defaultTaxComponentIds: ['t1'] }),
     );
     expect(successToasts()).toContain('products.saved');
+
+    // The defaults are their own panel, in their own tab, with their own save.
+    await openTab('products.tabs.defaults');
+    expect(q('article-defaults')).not.toBeNull();
   });
 
   it('keeps what was typed when the product and its options are read again', async () => {
@@ -255,7 +271,7 @@ describe('ProductPage', () => {
     product.set({ ...laptop });
     optionsSignal.set({ ...options, units: [...options.units], taxes: [...options.taxes] });
     await settle();
-    q('product-save')!.click();
+    q('record-save')!.click();
     await settle();
 
     expect(facade.reviseProduct).toHaveBeenCalledWith(
@@ -308,6 +324,6 @@ describe('ProductPage', () => {
     await open('p1');
 
     expect(q('product-read-only')).not.toBeNull();
-    expect(q('product-save')).toBeNull();
+    expect(q('record-save')).toBeNull();
   });
 });

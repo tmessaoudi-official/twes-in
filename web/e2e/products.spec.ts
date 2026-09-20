@@ -91,7 +91,7 @@ test('a product is filed in a category, priced at the currency scale and revised
     await page.getByTestId('field-unitPriceNet').fill('120,5');
     await page.getByRole('checkbox', { name: /19/ }).check();
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('product-save').click();
+    await page.getByTestId('record-save').click();
 
     await expect(page).toHaveURL(/\/products\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('product-title')).toContainText(reference);
@@ -100,8 +100,11 @@ test('a product is filed in a category, priced at the currency scale and revised
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.getByTestId('field-unitPriceNet').fill('135');
-    await page.getByTestId('product-save').click();
+    await page.getByTestId('record-save').click();
     await expect(toast(page)).toContainText('Le produit a été enregistré.');
+
+    // The record splits into tabs (design review finding 4): what the category set is one click away.
+    await page.getByRole('tab', { name: 'Valeurs par défaut' }).click();
     await expect(page.getByTestId('field-article__default_unit')).toHaveValue('HUR');
 
     await page.goto('/products');
