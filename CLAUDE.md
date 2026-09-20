@@ -230,6 +230,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - Every company screen failing in a local `make e2e` after `make fixtures` is the operator's three memberships, not a
   regression: a login picks a working company only for a single membership (`ChooseWorkingCompany`), so the saved
   session reads "membre d'aucune entreprise". CI seeds Demo alone and stays green; let it arbitrate (2026-09-19).
+  A scenario fixes it for itself by calling `inACompany(page, CSRF)` after `signIn` — a no-op in CI. Add it to any
+  spec you need to run locally: "let CI arbitrate" hid a real failure for three commits (2026-09-20). And a test id
+  renamed in a shared component is a blast-radius sweep over `web/e2e` too, not only over `web/src`.
 - Several unrelated e2e signing in and landing on `/two-factor` is Demo's `mfa_required` left `true` on this machine,
   not a regression: the seed never sets it, so CI is green on the same commit. Read it with
   `docker compose exec -T postgres psql -U twes -d twes -c "SELECT mfa_required FROM company WHERE name='Demo'"`.
