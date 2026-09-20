@@ -24,7 +24,7 @@ final readonly class MemberCollectionProvider implements ProviderInterface
     /** @return list<MemberResource> */
     public function provide(Operation $operation, array $uriVariables = [], array $context = []): array
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), 'user.read');
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::READ);
 
         return array_map(
             static fn (MemberView $view) => MemberResource::of($view),

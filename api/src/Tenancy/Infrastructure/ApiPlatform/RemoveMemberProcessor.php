@@ -29,7 +29,7 @@ final readonly class RemoveMemberProcessor implements ProcessorInterface
 
     public function process(mixed $data, Operation $operation, array $uriVariables = [], array $context = []): null
     {
-        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), 'user.write');
+        $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), MemberPermission::WRITE);
         $userId = $uriVariables['userId'] ?? null;
         if (!\is_string($userId) || !Uuid::isValid($userId)) {
             throw new NotFoundHttpException('No such member.');
