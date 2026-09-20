@@ -235,6 +235,10 @@ export const routes: Routes = [
             loadComponent: () => import('./company/members-page').then((m) => m.MembersPage),
           },
           {
+            path: 'company/roles',
+            loadComponent: () => import('./company/roles-page').then((m) => m.RolesPage),
+          },
+          {
             path: 'fiscal/taxes',
             loadComponent: () =>
               import('./fiscal/fiscal-taxes-page').then((m) => m.FiscalTaxesPage),

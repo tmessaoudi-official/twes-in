@@ -52,6 +52,25 @@ final class InMemoryMemberships implements MembershipRepository
         return null;
     }
 
+    public function countByRole(Uuid $companyId): array
+    {
+        $counts = [];
+        foreach ($this->ofCompany($companyId) as $membership) {
+            $key = $membership->getRole()->getId()->toRfc4122();
+            $counts[$key] = ($counts[$key] ?? 0) + 1;
+        }
+
+        return $counts;
+    }
+
+    public function holdersOfRole(Uuid $companyId, Uuid $roleId, int $limit): array
+    {
+        $held = array_filter($this->ofCompany($companyId), static fn (Membership $m): bool => $m->getRole()->getId()->equals($roleId));
+        $emails = array_map(static fn (Membership $m): string => (string) $m->getUser()->getEmail(), array_values($held));
+
+        return \array_slice($emails, 0, $limit);
+    }
+
     public function save(Membership $membership): void
     {
         if (!\in_array($membership, $this->memberships, true)) {

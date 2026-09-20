@@ -99,6 +99,39 @@ class Role
         return true;
     }
 
+    /**
+     * A company renaming its own role. Refusing here rather than only in the use case keeps the rule where the
+     * invariant is: a built-in role is the release's, and every company reads the same row.
+     *
+     * @throws \LogicException when the role is a built-in one
+     */
+    public function rename(string $name): void
+    {
+        $this->assertCustom('renamed');
+        $this->name = $name;
+    }
+
+    /**
+     * A company changing what its own role may do.
+     *
+     * @param list<string> $permissions
+     *
+     * @throws \LogicException when the role is a built-in one
+     */
+    public function redefine(array $permissions): void
+    {
+        $this->assertCustom('redefined');
+        $this->permissions = array_values(array_unique($permissions));
+    }
+
+    /** @throws \LogicException */
+    private function assertCustom(string $verb): void
+    {
+        if ($this->isBuiltIn()) {
+            throw new \LogicException(\sprintf('The built-in %s role is defined by the release and cannot be %s.', $this->name, $verb));
+        }
+    }
+
     public function grants(string $permission): bool
     {
         return \in_array(Permission::WILDCARD, $this->permissions, true) || \in_array($permission, $this->permissions, true);

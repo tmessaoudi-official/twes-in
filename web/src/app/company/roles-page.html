@@ -1,0 +1,137 @@
+<section class="flex max-w-4xl flex-col gap-6">
+  <h1 class="text-3xl font-semibold" data-testid="roles-title">
+    {{ 'company.roles.title' | translate }}
+  </h1>
+  <p class="max-w-prose">{{ 'company.roles.intro' | translate }}</p>
+
+  @if (!company()) {
+    <p data-testid="roles-no-company">{{ 'company.roles.no_company' | translate }}</p>
+  }
+
+  @if (error(); as code) {
+    <div role="alert" data-testid="roles-error" class="text-error flex flex-col gap-1">
+      <p>{{ 'company.roles.errors.' + code | translate }}</p>
+      @if (detail()) {
+        <!-- The names in here are data the API knows and we do not; it is shown as written. -->
+        <p data-testid="roles-error-detail">{{ detail() }}</p>
+      }
+    </div>
+  }
+
+  <ul class="flex flex-col" data-testid="roles-list">
+    @for (row of roles(); track row.id) {
+      <li
+        class="border-outline-variant flex flex-wrap items-center gap-4 border-b py-3"
+        [attr.data-testid]="'role-' + row.name"
+      >
+        <div class="flex min-w-0 grow flex-col">
+          <span class="font-medium">{{ row.name }}</span>
+          <span class="text-sm">
+            @if (row.builtIn) {
+              {{ 'company.roles.built_in' | translate }} &middot;
+            }
+            {{ 'company.roles.member_count' | translate: { count: row.memberCount } }}
+          </span>
+        </div>
+
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="openRole(row)"
+          [attr.data-testid]="'role-open-' + row.name"
+        >
+          {{
+            (row.builtIn || !mayManage() ? 'company.roles.view' : 'company.roles.edit') | translate
+          }}
+        </button>
+
+        @if (!row.builtIn && mayManage()) {
+          <button
+            mat-icon-button
+            type="button"
+            [disabled]="busy()"
+            [appLabel]="'company.roles.delete' | translate"
+            (click)="remove(row)"
+            [attr.data-testid]="'role-delete-' + row.name"
+          >
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
+      </li>
+    }
+  </ul>
+
+  @if (mayManage() && !creating()) {
+    <div>
+      <button mat-flat-button type="button" (click)="startNew()" data-testid="role-new">
+        {{ 'company.roles.new' | translate }}
+      </button>
+    </div>
+  }
+
+  @if (editorOpen()) {
+    <form class="flex flex-col gap-5" (ngSubmit)="save()" data-testid="role-editor">
+      <h2 class="text-xl font-semibold">
+        {{
+          (creating() ? 'company.roles.new' : 'company.roles.editing')
+            | translate: { name: open()?.name ?? '' }
+        }}
+      </h2>
+
+      <mat-form-field class="max-w-sm">
+        <mat-label>{{ 'company.roles.name' | translate }}</mat-label>
+        <input
+          matInput
+          name="roleName"
+          [ngModel]="draftName()"
+          (ngModelChange)="draftName.set($event)"
+          [disabled]="!editable()"
+          maxlength="64"
+          required
+          data-testid="role-name"
+        />
+      </mat-form-field>
+
+      @if (open()?.wildcard) {
+        <!-- Not every box ticked: the owner holds whatever later releases add, which no set of ticks can promise. -->
+        <p data-testid="role-everything">{{ 'company.roles.everything' | translate }}</p>
+      } @else {
+        <div class="flex flex-col gap-6" data-testid="role-matrix">
+          @for (group of groups(); track group.key) {
+            <fieldset class="flex flex-col gap-2">
+              <legend class="mb-1 font-medium">{{ group.labelKey | translate }}</legend>
+              <div class="grid gap-x-6 gap-y-1 sm:grid-cols-2">
+                @for (permission of group.permissions; track permission) {
+                  <mat-checkbox
+                    [checked]="isTicked(permission)"
+                    [disabled]="!editable()"
+                    (change)="tick(permission, $event.checked)"
+                    [attr.data-testid]="'permission-' + permission"
+                  >
+                    {{ 'permissions.' + permission | translate }}
+                  </mat-checkbox>
+                }
+              </div>
+            </fieldset>
+          }
+        </div>
+      }
+
+      <div class="flex flex-wrap gap-3">
+        @if (editable()) {
+          <button
+            mat-flat-button
+            type="submit"
+            [disabled]="busy() || draftName().trim() === ''"
+            data-testid="role-save"
+          >
+            {{ 'company.roles.save' | translate }}
+          </button>
+        }
+        <button mat-stroked-button type="button" (click)="close()" data-testid="role-close">
+          {{ (editable() ? 'company.roles.cancel' : 'company.roles.close') | translate }}
+        </button>
+      </div>
+    </form>
+  }
+</section>

@@ -44,6 +44,37 @@ final readonly class DoctrineMembershipRepository implements MembershipRepositor
         return $this->entityManager->getRepository(Membership::class)->findOneBy(['user' => $userId, 'company' => $companyId]);
     }
 
+    public function countByRole(Uuid $companyId): array
+    {
+        /** @var list<array{roleId: Uuid|string, total: int|string}> $rows */
+        $rows = $this->entityManager->createQuery(
+            'SELECT IDENTITY(m.role) AS roleId, COUNT(m.id) AS total FROM '.Membership::class.' m WHERE m.company = :company GROUP BY m.role',
+        )->setParameter('company', $companyId, 'uuid')->getArrayResult();
+
+        $counts = [];
+        foreach ($rows as $row) {
+            // IDENTITY() on a uuid column hydrates as a Uuid object here, not a string (docs/SPEC.md § 7, paged lists).
+            $counts[(string) $row['roleId']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
+    public function holdersOfRole(Uuid $companyId, Uuid $roleId, int $limit): array
+    {
+        /** @var list<array{email: \Stringable|string}> $rows */
+        $rows = $this->entityManager->createQuery(
+            'SELECT u.email AS email FROM '.Membership::class.' m JOIN m.user u WHERE m.company = :company AND m.role = :role ORDER BY m.createdAt ASC',
+        )
+            ->setParameter('company', $companyId, 'uuid')
+            ->setParameter('role', $roleId, 'uuid')
+            ->setMaxResults($limit)
+            ->getArrayResult();
+
+        // The column carries a custom `email` type, so it hydrates as the value object rather than as a string.
+        return array_map(static fn (array $row): string => (string) $row['email'], $rows);
+    }
+
     public function save(Membership $membership): void
     {
         $this->entityManager->persist($membership);

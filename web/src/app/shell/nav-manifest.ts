@@ -126,6 +126,14 @@ export const SETTINGS_NAV: readonly NavEntry[] = [
     permission: 'user.read',
   },
   {
+    key: 'roles',
+    labelKey: 'nav.roles',
+    icon: 'admin_panel_settings',
+    route: '/company/roles',
+    section: 'team',
+    permission: 'company.settings',
+  },
+  {
     key: 'custom-fields',
     labelKey: 'nav.custom_fields',
     icon: 'dynamic_form',

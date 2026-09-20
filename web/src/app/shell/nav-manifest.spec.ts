@@ -154,7 +154,7 @@ describe('the navigation manifest', () => {
         ],
       ],
       ['fiscal', ['taxes', 'units']],
-      ['team', ['members']],
+      ['team', ['members', 'roles']],
       ['customisation', ['custom-fields', 'modules']],
     ]);
     expect(SETTINGS_NAV.every((entry) => entry.permission !== undefined)).toBe(true);

@@ -129,6 +129,58 @@
     "admin": "administrateur",
     "member": "membre"
   },
+  "permissions": {
+    "company": {
+      "read": "Voir la société",
+      "settings": "Modifier les paramètres de la société"
+    },
+    "customer": {
+      "read": "Voir les clients",
+      "write": "Créer et modifier les clients"
+    },
+    "delivery_note": {
+      "read": "Voir les bons de livraison",
+      "write": "Créer et modifier les bons de livraison",
+      "validate": "Valider un bon de livraison"
+    },
+    "expense": {
+      "read": "Voir les dépenses",
+      "write": "Créer et modifier les dépenses"
+    },
+    "fiscal": {
+      "read": "Voir les paramètres fiscaux",
+      "write": "Modifier les paramètres fiscaux"
+    },
+    "invoice": {
+      "read": "Voir les factures",
+      "write": "Créer et modifier les brouillons",
+      "issue": "Émettre une facture"
+    },
+    "payment": {
+      "write": "Enregistrer et supprimer les règlements"
+    },
+    "product": {
+      "read": "Voir les produits",
+      "write": "Créer et modifier les produits"
+    },
+    "stock": {
+      "read": "Voir le stock",
+      "write": "Enregistrer les mouvements de stock"
+    },
+    "user": {
+      "read": "Voir les membres",
+      "write": "Inviter et retirer des membres"
+    },
+    "vendor": {
+      "read": "Voir les fournisseurs",
+      "write": "Créer et modifier les fournisseurs"
+    },
+    "groups": {
+      "company": "Société",
+      "members": "Équipe",
+      "fiscal": "Fiscalité"
+    }
+  },
   "members": {
     "title": "Membres",
     "of": "Entreprise {{company}}",
@@ -342,6 +394,34 @@
         "invalid": "Le changement a été refusé."
       }
     },
+    "roles": {
+      "title": "Rôles",
+      "intro": "Ce que chaque rôle a le droit de faire. Les trois rôles fournis avec le produit se consultent mais ne se modifient pas ; créez les vôtres pour votre organisation.",
+      "no_company": "Choisissez une société pour gérer ses rôles.",
+      "built_in": "fourni",
+      "member_count": "{{count}} membre(s)",
+      "view": "Consulter",
+      "edit": "Modifier",
+      "delete": "Supprimer le rôle",
+      "new": "Créer un rôle",
+      "editing": "Rôle « {{name}} »",
+      "name": "Nom du rôle",
+      "everything": "Le propriétaire a tous les droits, y compris ceux ajoutés par les futures versions.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "close": "Fermer",
+      "saved": "Rôle enregistré",
+      "deleted": "Rôle supprimé",
+      "errors": {
+        "network": "Le serveur est injoignable. Réessayez.",
+        "not_found": "Ce rôle n'existe pas.",
+        "name_taken": "Un rôle porte déjà ce nom dans cette société.",
+        "in_use": "Des membres ont encore ce rôle. Changez leur rôle avant de le supprimer.",
+        "built_in": "Ce rôle est fourni avec le produit et ne peut pas être modifié.",
+        "unknown_permission": "Un des droits cochés n'existe pas. Rechargez la page.",
+        "invalid": "Cet enregistrement a été refusé."
+      }
+    },
     "security": {
       "title": "Sécurité",
       "no_company": "Choisissez une entreprise pour gérer la connexion de ses membres.",
@@ -366,6 +446,7 @@
     "home": "Accueil",
     "modules": "Modules",
     "members": "Membres",
+    "roles": "Rôles",
     "sections": {
       "main": "Général",
       "company": "Société",

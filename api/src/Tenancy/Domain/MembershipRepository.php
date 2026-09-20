@@ -22,6 +22,24 @@ interface MembershipRepository
     public function ofUserInCompany(Uuid $userId, Uuid $companyId): ?Membership;
 
     /**
+     * How many members of this company hold each role, keyed by the role's RFC 4122 identifier. A role nobody
+     * holds is absent rather than zero; read it with a `?? 0`.
+     *
+     * One query for the whole list: asking per role would be one query per row of the roles screen.
+     *
+     * @return array<string, int>
+     */
+    public function countByRole(Uuid $companyId): array;
+
+    /**
+     * The addresses of the members of this company holding that role, at most $limit of them, oldest first.
+     * A refusal names people rather than counting them, so someone reading it knows whom to move.
+     *
+     * @return list<string>
+     */
+    public function holdersOfRole(Uuid $companyId, Uuid $roleId, int $limit): array;
+
+    /**
      * Whether any company this user belongs to insists on a second factor.
      *
      * A predicate rather than a walk over `ofUser()`, which takes a limit: a cap that quietly stopped short

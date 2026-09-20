@@ -112,7 +112,7 @@ describe('SettingsArea', () => {
         ],
       ],
       ['settings-section-fiscal', 'Fiscalité', ['nav-taxes', 'nav-units']],
-      ['settings-section-team', 'Équipe', ['nav-members']],
+      ['settings-section-team', 'Équipe', ['nav-members', 'nav-roles']],
       ['settings-section-customisation', 'Personnalisation', ['nav-custom-fields', 'nav-modules']],
     ]);
     expect(byTestId('nav-members')?.getAttribute('href')).toBe('/members');
@@ -163,6 +163,8 @@ describe('SettingsArea', () => {
   });
 
   it('shows a member only the settings they may open', async () => {
+    // user.read opens the member list and nothing else: the roles entry sits in the same group but needs
+    // company.settings, so a member sees the group with one entry in it.
     permissions.set(['user.read']);
     const { groups } = await render();
     expect(groups()).toEqual([['settings-section-team', 'Équipe', ['nav-members']]]);

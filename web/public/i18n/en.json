@@ -129,6 +129,58 @@
     "admin": "administrator",
     "member": "member"
   },
+  "permissions": {
+    "company": {
+      "read": "See the company",
+      "settings": "Change the company's settings"
+    },
+    "customer": {
+      "read": "See customers",
+      "write": "Create and edit customers"
+    },
+    "delivery_note": {
+      "read": "See delivery notes",
+      "write": "Create and edit delivery notes",
+      "validate": "Validate a delivery note"
+    },
+    "expense": {
+      "read": "See expenses",
+      "write": "Create and edit expenses"
+    },
+    "fiscal": {
+      "read": "See the fiscal settings",
+      "write": "Change the fiscal settings"
+    },
+    "invoice": {
+      "read": "See invoices",
+      "write": "Create and edit drafts",
+      "issue": "Issue an invoice"
+    },
+    "payment": {
+      "write": "Record and delete payments"
+    },
+    "product": {
+      "read": "See products",
+      "write": "Create and edit products"
+    },
+    "stock": {
+      "read": "See stock",
+      "write": "Record stock movements"
+    },
+    "user": {
+      "read": "See members",
+      "write": "Invite and remove members"
+    },
+    "vendor": {
+      "read": "See vendors",
+      "write": "Create and edit vendors"
+    },
+    "groups": {
+      "company": "Company",
+      "members": "Team",
+      "fiscal": "Fiscal"
+    }
+  },
   "members": {
     "title": "Members",
     "of": "Company {{company}}",
@@ -342,6 +394,34 @@
         "invalid": "The change was refused."
       }
     },
+    "roles": {
+      "title": "Roles",
+      "intro": "What each role is allowed to do. The three roles shipped with the product can be read but not changed; create your own for how you work.",
+      "no_company": "Choose a company to manage its roles.",
+      "built_in": "shipped",
+      "member_count": "{{count}} member(s)",
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete the role",
+      "new": "Create a role",
+      "editing": "Role “{{name}}”",
+      "name": "Role name",
+      "everything": "The owner holds every right there is, including those later releases add.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "close": "Close",
+      "saved": "Role saved",
+      "deleted": "Role deleted",
+      "errors": {
+        "network": "The server cannot be reached. Try again.",
+        "not_found": "No such role.",
+        "name_taken": "This company already has a role with that name.",
+        "in_use": "Members still hold this role. Move them to another one before deleting it.",
+        "built_in": "This role is shipped with the product and cannot be changed.",
+        "unknown_permission": "One of the ticked rights does not exist. Reload the page.",
+        "invalid": "That save was refused."
+      }
+    },
     "security": {
       "title": "Security",
       "no_company": "Choose a company to manage how its members sign in.",
@@ -366,6 +446,7 @@
     "home": "Home",
     "modules": "Modules",
     "members": "Members",
+    "roles": "Roles",
     "sections": {
       "main": "General",
       "company": "Company",

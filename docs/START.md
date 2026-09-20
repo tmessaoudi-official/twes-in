@@ -179,6 +179,19 @@ the membership, the audit rows and the password checks any real member gets — 
 check, which refuses an ordinary word. One browser holds one session, so use a private window or a second profile
 to be two of them at once.
 
+### Roles of your own
+
+The three above ship with the product and are the same in every company: the gear's **Équipe → Rôles** screen shows
+them, and their boxes are readable but locked. A company adds its own beside them — a `barista`, a `cashier` — by
+naming one and ticking what it may do in a matrix grouped by module. The catalogue of permissions is collected from
+the modules themselves, so a module added later brings its own heading with it and nothing has to be listed by hand.
+
+Two refusals are deliberate rather than missing. A role somebody still holds **cannot be deleted**: the screen names
+who holds it and asks you to move them first, because deleting it quietly would change what those people may do and
+nobody would notice until it bit. And a custom role sits **below `member`** in the order that decides who may grant
+and remove whom, so it never grants a role to anyone, whatever it is ticked for; that is fail-closed on purpose and
+"a manager who may hire" is its own decision, not yet taken.
+
 To see a refusal rather than read about it: sign in as `member@twes.local`, open any invoice and look for
 **Émettre** — it is not there — then sign in as `admin@twes.local` and it is.
 
