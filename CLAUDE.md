@@ -243,3 +243,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `dependency-licences.php` alone: running that one and calling the job green put a red on master (2026-09-17).
 - The images build from the WORKING TREE (`COPY api/ ./`), untracked files included: proving a bring-up from a dirty
   tree tests the work in progress, not HEAD. Prove it from `git worktree add <tmp> HEAD` (2026-09-19, `ImportExport/` WIP).
+- php-cs-fixer rewrites a `/** @var */` above a `static $x = []` inside a method into `/* @var */`, and PHPStan then
+  ignores it and reports `return.type` on what the method returns. Cache in a typed `private static array` property
+  instead of a static variable (2026-09-20).
+- `web/public/i18n/{fr,en}.json` keys are NOT alphabetical — that order is deliberate. Append a new section and assert
+  the rest is unchanged by comparing the PARSED structures; sorting them produces a 2000-line diff of pure reordering
+  that hides the 80 lines actually added (2026-09-20, same class as /stack's `jq … | unique` lesson).
