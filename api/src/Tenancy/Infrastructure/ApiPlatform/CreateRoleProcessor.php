@@ -29,7 +29,7 @@ final readonly class CreateRoleProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
         try {
-            return RoleResource::of($this->roles->create($company, $data->name, $data->permissions));
+            return RoleResource::of($this->roles->create($company, $data->name, $data->permissions, $this->guard->account()->getId()));
         } catch (RoleNameTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (UnknownPermission $refused) {

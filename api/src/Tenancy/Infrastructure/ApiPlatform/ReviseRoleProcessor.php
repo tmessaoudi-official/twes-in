@@ -37,6 +37,7 @@ final readonly class ReviseRoleProcessor implements ProcessorInterface
                 CompanyPath::identifier($uriVariables, 'roleId'),
                 $data->name,
                 $data->permissions,
+                $this->guard->account()->getId(),
             ));
         } catch (RoleNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);

@@ -89,6 +89,68 @@ final class RolesTest extends ApiTestCase
         self::assertNotContains('server', array_column($this->jsonList(), 'name'));
     }
 
+    public function testEveryChangeToARoleIsAudited(): void
+    {
+        // A role is what decides who may do what, so it is the last thing that should change unrecorded. The audit
+        // row is also what an open screen hears: DoctrineAuditTrail stages each entry as a live change whose kind is
+        // the entity type, which is why roles-page listens for `role` (docs/SPEC.md § 7, 2026-09-17).
+        $this->signedIn(['company.settings']);
+
+        $this->postJson($this->path(), ['name' => 'waiter', 'permissions' => ['customer.read']]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $created = $this->json();
+        self::assertIsString($created['id']);
+
+        $this->sendJson('PUT', $this->path($created['id']), ['name' => 'server', 'permissions' => ['product.read']]);
+        self::assertResponseIsSuccessful();
+        $this->sendJson('DELETE', $this->path($created['id']));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+
+        // The SET of actions, not their order: audit_log.at is a timestamp(0), so three requests inside one second
+        // tie and the order becomes whatever the tie-break gives. Asserting the sequence passed or failed by the
+        // second the test happened to run in, which is a flake, not a guarantee.
+        $rows = $this->em()->getConnection()->fetchAllAssociative(
+            "SELECT action, changes, actor_user_id FROM audit_log WHERE entity_type = 'role'",
+        );
+        $actions = array_column($rows, 'action');
+        sort($actions);
+        self::assertSame(
+            ['role.created', 'role.deleted', 'role.revised'],
+            $actions,
+            'creating, revising and deleting a role each leave a row',
+        );
+
+        foreach ($rows as $row) {
+            self::assertNotNull($row['actor_user_id'], 'the row says who did it, or it settles nothing');
+        }
+
+        // What the role was called and what it then granted: a row saying only "revised" cannot answer the question
+        // an audit is read to answer, which is what somebody was allowed to do on a given day.
+        $byAction = array_column($rows, null, 'action');
+        $revised = $this->changesOf($byAction['role.revised']);
+        self::assertSame('server', $revised['name']);
+        self::assertSame(['product.read'], $revised['permissions']);
+        $deleted = $this->changesOf($byAction['role.deleted']);
+        self::assertSame('server', $deleted['name'], 'the name is in the row, because the role itself is gone');
+    }
+
+    /**
+     * The `changes` column of one audit row, as the array it holds.
+     *
+     * @param array<string, mixed> $row
+     *
+     * @return array<mixed> as json_decode gives it: the keys are whatever the column holds, not a promise
+     */
+    private function changesOf(array $row): array
+    {
+        $changes = $row['changes'];
+        self::assertIsString($changes, 'the column holds JSON text');
+        $decoded = json_decode($changes, true);
+        self::assertIsArray($decoded);
+
+        return $decoded;
+    }
+
     public function testABuiltInRoleIsNeverEditedOrDeleted(): void
     {
         $this->signedIn(['company.settings']);

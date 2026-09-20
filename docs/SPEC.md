@@ -788,6 +788,22 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-20 14:20] AGREED: **a role somebody holds is refused, not reassigned, and a custom role ranks below `member`.** Both were asked at the row 104 gate and both keep what the code already does, which is why they are recorded rather than built. `membership.role_id` is `NOT NULL` with no `ON DELETE`, so deleting a held role was going to be a foreign-key error however it was dressed; the refusal now names up to five holders and asks for them to be moved, because the alternative — quietly moving them to another role — is a demotion, or, if the custom role was wider than `member`, a promotion, and neither is something anyone would notice until it bit. On rank: `RoleBounds::rank()` already answers `0` for any name that is not owner, admin or member, so a custom role's holder grants nobody anything even holding `user.write`, and every admin may remove them. That is fail-closed and it is kept deliberately — **it also means a coffeeshop "manager" cannot hire a "waiter"**, which is the developer's own case, and the right moment to answer it is after the matrix has been used, not while guessing at it. Narrowing a permission model later is much harder than widening one.
 - [2026-09-20 14:20] AGREED: **permission strings are the API's, the words a person reads are the SPA's, and a gate ties them together.** Every other string a person reads in the product lives in `web/public/i18n/`, and a permission label is no different; the API's own translations stay what the API itself emits (mail, fiscal, PDF). The risk that creates is real and is closed rather than argued away: a permission added to a module manifest is one line, and nothing would have warned that the roles screen then draws a raw `stock.write` where a sentence belongs. `scripts/gates/permission-labels.sh` discovers the strings from the `*Permission` classes, checks each has a non-blank label in both languages, skips the platform family a company never grants, and carries a floor so a discovery pattern that stops matching reds instead of comparing two empty sets.
 
+- [2026-09-20 15:30] AGREED: **every write to a role is audited, and that is also how the screen hears it.** Found at
+  row 104's end-of-goal review: `ManageRoles` recorded nothing, which was two defects wearing one cause. A role is the
+  object that decides who may do what, so it is the last one that should change unrecorded — and `DoctrineAuditTrail`
+  stages each entry as a live change whose kind is the entity type, so with no entry the `reloadOn(['role', …])` the
+  roles page already carried was permanently dead code with nothing to report it. The row carries the name and the
+  permissions, not just the verb, because "revised" alone cannot answer the question an audit is read to answer; the
+  delete is recorded before the row goes, since afterwards that content exists nowhere. Each write runs in a
+  transaction, as the sibling use cases do.
+- [2026-09-20 15:30] AGREED: **a gate checks the branch as well as the leaves.** `permission-labels.sh` passed green
+  while `modules.invoices` and `modules.expenses` — the headings over the two biggest groups in the matrix — were raw
+  dotted keys, because the gate enumerated the permission labels and not the group headings above them. It now checks
+  both. The follow-up is the sharper lesson: pointed at the `KnownPermissions` PORT, whose file exists and declares no
+  groups, the discovery silently lost three headings and still read as a pass — the floor caught it only because it
+  sat above the number the module half alone produces. A discovery input that names a file must red when the file
+  yields nothing, and a floor set to exactly what currently passes is not a floor.
+
 ## 8. Status
 
 <!-- progress-block v1 -->

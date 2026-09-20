@@ -440,7 +440,9 @@
     "delivery_notes": "Bons de livraison",
     "products": "Produits",
     "inventory": "Stock",
-    "vendors": "Fournisseurs"
+    "vendors": "Fournisseurs",
+    "expenses": "Dépenses",
+    "invoices": "Factures"
   },
   "nav": {
     "home": "Accueil",

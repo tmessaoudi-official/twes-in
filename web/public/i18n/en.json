@@ -440,7 +440,9 @@
     "delivery_notes": "Delivery notes",
     "products": "Products",
     "inventory": "Inventory",
-    "vendors": "Vendors"
+    "vendors": "Vendors",
+    "expenses": "Expenses",
+    "invoices": "Invoices"
   },
   "nav": {
     "home": "Home",

@@ -30,7 +30,7 @@ final readonly class DeleteRoleProcessor implements ProcessorInterface
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), CompanyProfileResource::WRITE_PERMISSION);
 
         try {
-            $this->roles->delete($company, CompanyPath::identifier($uriVariables, 'roleId'));
+            $this->roles->delete($company, CompanyPath::identifier($uriVariables, 'roleId'), $this->guard->account()->getId());
         } catch (RoleNotFound $missing) {
             throw new NotFoundHttpException($missing->getMessage(), $missing);
         } catch (RoleNotEditable $refused) {

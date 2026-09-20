@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace App\Tenancy\Application\Role;
 
+use App\Audit\Application\AuditEntry;
+use App\Audit\Application\AuditTrail;
+use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\MembershipRepository;
@@ -27,9 +30,19 @@ use Symfony\Component\Uid\Uuid;
  * holds is refused rather than deleted, naming who holds it: `membership.role_id` is NOT NULL with no ON DELETE,
  * so the alternative is a foreign-key error, and the alternative to *that* is quietly moving people to another
  * role, which is a demotion or a promotion nobody would notice (developer ruling, 2026-09-20).
+ *
+ * Every write is audited, and the row carries the name and the permissions rather than just the verb: a role is
+ * what decides who may do what, so "revised" alone cannot answer the question an audit is read to answer. The audit
+ * row is also how an open screen hears the change — `DoctrineAuditTrail` stages each entry as a live change whose
+ * kind is the entity type, which is the `role` the roles page listens for (docs/SPEC.md § 7, 2026-09-17).
  */
 final readonly class ManageRoles
 {
+    public const string ENTITY_TYPE = 'role';
+    public const string CREATED = 'role.created';
+    public const string REVISED = 'role.revised';
+    public const string DELETED = 'role.deleted';
+
     /** Enough names for a refusal to be useful without becoming a directory of the company. */
     private const int NAMED_HOLDERS = 5;
 
@@ -37,6 +50,8 @@ final readonly class ManageRoles
         private RoleRepository $roles,
         private MembershipRepository $memberships,
         private KnownPermissions $permissions,
+        private AuditTrail $audit,
+        private Transactions $transactions,
     ) {
     }
 
@@ -64,15 +79,18 @@ final readonly class ManageRoles
      * @throws RoleNameTaken
      * @throws UnknownPermission
      */
-    public function create(Company $company, string $name, array $permissions): RoleView
+    public function create(Company $company, string $name, array $permissions, ?Uuid $actorUserId): RoleView
     {
-        $name = $this->cleanName($company, $name);
-        $this->assertKnown($permissions);
+        return $this->transactions->run(function () use ($company, $name, $permissions, $actorUserId): RoleView {
+            $name = $this->cleanName($company, $name);
+            $this->assertKnown($permissions);
 
-        $role = new Role($name, $permissions, $company);
-        $this->roles->save($role);
+            $role = new Role($name, $permissions, $company);
+            $this->roles->save($role);
+            $this->record($company, $role, self::CREATED, $actorUserId);
 
-        return new RoleView($role->getId()->toRfc4122(), $role->getName(), false, $role->getPermissions(), false, 0);
+            return new RoleView($role->getId()->toRfc4122(), $role->getName(), false, $role->getPermissions(), false, 0);
+        });
     }
 
     /**
@@ -83,24 +101,27 @@ final readonly class ManageRoles
      * @throws RoleNameTaken
      * @throws UnknownPermission
      */
-    public function revise(Company $company, Uuid $roleId, string $name, array $permissions): RoleView
+    public function revise(Company $company, Uuid $roleId, string $name, array $permissions, ?Uuid $actorUserId): RoleView
     {
-        $role = $this->editable($company, $roleId);
-        $name = $this->cleanName($company, $name, $roleId);
-        $this->assertKnown($permissions);
+        return $this->transactions->run(function () use ($company, $roleId, $name, $permissions, $actorUserId): RoleView {
+            $role = $this->editable($company, $roleId);
+            $name = $this->cleanName($company, $name, $roleId);
+            $this->assertKnown($permissions);
 
-        $role->rename($name);
-        $role->redefine($permissions);
-        $this->roles->save($role);
+            $role->rename($name);
+            $role->redefine($permissions);
+            $this->roles->save($role);
+            $this->record($company, $role, self::REVISED, $actorUserId);
 
-        return new RoleView(
-            $role->getId()->toRfc4122(),
-            $role->getName(),
-            false,
-            $role->getPermissions(),
-            false,
-            $this->memberships->countByRole($company->getId())[$role->getId()->toRfc4122()] ?? 0,
-        );
+            return new RoleView(
+                $role->getId()->toRfc4122(),
+                $role->getName(),
+                false,
+                $role->getPermissions(),
+                false,
+                $this->memberships->countByRole($company->getId())[$role->getId()->toRfc4122()] ?? 0,
+            );
+        });
     }
 
     /**
@@ -108,18 +129,35 @@ final readonly class ManageRoles
      * @throws RoleNotEditable
      * @throws RoleInUse
      */
-    public function delete(Company $company, Uuid $roleId): void
+    public function delete(Company $company, Uuid $roleId, ?Uuid $actorUserId): void
     {
-        $role = $this->editable($company, $roleId);
+        $this->transactions->run(function () use ($company, $roleId, $actorUserId): void {
+            $role = $this->editable($company, $roleId);
 
-        $holders = $this->memberships->holdersOfRole($company->getId(), $roleId, self::NAMED_HOLDERS + 1);
-        if ([] !== $holders) {
-            $named = \array_slice($holders, 0, self::NAMED_HOLDERS);
-            $more = \count($holders) > self::NAMED_HOLDERS ? ' and others' : '';
-            throw new RoleInUse(\sprintf('The %s role is held by %s%s. Move them to another role before deleting it.', $role->getName(), implode(', ', $named), $more));
-        }
+            $holders = $this->memberships->holdersOfRole($company->getId(), $roleId, self::NAMED_HOLDERS + 1);
+            if ([] !== $holders) {
+                $named = \array_slice($holders, 0, self::NAMED_HOLDERS);
+                $more = \count($holders) > self::NAMED_HOLDERS ? ' and others' : '';
+                throw new RoleInUse(\sprintf('The %s role is held by %s%s. Move them to another role before deleting it.', $role->getName(), implode(', ', $named), $more));
+            }
 
-        $this->roles->remove($role);
+            // Recorded before the row goes: afterwards the name and the permissions exist nowhere else, and they are
+            // the whole content of the question "what could somebody with this role do?".
+            $this->record($company, $role, self::DELETED, $actorUserId);
+            $this->roles->remove($role);
+        });
+    }
+
+    private function record(Company $company, Role $role, string $action, ?Uuid $actorUserId): void
+    {
+        $this->audit->record(new AuditEntry(
+            self::ENTITY_TYPE,
+            $role->getId(),
+            $action,
+            $actorUserId,
+            ['name' => $role->getName(), 'permissions' => $role->getPermissions()],
+            $company->getId(),
+        ));
     }
 
     /**

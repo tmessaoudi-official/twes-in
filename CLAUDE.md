@@ -249,3 +249,15 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - `web/public/i18n/{fr,en}.json` keys are NOT alphabetical — that order is deliberate. Append a new section and assert
   the rest is unchanged by comparing the PARSED structures; sorting them produces a 2000-line diff of pure reordering
   that hides the 80 lines actually added (2026-09-20, same class as /stack's `jq … | unique` lesson).
+- A gate that checks the leaves does not check the branch: `permission-labels.sh` passed green while the two biggest
+  group HEADINGS above those labels were raw dotted keys. Ask what sits one level up from whatever a new gate
+  enumerates (2026-09-20). Its floor is what then caught the follow-up — the gate read the `KnownPermissions` PORT,
+  whose file exists and holds no groups, so three headings vanished silently; a discovery input that names a file must
+  red when the file yields nothing, and the floor must sit ABOVE what the other half alone produces.
+- `GROUPS` is a bash special variable (the current user's group ids): assigning to it is silently ignored and it
+  expands to a number. A test fixture whose JSON came out as `{1000,...}` was that, not a quoting bug (2026-09-20).
+- `audit_log.at` is a `timestamp(0)`, so several writes inside one second tie: assert the SET of audit actions, never
+  their order, or the case passes or fails by the second it happened to run in (2026-09-20).
+- An audit entry is also the realtime signal — `DoctrineAuditTrail` stages each one as a live change whose kind is the
+  entity type. A use case that records nothing leaves `reloadOn([...])` on its screen permanently dead, with no error
+  anywhere (2026-09-20, `ManageRoles`).
