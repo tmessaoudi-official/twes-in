@@ -108,7 +108,7 @@ describe('ExpensesPage', () => {
     expect(row).toContain('Sotumag');
     expect(row).toContain('TND');
     expect(row).toContain('Comptabilisée');
-    expect(q('expense-open-e1')?.getAttribute('href')).toBe('/expenses/e1');
+    expect(q('list-link-e1')?.getAttribute('href')).toBe('/expenses/e1');
     expect(q('expense-add')?.getAttribute('href')).toBe('/expenses/new');
   });
 
@@ -124,6 +124,6 @@ describe('ExpensesPage', () => {
     auth.hasPermission.mockReturnValue(false);
     await create();
     expect(q('expense-add')).toBeNull();
-    expect(q('expense-open-e1')).not.toBeNull();
+    expect(q('list-link-e1')).not.toBeNull();
   });
 });

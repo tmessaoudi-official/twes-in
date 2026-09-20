@@ -37,15 +37,5 @@
         {{ 'vendors.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
       </app-status-badge>
     </ng-template>
-    <ng-template appDataListRowActions let-row>
-      <a
-        mat-button
-        [routerLink]="['/vendors', row.id]"
-        [attr.data-testid]="'vendor-open-' + row.number"
-        [attr.aria-label]="'vendors.open' | translate: { name: row.name }"
-      >
-        {{ 'vendors.open_short' | translate }}
-      </a>
-    </ng-template>
   </app-data-list>
 </section>

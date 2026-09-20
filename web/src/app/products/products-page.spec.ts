@@ -140,7 +140,7 @@ describe('ProductsPage', () => {
     expect(row).toContain('C62');
     expect(row).toContain('1 250,500');
     expect(row).toContain('Actif');
-    expect(q('product-open-ART-001')?.getAttribute('href')).toBe('/products/p1');
+    expect(q('list-link-p1')?.getAttribute('href')).toBe('/products/p1');
   });
 
   it('reads the page shown and what it names again when products change elsewhere', async () => {

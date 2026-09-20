@@ -43,16 +43,6 @@
           {{ 'customers.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
         </app-status-badge>
       </ng-template>
-      <ng-template appDataListRowActions let-row>
-        <a
-          mat-button
-          [routerLink]="['/customers', row.id]"
-          [attr.data-testid]="'customer-open-' + row.number"
-          [attr.aria-label]="'customers.open' | translate: { name: row.name }"
-        >
-          {{ 'customers.open_short' | translate }}
-        </a>
-      </ng-template>
     </app-data-list>
   </section>
 </app-page-tabs>

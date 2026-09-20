@@ -58,17 +58,5 @@
         <span class="tabular-nums">{{ row.amountDue | amount: scale() }}</span>
       }
     </ng-template>
-    <ng-template appDataListRowActions let-row>
-      <a
-        mat-button
-        [routerLink]="['/invoices', row.id]"
-        [attr.data-testid]="'invoice-open-' + row.id"
-        [attr.aria-label]="
-          'invoices.open' | translate: { number: row.number ?? ('invoices.draft' | translate) }
-        "
-      >
-        {{ 'invoices.open_short' | translate }}
-      </a>
-    </ng-template>
   </app-data-list>
 </section>

@@ -575,7 +575,8 @@
     "view_save": "Save view",
     "view_delete": "Delete the view {{name}}",
     "new_row": "{{count}} new row",
-    "new_rows": "{{count}} new rows"
+    "new_rows": "{{count}} new rows",
+    "more_actions": "More actions"
   },
   "form": {
     "optional": "optional",
@@ -732,8 +733,6 @@
   "customers": {
     "title": "Customers",
     "add": "New customer",
-    "open": "Open {{name}}",
-    "open_short": "Open",
     "none": "No customers yet.",
     "no_company": "Choose a company first.",
     "new_title": "New customer",
@@ -859,8 +858,6 @@
   "invoices": {
     "title": "Invoices",
     "add": "New invoice",
-    "open": "Open {{number}}",
-    "open_short": "Open",
     "none": "No invoices yet.",
     "no_company": "Choose a company first.",
     "new_title": "New invoice",
@@ -1041,8 +1038,6 @@
   "delivery_notes": {
     "title": "Delivery notes",
     "add": "New delivery note",
-    "open": "Open {{number}}",
-    "open_short": "Open",
     "none": "No delivery notes yet.",
     "no_company": "Choose a company first.",
     "new_title": "New delivery note",
@@ -1150,8 +1145,6 @@
   "products": {
     "title": "Products",
     "add": "New product",
-    "open": "Open {{name}}",
-    "open_short": "Open",
     "none": "No products yet.",
     "no_company": "Choose a company first.",
     "new_title": "New product",
@@ -1343,8 +1336,6 @@
   "vendors": {
     "title": "Vendors",
     "add": "New vendor",
-    "open": "Open {{name}}",
-    "open_short": "Open",
     "none": "No vendors yet.",
     "no_company": "Choose a company first.",
     "new_title": "New vendor",
@@ -1400,8 +1391,6 @@
   "expenses": {
     "title": "Expenses",
     "add": "New expense",
-    "open": "Open {{name}}",
-    "open_short": "Open",
     "none": "No expenses yet.",
     "no_company": "Choose a company first.",
     "new_title": "New expense",

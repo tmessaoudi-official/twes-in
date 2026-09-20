@@ -46,16 +46,6 @@
       <ng-template appDataListCell="price" let-row>
         {{ row.unitPriceNet | amount: scale() }}
       </ng-template>
-      <ng-template appDataListRowActions let-row>
-        <a
-          mat-button
-          [routerLink]="['/products', row.id]"
-          [attr.data-testid]="'product-open-' + row.reference"
-          [attr.aria-label]="'products.open' | translate: { name: row.name }"
-        >
-          {{ 'products.open_short' | translate }}
-        </a>
-      </ng-template>
     </app-data-list>
   </section>
 </app-page-tabs>

@@ -121,7 +121,7 @@ describe('VendorsPage', () => {
     expect(q('vendor-FRN-0001')?.querySelector('app-status-badge')?.getAttribute('data-tone')).toBe(
       'neutral',
     );
-    expect(q('vendor-open-FRN-0001')?.getAttribute('href')).toBe('/vendors/v1');
+    expect(q('list-link-v1')?.getAttribute('href')).toBe('/vendors/v1');
   });
 
   it('reads the page shown again when vendors change elsewhere', async () => {
@@ -140,6 +140,6 @@ describe('VendorsPage', () => {
     await settle();
 
     expect(q('vendor-add')).toBeNull();
-    expect(q('vendor-open-FRN-0001')).not.toBeNull();
+    expect(q('list-link-v1')).not.toBeNull();
   });
 });

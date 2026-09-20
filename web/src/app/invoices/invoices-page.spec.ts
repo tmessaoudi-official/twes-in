@@ -163,7 +163,10 @@ describe('InvoicesPage', () => {
     expect(row).toContain('5 950,000');
     expect(row).toContain('Partiellement payée');
     expect(tone('invoice-i1')).toBe('warning');
-    expect(q('invoice-open-i1')?.getAttribute('href')).toBe('/invoices/i1');
+    // The row's number IS the link now; "Ouvrir" is gone (design review finding 1).
+    expect(q('list-link-i1')?.getAttribute('href')).toBe('/invoices/i1');
+    expect(q('list-link-i1')?.textContent).toContain('FAC-2026-00045');
+    expect(q('invoice-open-i1')).toBeNull();
   });
 
   it('shows an issued invoice past its due day as overdue, in the danger tone', () => {

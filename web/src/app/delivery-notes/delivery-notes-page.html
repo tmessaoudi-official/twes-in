@@ -46,18 +46,5 @@
     <ng-template appDataListCell="total" let-row>
       {{ row.total | amount: scale() }}
     </ng-template>
-    <ng-template appDataListRowActions let-row>
-      <a
-        mat-button
-        [routerLink]="['/delivery-notes', row.id]"
-        [attr.data-testid]="'delivery-note-open-' + row.id"
-        [attr.aria-label]="
-          'delivery_notes.open'
-            | translate: { number: row.number ?? ('delivery_notes.draft' | translate) }
-        "
-      >
-        {{ 'delivery_notes.open_short' | translate }}
-      </a>
-    </ng-template>
   </app-data-list>
 </section>

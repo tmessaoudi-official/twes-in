@@ -123,6 +123,62 @@ class ServerHost {
   readonly rowTestId = (row: Customer) => `customer-${row.id}`;
 }
 
+const ran: string[] = [];
+
+/** A list declaring what finding 1 asks for: the row a real link, and its actions declared once. */
+const declared: ListDescriptor<Customer> = {
+  ...descriptor,
+  link: (row) => ['/customers', row.id],
+  actions: [
+    { id: 'call', label: 'c.call', icon: 'call', run: (row) => ran.push(`call:${row.id}`) },
+    {
+      id: 'invoice',
+      label: 'c.invoice',
+      icon: 'receipt',
+      link: (row) => ['/invoices/new', row.id],
+    },
+    {
+      id: 'export',
+      label: 'c.export',
+      icon: 'download',
+      rare: true,
+      run: (row) => ran.push(`export:${row.id}`),
+    },
+    {
+      id: 'archive',
+      label: 'c.archive',
+      icon: 'delete',
+      destructive: true,
+      run: (row) => ran.push(`archive:${row.id}`),
+      shown: (row) => row.status === 'active',
+    },
+  ],
+};
+
+@Component({
+  imports: [DataList, DataListCell],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <app-data-list
+      [descriptor]="descriptor"
+      [rows]="rows()"
+      testId="customers-table"
+      [rowTestId]="rowTestId"
+      emptyKey="c.none"
+      emptyTestId="customers-empty"
+    >
+      <ng-template appDataListCell="name" let-row>
+        {{ row.name }}<b data-testid="name-extra">!</b>
+      </ng-template>
+    </app-data-list>
+  `,
+})
+class DeclaredHost {
+  readonly descriptor = declared;
+  readonly rows = signal<Customer[]>(all.slice(0, 3));
+  readonly rowTestId = (row: Customer) => `customer-${row.id}`;
+}
+
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
@@ -131,6 +187,10 @@ class StaticLoader implements TranslateLoader {
         city: 'City',
         balance: 'Balance',
         status: 'Status',
+        call: 'Call',
+        invoice: 'Invoice',
+        export: 'Export',
+        archive: 'Archive',
         none: 'No customers.',
         active: 'Active',
         archived: 'Archived',
@@ -151,6 +211,8 @@ class StaticLoader implements TranslateLoader {
         view_save: 'Save view',
         view_apply: 'Apply {{name}}',
         view_delete: 'Delete {{name}}',
+        actions: 'Actions',
+        more_actions: 'More actions',
         new_row: '{{count}} new row',
         new_rows: '{{count}} new rows',
       },
@@ -688,6 +750,83 @@ describe('DataList', () => {
 
       expect((q('list-filter') as HTMLInputElement).value).toBe('');
       expect(rowIds()).toContain('n1');
+    });
+  });
+
+  describe('the row as a link and its declared actions', () => {
+    let host: ComponentFixture<DeclaredHost>;
+    const inRow = (id: string, selector: string): HTMLElement | null =>
+      host.nativeElement.querySelector(`[data-testid="customer-${id}"] ${selector}`);
+
+    beforeEach(async () => {
+      ran.length = 0;
+      host = TestBed.createComponent(DeclaredHost);
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+    });
+
+    it('opens the record through a real link on the row, not a click handler', async () => {
+      // Design review finding 1: a real link is what makes a middle click, a copied address and a screen reader's
+      // list of links work. A row that opens on (click) gives none of those.
+      const link = inRow('1', 'a[data-testid="list-link-1"]');
+      expect(link?.tagName).toBe('A');
+      expect(link?.getAttribute('href')).toBe('/customers/1');
+      expect(link?.textContent).toContain('Customer 01');
+      // The link sits on the row's name, the column that cannot be hidden — not on every cell.
+      expect(inRow('1', '[data-testid="list-link-1"]')?.closest('td')?.textContent).toContain(
+        'Customer 01',
+      );
+      expect(host.nativeElement.querySelectorAll('a[data-testid^="list-link-"]')).toHaveLength(3);
+    });
+
+    it('wraps the cell template rather than replacing it, since the naming column usually has one', async () => {
+      // The column that names a record is the one most likely to carry a template (a number beside its type, a
+      // name beside a badge). A link that replaced the cell would silently drop that.
+      const link = inRow('1', 'a[data-testid="list-link-1"]');
+      expect(link?.querySelector('[data-testid="name-extra"]')?.textContent).toBe('!');
+    });
+
+    it('shows the frequent actions as buttons and folds the rest into a menu', async () => {
+      expect(inRow('1', '[data-testid="row-action-call"]')).not.toBeNull();
+      expect(inRow('1', '[data-testid="row-action-invoice"]')).not.toBeNull();
+      // Rare and destructive ones cost no width in every row.
+      expect(inRow('1', '[data-testid="row-action-export"]')).toBeNull();
+      expect(inRow('1', '[data-testid="row-action-archive"]')).toBeNull();
+      expect(inRow('1', '[data-testid="row-more"]')).not.toBeNull();
+
+      (inRow('1', '[data-testid="row-more"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      expect(q('row-menu-export')).not.toBeNull();
+      expect(q('row-menu-archive')).not.toBeNull();
+    });
+
+    it('names each icon button, and runs what it declares', async () => {
+      const call = inRow('2', '[data-testid="row-action-call"]') as HTMLElement;
+      expect(call.getAttribute('aria-label')).toBe('Call');
+      call.click();
+      expect(ran).toEqual(['call:2']);
+
+      // An action that is a navigation is a link, so it behaves like one.
+      const invoice = inRow('2', '[data-testid="row-action-invoice"]') as HTMLElement;
+      expect(invoice.tagName).toBe('A');
+      expect(invoice.getAttribute('href')).toBe('/invoices/new/2');
+    });
+
+    it('leaves out an action the row cannot take', async () => {
+      // Customer 2 is archived, so there is nothing to archive: the entry is absent rather than disabled.
+      (inRow('2', '[data-testid="row-more"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      expect(q('row-menu-archive')).toBeNull();
+      expect(q('row-menu-export')).not.toBeNull();
+    });
+
+    it('keeps a row control from opening the record', async () => {
+      // The row is a link only on its name; a button inside the row must not navigate as well.
+      const call = inRow('1', '[data-testid="row-action-call"]') as HTMLElement;
+      expect(call.closest('a')).toBeNull();
     });
   });
 });

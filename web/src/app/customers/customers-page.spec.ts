@@ -130,7 +130,8 @@ describe('CustomersPage', () => {
     expect(
       q('customer-CLI-0001')?.querySelector('app-status-badge')?.getAttribute('data-tone'),
     ).toBe('neutral');
-    expect(q('customer-open-CLI-0001')?.getAttribute('href')).toBe('/customers/k1');
+    // The row's own name is the link now (design review finding 1).
+    expect(q('list-link-k1')?.getAttribute('href')).toBe('/customers/k1');
   });
 
   it('asks the API for the first page of customers, by number', () => {
@@ -168,6 +169,6 @@ describe('CustomersPage', () => {
     await settle();
 
     expect(q('customer-add')).toBeNull();
-    expect(q('customer-open-CLI-0001')).not.toBeNull();
+    expect(q('list-link-k1')).not.toBeNull();
   });
 });

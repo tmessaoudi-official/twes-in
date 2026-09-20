@@ -26,6 +26,9 @@ const CATEGORY_FIELDS = 'expenses.categories.fields';
 export const EXPENSES_LIST: ListDescriptor<ExpenseRow> = {
   id: 'expenses',
   rowId: (row) => row.id,
+  // The row opens through its naming column, so a middle click and a copied address work
+  // (design review finding 1); the trailing "Ouvrir" is gone.
+  link: (row) => ['/expenses', row.id],
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'date', direction: 'desc' },
   columns: [

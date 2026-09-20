@@ -31,10 +31,11 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatPaginatorModule, type PageEvent } from '@angular/material/paginator';
 import { MatSortModule, type Sort } from '@angular/material/sort';
 import { MatTableModule } from '@angular/material/table';
-import { ActivatedRoute, type Params, Router } from '@angular/router';
+import { ActivatedRoute, type Params, Router, RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
@@ -46,6 +47,7 @@ import type {
   ListQuery,
   ListSort,
   ListView,
+  RowAction,
 } from './list-types';
 import {
   applyFilters,
@@ -118,6 +120,8 @@ const viewState = (query: string, filters: ListFilterValues, layout: ListPrefere
     MatInputModule,
     MatIconModule,
     MatButtonModule,
+    MatMenuModule,
+    RouterLink,
     TranslatePipe,
   ],
   templateUrl: './data-list.html',
@@ -167,10 +171,54 @@ export class DataList<Row> implements OnInit {
   protected readonly columns = computed(() =>
     resolveColumns(this.descriptor(), this.preferences()),
   );
+  /**
+   * The row's declared actions, split the way the trailing column draws them: the frequent ones as buttons, the
+   * rare and the destructive ones behind "⋮" (design review finding 1). Destructive is never a button, whatever
+   * its frequency — a button under the pointer is the wrong place for it.
+   */
+  protected readonly buttonActions = computed(() =>
+    (this.descriptor().actions ?? []).filter(
+      (action) => action.rare !== true && action.destructive !== true,
+    ),
+  );
+  protected readonly menuActions = computed(() =>
+    (this.descriptor().actions ?? []).filter(
+      (action) => action.rare === true || action.destructive === true,
+    ),
+  );
+  /** Whether the row declares anything at all for its trailing column, projected template included. */
+  protected readonly hasRowControls = computed(
+    () => this.actions() !== undefined || (this.descriptor().actions ?? []).length > 0,
+  );
+
+  /**
+   * Which column carries the link that opens the record: the one the list named, else the first that cannot be
+   * hidden — a link a person can hide is a record they can no longer open.
+   */
+  protected readonly linkColumnId = computed(() => {
+    const descriptor = this.descriptor();
+    if (descriptor.link === undefined) return null;
+    return (
+      descriptor.linkColumn ??
+      descriptor.columns.find((column) => column.hideable === false)?.id ??
+      descriptor.columns[0]?.id ??
+      null
+    );
+  });
+
   protected readonly columnIds = computed(() => [
     ...this.columns().map((column) => column.id),
-    ...(this.actions() ? [ACTIONS_COLUMN] : []),
+    ...(this.hasRowControls() ? [ACTIONS_COLUMN] : []),
   ]);
+
+  /** The actions of one row, with those it cannot take left out rather than shown disabled. */
+  protected shownActions(actions: readonly RowAction<Row>[], row: Row): readonly RowAction<Row>[] {
+    return actions.filter((action) => action.shown?.(row) ?? true);
+  }
+
+  protected runAction(action: RowAction<Row>, row: Row): void {
+    action.run?.(row);
+  }
   protected readonly chooser = computed(() =>
     orderColumns(this.descriptor(), this.preferences()).map((column) => ({
       column,

@@ -138,7 +138,7 @@ describe('DeliveryNotesPage', () => {
     expect(row).toContain('Carthage Conseil');
     expect(row).toContain('2 500,000');
     expect(row).toContain('15/09/2026');
-    expect(q('delivery-note-open-n1')?.getAttribute('href')).toBe('/delivery-notes/n1');
+    expect(q('list-link-n1')?.getAttribute('href')).toBe('/delivery-notes/n1');
 
     const draft = q('delivery-note-n2')?.textContent ?? '';
     expect(draft).toContain('Brouillon');

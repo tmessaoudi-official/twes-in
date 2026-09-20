@@ -575,7 +575,8 @@
     "view_save": "Enregistrer la vue",
     "view_delete": "Supprimer la vue {{name}}",
     "new_row": "{{count}} nouvelle ligne",
-    "new_rows": "{{count}} nouvelles lignes"
+    "new_rows": "{{count}} nouvelles lignes",
+    "more_actions": "Autres actions"
   },
   "form": {
     "optional": "facultatif",
@@ -732,8 +733,6 @@
   "customers": {
     "title": "Clients",
     "add": "Nouveau client",
-    "open": "Ouvrir {{name}}",
-    "open_short": "Ouvrir",
     "none": "Aucun client pour l’instant.",
     "no_company": "Choisissez d’abord une entreprise.",
     "new_title": "Nouveau client",
@@ -859,8 +858,6 @@
   "invoices": {
     "title": "Factures",
     "add": "Nouvelle facture",
-    "open": "Ouvrir {{number}}",
-    "open_short": "Ouvrir",
     "none": "Aucune facture pour l'instant.",
     "no_company": "Choisissez d'abord une société.",
     "new_title": "Nouvelle facture",
@@ -1041,8 +1038,6 @@
   "delivery_notes": {
     "title": "Bons de livraison",
     "add": "Nouveau bon de livraison",
-    "open": "Ouvrir {{number}}",
-    "open_short": "Ouvrir",
     "none": "Aucun bon de livraison pour l'instant.",
     "no_company": "Choisissez d'abord une société.",
     "new_title": "Nouveau bon de livraison",
@@ -1150,8 +1145,6 @@
   "products": {
     "title": "Produits",
     "add": "Nouveau produit",
-    "open": "Ouvrir {{name}}",
-    "open_short": "Ouvrir",
     "none": "Aucun produit pour l’instant.",
     "no_company": "Choisissez d’abord une entreprise.",
     "new_title": "Nouveau produit",
@@ -1343,8 +1336,6 @@
   "vendors": {
     "title": "Fournisseurs",
     "add": "Nouveau fournisseur",
-    "open": "Ouvrir {{name}}",
-    "open_short": "Ouvrir",
     "none": "Aucun fournisseur pour l’instant.",
     "no_company": "Choisissez d’abord une entreprise.",
     "new_title": "Nouveau fournisseur",
@@ -1400,8 +1391,6 @@
   "expenses": {
     "title": "Dépenses",
     "add": "Nouvelle dépense",
-    "open": "Ouvrir {{name}}",
-    "open_short": "Ouvrir",
     "none": "Aucune dépense pour l’instant.",
     "no_company": "Choisissez d’abord une société.",
     "new_title": "Nouvelle dépense",

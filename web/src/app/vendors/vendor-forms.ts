@@ -22,6 +22,9 @@ const IDENTIFIER_PREFIX = 'identifier__';
 export const VENDORS_LIST: ListDescriptor<VendorRow> = {
   id: 'vendors',
   rowId: (row) => row.id,
+  // The row opens through its naming column, so a middle click and a copied address work
+  // (design review finding 1); the trailing "Ouvrir" is gone.
+  link: (row) => ['/vendors', row.id],
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'number', direction: 'asc' },
   columns: [

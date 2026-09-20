@@ -40,16 +40,6 @@
           {{ 'expenses.statuses.' + row.status | translate }}
         </app-status-badge>
       </ng-template>
-      <ng-template appDataListRowActions let-row>
-        <a
-          mat-button
-          [routerLink]="['/expenses', row.id]"
-          [attr.data-testid]="'expense-open-' + row.id"
-          [attr.aria-label]="'expenses.open' | translate: { name: row.description }"
-        >
-          {{ 'expenses.open_short' | translate }}
-        </a>
-      </ng-template>
     </app-data-list>
   </section>
 </app-page-tabs>

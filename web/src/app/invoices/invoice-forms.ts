@@ -98,6 +98,9 @@ export function invoiceListRows(invoices: readonly InvoiceRow[], today: string):
 export const INVOICES_LIST: ListDescriptor<InvoiceListRow> = {
   id: 'invoices',
   rowId: (row) => row.id,
+  // The number opens the invoice, so a middle click and a copied address work (design review finding 1). A draft
+  // has no number and its cell shows the word instead, which is what the link then reads.
+  link: (row) => ['/invoices', row.id],
   pageSizes: [25, 50, 100],
   defaultSort: { column: 'issueDate', direction: 'desc' },
   columns: [

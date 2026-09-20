@@ -1221,6 +1221,36 @@ body {
  * A row another tab or person added while the list was open (docs/SPEC.md § 7, 2026-09-17): a line above and below
  * it that fades. Never a background behind its text: a contrast check reading mid-fade would fail on a moment.
  */
+/*
+ * The row as a link, and its actions pinned to the table's right edge (docs/SPEC.md § 7, 2026-09-19 23:16, design
+ * review finding 1: the actions sat PAST that edge in every list, even at 1440 px). The cell is sticky rather than
+ * merely last, so a table wider than its container keeps the actions reachable without scrolling sideways.
+ */
+.twes-row-link {
+  color: inherit;
+  text-decoration: none;
+  /* The row opens on the name; selecting the text of that name must not follow the link. */
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+  }
+}
+
+td.twes-row-actions {
+  position: sticky;
+  right: 0;
+  z-index: 1;
+  background: var(--mat-sys-surface);
+  white-space: nowrap;
+}
+
+th.mat-mdc-header-cell:last-child {
+  position: sticky;
+  right: 0;
+  z-index: 2;
+  background: var(--mat-sys-surface);
+}
+
 tr.twes-row-new > td {
   animation: twes-row-new 2.4s ease-out;
 }
