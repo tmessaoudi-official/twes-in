@@ -141,7 +141,7 @@ describe('ExpenseCategoriesPage', () => {
 
   it('reactivates a category under its parent by its identifier', async () => {
     await create();
-    q('expense-category-edit-Carburant')!.click();
+    q('row-action-edit-k2')!.click();
     await settle();
     (q('field-isActive')!.querySelector('input') as HTMLInputElement).click();
     q('expense-category-save')!.click();
@@ -172,6 +172,6 @@ describe('ExpenseCategoriesPage', () => {
     auth.hasPermission.mockReturnValue(false);
     await create();
     expect(q('expense-category-add')).toBeNull();
-    expect(q('expense-category-edit-Carburant')).toBeNull();
+    expect(q('row-action-edit-k2')).toBeNull();
   });
 });

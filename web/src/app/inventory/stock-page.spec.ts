@@ -171,7 +171,7 @@ describe('StockPage', () => {
   });
 
   it("leads to a product's movements, and to the other stock screens through the tabs", () => {
-    expect(q('stock-movements-ART-1-000')?.getAttribute('href')).toBe(
+    expect(q('row-action-movements-p1:l1')?.getAttribute('href')).toBe(
       '/stock/movements?productId=p1',
     );
     expect(q('stock-locations-tab')?.getAttribute('href')).toBe('/stock/locations');

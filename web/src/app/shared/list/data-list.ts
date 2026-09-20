@@ -12,7 +12,6 @@ import {
   ChangeDetectionStrategy,
   Component,
   computed,
-  contentChild,
   contentChildren,
   DestroyRef,
   Directive,
@@ -61,17 +60,12 @@ import {
   sortRows,
 } from './list-view';
 import { Label } from '../a11y/label';
+import { WINDOW_CLASS } from '../ui/window-class';
 
 /** `<ng-template appDataListCell="columnId" let-row>`: how one column's cell renders instead of its plain value. */
 @Directive({ selector: 'ng-template[appDataListCell]' })
 export class DataListCell {
   readonly column = input.required<string>({ alias: 'appDataListCell' });
-  readonly template = inject<TemplateRef<{ $implicit: unknown }>>(TemplateRef);
-}
-
-/** `<ng-template appDataListRowActions let-row>`: the trailing cell of each row, such as a remove button. */
-@Directive({ selector: 'ng-template[appDataListRowActions]' })
-export class DataListRowActions {
   readonly template = inject<TemplateRef<{ $implicit: unknown }>>(TemplateRef);
 }
 
@@ -146,7 +140,7 @@ export class DataList<Row> implements OnInit {
   readonly queryChange = output<ListQuery>();
 
   private readonly cells = contentChildren(DataListCell);
-  protected readonly actions = contentChild(DataListRowActions);
+  private readonly windowClass = inject(WINDOW_CLASS);
 
   private readonly setting = computed(() => listPreferencesSetting(this.descriptor().id));
   private readonly stored = computed(() => this.settings.value(this.setting()));
@@ -186,10 +180,8 @@ export class DataList<Row> implements OnInit {
       (action) => action.rare === true || action.destructive === true,
     ),
   );
-  /** Whether the row declares anything at all for its trailing column, projected template included. */
-  protected readonly hasRowControls = computed(
-    () => this.actions() !== undefined || (this.descriptor().actions ?? []).length > 0,
-  );
+  /** Whether the row has a trailing column at all: a list that declares no action does not pay for one. */
+  protected readonly hasRowControls = computed(() => (this.descriptor().actions ?? []).length > 0);
 
   /**
    * Which column carries the link that opens the record: the one the list named, else the first that cannot be
@@ -204,6 +196,33 @@ export class DataList<Row> implements OnInit {
       descriptor.columns[0]?.id ??
       null
     );
+  });
+
+  /**
+   * On a phone the list stops being a table (design review finding 1): the same rows, laid out as cards. The
+   * boundary is the shell's own, so a list and the shell cannot disagree about where a phone ends.
+   */
+  protected readonly asCards = computed(() => this.windowClass() === 'compact');
+
+  /**
+   * The column a card leads with: the one carrying the link, else the first that cannot be hidden — a card whose
+   * heading a person could hide is a record they can no longer tell apart.
+   */
+  protected readonly titleColumn = computed(() => {
+    const columns = this.columns();
+    const named = this.linkColumnId();
+    return (
+      columns.find((column) => column.id === named) ??
+      columns.find((column) => column.hideable === false) ??
+      columns[0] ??
+      null
+    );
+  });
+
+  /** What the card lists under its heading: every visible column but the one already in the heading. */
+  protected readonly cardColumns = computed(() => {
+    const title = this.titleColumn();
+    return this.columns().filter((column) => column.id !== title?.id);
   });
 
   protected readonly columnIds = computed(() => [
@@ -303,7 +322,7 @@ export class DataList<Row> implements OnInit {
   protected readonly tableWidth = computed(
     () =>
       this.columns().reduce((sum, column) => sum + this.widthOf(column), 0) +
-      (this.actions() ? ACTIONS_WIDTH : 0),
+      (this.hasRowControls() ? ACTIONS_WIDTH : 0),
   );
 
   private stopResize: (() => void) | null = null;

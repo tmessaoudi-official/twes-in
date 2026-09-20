@@ -36,9 +36,16 @@ export interface RowAction<Row> {
   id: string;
   /** A translation key; the label names the action, and is the accessible name of its icon button. */
   label: string;
+  /**
+   * What the label interpolates, for a label that names its row. A screen reader reads a list of icon buttons one
+   * after another, so "Delete Zone 1" tells somebody which row they are on where eleven identical "Delete" do not.
+   */
+  labelParams?: (row: Row) => Record<string, string>;
   icon: string;
   /** Where it goes, for an action that is a navigation; a `routerLink` array. */
   link?: (row: Row) => unknown[];
+  /** What the link carries in the address beside its path — the movements of THIS product, not of every product. */
+  linkQuery?: (row: Row) => Record<string, string>;
   /** What it does, for an action that is not. Exactly one of `link` and `run` is given. */
   run?: (row: Row) => void;
   /** Folded into the "⋮" menu rather than shown as a button. Destructive actions are always rare. */
@@ -47,6 +54,11 @@ export interface RowAction<Row> {
   destructive?: boolean;
   /** Hidden for a row it cannot apply to — a paid invoice has nothing to pay. */
   shown?: (row: Row) => boolean;
+  /**
+   * Offered but refused for now: a save in flight, a row another person is changing. Distinct from `shown` on
+   * purpose — a control that disappears while something is saving is a control a person cannot learn.
+   */
+  disabled?: (row: Row) => boolean;
 }
 
 export interface ListDescriptor<Row> {

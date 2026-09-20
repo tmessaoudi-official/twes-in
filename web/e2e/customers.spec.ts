@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
+import { rowAction } from './rows';
 
 // G4 through the real stack: in the seeded Tunisian company, the owner creates a customer group, gives it its own
 // payment terms, files a business customer in it and finds the terms inherited on the customer, then adds a contact.
@@ -72,7 +73,7 @@ test("a customer in a group inherits the group's payment terms and gets a contac
     await page.getByTestId('customer-group-save').click();
     await expect(page.getByTestId(`customer-group-${groupName}`)).toBeVisible();
 
-    await page.getByTestId(`customer-group-edit-${groupName}`).click();
+    await rowAction(page, `customer-group-${groupName}`, 'edit').click();
     await expect(page.getByTestId(TERMS)).toBeVisible();
     await page.getByTestId(TERMS).fill('45');
     await page.getByTestId('party-defaults-save').click();

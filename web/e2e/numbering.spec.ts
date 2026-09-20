@@ -3,6 +3,7 @@ import { expect, type Page, test } from '@playwright/test';
 import { signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
+import { rowAction } from './rows';
 
 // G3b through the real stack: the seeded Tunisian company starts with its default establishment, coded the way its
 // preset says, and a numbering series per document type on it. The owner changes how invoices are numbered, sees the
@@ -64,7 +65,7 @@ test('the owner reformats invoices and sees the next number before saving', asyn
     expect(await wcagViolations(page)).toEqual([]);
 
     await page.goto('/company/numbering');
-    await page.getByTestId(`series-edit-${code}-invoice`).click();
+    await rowAction(page, `series-${code}-invoice`, 'edit').click();
     await page.getByTestId('field-format').fill('FAC-{EST}-{YY}-{SEQ:4}');
     await expect(page.getByTestId('series-preview')).toContainText(
       new RegExp(`FAC-${code}-\\d{2}-${next}`),

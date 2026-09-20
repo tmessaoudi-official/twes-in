@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListQuery } from '../shared/list/list-types';
 import { VENDORS_LIST, vendorSearch } from './vendor-forms';
@@ -29,7 +29,6 @@ import type { VendorRow, VendorSearch } from './vendors-types';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     StatusBadge,
   ],
   templateUrl: './vendors-page.html',

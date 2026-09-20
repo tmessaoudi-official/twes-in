@@ -72,6 +72,12 @@ describe('CustomerGroupsPage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  // A menu opens in the CDK overlay, which hangs off the body rather than the component.
+  const inMenu = (testId: string): HTMLElement | null =>
+    document.body.querySelector(
+      `.cdk-overlay-container [data-testid="${testId}"]`,
+    ) as HTMLElement | null;
+
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -117,6 +123,10 @@ describe('CustomerGroupsPage', () => {
     await settle();
   });
 
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
   it('lists the groups with how many customers each holds', () => {
     expect(facade.loadGroups).toHaveBeenCalledWith('c1');
     expect(q('customer-group-Grossistes')?.textContent).toContain('3');
@@ -138,7 +148,7 @@ describe('CustomerGroupsPage', () => {
   });
 
   it('renames a group and deletes one by its identifier', async () => {
-    q('customer-group-edit-Grossistes')!.click();
+    q('row-action-edit-g1')!.click();
     await settle();
     expect(partySettings.load).toHaveBeenCalledWith('c1', { customerGroupId: 'g1' });
     type('field-name', 'Grossistes TN');
@@ -149,7 +159,10 @@ describe('CustomerGroupsPage', () => {
       description: 'Remise 5 %',
     });
 
-    q('customer-group-delete-Grossistes')!.click();
+    // Deleting is destructive, so it sits behind "⋮" rather than under the pointer.
+    q('row-more-g1')!.click();
+    await settle();
+    inMenu('row-menu-delete-g1')!.click();
     await settle();
     expect(facade.deleteGroup).toHaveBeenCalledWith('c1', 'g1');
   });
@@ -167,6 +180,6 @@ describe('CustomerGroupsPage', () => {
     await settle();
 
     expect(q('customer-group-add')).toBeNull();
-    expect(q('customer-group-delete-Grossistes')).toBeNull();
+    expect(q('row-more-g1')).toBeNull();
   });
 });

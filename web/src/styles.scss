@@ -1251,7 +1251,22 @@ th.mat-mdc-header-cell:last-child {
   background: var(--mat-sys-surface);
 }
 
-tr.twes-row-new > td {
+/*
+ * A row as a card, below 600 px. A table that wide is read by scrolling sideways, which is how the columns that
+ * matter end up off screen; the card shows the same row down the page instead.
+ */
+.twes-list-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--mat-sys-outline-variant);
+  border-radius: var(--mat-sys-corner-medium);
+  background: var(--mat-sys-surface-container-low);
+}
+
+tr.twes-row-new > td,
+li.twes-row-new.twes-list-card {
   animation: twes-row-new 2.4s ease-out;
 }
 

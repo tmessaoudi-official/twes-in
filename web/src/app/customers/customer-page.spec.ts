@@ -153,6 +153,12 @@ describe('CustomerPage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  // A menu opens in the CDK overlay, which hangs off the body rather than the component.
+  const inMenu = (testId: string): HTMLElement | null =>
+    document.body.querySelector(
+      `.cdk-overlay-container [data-testid="${testId}"]`,
+    ) as HTMLElement | null;
+
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -209,6 +215,10 @@ describe('CustomerPage', () => {
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
       ],
     });
+  });
+
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
   });
 
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
@@ -376,7 +386,10 @@ describe('CustomerPage', () => {
       ),
     );
 
-    q('contact-remove-p1')!.click();
+    // Removing a contact is destructive, so it sits behind "⋮" rather than under the pointer.
+    q('row-more-p1')!.click();
+    await settle();
+    inMenu('row-menu-remove-p1')!.click();
     await settle();
     await vi.waitFor(() => expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1'));
   });
@@ -427,6 +440,6 @@ describe('CustomerPage', () => {
     expect(q('customer-save')).toBeNull();
     expect((q('field-number') as HTMLInputElement).disabled).toBe(true);
     expect(q('contact-add')).toBeNull();
-    expect(q('contact-remove-p1')).toBeNull();
+    expect(q('row-more-p1')).toBeNull();
   });
 });

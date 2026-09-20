@@ -59,7 +59,7 @@
     }
 
     <app-data-list
-      [descriptor]="list"
+      [descriptor]="list()"
       [rows]="rows()"
       testId="expense-categories-table"
       [rowTestId]="rowTestId"
@@ -70,19 +70,6 @@
         <app-status-badge [tone]="row.isActive ? 'success' : 'neutral'">
           {{ 'expenses.categories.statuses.' + (row.isActive ? 'active' : 'inactive') | translate }}
         </app-status-badge>
-      </ng-template>
-      <ng-template appDataListRowActions let-row>
-        @if (mayWrite()) {
-          <button
-            mat-button
-            type="button"
-            (click)="open(row)"
-            [attr.data-testid]="'expense-category-edit-' + row.name"
-            [attr.aria-label]="'expenses.categories.edit' | translate: { name: row.name }"
-          >
-            {{ 'expenses.categories.edit_short' | translate }}
-          </button>
-        }
       </ng-template>
     </app-data-list>
   </section>

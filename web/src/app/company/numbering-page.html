@@ -50,7 +50,7 @@
   }
 
   <app-data-list
-    [descriptor]="list"
+    [descriptor]="list()"
     [rows]="series()"
     testId="series-table"
     [rowTestId]="rowTestId"
@@ -66,18 +66,5 @@
     <ng-template appDataListCell="preview" let-row>
       <span class="font-mono">{{ row.preview }}</span>
     </ng-template>
-    @if (mayManage()) {
-      <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="edit(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'series-edit-' + row.establishmentCode + '-' + row.documentType"
-        >
-          {{ 'company.numbering.edit' | translate }}
-        </button>
-      </ng-template>
-    }
   </app-data-list>
 </section>

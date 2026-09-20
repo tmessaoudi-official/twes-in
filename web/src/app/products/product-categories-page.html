@@ -69,7 +69,7 @@
     }
 
     <app-data-list
-      [descriptor]="list"
+      [descriptor]="list()"
       [rows]="rows()"
       testId="product-categories-table"
       [rowTestId]="rowTestId"
@@ -77,27 +77,6 @@
       emptyTestId="product-categories-empty"
     >
       @if (mayWrite()) {
-        <ng-template appDataListRowActions let-row>
-          <button
-            mat-button
-            type="button"
-            (click)="open(row)"
-            [disabled]="busy()"
-            [attr.data-testid]="'product-category-edit-' + row.name"
-          >
-            {{ 'products.edit' | translate }}
-          </button>
-          <button
-            mat-button
-            type="button"
-            (click)="remove(row)"
-            [disabled]="busy()"
-            [attr.data-testid]="'product-category-delete-' + row.name"
-            [attr.aria-label]="'products.categories.delete_named' | translate: { name: row.name }"
-          >
-            {{ 'products.categories.delete' | translate }}
-          </button>
-        </ng-template>
       }
     </app-data-list>
   </section>

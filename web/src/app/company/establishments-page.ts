@@ -17,7 +17,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import type { EstablishmentRow } from './company-types';
 import {
   ESTABLISHMENT_LIST,
@@ -37,7 +38,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
   ],
   templateUrl: './establishments-page.html',
@@ -50,7 +50,20 @@ export class EstablishmentsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = ESTABLISHMENT_LIST;
+  /** An establishment is closed through its form rather than deleted, so editing is its one action. */
+  protected readonly list = computed<ListDescriptor<EstablishmentRow>>(() => ({
+    ...ESTABLISHMENT_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'company.establishments.edit',
+        icon: 'edit',
+        run: (row) => this.edit(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayManage(),
+      },
+    ],
+  }));
   protected readonly establishments = this.facade.establishments;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

@@ -18,7 +18,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
@@ -44,7 +45,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
     StatusBadge,
   ],
@@ -59,7 +59,21 @@ export class ExpenseCategoriesPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = EXPENSE_CATEGORIES_LIST;
+  /** A category is retired through its form rather than deleted, so editing is its one action. */
+  protected readonly list = computed<ListDescriptor<ExpenseCategoryListRow>>(() => ({
+    ...EXPENSE_CATEGORIES_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'expenses.categories.edit',
+        labelParams: (row) => ({ name: row.name }),
+        icon: 'edit',
+        run: (row) => this.open(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+    ],
+  }));
   protected readonly rows = computed(() => categoryListRows(this.facade.categories()));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

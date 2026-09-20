@@ -17,7 +17,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import { FiscalFacade } from './fiscal-facade';
 import {
   UNIT_CREATE_FORM,
@@ -38,7 +39,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
   ],
   templateUrl: './fiscal-units-page.html',
@@ -51,7 +51,20 @@ export class FiscalUnitsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = UNIT_LIST;
+  /** A unit is retired through its form rather than deleted, so editing is its one action. */
+  protected readonly list = computed<ListDescriptor<UnitRow>>(() => ({
+    ...UNIT_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'fiscal.edit',
+        icon: 'edit',
+        run: (row) => this.edit(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayManage(),
+      },
+    ],
+  }));
   protected readonly units = this.fiscal.units;
   protected readonly busy = this.fiscal.busy;
   protected readonly error = this.fiscal.error;

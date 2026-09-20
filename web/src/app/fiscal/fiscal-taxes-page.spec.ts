@@ -162,7 +162,7 @@ describe('FiscalTaxesPage', () => {
   });
 
   it('revises a stamp with an amount and no rate, under its own code and family', async () => {
-    q('tax-edit-TIMBRE')!.click();
+    q('row-action-edit-s1')!.click();
     await settle();
 
     expect(q('field-amount')).not.toBeNull();
@@ -219,7 +219,7 @@ describe('FiscalTaxesPage', () => {
     await settle(reader);
 
     expect(reader.nativeElement.querySelector('[data-testid="tax-add"]')).toBeNull();
-    expect(reader.nativeElement.querySelector('[data-testid="tax-edit-TVA19"]')).toBeNull();
+    expect(reader.nativeElement.querySelector('[data-testid="row-action-edit-t1"]')).toBeNull();
     expect(reader.nativeElement.querySelector('[data-testid="tax-TVA19"]')).not.toBeNull();
   });
 });

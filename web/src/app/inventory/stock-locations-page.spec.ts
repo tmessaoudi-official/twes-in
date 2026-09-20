@@ -85,6 +85,12 @@ describe('StockLocationsPage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  // A menu opens in the CDK overlay, which hangs off the body rather than the component.
+  const inMenu = (testId: string): HTMLElement | null =>
+    document.body.querySelector(
+      `.cdk-overlay-container [data-testid="${testId}"]`,
+    ) as HTMLElement | null;
+
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -129,6 +135,10 @@ describe('StockLocationsPage', () => {
     await settle();
   });
 
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
   it('lists the locations by their path and marks the default one', () => {
     expect(facade.loadLocations).toHaveBeenCalledWith('c1');
     expect(q('stock-location-000')?.textContent).toContain('Par défaut');
@@ -170,7 +180,7 @@ describe('StockLocationsPage', () => {
   });
 
   it('renames a location where it sits, and deletes one but never the default', async () => {
-    q('stock-location-edit-Z1')!.click();
+    q('row-action-edit-l2')!.click();
     await settle();
     type('field-name', 'Chambre froide');
     q('stock-location-save')!.click();
@@ -183,8 +193,12 @@ describe('StockLocationsPage', () => {
       name: 'Chambre froide',
     });
 
-    expect(q('stock-location-delete-000')).toBeNull();
-    q('stock-location-delete-Z1')!.click();
+    // The default location has nowhere to move its stock to, so it offers nothing at all rather than refusing;
+    // deleting is destructive, so where it is offered it sits behind "⋮".
+    expect(q('row-more-l1')).toBeNull();
+    q('row-more-l2')!.click();
+    await settle();
+    inMenu('row-menu-delete-l2')!.click();
     await settle();
     expect(facade.deleteLocation).toHaveBeenCalledWith('c1', 'l2');
   });
@@ -202,7 +216,7 @@ describe('StockLocationsPage', () => {
     await settle();
 
     expect(q('stock-location-add')).toBeNull();
-    expect(q('stock-location-edit-Z1')).toBeNull();
-    expect(q('stock-location-delete-Z1')).toBeNull();
+    expect(q('row-action-edit-l2')).toBeNull();
+    expect(q('row-more-l2')).toBeNull();
   });
 });

@@ -51,7 +51,7 @@
   }
 
   <app-data-list
-    [descriptor]="list"
+    [descriptor]="list()"
     [rows]="establishments()"
     testId="establishments-table"
     [rowTestId]="rowTestId"
@@ -61,18 +61,5 @@
     <ng-template appDataListCell="isDefault" let-row>
       {{ (row.isDefault ? 'company.establishments.yes' : 'company.establishments.no') | translate }}
     </ng-template>
-    @if (mayManage()) {
-      <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="edit(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'establishment-edit-' + row.code"
-        >
-          {{ 'company.establishments.edit' | translate }}
-        </button>
-      </ng-template>
-    }
   </app-data-list>
 </section>

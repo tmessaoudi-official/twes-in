@@ -19,7 +19,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
@@ -45,7 +46,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
     StatusBadge,
   ],
@@ -60,7 +60,33 @@ export class StockLocationsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = LOCATIONS_LIST;
+  /**
+   * Editing is what a person came for; deleting is destructive and sits behind "⋮", and the default location has
+   * nothing to delete — the stock has to live somewhere — so the action is absent on it rather than refused.
+   */
+  protected readonly list = computed<ListDescriptor<StockLocationListRow>>(() => ({
+    ...LOCATIONS_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'inventory.edit',
+        icon: 'edit',
+        run: (row) => this.open(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+      {
+        id: 'delete',
+        label: 'inventory.delete_named',
+        labelParams: (row) => ({ name: row.path }),
+        icon: 'delete',
+        destructive: true,
+        run: (row) => void this.remove(row),
+        disabled: () => this.busy(),
+        shown: (row) => this.mayWrite() && !row.isDefault,
+      },
+    ],
+  }));
   protected readonly rows = computed(() => locationListRows(this.facade.locations()));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

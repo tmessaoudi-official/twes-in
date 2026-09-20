@@ -80,7 +80,7 @@
   }
 
   <app-data-list
-    [descriptor]="list"
+    [descriptor]="list()"
     [rows]="fields()"
     testId="custom-fields-table"
     [rowTestId]="rowTestId"
@@ -98,18 +98,5 @@
         {{ 'company.custom_fields.statuses.' + (row.isActive ? 'active' : 'retired') | translate }}
       </app-status-badge>
     </ng-template>
-    @if (mayManage()) {
-      <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="edit(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'custom-field-edit-' + row.key"
-        >
-          {{ 'company.custom_fields.edit' | translate }}
-        </button>
-      </ng-template>
-    }
   </app-data-list>
 </section>

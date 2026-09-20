@@ -14,7 +14,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
 import type { ListQuery } from '../shared/list/list-types';
@@ -42,7 +42,6 @@ import {
     DayPipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     StatusBadge,
   ],
   templateUrl: './delivery-notes-page.html',

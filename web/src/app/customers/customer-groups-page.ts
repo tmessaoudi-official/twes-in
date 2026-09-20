@@ -17,7 +17,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import { DataList, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList } from '../shared/list/data-list';
 import { GROUP_FORM, GROUPS_LIST, groupInput, groupValues } from './customer-forms';
 import { CustomersFacade } from './customers-facade';
 import { PartyDefaults } from './party-defaults';
@@ -35,7 +36,6 @@ import { Feedback } from '../shared/feedback/feedback';
     MatCardModule,
     TranslatePipe,
     DataList,
-    DataListRowActions,
     DescriptorForm,
     PartyDefaults,
   ],
@@ -50,7 +50,30 @@ export class CustomerGroupsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = GROUPS_LIST;
+  /** Editing is what a person came for; deleting a group is destructive and sits behind "⋮". */
+  protected readonly list = computed<ListDescriptor<CustomerGroupRow>>(() => ({
+    ...GROUPS_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'customers.edit',
+        icon: 'edit',
+        run: (row) => this.open(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+      {
+        id: 'delete',
+        label: 'customers.groups.delete_named',
+        labelParams: (row) => ({ name: row.name }),
+        icon: 'delete',
+        destructive: true,
+        run: (row) => void this.remove(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+    ],
+  }));
   protected readonly descriptor = GROUP_FORM;
   protected readonly groups = this.facade.groups;
   protected readonly busy = this.facade.busy;

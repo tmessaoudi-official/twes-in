@@ -20,7 +20,8 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { liveRecord } from '../shared/form/live-record';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import {
   CONTACT_FORM,
   CONTACTS_LIST,
@@ -45,7 +46,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
     PartyDefaults,
     RecordChanged,
@@ -131,7 +131,29 @@ export class CustomerPage {
     return current ? { customerId: current.id } : null;
   });
 
-  protected readonly contactList = CONTACTS_LIST;
+  /** A contact's own actions: editing under the pointer, removing behind "⋮" as everything destructive is. */
+  protected readonly contactList = computed<ListDescriptor<ContactRow>>(() => ({
+    ...CONTACTS_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'customers.edit',
+        icon: 'edit',
+        run: (row) => this.openContact(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+      {
+        id: 'remove',
+        label: 'customers.contacts.remove',
+        icon: 'delete',
+        destructive: true,
+        run: (row) => void this.removeContact(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+    ],
+  }));
   protected readonly contactDescriptor = CONTACT_FORM;
   protected readonly contactTestId = (row: ContactRow): string => `contact-${row.email ?? row.id}`;
   protected readonly contactEditing = signal<ContactRow | 'new' | null>(null);

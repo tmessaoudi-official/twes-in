@@ -83,6 +83,12 @@ describe('ProductCategoriesPage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  // A menu opens in the CDK overlay, which hangs off the body rather than the component.
+  const inMenu = (testId: string): HTMLElement | null =>
+    document.body.querySelector(
+      `.cdk-overlay-container [data-testid="${testId}"]`,
+    ) as HTMLElement | null;
+
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -129,6 +135,10 @@ describe('ProductCategoriesPage', () => {
     await settle();
   });
 
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
   it('lists the categories by their path with what each holds', () => {
     expect(facade.loadCategories).toHaveBeenCalledWith('c1');
     const row = q('product-category-Portables')?.textContent ?? '';
@@ -166,7 +176,7 @@ describe('ProductCategoriesPage', () => {
   });
 
   it('renames a category keeping its parent, and deletes one by its identifier', async () => {
-    q('product-category-edit-Portables')!.click();
+    q('row-action-edit-k2')!.click();
     await settle();
     type('field-name', 'Ordinateurs portables');
     q('product-category-save')!.click();
@@ -176,7 +186,10 @@ describe('ProductCategoriesPage', () => {
       parentId: 'k1',
     });
 
-    q('product-category-delete-Portables')!.click();
+    // Deleting is destructive, so it sits behind "⋮" rather than under the pointer.
+    q('row-more-k2')!.click();
+    await settle();
+    inMenu('row-menu-delete-k2')!.click();
     await settle();
     expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k2');
   });
@@ -188,7 +201,7 @@ describe('ProductCategoriesPage', () => {
     q('product-category-cancel')!.click();
     await settle();
 
-    q('product-category-edit-Portables')!.click();
+    q('row-action-edit-k2')!.click();
     await settle();
     expect(q('article-defaults')).not.toBeNull();
     expect(articleSettings.load).toHaveBeenCalledWith('c1', { productCategoryId: 'k2' });
@@ -207,7 +220,7 @@ describe('ProductCategoriesPage', () => {
     await settle();
 
     expect(q('product-category-add')).toBeNull();
-    expect(q('product-category-edit-Portables')).toBeNull();
-    expect(q('product-category-delete-Portables')).toBeNull();
+    expect(q('row-action-edit-k2')).toBeNull();
+    expect(q('row-more-k2')).toBeNull();
   });
 });

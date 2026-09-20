@@ -34,21 +34,6 @@
            translation key resolves to. -->
       {{ 'roles.' + row.role | translate }}
     </ng-template>
-    @if (mayManage()) {
-      <ng-template appDataListRowActions let-row>
-        @if (row.status === 'joined') {
-          <button
-            mat-button
-            type="button"
-            (click)="remove(row.userId)"
-            [disabled]="busy()"
-            [attr.data-testid]="'remove-' + row.email"
-          >
-            {{ 'members.remove' | translate }}
-          </button>
-        }
-      </ng-template>
-    }
   </app-data-list>
 
   @if (mayManage()) {

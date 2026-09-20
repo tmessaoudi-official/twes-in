@@ -123,7 +123,7 @@ describe('NumberingPage', () => {
   });
 
   it('shows the next number while a format is typed, and says when it cannot number', async () => {
-    q('series-edit-000-delivery_note')!.click();
+    q('row-action-edit-s1')!.click();
     await settle();
     type('field-format', 'BL-{EST}-{SEQ:4}');
     type('field-nextNumber', '12');
@@ -140,7 +140,7 @@ describe('NumberingPage', () => {
   it('keeps where the sequence resumes once documents carry its numbers', async () => {
     series.set([{ ...deliveryNotes, nextNumber: 8, numbered: true, preview: 'BL-2026-00008' }]);
     await settle();
-    q('series-edit-000-delivery_note')!.click();
+    q('row-action-edit-s1')!.click();
     await settle();
 
     expect((q('field-nextNumber') as HTMLInputElement).disabled).toBe(true);
@@ -157,7 +157,7 @@ describe('NumberingPage', () => {
   });
 
   it('revises the series with what was typed', async () => {
-    q('series-edit-000-delivery_note')!.click();
+    q('row-action-edit-s1')!.click();
     await settle();
     type('field-format', 'BL-{EST}-{SEQ:4}');
     type('field-nextNumber', '12');

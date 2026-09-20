@@ -3,6 +3,7 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
+import { rowAction } from './rows';
 
 // G10 inventory through the real stack: in the seeded company, a product made for the run keeps stock; the owner
 // files a location under the default one of the company's default establishment, receives ten pieces there, a
@@ -301,7 +302,7 @@ test('stock received at a location leaves with a validated delivery note and ret
     await find();
     await expect(quantity(row)).toHaveText('10');
 
-    await page.getByTestId(`stock-movements-${reference}-${code}`).click();
+    await rowAction(page, `stock-${reference}-${code}`, 'movements').click();
     await expect(page).toHaveURL(new RegExp(`/stock/movements\\?productId=${fixture.productId}$`));
     const movements = page.getByTestId('stock-movements-table');
     await expect(movements.getByRole('row')).toHaveCount(4);

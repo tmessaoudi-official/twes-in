@@ -802,7 +802,6 @@
       "title": "Customer groups",
       "intro": "Groups sort customers, and what is set on a group applies to every customer in it unless the customer sets its own.",
       "add": "Add a group",
-      "delete": "Delete",
       "delete_named": "Delete {{name}}",
       "saved": "The group was saved.",
       "none": "No group yet.",
@@ -1244,7 +1243,6 @@
     "save": "Save",
     "cancel": "Cancel",
     "edit": "Edit",
-    "delete": "Delete",
     "delete_named": "Delete {{name}}",
     "errors": {
       "network": "The server cannot be reached.",
@@ -1261,7 +1259,6 @@
       "recorded": "The movement was recorded.",
       "none": "No stock yet.",
       "negative": "Negative",
-      "movements_short": "Movements",
       "movements_of": "Movements of {{name}}",
       "fields": {
         "reference": "Reference",
@@ -1472,7 +1469,6 @@
       "top_level": "At the top",
       "active_hint": "An inactive category stays on its expenses but is no longer offered for new ones.",
       "edit": "Edit {{name}}",
-      "edit_short": "Edit",
       "none": "No categories yet.",
       "statuses": {
         "active": "Active",

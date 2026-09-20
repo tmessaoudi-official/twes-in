@@ -14,7 +14,8 @@ import { Session } from '../session/session';
 import { BrowserStorageSettings } from '../settings/browser-storage-settings';
 import { PageMemoryStorage, SETTINGS_STORAGE, SettingsFacade } from '../settings/settings-facade';
 import { listPreferencesSetting, listViewsSetting } from '../settings/settings-registry';
-import { DataList, DataListCell, DataListRowActions } from './data-list';
+import { DataList, DataListCell } from './data-list';
+import { WINDOW_CLASS, type WindowClass } from '../ui/window-class';
 import type { ListDescriptor, ListPreferences, ListQuery, ListView } from './list-types';
 import { NO_LIST_PREFERENCES } from './list-types';
 
@@ -72,7 +73,7 @@ const descriptor: ListDescriptor<Customer> = {
 };
 
 @Component({
-  imports: [DataList, DataListCell, DataListRowActions],
+  imports: [DataList, DataListCell],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-data-list
@@ -85,9 +86,6 @@ const descriptor: ListDescriptor<Customer> = {
     >
       <ng-template appDataListCell="status" let-row>
         <b data-testid="status-cell">{{ row.status === 'active' ? 'ACTIVE' : 'ARCHIVED' }}</b>
-      </ng-template>
-      <ng-template appDataListRowActions let-row>
-        <button type="button" [attr.data-testid]="'open-' + row.id">open</button>
       </ng-template>
     </app-data-list>
   `,
@@ -130,12 +128,19 @@ const declared: ListDescriptor<Customer> = {
   ...descriptor,
   link: (row) => ['/customers', row.id],
   actions: [
-    { id: 'call', label: 'c.call', icon: 'call', run: (row) => ran.push(`call:${row.id}`) },
+    {
+      id: 'call',
+      label: 'c.call',
+      icon: 'call',
+      run: (row) => ran.push(`call:${row.id}`),
+      disabled: (row) => row.id === '3',
+    },
     {
       id: 'invoice',
       label: 'c.invoice',
       icon: 'receipt',
-      link: (row) => ['/invoices/new', row.id],
+      link: () => ['/invoices/new'],
+      linkQuery: (row) => ({ customerId: row.id }),
     },
     {
       id: 'export',
@@ -302,11 +307,11 @@ describe('DataList', () => {
     expect(rowIds()).toEqual(['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']);
   });
 
-  it('renders a cell through the template the screen gave, and the row actions after the columns', () => {
+  it('renders a cell through the template the screen gave, and gives a list without actions no trailing column', () => {
     expect(q('customer-1')?.querySelector('[data-testid="status-cell"]')?.textContent?.trim()).toBe(
       'ACTIVE',
     );
-    expect(q('open-1')).not.toBeNull();
+    expect(q('customer-1')?.querySelector('.twes-row-actions')).toBeNull();
   });
 
   it('narrows the rows as a person types a filter, and says when nothing matches', async () => {
@@ -424,8 +429,9 @@ describe('DataList', () => {
   });
 
   it('keeps the table as wide as its columns, so a narrow screen scrolls the list and not the page', () => {
-    // name, city and status declare no width (160 each), balance declares 120, the actions column is 96.
-    expect(q('customers-table')!.style.minWidth).toBe('696px');
+    // name, city and status declare no width (160 each), balance declares 120; a list that declares no action
+    // has no trailing column and does not pay the 96 px it would cost.
+    expect(q('customers-table')!.style.minWidth).toBe('600px');
   });
 
   it('offers each filter as a group of choices, each saying how many rows it would show', async () => {
@@ -766,6 +772,15 @@ describe('DataList', () => {
       host.detectChanges();
     });
 
+    it('pays for the trailing column only where actions are declared', () => {
+      // The width has to include the actions column, or a table at its minimum width clips the controls it just
+      // pinned to its right edge.
+      expect(
+        (host.nativeElement.querySelector('[data-testid="customers-table"]') as HTMLElement).style
+          .minWidth,
+      ).toBe('696px');
+    });
+
     it('opens the record through a real link on the row, not a click handler', async () => {
       // Design review finding 1: a real link is what makes a middle click, a copied address and a screen reader's
       // list of links work. A row that opens on (click) gives none of those.
@@ -788,45 +803,125 @@ describe('DataList', () => {
     });
 
     it('shows the frequent actions as buttons and folds the rest into a menu', async () => {
-      expect(inRow('1', '[data-testid="row-action-call"]')).not.toBeNull();
-      expect(inRow('1', '[data-testid="row-action-invoice"]')).not.toBeNull();
+      expect(inRow('1', '[data-testid="row-action-call-1"]')).not.toBeNull();
+      expect(inRow('1', '[data-testid="row-action-invoice-1"]')).not.toBeNull();
       // Rare and destructive ones cost no width in every row.
-      expect(inRow('1', '[data-testid="row-action-export"]')).toBeNull();
-      expect(inRow('1', '[data-testid="row-action-archive"]')).toBeNull();
-      expect(inRow('1', '[data-testid="row-more"]')).not.toBeNull();
+      expect(inRow('1', '[data-testid="row-action-export-1"]')).toBeNull();
+      expect(inRow('1', '[data-testid="row-action-archive-1"]')).toBeNull();
+      expect(inRow('1', '[data-testid="row-more-1"]')).not.toBeNull();
 
-      (inRow('1', '[data-testid="row-more"]') as HTMLElement).click();
+      (inRow('1', '[data-testid="row-more-1"]') as HTMLElement).click();
       host.detectChanges();
       await host.whenStable();
-      expect(q('row-menu-export')).not.toBeNull();
-      expect(q('row-menu-archive')).not.toBeNull();
+      expect(q('row-menu-export-1')).not.toBeNull();
+      expect(q('row-menu-archive-1')).not.toBeNull();
     });
 
     it('names each icon button, and runs what it declares', async () => {
-      const call = inRow('2', '[data-testid="row-action-call"]') as HTMLElement;
+      const call = inRow('2', '[data-testid="row-action-call-2"]') as HTMLElement;
       expect(call.getAttribute('aria-label')).toBe('Call');
       call.click();
       expect(ran).toEqual(['call:2']);
 
-      // An action that is a navigation is a link, so it behaves like one.
-      const invoice = inRow('2', '[data-testid="row-action-invoice"]') as HTMLElement;
+      // An action that is a navigation is a link, so it behaves like one — carrying which row it came from,
+      // since the address is what says whose invoice this is.
+      const invoice = inRow('2', '[data-testid="row-action-invoice-2"]') as HTMLElement;
       expect(invoice.tagName).toBe('A');
-      expect(invoice.getAttribute('href')).toBe('/invoices/new/2');
+      expect(invoice.getAttribute('href')).toBe('/invoices/new?customerId=2');
+    });
+
+    it('refuses an action for now without taking it off the screen', async () => {
+      // A control that vanishes while something is saving is a control nobody can learn; `disabled` is the state
+      // for "not now", `shown` for "never here".
+      const call = inRow('3', '[data-testid="row-action-call-3"]') as HTMLButtonElement;
+      expect(call.disabled).toBe(true);
+      call.click();
+      expect(ran).toEqual([]);
     });
 
     it('leaves out an action the row cannot take', async () => {
       // Customer 2 is archived, so there is nothing to archive: the entry is absent rather than disabled.
-      (inRow('2', '[data-testid="row-more"]') as HTMLElement).click();
+      (inRow('2', '[data-testid="row-more-2"]') as HTMLElement).click();
       host.detectChanges();
       await host.whenStable();
-      expect(q('row-menu-archive')).toBeNull();
-      expect(q('row-menu-export')).not.toBeNull();
+      expect(q('row-menu-archive-2')).toBeNull();
+      expect(q('row-menu-export-2')).not.toBeNull();
     });
 
     it('keeps a row control from opening the record', async () => {
       // The row is a link only on its name; a button inside the row must not navigate as well.
-      const call = inRow('1', '[data-testid="row-action-call"]') as HTMLElement;
+      const call = inRow('1', '[data-testid="row-action-call-1"]') as HTMLElement;
       expect(call.closest('a')).toBeNull();
+    });
+  });
+  describe('on a phone, where a table cannot be read', () => {
+    let host: ComponentFixture<DeclaredHost>;
+
+    beforeEach(async () => {
+      ran.length = 0;
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        imports: [DeclaredHost],
+        providers: [
+          provideTranslateService({
+            lang: 'en',
+            loader: provideTranslateLoader(() => new StaticLoader()),
+          }),
+          provideRouter([]),
+          {
+            provide: ActivatedRoute,
+            useValue: { snapshot: { queryParamMap: convertToParamMap({}) } },
+          },
+          { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+          { provide: SettingsFacade, useClass: BrowserStorageSettings },
+          { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+          { provide: Session, useValue: { me: () => ({ user: { id: 'u1' } }) } },
+          { provide: WINDOW_CLASS, useValue: signal<WindowClass>('compact') },
+        ],
+      });
+      host = TestBed.createComponent(DeclaredHost);
+      host.detectChanges();
+      await host.whenStable();
+      host.detectChanges();
+    });
+
+    const card = (id: string): HTMLElement | null =>
+      host.nativeElement.querySelector(`[data-testid="customer-${id}"]`);
+
+    it('lays each row out as a card instead of a table row', () => {
+      // A table 696 px wide in a 390 px window is read by scrolling sideways, which is how the columns that matter
+      // end up off screen. Below 600 px the same rows are cards, one under the other, and nothing scrolls sideways.
+      expect(host.nativeElement.querySelector('table')).toBeNull();
+      expect(host.nativeElement.querySelector('[data-testid="list-cards"]')).not.toBeNull();
+      expect(card('1')?.tagName).not.toBe('TR');
+    });
+
+    it('keeps the row test id, its link and its actions exactly as the table had them', async () => {
+      // Every screen's own specs and scenarios find a row by this id; a phone must not be a second vocabulary.
+      expect(card('1')).not.toBeNull();
+      const link = card('1')!.querySelector('a[data-testid="list-link-1"]') as HTMLElement | null;
+      expect(link?.getAttribute('href')).toBe('/customers/1');
+
+      (card('2')!.querySelector('[data-testid="row-action-call-2"]') as HTMLElement).click();
+      expect(ran).toEqual(['call:2']);
+      expect(card('2')!.querySelector('[data-testid="row-more-2"]')).not.toBeNull();
+    });
+
+    it('names every value it shows, since a card has no header row to read it from', () => {
+      // A cell under a column header needs no label; the same cell in a card does, or "Sfax" says nothing.
+      const pairs = card('1')!.querySelectorAll('[data-testid^="list-card-value-"]');
+      expect(pairs.length).toBeGreaterThan(0);
+      for (const value of Array.from(pairs)) {
+        const id = value.getAttribute('data-testid')!.replace('list-card-value-', '');
+        expect(card('1')!.querySelector(`[data-testid="list-card-label-${id}"]`)).not.toBeNull();
+      }
+    });
+
+    it('leads with the column that names the record, and does not repeat it below', () => {
+      expect(card('1')?.querySelector('[data-testid="list-card-title-1"]')?.textContent).toContain(
+        'Customer 01',
+      );
+      expect(card('1')?.querySelector('[data-testid="list-card-value-name"]')).toBeNull();
     });
   });
 });

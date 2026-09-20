@@ -18,7 +18,8 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import type { NumberingSeriesRow } from './company-types';
 import { SERIES_LIST, seriesChanges, seriesForm, seriesFormValues } from './establishment-forms';
 import { EstablishmentsFacade } from './establishments-facade';
@@ -34,7 +35,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
   ],
   templateUrl: './numbering-page.html',
@@ -47,7 +47,20 @@ export class NumberingPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = SERIES_LIST;
+  /** A series is never removed — it is the history of what was numbered — so editing is its one action. */
+  protected readonly list = computed<ListDescriptor<NumberingSeriesRow>>(() => ({
+    ...SERIES_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'company.numbering.edit',
+        icon: 'edit',
+        run: (row) => this.edit(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayManage(),
+      },
+    ],
+  }));
   protected readonly editing = signal<NumberingSeriesRow | null>(null);
   protected readonly descriptor = computed(() => seriesForm(this.editing()?.numbered ?? false));
   protected readonly series = this.facade.series;

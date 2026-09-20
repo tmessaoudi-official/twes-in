@@ -152,7 +152,7 @@ describe('EstablishmentsPage', () => {
   });
 
   it('revises an establishment by its identifier', async () => {
-    q('establishment-edit-000')!.click();
+    q('row-action-edit-e1')!.click();
     await settle();
     type('field-name', 'Siège social');
     q('establishment-save')!.click();
@@ -168,7 +168,7 @@ describe('EstablishmentsPage', () => {
   it('revises an establishment whose code numbered documents carry, keeping the code', async () => {
     establishments.set([{ ...head, codeLocked: true }]);
     await settle();
-    q('establishment-edit-000')!.click();
+    q('row-action-edit-e1')!.click();
     await settle();
 
     expect((q('field-code') as HTMLInputElement).disabled).toBe(true);
@@ -197,6 +197,6 @@ describe('EstablishmentsPage', () => {
     await settle();
 
     expect(q('establishment-add')).toBeNull();
-    expect(q('establishment-edit-000')).toBeNull();
+    expect(q('row-action-edit-e1')).toBeNull();
   });
 });

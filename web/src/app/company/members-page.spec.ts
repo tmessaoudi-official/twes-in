@@ -210,10 +210,10 @@ describe('MembersPage', () => {
 
     expect(text('member-invited@example.test')).toContain('Invitation en attente');
     expect(
-      fixture.nativeElement.querySelector('[data-testid="remove-invited@example.test"]'),
+      fixture.nativeElement.querySelector('[data-testid="row-more-invited:invited@example.test"]'),
     ).toBeNull();
     expect(
-      fixture.nativeElement.querySelector('[data-testid="remove-owner@example.test"]'),
+      fixture.nativeElement.querySelector('[data-testid="row-more-u1"]'),
     ).not.toBeNull();
   });
 
@@ -233,7 +233,7 @@ describe('MembersPage', () => {
 
     expect(other.nativeElement.querySelector('[data-testid="member-add"]')).toBeNull();
     expect(
-      other.nativeElement.querySelector('[data-testid="remove-owner@example.test"]'),
+      other.nativeElement.querySelector('[data-testid="row-more-u1"]'),
     ).toBeNull();
   });
 

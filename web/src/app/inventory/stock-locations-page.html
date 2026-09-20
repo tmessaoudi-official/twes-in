@@ -61,7 +61,7 @@
     }
 
     <app-data-list
-      [descriptor]="list"
+      [descriptor]="list()"
       [rows]="rows()"
       testId="stock-locations-table"
       [rowTestId]="rowTestId"
@@ -82,29 +82,6 @@
         {{ 'inventory.kinds.' + row.kind | translate }}
       </ng-template>
       @if (mayWrite()) {
-        <ng-template appDataListRowActions let-row>
-          <button
-            mat-button
-            type="button"
-            (click)="open(row)"
-            [disabled]="busy()"
-            [attr.data-testid]="'stock-location-edit-' + row.code"
-          >
-            {{ 'inventory.edit' | translate }}
-          </button>
-          @if (!row.isDefault) {
-            <button
-              mat-button
-              type="button"
-              (click)="remove(row)"
-              [disabled]="busy()"
-              [attr.data-testid]="'stock-location-delete-' + row.code"
-              [attr.aria-label]="'inventory.delete_named' | translate: { name: row.path }"
-            >
-              {{ 'inventory.delete' | translate }}
-            </button>
-          }
-        </ng-template>
       }
     </app-data-list>
   </section>

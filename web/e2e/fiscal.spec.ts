@@ -2,6 +2,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { signIn } from './session';
 import { toast } from './toast';
+import { rowAction } from './rows';
 
 // G3a through the real bundle, nginx, FrankenPHP and PostgreSQL: the seeded company carries its Tunisian preset's
 // taxes, units and customer regimes, and its owner revises one. The revision is undone at the end, because one
@@ -19,7 +20,7 @@ async function stampName(page: Page): Promise<string> {
 }
 
 async function renameStamp(page: Page, name: string): Promise<void> {
-  await page.getByTestId('tax-edit-TIMBRE').click();
+  await rowAction(page, 'tax-TIMBRE', 'edit').click();
   await page.getByTestId('field-name').fill(name);
   await page.getByTestId('tax-save').click();
   await expect(toast(page)).toContainText('La taxe a été enregistrée.');
@@ -42,7 +43,7 @@ test('the seeded company lists its preset taxes and regimes, and its owner revis
   try {
     await expect(page.getByTestId('tax-TIMBRE')).toContainText(renamed);
     // A stamp is an amount per document: its revision form offers an amount and no rate.
-    await page.getByTestId('tax-edit-TIMBRE').click();
+    await rowAction(page, 'tax-TIMBRE', 'edit').click();
     await expect(page.getByTestId('field-amount')).toBeVisible();
     await expect(page.getByTestId('field-rate')).toHaveCount(0);
     await page.getByTestId('tax-cancel').click();

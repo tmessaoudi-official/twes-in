@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   ChangeDetectionStrategy,
   Component,
@@ -56,15 +55,13 @@ import {
   SIDEBAR_SECTIONS,
   visibleEntries,
 } from './nav-manifest';
+import { WINDOW_CLASS } from '../shared/ui/window-class';
 
 /**
  * The window classes of the approved design (docs/SPEC.md § 7, 2026-09-16), as Material 3 draws them: a phone gets a
  * bar of destinations at the bottom and the rest in a drawer, a medium window a rail of icons, and only from 1200 px
  * is there room for labels, which the person may still fold into the rail.
  */
-export type WindowClass = 'compact' | 'medium' | 'expanded';
-const COMPACT = '(max-width: 599.98px)';
-const EXPANDED = '(min-width: 1200px)';
 /** How many destinations the phone's bottom bar holds before the Plus button. */
 const BOTTOM_BAR_DESTINATIONS = 4;
 
@@ -125,20 +122,7 @@ export class AppShell {
   protected readonly schemes: readonly SchemePreference[] = ['auto', 'light', 'dark'];
   protected readonly me = this.auth.me;
   protected readonly signingOut = signal(false);
-  protected readonly windowClass = toSignal(
-    inject(BreakpointObserver)
-      .observe([COMPACT, EXPANDED])
-      .pipe(
-        map((state): WindowClass =>
-          state.breakpoints[COMPACT]
-            ? 'compact'
-            : state.breakpoints[EXPANDED]
-              ? 'expanded'
-              : 'medium',
-        ),
-      ),
-    { initialValue: 'expanded' as WindowClass },
-  );
+  protected readonly windowClass = inject(WINDOW_CLASS);
   protected readonly handset = computed(() => this.windowClass() === 'compact');
   protected readonly sections = computed(() =>
     navSections(this.visible([...CORE_NAV, ...MODULE_NAV, ...DEV_NAV]), SIDEBAR_SECTIONS),

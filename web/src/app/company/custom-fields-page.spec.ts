@@ -172,7 +172,7 @@ describe('CustomFieldsPage', () => {
   });
 
   it('revises a field by its identifier, keeping its key and type', async () => {
-    q('custom-field-edit-sector')!.click();
+    q('row-action-edit-f1')!.click();
     await settle();
     type('field-label', 'Activité');
     q('custom-field-save')!.click();
@@ -198,6 +198,6 @@ describe('CustomFieldsPage', () => {
     await settle();
 
     expect(q('custom-field-add')).toBeNull();
-    expect(q('custom-field-edit-sector')).toBeNull();
+    expect(q('row-action-edit-f1')).toBeNull();
   });
 });

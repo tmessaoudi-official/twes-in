@@ -18,7 +18,7 @@ import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
-import { DataList, DataListRowActions } from '../shared/list/data-list';
+import { DataList } from '../shared/list/data-list';
 import { ArticleDefaults } from './article-defaults';
 import {
   CATEGORIES_LIST,
@@ -32,6 +32,7 @@ import { ProductsFacade } from './products-facade';
 import type { ProductCategoryRow } from './products-types';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { PRODUCTS_TABS } from './products-nav';
+import type { ListDescriptor } from '../shared/list/list-types';
 import { Feedback } from '../shared/feedback/feedback';
 
 /** The tree products are filed in: a category sits under another or at the top, and goes only once empty. */
@@ -43,7 +44,6 @@ import { Feedback } from '../shared/feedback/feedback';
     MatCardModule,
     TranslatePipe,
     DataList,
-    DataListRowActions,
     DescriptorForm,
     ArticleDefaults,
   ],
@@ -58,7 +58,33 @@ export class ProductCategoriesPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = CATEGORIES_LIST;
+  /**
+   * The list with its own actions (design review finding 1): editing is what a person came for, so it is a button;
+   * deleting is destructive, so it sits behind "⋮" whatever its frequency. Both wait on a save in flight rather
+   * than disappearing during one.
+   */
+  protected readonly list = computed<ListDescriptor<ProductCategoryListRow>>(() => ({
+    ...CATEGORIES_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'products.edit',
+        icon: 'edit',
+        run: (row) => this.open(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+      {
+        id: 'delete',
+        label: 'products.categories.delete',
+        icon: 'delete',
+        destructive: true,
+        run: (row) => void this.remove(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayWrite(),
+      },
+    ],
+  }));
   protected readonly rows = computed(() => categoryListRows(this.facade.categories()));
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

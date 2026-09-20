@@ -17,7 +17,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
@@ -91,7 +91,6 @@ export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
   ],
   templateUrl: './members-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -106,7 +105,24 @@ export class MembersPage implements OnInit {
 
   protected readonly roles = this.rolesFacade.roles;
   protected readonly roleLabel = roleLabel;
-  protected readonly list = computed(() => membersList(this.roles()));
+  /**
+   * Removing somebody is destructive, so it sits behind "⋮" rather than under the pointer; an invitation is
+   * withdrawn from where it was sent rather than here, so the action is absent on a row nobody has joined at.
+   */
+  protected readonly list = computed<ListDescriptor<MemberRow>>(() => ({
+    ...membersList(this.roles()),
+    actions: [
+      {
+        id: 'remove',
+        label: 'members.remove',
+        icon: 'person_remove',
+        destructive: true,
+        run: (row) => void this.remove(row.userId),
+        disabled: () => this.busy(),
+        shown: (row) => this.mayManage() && row.status === 'joined',
+      },
+    ],
+  }));
   protected readonly rowTestId = (row: MemberRow): string => `member-${row.email}`;
   protected readonly rows = this.members.members;
   protected readonly busy = this.members.busy;

@@ -15,7 +15,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import type { ListQuery } from '../shared/list/list-types';
 import type { StatusTone } from '../shared/theme/accent-theme';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -43,7 +43,6 @@ import {
     DayPipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     StatusBadge,
   ],
   templateUrl: './invoices-page.html',

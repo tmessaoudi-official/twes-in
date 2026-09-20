@@ -125,7 +125,7 @@ describe('FiscalUnitsPage', () => {
   });
 
   it('revises a unit without offering to change its code', async () => {
-    q('unit-edit-HUR')!.click();
+    q('row-action-edit-u1')!.click();
     await settle();
 
     expect(q('field-code')).toBeNull();

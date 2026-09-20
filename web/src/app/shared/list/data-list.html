@@ -230,167 +230,56 @@
     </div>
   }
 
-  <div class="twes-list-table overflow-x-auto">
-    <table
-      mat-table
-      [dataSource]="page().rows"
-      [trackBy]="trackRow"
-      matSort
-      [matSortActive]="sort()?.column ?? ''"
-      [matSortDirection]="sort()?.direction ?? ''"
-      (matSortChange)="onSort($event)"
-      class="w-full table-fixed"
-      [style.min-width.px]="tableWidth()"
-      [attr.data-testid]="testId()"
-    >
-      @for (column of columns(); track column.id) {
-        <ng-container [matColumnDef]="column.id">
-          <th
-            mat-header-cell
-            *matHeaderCellDef
-            mat-sort-header
-            [disabled]="!column.sortable"
-            [arrowPosition]="column.align === 'end' ? 'before' : 'after'"
-            class="relative"
-            [class]="column.align === 'end' ? '!text-end' : ''"
-            [style.width.px]="widthOf(column)"
-            [attr.data-testid]="'list-header-' + column.id"
-          >
-            {{ column.label | translate }}
-            <span
-              role="separator"
-              aria-orientation="vertical"
-              tabindex="0"
-              [attr.aria-label]="
-                'list.resize_column' | translate: { column: (column.label | translate) }
-              "
-              [attr.aria-valuenow]="widthOf(column)"
-              [attr.aria-valuemin]="minWidth"
-              [attr.aria-valuemax]="maxWidth"
-              class="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-primary focus:outline-none"
-              (click)="$event.stopPropagation()"
-              (keydown)="onResizeKey($event, column)"
-              (pointerdown)="startResize($event, column)"
-              [attr.data-testid]="'list-resize-' + column.id"
-            ></span>
-          </th>
-          <td
-            mat-cell
-            *matCellDef="let row"
-            class="truncate"
-            [class]="column.align === 'end' ? '!text-end tabular-nums' : ''"
-          >
-            <!-- A real link, so a middle click, a copied address and a screen reader's list of links all work; an
-                 (click) on the row gives none of those (design review finding 1). It WRAPS the cell rather than
-                 replacing it, because the column that names a record is usually the one with a template on it. -->
-            @if (column.id === linkColumnId() && descriptor().link; as link) {
-              <a
-                [routerLink]="link(row)"
-                class="twes-row-link"
-                [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
+  @if (asCards()) {
+    <!-- A 696 px table in a 390 px window is read by scrolling sideways, which is how the columns that matter end
+         up off screen. Below 600 px each row is a card instead: the same rows, the same test ids, the same
+         controls, one under the other. -->
+    <ul class="flex flex-col gap-2" data-testid="list-cards">
+      @for (row of page().rows; track trackRow($index, row)) {
+        <li
+          class="twes-list-card"
+          [class.twes-row-new]="isArrived(row)"
+          [attr.data-testid]="testIdOf(row)"
+        >
+          <div class="flex items-start gap-1">
+            <p
+              class="min-w-0 flex-1 font-medium"
+              [attr.data-testid]="'list-card-title-' + descriptor().rowId(row)"
+            >
+              <ng-container
+                *ngTemplateOutlet="cardTitle; context: { $implicit: row, column: titleColumn() }"
+              />
+            </p>
+            @if (hasRowControls()) {
+              <div class="-me-2 -mt-1 shrink-0">
+                <ng-container *ngTemplateOutlet="rowControls; context: { $implicit: row }" />
+              </div>
+            }
+          </div>
+          <dl class="grid grid-cols-[minmax(0,auto)_minmax(0,1fr)] gap-x-3 gap-y-1 text-sm">
+            @for (column of cardColumns(); track column.id) {
+              <dt
+                class="text-on-surface-variant"
+                [attr.data-testid]="'list-card-label-' + column.id"
+              >
+                {{ column.label | translate }}
+              </dt>
+              <dd
+                class="min-w-0 break-words"
+                [class]="column.align === 'end' ? 'tabular-nums' : ''"
+                [attr.data-testid]="'list-card-value-' + column.id"
               >
                 @if (cellTemplates().get(column.id); as template) {
                   <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
                 } @else {
                   {{ column.value(row) }}
                 }
-              </a>
-            } @else if (cellTemplates().get(column.id); as template) {
-              <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
-            } @else {
-              {{ column.value(row) }}
+              </dd>
             }
-          </td>
-        </ng-container>
-      }
-      @if (hasRowControls()) {
-        <ng-container [matColumnDef]="actionsColumn">
-          <th mat-header-cell *matHeaderCellDef [style.width.px]="actionsWidth">
-            <span class="sr-only">{{ 'list.actions' | translate }}</span>
-          </th>
-          <!-- Pinned to the table's right edge: the actions were past it in every list, even at 1440 px. -->
-          <td mat-cell *matCellDef="let row" class="twes-row-actions text-end">
-            @for (action of shownActions(buttonActions(), row); track action.id) {
-              @if (action.link; as link) {
-                <a
-                  mat-icon-button
-                  [routerLink]="link(row)"
-                  [appLabel]="action.label | translate"
-                  [attr.data-testid]="'row-action-' + action.id"
-                >
-                  <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-                </a>
-              } @else {
-                <button
-                  mat-icon-button
-                  type="button"
-                  (click)="runAction(action, row)"
-                  [appLabel]="action.label | translate"
-                  [attr.data-testid]="'row-action-' + action.id"
-                >
-                  <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-                </button>
-              }
-            }
-            @if (shownActions(menuActions(), row); as rare) {
-              @if (rare.length > 0) {
-                <button
-                  mat-icon-button
-                  type="button"
-                  [matMenuTriggerFor]="rowMenu"
-                  [appLabel]="'list.more_actions' | translate"
-                  data-testid="row-more"
-                >
-                  <mat-icon aria-hidden="true">more_vert</mat-icon>
-                </button>
-                <mat-menu #rowMenu="matMenu" xPosition="before">
-                  @for (action of rare; track action.id) {
-                    @if (action.link; as link) {
-                      <a
-                        mat-menu-item
-                        [routerLink]="link(row)"
-                        [attr.data-testid]="'row-menu-' + action.id"
-                      >
-                        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
-                        <span>{{ action.label | translate }}</span>
-                      </a>
-                    } @else {
-                      <button
-                        mat-menu-item
-                        type="button"
-                        (click)="runAction(action, row)"
-                        [class.text-error]="action.destructive"
-                        [attr.data-testid]="'row-menu-' + action.id"
-                      >
-                        <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{
-                          action.icon
-                        }}</mat-icon>
-                        <span>{{ action.label | translate }}</span>
-                      </button>
-                    }
-                  }
-                </mat-menu>
-              }
-            }
-            @if (actions(); as actions) {
-              <ng-container *ngTemplateOutlet="actions.template; context: { $implicit: row }" />
-            }
-          </td>
-        </ng-container>
-      }
-
-      <tr mat-header-row *matHeaderRowDef="columnIds()"></tr>
-      <tr
-        mat-row
-        *matRowDef="let row; columns: columnIds()"
-        [attr.data-testid]="testIdOf(row)"
-        [class.twes-row-new]="isArrived(row)"
-      ></tr>
-      <tr *matNoDataRow>
-        <td
-          [attr.colspan]="columnIds().length"
-          class="px-4 py-8 text-center text-on-surface-variant"
-        >
+          </dl>
+        </li>
+      } @empty {
+        <li class="px-4 py-8 text-center text-on-surface-variant">
           @if (empty()) {
             <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
           } @else {
@@ -400,10 +289,121 @@
                 : ('list.no_match_filters' | translate)
             }}</span>
           }
-        </td>
-      </tr>
-    </table>
-  </div>
+        </li>
+      }
+    </ul>
+  } @else {
+    <div class="twes-list-table overflow-x-auto">
+      <table
+        mat-table
+        [dataSource]="page().rows"
+        [trackBy]="trackRow"
+        matSort
+        [matSortActive]="sort()?.column ?? ''"
+        [matSortDirection]="sort()?.direction ?? ''"
+        (matSortChange)="onSort($event)"
+        class="w-full table-fixed"
+        [style.min-width.px]="tableWidth()"
+        [attr.data-testid]="testId()"
+      >
+        @for (column of columns(); track column.id) {
+          <ng-container [matColumnDef]="column.id">
+            <th
+              mat-header-cell
+              *matHeaderCellDef
+              mat-sort-header
+              [disabled]="!column.sortable"
+              [arrowPosition]="column.align === 'end' ? 'before' : 'after'"
+              class="relative"
+              [class]="column.align === 'end' ? '!text-end' : ''"
+              [style.width.px]="widthOf(column)"
+              [attr.data-testid]="'list-header-' + column.id"
+            >
+              {{ column.label | translate }}
+              <span
+                role="separator"
+                aria-orientation="vertical"
+                tabindex="0"
+                [attr.aria-label]="
+                  'list.resize_column' | translate: { column: (column.label | translate) }
+                "
+                [attr.aria-valuenow]="widthOf(column)"
+                [attr.aria-valuemin]="minWidth"
+                [attr.aria-valuemax]="maxWidth"
+                class="absolute right-0 top-0 h-full w-2 cursor-col-resize hover:bg-outline-variant focus:bg-primary focus:outline-none"
+                (click)="$event.stopPropagation()"
+                (keydown)="onResizeKey($event, column)"
+                (pointerdown)="startResize($event, column)"
+                [attr.data-testid]="'list-resize-' + column.id"
+              ></span>
+            </th>
+            <td
+              mat-cell
+              *matCellDef="let row"
+              class="truncate"
+              [class]="column.align === 'end' ? '!text-end tabular-nums' : ''"
+            >
+              <!-- A real link, so a middle click, a copied address and a screen reader's list of links all work; an
+                 (click) on the row gives none of those (design review finding 1). It WRAPS the cell rather than
+                 replacing it, because the column that names a record is usually the one with a template on it. -->
+              @if (column.id === linkColumnId() && descriptor().link; as link) {
+                <a
+                  [routerLink]="link(row)"
+                  class="twes-row-link"
+                  [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
+                >
+                  @if (cellTemplates().get(column.id); as template) {
+                    <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+                  } @else {
+                    {{ column.value(row) }}
+                  }
+                </a>
+              } @else if (cellTemplates().get(column.id); as template) {
+                <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+              } @else {
+                {{ column.value(row) }}
+              }
+            </td>
+          </ng-container>
+        }
+        @if (hasRowControls()) {
+          <ng-container [matColumnDef]="actionsColumn">
+            <th mat-header-cell *matHeaderCellDef [style.width.px]="actionsWidth">
+              <span class="sr-only">{{ 'list.actions' | translate }}</span>
+            </th>
+            <!-- Pinned to the table's right edge: the actions were past it in every list, even at 1440 px. -->
+            <td mat-cell *matCellDef="let row" class="twes-row-actions text-end">
+              <ng-container *ngTemplateOutlet="rowControls; context: { $implicit: row }" />
+            </td>
+          </ng-container>
+        }
+
+        <tr mat-header-row *matHeaderRowDef="columnIds()"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: columnIds()"
+          [attr.data-testid]="testIdOf(row)"
+          [class.twes-row-new]="isArrived(row)"
+        ></tr>
+        <tr *matNoDataRow>
+          <td
+            [attr.colspan]="columnIds().length"
+            class="px-4 py-8 text-center text-on-surface-variant"
+          >
+            @if (empty()) {
+              <span [attr.data-testid]="emptyTestId()">{{ emptyKey() | translate }}</span>
+            } @else {
+              <span data-testid="list-no-match">{{
+                query()
+                  ? ('list.no_match' | translate: { query: query() })
+                  : ('list.no_match_filters' | translate)
+              }}</span>
+            }
+          </td>
+        </tr>
+      </table>
+    </div>
+  }
 
   @if (paged()) {
     <mat-paginator
@@ -416,3 +416,96 @@
     />
   }
 </div>
+
+<!-- One declaration of a row's own controls, rendered in the table's trailing cell and again on a phone's
+     card, so the two can never offer different things. -->
+<ng-template #rowControls let-row>
+  @for (action of shownActions(buttonActions(), row); track action.id) {
+    @if (action.link; as link) {
+      <a
+        mat-icon-button
+        [routerLink]="link(row)"
+        [queryParams]="action.linkQuery?.(row) ?? null"
+        [appLabel]="action.label | translate: action.labelParams?.(row)"
+        [attr.data-testid]="'row-action-' + action.id + '-' + descriptor().rowId(row)"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      </a>
+    } @else {
+      <button
+        mat-icon-button
+        type="button"
+        (click)="runAction(action, row)"
+        [disabled]="action.disabled?.(row) ?? false"
+        [appLabel]="action.label | translate: action.labelParams?.(row)"
+        [attr.data-testid]="'row-action-' + action.id + '-' + descriptor().rowId(row)"
+      >
+        <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+      </button>
+    }
+  }
+  @if (shownActions(menuActions(), row); as rare) {
+    @if (rare.length > 0) {
+      <button
+        mat-icon-button
+        type="button"
+        [matMenuTriggerFor]="rowMenu"
+        [appLabel]="'list.more_actions' | translate"
+        [attr.data-testid]="'row-more-' + descriptor().rowId(row)"
+      >
+        <mat-icon aria-hidden="true">more_vert</mat-icon>
+      </button>
+      <mat-menu #rowMenu="matMenu" xPosition="before">
+        @for (action of rare; track action.id) {
+          @if (action.link; as link) {
+            <a
+              mat-menu-item
+              [routerLink]="link(row)"
+              [queryParams]="action.linkQuery?.(row) ?? null"
+              [attr.data-testid]="'row-menu-' + action.id + '-' + descriptor().rowId(row)"
+            >
+              <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+              <span>{{ action.label | translate: action.labelParams?.(row) }}</span>
+            </a>
+          } @else {
+            <button
+              mat-menu-item
+              type="button"
+              (click)="runAction(action, row)"
+              [disabled]="action.disabled?.(row) ?? false"
+              [class.text-error]="action.destructive"
+              [attr.data-testid]="'row-menu-' + action.id + '-' + descriptor().rowId(row)"
+            >
+              <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{
+                action.icon
+              }}</mat-icon>
+              <span>{{ action.label | translate: action.labelParams?.(row) }}</span>
+            </button>
+          }
+        }
+      </mat-menu>
+    }
+  }
+</ng-template>
+
+<!-- What a card leads with: the column that names the record, a real link when the list has one, and the cell's
+     own template when it declared one — a number beside its type, a name beside a badge. -->
+<ng-template #cardTitle let-row let-column="column">
+  @if (descriptor().link; as link) {
+    <a
+      [routerLink]="link(row)"
+      class="twes-row-link"
+      [attr.data-testid]="'list-link-' + descriptor().rowId(row)"
+    >
+      @if (cellTemplates().get(column.id); as template) {
+        <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+      } @else {
+        {{ column.value(row) }}
+      }
+    </a>
+  } @else if (cellTemplates().get(column.id); as template) {
+    <ng-container *ngTemplateOutlet="template; context: { $implicit: row }" />
+  } @else {
+    {{ column.value(row) }}
+  }
+</ng-template>

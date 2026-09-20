@@ -23,11 +23,11 @@ import type { PickOption } from '../shared/form/pick-field';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { AmountPipe } from '../shared/i18n/format-pipes';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import { PageTabs } from '../shared/ui/page-tabs';
 import { StatusBadge } from '../shared/ui/status-badge';
 import { InventoryFacade } from './inventory-facade';
-import type { ListQuery } from '../shared/list/list-types';
+import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
 import {
   movementForm,
   movementInput,
@@ -53,7 +53,6 @@ import { Feedback } from '../shared/feedback/feedback';
     AmountPipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
     StatusBadge,
   ],
@@ -68,7 +67,20 @@ export class StockPage implements OnInit {
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
 
-  protected readonly list = STOCK_LIST;
+  /** Where a line's quantity came from: an address, so it is a real link rather than a button that navigates. */
+  protected readonly list = computed<ListDescriptor<StockListRow>>(() => ({
+    ...STOCK_LIST,
+    actions: [
+      {
+        id: 'movements',
+        label: 'inventory.stock.movements_of',
+        labelParams: (row) => ({ name: row.productName }),
+        icon: 'swap_vert',
+        link: () => ['/stock/movements'],
+        linkQuery: (row) => ({ productId: row.productId }),
+      },
+    ],
+  }));
   protected readonly rows = computed(() =>
     stockListRows(this.facade.levels(), this.facade.locations()),
   );

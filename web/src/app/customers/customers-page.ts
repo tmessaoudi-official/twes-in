@@ -13,7 +13,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
   type CustomerListRow,
@@ -37,7 +37,6 @@ import { CUSTOMERS_TABS } from './customers-nav';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     StatusBadge,
   ],
   templateUrl: './customers-page.html',

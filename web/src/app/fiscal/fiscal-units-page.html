@@ -45,7 +45,7 @@
   }
 
   <app-data-list
-    [descriptor]="list"
+    [descriptor]="list()"
     [rows]="units()"
     testId="units-table"
     [rowTestId]="rowTestId"
@@ -55,18 +55,5 @@
     <ng-template appDataListCell="isActive" let-row>
       {{ (row.isActive ? 'fiscal.yes' : 'fiscal.no') | translate }}
     </ng-template>
-    @if (mayManage()) {
-      <ng-template appDataListRowActions let-row>
-        <button
-          mat-button
-          type="button"
-          (click)="edit(row)"
-          [disabled]="busy()"
-          [attr.data-testid]="'unit-edit-' + row.code"
-        >
-          {{ 'fiscal.edit' | translate }}
-        </button>
-      </ng-template>
-    }
   </app-data-list>
 </section>

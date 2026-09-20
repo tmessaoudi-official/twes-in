@@ -22,7 +22,8 @@ import {
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
-import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
+import { DataList, DataListCell } from '../shared/list/data-list';
+import type { ListDescriptor } from '../shared/list/list-types';
 import { StatusBadge } from '../shared/ui/status-badge';
 import {
   DEFINITIONS_LIST,
@@ -42,7 +43,6 @@ import { Feedback } from '../shared/feedback/feedback';
     TranslatePipe,
     DataList,
     DataListCell,
-    DataListRowActions,
     DescriptorForm,
     StatusBadge,
   ],
@@ -56,7 +56,20 @@ export class CustomFieldsPage implements OnInit {
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
 
-  protected readonly list = DEFINITIONS_LIST;
+  /** Editing is the one thing a field offers, and a field is never deleted — it is retired through the form. */
+  protected readonly list = computed<ListDescriptor<CustomFieldDefinition>>(() => ({
+    ...DEFINITIONS_LIST,
+    actions: [
+      {
+        id: 'edit',
+        label: 'company.custom_fields.edit',
+        icon: 'edit',
+        run: (row) => this.edit(row),
+        disabled: () => this.busy(),
+        shown: () => this.mayManage(),
+      },
+    ],
+  }));
   protected readonly fields = this.facade.fields;
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;

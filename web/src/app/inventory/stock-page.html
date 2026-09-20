@@ -74,7 +74,7 @@
     }
 
     <app-data-list
-      [descriptor]="list"
+      [descriptor]="list()"
       [rows]="rows()"
       [total]="total()"
       (queryChange)="onQuery($event)"
@@ -92,17 +92,6 @@
           }
           {{ row.quantity | amount: row.unitDecimals }}
         </span>
-      </ng-template>
-      <ng-template appDataListRowActions let-row>
-        <a
-          mat-button
-          routerLink="/stock/movements"
-          [queryParams]="{ productId: row.productId }"
-          [attr.data-testid]="'stock-movements-' + row.productReference + '-' + row.locationCode"
-          [attr.aria-label]="'inventory.stock.movements_of' | translate: { name: row.productName }"
-        >
-          {{ 'inventory.stock.movements_short' | translate }}
-        </a>
       </ng-template>
     </app-data-list>
   </section>

@@ -802,7 +802,6 @@
       "title": "Groupes de clients",
       "intro": "Les groupes classent les clients, et ce qui est réglé sur un groupe s’applique à chacun de ses clients, sauf s’il règle le sien.",
       "add": "Ajouter un groupe",
-      "delete": "Supprimer",
       "delete_named": "Supprimer {{name}}",
       "saved": "Le groupe a été enregistré.",
       "none": "Aucun groupe pour l’instant.",
@@ -1244,7 +1243,6 @@
     "save": "Enregistrer",
     "cancel": "Annuler",
     "edit": "Modifier",
-    "delete": "Supprimer",
     "delete_named": "Supprimer {{name}}",
     "errors": {
       "network": "Le serveur est injoignable.",
@@ -1261,7 +1259,6 @@
       "recorded": "Le mouvement a été enregistré.",
       "none": "Aucun stock pour l’instant.",
       "negative": "Négatif",
-      "movements_short": "Mouvements",
       "movements_of": "Mouvements de {{name}}",
       "fields": {
         "reference": "Référence",
@@ -1472,7 +1469,6 @@
       "top_level": "Au premier niveau",
       "active_hint": "Une catégorie inactive reste sur ses dépenses mais n’est plus proposée pour les nouvelles.",
       "edit": "Modifier {{name}}",
-      "edit_short": "Modifier",
       "none": "Aucune catégorie pour l’instant.",
       "statuses": {
         "active": "Active",

@@ -838,6 +838,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   control finding 8 exists to remove. `isSettingsUrl` answers which addresses are inside the area, and is
   deliberately not a prefix test — `/settings-of-mine` is not `/settings` and `/companies` is not `/company`.
 
+- [2026-09-20 17:40] AGREED: **row 71 built as ruled, with one departure the markup forced.** Every list declares
+  its actions once as `RowAction`; the trailing column shows the frequent ones as icon buttons, folds the rare and
+  the destructive behind "⋮", and is sticky against the table's right edge. The eleven settings tables now declare
+  theirs the same way, so `appDataListRowActions` — the projected template each of them used — is **deleted**: one
+  declaration, no second way to put a control in a row. The departure: the ruling says *"on a phone each row is a
+  card, the whole card the link"*, and the card's **heading** carries the link instead. A card holds the row's own
+  buttons, and an `<a>` wrapping a `<button>` is neither valid nor operable — the same reason the table row is a
+  link on its name rather than on the row. Below 600 px the table is replaced by cards, one per row, keeping the
+  row's test id, its link and its controls unchanged so a phone is not a second vocabulary; the boundary is the
+  shell's own `WINDOW_CLASS`, injected, so the two cannot disagree about where a phone ends. Three details the code
+  decided: an action that navigates carries `linkQuery`, since the address is what says whose movements these are;
+  `labelParams` lets an icon button name its row ("Supprimer Zone 1"), because a screen reader reads a column of
+  identical "Supprimer" otherwise, and the four keys the old visible labels used are gone with them; and the
+  trailing column's width is paid for only where actions are declared, which is what a list with none no longer
+  pays. A row's id is a uuid, so an e2e finds an action INSIDE its row (`web/e2e/rows.ts`) rather than by an
+  address it would have to guess.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -914,7 +931,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 67 | Subscriptions, slice 3 (§ 7 2026-09-17): reminder mail before a period ends and while grace runs, on the row-56 scheduler worker; and operator hardening with owner-granted, time-boxed support access | M | todo | - | api/src/Licensing/** api/src/Identity/** api/tests/** web/src/app/** |
 | 64 | Import past invoices and delivery notes as a read-only archive keeping their original numbers, outside the gapless series (§ 7 2026-09-17) | L | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 70 | The shell after the design review (§ 7 2026-09-19 23:19-23:22, findings 5-8): the header search left-aligned and filling to the right-hand controls, capped near 800 px, its placeholder naming what it finds; the phone header showing the working company in the wordmark's place; the settings area as the app's 80 px rail plus the settings menu docked against it; the top bar's gear removed, settings from the sidebar only | M | done | - | web/src/app/shell/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
-| 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | todo | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
+| 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | done | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
 | 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | todo | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut); then the balance pass (finding 10) re-measured on the gallery | M | todo | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
 | 74 | Stock moves and losses (§ 7 2026-09-19): a move inside an establishment (whole or partial, out and in linked), a write-off with a required reason, note and photo, a quarantine location kind, both in the movements list and reports; the VAT effect of a loss sourced in docs/fiscal first | L | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** web/public/i18n/** web/e2e/** |
