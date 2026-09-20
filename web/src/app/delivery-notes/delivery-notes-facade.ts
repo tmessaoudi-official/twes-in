@@ -2,12 +2,15 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { DeliveryNotesApi, DeliveryNotesRefused } from './delivery-notes-api';
+import type { PickAsked } from '../shared/form/pick-api';
 import type {
+  CustomerOption,
   DeliveryNoteInput,
   DeliveryNoteOptions,
   DeliveryNoteRow,
   DeliveryNoteSearch,
   DeliveryNotesError,
+  ProductOption,
 } from './delivery-notes-types';
 
 /** The delivery notes of the company being worked in, the note open on screen and what its form offers. */
@@ -34,6 +37,19 @@ export class DeliveryNotesFacade {
   /** What the list screen needs besides its page: the options that name its drafts' customers. */
   async loadListContext(companyId: string): Promise<void> {
     await this.read(async () => this.optionsSignal.set(await this.api.options(companyId)));
+  }
+
+  /**
+   * The few customers or products a person means while typing, and — by id — exactly the records an open note names,
+   * still offered or not. A search that fails answers nothing and says so in `error`, rather than reading as "nothing
+   * found": what the picker could not ask for is not the same as what does not exist.
+   */
+  async pickCustomers(companyId: string, asked: PickAsked): Promise<CustomerOption[]> {
+    return this.pick(() => this.api.pickCustomers(companyId, asked));
+  }
+
+  async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
+    return this.pick(() => this.api.pickProducts(companyId, asked));
   }
 
   /**
@@ -120,6 +136,16 @@ export class DeliveryNotesFacade {
 
   clearError(): void {
     this.errorSignal.set(null);
+  }
+
+  /** A picker's own call: it never marks the screen busy, because a person is typing while it runs. */
+  private async pick<T>(call: () => Promise<T[]>): Promise<T[]> {
+    try {
+      return await call();
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return [];
+    }
   }
 
   private async read(load: () => Promise<void>): Promise<void> {

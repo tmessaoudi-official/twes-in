@@ -60,14 +60,9 @@ final class DeliveryNotesTest extends ApiTestCase
         $options = $this->json();
         self::assertSame(['TND', 3], [$options['currency'], $options['currencyScale']]);
         self::assertSame(['000'], array_column($this->arrayAt($options, 'establishments'), 'code'));
-        $customers = $this->arrayAt($options, 'customers');
-        self::assertSame(['CLI-0001'], array_column($customers, 'number'), 'a deactivated customer is not offered');
-        self::assertSame([[]], array_column($customers, 'excludedFamilies'));
-        $products = $this->arrayAt($options, 'products');
-        self::assertSame(['ART-001'], array_column($products, 'reference'));
-        self::assertSame([$this->unitId('C62')], array_column($products, 'unitId'));
-        self::assertSame(['1250.0000'], array_column($products, 'unitPriceNet'));
-        self::assertSame([[$this->taxId('FODEC'), $this->taxId('TVA19')]], array_column($products, 'defaultTaxComponentIds'));
+        // Neither the book of customers nor the catalogue is here: both are asked a few at a time (DeliveryNotePickTest).
+        self::assertArrayNotHasKey('customers', $options);
+        self::assertArrayNotHasKey('products', $options);
         self::assertContains('C62', array_column($this->arrayAt($options, 'units'), 'code'));
         $taxes = array_column($this->arrayAt($options, 'taxes'), null, 'code');
         self::assertArrayHasKey('TVA19', $taxes);

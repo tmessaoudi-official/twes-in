@@ -10,8 +10,14 @@ import {
   lineGroup,
   linesArray,
   offeredTaxes,
+  pickedProduct,
 } from './delivery-note-forms';
-import type { DeliveryNoteOptions, DeliveryNoteRow } from './delivery-notes-types';
+import type {
+  CustomerOption,
+  DeliveryNoteOptions,
+  DeliveryNoteRow,
+  ProductOption,
+} from './delivery-notes-types';
 
 const options: DeliveryNoteOptions = {
   currency: 'TND',
@@ -19,20 +25,6 @@ const options: DeliveryNoteOptions = {
   establishments: [
     { id: 'e0', code: 'DEPOT', name: 'Dépôt', isDefault: false },
     { id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true },
-  ],
-  customers: [
-    { id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: [] },
-    { id: 'k2', number: 'CLI-2', name: 'Export SA', excludedFamilies: ['vat'] },
-  ],
-  products: [
-    {
-      id: 'p1',
-      reference: 'ART-1',
-      name: 'Portable 14"',
-      unitId: 'u2',
-      unitPriceNet: '1250.5000',
-      defaultTaxComponentIds: ['t1', 't2'],
-    },
   ],
   units: [
     { id: 'u1', code: 'C62', name: 'Unité', decimals: 0 },
@@ -44,13 +36,30 @@ const options: DeliveryNoteOptions = {
   ],
 };
 
+/** What the picker answers, which is all the form ever knows about a customer or a product. */
+const carthage: CustomerOption = {
+  id: 'k1',
+  number: 'CLI-1',
+  name: 'Carthage',
+  excludedFamilies: [],
+};
+const laptop: ProductOption = {
+  id: 'p1',
+  reference: 'ART-1',
+  name: 'Portable 14"',
+  unitId: 'u2',
+  unitPriceNet: '1250.5000',
+  defaultTaxComponentIds: ['t1', 't2'],
+};
+
 const validated: DeliveryNoteRow = {
   id: 'n1',
   number: 'BL-2026-00001',
   status: 'validated',
   customerId: 'k9',
   establishmentId: 'e1',
-  customerName: 'Ancien client',
+  recordedCustomerName: 'Ancien client',
+  customerName: 'Carthage',
   issueDate: '2026-09-15',
   deliveryDate: '2026-09-20',
   deliveryAddress: {
@@ -71,6 +80,8 @@ const validated: DeliveryNoteRow = {
       unitId: 'u1',
       unitPriceNet: '10.0000',
       taxComponentIds: ['t1'],
+      productReference: null,
+      productName: null,
       net: '20.000',
     },
   ],
@@ -88,10 +99,10 @@ describe('delivery note forms', () => {
       number: null,
       status: 'draft',
       customerId: 'k1',
-      customerName: null,
+      recordedCustomerName: null,
     };
 
-    const rows = deliveryNoteListRows([validated, draft], options);
+    const rows = deliveryNoteListRows([validated, draft]);
 
     expect(rows.map((row) => [row.id, row.customer, row.total])).toEqual([
       ['n1', 'Ancien client', '23.8'],
@@ -102,7 +113,7 @@ describe('delivery note forms', () => {
     ).toBe('23.8');
   });
 
-  it('offers the company’s customers and establishments, keeping a customer it no longer offers', () => {
+  it('offers the establishments and asks the customer elsewhere', () => {
     const form = deliveryNoteForm(options, validated);
     const fields = form.sections.flatMap((section) => section.fields);
     const byId = new Map(fields.map((field) => [field.id, field]));
@@ -112,12 +123,9 @@ describe('delivery note forms', () => {
       'delivery_address',
       'remarks',
     ]);
-    expect(byId.get('customerId')?.options?.map((option) => option.value)).toEqual([
-      'k1',
-      'k2',
-      'k9',
-    ]);
-    expect(byId.get('customerId')?.options?.at(-1)?.label).toBe('Ancien client');
+    // The customer is a picker on the page, never a field in this descriptor: a book is not a dropdown.
+    expect(byId.has('customerId')).toBe(false);
+    expect(() => JSON.stringify(form)).not.toThrow();
     expect(byId.get('establishmentId')?.options?.map((option) => option.label)).toEqual([
       'DEPOT · Dépôt',
       'SIEGE · Siège',
@@ -128,7 +136,6 @@ describe('delivery note forms', () => {
 
   it('starts a new note at the default establishment and an existing one at its values', () => {
     expect(deliveryNoteValues(null, options)).toEqual({
-      customerId: '',
       establishmentId: 'e1',
       customerReference: '',
       deliveryDate: '',
@@ -142,7 +149,6 @@ describe('delivery note forms', () => {
     });
     expect(deliveryNoteValues(validated, options)).toEqual(
       expect.objectContaining({
-        customerId: 'k9',
         deliveryDate: '2026-09-20',
         deliveryAddressLine1: 'Quai 3',
         remarksPrinted: 'Livrer au quai 3.',
@@ -155,6 +161,8 @@ describe('delivery note forms', () => {
     const line = lineGroup(null, options);
     expect(line.getRawValue()).toEqual({
       productId: '',
+      productReference: '',
+      productName: '',
       description: '',
       quantity: '1',
       unitId: 'u1',
@@ -183,6 +191,8 @@ describe('delivery note forms', () => {
     expect(lines.length).toBe(1);
     expect(lines.at(0).getRawValue()).toEqual({
       productId: '',
+      productReference: '',
+      productName: '',
       description: 'Pièce',
       quantity: '2',
       unitId: 'u1',
@@ -197,22 +207,28 @@ describe('delivery note forms', () => {
     expect(offeredTaxes(options, ['vat']).map((tax) => tax.code)).toEqual(['FODEC']);
 
     const line = lineGroup(null, options);
-    applyProduct(line, 'p1', options, []);
+    applyProduct(line, laptop, options, []);
     expect(line.getRawValue()).toEqual({
       productId: 'p1',
+      productReference: 'ART-1',
+      productName: 'Portable 14"',
       description: 'Portable 14"',
       quantity: '1',
       unitId: 'u2',
       unitPriceNet: '1250.500',
       taxComponentIds: ['t1', 't2'],
     });
+    // The line carries the product's own words, which is what lets the picker show it without the catalogue.
+    expect(pickedProduct(line)).toEqual({ id: 'p1', code: 'ART-1', name: 'Portable 14"' });
 
-    applyProduct(line, 'p1', options, ['vat']);
+    applyProduct(line, laptop, options, ['vat']);
     expect(line.controls.taxComponentIds.value).toEqual(['t2']);
 
     line.patchValue({ description: 'Tapé à la main' });
-    applyProduct(line, '', options, []);
+    applyProduct(line, null, options, []);
     expect(line.controls.productId.value).toBe('');
+    expect(line.controls.productReference.value).toBe('');
+    expect(pickedProduct(line)).toBeNull();
     expect(line.controls.description.value).toBe('Tapé à la main');
   });
 
@@ -224,11 +240,11 @@ describe('delivery note forms', () => {
       deliveryNoteInput(
         {
           ...deliveryNoteValues(null, options),
-          customerId: 'k1',
           customerReference: ' PO-77 ',
           deliveryCountryCode: 'tn',
         },
         lines,
+        carthage.id,
       ),
     ).toEqual({
       customerId: 'k1',

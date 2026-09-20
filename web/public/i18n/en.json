@@ -959,7 +959,6 @@
     "open_short": "Open",
     "none": "No delivery notes yet.",
     "no_company": "Choose a company first.",
-    "no_customers": "A delivery note is for a customer: add a customer first.",
     "new_title": "New delivery note",
     "draft_title": "Draft delivery note",
     "draft": "Draft",
@@ -1008,7 +1007,10 @@
       "address_hint": "Left empty, the customer's shipping address, else its billing address, is printed when the note is validated.",
       "country_hint": "Two letters, such as TN.",
       "remarks_hint": "Printed on the note.",
-      "notes_hint": "Kept inside the company, never printed."
+      "notes_hint": "Kept inside the company, never printed.",
+      "customer_hint": "Type the customer's number or name; the first few found are offered.",
+      "customer_required": "Name the customer this delivery note is for.",
+      "no_customer_found": "No customer found."
     },
     "lines": {
       "title": "Lines",
@@ -1030,7 +1032,8 @@
         "quantity": "A quantity above zero, with no more decimals than its unit counts (at most three).",
         "unitId": "Choose a unit.",
         "unitPriceNet": "A price from 0, with up to four decimals."
-      }
+      },
+      "no_product_found": "No product found."
     },
     "totals": {
       "title": "Totals",

@@ -15,6 +15,7 @@ use ApiPlatform\State\Pagination\Pagination;
 use ApiPlatform\State\Pagination\TraversablePaginator;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * What every paged list's provider does between API Platform and a repository (docs/SPEC.md § 7, lists at scale): the
@@ -69,6 +70,25 @@ final readonly class Paging
         $value = self::value($operation, $key);
 
         return \is_string($value) ? $value : null;
+    }
+
+    /**
+     * The uuids a parameter named. A value that is not a uuid is left out rather than refused: a form asking about a
+     * record that no longer exists should read as "not found", not as a bad request.
+     *
+     * @return list<Uuid>
+     */
+    public static function uuids(Operation $operation, string $key): array
+    {
+        $given = self::value($operation, $key);
+        $ids = [];
+        foreach (\is_array($given) ? $given : [] as $value) {
+            if (\is_string($value) && Uuid::isValid($value)) {
+                $ids[] = Uuid::fromString($value);
+            }
+        }
+
+        return $ids;
     }
 
     /**

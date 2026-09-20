@@ -29,10 +29,13 @@ import {
   deliveryNoteInput,
   deliveryNoteValues,
   linesArray,
+  pickedCustomer,
 } from './delivery-note-forms';
+import { PickField, type PickOption } from '../shared/form/pick-field';
 import { DeliveryNoteLines } from './delivery-note-lines';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import {
+  type CustomerOption,
   DELIVERY_NOTE_STATUS_TONES,
   type DeliveryNoteInput,
   type TaxFamily,
@@ -57,6 +60,7 @@ import { Feedback } from '../shared/feedback/feedback';
     DescriptorForm,
     DeliveryNoteLines,
     PartConflict,
+    PickField,
     RecordChanged,
     StatusBadge,
   ],
@@ -97,14 +101,10 @@ export class DeliveryNotePage {
     const current = this.current();
     return this.mayWrite() && (current === null || current?.status === 'draft');
   });
-  /** A note needs a customer: a company without one is told so rather than shown a form it cannot fill. */
-  protected readonly noCustomers = computed(
-    () => this.current() === null && this.options()?.customers.length === 0,
-  );
   protected readonly descriptor = computed(() => {
     const options = this.options();
     const current = this.current();
-    if (options === null || current === undefined || this.noCustomers()) return null;
+    if (options === null || current === undefined) return null;
     return deliveryNoteForm(options, current);
   });
   /**
@@ -174,11 +174,22 @@ export class DeliveryNotePage {
     ],
   });
 
-  private readonly customerId = signal('');
+  /** Who the note is for, as the picker answered it: the row itself, so the taxes its regime refuses are known. */
+  protected readonly customer = signal<CustomerOption | null>(null);
+  protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+  /** Every customer any picker here has answered, so what is chosen can be found again from the option's id. */
+  private readonly knownCustomers = new Map<string, CustomerOption>();
+  /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
+  protected readonly customerMissing = signal(false);
+  protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickCustomers(companyId, { words });
+    for (const customer of found) this.knownCustomers.set(customer.id, customer);
+    return found.map((customer) => pickedCustomer(customer) as PickOption);
+  };
   protected readonly excludedFamilies = computed<readonly TaxFamily[]>(
-    () =>
-      this.options()?.customers.find((customer) => customer.id === this.customerId())
-        ?.excludedFamilies ?? [],
+    () => this.customer()?.excludedFamilies ?? [],
   );
 
   protected readonly pdfUrl = computed(() => {
@@ -223,16 +234,29 @@ export class DeliveryNotePage {
       if (lines === null) return;
       untracked(() => (editable ? lines.enable() : lines.disable()));
     });
-    // The taxes a line offers follow the customer chosen in the header.
-    effect((onCleanup) => {
-      const control = this.form()?.controls['customerId'];
-      if (control === undefined) return;
-      untracked(() => this.customerId.set(String(control.value ?? '')));
-      const subscription = control.valueChanges.subscribe((value) =>
-        this.customerId.set(String(value ?? '')),
-      );
-      onCleanup(() => subscription.unsubscribe());
+    // An open note names its customer by id alone; the picker is shown the row that id resolves to.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const current = this.current();
+      if (!companyId || current === undefined || current === null) return;
+      const customerId = current.customerId;
+      untracked(async () => {
+        if (this.customer()?.id === customerId) return;
+        const known = this.knownCustomers.get(customerId);
+        const [found] = known
+          ? [known]
+          : await this.facade.pickCustomers(companyId, { ids: [customerId] });
+        if (found) this.knownCustomers.set(found.id, found);
+        this.customer.set(found ?? null);
+      });
     });
+  }
+
+  /** The taxes a line offers follow the customer named in the header. */
+  protected chooseCustomer(option: PickOption | null): void {
+    const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
+    this.customer.set(customer);
+    this.customerMissing.set(customer === null);
   }
 
   protected onDeliveredOn(event: Event): void {
@@ -296,11 +320,13 @@ export class DeliveryNotePage {
     const form = this.form();
     const lines = this.lines();
     if (form === null || lines === null || this.busy()) return null;
-    if (form.invalid || lines.invalid) {
+    const customerId = this.customer()?.id ?? '';
+    this.customerMissing.set(customerId === '');
+    if (form.invalid || lines.invalid || customerId === '') {
       form.markAllAsTouched();
       lines.markAllAsTouched();
       return null;
     }
-    return deliveryNoteInput(form.getRawValue(), lines);
+    return deliveryNoteInput(form.getRawValue(), lines, customerId);
   }
 }

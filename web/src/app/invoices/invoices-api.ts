@@ -15,6 +15,7 @@ import type {
   PaymentPaymentWrite,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   AGING_BUCKETS,
   type AgingAmount,
@@ -237,19 +238,6 @@ const invoicePath = (companyId: string, id?: string): string =>
 
 const ids = (values: readonly (string | null | undefined)[] | null | undefined): string[] =>
   (values ?? []).filter((id): id is string => typeof id === 'string');
-
-/** What a picker asks for: words to search by, or the ids of the records a document already names. */
-export type PickAsked = { words: string } | { ids: readonly string[] };
-
-function pickParams(asked: PickAsked): HttpParams {
-  if ('ids' in asked) {
-    let params = new HttpParams();
-    for (const id of asked.ids) params = params.append('ids[]', id);
-    return params;
-  }
-  const words = asked.words.trim();
-  return words === '' ? new HttpParams() : new HttpParams().set('q', words);
-}
 
 function toSearchParams(search: InvoiceSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);

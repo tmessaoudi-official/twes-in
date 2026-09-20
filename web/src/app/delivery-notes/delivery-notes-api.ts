@@ -9,11 +9,14 @@ import type {
   DeliveryNoteDeliveryNoteRead,
   DeliveryNoteDeliveryNoteWrite,
   DeliveryNoteJsonldDeliveryNoteRead,
+  DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead,
   DeliveryNoteOptionsDeliveryNoteOptionsRead,
+  DeliveryNoteProductPickDeliveryNoteProductPickRead,
   InvoiceFromDeliveryNotesInvoiceFromDeliveryNotesWrite,
   InvoiceFromDeliveryNotesInvoiceResourceInvoiceRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   DELIVERY_NOTE_STATUSES,
   type DeliveryNoteInput,
@@ -21,7 +24,9 @@ import {
   type DeliveryNoteRow,
   type DeliveryNoteSearch,
   type DeliveryNotesError,
+  type CustomerOption,
   type LineTaxOption,
+  type ProductOption,
 } from './delivery-notes-types';
 
 /** Thrown when the API refuses; carries the code the UI translates. */
@@ -38,7 +43,7 @@ const LINE_TAX_FAMILIES: readonly LineTaxOption['family'][] = ['vat', 'levy'];
 export class DeliveryNotesApi {
   private readonly http = inject(HttpClient);
 
-  /** What the note form offers: the currency, and the active establishments, customers, products, units and line taxes. */
+  /** What the note form offers: the currency, and the active establishments, units and line taxes. */
   async options(companyId: string): Promise<DeliveryNoteOptions> {
     return this.guard(async () =>
       toOptions(
@@ -49,6 +54,46 @@ export class DeliveryNotesApi {
         ),
       ),
     );
+  }
+
+  /**
+   * The few customers or products a person means, or — given ids — exactly the records a note already names, whether
+   * or not they are still offered. The catalogue is never read whole (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+   */
+  async pickCustomers(companyId: string, asked: PickAsked): Promise<CustomerOption[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<DeliveryNoteCustomerPickDeliveryNoteCustomerPickRead[]>(
+          `${companyPath(companyId)}/delivery-note-options/customers`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((customer) => ({
+        id: customer.id ?? '',
+        number: customer.number,
+        name: customer.name,
+        excludedFamilies: [...customer.excludedFamilies],
+      }));
+    });
+  }
+
+  async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<DeliveryNoteProductPickDeliveryNoteProductPickRead[]>(
+          `${companyPath(companyId)}/delivery-note-options/products`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((product) => ({
+        id: product.id ?? '',
+        reference: product.reference,
+        name: product.name,
+        unitId: product.unitId,
+        unitPriceNet: product.unitPriceNet,
+        defaultTaxComponentIds: [...product.defaultTaxComponentIds],
+      }));
+    });
   }
 
   /** One page of the company's delivery notes, searched, narrowed and sorted by the API. */
@@ -209,7 +254,8 @@ function toNote(
     status: DELIVERY_NOTE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     customerId: raw.customerId ?? '',
     establishmentId: raw.establishmentId ?? null,
-    customerName: raw.customerSnapshot?.name ?? null,
+    recordedCustomerName: raw.customerSnapshot?.name ?? null,
+    customerName: raw.customerName ?? '',
     issueDate: raw.issueDate ?? null,
     deliveryDate: raw.deliveryDate ?? null,
     deliveryAddress: {
@@ -231,6 +277,8 @@ function toNote(
       taxComponentIds: (line.taxComponentIds ?? []).filter(
         (id): id is string => typeof id === 'string',
       ),
+      productReference: line.productReference ?? null,
+      productName: line.productName ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',
@@ -267,20 +315,6 @@ function toOptions(raw: DeliveryNoteOptionsDeliveryNoteOptionsRead): DeliveryNot
       code: establishment.code,
       name: establishment.name,
       isDefault: establishment.isDefault,
-    })),
-    customers: (raw.customers ?? []).map((customer) => ({
-      id: customer.id,
-      number: customer.number,
-      name: customer.name,
-      excludedFamilies: [...customer.excludedFamilies],
-    })),
-    products: (raw.products ?? []).map((product) => ({
-      id: product.id,
-      reference: product.reference,
-      name: product.name,
-      unitId: product.unitId,
-      unitPriceNet: product.unitPriceNet,
-      defaultTaxComponentIds: [...product.defaultTaxComponentIds],
     })),
     units: (raw.units ?? []).map((unit) => ({
       id: unit.id,

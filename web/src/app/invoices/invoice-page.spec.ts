@@ -30,7 +30,7 @@ import type {
   InvoicesError,
   ProductOption,
 } from './invoices-types';
-import type { PickAsked } from './invoices-api';
+import type { PickAsked } from '../shared/form/pick-api';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
@@ -110,6 +110,14 @@ const customers: CustomerOption[] = [
     excludedFamilies: [],
     defaultDiscountRate: '5',
     defaultTaxComponentIds: ['w1'],
+  },
+  {
+    id: 'k3',
+    number: 'CLI-3',
+    name: 'Ambassade',
+    excludedFamilies: ['vat', 'stamp'],
+    defaultDiscountRate: null,
+    defaultTaxComponentIds: [],
   },
 ];
 const products: ProductOption[] = [
@@ -266,8 +274,11 @@ describe('InvoicePage', () => {
       fixture.componentRef.setInput('invoiceId', invoiceId);
     }
     await settle();
-    // The customer an open document names is resolved by id, one turn after the document itself.
-    await settle();
+    // The customer an open document names is resolved by id, one turn after the document itself. Flushing the
+    // microtasks is enough and costs nothing: a second whenStable() per open makes this suite time out.
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
   }
 
   beforeEach(() => {
@@ -412,6 +423,19 @@ describe('InvoicePage', () => {
     await pick('invoice-customer', 'CLI-2 · Méditerranée');
     expect(checked('document-tax-TIMBRE')).toBe(true);
     expect(checked('document-tax-RS1')).toBe(true);
+  });
+
+  /** The picked row carries the regime, and nothing else does: no list is held to look one up in. */
+  it('stops offering a line tax and a document charge once a customer whose regime refuses them is named', async () => {
+    await open(undefined);
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
+    expect(q('line-0-tax-TVA19')).not.toBeNull();
+    expect(q('document-tax-TIMBRE')).not.toBeNull();
+
+    await pick('invoice-customer', 'CLI-3 · Ambassade');
+
+    expect(q('line-0-tax-TVA19')).toBeNull();
+    expect(q('document-tax-TIMBRE')).toBeNull();
   });
 
   it('shows a draft’s totals as the API works them out, withholding and net payable included', async () => {

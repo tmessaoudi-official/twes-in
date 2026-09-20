@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 
 // G6 delivery notes through the real stack: in the seeded Tunisian company, the owner drafts a note for a customer
@@ -112,10 +112,12 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
   const run = Date.now().toString(36).toUpperCase();
   const customerNumber = `E2E-DN-${run}`;
   await signIn(page);
+  await inACompany(page, CSRF);
   await createCustomer(page, customerNumber);
   try {
     await page.goto('/delivery-notes/new');
-    await page.getByTestId('field-customerId').click();
+    // Typed, not scrolled to: the picker answers the few that match, and this company's book is long.
+    await page.getByTestId('delivery-note-customer').fill(customerNumber);
     await page.getByRole('option', { name: new RegExp(`^${customerNumber} · `) }).click();
     await page.getByTestId('field-customerReference').fill(`PO-${run}`);
     await page.getByTestId('line-0-description').fill('Portable 14 pouces');

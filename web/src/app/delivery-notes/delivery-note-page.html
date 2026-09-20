@@ -64,11 +64,6 @@
       </p>
     }
   }
-  @if (noCustomers()) {
-    <p data-testid="delivery-note-no-customers">
-      {{ 'delivery_notes.no_customers' | translate }}
-    </p>
-  }
   @if (error(); as code) {
     <p role="alert" data-testid="delivery-note-error" class="text-error">
       {{ 'delivery_notes.errors.' + code | translate }}
@@ -85,7 +80,26 @@
     }
     @if (descriptor(); as descriptor) {
       <mat-card>
-        <mat-card-content>
+        <mat-card-content class="flex flex-col">
+          <app-pick-field
+            [label]="'delivery_notes.fields.customerId' | translate"
+            testId="delivery-note-customer"
+            [search]="searchCustomers"
+            [value]="customerShown()"
+            [disabled]="!editable()"
+            [noneFoundLabel]="'delivery_notes.form.no_customer_found' | translate"
+            [hint]="'delivery_notes.form.customer_hint' | translate"
+            (picked)="chooseCustomer($event)"
+          />
+          @if (customerMissing()) {
+            <p
+              role="alert"
+              class="-mt-2 px-4 pb-2 text-xs text-error"
+              data-testid="delivery-note-customer-error"
+            >
+              {{ 'delivery_notes.form.customer_required' | translate }}
+            </p>
+          }
           <app-descriptor-form
             [descriptor]="descriptor"
             [form]="form"
@@ -117,6 +131,7 @@
           <app-delivery-note-lines
             [lines]="lines"
             [options]="options"
+            [companyId]="company()?.id ?? ''"
             [excludedFamilies]="excludedFamilies()"
             [readOnly]="!editable()"
           />

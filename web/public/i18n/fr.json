@@ -959,7 +959,6 @@
     "open_short": "Ouvrir",
     "none": "Aucun bon de livraison pour l'instant.",
     "no_company": "Choisissez d'abord une société.",
-    "no_customers": "Un bon de livraison est établi pour un client : ajoutez d'abord un client.",
     "new_title": "Nouveau bon de livraison",
     "draft_title": "Bon de livraison en brouillon",
     "draft": "Brouillon",
@@ -1008,7 +1007,10 @@
       "address_hint": "Laissée vide, l'adresse de livraison du client, sinon son adresse de facturation, est imprimée à la validation.",
       "country_hint": "Deux lettres, par exemple TN.",
       "remarks_hint": "Imprimées sur le bon.",
-      "notes_hint": "Gardées dans la société, jamais imprimées."
+      "notes_hint": "Gardées dans la société, jamais imprimées.",
+      "customer_hint": "Tapez le numéro ou le nom du client ; les premiers trouvés vous sont proposés.",
+      "customer_required": "Nommez le client de ce bon de livraison.",
+      "no_customer_found": "Aucun client trouvé."
     },
     "lines": {
       "title": "Lignes",
@@ -1030,7 +1032,8 @@
         "quantity": "Une quantité supérieure à zéro, sans plus de décimales que son unité n'en compte (trois au plus).",
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales."
-      }
+      },
+      "no_product_found": "Aucun produit trouvé."
     },
     "totals": {
       "title": "Totaux",

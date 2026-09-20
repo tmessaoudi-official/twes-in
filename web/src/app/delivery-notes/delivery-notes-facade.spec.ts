@@ -13,8 +13,6 @@ const options: DeliveryNoteOptions = {
   currency: 'TND',
   currencyScale: 3,
   establishments: [],
-  customers: [],
-  products: [],
   units: [],
   taxes: [],
 };
@@ -24,7 +22,8 @@ const draft: DeliveryNoteRow = {
   status: 'draft',
   customerId: 'k1',
   establishmentId: 'e1',
-  customerName: null,
+  recordedCustomerName: null,
+  customerName: 'Carthage',
   issueDate: null,
   deliveryDate: null,
   deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: null },

@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
-import { InvoicesApi, InvoicesRefused, type PickAsked } from './invoices-api';
+import { InvoicesApi, InvoicesRefused } from './invoices-api';
+import type { PickAsked } from '../shared/form/pick-api';
 import type {
   CustomerOption,
   InvoiceInput,

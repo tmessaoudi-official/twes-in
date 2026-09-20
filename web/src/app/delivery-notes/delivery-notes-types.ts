@@ -60,11 +60,20 @@ export interface DeliveryNoteLine {
   /** A decimal string with up to four decimals. */
   unitPriceNet: string;
   taxComponentIds: string[];
+  /**
+   * The product's reference and name as they read today, which is what lets the line be shown without the catalogue.
+   * Both null for a line naming no product. Read only: the API fills them and ignores them on the way back.
+   */
+  productReference: string | null;
+  productName: string | null;
   /** The line's net amount at the currency's scale, computed by the API on every read. */
   net: string;
 }
 
-export type DeliveryNoteLineInput = Omit<DeliveryNoteLine, 'net'>;
+export type DeliveryNoteLineInput = Omit<
+  DeliveryNoteLine,
+  'net' | 'productReference' | 'productName'
+>;
 
 export interface TaxTotal {
   code: string;
@@ -80,8 +89,10 @@ export interface DeliveryNoteRow {
   status: DeliveryNoteStatus;
   customerId: string;
   establishmentId: string | null;
-  /** The customer's name as the note was validated with it; null for a draft, which names today's customer. */
-  customerName: string | null;
+  /** The customer's name as the note recorded it when validated; null for a draft, which has recorded nothing. */
+  recordedCustomerName: string | null;
+  /** The customer as it reads TODAY, so a form shows who the note is for without the company's whole book. */
+  customerName: string;
   issueDate: string | null;
   deliveryDate: string | null;
   deliveryAddress: PostalAddress;
@@ -113,6 +124,10 @@ export interface EstablishmentOption {
   isDefault: boolean;
 }
 
+/**
+ * One customer as this form's picker answers it. Narrower than the invoices' row of the same name, deliberately: a
+ * delivery note charges nothing, so a discount and document taxes are not its business.
+ */
 export interface CustomerOption {
   id: string;
   number: string;
@@ -121,6 +136,7 @@ export interface CustomerOption {
   excludedFamilies: TaxFamily[];
 }
 
+/** One product as the picker answers it: what a line starts from. */
 export interface ProductOption {
   id: string;
   reference: string;
@@ -146,13 +162,15 @@ export interface LineTaxOption {
   entersVatBase: boolean;
 }
 
-/** What the delivery note form offers: the company's currency and its active establishments, customers, products, units and line taxes. */
+/**
+ * What the delivery note form offers: the company's currency, its active establishments, units and line taxes — what
+ * is small, bounded and needed all at once. The customers and the products are asked for a few at a time through the
+ * two pickers instead (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ */
 export interface DeliveryNoteOptions {
   currency: string;
   currencyScale: number;
   establishments: EstablishmentOption[];
-  customers: CustomerOption[];
-  products: ProductOption[];
   units: UnitOption[];
   taxes: LineTaxOption[];
 }

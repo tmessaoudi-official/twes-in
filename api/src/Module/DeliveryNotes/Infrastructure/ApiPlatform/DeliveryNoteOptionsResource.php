@@ -16,9 +16,12 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
  * What the delivery note form offers, read with delivery_note.read alone: the company's currency and its scale, its
- * establishments, its active customers with the tax families their regime leaves out, its active products with what a
- * line starts from, its active units and its active line taxes. Someone who writes delivery notes need not also read
- * customers, products or the fiscal setup to fill one.
+ * establishments, its active units and its active line taxes. Someone who writes delivery notes need not also read
+ * the fiscal setup to fill one in.
+ *
+ * The customers and the products are NOT here: they are asked for a few at a time through the two pickers beside this
+ * (docs/SPEC.md § 7, 2026-09-17, ruling 3). What is left is small, bounded and read whole because all of it is needed
+ * at once.
  */
 #[ApiResource(
     shortName: 'DeliveryNoteOptions',
@@ -55,42 +58,6 @@ final class DeliveryNoteOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $establishments = [];
-
-    /** @var list<array{id: string, number: string, name: string, excludedFamilies: list<string>}> */
-    #[ApiProperty(schema: [
-        'type' => 'array',
-        'items' => [
-            'type' => 'object',
-            'required' => ['id', 'number', 'name', 'excludedFamilies'],
-            'properties' => [
-                'id' => ['type' => 'string'],
-                'number' => ['type' => 'string'],
-                'name' => ['type' => 'string'],
-                'excludedFamilies' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['vat', 'levy', 'stamp', 'withholding']]],
-            ],
-        ],
-    ])]
-    #[Groups([self::READ])]
-    public array $customers = [];
-
-    /** @var list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>}> */
-    #[ApiProperty(schema: [
-        'type' => 'array',
-        'items' => [
-            'type' => 'object',
-            'required' => ['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds'],
-            'properties' => [
-                'id' => ['type' => 'string'],
-                'reference' => ['type' => 'string'],
-                'name' => ['type' => 'string'],
-                'unitId' => ['type' => 'string'],
-                'unitPriceNet' => ['type' => 'string'],
-                'defaultTaxComponentIds' => ['type' => 'array', 'items' => ['type' => 'string']],
-            ],
-        ],
-    ])]
-    #[Groups([self::READ])]
-    public array $products = [];
 
     /** @var list<array{id: string, code: string, name: string, decimals: int}> */
     #[ApiProperty(schema: [

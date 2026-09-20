@@ -46,6 +46,7 @@ const numbered: DeliveryNoteRow = {
   status: 'validated',
   customerId: 'k1',
   establishmentId: 'e1',
+  recordedCustomerName: 'Carthage Conseil',
   customerName: 'Carthage Conseil',
   issueDate: '2026-09-15',
   deliveryDate: null,
@@ -65,14 +66,12 @@ describe('DeliveryNotesPage', () => {
   const facade = {
     notes: signal<readonly DeliveryNoteRow[]>([
       numbered,
-      { ...numbered, id: 'n2', number: null, status: 'draft', customerName: null },
+      { ...numbered, id: 'n2', number: null, status: 'draft', recordedCustomerName: null },
     ]).asReadonly(),
     options: signal<DeliveryNoteOptions | null>({
       currency: 'TND',
       currencyScale: 3,
       establishments: [],
-      customers: [{ id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: [] }],
-      products: [],
       units: [],
       taxes: [],
     }).asReadonly(),

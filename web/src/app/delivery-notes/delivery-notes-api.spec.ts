@@ -62,17 +62,6 @@ describe('DeliveryNotesApi', () => {
       currency: 'TND',
       currencyScale: 3,
       establishments: [{ id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true }],
-      customers: [{ id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: ['vat'] }],
-      products: [
-        {
-          id: 'p1',
-          reference: 'ART-1',
-          name: 'Portable',
-          unitId: 'u1',
-          unitPriceNet: '1250.0000',
-          defaultTaxComponentIds: ['t1'],
-        },
-      ],
       units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
       taxes: [
         {
@@ -94,9 +83,36 @@ describe('DeliveryNotesApi', () => {
       name: 'Siège',
       isDefault: true,
     });
-    expect(options.customers[0]?.excludedFamilies).toEqual(['vat']);
-    expect(options.products[0]?.defaultTaxComponentIds).toEqual(['t1']);
     expect(options.taxes[0]?.rate).toBe('19');
+  });
+
+  it('asks a picker for the few a person means, and by id for the ones a note already names', async () => {
+    const searched = api.pickProducts('c1', { words: '  port ' });
+    const search = http.expectOne(
+      (request) => request.url === '/api/companies/c1/delivery-note-options/products',
+    );
+    expect(search.request.params.get('q')).toBe('port');
+    search.flush([
+      {
+        id: 'p1',
+        reference: 'ART-1',
+        name: 'Portable',
+        unitId: 'u1',
+        unitPriceNet: '1250.0000',
+        defaultTaxComponentIds: ['t1'],
+      },
+    ]);
+    expect((await searched)[0]?.defaultTaxComponentIds).toEqual(['t1']);
+
+    const named = api.pickCustomers('c1', { ids: ['k1'] });
+    const resolve = http.expectOne(
+      (request) => request.url === '/api/companies/c1/delivery-note-options/customers',
+    );
+    // Asking for what a note names is not a search: the words are left out entirely.
+    expect(resolve.request.params.getAll('ids[]')).toEqual(['k1']);
+    expect(resolve.request.params.has('q')).toBe(false);
+    resolve.flush([{ id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: ['vat'] }]);
+    expect((await named)[0]?.excludedFamilies).toEqual(['vat']);
   });
 
   it('reads a note with nulls where the API sent none and the name it was validated with', async () => {
@@ -106,6 +122,7 @@ describe('DeliveryNotesApi', () => {
       number: 'BL-2026-00001',
       status: 'validated',
       customerId: 'k1',
+      customerName: 'Carthage',
       customerSnapshot: { number: 'CLI-1', name: 'Carthage Conseil' },
       issueDate: '2026-09-15',
       lines: [{ quantity: '2.000', unitId: 'u1', unitPriceNet: '1250.0000', net: '2500.000' }],
@@ -121,7 +138,8 @@ describe('DeliveryNotesApi', () => {
       status: 'validated',
       customerId: 'k1',
       establishmentId: null,
-      customerName: 'Carthage Conseil',
+      recordedCustomerName: 'Carthage Conseil',
+      customerName: 'Carthage',
       issueDate: '2026-09-15',
       deliveryDate: null,
       deliveryAddress: {
@@ -142,6 +160,8 @@ describe('DeliveryNotesApi', () => {
           unitId: 'u1',
           unitPriceNet: '1250.0000',
           taxComponentIds: [],
+          productReference: null,
+          productName: null,
           net: '2500.000',
         },
       ],

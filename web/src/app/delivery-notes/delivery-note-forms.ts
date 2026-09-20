@@ -4,7 +4,9 @@ import { atScale } from '../shared/i18n/format';
 import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from '@angular/forms';
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { PickOption } from '../shared/form/pick-field';
 import {
+  type CustomerOption,
   DELIVERY_NOTE_STATUSES,
   type DeliveryNoteInput,
   type DeliveryNoteLine,
@@ -13,6 +15,7 @@ import {
   type DeliveryNoteSearch,
   type DeliveryNoteSortKey,
   type LineTaxOption,
+  type ProductOption,
   type TaxFamily,
 } from './delivery-notes-types';
 
@@ -32,17 +35,14 @@ function plainQuantity(value: string): string {
 /** A note as the list shows it: with its customer's name. */
 export type DeliveryNoteListRow = DeliveryNoteRow & { customer: string };
 
-/** A validated note names the customer it was issued to; a draft names the customer as the company has it today. */
-export function deliveryNoteListRows(
-  notes: readonly DeliveryNoteRow[],
-  options: DeliveryNoteOptions | null,
-): DeliveryNoteListRow[] {
-  const customers = new Map(
-    (options?.customers ?? []).map((customer) => [customer.id, customer.name]),
-  );
+/**
+ * A validated note names the customer it was issued to; a draft, which has recorded nobody yet, names the customer as
+ * the company has it today. Both come off the note itself, so a list never reads the book of customers.
+ */
+export function deliveryNoteListRows(notes: readonly DeliveryNoteRow[]): DeliveryNoteListRow[] {
   return notes.map((note) => ({
     ...note,
-    customer: note.customerName ?? customers.get(note.customerId) ?? '',
+    customer: note.recordedCustomerName ?? note.customerName,
   }));
 }
 
@@ -141,23 +141,17 @@ const section = (id: string, fields: FormField[]): FormDescriptor['sections'][nu
 });
 
 /**
- * The note's header: its customer and establishment among what the company offers, keeping those a note already names
- * when the company no longer offers them, then where the goods go and what is printed. The API checks it all again.
+ * The note's header: its establishment among what the company offers, keeping the one a note already names when the
+ * company no longer offers it, then where the goods go and what is printed. The API checks it all again.
+ *
+ * The CUSTOMER is not a field here: a company's book is not a dropdown, so the page asks for it through a picker
+ * beside this form (docs/SPEC.md § 7, 2026-09-17, ruling 3). A descriptor is data — it is stringified to tell one
+ * form from another — and a picker needs a function to search with, which cannot be.
  */
 export function deliveryNoteForm(
   options: DeliveryNoteOptions,
   current: DeliveryNoteRow | null = null,
 ): FormDescriptor {
-  const customers = options.customers.map((customer) => ({
-    value: customer.id,
-    label: `${customer.number} · ${customer.name}`,
-  }));
-  if (current !== null && !customers.some((option) => option.value === current.customerId)) {
-    customers.push({
-      value: current.customerId,
-      label: current.customerName ?? current.customerId,
-    });
-  }
   const establishments = options.establishments.map((establishment) => ({
     value: establishment.id,
     label: `${establishment.code} · ${establishment.name}`,
@@ -174,13 +168,6 @@ export function deliveryNoteForm(
     id: 'delivery-note',
     sections: [
       section('parties', [
-        {
-          id: 'customerId',
-          label: `${FIELDS}.customerId`,
-          kind: 'select',
-          required: true,
-          options: customers,
-        },
         {
           id: 'establishmentId',
           label: `${FIELDS}.establishmentId`,
@@ -265,7 +252,6 @@ export function deliveryNoteValues(
   const establishment =
     options.establishments.find((each) => each.isDefault) ?? options.establishments[0];
   return {
-    customerId: row?.customerId ?? '',
     establishmentId: row?.establishmentId ?? establishment?.id ?? '',
     customerReference: row?.customerReference ?? '',
     deliveryDate: row?.deliveryDate ?? '',
@@ -281,6 +267,9 @@ export function deliveryNoteValues(
 
 export interface LineControls {
   productId: FormControl<string>;
+  /** The product's own words, carried on the line so the picker shows it without reading the catalogue. */
+  productReference: FormControl<string>;
+  productName: FormControl<string>;
   description: FormControl<string>;
   quantity: FormControl<string>;
   unitId: FormControl<string>;
@@ -325,6 +314,8 @@ export function lineGroup(line: DeliveryNoteLine | null, options: DeliveryNoteOp
   return new FormGroup<LineControls>(
     {
       productId: new FormControl(line?.productId ?? '', { nonNullable: true }),
+      productReference: new FormControl(line?.productReference ?? '', { nonNullable: true }),
+      productName: new FormControl(line?.productName ?? '', { nonNullable: true }),
       description: new FormControl(line?.description ?? '', {
         nonNullable: true,
         validators: [notBlank, Validators.maxLength(DESCRIPTION_MAX)],
@@ -367,23 +358,25 @@ export function offeredTaxes(
 }
 
 /**
- * Fills a line from the product chosen on it: its name, unit, price and default taxes, less the taxes the customer's
- * regime refuses. The quantity stays; choosing no product leaves what was typed.
+ * Fills a line from the product picked on it: its name, unit, price and default taxes, less the taxes the customer's
+ * regime refuses. The quantity stays; picking no product clears what the line named and leaves the description,
+ * which someone may have typed themselves. The product is the row the picker answered, so this reads no catalogue.
  */
 export function applyProduct(
   line: LineGroup,
-  productId: string,
+  product: ProductOption | null,
   options: DeliveryNoteOptions,
   excludedFamilies: readonly TaxFamily[],
 ): void {
-  const product = options.products.find((each) => each.id === productId);
-  if (product === undefined) {
-    line.controls.productId.setValue('');
+  if (product === null) {
+    line.patchValue({ productId: '', productReference: '', productName: '' });
     return;
   }
   const offered = new Set(offeredTaxes(options, excludedFamilies).map((tax) => tax.id));
   line.patchValue({
     productId: product.id,
+    productReference: product.reference,
+    productName: product.name,
     description: product.name,
     unitId: product.unitId,
     unitPriceNet: atScale(product.unitPriceNet, options.currencyScale),
@@ -391,11 +384,32 @@ export function applyProduct(
   });
 }
 
+/** What the picker shows on a line: the product it names, in its own words. */
+export function pickedProduct(line: LineGroup): PickOption | null {
+  const id = line.controls.productId.value;
+  return id === ''
+    ? null
+    : {
+        id,
+        code: line.controls.productReference.value,
+        name: line.controls.productName.value,
+      };
+}
+
+/** What the picker shows in the header: the customer, in its own words. */
+export function pickedCustomer(customer: CustomerOption | null): PickOption | null {
+  return customer === null ? null : { id: customer.id, code: customer.number, name: customer.name };
+}
+
 /** The header and the lines as the API takes them: trimmed, an empty field as no value. */
-export function deliveryNoteInput(values: FormValues, lines: LinesArray): DeliveryNoteInput {
+export function deliveryNoteInput(
+  values: FormValues,
+  lines: LinesArray,
+  customerId: string,
+): DeliveryNoteInput {
   const country = text(values['deliveryCountryCode']);
   return {
-    customerId: String(values['customerId'] ?? ''),
+    customerId,
     establishmentId: text(values['establishmentId']),
     deliveryDate: text(values['deliveryDate']),
     deliveryAddress: {

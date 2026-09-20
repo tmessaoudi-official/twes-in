@@ -23,10 +23,13 @@ import {
 import { DeliveryNotePage } from './delivery-note-page';
 import { DeliveryNotesFacade } from './delivery-notes-facade';
 import type {
+  CustomerOption,
   DeliveryNoteOptions,
   DeliveryNoteRow,
   DeliveryNotesError,
+  ProductOption,
 } from './delivery-notes-types';
+import type { PickAsked } from '../shared/form/pick-api';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
@@ -51,29 +54,35 @@ const options: DeliveryNoteOptions = {
   currency: 'TND',
   currencyScale: 3,
   establishments: [{ id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true }],
-  customers: [{ id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: [] }],
-  products: [
-    {
-      id: 'p1',
-      reference: 'ART-1',
-      name: 'Portable 14"',
-      unitId: 'u1',
-      unitPriceNet: '1250.0000',
-      defaultTaxComponentIds: ['t1'],
-    },
-  ],
   units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
   taxes: [
     { id: 't1', code: 'TVA19', name: 'TVA 19 %', family: 'vat', rate: '19', entersVatBase: false },
   ],
 };
+/** What the pickers answer; the page is never handed either list whole. */
+const customers: CustomerOption[] = [
+  { id: 'k1', number: 'CLI-1', name: 'Carthage', excludedFamilies: [] },
+  { id: 'k2', number: 'CLI-2', name: 'Export SA', excludedFamilies: ['vat'] },
+];
+const products: ProductOption[] = [
+  {
+    id: 'p1',
+    reference: 'ART-1',
+    name: 'Portable 14"',
+    unitId: 'u1',
+    unitPriceNet: '1250.0000',
+    defaultTaxComponentIds: ['t1'],
+  },
+];
+
 const draft: DeliveryNoteRow = {
   id: 'n1',
   number: null,
   status: 'draft',
   customerId: 'k1',
   establishmentId: 'e1',
-  customerName: null,
+  recordedCustomerName: null,
+  customerName: 'Carthage',
   issueDate: null,
   deliveryDate: null,
   deliveryAddress: { line1: null, line2: null, postalCode: null, city: null, countryCode: null },
@@ -88,6 +97,8 @@ const draft: DeliveryNoteRow = {
       unitId: 'u1',
       unitPriceNet: '1250.0000',
       taxComponentIds: ['t1'],
+      productReference: 'ART-1',
+      productName: 'Portable 14"',
       net: '2500.000',
     },
   ],
@@ -101,7 +112,7 @@ const validated: DeliveryNoteRow = {
   status: 'validated',
   number: 'BL-2026-00001',
   issueDate: '2026-09-15',
-  customerName: 'Carthage Conseil',
+  recordedCustomerName: 'Carthage Conseil',
 };
 
 describe('DeliveryNotePage', () => {
@@ -113,6 +124,12 @@ describe('DeliveryNotePage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadNote: vi.fn(),
+    pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
+      'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
+    ),
+    pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
+      'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
+    ),
     create: vi.fn(),
     revise: vi.fn(),
     reviseAndValidate: vi.fn(),
@@ -147,8 +164,12 @@ describe('DeliveryNotePage', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  async function choose(testId: string, label: string): Promise<void> {
-    (q(testId)?.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+  /**
+   * Picks a row in a picker. Nothing is typed: the field asks the API once as it opens, on no words at all, so what
+   * a person sees before typing is already there — which is exactly what the screen does.
+   */
+  async function pick(testId: string, label: string): Promise<void> {
+    (q(testId) as HTMLInputElement).dispatchEvent(new Event('focusin'));
     await settle();
     const option = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
       (each) => each.textContent?.trim() === label,
@@ -164,6 +185,11 @@ describe('DeliveryNotePage', () => {
       fixture.componentRef.setInput('deliveryNoteId', deliveryNoteId);
     }
     await settle();
+    // The customer an open note names is resolved by id, one turn after the note itself. Flushing the
+    // microtasks is enough and costs nothing: a second whenStable() per open makes this suite time out.
+    await Promise.resolve();
+    await Promise.resolve();
+    fixture.detectChanges();
   }
 
   beforeEach(() => {
@@ -230,8 +256,8 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-validate')).toBeNull();
     expect(q('delivery-note-pdf')).toBeNull();
 
-    await choose('field-customerId', 'CLI-1 · Carthage');
-    await choose('line-0-product', 'ART-1 · Portable 14"');
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    await pick('line-0-product', 'ART-1 · Portable 14"');
     type('line-0-quantity', '2');
     q('delivery-note-save')!.click();
     await settle();
@@ -263,8 +289,8 @@ describe('DeliveryNotePage', () => {
   it('shows a line’s price with a decimal comma, and sends a typed comma as a point', async () => {
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
-    await choose('field-customerId', 'CLI-1 · Carthage');
-    await choose('line-0-product', 'ART-1 · Portable 14"');
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    await pick('line-0-product', 'ART-1 · Portable 14"');
     expect((q('line-0-price') as HTMLInputElement).value).toBe('1250,000');
 
     type('line-0-quantity', '2,000');
@@ -282,7 +308,7 @@ describe('DeliveryNotePage', () => {
 
   it('does not send a line the API would refuse, and says what is wrong with it', async () => {
     await open(undefined);
-    await choose('field-customerId', 'CLI-1 · Carthage');
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
     type('line-0-description', 'Pièce');
     type('line-0-price', '10');
     type('line-0-quantity', '0');
@@ -463,6 +489,17 @@ describe('DeliveryNotePage', () => {
     note.set({ ...validated, status: 'delivered' });
     await settle();
     expect(q('delivery-note-invoice')).not.toBeNull();
+  });
+
+  /** The picked row carries the regime, and nothing else does: no list is held to look one up in. */
+  it('stops offering a line tax once a customer whose regime refuses it is named', async () => {
+    await open(undefined);
+    await pick('delivery-note-customer', 'CLI-1 · Carthage');
+    expect(q('line-0-tax-TVA19')).not.toBeNull();
+
+    await pick('delivery-note-customer', 'CLI-2 · Export SA');
+
+    expect(q('line-0-tax-TVA19')).toBeNull();
   });
 
   it('offers no invoice for a draft, an invoiced note, without the invoices module or the permission', async () => {

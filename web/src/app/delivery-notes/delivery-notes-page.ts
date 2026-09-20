@@ -58,9 +58,7 @@ export class DeliveryNotesPage implements OnInit {
   /** A list cell's row is untyped, so the tone is looked up through a typed function. */
   protected readonly toneOf = (status: DeliveryNoteStatus): StatusTone =>
     DELIVERY_NOTE_STATUS_TONES[status];
-  protected readonly rows = computed(() =>
-    deliveryNoteListRows(this.facade.notes(), this.facade.options()),
-  );
+  protected readonly rows = computed(() => deliveryNoteListRows(this.facade.notes()));
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
   protected readonly total = this.facade.total;
   protected readonly error = this.facade.error;
