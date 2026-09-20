@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { wcagViolations } from './axe';
 
 // G4 custom fields through the real stack: in the seeded Tunisian company, the owner declares a choice field for
@@ -68,6 +68,7 @@ test('a custom field declared for customers is filled in on a customer and kept'
   const number = `CF-${run.toUpperCase()}`;
   const field = `field-custom__${key}`;
   await signIn(page);
+  await inACompany(page, CSRF);
   try {
     await page.goto('/company/custom-fields');
     await page.getByTestId('custom-field-add').click();

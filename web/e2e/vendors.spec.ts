@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 
@@ -47,6 +47,7 @@ test('a vendor is added with its bank account and terms, then revised', async ({
   const number = `E2E-${run}`;
   const name = `Sotumag ${run}`;
   await signIn(page);
+  await inACompany(page, CSRF);
   try {
     await page.goto('/vendors');
     await page.getByTestId('vendor-add').click();

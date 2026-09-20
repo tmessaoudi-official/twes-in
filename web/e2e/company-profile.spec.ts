@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import AxeBuilder from '@axe-core/playwright';
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
 // G3b through the real stack: the seeded Tunisian company's owner fills its profile, which asks for the matricule
@@ -59,6 +59,7 @@ test("the owner fills the company's profile with the identifier its preset requi
   page,
 }) => {
   await signIn(page);
+  await inACompany(page, CSRF);
   const original = await currentProfile(page);
   try {
     await page.goto('/company/profile');

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 import { rowAction } from './rows';
@@ -66,6 +66,7 @@ test("a customer in a group inherits the group's payment terms and gets a contac
   const groupName = `E2E ${run}`;
   const number = `E2E-${run}`;
   await signIn(page);
+  await inACompany(page, CSRF);
   try {
     await page.goto('/customers/groups');
     await page.getByTestId('customer-group-add').click();

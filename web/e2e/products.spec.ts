@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
+import { rowAction } from './rows';
 
 // G5 products through the real stack: in the seeded Tunisian company, the owner files a category, creates a service
 // in it in hours with the 19 % VAT by default, finds its price at the currency's three decimals, revises it, and
@@ -63,6 +64,7 @@ test('a product is filed in a category, priced at the currency scale and revised
   const categoryName = `E2E ${run}`;
   const reference = `E2E-${run}`;
   await signIn(page);
+  await inACompany(page, CSRF);
   try {
     await page.goto('/products/categories');
     await page.getByTestId('product-category-add').click();
@@ -72,7 +74,7 @@ test('a product is filed in a category, priced at the currency scale and revised
     expect(await wcagViolations(page)).toEqual([]);
 
     // The category says its products are sold by the hour; the product filed in it hears so.
-    await page.getByTestId(`product-category-edit-${categoryName}`).click();
+    await rowAction(page, `product-category-${categoryName}`, 'edit').click();
     await page.getByTestId('field-article__default_unit').fill('HUR');
     await page.getByTestId('article-defaults-save').click();
     await expect(toast(page)).toContainText('Les valeurs par défaut ont été enregistrées.');
