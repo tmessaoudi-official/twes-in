@@ -30,6 +30,16 @@ interface CustomerRepository
      */
     public function pick(Uuid $companyId, string $words, int $limit): array;
 
+    /**
+     * Those of these ids that belong to the company, in no particular order. Unlike `pick`, it does NOT leave out a
+     * customer that has been deactivated: a document written last year still names who it was for.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<Customer>
+     */
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array;
+
     /** Null for a customer that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer;
 

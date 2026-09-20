@@ -15,6 +15,7 @@ use App\Module\Customers\Application\PickCustomers;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * A few customers for the invoice form's picker, under the invoice's own permission (see the resource beside this).
@@ -32,6 +33,29 @@ final readonly class InvoiceCustomerPickProvider implements ProviderInterface
     {
         $company = $this->guard->companyForActing(CompanyPath::identifier($uriVariables, 'companyId'), InvoicePermission::READ);
 
-        return array_map(InvoiceCustomerPickResource::of(...), $this->customers->matching($company, Paging::text($operation) ?? ''));
+        $ids = self::ids($operation);
+
+        return array_map(InvoiceCustomerPickResource::of(...), [] === $ids
+            ? $this->customers->matching($company, Paging::text($operation) ?? '')
+            : $this->customers->byIds($company, $ids));
+    }
+
+    /**
+     * The uuids a request named, at most what a picker shows. A value that is not a uuid is left out rather than
+     * refused: a form asking about a record that no longer exists should read as "not found", not as a bad request.
+     *
+     * @return list<Uuid>
+     */
+    private static function ids(Operation $operation): array
+    {
+        $given = Paging::value($operation, 'ids');
+        $ids = [];
+        foreach (\is_array($given) ? $given : [] as $value) {
+            if (\is_string($value) && Uuid::isValid($value)) {
+                $ids[] = Uuid::fromString($value);
+            }
+        }
+
+        return $ids;
     }
 }

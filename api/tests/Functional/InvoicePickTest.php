@@ -139,6 +139,37 @@ final class InvoicePickTest extends ApiTestCase
         self::assertCount(1, $this->jsonList());
     }
 
+    /**
+     * What a form opening a document needs: the rows for what it already names, without the catalogue. A retired
+     * product must be answered here — a line written last year still names what was sold — which is the one way this
+     * differs from the search beside it.
+     */
+    public function testNamedRecordsAreResolvedByIdEvenOnceTheyAreRetired(): void
+    {
+        $this->signedIn(['invoice.read']);
+        $this->getJson($this->path('products').'?q=boulon');
+        $bolt = $this->jsonList()[0]['id'] ?? null;
+        self::assertIsString($bolt);
+        $retired = $this->em()->getConnection()->fetchOne('SELECT id FROM product WHERE reference = ?', ['VIS-OLD']);
+        self::assertIsString($retired);
+
+        $this->getJson($this->path('products').'?ids[]='.$bolt.'&ids[]='.$retired);
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['BOU-001', 'VIS-OLD'], self::sorted(array_column($this->jsonList(), 'reference')));
+    }
+
+    /** Asking about something that is gone reads as "not found", never as a bad request. */
+    public function testAnIdThatNamesNothingAnswersNothing(): void
+    {
+        $this->signedIn(['invoice.read']);
+
+        $this->getJson($this->path('customers').'?ids[]=00000000-0000-7000-8000-000000000000&ids[]=not-a-uuid');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList());
+    }
+
     public function testSomebodyWithoutTheInvoicePermissionIsAnsweredAsAStranger(): void
     {
         $this->signedIn(['customer.read', 'product.read']);
@@ -146,6 +177,18 @@ final class InvoicePickTest extends ApiTestCase
         $this->getJson($this->path('products'));
 
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * @param list<mixed> $values
+     *
+     * @return list<mixed>
+     */
+    private static function sorted(array $values): array
+    {
+        sort($values);
+
+        return $values;
     }
 
     private function path(string $subject): string

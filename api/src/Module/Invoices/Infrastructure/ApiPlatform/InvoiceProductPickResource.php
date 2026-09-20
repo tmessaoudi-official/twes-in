@@ -37,6 +37,10 @@ use Symfony\Component\Serializer\Attribute\Groups;
                     schema: ['type' => 'string', 'maxLength' => 100],
                     description: 'Words found in the reference, name or barcode, whatever their case and accents; under three characters, the exact reference only. Left out, the first few by reference.',
                 ),
+                'ids' => new QueryParameter(
+                    schema: ['type' => 'array', 'items' => ['type' => 'string', 'format' => 'uuid'], 'maxItems' => 20],
+                    description: 'Resolves records a document already names, rather than searching: what a form needs to show what is on it. Unlike a search, this answers a record that has since been deactivated, because a document written last year still names it. Given, `q` is ignored.',
+                ),
             ],
         ),
     ],

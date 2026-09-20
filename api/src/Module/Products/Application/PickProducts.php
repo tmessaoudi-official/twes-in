@@ -12,6 +12,7 @@ namespace App\Module\Products\Application;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductRepository;
 use App\Tenancy\Domain\Company;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The few products a person means while typing in a form (docs/SPEC.md § 7, 2026-09-17, ruling 3). A document form
@@ -35,13 +36,33 @@ final readonly class PickProducts
      */
     public function matching(Company $company, string $words, int $limit = self::SHOWN): array
     {
-        return array_map(static fn (Product $product): array => [
+        return array_map(self::row(...), $this->products->pick($company->getId(), $words, max(1, min($limit, self::SHOWN))));
+    }
+
+    /**
+     * The same rows, for products a document already names — what a form opening one needs to show each line without
+     * the catalogue. A RETIRED product is answered here and left out of `matching`: a line written last year still
+     * names what was sold, but nobody puts it on a new one.
+     *
+     * @param list<Uuid> $ids
+     *
+     * @return list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>}>
+     */
+    public function byIds(Company $company, array $ids): array
+    {
+        return array_map(self::row(...), $this->products->ofIdsInCompany(\array_slice($ids, 0, self::SHOWN), $company->getId()));
+    }
+
+    /** @return array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>} */
+    private static function row(Product $product): array
+    {
+        return [
             'id' => $product->getId()->toRfc4122(),
             'reference' => $product->getReference(),
             'name' => $product->getDetails()->name,
             'unitId' => $product->getUnit()->getId()->toRfc4122(),
             'unitPriceNet' => $product->getDetails()->unitPriceNet,
             'defaultTaxComponentIds' => $product->getDefaultTaxComponentIds(),
-        ], $this->products->pick($company->getId(), $words, max(1, min($limit, self::SHOWN))));
+        ];
     }
 }

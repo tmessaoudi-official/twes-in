@@ -75,6 +75,11 @@ final readonly class DoctrineCustomerRepository implements CustomerRepository
         return new Page($customers, \count($paginator), $page);
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        return [] === $ids ? [] : $this->entityManager->getRepository(Customer::class)->findBy(['id' => $ids, 'company' => $companyId]);
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer
     {
         $customer = $this->entityManager->find(Customer::class, $id);

@@ -59,6 +59,13 @@ final class InMemoryCustomers implements CustomerRepository
         return \array_slice($found, 0, $limit);
     }
 
+    public function ofIdsInCompany(array $ids, Uuid $companyId): array
+    {
+        $wanted = array_map(static fn (Uuid $id): string => $id->toRfc4122(), $ids);
+
+        return array_values(array_filter($this->ofCompany($companyId), static fn (Customer $c): bool => \in_array($c->getId()->toRfc4122(), $wanted, true)));
+    }
+
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Customer
     {
         foreach ($this->ofCompany($companyId) as $customer) {
