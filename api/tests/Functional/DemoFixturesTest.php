@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Functional;
 
+use App\DataFixtures\DemoCompanies;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Component\Clock\Clock;
 use Symfony\Component\Clock\NativeClock;
@@ -35,6 +36,16 @@ final class DemoFixturesTest extends ApiTestCase
             self::assertSame(['active', $currency], [$company['status'], $company['currency']], $name);
             $id = $company['id'];
             self::assertSame(1, $this->numberOf("SELECT COUNT(*) FROM membership m JOIN \"user\" u ON u.id = m.user_id JOIN role r ON r.id = m.role_id WHERE m.company_id = ? AND u.email = 'operator@twes.local' AND r.name = 'owner'", [$id]), "$name is owned by the operator");
+
+            // One member per built-in role, so a walkthrough can say truthfully what each of them may not do, and so
+            // a permission refusal is something a person can sign in and meet rather than read about (§ 7, 2026-09-20).
+            foreach (DemoCompanies::TESTERS as $role => $email) {
+                self::assertSame(
+                    1,
+                    $this->numberOf('SELECT COUNT(*) FROM membership m JOIN "user" u ON u.id = m.user_id JOIN role r ON r.id = m.role_id WHERE m.company_id = ? AND u.email = ? AND r.name = ?', [$id, $email, $role]),
+                    "$name has a $role called $email",
+                );
+            }
 
             // A list page shows 25 rows: each of these pages past it.
             foreach (['customer', 'product', 'invoice'] as $table) {

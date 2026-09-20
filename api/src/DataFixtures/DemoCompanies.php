@@ -55,6 +55,10 @@ use App\Shared\Domain\PaymentMethod;
 use App\Shared\Domain\PostalAddress;
 use App\Tenancy\Application\Company\ReviseCompanyProfile;
 use App\Tenancy\Application\Establishment\ManageEstablishments;
+use App\Tenancy\Application\Invitation\AcceptInvitation;
+use App\Tenancy\Application\Invitation\AcceptRequest;
+use App\Tenancy\Application\Invitation\InviteRequest;
+use App\Tenancy\Application\Invitation\InviteToCompany;
 use App\Tenancy\Application\Seed\SeedPlatform;
 use App\Tenancy\Application\Seed\SeedRequest;
 use App\Tenancy\Domain\Company;
@@ -79,6 +83,19 @@ use Symfony\Component\Uid\Uuid;
 final class DemoCompanies extends Fixture
 {
     public const string OPERATOR = 'operator@twes.local';
+    /**
+     * One member per built-in role in every demo company, so what a role may not do is something a person can sign
+     * in and meet rather than read about (§ 7, 2026-09-20). They join through the invitation use cases like any
+     * other member, so their memberships, audit rows and password rules are the product's own and not seeded rows.
+     * Development passwords, on a development dataset: `make fixtures` refuses to run outside dev and test.
+     */
+    public const array TESTERS = [
+        'owner' => 'owner@twes.local',
+        'admin' => 'admin@twes.local',
+        'member' => 'member@twes.local',
+    ];
+    /** Long enough for the password policy, and not a word any breach list carries. */
+    public const string TESTER_PASSWORD = 'twes-role-test-2026';
     /** The first day of a company's history, in days from today. */
     private const int FIRST_DAY = -170;
     private const int INVOICES = 28;
@@ -110,6 +127,9 @@ final class DemoCompanies extends Fixture
         private readonly ManageInvoices $invoices,
         private readonly InvoiceWorkflow $invoiceWorkflow,
         private readonly ManagePayments $payments,
+        private readonly InviteToCompany $invitations,
+        private readonly AcceptInvitation $acceptances,
+        private readonly CapturingInvitationMailer $mailed,
     ) {
     }
 
@@ -150,6 +170,7 @@ final class DemoCompanies extends Fixture
         $tax = fn (string $code): Uuid => ($this->taxes->ofCodeInCompany($code, $companyId) ?? throw new \LogicException("The $demo->country preset has no tax $code."))->getId();
 
         $this->profiles->handle($company(), $demo->profile, $actor);
+        $this->addTesters($companyId, $actor);
         $this->settings->change(new SettingContext($company()), 'article.stock_tracking', SettingLevel::Company, true, $actor);
 
         $customerIds = $this->writeCustomers($demo, $company, $tax, $actor, $settle);
@@ -160,6 +181,27 @@ final class DemoCompanies extends Fixture
         $this->planDeliveryNotes($timeline, $company, $customerIds, $goods, $actor);
         $this->planInvoices($demo, $timeline, $company, $customerIds, $sellable, $actor);
         $timeline->run();
+    }
+
+    /**
+     * Puts one person of each built-in role into the company, through the invitation the product itself sends.
+     *
+     * Nothing is written directly: the address is invited and the invitation is then accepted, so each member gets
+     * the membership, the audit rows and the password checks any real member gets. The second company invites the
+     * same three addresses again, and accepting with an account that already exists simply adds the membership —
+     * which is why the name and password are only offered the first time.
+     */
+    private function addTesters(Uuid $companyId, Uuid $actor): void
+    {
+        foreach (self::TESTERS as $role => $email) {
+            $this->invitations->handle(new InviteRequest($companyId, $email, $role), $actor);
+            $known = null !== $this->users->ofEmail(Email::fromString($email));
+            $this->acceptances->handle(new AcceptRequest(
+                $this->mailed->tokenFor($email),
+                $known ? null : ucfirst($role).' Demo',
+                $known ? null : self::TESTER_PASSWORD,
+            ));
+        }
     }
 
     /**

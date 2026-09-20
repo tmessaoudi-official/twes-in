@@ -89,6 +89,11 @@ services:
         # Domain/ is scanned too: its entities and value objects are never injected and are dropped as unused, while
         # its repository interfaces are the ports the resource aliases to their one adapter (Symfony aliases every
         # interface with a single implementation). Application use cases carrying policy values get them here.
+    # Stated rather than inferred: the demo fixtures add a second implementation of this port (a dev/test decorator
+    # that remembers where each invitation was mailed), and a port with two implementations loses the alias Symfony
+    # writes for a port with one. Naming the adapter keeps the port resolving, decorated or not.
+    App\Tenancy\Application\Invitation\InvitationMailer: '@App\Tenancy\Infrastructure\Mail\SymfonyInvitationMailer'
+
     App\Settings\Application\SettingCatalog:
         arguments:
             $declarations: !tagged_iterator app.settings.declarations

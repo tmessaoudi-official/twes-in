@@ -162,6 +162,28 @@ therefore also a smoke test of those workflows.
 
 Demo stays empty of business rows; the e2e suite writes into it.
 
+### One account per role
+
+Each demo company also gets **one member of each built-in role**, so what a role may not do is something you can
+sign in and meet rather than read about. All three share one password, and each holds the same role in both
+companies:
+
+| Role | Address | Password | What it may not do |
+|---|---|---|---|
+| `owner` | `owner@twes.local` | `twes-role-test-2026` | Nothing inside the company — it holds the wildcard `*`. It is never a platform operator. |
+| `admin` | `admin@twes.local` | `twes-role-test-2026` | Grant the owner role, or remove an owner or another admin. |
+| `member` | `member@twes.local` | `twes-role-test-2026` | Issue an invoice, record a payment, validate a delivery note, or see the members. Read-only on products, stock, vendors and expenses. |
+
+They are **invited and accepted through the product's own use cases**, not written into the database, so each has
+the membership, the audit rows and the password checks any real member gets — and the passwords pass the breach
+check, which refuses an ordinary word. One browser holds one session, so use a private window or a second profile
+to be two of them at once.
+
+To see a refusal rather than read about it: sign in as `member@twes.local`, open any invoice and look for
+**Émettre** — it is not there — then sign in as `admin@twes.local` and it is.
+
+These are development accounts on a development dataset; `make fixtures` runs in `dev` and `test` only.
+
 Two things to know about Demo on a stack that already ran tests:
 
 - **`make e2e` leaves rows in Demo** (customers, products, documents with generated names). They are harmless. If
