@@ -37,7 +37,7 @@ A role is a row: `role(id, company_id nullable, name, permissions jsonb, created
 an exact string match against that list, or the presence of `*`; there is no prefix matching and no
 implication between permissions. The three built-in roles have no company and are redefined by the release
 rather than by the database — `SeedPlatform::BUILT_IN_ROLES` holds `owner => ['*']`, `admin` with
-twenty-two strings, `member` with twelve. [Verified: `Role.php`, `SeedPlatform.php`.]
+twenty-three strings, `member` with twelve. [Verified: `Role.php`, `SeedPlatform.php`.]
 
 A membership is `membership(user_id, company_id, role_id, created_at)`, unique on `(user_id, company_id)` —
 one role per person per company. [Verified: `Membership.php`.]
@@ -190,7 +190,7 @@ from parent` — an establishment becomes an object, a membership becomes one tu
 "empty means all" needs a separate wildcard or an `all_establishments` relation, because the absence of a
 tuple is indistinguishable from a denial. Need (2) is a direct `owner` relation per order — which means
 **one tuple per business row**: the order table gains a shadow write into a second datastore, and that
-write must succeed or authorization silently diverges from the data.
+write must succeed or the authorisation data silently diverges from the business data.
 [Verified: `https://openfga.dev/docs/modeling/parent-child`, read by the research strand; the shadow-write
 consequence is Inferred from the tuple model, which the paper describes but does not editorialise on.]
 
@@ -714,7 +714,9 @@ in twes-in yet — row 82 is `todo` — so the twes-in-native interim is the set
 exists and already resolves per company: a `register.discount.max_unauthorised_percent` value on the
 company chain maps onto Lightspeed X-series' documented maximum, needs no new entity, and is replaced by a
 per-discount flag when the discount object arrives. [Verified: the market shape in § 2.1 and the settings
-engine in `api/src/Settings/`; the mapping is Speculative.]
+engine in `api/src/Settings/`; the mapping is Speculative.] Note that a threshold does not fit the
+authorisation rule recommended just below unless the permission is a *pair* — see § 5, where
+`register.discount.apply` is bounded by the setting and `register.discount.apply_any` is not.
 
 *Third, split "reopen a shift" in two*, per § 3.4. The till's Z is never reopened — a correction period is
 opened. A waiter's purse count is not a fiscal closure and may be reopened under authorisation like any
@@ -831,9 +833,19 @@ company switcher.
 **A module declares an authorising act explicitly.** `ModuleManifest` gains one list beside `dependencies`
 and `permissions`: the acts that may be performed under another member's authorisation, named by the
 permission string that governs them — `register.sale.void`, `register.sale.refund`,
-`register.discount.apply`, `register.shift.correct`. An explicit list, not a naming convention: a convention
-hides the rule inside a string and cannot be read by the role editor. A member whose role lacks the string
-may perform the act with an authorisation from a member whose role holds it.
+`register.discount.apply_any`, `register.shift.correct`. An explicit list, not a naming convention: a
+convention hides the rule inside a string and cannot be read by the role editor. A member whose role lacks
+the string may perform the act with an authorisation from a member whose role holds it.
+
+**A threshold is the same pair shape, and this is why it must be.** The rule above turns on *lacking* the
+string, so a cashier who holds `register.discount.apply` and enters thirty per cent against a limit of
+twenty would never trip it — they hold the string. The discount permission is therefore a pair like the
+ownership ones: `register.discount.apply`, bounded by
+`register.discount.max_unauthorised_percent` on the company settings chain, and
+`register.discount.apply_any`, unbounded; the authorisable act is `apply_any`, so a cashier exceeding the
+limit is asking for a string their role does not hold and the ordinary rule applies unchanged. *Own against
+any* and *bounded against unbounded* are one mechanism, which is the argument for declaring pairs in the
+manifest rather than scattering special cases.
 
 **The authorisation is synchronous first.** The manager authorises on the same screen; the request carries
 both identities; the use case writes one audit row. A separate `authorisation` table is needed only when
