@@ -309,6 +309,9 @@ export class ExpensePage {
     }
     if (await this.facade.deleteExpense(companyId, id)) {
       this.feedback.success('expenses.deleted');
+      // The record is GONE: asking whether to keep unsaved changes to it would be asking about something that no
+      // longer exists, and the only answer that saves anything is the one nobody can take (2026-09-20).
+      this.unsaved.savedAndLeaving();
       await this.router.navigate(['/expenses'], { replaceUrl: true });
     }
   }
