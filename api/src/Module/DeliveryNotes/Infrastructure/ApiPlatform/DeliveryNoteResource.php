@@ -150,6 +150,14 @@ final class DeliveryNoteResource
     #[Groups([self::READ, self::WRITE])]
     public string $customerId = '';
 
+    /**
+     * Who the note is for, in the customer's current words, so a form that opens one need not be handed the company's
+     * whole book of customers to say who (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $customerName = '';
+
     /** One of the company's establishments; left out, the default one. */
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
@@ -246,6 +254,8 @@ final class DeliveryNoteResource
             'required' => ['quantity'],
             'properties' => [
                 'productId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'productReference' => ['type' => ['string', 'null'], 'description' => 'The product as it reads today, so a form shows the line without the catalogue. Read only.'],
+                'productName' => ['type' => ['string', 'null'], 'description' => 'The product as it reads today. Read only.'],
                 'description' => ['type' => ['string', 'null'], 'maxLength' => DeliveryNoteLineDetails::DESCRIPTION_MAX],
                 'quantity' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '2.5'],
                 'unitId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
@@ -304,6 +314,7 @@ final class DeliveryNoteResource
         $resource->status = $note->getStatus()->value;
         $resource->invoicedByInvoiceId = $note->getInvoicedByInvoiceId()?->toRfc4122();
         $resource->customerId = $note->getCustomer()->getId()->toRfc4122();
+        $resource->customerName = $note->getCustomer()->getProfile()->name;
         $resource->establishmentId = $note->getEstablishment()->getId()->toRfc4122();
         $snapshot = $note->getCustomerSnapshot();
         $resource->customerSnapshot = null === $snapshot ? null : ['identifiers' => new \ArrayObject($snapshot->identifiers)] + $snapshot->toArray();
@@ -315,6 +326,8 @@ final class DeliveryNoteResource
         $resource->notesInternal = $header->notesInternal;
         $resource->lines = array_map(static fn (DeliveryNoteLine $line, LineTotals $figures): array => [
             'productId' => $line->getProduct()?->getId()->toRfc4122(),
+            'productReference' => $line->getProduct()?->getReference(),
+            'productName' => $line->getProduct()?->getDetails()->name,
             'description' => $line->getDescription(),
             'quantity' => $line->getQuantity(),
             'unitId' => $line->getUnit()->getId()->toRfc4122(),

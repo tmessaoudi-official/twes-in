@@ -98,8 +98,12 @@ final class DeliveryNotesTest extends ApiTestCase
         self::assertSame(['draft', null, null], [$note['status'], $note['number'], $note['issueDate']]);
         self::assertSame([$this->establishmentId(), $this->customerId], [$note['establishmentId'], $note['customerId']]);
         self::assertSame(['2026-09-20', 'Rue de Marseille', 'Tunis', 'PO-77'], [$note['deliveryDate'], $note['deliveryAddressLine1'], $note['deliveryCity'], $note['customerReference']]);
+        // The note carries the words for what it names, so a form that opens it need not be handed the company's
+        // whole book of customers or its catalogue (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+        self::assertNotSame('', $note['customerName']);
         $lines = $this->arrayAt($note, 'lines');
         self::assertSame([$this->productId, null], array_column($lines, 'productId'));
+        self::assertSame(['Portable 14"', null], array_column($lines, 'productName'));
         self::assertSame(['Portable 14"', 'Pose'], array_column($lines, 'description'));
         self::assertSame(['2.000', '1.500'], array_column($lines, 'quantity'));
         self::assertSame([$this->unitId('C62'), $this->unitId('HUR')], array_column($lines, 'unitId'));

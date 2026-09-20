@@ -152,11 +152,21 @@ final class InvoiceResource
     #[Groups([self::READ])]
     public string $status = 'draft';
 
-    /** One of the company's active customers (GET .../invoice-options). */
+    /** One of the company's active customers (GET .../invoice-options/customers?q=). */
     #[Assert\NotBlank(groups: [self::WRITE])]
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $customerId = '';
+
+    /**
+     * Who the document is for, in the customer's current words. It travels WITH the document because a form that
+     * opens one must show who it names without being handed the company's whole book of customers to look it up in
+     * (docs/SPEC.md § 7, 2026-09-17, ruling 3). What was PRINTED on an issued document is the recorded customer, not
+     * this — this is the customer as it reads today.
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $customerName = '';
 
     /** One of the company's establishments; left out, the default one. */
     #[Assert\Uuid(groups: [self::WRITE])]
@@ -225,6 +235,8 @@ final class InvoiceResource
             'required' => ['quantity'],
             'properties' => [
                 'productId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
+                'productReference' => ['type' => ['string', 'null'], 'description' => 'The product as it reads today, so a form shows the line without the catalogue. Read only.'],
+                'productName' => ['type' => ['string', 'null'], 'description' => 'The product as it reads today. Read only.'],
                 'description' => ['type' => ['string', 'null'], 'maxLength' => InvoiceLineDetails::DESCRIPTION_MAX],
                 'quantity' => ['type' => 'string', 'pattern' => '^(0|[1-9][0-9]{0,10})(\.[0-9]{1,3})?$', 'example' => '2.5'],
                 'unitId' => ['type' => ['string', 'null'], 'format' => 'uuid'],
@@ -396,6 +408,7 @@ final class InvoiceResource
         $resource->number = $invoice->getNumber();
         $resource->status = $invoice->getStatus()->value;
         $resource->customerId = $invoice->getCustomer()->getId()->toRfc4122();
+        $resource->customerName = $invoice->getCustomer()->getProfile()->name;
         $resource->establishmentId = $invoice->getEstablishment()->getId()->toRfc4122();
         $resource->issueDate = $invoice->getIssueDate()?->format('Y-m-d');
         $resource->supplyDate = $header->supplyDate?->format('Y-m-d');
@@ -407,6 +420,8 @@ final class InvoiceResource
         $resource->documentTaxComponentIds = array_map(static fn (InvoiceTax $tax): string => $tax->getTaxComponent()->getId()->toRfc4122(), $invoice->getDocumentTaxes());
         $resource->lines = array_map(static fn (InvoiceLine $line, array $fixed): array => [
             'productId' => $line->getProduct()?->getId()->toRfc4122(),
+            'productReference' => $line->getProduct()?->getReference(),
+            'productName' => $line->getProduct()?->getDetails()->name,
             'description' => $line->getDescription(),
             'quantity' => $line->getQuantity(),
             'unitId' => $line->getUnit()->getId()->toRfc4122(),

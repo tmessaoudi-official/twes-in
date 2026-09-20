@@ -96,7 +96,12 @@ final class InvoicesTest extends ApiTestCase
         self::assertSame([$this->establishmentId(), $this->customerId], [$invoice['establishmentId'], $invoice['customerId']]);
         self::assertSame(['2026-09-10', 45, 'PO-77', 'Merci', null, '1125.000'], [$invoice['supplyDate'], $invoice['paymentTermsDays'], $invoice['customerReference'], $invoice['notesPrinted'], $invoice['notesInternal'], $invoice['discountAmount']]);
         self::assertSame([$this->taxId('TIMBRE'), $this->taxId('RS1')], $invoice['documentTaxComponentIds'], 'left out, the company\'s stamp and the customer\'s withholding');
+        // A document carries the words for what it names, so a form that opens it need not be handed the company's
+        // whole book of customers or its catalogue to say who and what (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+        self::assertSame('Carthage Conseil', $invoice['customerName']);
         $lines = $this->arrayAt($invoice, 'lines');
+        self::assertSame([null, 'ART-001'], array_column($lines, 'productReference'));
+        self::assertSame([null, 'Portable 14"'], array_column($lines, 'productName'));
         self::assertSame(['10.000', null], array_column($lines, 'discountRate'));
         self::assertSame(['Conseil', 'Portable 14"'], array_column($lines, 'description'));
         self::assertSame([[$this->taxId('TVA19')], [$this->taxId('FODEC'), $this->taxId('TVA19')]], array_column($lines, 'taxComponentIds'));
