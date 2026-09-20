@@ -27,4 +27,14 @@ final readonly class DbalExpenseCategoryDirectory implements ExpenseCategoryDire
             [$categoryId->toRfc4122(), $companyId->toRfc4122()],
         );
     }
+
+    public function idOfActiveNameInCompany(string $name, Uuid $companyId): ?Uuid
+    {
+        $id = $this->connection->fetchOne(
+            'SELECT id FROM expense_category WHERE name = ? AND company_id = ? AND is_active',
+            [$name, $companyId->toRfc4122()],
+        );
+
+        return \is_string($id) ? Uuid::fromString($id) : null;
+    }
 }

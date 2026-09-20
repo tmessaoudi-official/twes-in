@@ -18,4 +18,10 @@ use Symfony\Component\Uid\Uuid;
 interface ExpenseCategoryDirectory
 {
     public function isActiveInCompany(Uuid $categoryId, Uuid $companyId): bool;
+
+    /**
+     * The id of the company's active category of this name, for a file that names one: a spreadsheet carries the name
+     * a person reads, never an id (docs/SPEC.md § 8 row 59).
+     */
+    public function idOfActiveNameInCompany(string $name, Uuid $companyId): ?Uuid;
 }

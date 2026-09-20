@@ -115,7 +115,7 @@ final readonly class ManageVendors
     {
         $refusal = IdentifierRules::refusal($this->presets->get($company->getFiscalPreset()), $input->profile->identifiers, '');
         if (null !== $refusal) {
-            throw new InvalidVendor($refusal->field, $refusal->message);
+            throw new InvalidVendor($refusal->field, $refusal->message, $refusal->reason, $refusal->params);
         }
         $category = $input->profile->defaultExpenseCategoryId;
         $kept = null !== $category && null !== $current && true === $current->getProfile()->defaultExpenseCategoryId?->equals($category);
