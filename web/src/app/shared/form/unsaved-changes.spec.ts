@@ -75,6 +75,28 @@ describe('UnsavedChanges', () => {
     expect(await leaving()).toBe(false);
   });
 
+  it('lets a page through once when it says it saved, and asks again the time after', () => {
+    // Narrow on purpose: the statement is consumed by the very navigation that follows the save, so it cannot
+    // leave a later, genuine leave unguarded.
+    const page = TestBed.createComponent(Page);
+    page.componentInstance.changes.set(4);
+    page.detectChanges();
+    answer = false;
+
+    service().savedAndLeaving();
+    let first: boolean | undefined;
+    service()
+      .confirmLeave()
+      .subscribe((allowed) => (first = allowed));
+    expect([first, asked]).toEqual([true, 0]);
+
+    let second: boolean | undefined;
+    service()
+      .confirmLeave()
+      .subscribe((allowed) => (second = allowed));
+    expect([second, asked]).toEqual([false, 1]);
+  });
+
   it('stops asking once the page has been saved', async () => {
     const page = TestBed.createComponent(Page);
     page.componentInstance.changes.set(2);

@@ -22,6 +22,7 @@ import type { FormValues } from '../shared/form/form-types';
 import { vendorForm, vendorInput, vendorValues } from './vendor-forms';
 import { VendorsFacade } from './vendors-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { RecordBar } from '../shared/form/record-bar';
 
@@ -42,6 +43,7 @@ import { RecordBar } from '../shared/form/record-bar';
 })
 export class VendorPage {
   private readonly facade = inject(VendorsFacade);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
@@ -151,6 +153,9 @@ export class VendorPage {
       const created = await this.facade.createVendor(companyId, input);
       if (created !== null) {
         this.feedback.success('vendors.saved');
+        // It exists now: going to it is not leaving unsaved work, though the form still holds what was
+        // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
+        this.unsaved.savedAndLeaving();
         await this.router.navigate(['/vendors', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseVendor(companyId, id, input)) !== null) {

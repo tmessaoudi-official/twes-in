@@ -5,6 +5,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter, Router } from '@angular/router';
 import {
@@ -199,7 +200,13 @@ describe('CustomerPage', () => {
     customFields.set([]);
     optionsSignal.set(options);
     facade.loadCustomer.mockReset().mockResolvedValue(undefined);
-    facade.createCustomer.mockReset().mockResolvedValue({ ...carthage, id: 'k9' });
+    // As the real facade does: what it created becomes the record on screen. A stub that skipped this would
+    // leave the page comparing its form against nothing, which is not what production does.
+    facade.createCustomer.mockReset().mockImplementation(async () => {
+      const created = { ...carthage, id: 'k9' };
+      customer.set(created);
+      return created;
+    });
     facade.reviseCustomer.mockReset().mockResolvedValue(carthage);
     facade.addContact.mockReset().mockResolvedValue(true);
     facade.reviseContact.mockReset().mockResolvedValue(true);
@@ -277,6 +284,11 @@ describe('CustomerPage', () => {
       expect(navigate).toHaveBeenCalledWith(['/customers', 'k9'], { replaceUrl: true }),
     );
     expect(successToasts()).toContain('customers.saved');
+    // And going to the record it just created is not leaving unsaved work: the leave guard added in row 45
+    // otherwise asks, and holds the navigation on /customers/new (CI e2e, 2026-09-20).
+    await new Promise((resolve) => {
+      TestBed.inject(UnsavedChanges).confirmLeave().subscribe(resolve);
+    }).then((allowed) => expect(allowed).toBe(true));
   });
 
   it("sends what the company's custom fields were filled in with", async () => {

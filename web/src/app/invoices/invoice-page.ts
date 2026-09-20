@@ -48,6 +48,7 @@ import {
   type Payment,
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
@@ -85,6 +86,7 @@ import { RecordView } from '../shared/form/record-view';
 })
 export class InvoicePage {
   private readonly facade = inject(InvoicesFacade);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
@@ -461,6 +463,9 @@ export class InvoicePage {
       const created = await this.facade.create(companyId, input);
       if (created !== null) {
         this.feedback.success('invoices.saved');
+        // It exists now: going to it is not leaving unsaved work, though the form still holds what was
+        // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
+        this.unsaved.savedAndLeaving();
         await this.router.navigate(['/invoices', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.revise(companyId, id, input)) !== null) {

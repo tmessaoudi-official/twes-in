@@ -23,6 +23,7 @@ import { ArticleDefaults } from './article-defaults';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
 import { Feedback } from '../shared/feedback/feedback';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { RecordBar } from '../shared/form/record-bar';
 import { MatTabsModule } from '@angular/material/tabs';
@@ -46,6 +47,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 })
 export class ProductPage {
   private readonly facade = inject(ProductsFacade);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
@@ -170,6 +172,9 @@ export class ProductPage {
       const created = await this.facade.createProduct(companyId, input);
       if (created !== null) {
         this.feedback.success('products.saved');
+        // It exists now: going to it is not leaving unsaved work, though the form still holds what was
+        // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
+        this.unsaved.savedAndLeaving();
         await this.router.navigate(['/products', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseProduct(companyId, id, input)) !== null) {

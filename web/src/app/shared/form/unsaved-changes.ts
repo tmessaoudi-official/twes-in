@@ -15,6 +15,7 @@ import { ConfirmDialog } from '../ui/confirm-dialog';
 export class UnsavedChanges {
   private readonly dialog = inject(MatDialog);
   private readonly sources = signal<readonly Signal<number>[]>([]);
+  private leavingAfterSave = false;
 
   /** How many fields on the page hold something other than what was last saved. */
   readonly count: Signal<number> = computed(() =>
@@ -33,7 +34,20 @@ export class UnsavedChanges {
    * Whether the person may leave. Nothing unsaved is not a question — asking on a page nobody changed is how a
    * person learns to dismiss the question without reading it, and then loses the one that mattered.
    */
+  /**
+   * The page saved and is now going to the record it created. Its form still holds what was typed while what it
+   * compares against is the API's answer, and that difference is not unsaved work — the record exists. The next
+   * question is always the one that navigation asks, and it consumes this.
+   */
+  savedAndLeaving(): void {
+    this.leavingAfterSave = true;
+  }
+
   confirmLeave(): Observable<boolean> {
+    if (this.leavingAfterSave) {
+      this.leavingAfterSave = false;
+      return of(true);
+    }
     if (this.count() === 0) return of(true);
 
     return this.dialog

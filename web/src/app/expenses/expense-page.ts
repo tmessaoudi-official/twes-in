@@ -41,6 +41,7 @@ import {
   type ExpenseVendorOption,
 } from './expenses-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
 import { RecordBar } from '../shared/form/record-bar';
 
@@ -68,6 +69,7 @@ import { RecordBar } from '../shared/form/record-bar';
 })
 export class ExpensePage {
   private readonly facade = inject(ExpensesFacade);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
@@ -262,6 +264,9 @@ export class ExpensePage {
       const created = await this.facade.createExpense(companyId, input);
       if (created !== null) {
         this.feedback.success('expenses.saved');
+        // It exists now: going to it is not leaving unsaved work, though the form still holds what was
+        // typed and the record holds what the API answered (row 45's leave guard, 2026-09-20).
+        this.unsaved.savedAndLeaving();
         await this.router.navigate(['/expenses', created.id], { replaceUrl: true });
       }
     } else if ((await this.facade.reviseExpense(companyId, id, input)) !== null) {
