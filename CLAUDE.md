@@ -264,3 +264,11 @@ tables, essay gotchas) was retired with the reset. What applies here:
 - An audit entry is also the realtime signal — `DoctrineAuditTrail` stages each one as a live change whose kind is the
   entity type. A use case that records nothing leaves `reloadOn([...])` on its screen permanently dead, with no error
   anywhere (2026-09-20, `ManageRoles`).
+- A mutant that does not TYPE-CHECK tests nothing, and reads exactly like a test that fails to notice: two sabotages
+  showed no failures because the build had died, not because the guarantee was uncovered. Print the tally, not just
+  the failures — an absent `Tests N passed` line is the tell (2026-09-20).
+- A live change never comes back to the TAB that caused it (the `X-Tab` header), so a screen writing something the
+  rest of the app reads must refresh it itself: `auth.refresh()`, or `SettingsFacade.refresh()` for the chain. Use
+  `refresh()`, never `load()`, after a write — `load()` signs the person out when the API is briefly unreachable.
+- Pushing again CANCELS the previous commit's in-progress CI run, so a commit can read `e2e cancelled` and its new
+  specs never ran anywhere but locally. Check the run of the commit that actually carries them (2026-09-20).
