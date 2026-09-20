@@ -13,14 +13,22 @@ const CSRF = '0123456789abcdef0123456789abcdef';
  * Both cases act on STORED preferences, so neither may assume a starting state: each brings the thing it tests to
  * a known value first and then changes it. A run that assumed one would pass or fail by what the run before left.
  */
-async function foldTo(page: Page, wanted: 'expanded' | 'rail'): Promise<void> {
-  const nav = page.getByTestId('shell-nav');
-  // The stored answer arrives with the settings chain, after the first paint: poll rather than read once.
-  await expect.poll(async () => nav.getAttribute('data-sidebar')).toMatch(/^(expanded|rail)$/);
-  if ((await nav.getAttribute('data-sidebar')) !== wanted) {
-    await page.getByTestId('sidebar-toggle').click();
-  }
-  await expect(nav).toHaveAttribute('data-sidebar', wanted);
+async function forgetPreference(page: Page, key: string): Promise<void> {
+  await page.evaluate(
+    async ([setting, token]) => {
+      const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } | null };
+      if (me.company === null) throw new Error('the session is working in no company');
+      const answered = await fetch(
+        `/api/companies/${me.company.id}/settings/${encodeURIComponent(setting)}?level=user`,
+        { method: 'DELETE', headers: { 'csrf-token': token } },
+      );
+      // 404 means it was never set, which is the state this asks for.
+      if (!answered.ok && answered.status !== 404) {
+        throw new Error(`forgetting ${setting} answered ${answered.status}`);
+      }
+    },
+    [key, CSRF] as const,
+  );
 }
 
 function primary(page: Page): Promise<string> {
@@ -36,17 +44,23 @@ test('the menu folds and unfolds inside settings too, and each menu keeps its ow
   await inACompany(page, CSRF);
   const nav = page.getByTestId('shell-nav');
 
-  // The general menu unfolded and the settings menu folded: the state each opens in today.
+  // Forgotten first, so both menus start at their DECLARED defaults whatever a previous run left. An earlier
+  // version polled for "either valid value" and then compared, which is a check that cannot fail: it read the
+  // general menu's state before the settings area had registered, and clicked the toggle the wrong way.
   await page.goto('/');
-  await foldTo(page, 'expanded');
-  await page.getByTestId('nav-settings').click();
-  await foldTo(page, 'rail');
+  await forgetPreference(page, 'presentation.sidebar');
+  await forgetPreference(page, 'presentation.sidebar-settings');
+  await page.reload();
 
-  // The toggle inside settings used to do nothing at all; it unfolds that menu now.
+  await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
+
+  // Settings opens folded, as it does today — and its toggle used to do nothing at all.
+  await page.getByTestId('nav-settings').click();
+  await expect(nav).toHaveAttribute('data-sidebar', 'rail');
   await page.getByTestId('sidebar-toggle').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
 
-  // And the general menu is untouched by it — each area keeps its own answer.
+  // The general menu is untouched by that, and folding IT does not fold the settings one back.
   await page.getByTestId('nav-home').click();
   await expect(nav).toHaveAttribute('data-sidebar', 'expanded');
   await page.getByTestId('sidebar-toggle').click();
