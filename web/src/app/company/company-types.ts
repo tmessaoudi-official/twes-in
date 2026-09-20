@@ -1,7 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/** The three built-in roles; the API refuses anything else. */
-export type MemberRole = 'owner' | 'admin' | 'member';
+/**
+ * A role by name — one of the built-in three, or one this company made for itself (row 104). It is a plain string
+ * rather than a union: which names exist is a property of the company being worked in, so only the API can refuse
+ * one, and a union here would have been a second, quietly wrong answer to that question.
+ */
+export type MemberRole = string;
+
+/** The three every company shares, in the order they rank; a company's own roles sit below them. */
+export const BUILT_IN_ROLES = ['owner', 'admin', 'member'] as const;
 
 /** One company the signed-in user may work in, as the switcher lists it. */
 export interface CompanyOption {

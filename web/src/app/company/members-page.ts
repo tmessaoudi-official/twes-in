@@ -19,8 +19,10 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DataList, DataListCell, DataListRowActions } from '../shared/list/data-list';
 import type { ListDescriptor } from '../shared/list/list-types';
-import type { MemberRole, MemberRow } from './company-types';
+import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
+import { RolesFacade } from './roles-facade';
+import type { RoleRow } from './roles-types';
 import { Feedback } from '../shared/feedback/feedback';
 
 /** The members list as configuration: its columns, what a person may hide, and its page sizes. */
@@ -52,13 +54,29 @@ export const MEMBERS_LIST: ListDescriptor<MemberRow> = {
       id: 'role',
       label: 'members.role',
       value: (row) => row.role,
-      options: ['owner', 'admin', 'member'].map((role) => ({
-        value: role,
-        label: `roles.${role}`,
-      })),
+      options: [],
     },
   ],
 };
+
+/**
+ * What a role is called on screen. A built-in role is the same in every company, so the release translates it; a
+ * role a company made for itself carries the name that company gave it, and ngx-translate answers an unknown key
+ * with the key, so the same expression renders both.
+ */
+export const roleLabel = (role: RoleRow): string =>
+  role.builtIn ? `roles.${role.name}` : role.name;
+
+/** The members list with its role filter offering exactly the roles this company has. */
+export const membersList = (roles: readonly RoleRow[]): ListDescriptor<MemberRow> => ({
+  ...MEMBERS_LIST,
+  filters: [
+    {
+      ...MEMBERS_LIST.filters![0],
+      options: roles.map((role) => ({ value: role.name, label: roleLabel(role) })),
+    },
+  ],
+});
 
 /** Who belongs to the company being worked in, and the two things an administrator does about it. */
 @Component({
@@ -82,11 +100,13 @@ export class MembersPage implements OnInit {
   private readonly live = inject(LiveChanges);
   private readonly destroyRef = inject(DestroyRef);
   private readonly members = inject(MembersFacade);
+  private readonly rolesFacade = inject(RolesFacade);
   private readonly auth = inject(AuthFacade);
   private readonly feedback = inject(Feedback);
 
-  protected readonly roles: readonly MemberRole[] = ['owner', 'admin', 'member'];
-  protected readonly list = MEMBERS_LIST;
+  protected readonly roles = this.rolesFacade.roles;
+  protected readonly roleLabel = roleLabel;
+  protected readonly list = computed(() => membersList(this.roles()));
   protected readonly rowTestId = (row: MemberRow): string => `member-${row.email}`;
   protected readonly rows = this.members.members;
   protected readonly busy = this.members.busy;
@@ -99,7 +119,7 @@ export class MembersPage implements OnInit {
       nonNullable: true,
       validators: [Validators.required, Validators.email],
     }),
-    role: new FormControl<MemberRole>('member', { nonNullable: true }),
+    role: new FormControl<string>('member', { nonNullable: true }),
   });
 
   async ngOnInit(): Promise<void> {
@@ -110,7 +130,7 @@ export class MembersPage implements OnInit {
         () => this.members.load(companyId),
         this.destroyRef,
       );
-      await this.members.load(companyId);
+      await Promise.all([this.members.load(companyId), this.rolesFacade.load(companyId)]);
     }
   }
 

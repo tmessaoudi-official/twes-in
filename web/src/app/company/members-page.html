@@ -15,7 +15,7 @@
     </p>
   }
   <app-data-list
-    [descriptor]="list"
+    [descriptor]="list()"
     [rows]="rows()"
     testId="members-table"
     [rowTestId]="rowTestId"
@@ -30,6 +30,8 @@
       }
     </ng-template>
     <ng-template appDataListCell="role" let-row>
+      <!-- A built-in role is translated; a role the company named renders that name, which is what an unknown
+           translation key resolves to. -->
       {{ 'roles.' + row.role | translate }}
     </ng-template>
     @if (mayManage()) {
@@ -65,8 +67,8 @@
           <mat-form-field>
             <mat-label>{{ 'members.role' | translate }}</mat-label>
             <mat-select formControlName="role" data-testid="member-role">
-              @for (role of roles; track role) {
-                <mat-option [value]="role">{{ 'roles.' + role | translate }}</mat-option>
+              @for (role of roles(); track role.id) {
+                <mat-option [value]="role.name">{{ roleLabel(role) | translate }}</mat-option>
               }
             </mat-select>
           </mat-form-field>

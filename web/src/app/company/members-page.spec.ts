@@ -21,6 +21,8 @@ import {
 } from '../shared/settings/settings-facade';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
+import { RolesFacade } from './roles-facade';
+import type { RoleRow } from './roles-types';
 import { MembersPage } from './members-page';
 import { provideQuietFeedback } from '../shared/testing/feedback';
 
@@ -72,6 +74,27 @@ describe('MembersPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const role = (name: string, builtIn: boolean): RoleRow => ({
+    id: `r-${name}`,
+    name,
+    builtIn,
+    wildcard: false,
+    permissions: [],
+    memberCount: 0,
+  });
+  const companyRoles = signal<readonly RoleRow[]>([]);
+  const roles = {
+    roles: companyRoles.asReadonly(),
+    groups: signal([]).asReadonly(),
+    busy: signal(false).asReadonly(),
+    error: signal(null).asReadonly(),
+    detail: signal('').asReadonly(),
+    load: vi.fn(),
+    create: vi.fn(),
+    revise: vi.fn(),
+    remove: vi.fn(),
+    clearError: vi.fn(),
+  };
   let fixture: ComponentFixture<MembersPage>;
 
   const text = (testId: string): string | null =>
@@ -84,6 +107,13 @@ describe('MembersPage', () => {
     members.add.mockReset().mockResolvedValue(owner);
     members.remove.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    companyRoles.set([
+      role('owner', true),
+      role('admin', true),
+      role('member', true),
+      role('barista', false),
+    ]);
+    roles.load.mockReset().mockResolvedValue(undefined);
 
     TestBed.configureTestingModule({
       imports: [MembersPage],
@@ -98,6 +128,7 @@ describe('MembersPage', () => {
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
         { provide: MembersFacade, useValue: members },
+        { provide: RolesFacade, useValue: roles },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
@@ -117,6 +148,26 @@ describe('MembersPage', () => {
   it('shows every member it was given', () => {
     expect(text('member-owner@example.test')).toContain('Owner');
     expect(text('member-owner@example.test')).toContain('propriétaire');
+  });
+
+  it('offers the roles the company made, beside the three the release ships', async () => {
+    // Hardcoding owner/admin/member here meant a role the company had just made could be held by nobody.
+    const select = fixture.nativeElement.querySelector(
+      '[data-testid="member-role"]',
+    ) as HTMLElement;
+    select.click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    const offered = [...document.querySelectorAll('mat-option')].map((o) => o.textContent?.trim());
+    expect(offered).toEqual(['propriétaire', 'administrateur', 'membre', 'barista']);
+  });
+
+  it('names a custom role by its own name, having no translation to look up', () => {
+    rows.set([{ ...owner, email: 'barista@example.test', role: 'barista' }]);
+    fixture.detectChanges();
+
+    expect(text('member-barista@example.test')).toContain('barista');
   });
 
   it('refuses to submit an address that is not one', async () => {

@@ -14,10 +14,12 @@ use App\Audit\Application\AuditTrail;
 use App\Shared\Application\Transactions;
 use App\Tenancy\Application\Permission\KnownPermissions;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\InvitationRepository;
 use App\Tenancy\Domain\MembershipRepository;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
 use App\Tenancy\Domain\RoleRepository;
+use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -50,8 +52,10 @@ final readonly class ManageRoles
         private RoleRepository $roles,
         private MembershipRepository $memberships,
         private KnownPermissions $permissions,
+        private InvitationRepository $invitations,
         private AuditTrail $audit,
         private Transactions $transactions,
+        private ClockInterface $clock,
     ) {
     }
 
@@ -134,7 +138,11 @@ final readonly class ManageRoles
         $this->transactions->run(function () use ($company, $roleId, $actorUserId): void {
             $role = $this->editable($company, $roleId);
 
+            // Members first, then the addresses invited AT this role and not yet joined. An invitation names its
+            // role by NAME and carries no foreign key, so nothing at the database would stop this delete — the
+            // invitation would simply stop being acceptable, and the person would find out at the link.
             $holders = $this->memberships->holdersOfRole($company->getId(), $roleId, self::NAMED_HOLDERS + 1);
+            $holders = array_merge($holders, $this->invitedToRole($company, $role->getName()));
             if ([] !== $holders) {
                 $named = \array_slice($holders, 0, self::NAMED_HOLDERS);
                 $more = \count($holders) > self::NAMED_HOLDERS ? ' and others' : '';
@@ -146,6 +154,26 @@ final readonly class ManageRoles
             $this->record($company, $role, self::DELETED, $actorUserId);
             $this->roles->remove($role);
         });
+    }
+
+    /**
+     * The addresses an open invitation names this role for.
+     *
+     * @return list<string>
+     */
+    private function invitedToRole(Company $company, string $roleName): array
+    {
+        $invited = [];
+        foreach ($this->invitations->openOfCompany($company->getId(), $this->clock->now()) as $invitation) {
+            if ($invitation->getRoleName() === $roleName) {
+                $invited[] = $invitation->getEmail()->value;
+            }
+            if (\count($invited) > self::NAMED_HOLDERS) {
+                break;
+            }
+        }
+
+        return $invited;
     }
 
     private function record(Company $company, Role $role, string $action, ?Uuid $actorUserId): void

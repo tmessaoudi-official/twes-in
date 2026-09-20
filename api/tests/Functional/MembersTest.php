@@ -109,6 +109,52 @@ final class MembersTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
+    public function testSomebodyIsInvitedAtTheCompanysOwnRole(): void
+    {
+        // The three built-in names were hardcoded here while the company could already make roles of its own, so a
+        // role it made was offered nowhere and could be held by nobody (row 104's remainder).
+        $this->adminSignedIn();
+        $this->customRole('barista');
+        $this->createUser('joiner@twes.local', 'password-1234');
+
+        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => 'barista']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->getJson($this->path());
+        $roles = [];
+        foreach ($this->jsonList() as $row) {
+            self::assertIsString($row['email']);
+            $roles[$row['email']] = $row['role'];
+        }
+        self::assertSame('barista', $roles['joiner@twes.local'], 'held, not silently downgraded to member');
+    }
+
+    public function testAnotherCompanysRoleIsNotOfferedHere(): void
+    {
+        // Same refusal as an invented name: a role row exists, but not one this company may use.
+        $this->adminSignedIn();
+        $elsewhere = $this->createCompany('Other');
+        $this->customRole('their-role', $elsewhere);
+        $this->createUser('joiner@twes.local', 'password-1234');
+
+        $this->postJson($this->path(), ['email' => 'joiner@twes.local', 'role' => 'their-role']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+    }
+
+    /** A role of this company (or of $company), as the roles screen would have made it. */
+    private function customRole(string $name, ?Company $company = null): Role
+    {
+        $em = $this->em();
+        $owner = $em->find(Company::class, ($company ?? $this->company)->getId());
+        self::assertNotNull($owner);
+        $role = new Role($name, ['customer.read'], $owner);
+        $em->persist($role);
+        $em->flush();
+
+        return $role;
+    }
+
     public function testTheSamePersonIsNotAddedTwice(): void
     {
         $this->adminSignedIn();

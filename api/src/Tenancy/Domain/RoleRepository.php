@@ -19,6 +19,9 @@ interface RoleRepository
     /** A role the company may use: a built-in one or its own; null for a role of another company. */
     public function ofIdForCompany(Uuid $roleId, Uuid $companyId): ?Role;
 
+    /** The same by name, which is how a member is invited and how an invitation names the role it was sent for. */
+    public function ofNameForCompany(string $name, Uuid $companyId): ?Role;
+
     /**
      * Every role the company may use — the built-in ones first, in the order they rank, then its own by name.
      * The order is the repository's rather than the screen's because it is the order every reader wants.

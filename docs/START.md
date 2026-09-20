@@ -186,9 +186,12 @@ them, and their boxes are readable but locked. A company adds its own beside the
 naming one and ticking what it may do in a matrix grouped by module. The catalogue of permissions is collected from
 the modules themselves, so a module added later brings its own heading with it and nothing has to be listed by hand.
 
+Once a role exists it is offered wherever a role is chosen — the **Membres** screen lists it beside the three when
+you invite somebody, so a `barista` can actually be one.
+
 Two refusals are deliberate rather than missing. A role somebody still holds **cannot be deleted**: the screen names
-who holds it and asks you to move them first, because deleting it quietly would change what those people may do and
-nobody would notice until it bit. And a custom role sits **below `member`** in the order that decides who may grant
+who holds it — members, and anyone invited at it who has not joined yet — and asks you to move them first, because
+deleting it quietly would change what those people may do and nobody would notice until it bit. And a custom role sits **below `member`** in the order that decides who may grant
 and remove whom, so it never grants a role to anyone, whatever it is ticked for; that is fail-closed on purpose and
 "a manager who may hire" is its own decision, not yet taken.
 

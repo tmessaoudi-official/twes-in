@@ -65,8 +65,11 @@ final readonly class AcceptInvitation
         [$outcome, $joined] = $this->transactions->run(function () use ($request): array {
             $invitation = $this->usable($request->rawToken);
             $company = $invitation->getCompany();
-            $role = $this->roles->builtIn($invitation->getRoleName())
-                ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $invitation->getRoleName()));
+            // An invitation names its role by name, so a role the company deleted between sending and accepting
+            // resolves to nothing here rather than to a wrong role. Refusing is the safe answer: joining at some
+            // other role would be a silent grant nobody chose.
+            $role = $this->roles->ofNameForCompany($invitation->getRoleName(), $company->getId())
+                ?? throw new UnknownRole(\sprintf('"%s" is no longer a role %s gives.', $invitation->getRoleName(), $company->getName()));
 
             $now = $this->clock->now();
             $user = $this->users->ofEmail($invitation->getEmail());

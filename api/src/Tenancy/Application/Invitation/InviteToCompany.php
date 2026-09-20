@@ -66,8 +66,10 @@ final readonly class InviteToCompany
                 ?? throw new CompanyNotFound(\sprintf('No company %s.', $request->companyId->toRfc4122()));
 
             // Checked before anything is written or sent, so a bad role cannot leave a half-made invitation behind.
-            $this->roles->builtIn($request->roleName)
-                ?? throw new UnknownRole(\sprintf('"%s" is not a built-in role.', $request->roleName));
+            // Resolved against THIS company: the built-in three plus the roles it made for itself. A role belonging
+            // to another company is as unknown here as an invented name, and answers the same way.
+            $this->roles->ofNameForCompany($request->roleName, $company->getId())
+                ?? throw new UnknownRole(\sprintf('"%s" is not a role %s may give.', $request->roleName, $company->getName()));
             $this->bounds->assertMayGrant($company->getId(), $actorUserId, $request->roleName);
 
             $email = Email::fromString($request->email);

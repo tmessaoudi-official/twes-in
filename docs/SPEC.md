@@ -804,6 +804,28 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   sat above the number the module half alone produces. A discovery input that names a file must red when the file
   yields nothing, and a floor set to exactly what currently passes is not a floor.
 
+- [2026-09-20 15:50] AGREED: **straight through the agreed order, no mid-way checkpoint** — row 104's remainder, then
+  70, 71, 72, 73, 45, then the map and 3D view (row 83), and the developer tests ONCE at the end. Asked because the
+  remaining scope measured ~14-18 hours across several sessions and row 45 declares the actions rows 71 and 72 render,
+  so reordering it first would have saved building the toolbars twice; the developer chose the agreed order anyway.
+  Recorded so the cost is a known one rather than a surprise: a design disagreement in row 70 is found after
+  everything has been built on top of it.
+
+- [2026-09-20 16:10] AGREED: **a role's name, not a fixed three, is what the members page offers and the API takes.**
+  Row 104's remainder. `MemberResource` carried `Assert\Choice` on owner/admin/member, which could never be right:
+  which names exist is a property of the COMPANY being acted for, and a class-level attribute has no request in
+  sight. The check moved to `InviteToCompany`, which resolves the name against that company through the new
+  `RoleRepository::ofNameForCompany` — so a role belonging to ANOTHER company is as unknown here as an invented
+  name, and answers the same 422 with a message that can say which company it looked in. `MemberRole` in the SPA
+  stopped being a union of three literals for the same reason: a union there is a second, quietly wrong answer to a
+  question only the API can settle.
+- [2026-09-20 16:10] AGREED: **an open invitation counts as holding its role.** `AcceptInvitation` resolved the role
+  the same built-in-only way, and an invitation names its role by NAME with no foreign key — so deleting a role
+  somebody had been invited at raised nothing at the database, and the invitation simply stopped being acceptable,
+  which the person discovered by clicking the link. The delete refusal now counts invited addresses beside the
+  members and names them the same way, and accepting an invitation whose role is gone is refused rather than
+  resolved to some other role, because joining at a role nobody chose is a silent grant.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -913,7 +935,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 101 | A product's home location (§ 7 2026-09-20 09:45): one nullable location per product per establishment, proposed when receiving, with a picker on the product screen and a `home_location` import column; the map door ships with row 83 | M | todo | - | api/src/Module/Products/** api/src/Module/Inventory/** api/migrations/** web/src/app/products/** api/tests/** |
 | 102 | TTN connector (§ 7 2026-09-20 09:30): **unestimated — blocked on TTN's interface specification, signing and certificate requirements, and a test account.** Row 93's fields are built regardless, so no invoice waits on this | L | blocked | - | api/src/Module/** docs/fiscal/TN.md |
 | 103 | Fiscal journal (§ 7 2026-09-20 11:30): a `FiscalJournal` context — append-only entries carrying the previous hash and a per-company sequence, signed with a per-company key encrypted at rest; a `training` flag on every entry; reprints marked duplicates; invoices and credit notes journalled. **Design ruled, nothing built.** The till joins the same journal with the register module, its Z-closure split from an ordinary count. TN's adapter blocked on JORT n° 125 | L | todo | - | api/src/Fiscal/** api/migrations/** api/tests/** docs/fiscal/** |
-| 104 | Permission catalogue and the roles screen (§ 7 2026-09-20 11:30): each module declares its permission strings and labels beside its `DeclaresModule` declaration, the catalogue is collected not hand-written, and a company creates and edits its own roles in a matrix grouped by module; the members page offers the company's roles instead of three hardcoded names. `Role.company` is already nullable, so no migration for the roles themselves. **The API, the screen and the label gate are done; inviting a member AT a custom role is the remainder** — the members page still offers the three built-in names | M | doing | - | api/src/Tenancy/** api/src/ModuleRegistry/** api/src/Module/**/*Module*.php web/src/app/company/** api/tests/** web/src/app/**/*.spec.ts |
+| 104 | Permission catalogue and the roles screen (§ 7 2026-09-20 11:30): each module declares its permission strings and labels beside its `DeclaresModule` declaration, the catalogue is collected not hand-written, and a company creates and edits its own roles in a matrix grouped by module; the members page offers the company's roles instead of three hardcoded names. `Role.company` is already nullable, so no migration for the roles themselves. The members page offers the company's roles, the API resolves a role name against the company acting, and an open invitation counts as holding its role | M | done | - | api/src/Tenancy/** api/src/ModuleRegistry/** api/src/Module/**/*Module*.php web/src/app/company/** api/tests/** web/src/app/**/*.spec.ts |
 | 105 | Generated operator credentials (§ 7 2026-09-20 13:10): `app:seed --generate-operator-password` mints a password and a TOTP secret, prints both once and stores only the hash and the encrypted secret; seeding refuses the published development password and TOTP secret when the environment is production. The fixed literals stay for the local stack and CI so tests keep a deterministic sign-in | S | todo | - | api/src/Tenancy/** api/tests/Functional/SeedCommandTest.php docs/START.md |
 <!-- /progress-block -->
 

@@ -12,6 +12,8 @@ namespace App\Tests\Functional;
 use App\Identity\Domain\Email;
 use App\Identity\Domain\User;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Invitation;
+use App\Tenancy\Domain\InvitationToken;
 use App\Tenancy\Domain\Membership;
 use App\Tenancy\Domain\Permission;
 use App\Tenancy\Domain\Role;
@@ -187,6 +189,27 @@ final class RolesTest extends ApiTestCase
         self::assertStringContainsString('sami@twes.local', (string) $this->client->getResponse()->getContent(), 'it names who holds it');
     }
 
+    public function testARoleAPendingInvitationNamesIsNotDeletedEither(): void
+    {
+        // An invitation stores its role by NAME and carries no foreign key, so deleting the role raises nothing at
+        // the database and the refusal above never fires — the invitation simply becomes unacceptable, and the
+        // person finds that out when they click the link. Counted with the holders, and named the same way.
+        $this->signedIn(['company.settings']);
+
+        $this->postJson($this->path(), ['name' => 'runner', 'permissions' => ['customer.read']]);
+        $role = $this->json();
+        self::assertIsString($role['id']);
+
+        // Written directly rather than through the members endpoint: the signed-in tester holds a CUSTOM role, and
+        // by the rank rule such a holder grants nobody anything — which is the fail-closed behaviour row 104 kept.
+        $this->inviteTo('invited@twes.local', 'runner');
+
+        $this->sendJson('DELETE', $this->path($role['id']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertRefusedWith(RoleResource::IN_USE, $this->json());
+        self::assertStringContainsString('invited@twes.local', (string) $this->client->getResponse()->getContent());
+    }
+
     public function testAPermissionTheCatalogueDoesNotKnowIsRefused(): void
     {
         $this->signedIn(['company.settings']);
@@ -241,6 +264,24 @@ final class RolesTest extends ApiTestCase
      * Gives a fresh account the company's own role, directly. Inviting someone at a custom role is its own change
      * (the members page still offers three names), so this test does not wait on it to prove the refusal.
      */
+    /** An open invitation of this company naming a role, as sending one would have left behind. */
+    private function inviteTo(string $email, string $roleName): void
+    {
+        $em = $this->em();
+        $company = $em->find(Company::class, $this->company->getId());
+        self::assertNotNull($company);
+        $em->persist(new Invitation(
+            $company,
+            Email::fromString($email),
+            $roleName,
+            InvitationToken::generate(),
+            new \DateTimeImmutable(),
+            new \DateInterval('P7D'),
+            null,
+        ));
+        $em->flush();
+    }
+
     private function giveRoleTo(string $email, string $roleId): void
     {
         $em = $this->em();

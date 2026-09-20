@@ -54,6 +54,17 @@ final readonly class DoctrineRoleRepository implements RoleRepository
         return $roles;
     }
 
+    public function ofNameForCompany(string $name, Uuid $companyId): ?Role
+    {
+        foreach ($this->forCompany($companyId) as $role) {
+            if ($role->getName() === $name) {
+                return $role;
+            }
+        }
+
+        return null;
+    }
+
     public function nameIsTaken(Uuid $companyId, string $name, ?Uuid $except = null): bool
     {
         foreach ($this->forCompany($companyId) as $role) {
