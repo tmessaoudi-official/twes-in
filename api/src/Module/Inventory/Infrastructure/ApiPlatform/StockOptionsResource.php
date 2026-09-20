@@ -15,8 +15,10 @@ use ApiPlatform\Metadata\Get;
 use Symfony\Component\Serializer\Attribute\Groups;
 
 /**
- * What the stock screens offer, read with stock.read alone: the active products whose stock is kept, with the unit it
- * is counted in, and the company's establishments. The locations are their own list.
+ * What the stock screens offer, read with stock.read alone: the company's establishments. The locations are their own
+ * list, and the PRODUCTS are no longer here — they are asked for a few at a time through the picker beside this
+ * (docs/SPEC.md § 7, 2026-09-17, ruling 3). Holding them here meant loading every product of the company and walking
+ * the settings chain once for each to decide which were stocked, before a screen had drawn anything.
  */
 #[ApiResource(
     shortName: 'StockOptions',
@@ -33,20 +35,8 @@ final class StockOptionsResource
 {
     public const string READ = 'stock_options:read';
 
-    /** @var list<StockProductOption> */
-    #[ApiProperty(identifier: false, schema: [
-        'type' => 'array',
-        'items' => [
-            'type' => 'object',
-            'required' => ['id', 'reference', 'name', 'unitCode', 'unitDecimals'],
-            'properties' => ['id' => ['type' => 'string'], 'reference' => ['type' => 'string'], 'name' => ['type' => 'string'], 'unitCode' => ['type' => 'string'], 'unitDecimals' => ['type' => 'integer']],
-        ],
-    ])]
-    #[Groups([self::READ])]
-    public array $products = [];
-
     /** @var list<StockEstablishmentOption> */
-    #[ApiProperty(schema: [
+    #[ApiProperty(identifier: false, schema: [
         'type' => 'array',
         'items' => [
             'type' => 'object',

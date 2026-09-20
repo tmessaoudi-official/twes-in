@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Tests\Support;
 
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
 use App\Shared\Domain\Page;
@@ -43,12 +44,14 @@ final class InMemoryProducts implements ProductRepository
         return new Page(\array_slice($found, $page->offset(), $page->size), \count($found), $page);
     }
 
-    public function pick(Uuid $companyId, string $words, int $limit): array
+    public function pick(Uuid $companyId, string $words, int $limit, ?ProductKind $kind = null): array
     {
-        $found = array_values(array_filter($this->ofCompany($companyId), static function (Product $p) use ($words): bool {
+        $found = array_values(array_filter($this->ofCompany($companyId), static function (Product $p) use ($words, $kind): bool {
             $details = $p->getDetails();
 
-            return $p->isActive() && InMemorySearch::finds($words, $p->getReference(), [$details->name, $details->barcode]);
+            return $p->isActive()
+                && (null === $kind || $details->kind === $kind)
+                && InMemorySearch::finds($words, $p->getReference(), [$details->name, $details->barcode]);
         }));
         usort($found, static fn (Product $a, Product $b): int => $a->getReference() <=> $b->getReference());
 

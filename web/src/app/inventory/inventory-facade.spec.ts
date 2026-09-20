@@ -22,7 +22,6 @@ const site: StockLocationRow = {
   movementCount: 1,
 };
 const options: StockOptions = {
-  products: [{ id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 }],
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
 };
 const SEARCH = {
@@ -39,6 +38,7 @@ const level: StockLevelRow = {
   productReference: 'ART-1',
   productName: 'Portable',
   unitCode: 'C62',
+  unitDecimals: 0,
   locationId: 'l1',
   locationCode: '000',
   locationName: 'Siège',

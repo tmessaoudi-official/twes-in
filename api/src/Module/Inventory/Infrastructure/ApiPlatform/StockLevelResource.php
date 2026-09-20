@@ -72,6 +72,13 @@ final class StockLevelResource
     #[Groups([self::READ])]
     public string $unitCode = '';
 
+    /**
+     * How many decimals that unit counts in, so a row shows its quantity the way the unit is counted without the
+     * screen holding the whole catalogue to look it up in (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+     */
+    #[Groups([self::READ])]
+    public int $unitDecimals = 3;
+
     #[Groups([self::READ])]
     public string $locationId = '';
 

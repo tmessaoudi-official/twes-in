@@ -33,6 +33,8 @@ const received: StockMovementRow = {
   productId: 'p1',
   productReference: 'ART-1',
   productName: 'Portable',
+  unitCode: 'C62',
+  unitDecimals: 0,
   locationId: 'l1',
   locationCode: '000',
   locationName: 'Siège',
@@ -61,15 +63,9 @@ describe('InventoryApi', () => {
   it('reads the options, the stock and the locations', async () => {
     const options = api.options('c 1');
     http.expectOne('/api/companies/c%201/stock-options').flush({
-      products: [
-        { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
-      ],
       establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
     });
     expect(await options).toEqual({
-      products: [
-        { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
-      ],
       establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
     });
 
@@ -80,6 +76,7 @@ describe('InventoryApi', () => {
       productReference: 'ART-1',
       productName: 'Portable',
       unitCode: 'C62',
+      unitDecimals: 0,
       locationId: 'l1',
       locationCode: '000',
       locationName: 'Siège',
@@ -94,6 +91,30 @@ describe('InventoryApi', () => {
     const locations = api.locations('c1');
     http.expectOne('/api/companies/c1/stock-locations').flush([{ ...zone, kind: 'cellar' }]);
     expect(await locations).toEqual([{ ...zone, kind: 'zone' }]);
+  });
+
+  it('asks the picker for the few stocked products a person means, and by id for a named one', async () => {
+    const searched = api.pickProducts('c1', { words: '  port ' });
+    const search = http.expectOne(
+      (request) => request.url === '/api/companies/c1/stock-options/products',
+    );
+    expect(search.request.params.get('q')).toBe('port');
+    search.flush([
+      { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
+    ]);
+    expect(await searched).toEqual([
+      { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
+    ]);
+
+    const named = api.pickProducts('c1', { ids: ['p1', 'p2'] });
+    const resolve = http.expectOne(
+      (request) => request.url === '/api/companies/c1/stock-options/products',
+    );
+    // Asking for what a movement names is not a search: the words are left out entirely.
+    expect(resolve.request.params.getAll('ids[]')).toEqual(['p1', 'p2']);
+    expect(resolve.request.params.has('q')).toBe(false);
+    resolve.flush([]);
+    expect(await named).toEqual([]);
   });
 
   it("reads one product's movements, or the company's latest", async () => {

@@ -11,8 +11,10 @@ import type {
   StockMovementStockMovementRead,
   StockMovementStockMovementWrite,
   StockOptionsStockOptionsRead,
+  StockProductPickStockProductPickRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
+import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   type InventoryError,
   STOCK_LOCATION_KINDS,
@@ -23,7 +25,9 @@ import {
   type StockLocationRow,
   type StockMovementInput,
   type StockMovementRow,
+  API_DECIMALS,
   type StockOptions,
+  type StockProductOption,
   type StockSearch,
 } from './inventory-types';
 
@@ -47,6 +51,28 @@ export class InventoryApi {
         ),
       ),
     );
+  }
+
+  /**
+   * The few stocked products a person means, or — given ids — exactly the ones a movement already names, whether or
+   * not stock is still kept of them. The catalogue is never read whole (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+   */
+  async pickProducts(companyId: string, asked: PickAsked): Promise<StockProductOption[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<StockProductPickStockProductPickRead[]>(
+          `${path(companyId, 'stock-options')}/products`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((product) => ({
+        id: product.id ?? '',
+        reference: product.reference,
+        name: product.name,
+        unitCode: product.unitCode,
+        unitDecimals: product.unitDecimals,
+      }));
+    });
   }
 
   /** One page of the stock the company holds, grouped, searched, narrowed and sorted by the API. */
@@ -173,7 +199,6 @@ const path = (companyId: string, collection: string, id?: string): string =>
 
 function toOptions(raw: StockOptionsStockOptionsRead): StockOptions {
   return {
-    products: (raw.products ?? []).map((product) => ({ ...product })),
     establishments: (raw.establishments ?? []).map((establishment) => ({ ...establishment })),
   };
 }
@@ -197,6 +222,7 @@ function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
     productReference: raw.productReference ?? '',
     productName: raw.productName ?? '',
     unitCode: raw.unitCode ?? '',
+    unitDecimals: raw.unitDecimals ?? API_DECIMALS,
     locationId: raw.locationId ?? '',
     locationCode: raw.locationCode ?? '',
     locationName: raw.locationName ?? '',
@@ -225,6 +251,8 @@ function toMovement(raw: StockMovementStockMovementRead): StockMovementRow {
     productId: raw.productId ?? '',
     productReference: raw.productReference ?? '',
     productName: raw.productName ?? '',
+    unitCode: raw.unitCode ?? '',
+    unitDecimals: raw.unitDecimals ?? API_DECIMALS,
     locationId: raw.locationId ?? '',
     locationCode: raw.locationCode ?? '',
     locationName: raw.locationName ?? '',

@@ -20,12 +20,14 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import type { PickAsked } from '../shared/form/pick-api';
 import { InventoryFacade } from './inventory-facade';
 import type {
   InventoryError,
   StockLevelRow,
   StockLocationRow,
   StockOptions,
+  StockProductOption,
 } from './inventory-types';
 import { StockPage } from './stock-page';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
@@ -34,7 +36,7 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       inventory: {
-        stock: { negative: 'Négatif' },
+        stock: { negative: 'Négatif', product_required: 'Nommez le produit concerné.' },
         errors: { invalid: 'La saisie a été refusée.' },
       },
     });
@@ -53,7 +55,6 @@ const site: StockLocationRow = {
   movementCount: 2,
 };
 const options: StockOptions = {
-  products: [{ id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 }],
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
 };
 const shortage: StockLevelRow = {
@@ -62,12 +63,18 @@ const shortage: StockLevelRow = {
   productReference: 'ART-1',
   productName: 'Portable',
   unitCode: 'C62',
+  unitDecimals: 0,
   locationId: 'l1',
   locationCode: '000',
   locationName: 'Siège',
   establishmentId: 'e1',
   quantity: '-2.000',
 };
+/** What the picker answers: the page holds no catalogue, so a product only exists here once it is picked. */
+const products: StockProductOption[] = [
+  { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
+  { id: 'p2', reference: 'ART-2', name: 'Écran', unitCode: 'C62', unitDecimals: 0 },
+];
 
 describe('StockPage', () => {
   const error = signal<InventoryError | null>(null);
@@ -80,6 +87,9 @@ describe('StockPage', () => {
     total: signal(1).asReadonly(),
     loadStockContext: vi.fn(),
     loadStock: vi.fn(),
+    pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
+      'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
+    ),
     record: vi.fn(),
     clearError: vi.fn(),
   };
@@ -102,6 +112,17 @@ describe('StockPage', () => {
     const input = q(testId) as HTMLInputElement;
     input.value = value;
     input.dispatchEvent(new Event('input'));
+  }
+
+  async function pick(testId: string, label: string): Promise<void> {
+    (q(testId) as HTMLInputElement).dispatchEvent(new Event('focusin'));
+    await settle();
+    const option = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
+      (each) => each.textContent?.trim() === label,
+    );
+    expect(option, label).toBeDefined();
+    option!.click();
+    await settle();
   }
 
   beforeEach(async () => {
@@ -156,9 +177,10 @@ describe('StockPage', () => {
     expect(q('stock-locations-tab')?.getAttribute('href')).toBe('/stock/locations');
   });
 
-  it('records goods received at the default location', async () => {
+  it('records goods received at the default location, of the product that was picked', async () => {
     q('stock-receive')!.click();
     await settle();
+    await pick('stock-movement-product', 'ART-1 · Portable');
     type('field-quantity', '10');
     q('stock-movement-save')!.click();
     await settle();
@@ -177,6 +199,7 @@ describe('StockPage', () => {
     facade.record.mockResolvedValue(false);
     q('stock-count')!.click();
     await settle();
+    await pick('stock-movement-product', 'ART-1 · Portable');
     type('field-quantity', '7');
     q('stock-movement-save')!.click();
     error.set('invalid');
@@ -190,6 +213,33 @@ describe('StockPage', () => {
     });
     expect(q('stock-error')?.textContent).toContain('refusée');
     expect(q('stock-movement-save')).not.toBeNull();
+  });
+
+  /**
+   * The product is not a field of the form, so nothing marks it as missing: without this the save would be dropped
+   * in silence. A page holding the catalogue used to start on the only product there was; a picker cannot guess.
+   */
+  it('says which product is missing rather than recording nothing', async () => {
+    q('stock-receive')!.click();
+    await settle();
+    type('field-quantity', '4');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).not.toHaveBeenCalled();
+    expect(q('stock-movement-product-error')?.textContent).toContain('Nommez le produit');
+
+    await pick('stock-movement-product', 'ART-2 · Écran');
+    expect(q('stock-movement-product-error')).toBeNull();
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).toHaveBeenCalledWith('c1', {
+      operation: 'receive',
+      productId: 'p2',
+      locationId: 'l1',
+      quantity: '4',
+    });
   });
 
   it('offers no movement to a reader', async () => {

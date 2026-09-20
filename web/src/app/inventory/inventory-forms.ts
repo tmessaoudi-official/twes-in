@@ -23,8 +23,6 @@ const STOCK_FIELDS = 'inventory.stock.fields';
 const CODE_PATTERN = '[A-Za-z0-9._\\-]{1,32}';
 /** A quantity as the decimal field hands it over: at most eleven digits, then at most three decimals. */
 const QUANTITY_PATTERN = '(0|[1-9][0-9]{0,10})([.][0-9]{1,3})?';
-/** Decimals shown for a product the options no longer list (inactive, or no longer kept): the API's own three. */
-const API_DECIMALS = 3;
 
 /** Each location's path of codes from its establishment's default, then its name, ordered by that path. */
 export function locationLabels(locations: readonly StockLocationRow[]): Map<string, string> {
@@ -62,21 +60,17 @@ function comparePaths(a: readonly string[], b: readonly string[]): number {
 export type StockListRow = StockLevelRow & {
   id: string;
   locationLabel: string;
-  unitDecimals: number;
   negative: boolean;
 };
 
 export function stockListRows(
   levels: readonly StockLevelRow[],
-  options: StockOptions | null,
   locations: readonly StockLocationRow[],
 ): StockListRow[] {
   const labels = locationLabels(locations);
-  const decimals = decimalsOf(options);
   return levels.map((level) => ({
     ...level,
     locationLabel: labels.get(level.locationId) ?? `${level.locationCode} — ${level.locationName}`,
-    unitDecimals: decimals.get(level.productId) ?? API_DECIMALS,
     negative: Number(level.quantity) < 0,
   }));
 }
@@ -94,28 +88,20 @@ export function locationListRows(locations: readonly StockLocationRow[]): StockL
 export type StockMovementListRow = StockMovementRow & {
   productLabel: string;
   locationLabel: string;
-  unitDecimals: number;
 };
 
 export function movementListRows(
   movements: readonly StockMovementRow[],
   locations: readonly StockLocationRow[],
-  options: StockOptions | null,
 ): StockMovementListRow[] {
   const labels = locationLabels(locations);
-  const decimals = decimalsOf(options);
   return movements.map((movement) => ({
     ...movement,
     // The movement names what it moved, so a product or location no longer offered is still named here.
     productLabel: `${movement.productReference} — ${movement.productName}`,
     locationLabel:
       labels.get(movement.locationId) ?? `${movement.locationCode} — ${movement.locationName}`,
-    unitDecimals: decimals.get(movement.productId) ?? API_DECIMALS,
   }));
-}
-
-function decimalsOf(options: StockOptions | null): Map<string, number> {
-  return new Map((options?.products ?? []).map((product) => [product.id, product.unitDecimals]));
 }
 
 const SORT_KEYS: Readonly<Record<string, StockSortKey>> = {
@@ -420,10 +406,12 @@ export function locationInput(values: FormValues): StockLocationInput {
   };
 }
 
-/** Goods received, or what a count found: which product whose stock is kept, where, and how much. */
+/**
+ * Goods received, or what a count found: where, and how much. The PRODUCT is not a field here — a catalogue is not a
+ * dropdown, so the page asks for it through a picker beside this form (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ */
 export function movementForm(
   operation: StockOperation,
-  options: StockOptions,
   locations: readonly StockLocationRow[],
 ): FormDescriptor {
   return {
@@ -433,17 +421,6 @@ export function movementForm(
         id: 'movement',
         title: `inventory.movement.${operation}`,
         fields: [
-          {
-            id: 'productId',
-            label: `${STOCK_FIELDS}.product`,
-            kind: 'select',
-            required: true,
-            span: 2,
-            options: options.products.map((product) => ({
-              value: product.id,
-              label: `${product.reference} — ${product.name}`,
-            })),
-          },
           {
             id: 'locationId',
             label: `${STOCK_FIELDS}.location`,
@@ -465,28 +442,21 @@ export function movementForm(
   };
 }
 
-/**
- * A new movement starts at the first default location, the one goods go to when nothing else is said, and on the
- * product when only one is offered.
- */
-export function movementValues(
-  locations: readonly StockLocationRow[],
-  options: StockOptions | null,
-): FormValues {
+/** A new movement starts at the first default location, the one goods go to when nothing else is said. */
+export function movementValues(locations: readonly StockLocationRow[]): FormValues {
   const byId = new Map(locations.map((location) => [location.id, location]));
   const first = [...locationLabels(locations).keys()].find((id) => byId.get(id)?.isDefault);
-  const products = options?.products ?? [];
-  return {
-    productId: products.length === 1 ? (products[0]?.id ?? '') : '',
-    locationId: first ?? '',
-    quantity: '',
-  };
+  return { locationId: first ?? '', quantity: '' };
 }
 
-export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {
+export function movementInput(
+  operation: StockOperation,
+  values: FormValues,
+  productId: string,
+): StockMovementInput {
   return {
     operation,
-    productId: text(values['productId']),
+    productId,
     locationId: text(values['locationId']),
     quantity: text(values['quantity']),
   };

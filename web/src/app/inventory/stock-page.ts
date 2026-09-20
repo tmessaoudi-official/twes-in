@@ -18,6 +18,7 @@ import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
+import { PickField, type PickOption } from '../shared/form/pick-field';
 import { buildFormGroup, type DescriptorFormGroup } from '../shared/form/form-builder';
 import type { FormDescriptor, FormValues } from '../shared/form/form-types';
 import { AmountPipe } from '../shared/i18n/format-pipes';
@@ -36,7 +37,7 @@ import {
   stockSearch,
 } from './inventory-forms';
 import { INVENTORY_TABS } from './inventory-nav';
-import type { StockOperation, StockSearch } from './inventory-types';
+import type { StockOperation, StockProductOption, StockSearch } from './inventory-types';
 import { Feedback } from '../shared/feedback/feedback';
 
 /** What is on hand of each product whose stock is kept, per location, with goods received and counts recorded here. */
@@ -53,6 +54,7 @@ import { Feedback } from '../shared/feedback/feedback';
     DataListCell,
     DataListRowActions,
     DescriptorForm,
+    PickField,
     StatusBadge,
   ],
   templateUrl: './stock-page.html',
@@ -68,7 +70,7 @@ export class StockPage implements OnInit {
 
   protected readonly list = STOCK_LIST;
   protected readonly rows = computed(() =>
-    stockListRows(this.facade.levels(), this.facade.options(), this.facade.locations()),
+    stockListRows(this.facade.levels(), this.facade.locations()),
   );
   protected readonly total = this.facade.total;
   protected readonly busy = this.facade.busy;
@@ -81,11 +83,38 @@ export class StockPage implements OnInit {
   protected readonly operation = signal<StockOperation | null>(null);
   protected readonly descriptor = computed(() => {
     const operation = this.operation();
-    const options = this.facade.options();
-    return operation === null || options === null
-      ? null
-      : movementForm(operation, options, this.facade.locations());
+    return operation === null ? null : movementForm(operation, this.facade.locations());
   });
+
+  /** Which product the movement is of, as the picker answered it; the catalogue is never held here. */
+  protected readonly product = signal<StockProductOption | null>(null);
+  protected readonly productShown = computed(() => {
+    const product = this.product();
+    return product === null
+      ? null
+      : { id: product.id, code: product.reference, name: product.name };
+  });
+  /** Every product the picker has answered, so what is chosen can be found again from the option's id. */
+  private readonly known = new Map<string, StockProductOption>();
+  /** Set when saving was asked for with no product named, since it is not a field the form can mark. */
+  protected readonly productMissing = signal(false);
+  protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickProducts(companyId, { words });
+    for (const product of found) this.known.set(product.id, product);
+    return found.map((product) => ({
+      id: product.id,
+      code: product.reference,
+      name: product.name,
+    }));
+  };
+
+  protected chooseProduct(option: PickOption | null): void {
+    const product = option === null ? null : (this.known.get(option.id) ?? null);
+    this.product.set(product);
+    this.productMissing.set(product === null);
+  }
   /**
    * The form of the movement being recorded. Options or locations arriving while it is open rebuild it over what was
    * typed; switching between a receipt and a count starts afresh.
@@ -103,7 +132,7 @@ export class StockPage implements OnInit {
           : null;
       return buildFormGroup(
         descriptor,
-        typed ?? untracked(() => movementValues(this.facade.locations(), this.facade.options())),
+        typed ?? untracked(() => movementValues(this.facade.locations())),
       );
     },
   });
@@ -139,6 +168,8 @@ export class StockPage implements OnInit {
 
   protected open(operation: StockOperation): void {
     this.facade.clearError();
+    this.product.set(null);
+    this.productMissing.set(false);
     this.operation.set(operation);
   }
 
@@ -150,8 +181,10 @@ export class StockPage implements OnInit {
   protected async save(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     const operation = this.operation();
-    if (!companyId || operation === null || this.busy()) return;
-    if (await this.facade.record(companyId, movementInput(operation, values))) {
+    const productId = this.product()?.id ?? '';
+    this.productMissing.set(productId === '');
+    if (!companyId || operation === null || productId === '' || this.busy()) return;
+    if (await this.facade.record(companyId, movementInput(operation, values, productId))) {
       this.operation.set(null);
       this.feedback.success('inventory.stock.recorded');
     }

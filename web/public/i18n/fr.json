@@ -1193,7 +1193,10 @@
         "at": "Date",
         "kind": "Nature",
         "source": "Origine"
-      }
+      },
+      "no_product_found": "Aucun produit trouvé.",
+      "product_hint": "Tapez la référence ou le nom ; seuls les produits dont le stock est suivi sont proposés.",
+      "product_required": "Nommez le produit concerné."
     },
     "movement": {
       "receive": "Réception de marchandises",

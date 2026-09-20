@@ -41,7 +41,25 @@
     @if (form(); as form) {
       @if (descriptor(); as descriptor) {
         <mat-card class="max-w-3xl">
-          <mat-card-content>
+          <mat-card-content class="flex flex-col">
+            <app-pick-field
+              [label]="'inventory.stock.fields.product' | translate"
+              testId="stock-movement-product"
+              [search]="searchProducts"
+              [value]="productShown()"
+              [noneFoundLabel]="'inventory.stock.no_product_found' | translate"
+              [hint]="'inventory.stock.product_hint' | translate"
+              (picked)="chooseProduct($event)"
+            />
+            @if (productMissing()) {
+              <p
+                role="alert"
+                class="-mt-2 px-4 pb-2 text-xs text-error"
+                data-testid="stock-movement-product-error"
+              >
+                {{ 'inventory.stock.product_required' | translate }}
+              </p>
+            }
             <app-descriptor-form
               [descriptor]="descriptor"
               [form]="form"

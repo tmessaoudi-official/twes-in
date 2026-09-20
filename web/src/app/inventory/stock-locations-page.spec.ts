@@ -59,7 +59,6 @@ const zone: StockLocationRow = {
   movementCount: 0,
 };
 const options: StockOptions = {
-  products: [],
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
 };
 

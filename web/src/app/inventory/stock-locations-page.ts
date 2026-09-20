@@ -102,10 +102,7 @@ export class StockLocationsPage implements OnInit {
           untracked(() =>
             locationValues(
               editing === 'new' ? null : editing,
-              this.facade.options() ?? {
-                products: [],
-                establishments: [],
-              },
+              this.facade.options() ?? { establishments: [] },
             ),
           ),
       );

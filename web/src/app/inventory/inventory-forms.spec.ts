@@ -26,10 +26,6 @@ import type {
 } from './inventory-types';
 
 const options: StockOptions = {
-  products: [
-    { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
-    { id: 'p2', reference: 'ART-2', name: 'Farine', unitCode: 'KGM', unitDecimals: 3 },
-  ],
   establishments: [
     { id: 'e1', code: '000', name: 'Siège' },
     { id: 'e2', code: '001', name: 'Dépôt' },
@@ -64,7 +60,8 @@ function level(productId: string, locationId: string, quantity: string): StockLe
     productId,
     productReference: `ART-${productId.slice(1)}`,
     productName: productId === 'p1' ? 'Portable' : 'Article',
-    unitCode: 'C62',
+    unitCode: 'p1' === productId ? 'C62' : 'KGM',
+    unitDecimals: 'p1' === productId ? 0 : 3,
     locationId,
     locationCode: '000',
     locationName: 'Siège',
@@ -87,6 +84,8 @@ function movement(
     productId,
     productReference: `ART-${productId.slice(1)}`,
     productName: productId === 'p2' ? 'Farine' : 'Article',
+    unitCode: 'p1' === productId ? 'C62' : 'KGM',
+    unitDecimals: 'p1' === productId ? 0 : 3,
     locationId,
     locationCode: 'l1' === locationId ? '000' : 'Z9',
     locationName: 'l1' === locationId ? 'Siège' : 'Zone froide',
@@ -133,7 +132,6 @@ describe('the list rows', () => {
   it('counts stock in its product unit and marks what fell below zero', () => {
     const rows = stockListRows(
       [level('p1', 'l1', '-2.000'), level('p2', 'l1', '1.250'), level('p9', 'l1', '4.000')],
-      options,
       [site],
     );
 
@@ -162,7 +160,6 @@ describe('the list rows', () => {
         movement('m3', 'p7', 'l1', 'adjustment', '0.000', 'count', null),
       ],
       [site],
-      options,
     );
 
     // A movement names what it moved, so a location the company no longer keeps is still named by the row itself.
@@ -275,34 +272,25 @@ describe('locationValues and locationInput', () => {
 });
 
 describe('the movement form', () => {
-  it('asks which kept product, where, and how much', () => {
-    const fields = fieldsOf(movementForm('count', options, [zone, site]));
+  it('asks where and how much, and asks the product elsewhere', () => {
+    const form = movementForm('count', [zone, site]);
+    const fields = fieldsOf(form);
 
     expect(fields.map((field) => [field.id, field.kind, field.required ?? false])).toEqual([
-      ['productId', 'select', true],
       ['locationId', 'select', true],
       ['quantity', 'decimal', true],
     ]);
-    expect(fields[0]?.options?.map((option) => option.label)).toEqual([
-      'ART-1 — Portable',
-      'ART-2 — Farine',
-    ]);
-    expect(fields[1]?.options?.map((option) => option.value)).toEqual(['l1', 'l2']);
-    expect(fields[2]?.hint).toBe('inventory.movement.quantity_hint.count');
+    // The product is a picker on the page, never a field in this descriptor: a catalogue is not a dropdown.
+    expect(fields.map((field) => field.id)).not.toContain('productId');
+    expect(() => JSON.stringify(form)).not.toThrow();
+    expect(fields[0]?.options?.map((option) => option.value)).toEqual(['l1', 'l2']);
+    expect(fields[1]?.hint).toBe('inventory.movement.quantity_hint.count');
   });
 
   it('starts at the first default location, and sends a decimal comma as a point', () => {
-    expect(movementValues([zone, depot, site], options)).toEqual({
-      productId: '',
-      locationId: 'l1',
-      quantity: '',
-    });
-    expect(movementValues([], null)).toEqual({ productId: '', locationId: '', quantity: '' });
-    const one: StockOptions = { ...options, products: options.products.slice(1) };
-    expect(movementValues([site], one)['productId']).toBe('p2');
-    expect(
-      movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
-    ).toEqual({
+    expect(movementValues([zone, depot, site])).toEqual({ locationId: 'l1', quantity: '' });
+    expect(movementValues([])).toEqual({ locationId: '', quantity: '' });
+    expect(movementInput('receive', { locationId: 'l2', quantity: ' 1.5 ' }, 'p2')).toEqual({
       operation: 'receive',
       productId: 'p2',
       locationId: 'l2',

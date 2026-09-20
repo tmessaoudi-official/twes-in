@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { InventoryApi, InventoryRefused } from './inventory-api';
+import type { PickAsked } from '../shared/form/pick-api';
 import type {
   InventoryError,
   StockLevelRow,
@@ -10,6 +11,7 @@ import type {
   StockMovementInput,
   StockMovementRow,
   StockOptions,
+  StockProductOption,
   StockSearch,
 } from './inventory-types';
 
@@ -47,6 +49,21 @@ export class InventoryFacade {
       this.optionsSignal.set(options);
       this.locationsSignal.set(locations);
     });
+  }
+
+  /**
+   * The few stocked products a person means while typing, and — by id — the ones a movement already names, stocked
+   * or not. A search that fails answers nothing and says so in `error`, rather than reading as "nothing found":
+   * what the picker could not ask for is not the same as what does not exist.
+   */
+  async pickProducts(companyId: string, asked: PickAsked): Promise<StockProductOption[]> {
+    // A picker never marks the screen busy, because a person is typing while it runs.
+    try {
+      return await this.api.pickProducts(companyId, asked);
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return [];
+    }
   }
 
   /**

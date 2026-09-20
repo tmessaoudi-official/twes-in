@@ -42,7 +42,9 @@ export type StockLocationInput = Pick<
   'establishmentId' | 'parentId' | 'kind' | 'code' | 'name'
 >;
 
-/** What is on hand of one product at one location: the sum of its movements, which may fall below zero. */
+/** What the API writes a quantity with when it says nothing else: three decimals, as the column holds them. */
+export const API_DECIMALS = 3;
+
 /** The sorts the API answers for a stock list. */
 export type StockSortKey = 'reference' | 'product' | 'location' | 'quantity';
 
@@ -58,6 +60,7 @@ export interface StockSearch {
   order: { key: StockSortKey; direction: 'asc' | 'desc' } | null;
 }
 
+/** What is on hand of one product at one location: the sum of its movements, which may fall below zero. */
 export interface StockLevelRow {
   /** The product and the location together: a row is the pair, and neither alone names it. */
   id: string;
@@ -65,6 +68,8 @@ export interface StockLevelRow {
   productReference: string;
   productName: string;
   unitCode: string;
+  /** How many decimals that unit counts in, so a row is shown as its unit counts without the whole catalogue. */
+  unitDecimals: number;
   locationId: string;
   locationCode: string;
   locationName: string;
@@ -79,6 +84,9 @@ export interface StockMovementRow {
   /** What the movement moved, as the API names it: a product no longer offered still has its movements. */
   productReference: string;
   productName: string;
+  unitCode: string;
+  /** How many decimals that unit counts in, so a row is shown as its unit counts without the whole catalogue. */
+  unitDecimals: number;
   locationId: string;
   locationCode: string;
   locationName: string;
@@ -98,6 +106,7 @@ export interface StockMovementInput {
   quantity: string;
 }
 
+/** One stocked product as the picker answers it. */
 export interface StockProductOption {
   id: string;
   reference: string;
@@ -112,8 +121,11 @@ export interface StockEstablishmentOption {
   name: string;
 }
 
-/** What the stock forms offer: the active products whose stock is kept, and the company's establishments. */
+/**
+ * What the stock forms offer: the company's establishments. The products are asked for a few at a time through the
+ * picker (docs/SPEC.md § 7, 2026-09-17, ruling 3) — holding them here meant the API walked the settings chain once
+ * per product in the company before a screen had drawn anything.
+ */
 export interface StockOptions {
-  products: StockProductOption[];
   establishments: StockEstablishmentOption[];
 }

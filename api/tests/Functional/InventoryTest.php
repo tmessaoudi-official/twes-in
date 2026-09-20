@@ -34,6 +34,7 @@ final class InventoryTest extends ApiTestCase
     private string $establishmentId;
     private string $laptopId;
     private string $supportId;
+    private string $consumableId;
 
     protected function setUp(): void
     {
@@ -46,12 +47,17 @@ final class InventoryTest extends ApiTestCase
         $now = new \DateTimeImmutable();
         $laptop = Product::create($this->company, 'ART-001', new ProductDetails('Portable 14"', null, ProductKind::Goods, '1250'), $piece, null, [], $now);
         $support = Product::create($this->company, 'SRV-001', new ProductDetails('Assistance', null, ProductKind::Service, '50'), $piece, null, [], $now);
+        // Goods the company keeps no stock of: the SETTING half of the rule, which no kind or column can stand in for.
+        $consumable = Product::create($this->company, 'ART-009', new ProductDetails('Cartouche encre', null, ProductKind::Goods, '30'), $piece, null, [], $now);
         $this->em()->persist($laptop);
         $this->em()->persist($support);
+        $this->em()->persist($consumable);
         $this->em()->persist(new Setting(SettingAddress::company($this->company), 'article.stock_tracking', true, $now));
+        $this->em()->persist(new Setting(SettingAddress::product($this->company, $consumable->getId()), 'article.stock_tracking', false, $now));
         $this->em()->flush();
         $this->laptopId = $laptop->getId()->toRfc4122();
         $this->supportId = $support->getId()->toRfc4122();
+        $this->consumableId = $consumable->getId()->toRfc4122();
     }
 
     public function testEachEstablishmentHasADefaultLocationAndAWriterArrangesItsTree(): void
@@ -137,9 +143,8 @@ final class InventoryTest extends ApiTestCase
 
         $this->getJson($this->path('stock-options'));
         self::assertResponseIsSuccessful();
-        $products = $this->arrayAt($this->json(), 'products');
-        self::assertSame(['ART-001'], array_column($products, 'reference'), 'a service keeps no stock');
-        self::assertSame([['C62'], [0]], [array_column($products, 'unitCode'), array_column($products, 'unitDecimals')]);
+        // The catalogue is not here: it is asked for a few at a time (testTheProductPickerOffersOnlyWhatStockIsKeptOf).
+        self::assertArrayNotHasKey('products', $this->json());
         self::assertSame(['000'], array_column($this->arrayAt($this->json(), 'establishments'), 'code'));
 
         foreach ([
@@ -152,6 +157,48 @@ final class InventoryTest extends ApiTestCase
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
         }
+    }
+
+    /**
+     * The one thing that makes this picker different from the document forms': stock is kept only of GOODS whose
+     * tracking setting is on, which is half a column and half a setting — so what is offered is narrower than what
+     * the words find. What a movement already NAMES is answered by id regardless, because the movement happened.
+     */
+    public function testTheProductPickerOffersOnlyWhatStockIsKeptOf(): void
+    {
+        $this->signedIn(['stock.read']);
+
+        $this->getJson($this->path('stock-options/products'));
+
+        self::assertResponseIsSuccessful();
+        $picks = $this->jsonList();
+        self::assertSame(['id', 'reference', 'name', 'unitCode', 'unitDecimals'], array_keys($picks[0]));
+        self::assertSame(['ART-001'], array_column($picks, 'reference'), 'neither a service nor untracked goods');
+        self::assertSame([['C62'], [0]], [array_column($picks, 'unitCode'), array_column($picks, 'unitDecimals')]);
+
+        $this->getJson($this->path('stock-options/products').'?q=assistance');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList(), 'the words find it, the kind keeps it out');
+
+        // The half no column can answer: goods, found by its words, whose own tracking setting is off.
+        $this->getJson($this->path('stock-options/products').'?q=cartouche');
+        self::assertResponseIsSuccessful();
+        self::assertSame([], $this->jsonList(), 'the words find it, the setting keeps it out');
+
+        foreach ([$this->supportId, $this->consumableId] as $id) {
+            $this->getJson($this->path('stock-options/products').'?ids[]='.$id);
+            self::assertResponseIsSuccessful();
+            self::assertCount(1, $this->jsonList(), 'what a movement names is answered whatever is kept of it now');
+        }
+    }
+
+    public function testSomebodyWithoutTheStockPermissionDoesNotPickAProduct(): void
+    {
+        $this->signedIn(['product.read']);
+
+        $this->getJson($this->path('stock-options/products'));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
     public function testADeliveryNoteTakesStockOutWhenValidatedAndReturnsItWhenCancelled(): void

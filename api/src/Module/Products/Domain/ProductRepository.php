@@ -33,9 +33,14 @@ interface ProductRepository
      * expression the list does, so the same index serves it, and it counts nothing: a picker asks again on every
      * keystroke, and a total over a large catalogue is the cost that buys nothing here (docs/SPEC.md § 7, 2026-09-17).
      *
+     * `$kind` narrows to one kind of product. It exists for the stock picker, which offers only goods: whether stock
+     * is KEPT of a product also depends on a setting, which no WHERE clause can express, so the caller finishes the
+     * filtering itself — this is the half that can be done in the database, and doing it here is what keeps the
+     * caller's scan short enough to be honest about.
+     *
      * @return list<Product>
      */
-    public function pick(Uuid $companyId, string $words, int $limit): array;
+    public function pick(Uuid $companyId, string $words, int $limit, ?ProductKind $kind = null): array;
 
     /** Null for a product that does not exist or belongs to another company. */
     public function ofIdInCompany(Uuid $id, Uuid $companyId): ?Product;

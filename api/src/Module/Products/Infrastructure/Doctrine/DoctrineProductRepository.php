@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace App\Module\Products\Infrastructure\Doctrine;
 
 use App\Module\Products\Domain\Product;
+use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Module\Products\Domain\ProductSearch;
 use App\Shared\Domain\Page;
@@ -63,12 +64,15 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return new Page($products, \count($paginator), $page);
     }
 
-    public function pick(Uuid $companyId, string $words, int $limit): array
+    public function pick(Uuid $companyId, string $words, int $limit, ?ProductKind $kind = null): array
     {
         $query = $this->entityManager->createQueryBuilder()
             ->select('p')->from(Product::class, 'p')
             ->where('p.company = :company')->setParameter('company', $companyId, 'uuid')
             ->andWhere('p.isActive = true');
+        if (null !== $kind) {
+            $query->andWhere('p.kind = :kind')->setParameter('kind', $kind->value);
+        }
         $words = trim($words);
         if (mb_strlen($words) >= SearchText::SHORTEST) {
             $query->andWhere(self::MATCHES_WORDS)->setParameter('text', SearchText::escapeLike($words));

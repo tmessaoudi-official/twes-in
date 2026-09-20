@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 import { wcagViolations } from './axe';
 
@@ -250,6 +250,7 @@ test('stock received at a location leaves with a validated delivery note and ret
   const customerNumber = `E2E-STK-${run}`;
   const locationCode = `E2E-${run}`;
   await signIn(page);
+  await inACompany(page, CSRF);
   const fixture = await prepare(page, reference, customerNumber);
   const { code, name } = fixture.establishment;
   const defaultLocation = `${code} — ${name}`;
@@ -270,8 +271,9 @@ test('stock received at a location leaves with a validated delivery note and ret
 
     await page.goto('/stock');
     await page.getByTestId('stock-receive').click();
-    await page.getByTestId('field-productId').click();
-    await page.getByRole('option', { name: `${reference} — Carton ${reference}` }).click();
+    // Typed, not scrolled to: the picker answers the few that match, and only goods whose stock is kept.
+    await page.getByTestId('stock-movement-product').fill(reference);
+    await page.getByRole('option', { name: `${reference} · Carton ${reference}` }).click();
     await page.getByTestId('field-locationId').click();
     await page.getByRole('option', { name: defaultLocation, exact: true }).click();
     await page.getByTestId('field-quantity').fill('10');

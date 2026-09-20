@@ -85,6 +85,7 @@ final readonly class StockLevelCollectionProvider implements ProviderInterface
         $row->productReference = $product?->getReference() ?? '';
         $row->productName = $product?->getDetails()->name ?? '';
         $row->unitCode = $product?->getUnit()->getCode() ?? '';
+        $row->unitDecimals = $product?->getUnit()->getDecimals() ?? $row->unitDecimals;
         $row->locationId = $level->locationId->toRfc4122();
         $row->locationCode = $location?->getCode() ?? '';
         $row->locationName = $location?->getName() ?? '';

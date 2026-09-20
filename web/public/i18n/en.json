@@ -1193,7 +1193,10 @@
         "at": "Date",
         "kind": "Kind",
         "source": "Source"
-      }
+      },
+      "no_product_found": "No product found.",
+      "product_hint": "Type the reference or the name; only products whose stock is kept are offered.",
+      "product_required": "Name the product this is about."
     },
     "movement": {
       "receive": "Goods received",

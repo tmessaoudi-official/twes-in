@@ -81,6 +81,18 @@ final class StockMovementResource
     #[Groups([self::READ])]
     public string $productName = '';
 
+    /**
+     * The unit the product is counted in and how many decimals it counts, so a row shows its quantity the way the
+     * unit is counted without the screen holding the whole catalogue (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+     */
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public string $unitCode = '';
+
+    #[ApiProperty(writable: false)]
+    #[Groups([self::READ])]
+    public int $unitDecimals = 3;
+
     #[ApiProperty(writable: false)]
     #[Groups([self::READ])]
     public string $locationCode = '';
@@ -123,6 +135,8 @@ final class StockMovementResource
         $resource->productId = $movement->getProduct()->getId()->toRfc4122();
         $resource->productReference = $movement->getProduct()->getReference();
         $resource->productName = $movement->getProduct()->getDetails()->name;
+        $resource->unitCode = $movement->getProduct()->getUnit()->getCode();
+        $resource->unitDecimals = $movement->getProduct()->getUnit()->getDecimals();
         $resource->locationId = $movement->getLocation()->getId()->toRfc4122();
         $resource->locationCode = $movement->getLocation()->getCode();
         $resource->locationName = $movement->getLocation()->getName();
