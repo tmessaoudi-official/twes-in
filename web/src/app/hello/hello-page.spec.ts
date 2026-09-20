@@ -10,6 +10,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { CompanyFacade } from '../company/company-facade';
 import { InvoicesFacade } from '../invoices/invoices-facade';
 import { INVOICES_HOME } from '../invoices/invoices-nav';
 import { todayIn } from '../shared/i18n/format';
@@ -21,6 +22,7 @@ import {
 } from '../shared/settings/settings-facade';
 import { Session } from '../shared/session/session';
 import type { SignedInState } from '../auth/auth-types';
+import type { CompanyOption } from '../company/company-types';
 import { HelloPage } from './hello-page';
 
 class StaticLoader implements TranslateLoader {
@@ -32,6 +34,7 @@ class StaticLoader implements TranslateLoader {
         greeting: 'Bonjour, {{name}}',
         company: 'Vous travaillez dans {{company}} en tant que {{role}}.',
         no_company: 'Aucune entreprise.',
+        choose_company: "Choisissez l'entreprise dans laquelle travailler.",
         operator: 'Opérateur de la plateforme.',
         platform: 'Gérer la plateforme',
       },
@@ -70,6 +73,7 @@ describe('HelloPage', () => {
   const logout = vi.fn(async () => {
     me.set(null);
   });
+  const companies = signal<readonly CompanyOption[]>([]);
   const hasPermission = vi.fn().mockReturnValue(false);
   const hasModule = vi.fn().mockReturnValue(false);
   const invoices = {
@@ -80,6 +84,7 @@ describe('HelloPage', () => {
 
   beforeEach(async () => {
     me.set(owner);
+    companies.set([]);
     logout.mockClear();
     hasPermission.mockReset().mockReturnValue(false);
     hasModule.mockReset().mockReturnValue(false);
@@ -92,6 +97,7 @@ describe('HelloPage', () => {
           useValue: { me: me.asReadonly(), logout, hasPermission, hasModule },
         },
         { provide: Session, useExisting: AuthFacade },
+        { provide: CompanyFacade, useValue: { companies: companies.asReadonly() } },
         { provide: InvoicesFacade, useValue: invoices },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
@@ -155,6 +161,22 @@ describe('HelloPage', () => {
     expect(text('company-line')).toBe('Aucune entreprise.');
     expect(text('operator-line')).toBe('Opérateur de la plateforme.');
     expect(text('home-today')).toBeUndefined();
+  });
+
+  /**
+   * Belonging to no company and belonging to several without having chosen one are different states, and the home
+   * page used to tell an owner of three companies that they were a member of none (design review, 2026-09-19).
+   */
+  it('tells a member of companies to choose one, rather than that they have none', async () => {
+    companies.set([
+      { id: 'c1', name: 'Demo', status: 'active', role: 'owner' },
+      { id: 'c2', name: 'Atelier', status: 'active', role: 'owner' },
+    ]);
+    me.set({ ...owner, company: null, permissions: [] });
+
+    const { text } = await render();
+
+    expect(text('company-line')).toBe("Choisissez l'entreprise dans laquelle travailler.");
   });
 
   it('offers the platform page to an operator, and to nobody else', async () => {

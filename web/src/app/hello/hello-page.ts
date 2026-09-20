@@ -15,6 +15,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
+import { CompanyFacade } from '../company/company-facade';
 import { formatLongDay, todayIn } from '../shared/i18n/format';
 import { FormatFacade } from '../shared/i18n/format-facade';
 import { HOME_PANELS } from '../shell/home-manifest';
@@ -33,8 +34,16 @@ import { visibleEntries } from '../shell/nav-manifest';
 export class HelloPage {
   private readonly auth = inject(AuthFacade);
   private readonly format = inject(FormatFacade);
+  private readonly companies = inject(CompanyFacade);
 
   protected readonly me = this.auth.me;
+  /**
+   * Whether this person belongs to companies but is working in none of them, which is not the same as belonging to
+   * none: a login only picks a company when there is exactly one to pick (ChooseWorkingCompany).
+   */
+  protected readonly mustChooseCompany = computed(
+    () => this.me()?.company == null && this.companies.companies().length > 0,
+  );
   protected readonly today = computed(() => {
     const company = this.me()?.company;
     return company ? formatLongDay(todayIn(company.timezone), this.format.locale()) : null;

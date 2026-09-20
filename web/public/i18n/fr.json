@@ -120,6 +120,7 @@
     "greeting": "Bonjour, {{name}}",
     "company": "Vous travaillez dans {{company}} en tant que {{role}}.",
     "no_company": "Vous n'êtes membre d'aucune entreprise pour le moment.",
+    "choose_company": "Choisissez l'entreprise dans laquelle travailler.",
     "operator": "Vous êtes opérateur de la plateforme.",
     "platform": "Gérer la plateforme"
   },

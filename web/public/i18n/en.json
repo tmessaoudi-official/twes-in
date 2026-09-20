@@ -120,6 +120,7 @@
     "greeting": "Hello, {{name}}",
     "company": "You are working in {{company}} as {{role}}.",
     "no_company": "You are not a member of any company yet.",
+    "choose_company": "Choose the company you want to work in.",
     "operator": "You are a platform operator.",
     "platform": "Run the platform"
   },

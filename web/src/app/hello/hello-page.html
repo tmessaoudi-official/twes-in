@@ -21,7 +21,9 @@
           }}
         </p>
       } @else {
-        <p data-testid="company-line">{{ 'hello.no_company' | translate }}</p>
+        <p data-testid="company-line">
+          {{ (mustChooseCompany() ? 'hello.choose_company' : 'hello.no_company') | translate }}
+        </p>
       }
     </header>
 
