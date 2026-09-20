@@ -32,14 +32,7 @@ import { Feedback } from '../shared/feedback/feedback';
 /** The places the company issues documents from, one of them its default. */
 @Component({
   selector: 'app-establishments-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    TranslatePipe,
-    DataList,
-    DataListCell,
-    DescriptorForm,
-  ],
+  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
   templateUrl: './establishments-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

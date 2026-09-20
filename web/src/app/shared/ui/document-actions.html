@@ -1,0 +1,108 @@
+<div
+  class="flex flex-wrap items-center justify-end gap-2"
+  role="group"
+  [attr.aria-label]="label() | translate"
+  data-testid="document-actions"
+>
+  @for (action of visible(); track action.id) {
+    @if (action.href; as href) {
+      <a
+        mat-stroked-button
+        [href]="href"
+        target="_blank"
+        rel="noopener"
+        [attr.data-testid]="'document-action-' + action.id"
+      >
+        @if (action.icon) {
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        }
+        {{ action.label | translate: action.labelParams }}
+      </a>
+    } @else if (action.link; as link) {
+      <a mat-stroked-button [routerLink]="link" [attr.data-testid]="'document-action-' + action.id">
+        @if (action.icon) {
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        }
+        {{ action.label | translate: action.labelParams }}
+      </a>
+    } @else if (action.primary) {
+      <button
+        mat-flat-button
+        type="button"
+        [disabled]="action.disabled ?? false"
+        (click)="run(action)"
+        [attr.data-testid]="'document-action-' + action.id"
+      >
+        @if (action.icon) {
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        }
+        {{ action.label | translate: action.labelParams }}
+      </button>
+    } @else {
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="action.disabled ?? false"
+        (click)="run(action)"
+        [attr.data-testid]="'document-action-' + action.id"
+      >
+        @if (action.icon) {
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+        }
+        {{ action.label | translate: action.labelParams }}
+      </button>
+    }
+  }
+  @if (rare().length > 0) {
+    <button
+      mat-icon-button
+      type="button"
+      [matMenuTriggerFor]="moreMenu"
+      [appLabel]="'document.more_actions' | translate"
+      data-testid="document-more"
+    >
+      <mat-icon aria-hidden="true">more_vert</mat-icon>
+    </button>
+    <mat-menu #moreMenu="matMenu" xPosition="before">
+      @for (action of rare(); track action.id) {
+        @if (action.href; as href) {
+          <a
+            mat-menu-item
+            [href]="href"
+            target="_blank"
+            rel="noopener"
+            [attr.data-testid]="'document-menu-' + action.id"
+          >
+            @if (action.icon) {
+              <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+            }
+            <span>{{ action.label | translate: action.labelParams }}</span>
+          </a>
+        } @else if (action.link; as link) {
+          <a mat-menu-item [routerLink]="link" [attr.data-testid]="'document-menu-' + action.id">
+            @if (action.icon) {
+              <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+            }
+            <span>{{ action.label | translate: action.labelParams }}</span>
+          </a>
+        } @else {
+          <button
+            mat-menu-item
+            type="button"
+            [disabled]="action.disabled ?? false"
+            [class.text-error]="action.destructive"
+            (click)="run(action)"
+            [attr.data-testid]="'document-menu-' + action.id"
+          >
+            @if (action.icon) {
+              <mat-icon aria-hidden="true" [class.text-error]="action.destructive">{{
+                action.icon
+              }}</mat-icon>
+            }
+            <span>{{ action.label | translate: action.labelParams }}</span>
+          </button>
+        }
+      }
+    </mat-menu>
+  }
+</div>

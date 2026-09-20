@@ -1252,6 +1252,19 @@ th.mat-mdc-header-cell:last-child {
 }
 
 /*
+ * A document's action bar (docs/SPEC.md § 7, 2026-09-19 23:17, design review finding 3: "Facturer ce bon" and
+ * "Enregistrer le paiement" sat below 2000 px of form). The header carrying it stays in view while the page
+ * scrolls, under the shell's own top bar, and paints its own ground so the page does not show through it.
+ */
+.twes-document-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding-block: 0.5rem;
+  background: var(--mat-sys-surface);
+}
+
+/*
  * A row as a card, below 600 px. A table that wide is read by scrolling sideways, which is how the columns that
  * matter end up off screen; the card shows the same row down the page instead.
  */

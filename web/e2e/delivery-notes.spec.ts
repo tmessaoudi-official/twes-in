@@ -125,17 +125,17 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
     await page.getByTestId('line-0-price').fill('1250');
     await page.getByTestId('line-0').getByRole('checkbox', { name: /19/ }).check();
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('delivery-note-save').click();
+    await page.getByTestId('document-action-save').click();
 
     await expect(page).toHaveURL(/\/delivery-notes\/[0-9a-f-]{36}$/);
     await expect(page.getByTestId('delivery-note-totals')).toContainText('2 975,000');
     const draftPdf = await download(
       page,
-      (await page.getByTestId('delivery-note-pdf').getAttribute('href')) ?? '',
+      (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '',
     );
     expect([draftPdf.status, draftPdf.magic]).toEqual([200, '%PDF-']);
 
-    await page.getByTestId('delivery-note-validate').click();
+    await page.getByTestId('document-action-validate').click();
     await expect(page.getByTestId('delivery-note-title')).toHaveText(/BL-\d{4}-\d{5}/);
     const noteNumber = ((await page.getByTestId('delivery-note-title').textContent()) ?? '').trim();
     await expect(page.getByTestId('line-0-quantity')).toBeDisabled();
@@ -143,15 +143,17 @@ test('a delivery note is drafted, numbered at validation, printed and delivered'
 
     const pdf = await download(
       page,
-      (await page.getByTestId('delivery-note-pdf').getAttribute('href')) ?? '',
+      (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '',
     );
     expect(pdf.status).toBe(200);
     expect(pdf.type).toContain('application/pdf');
     expect(pdf.disposition).toContain(`${noteNumber}.pdf`);
     expect(pdf.magic).toBe('%PDF-');
 
+    // Delivering asks for its day in a dialog, so the bar carries actions and not a date field.
+    await page.getByTestId('document-action-deliver').click();
     await page.getByTestId('delivery-note-deliver').click();
-    await expect(page.getByTestId('delivery-note-deliver')).toHaveCount(0);
+    await expect(page.getByTestId('document-action-deliver')).toHaveCount(0);
     await expect(page.getByTestId('delivery-note-status')).toContainText(/Livré|Delivered/);
 
     // The API pages this list and the shared company outgrows one page, so the row is searched for rather than

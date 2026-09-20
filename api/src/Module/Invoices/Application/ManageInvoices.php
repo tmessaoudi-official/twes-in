@@ -128,6 +128,25 @@ final readonly class ManageInvoices
     }
 
     /**
+     * A copy of a document as a new draft; the answer is the copy, which is where the person continues.
+     *
+     * @throws InvoiceNotFound
+     * @throws InvoiceTransitionRefused
+     * @throws InvalidInvoice
+     */
+    public function duplicate(Company $company, Uuid $invoiceId, ?Uuid $actorUserId): Invoice
+    {
+        return $this->transactions->run(function () use ($company, $invoiceId, $actorUserId): Invoice {
+            $copy = Invoice::duplicateOf($this->get($company, $invoiceId), $this->clock->now());
+            $this->totals->checked($copy);
+            $this->invoices->save($copy);
+            $this->record($company, $copy->getId(), self::CREATED, ['duplicateOfInvoiceId' => $invoiceId->toRfc4122()], $actorUserId);
+
+            return $copy;
+        });
+    }
+
+    /**
      * A credit note drafted from an issued invoice (docs/SPEC.md § 7, 2026-09-14), audited as created with the invoice it
      * corrects.
      *

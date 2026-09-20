@@ -23,14 +23,7 @@ import type { VendorRow, VendorSearch } from './vendors-types';
 /** The vendors of the company being worked in. */
 @Component({
   selector: 'app-vendors-page',
-  imports: [
-    MatButtonModule,
-    RouterLink,
-    TranslatePipe,
-    DataList,
-    DataListCell,
-    StatusBadge,
-  ],
+  imports: [MatButtonModule, RouterLink, TranslatePipe, DataList, DataListCell, StatusBadge],
   templateUrl: './vendors-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

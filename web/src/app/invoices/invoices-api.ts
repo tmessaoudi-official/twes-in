@@ -172,6 +172,11 @@ export class InvoicesApi {
     return this.step(companyId, id, 'credit-notes');
   }
 
+  /** Copies a document into a new draft; the answer is the copy. 409 for a credit note. */
+  async duplicate(companyId: string, id: string): Promise<InvoiceRow> {
+    return this.step(companyId, id, 'duplicate');
+  }
+
   /** 422 for an amount above what is due or a day outside the issue day to today, 409 on a document not issued. */
   async recordPayment(companyId: string, id: string, payment: PaymentInput): Promise<void> {
     const body: PaymentPaymentWrite = { ...payment };
@@ -196,7 +201,7 @@ export class InvoicesApi {
   private async step(
     companyId: string,
     id: string,
-    action: 'issue' | 'cancel' | 'credit-notes',
+    action: 'issue' | 'cancel' | 'credit-notes' | 'duplicate',
   ): Promise<InvoiceRow> {
     return this.guard(async () =>
       toInvoice(

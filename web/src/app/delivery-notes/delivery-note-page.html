@@ -1,5 +1,7 @@
 <section class="flex max-w-5xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <!-- The bar stays in view while the page scrolls: the measured defect was the next step sitting below
+       2000 px of form (design review finding 3). -->
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
         class="text-3xl font-semibold"
@@ -29,23 +31,8 @@
         </p>
       }
     </div>
-    <div class="flex flex-wrap gap-2">
-      @if (pdfUrl(); as url) {
-        <a
-          mat-stroked-button
-          [href]="url"
-          target="_blank"
-          rel="noopener"
-          data-testid="delivery-note-pdf"
-        >
-          {{
-            (current()?.status === 'draft'
-              ? 'delivery_notes.actions.pdf_draft'
-              : 'delivery_notes.actions.pdf'
-            ) | translate
-          }}
-        </a>
-      }
+    <div class="flex flex-wrap items-center gap-2">
+      <app-document-actions [actions]="actions()" />
       <a mat-button routerLink="/delivery-notes">{{ 'delivery_notes.back' | translate }}</a>
     </div>
   </div>
@@ -81,35 +68,45 @@
     @if (descriptor(); as descriptor) {
       <mat-card>
         <mat-card-content class="flex flex-col">
-          <app-pick-field
-            [label]="'delivery_notes.fields.customerId' | translate"
-            testId="delivery-note-customer"
-            [search]="searchCustomers"
-            [value]="customerShown()"
-            [disabled]="!editable()"
-            [noneFoundLabel]="'delivery_notes.form.no_customer_found' | translate"
-            [hint]="'delivery_notes.form.customer_hint' | translate"
-            (picked)="chooseCustomer($event)"
-          />
-          @if (customerMissing()) {
-            <p
-              role="alert"
-              class="-mt-2 px-4 pb-2 text-xs text-error"
-              data-testid="delivery-note-customer-error"
-            >
-              {{ 'delivery_notes.form.customer_required' | translate }}
-            </p>
+          @if (asView()) {
+            <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
+            <app-record-view
+              [descriptor]="descriptor"
+              [values]="form.getRawValue()"
+              [picked]="viewPicked()"
+              testId="delivery-note-view"
+            />
+          } @else {
+            <app-pick-field
+              [label]="'delivery_notes.fields.customerId' | translate"
+              testId="delivery-note-customer"
+              [search]="searchCustomers"
+              [value]="customerShown()"
+              [disabled]="!editable()"
+              [noneFoundLabel]="'delivery_notes.form.no_customer_found' | translate"
+              [hint]="'delivery_notes.form.customer_hint' | translate"
+              (picked)="chooseCustomer($event)"
+            />
+            @if (customerMissing()) {
+              <p
+                role="alert"
+                class="-mt-2 px-4 pb-2 text-xs text-error"
+                data-testid="delivery-note-customer-error"
+              >
+                {{ 'delivery_notes.form.customer_required' | translate }}
+              </p>
+            }
+            <app-descriptor-form
+              [descriptor]="descriptor"
+              [form]="form"
+              testId="delivery-note-form"
+              [readOnly]="!editable()"
+              [updated]="sync.updated()"
+              [conflicts]="sync.conflicts()"
+              (resolved)="sync.resolve(form, $event)"
+              (submitted)="save()"
+            />
           }
-          <app-descriptor-form
-            [descriptor]="descriptor"
-            [form]="form"
-            testId="delivery-note-form"
-            [readOnly]="!editable()"
-            [updated]="sync.updated()"
-            [conflicts]="sync.conflicts()"
-            (resolved)="sync.resolve(form, $event)"
-            (submitted)="save()"
-          />
         </mat-card-content>
       </mat-card>
     }
@@ -162,91 +159,4 @@
       </mat-card-content>
     </mat-card>
   }
-
-  <div class="flex flex-wrap items-center justify-end gap-2">
-    @if (editable() && form()) {
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="busy()"
-        (click)="save()"
-        data-testid="delivery-note-save"
-      >
-        {{ 'delivery_notes.actions.save' | translate }}
-      </button>
-    }
-    @if (canValidate()) {
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="busy()"
-        (click)="validate()"
-        data-testid="delivery-note-validate"
-      >
-        {{ 'delivery_notes.actions.validate' | translate }}
-      </button>
-    }
-    @if (canDeliver()) {
-      <mat-form-field subscriptSizing="dynamic">
-        <mat-label>{{ 'delivery_notes.actions.delivered_on' | translate }}</mat-label>
-        <input
-          matInput
-          type="date"
-          [value]="deliveredOn()"
-          (input)="onDeliveredOn($event)"
-          data-testid="delivery-note-delivered-on"
-        />
-      </mat-form-field>
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="busy()"
-        (click)="deliver()"
-        data-testid="delivery-note-deliver"
-      >
-        {{ 'delivery_notes.actions.deliver' | translate }}
-      </button>
-    }
-    @if (canInvoice()) {
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="busy()"
-        (click)="invoice()"
-        data-testid="delivery-note-invoice"
-      >
-        {{ 'delivery_notes.actions.invoice' | translate }}
-      </button>
-    }
-    @if (canCancel()) {
-      @if (confirmingCancel()) {
-        <button
-          mat-button
-          type="button"
-          (click)="confirmingCancel.set(false)"
-          data-testid="delivery-note-cancel-keep"
-        >
-          {{ 'delivery_notes.actions.keep' | translate }}
-        </button>
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="busy()"
-          (click)="cancel()"
-          data-testid="delivery-note-cancel-confirm"
-        >
-          {{ 'delivery_notes.actions.confirm_cancel' | translate }}
-        </button>
-      } @else {
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="confirmingCancel.set(true)"
-          data-testid="delivery-note-cancel"
-        >
-          {{ 'delivery_notes.actions.cancel' | translate }}
-        </button>
-      }
-    }
-  </div>
 </section>

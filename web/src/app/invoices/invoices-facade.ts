@@ -118,6 +118,11 @@ export class InvoicesFacade {
     return this.step(() => this.api.creditNote(companyId, id));
   }
 
+  /** A copy of the document as a new draft, which becomes the document on screen. */
+  async duplicate(companyId: string, id: string): Promise<InvoiceRow | null> {
+    return this.step(() => this.api.duplicate(companyId, id));
+  }
+
   /** True once recorded, with the invoice read again so its amount due and status are the API's. */
   async recordPayment(companyId: string, id: string, payment: PaymentInput): Promise<boolean> {
     return this.paymentStep(companyId, id, () => this.api.recordPayment(companyId, id, payment));

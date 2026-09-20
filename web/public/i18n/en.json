@@ -549,6 +549,10 @@
       "network": "The server could not be reached."
     }
   },
+  "document": {
+    "actions": "Document actions",
+    "more_actions": "More actions"
+  },
   "list": {
     "filter": "Filter",
     "filter_clear": "Clear the filter",
@@ -579,6 +583,9 @@
     "more_actions": "More actions"
   },
   "form": {
+    "nothing_filled": "This document fills none of these fields in.",
+    "yes": "Yes",
+    "no": "No",
     "optional": "optional",
     "no_value": "None",
     "none": "None",
@@ -865,6 +872,7 @@
     "draft": "Draft",
     "back": "Back to invoices",
     "saved": "The draft has been saved.",
+    "duplicated": "The document was duplicated.",
     "read_only": "You can view invoices, not change them.",
     "corrects": "See the corrected invoice",
     "fixed": {
@@ -996,6 +1004,9 @@
       "issue_credit_note": "Issue the credit note",
       "credit_note": "Create a credit note",
       "cancel": "Cancel the draft",
+      "duplicate": "Duplicate",
+      "cancel_title": "Cancel this document?",
+      "cancel_message": "A cancelled document cannot be issued again, and its number is not reused.",
       "confirm_cancel": "Confirm cancellation",
       "keep": "Keep the draft",
       "pdf": "Download the PDF",
@@ -1129,6 +1140,8 @@
       "invoice": "Invoice this note",
       "delivered_on": "Delivered on",
       "cancel": "Cancel the note",
+      "cancel_title": "Cancel this delivery note?",
+      "cancel_message": "A cancelled note cannot be validated or invoiced again.",
       "confirm_cancel": "Confirm the cancellation",
       "keep": "Keep the note",
       "pdf": "Download the PDF",

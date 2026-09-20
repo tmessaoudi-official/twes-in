@@ -212,9 +212,7 @@ describe('MembersPage', () => {
     expect(
       fixture.nativeElement.querySelector('[data-testid="row-more-invited:invited@example.test"]'),
     ).toBeNull();
-    expect(
-      fixture.nativeElement.querySelector('[data-testid="row-more-u1"]'),
-    ).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('[data-testid="row-more-u1"]')).not.toBeNull();
   });
 
   it('says so when the API refused', async () => {
@@ -232,9 +230,7 @@ describe('MembersPage', () => {
     other.detectChanges();
 
     expect(other.nativeElement.querySelector('[data-testid="member-add"]')).toBeNull();
-    expect(
-      other.nativeElement.querySelector('[data-testid="row-more-u1"]'),
-    ).toBeNull();
+    expect(other.nativeElement.querySelector('[data-testid="row-more-u1"]')).toBeNull();
   });
 
   it('says the list is empty when it is', async () => {

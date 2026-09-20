@@ -29,14 +29,7 @@ import { Feedback } from '../shared/feedback/feedback';
 /** How each establishment numbers each kind of document, with the next number shown while a format is typed. */
 @Component({
   selector: 'app-numbering-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    TranslatePipe,
-    DataList,
-    DataListCell,
-    DescriptorForm,
-  ],
+  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
   templateUrl: './numbering-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

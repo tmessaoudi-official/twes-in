@@ -152,6 +152,12 @@ describe('DeliveryNotePage', () => {
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
 
+  // A menu and a dialog open in the CDK overlay, which hangs off the body rather than the component.
+  const over = (testId: string): HTMLElement | null =>
+    document.body.querySelector(
+      `.cdk-overlay-container [data-testid="${testId}"]`,
+    ) as HTMLElement | null;
+
   async function settle(): Promise<void> {
     fixture.detectChanges();
     await fixture.whenStable();
@@ -159,7 +165,10 @@ describe('DeliveryNotePage', () => {
   }
 
   function type(testId: string, value: string): void {
-    const input = q(testId) as HTMLInputElement;
+    typeIn(q(testId) as HTMLInputElement, value);
+  }
+
+  function typeIn(input: HTMLInputElement, value: string): void {
     input.value = value;
     input.dispatchEvent(new Event('input'));
   }
@@ -233,6 +242,10 @@ describe('DeliveryNotePage', () => {
     });
   });
 
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
   it('titles a delivery note still loading as nothing, never as a new one', async () => {
     await open('n1');
@@ -253,13 +266,13 @@ describe('DeliveryNotePage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
     expect(facade.loadNote).toHaveBeenCalledWith('c1', null);
-    expect(q('delivery-note-validate')).toBeNull();
-    expect(q('delivery-note-pdf')).toBeNull();
+    expect(q('document-action-validate')).toBeNull();
+    expect(q('document-action-pdf')).toBeNull();
 
     await pick('delivery-note-customer', 'CLI-1 · Carthage');
     await pick('line-0-product', 'ART-1 · Portable 14"');
     type('line-0-quantity', '2');
-    q('delivery-note-save')!.click();
+    q('document-action-save')!.click();
     await settle();
 
     expect(facade.create).toHaveBeenCalledWith(
@@ -295,7 +308,7 @@ describe('DeliveryNotePage', () => {
 
     type('line-0-quantity', '2,000');
     type('line-0-price', '1250,5');
-    q('delivery-note-save')!.click();
+    q('document-action-save')!.click();
     await settle();
 
     expect(facade.create).toHaveBeenCalledWith(
@@ -312,7 +325,7 @@ describe('DeliveryNotePage', () => {
     type('line-0-description', 'Pièce');
     type('line-0-price', '10');
     type('line-0-quantity', '0');
-    q('delivery-note-save')!.click();
+    q('document-action-save')!.click();
     await settle();
 
     expect(facade.create).not.toHaveBeenCalled();
@@ -341,7 +354,7 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-totals')?.textContent?.replace(/\s/g, ' ')).toContain('2 975,000');
 
     type('line-0-quantity', '3');
-    q('delivery-note-save')!.click();
+    q('document-action-save')!.click();
     await settle();
     expect(facade.revise).toHaveBeenCalledWith(
       'c1',
@@ -351,7 +364,7 @@ describe('DeliveryNotePage', () => {
     expect(successToasts()).toContain('delivery_notes.saved');
 
     type('line-0-quantity', '4');
-    q('delivery-note-validate')!.click();
+    q('document-action-validate')!.click();
     await settle();
     expect(facade.reviseAndValidate).toHaveBeenCalledWith(
       'c1',
@@ -399,6 +412,21 @@ describe('DeliveryNotePage', () => {
     expect(q('field-conflict-lines')).toBeNull();
   });
 
+  it('reads a locked note rather than showing a form nobody may fill in', async () => {
+    // Design review finding 3: a locked note was a form with every control disabled, plus an empty box per
+    // unfilled field. A draft stays a form, which is what a person came to fill in.
+    note.set({ ...validated, status: 'delivered', deliveryDate: '2026-09-20' });
+    await open('n1');
+    expect(q('delivery-note-view')).not.toBeNull();
+    expect(q('delivery-note-form')).toBeNull();
+    expect(q('delivery-note-customer')).toBeNull();
+
+    note.set(draft);
+    await open('n1');
+    expect(q('delivery-note-form')).not.toBeNull();
+    expect(q('delivery-note-view')).toBeNull();
+  });
+
   it('shows a validated note as it was issued, with its PDF, its delivery and its cancellation', async () => {
     note.set(validated);
     await open('n1');
@@ -407,23 +435,29 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-status')?.textContent).toContain('Validé');
     expect(q('delivery-note-fixed')?.textContent).toContain('peut encore être livré');
     expect((q('line-0-quantity') as HTMLInputElement).disabled).toBe(true);
-    expect(q('delivery-note-save')).toBeNull();
-    expect(q('delivery-note-validate')).toBeNull();
+    expect(q('document-action-save')).toBeNull();
+    expect(q('document-action-validate')).toBeNull();
     expect(q('line-add')).toBeNull();
-    expect(q('delivery-note-pdf')?.getAttribute('href')).toBe(
+    expect(q('document-action-pdf')?.getAttribute('href')).toBe(
       '/api/companies/c1/delivery-notes/n1/pdf',
     );
 
-    type('delivery-note-delivered-on', '2026-09-20');
-    q('delivery-note-deliver')!.click();
+    // Delivering asks for its day in a dialog, so the bar carries actions and not a date field.
+    expect(q('delivery-note-delivered-on')).toBeNull();
+    q('document-action-deliver')!.click();
     await settle();
-    expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20');
+    typeIn(over('delivery-note-delivered-on') as HTMLInputElement, '2026-09-20');
+    over('delivery-note-deliver')!.click();
+    await vi.waitFor(() => expect(facade.deliver).toHaveBeenCalledWith('c1', 'n1', '2026-09-20'));
 
-    expect(q('delivery-note-cancel-confirm')).toBeNull();
-    q('delivery-note-cancel')!.click();
+    // Cancelling is destructive, so it is behind "⋮" and asks before it runs.
+    expect(q('document-action-cancel')).toBeNull();
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-cancel')!.click();
     await settle();
     expect(facade.cancel).not.toHaveBeenCalled();
-    q('delivery-note-cancel-confirm')!.click();
+    over('confirm-run')!.click();
     await settle();
     expect(facade.cancel).toHaveBeenCalledWith('c1', 'n1');
   });
@@ -436,10 +470,10 @@ describe('DeliveryNotePage', () => {
     expect(q('delivery-note-status')?.textContent).toContain('20/09/2026');
     expect(q('delivery-note-invoiced')?.textContent).toContain('sur une facture');
     expect(q('delivery-note-fixed')).toBeNull();
-    expect(q('delivery-note-deliver')).toBeNull();
+    expect(q('document-action-deliver')).toBeNull();
     expect(q('delivery-note-delivered-on')).toBeNull();
-    expect(q('delivery-note-cancel')).toBeNull();
-    expect(q('delivery-note-pdf')).not.toBeNull();
+    expect(q('document-more')).toBeNull();
+    expect(q('document-action-pdf')).not.toBeNull();
   });
 
   it('tells a delivered or a cancelled note only what it can still become', async () => {
@@ -447,13 +481,13 @@ describe('DeliveryNotePage', () => {
     await open('n1');
     expect(q('delivery-note-fixed')?.textContent).toContain('attend sa facture');
     expect(q('delivery-note-fixed')?.textContent).not.toContain('livré.');
-    expect(q('delivery-note-cancel')).toBeNull();
+    expect(q('document-more')).toBeNull();
 
     note.set({ ...validated, status: 'cancelled' });
     await settle();
     expect(q('delivery-note-fixed')?.textContent).toContain('Annulé, il peut encore être imprimé');
-    expect(q('delivery-note-deliver')).toBeNull();
-    expect(q('delivery-note-cancel')).toBeNull();
+    expect(q('document-action-deliver')).toBeNull();
+    expect(q('document-more')).toBeNull();
   });
 
   it('shows a reader the note and its PDF without a way to change it', async () => {
@@ -463,11 +497,11 @@ describe('DeliveryNotePage', () => {
     await open('n1');
 
     expect(q('delivery-note-read-only')).not.toBeNull();
-    expect(q('delivery-note-save')).toBeNull();
-    expect(q('delivery-note-validate')).toBeNull();
-    expect(q('delivery-note-cancel')).toBeNull();
+    expect(q('document-action-save')).toBeNull();
+    expect(q('document-action-validate')).toBeNull();
+    expect(q('document-more')).toBeNull();
     expect(q('line-add')).toBeNull();
-    expect(q('delivery-note-pdf')).not.toBeNull();
+    expect(q('document-action-pdf')).not.toBeNull();
   });
 
   it('says why the API refused', async () => {
@@ -481,14 +515,14 @@ describe('DeliveryNotePage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     note.set(validated);
     await open('n1');
-    q('delivery-note-invoice')!.click();
+    q('document-action-invoice')!.click();
     await settle();
     expect(facade.invoice).toHaveBeenCalledWith('c1', 'n1');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i7']));
 
     note.set({ ...validated, status: 'delivered' });
     await settle();
-    expect(q('delivery-note-invoice')).not.toBeNull();
+    expect(q('document-action-invoice')).not.toBeNull();
   });
 
   /** The picked row carries the regime, and nothing else does: no list is held to look one up in. */
@@ -505,20 +539,20 @@ describe('DeliveryNotePage', () => {
   it('offers no invoice for a draft, an invoiced note, without the invoices module or the permission', async () => {
     note.set(draft);
     await open('n1');
-    expect(q('delivery-note-invoice')).toBeNull();
+    expect(q('document-action-invoice')).toBeNull();
 
     note.set({ ...validated, status: 'invoiced' });
     await settle();
-    expect(q('delivery-note-invoice')).toBeNull();
+    expect(q('document-action-invoice')).toBeNull();
 
     note.set(validated);
     modules.delete('invoices');
     await open('n1');
-    expect(q('delivery-note-invoice')).toBeNull();
+    expect(q('document-action-invoice')).toBeNull();
 
     modules.add('invoices');
     granted.delete('invoice.write');
     await open('n1');
-    expect(q('delivery-note-invoice')).toBeNull();
+    expect(q('document-action-invoice')).toBeNull();
   });
 });

@@ -34,14 +34,7 @@ import { Feedback } from '../shared/feedback/feedback';
 /** A company's taxes, which it copied from its fiscal preset and now edits, and the regimes its customers may be under. */
 @Component({
   selector: 'app-fiscal-taxes-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    TranslatePipe,
-    DataList,
-    DataListCell,
-    DescriptorForm,
-  ],
+  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
   templateUrl: './fiscal-taxes-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

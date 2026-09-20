@@ -219,6 +219,7 @@ describe('InvoicePage', () => {
     reviseAndIssue: vi.fn(),
     cancel: vi.fn(),
     creditNote: vi.fn(),
+    duplicate: vi.fn(),
     recordPayment: vi.fn(),
     deletePayment: vi.fn(),
     clearError: vi.fn(),
@@ -236,6 +237,12 @@ describe('InvoicePage', () => {
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+  // A menu and a dialog open in the CDK overlay, which hangs off the body rather than the component.
+  const over = (testId: string): HTMLElement | null =>
+    document.body.querySelector(
+      `.cdk-overlay-container [data-testid="${testId}"]`,
+    ) as HTMLElement | null;
   const text = (testId: string): string => (q(testId)?.textContent ?? '').replace(/\s+/g, ' ');
   const checked = (testId: string): boolean =>
     (q(testId)?.querySelector('input[type="checkbox"]') as HTMLInputElement | null)?.checked ??
@@ -248,7 +255,10 @@ describe('InvoicePage', () => {
   }
 
   function type(testId: string, value: string): void {
-    const input = q(testId) as HTMLInputElement;
+    typeIn(q(testId) as HTMLInputElement, value);
+  }
+
+  function typeIn(input: HTMLInputElement, value: string): void {
     input.value = value;
     input.dispatchEvent(new Event('input'));
   }
@@ -296,6 +306,7 @@ describe('InvoicePage', () => {
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
     facade.cancel.mockReset().mockResolvedValue({ ...draft, status: 'cancelled' });
     facade.creditNote.mockReset();
+    facade.duplicate.mockReset();
     facade.recordPayment.mockReset().mockResolvedValue(true);
     facade.deletePayment.mockReset().mockResolvedValue(true);
     TestBed.configureTestingModule({
@@ -320,6 +331,10 @@ describe('InvoicePage', () => {
     });
   });
 
+  afterEach(() => {
+    document.body.querySelectorAll('.cdk-overlay-container').forEach((overlay) => overlay.remove());
+  });
+
   // docs/SPEC.md § 7, 2026-09-19 21:55: a page names nothing it has not loaded.
   it('titles an invoice still loading as nothing, never as a new one', async () => {
     await open('i1');
@@ -340,14 +355,14 @@ describe('InvoicePage', () => {
     const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
     expect(facade.loadInvoice).toHaveBeenCalledWith('c1', null);
-    expect(q('invoice-issue')).toBeNull();
+    expect(q('document-action-issue')).toBeNull();
 
     await pick('invoice-customer', 'CLI-2 · Méditerranée');
     expect(checked('document-tax-TIMBRE')).toBe(true);
     expect(checked('document-tax-RS1')).toBe(true);
     await pick('line-0-product', 'ART-1 · Conception');
     expect((q('line-0-discount') as HTMLInputElement).value).toBe('5');
-    q('invoice-save')!.click();
+    q('document-action-save')!.click();
     await settle();
 
     expect(facade.create).toHaveBeenCalledWith(
@@ -387,7 +402,7 @@ describe('InvoicePage', () => {
     type('line-0-quantity', '2,000');
     type('line-0-price', '1800,5');
     type('line-0-discount', '7,5');
-    q('invoice-save')!.click();
+    q('document-action-save')!.click();
     await settle();
 
     expect(facade.create).toHaveBeenCalledWith(
@@ -456,7 +471,7 @@ describe('InvoicePage', () => {
     invoice.set(draft);
     await open('i1');
     type('line-0-quantity', '3');
-    q('invoice-issue')!.click();
+    q('document-action-issue')!.click();
     await settle();
     expect(facade.reviseAndIssue).toHaveBeenCalledWith(
       'c1',
@@ -517,12 +532,34 @@ describe('InvoicePage', () => {
   it('cancels a draft only once confirmed', async () => {
     invoice.set(draft);
     await open('i1');
-    q('invoice-cancel')!.click();
+    // Cancelling is destructive, so it is behind "⋮" and asks before it runs.
+    expect(q('document-action-cancel')).toBeNull();
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-cancel')!.click();
     await settle();
     expect(facade.cancel).not.toHaveBeenCalled();
-    q('invoice-cancel-confirm')!.click();
+    over('confirm-run')!.click();
     await settle();
     expect(facade.cancel).toHaveBeenCalledWith('c1', 'i1');
+  });
+
+  it('reads a locked document rather than showing a form nobody may fill in', async () => {
+    // Design review finding 3: an issued invoice was a form with every control disabled, which reads as "you may
+    // not change this" where the truth is "this no longer changes" — with an empty box per unfilled field.
+    invoice.set(issued);
+    await open('i1');
+
+    expect(q('invoice-view')).not.toBeNull();
+    expect(q('invoice-form')).toBeNull();
+    expect(q('invoice-customer')).toBeNull();
+    expect(q('field-customerReference')).toBeNull();
+
+    // A draft is still a form: it is what a person came to fill in.
+    invoice.set(draft);
+    await open('i1');
+    expect(q('invoice-form')).not.toBeNull();
+    expect(q('invoice-view')).toBeNull();
   });
 
   it('shows an issued invoice fixed, with what is left to collect and its payments', async () => {
@@ -535,21 +572,25 @@ describe('InvoicePage', () => {
     expect(text('payment-y1')).toContain('VIR 882104');
     expect(text('payment-y1')).toContain('1 000,000');
     expect((q('line-0-quantity') as HTMLInputElement).disabled).toBe(true);
-    expect(q('invoice-save')).toBeNull();
-    expect(q('invoice-issue')).toBeNull();
+    expect(q('document-action-save')).toBeNull();
+    expect(q('document-action-issue')).toBeNull();
     expect(q('invoice-cancel')).toBeNull();
-    expect(q('invoice-pdf')?.getAttribute('href')).toBe('/api/companies/c1/invoices/i1/pdf');
+    expect(q('document-action-pdf')?.getAttribute('href')).toBe(
+      '/api/companies/c1/invoices/i1/pdf',
+    );
   });
 
   it('records a payment on the company’s today, for what is still due unless changed', async () => {
     invoice.set(issued);
     await open('i1');
-    expect((q('field-amount') as HTMLInputElement).value).toBe('1121,570');
-    expect((q('field-date') as HTMLInputElement).value).toBe(todayIn('Africa/Tunis'));
+    q('document-action-record-payment')!.click();
+    await settle();
+    expect((over('field-amount') as HTMLInputElement).value).toBe('1121,570');
+    expect((over('field-date') as HTMLInputElement).value).toBe(todayIn('Africa/Tunis'));
 
-    type('field-amount', '500,5');
-    type('field-reference', 'CHQ 12');
-    q('invoice-payment-record')!.click();
+    typeIn(over('field-amount') as HTMLInputElement, '500,5');
+    typeIn(over('field-reference') as HTMLInputElement, 'CHQ 12');
+    over('invoice-payment-record')!.click();
     await settle();
     expect(facade.recordPayment).toHaveBeenCalledWith('c1', 'i1', {
       date: todayIn('Africa/Tunis'),
@@ -558,7 +599,8 @@ describe('InvoicePage', () => {
       reference: 'CHQ 12',
       notes: null,
     });
-    expect(successToasts()).toContain('invoices.payments.recorded');
+    // The dialog's answer adds an await between the click and the record, so the toast lands a tick later.
+    await vi.waitFor(() => expect(successToasts()).toContain('invoices.payments.recorded'));
   });
 
   it('deletes a payment only once confirmed', async () => {
@@ -576,13 +618,13 @@ describe('InvoicePage', () => {
     invoice.set({ ...issued, status: 'paid', amountDue: '0.000' });
     await open('i1');
     expect(q('invoice-payments')).not.toBeNull();
-    expect(q('invoice-payment-record')).toBeNull();
-    expect(q('invoice-credit-note')).toBeNull();
+    expect(q('document-action-record-payment')).toBeNull();
+    expect(over('document-menu-credit-note')).toBeNull();
 
     granted.delete('payment.write');
     invoice.set(issued);
     await open('i1');
-    expect(q('invoice-payment-record')).toBeNull();
+    expect(q('document-action-record-payment')).toBeNull();
     expect(q('payment-y1-delete')).toBeNull();
   });
 
@@ -602,10 +644,25 @@ describe('InvoicePage', () => {
     });
     invoice.set(issued);
     await open('i1');
-    q('invoice-credit-note')!.click();
+    q('document-more')!.click();
+    await settle();
+    over('document-menu-credit-note')!.click();
     await settle();
     expect(facade.creditNote).toHaveBeenCalledWith('c1', 'i1');
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'cn1']));
+  });
+
+  it('copies a document into a new draft, and goes to the copy', async () => {
+    facade.duplicate.mockResolvedValue({ ...draft, id: 'i2' });
+    const navigate = vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+    invoice.set(issued);
+    await open('i1');
+
+    q('document-action-duplicate')!.click();
+    await settle();
+
+    expect(facade.duplicate).toHaveBeenCalledWith('c1', 'i1');
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith(['/invoices', 'i2']));
   });
 
   it('shows a credit note as one: its title, its invoice, no payments and no credit note of its own', async () => {
@@ -613,13 +670,13 @@ describe('InvoicePage', () => {
     await open('i1');
     expect(text('invoice-title')).toContain('Avoir en brouillon');
     expect(q('invoice-corrects')?.getAttribute('href')).toBe('/invoices/i0');
-    expect(q('invoice-issue')).not.toBeNull();
+    expect(q('document-action-issue')).not.toBeNull();
 
     invoice.set({ ...issued, type: 'credit_note', correctsInvoiceId: 'i0', status: 'issued' });
     await settle();
     expect(q('invoice-payments')).toBeNull();
     expect(q('invoice-due')).toBeNull();
-    expect(q('invoice-credit-note')).toBeNull();
+    expect(over('document-menu-credit-note')).toBeNull();
   });
 
   it('shows a reader the invoice and its PDF without a way to change it', async () => {
@@ -628,11 +685,11 @@ describe('InvoicePage', () => {
     invoice.set(draft);
     await open('i1');
     expect(q('invoice-read-only')).not.toBeNull();
-    expect(q('invoice-save')).toBeNull();
-    expect(q('invoice-issue')).toBeNull();
+    expect(q('document-action-save')).toBeNull();
+    expect(q('document-action-issue')).toBeNull();
     expect(q('invoice-cancel')).toBeNull();
     expect(q('line-add')).toBeNull();
-    expect(q('invoice-pdf')).not.toBeNull();
+    expect(q('document-action-pdf')).not.toBeNull();
   });
 
   it('says why the API refused', async () => {

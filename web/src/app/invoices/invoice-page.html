@@ -1,5 +1,7 @@
 <section class="flex max-w-5xl flex-col gap-6">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <!-- The bar stays in view while the page scrolls: the measured defect was the next step sitting below
+       2000 px of form (design review finding 3). -->
+  <div class="twes-document-header flex flex-wrap items-center justify-between gap-4">
     <div class="flex flex-col gap-1">
       <h1
         class="text-3xl font-semibold"
@@ -48,15 +50,8 @@
         }
       }
     </div>
-    <div class="flex flex-wrap gap-2">
-      @if (pdfUrl(); as url) {
-        <a mat-stroked-button [href]="url" target="_blank" rel="noopener" data-testid="invoice-pdf">
-          {{
-            (current()?.status === 'draft' ? 'invoices.actions.pdf_draft' : 'invoices.actions.pdf')
-              | translate
-          }}
-        </a>
-      }
+    <div class="flex flex-wrap items-center gap-2">
+      <app-document-actions [actions]="actions()" />
       <a mat-button routerLink="/invoices">{{ 'invoices.back' | translate }}</a>
     </div>
   </div>
@@ -123,35 +118,45 @@
     @if (descriptor(); as descriptor) {
       <mat-card>
         <mat-card-content class="flex flex-col">
-          <app-pick-field
-            [label]="'invoices.fields.customerId' | translate"
-            testId="invoice-customer"
-            [search]="searchCustomers"
-            [value]="customerShown()"
-            [disabled]="!editable()"
-            [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
-            [hint]="'invoices.form.customer_hint' | translate"
-            (picked)="chooseCustomer($event)"
-          />
-          @if (customerMissing()) {
-            <p
-              role="alert"
-              class="-mt-2 px-4 pb-2 text-xs text-error"
-              data-testid="invoice-customer-error"
-            >
-              {{ 'invoices.form.customer_required' | translate }}
-            </p>
+          @if (asView()) {
+            <!-- It no longer changes, so it is read rather than filled in (design review finding 3). -->
+            <app-record-view
+              [descriptor]="descriptor"
+              [values]="form.getRawValue()"
+              [picked]="viewPicked()"
+              testId="invoice-view"
+            />
+          } @else {
+            <app-pick-field
+              [label]="'invoices.fields.customerId' | translate"
+              testId="invoice-customer"
+              [search]="searchCustomers"
+              [value]="customerShown()"
+              [disabled]="!editable()"
+              [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
+              [hint]="'invoices.form.customer_hint' | translate"
+              (picked)="chooseCustomer($event)"
+            />
+            @if (customerMissing()) {
+              <p
+                role="alert"
+                class="-mt-2 px-4 pb-2 text-xs text-error"
+                data-testid="invoice-customer-error"
+              >
+                {{ 'invoices.form.customer_required' | translate }}
+              </p>
+            }
+            <app-descriptor-form
+              [descriptor]="descriptor"
+              [form]="form"
+              testId="invoice-form"
+              [readOnly]="!editable()"
+              [updated]="sync.updated()"
+              [conflicts]="sync.conflicts()"
+              (resolved)="sync.resolve(form, $event)"
+              (submitted)="save()"
+            />
           }
-          <app-descriptor-form
-            [descriptor]="descriptor"
-            [form]="form"
-            testId="invoice-form"
-            [readOnly]="!editable()"
-            [updated]="sync.updated()"
-            [conflicts]="sync.conflicts()"
-            (resolved)="sync.resolve(form, $event)"
-            (submitted)="save()"
-          />
         </mat-card-content>
       </mat-card>
     }
@@ -345,97 +350,9 @@
                 }
               </ul>
             }
-            @if (payment(); as payment) {
-              <app-descriptor-form
-                [descriptor]="payment.descriptor"
-                [form]="payment.group"
-                testId="invoice-payment-form"
-                (submitted)="recordPayment()"
-              />
-              <div class="flex justify-end">
-                <button
-                  mat-flat-button
-                  type="button"
-                  [disabled]="busy()"
-                  (click)="recordPayment()"
-                  data-testid="invoice-payment-record"
-                >
-                  {{ 'invoices.payments.record' | translate }}
-                </button>
-              </div>
-            }
           </div>
         </mat-card-content>
       </mat-card>
     }
   }
-
-  <div class="flex flex-wrap items-center justify-end gap-2">
-    @if (editable() && form()) {
-      <button
-        mat-stroked-button
-        type="button"
-        [disabled]="busy()"
-        (click)="save()"
-        data-testid="invoice-save"
-      >
-        {{ 'invoices.actions.save' | translate }}
-      </button>
-    }
-    @if (canIssue()) {
-      <button
-        mat-flat-button
-        type="button"
-        [disabled]="busy()"
-        (click)="issue()"
-        data-testid="invoice-issue"
-      >
-        {{
-          (isCreditNote() ? 'invoices.actions.issue_credit_note' : 'invoices.actions.issue')
-            | translate
-        }}
-      </button>
-    }
-    @if (canCredit()) {
-      <button
-        mat-stroked-button
-        type="button"
-        [disabled]="busy()"
-        (click)="creditNote()"
-        data-testid="invoice-credit-note"
-      >
-        {{ 'invoices.actions.credit_note' | translate }}
-      </button>
-    }
-    @if (canCancel()) {
-      @if (confirmingCancel()) {
-        <button
-          mat-button
-          type="button"
-          (click)="confirmingCancel.set(false)"
-          data-testid="invoice-cancel-keep"
-        >
-          {{ 'invoices.actions.keep' | translate }}
-        </button>
-        <button
-          mat-flat-button
-          type="button"
-          [disabled]="busy()"
-          (click)="cancel()"
-          data-testid="invoice-cancel-confirm"
-        >
-          {{ 'invoices.actions.confirm_cancel' | translate }}
-        </button>
-      } @else {
-        <button
-          mat-button
-          type="button"
-          (click)="confirmingCancel.set(true)"
-          data-testid="invoice-cancel"
-        >
-          {{ 'invoices.actions.cancel' | translate }}
-        </button>
-      }
-    }
-  </div>
 </section>

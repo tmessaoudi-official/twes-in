@@ -128,7 +128,7 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await page.getByTestId('line-0-price').fill('500');
     await page.getByTestId('line-0').getByRole('checkbox', { name: /19/ }).check();
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('invoice-save').click();
+    await page.getByTestId('document-action-save').click();
 
     await expect(page).toHaveURL(/\/invoices\/[0-9a-f-]{36}$/);
     const invoiceUrl = page.url();
@@ -136,12 +136,12 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-totals')).toContainText('190,000');
     const draftPdf = await download(
       page,
-      (await page.getByTestId('invoice-pdf').getAttribute('href')) ?? '',
+      (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '',
     );
     expect([draftPdf.status, draftPdf.magic]).toEqual([200, '%PDF-']);
 
-    await page.getByTestId('invoice-issue').click();
-    await expect(page.getByTestId('invoice-issue')).toHaveCount(0);
+    await page.getByTestId('document-action-issue').click();
+    await expect(page.getByTestId('document-action-issue')).toHaveCount(0);
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     const invoiceNumber = ((await page.getByTestId('invoice-title').textContent()) ?? '').trim();
     expect(invoiceNumber).toMatch(/\d{4}/);
@@ -151,13 +151,15 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
 
     const pdf = await download(
       page,
-      (await page.getByTestId('invoice-pdf').getAttribute('href')) ?? '',
+      (await page.getByTestId('document-action-pdf').getAttribute('href')) ?? '',
     );
     expect(pdf.status).toBe(200);
     expect(pdf.type).toContain('application/pdf');
     expect(pdf.disposition).toContain(`${invoiceNumber}.pdf`);
     expect(pdf.magic).toBe('%PDF-');
 
+    // A payment is one answer to one question, so it is asked in a dialog (design review finding 3).
+    await page.getByTestId('document-action-record-payment').click();
     await page.getByTestId('field-amount').fill('100');
     await page.getByTestId('field-reference').fill(`VIR ${run}`);
     await page.getByTestId('invoice-payment-record').click();
@@ -175,22 +177,24 @@ test('an invoice is drafted, issued, printed, paid, and corrected by a credit no
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
     await expect(page.getByTestId('invoice-amount-due')).toHaveText(due);
 
-    await page.getByTestId('invoice-credit-note').click();
+    // A credit note is rare, so it sits behind "⋮".
+    await page.getByTestId('document-more').click();
+    await page.getByTestId('document-menu-credit-note').click();
     await expect(page).not.toHaveURL(invoiceUrl);
     await expect(page.getByTestId('invoice-title')).toContainText(
       /Avoir en brouillon|Draft credit note/,
     );
     await expect(page.getByTestId('invoice-payments')).toHaveCount(0);
     expect(await wcagViolations(page)).toEqual([]);
-    await page.getByTestId('invoice-issue').click();
-    await expect(page.getByTestId('invoice-issue')).toHaveCount(0);
+    await page.getByTestId('document-action-issue').click();
+    await expect(page.getByTestId('document-action-issue')).toHaveCount(0);
     await expect(page.getByTestId('invoice-status')).toContainText(/Émise|Issued/);
 
     await page.getByTestId('invoice-corrects').click();
     await expect(page).toHaveURL(invoiceUrl);
     await expect(page.getByTestId('invoice-status')).toContainText(/Soldée|Settled/);
     await expect(page.getByTestId('invoice-amount-due')).toContainText(/^\s*0,000/);
-    await expect(page.getByTestId('invoice-payment-record')).toHaveCount(0);
+    await expect(page.getByTestId('document-action-record-payment')).toHaveCount(0);
 
     await page.goto('/invoices');
     await expect(page.getByTestId('invoices-table')).toContainText(invoiceNumber);

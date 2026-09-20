@@ -41,6 +41,12 @@ import {
   type TaxFamily,
 } from './delivery-notes-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { DocumentActions } from '../shared/ui/document-actions';
+import type { DocumentAction } from '../shared/ui/document-actions-types';
+import { DeliverDialog } from './deliver-dialog';
+import { RecordView } from '../shared/form/record-view';
 
 /**
  * One delivery note: a new draft to fill in, a draft to revise and validate, or a numbered note to deliver, cancel
@@ -59,6 +65,8 @@ import { Feedback } from '../shared/feedback/feedback';
     DayPipe,
     DescriptorForm,
     DeliveryNoteLines,
+    DocumentActions,
+    RecordView,
     PartConflict,
     PickField,
     RecordChanged,
@@ -69,6 +77,7 @@ import { Feedback } from '../shared/feedback/feedback';
 })
 export class DeliveryNotePage {
   private readonly facade = inject(DeliveryNotesFacade);
+  private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
@@ -177,6 +186,14 @@ export class DeliveryNotePage {
   /** Who the note is for, as the picker answered it: the row itself, so the taxes its regime refuses are known. */
   protected readonly customer = signal<CustomerOption | null>(null);
   protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+  /** The note read rather than filled in, once it no longer changes (design review finding 3). */
+  protected readonly asView = computed(() => !this.editable() && this.current() != null);
+  protected readonly viewPicked = computed<Record<string, string>>(() => {
+    const customer = this.customerShown();
+    const picked: Record<string, string> = {};
+    if (customer !== null) picked['customerId'] = customer.name;
+    return picked;
+  });
   /** Every customer any picker here has answered, so what is chosen can be found again from the option's id. */
   private readonly knownCustomers = new Map<string, CustomerOption>();
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
@@ -191,6 +208,74 @@ export class DeliveryNotePage {
   protected readonly excludedFamilies = computed<readonly TaxFamily[]>(
     () => this.customer()?.excludedFamilies ?? [],
   );
+
+  /**
+   * What the note offers, declared once for the bar beside its title (design review finding 3). The state's next
+   * step is the primary one: validating a draft, delivering a validated note, invoicing a delivered one. Delivering
+   * asks for its day in a dialog rather than keeping a date field in the bar, and cancelling asks before it runs.
+   */
+  protected readonly actions = computed<DocumentAction[]>(() => {
+    const busy = this.busy();
+    return [
+      {
+        id: 'save',
+        label: 'delivery_notes.actions.save',
+        icon: 'save',
+        disabled: busy,
+        run: () => void this.save(),
+        shown: this.editable() && this.form() !== null,
+      },
+      {
+        id: 'validate',
+        label: 'delivery_notes.actions.validate',
+        icon: 'check',
+        primary: true,
+        disabled: busy,
+        run: () => void this.validate(),
+        shown: this.canValidate(),
+      },
+      {
+        id: 'deliver',
+        label: 'delivery_notes.actions.deliver',
+        icon: 'local_shipping',
+        primary: true,
+        disabled: busy,
+        run: () => void this.openDeliver(),
+        shown: this.canDeliver(),
+      },
+      {
+        id: 'invoice',
+        label: 'delivery_notes.actions.invoice',
+        icon: 'receipt_long',
+        primary: true,
+        disabled: busy,
+        run: () => void this.invoice(),
+        shown: this.canInvoice(),
+      },
+      {
+        id: 'pdf',
+        label: 'delivery_notes.actions.pdf',
+        icon: 'picture_as_pdf',
+        href: this.pdfUrl() ?? undefined,
+        shown: this.pdfUrl() !== null,
+      },
+      {
+        id: 'cancel',
+        label: 'delivery_notes.actions.cancel',
+        icon: 'block',
+        destructive: true,
+        disabled: busy,
+        run: () => void this.cancel(),
+        shown: this.canCancel(),
+        confirm: {
+          title: 'delivery_notes.actions.cancel_title',
+          message: 'delivery_notes.actions.cancel_message',
+          confirmLabel: 'delivery_notes.actions.confirm_cancel',
+          keepLabel: 'delivery_notes.actions.keep',
+        },
+      },
+    ];
+  });
 
   protected readonly pdfUrl = computed(() => {
     const companyId = this.company()?.id;
@@ -289,11 +374,22 @@ export class DeliveryNotePage {
     await this.facade.reviseAndValidate(companyId, id, input);
   }
 
-  protected async deliver(): Promise<void> {
+  /** Asked in a dialog, so the bar carries actions and not a date field (design review finding 3). */
+  protected async openDeliver(): Promise<void> {
+    if (this.busy()) return;
+    const day = await firstValueFrom(
+      this.dialog
+        .open(DeliverDialog, { data: this.deliveredOn(), autoFocus: 'first-tabbable' })
+        .afterClosed(),
+    );
+    if (day !== null && day !== undefined) await this.deliver(day);
+  }
+
+  protected async deliver(on: string): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
     if (!companyId || id === null || this.busy()) return;
-    const day = this.deliveredOn().trim();
+    const day = on.trim();
     await this.facade.deliver(companyId, id, day === '' ? null : day);
   }
 

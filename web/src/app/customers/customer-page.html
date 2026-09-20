@@ -133,8 +133,7 @@
         <ng-template appDataListCell="isPrimary" let-row>
           {{ row.isPrimary ? ('customers.contacts.primary' | translate) : '' }}
         </ng-template>
-        @if (mayWrite()) {
-        }
+        @if (mayWrite()) {}
       </app-data-list>
     </section>
   }

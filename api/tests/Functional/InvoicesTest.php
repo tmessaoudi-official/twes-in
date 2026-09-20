@@ -343,6 +343,54 @@ final class InvoicesTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a draft is not paid');
     }
 
+    public function testDuplicatingADocumentGivesANewDraftCarryingWhatWasTypedAndNothingItEarned(): void
+    {
+        $this->signedIn(['invoice.read', 'invoice.write', 'invoice.issue']);
+        $supply = new \DateTimeImmutable('now', new \DateTimeZone($this->company->getTimezone()))->modify('-40 days')->format('Y-m-d');
+        $this->postJson($this->path(), $this->invoice([
+            'supplyDate' => $supply,
+            'customerReference' => 'BC-77',
+            'notesPrinted' => 'Merci de votre confiance.',
+            'lines' => [['productId' => $this->productId, 'quantity' => '3']],
+        ]));
+        $id = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($id).'/issue', null);
+        $issued = $this->json();
+        self::assertIsString($issued['number']);
+
+        $this->postJson($this->path($id).'/duplicate', null);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $copy = $this->json();
+        $copyId = $this->stringAt($copy, 'id');
+        self::assertNotSame($id, $copyId);
+        self::assertSame(
+            ['invoice', 'draft', null, null, $this->customerId, 'BC-77', 'Merci de votre confiance.'],
+            [$copy['type'], $copy['status'], $copy['number'], $copy['correctsInvoiceId'], $copy['customerId'], $copy['customerReference'], $copy['notesPrinted']],
+            'a copy carries what was typed, and none of what issuing gave the original',
+        );
+        // A supply date is a fiscal claim about a day: copied from a month-old invoice it would be silently wrong.
+        self::assertNull($copy['supplyDate']);
+        self::assertSame(['3.000'], array_column($this->arrayAt($copy, 'lines'), 'quantity'));
+        self::assertSame([$issued['total'], $issued['documentTaxComponentIds']], [$copy['total'], $copy['documentTaxComponentIds']], 'the same lines and taxes come to the same total');
+        self::assertEquals(1, $this->em()->getConnection()->fetchOne("SELECT count(*) FROM audit_log WHERE action = 'invoice.created' AND entity_id = ?", [$copyId]));
+
+        // The original is untouched by having been copied.
+        $this->getJson($this->path($id));
+        self::assertSame(['issued', $issued['number']], [$this->json()['status'], $this->json()['number']]);
+
+        // A draft copies as readily as an issued document: the point is the typing, not the state.
+        $this->postJson($this->path($copyId).'/duplicate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($this->path($id).'/credit-notes', null);
+        $creditId = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path($creditId).'/duplicate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a credit note belongs to the invoice it corrects; a copy of it would correct it twice');
+        $this->postJson($this->path(self::ABSENT).'/duplicate', null);
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
     public function testACreditNoteTakesWhatItCorrectsOffWhatItsInvoiceStillHasDue(): void
     {
         $other = $this->customer('CLI-0002', 'standard')->getId()->toRfc4122();

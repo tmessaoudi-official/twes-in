@@ -549,6 +549,10 @@
       "network": "Impossible de joindre le serveur."
     }
   },
+  "document": {
+    "actions": "Actions du document",
+    "more_actions": "Autres actions"
+  },
   "list": {
     "filter": "Filtrer",
     "filter_clear": "Effacer le filtre",
@@ -579,6 +583,9 @@
     "more_actions": "Autres actions"
   },
   "form": {
+    "nothing_filled": "Ce document ne renseigne aucun de ces champs.",
+    "yes": "Oui",
+    "no": "Non",
     "optional": "facultatif",
     "no_value": "Aucune valeur",
     "none": "Aucun",
@@ -865,6 +872,7 @@
     "draft": "Brouillon",
     "back": "Retour aux factures",
     "saved": "Le brouillon a été enregistré.",
+    "duplicated": "Le document a été dupliqué.",
     "read_only": "Vous pouvez consulter les factures, pas les modifier.",
     "corrects": "Voir la facture corrigée",
     "fixed": {
@@ -996,6 +1004,9 @@
       "issue_credit_note": "Émettre l'avoir",
       "credit_note": "Créer un avoir",
       "cancel": "Annuler le brouillon",
+      "duplicate": "Dupliquer",
+      "cancel_title": "Annuler ce document ?",
+      "cancel_message": "Un document annulé ne peut plus être émis, et son numéro n'est pas réutilisé.",
       "confirm_cancel": "Confirmer l'annulation",
       "keep": "Garder le brouillon",
       "pdf": "Télécharger le PDF",
@@ -1129,6 +1140,8 @@
       "invoice": "Facturer ce bon",
       "delivered_on": "Livré le",
       "cancel": "Annuler le bon",
+      "cancel_title": "Annuler ce bon ?",
+      "cancel_message": "Un bon annulé ne peut plus être validé ni facturé.",
       "confirm_cancel": "Confirmer l'annulation",
       "keep": "Garder le bon",
       "pdf": "Télécharger le PDF",

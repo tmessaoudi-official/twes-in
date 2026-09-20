@@ -855,6 +855,24 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   pays. A row's id is a uuid, so an e2e finds an action INSIDE its row (`web/e2e/rows.ts`) rather than by an
   address it would have to guess.
 
+- [2026-09-20 19:10] AGREED: **row 72 built as ruled, and "Dupliquer" had to be built to be offered.** A document
+  declares its actions once as `DocumentAction`; the bar beside its title is sticky, shows the state's next step as
+  its one filled button — Émettre a draft, Livrer a validated note, Facturer a delivered one, Enregistrer un
+  paiement an open invoice — keeps the frequent ones beside it and folds the rest into "⋮". Nothing destructive is
+  ever a visible button, whatever its frequency, and cancelling now ASKS in a dialog rather than turning one button
+  into two: the action lives in a menu, and a menu entry that becomes two entries is a place to misclick. The
+  ruling names "Dupliquer" among the frequent actions and nothing of the sort existed, so it is built here:
+  `Invoice::duplicateOf` copies the parties, the lines, the document taxes and the typing into a new draft and
+  copies none of what the original EARNED — its number, its state, its payments, its corrections. Its supply date
+  is dropped too, which the ruling did not say and the domain decided: a supply date is a fiscal claim about a
+  particular day, and copied onto a document made weeks later it is silently wrong. A credit note refuses to be
+  duplicated: it belongs to the invoice it corrects, and a copy would correct that invoice a second time. A locked
+  document (issued, delivered, cancelled) is read through `RecordView` — parties, lines as the table they already
+  were, totals — with every field the document does not fill in left out, and a section left out with its fields;
+  a disabled form says "you may not change this" where the truth is "this no longer changes". Only a draft is a
+  form. Recording a payment and choosing a delivery day are both asked in dialogs, which is also what takes the
+  date field out of the delivery note's bar.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -932,7 +950,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 64 | Import past invoices and delivery notes as a read-only archive keeping their original numbers, outside the gapless series (§ 7 2026-09-17) | L | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 70 | The shell after the design review (§ 7 2026-09-19 23:19-23:22, findings 5-8): the header search left-aligned and filling to the right-hand controls, capped near 800 px, its placeholder naming what it finds; the phone header showing the working company in the wordmark's place; the settings area as the app's 80 px rail plus the settings menu docked against it; the top bar's gear removed, settings from the sidebar only | M | done | - | web/src/app/shell/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | done | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
-| 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | todo | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
+| 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | done | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut); then the balance pass (finding 10) re-measured on the gallery | M | todo | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
 | 74 | Stock moves and losses (§ 7 2026-09-19): a move inside an establishment (whole or partial, out and in linked), a write-off with a required reason, note and photo, a quarantine location kind, both in the movements list and reports; the VAT effect of a loss sourced in docs/fiscal first | L | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** web/public/i18n/** web/e2e/** |
 | 75 | Country pack (§ 7 2026-09-20): taxes and levies, mentions per situation AND per language, identifiers with their named check strategies, numbering constraints, formats, rounding, archive duration; the strategy registry; a conformance test loading every pack; rows 44 and 46 folded in | L | todo | - | api/config/fiscal/** api/src/Fiscal/** api/tests/** docs/fiscal/** |

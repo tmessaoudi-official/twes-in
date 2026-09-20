@@ -33,14 +33,7 @@ import { Feedback } from '../shared/feedback/feedback';
 /** The units a company sells in: UN/ECE Recommendation 20 codes, named in the company's own words. */
 @Component({
   selector: 'app-fiscal-units-page',
-  imports: [
-    MatButtonModule,
-    MatCardModule,
-    TranslatePipe,
-    DataList,
-    DataListCell,
-    DescriptorForm,
-  ],
+  imports: [MatButtonModule, MatCardModule, TranslatePipe, DataList, DataListCell, DescriptorForm],
   templateUrl: './fiscal-units-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

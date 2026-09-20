@@ -223,6 +223,48 @@ class Invoice implements CompanyOwned
     }
 
     /**
+     * A copy of a document as a new draft: the same parties, the same lines, the same document taxes and the same
+     * typing. What the original EARNED is not copied — its number, its state, its payments, its corrections — and
+     * neither is its supply date, which is a fiscal claim about a particular day and would be silently wrong on a
+     * copy made weeks later. A credit note refuses: it belongs to the invoice it corrects, and a copy of it would
+     * correct that invoice a second time.
+     *
+     * @throws InvoiceTransitionRefused
+     * @throws InvalidInvoice
+     */
+    public static function duplicateOf(self $invoice, \DateTimeImmutable $now): self
+    {
+        if (InvoiceType::Invoice !== $invoice->documentType) {
+            throw new InvoiceTransitionRefused(\sprintf('The %s %s corrects another document: it is not duplicated.', $invoice->documentType->value, $invoice->reference()));
+        }
+        $copy = new self($invoice->company, $now);
+        $copy->establishment = $invoice->establishment;
+        $copy->customer = $invoice->customer;
+        $header = $invoice->getHeader();
+        $copy->apply(new InvoiceHeader(
+            null,
+            $header->paymentTermsDays,
+            $header->customerReference,
+            $header->notesPrinted,
+            $header->notesInternal,
+            $header->discountAmount,
+        ));
+        $copy->writeLines(array_map(static fn (InvoiceLine $line): InvoiceLineDetails => new InvoiceLineDetails(
+            $line->getProduct(),
+            $line->getDescription(),
+            $line->getQuantity(),
+            $line->getUnit(),
+            $line->getUnitPriceNet(),
+            $line->getDiscountRate(),
+            array_map(static fn (InvoiceLineTax $tax): TaxComponent => $tax->getTaxComponent(), $line->getTaxes()),
+        ), $invoice->getLines()));
+        $copy->writeDocumentTaxes(array_map(static fn (InvoiceTax $tax): TaxComponent => $tax->getTaxComponent(), $invoice->getDocumentTaxes()));
+        $copy->retakeTaxes();
+
+        return $copy;
+    }
+
+    /**
      * A credit note drafted for an issued invoice (docs/SPEC.md § 7, 2026-09-14): the invoice's establishment, customer,
      * header, lines and document taxes, each tax charged as the invoice charged it. Its figures are the negative of
      * what it copies until it is revised.

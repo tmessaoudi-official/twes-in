@@ -81,8 +81,7 @@
       <ng-template appDataListCell="kind" let-row>
         {{ 'inventory.kinds.' + row.kind | translate }}
       </ng-template>
-      @if (mayWrite()) {
-      }
+      @if (mayWrite()) {}
     </app-data-list>
   </section>
 </app-page-tabs>

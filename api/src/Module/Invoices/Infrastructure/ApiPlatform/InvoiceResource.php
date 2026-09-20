@@ -93,6 +93,14 @@ use Symfony\Component\Validator\Constraints as Assert;
             normalizationContext: self::NORMALIZATION,
         ),
         new Post(
+            uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/duplicate',
+            processor: DuplicateInvoiceProcessor::class,
+            security: 'is_granted("ROLE_USER")',
+            read: false,
+            input: false,
+            normalizationContext: self::NORMALIZATION,
+        ),
+        new Post(
             uriTemplate: '/companies/{companyId}/invoices/{invoiceId}/credit-notes',
             processor: CreateCreditNoteProcessor::class,
             security: 'is_granted("ROLE_USER")',

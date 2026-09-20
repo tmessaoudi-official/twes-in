@@ -18,6 +18,7 @@ import { TranslatePipe } from '@ngx-translate/core';
 import { AuthFacade } from '../auth/auth-facade';
 import { DescriptorForm } from '../shared/form/descriptor-form';
 import { buildFormGroup } from '../shared/form/form-builder';
+import type { FormValues } from '../shared/form/form-types';
 import { todayIn } from '../shared/i18n/format';
 import { AmountPipe, DayPipe } from '../shared/i18n/format-pipes';
 import { StatusBadge } from '../shared/ui/status-badge';
@@ -47,6 +48,12 @@ import {
   type Payment,
 } from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
+import { MatDialog } from '@angular/material/dialog';
+import { firstValueFrom } from 'rxjs';
+import { DocumentActions } from '../shared/ui/document-actions';
+import type { DocumentAction } from '../shared/ui/document-actions-types';
+import { PaymentDialog } from './payment-dialog';
+import { RecordView } from '../shared/form/record-view';
 
 /**
  * One invoice or credit note: a new draft to fill in, a draft to revise, issue or cancel, or an issued document to
@@ -64,6 +71,8 @@ import { Feedback } from '../shared/feedback/feedback';
     AmountPipe,
     DayPipe,
     DescriptorForm,
+    DocumentActions,
+    RecordView,
     InvoiceLines,
     PartConflict,
     PickField,
@@ -75,6 +84,7 @@ import { Feedback } from '../shared/feedback/feedback';
 })
 export class InvoicePage {
   private readonly facade = inject(InvoicesFacade);
+  private readonly dialog = inject(MatDialog);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
@@ -196,6 +206,19 @@ export class InvoicePage {
    */
   protected readonly customer = signal<CustomerOption | null>(null);
   protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+  /**
+   * The document read rather than filled in, once it no longer changes (design review finding 3). A locked
+   * document was a form with every control disabled, which says "you may not" where the truth is "it no longer
+   * changes", and kept an empty box for every field nobody filled in.
+   */
+  protected readonly asView = computed(() => !this.editable() && this.current() != null);
+  /** What the read view shows for the customer, which is a name rather than the id the control holds. */
+  protected readonly viewPicked = computed<Record<string, string>>(() => {
+    const customer = this.customerShown();
+    const picked: Record<string, string> = {};
+    if (customer !== null) picked['customerId'] = customer.name;
+    return picked;
+  });
   /** Every customer any picker here has answered, so what is chosen can be found again from the option's id. */
   private readonly knownCustomers = new Map<string, CustomerOption>();
   /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
@@ -225,6 +248,87 @@ export class InvoicePage {
     }));
   });
 
+  /**
+   * What the document offers, declared once for the bar beside its title (design review finding 3). The state's
+   * next step is the primary: issuing a draft, recording a payment on an open invoice. Cancelling is destructive,
+   * so it is in "⋮" and asks first; a credit note is rare rather than destructive, and sits there too.
+   */
+  protected readonly actions = computed<DocumentAction[]>(() => {
+    const busy = this.busy();
+    return [
+      {
+        id: 'save',
+        label: 'invoices.actions.save',
+        icon: 'save',
+        disabled: busy,
+        run: () => void this.save(),
+        shown: this.editable() && this.form() !== null,
+      },
+      {
+        id: 'issue',
+        label: this.isCreditNote()
+          ? 'invoices.actions.issue_credit_note'
+          : 'invoices.actions.issue',
+        icon: 'send',
+        primary: true,
+        disabled: busy,
+        run: () => void this.issue(),
+        shown: this.canIssue(),
+      },
+      {
+        id: 'record-payment',
+        label: 'invoices.payments.record',
+        icon: 'payments',
+        primary: true,
+        disabled: busy,
+        run: () => void this.openPayment(),
+        shown: this.canRecordPayment(),
+      },
+      {
+        id: 'pdf',
+        label:
+          this.current()?.status === 'draft'
+            ? 'invoices.actions.pdf_draft'
+            : 'invoices.actions.pdf',
+        icon: 'picture_as_pdf',
+        href: this.pdfUrl() ?? undefined,
+        shown: this.pdfUrl() !== null,
+      },
+      {
+        id: 'duplicate',
+        label: 'invoices.actions.duplicate',
+        icon: 'content_copy',
+        disabled: busy,
+        run: () => void this.duplicate(),
+        shown: this.canDuplicate(),
+      },
+      {
+        id: 'credit-note',
+        label: 'invoices.actions.credit_note',
+        icon: 'undo',
+        rare: true,
+        disabled: busy,
+        run: () => void this.creditNote(),
+        shown: this.canCredit(),
+      },
+      {
+        id: 'cancel',
+        label: 'invoices.actions.cancel',
+        icon: 'block',
+        destructive: true,
+        disabled: busy,
+        run: () => void this.cancel(),
+        shown: this.canCancel(),
+        confirm: {
+          title: 'invoices.actions.cancel_title',
+          message: 'invoices.actions.cancel_message',
+          confirmLabel: 'invoices.actions.confirm_cancel',
+          keepLabel: 'invoices.actions.keep',
+        },
+      },
+    ];
+  });
+
   protected readonly pdfUrl = computed(() => {
     const companyId = this.company()?.id;
     const current = this.current();
@@ -249,6 +353,10 @@ export class InvoicePage {
       !this.isZero(this.current()?.amountDue ?? '0'),
   );
   protected readonly showsPayments = computed(() => !this.isCreditNote() && this.isOpen());
+  /** A saved document can be copied into a new draft; a document that does not exist yet cannot. */
+  protected readonly canDuplicate = computed(
+    () => this.mayWrite() && this.current() !== null && this.current() !== undefined,
+  );
   protected readonly canRecordPayment = computed(() => {
     const current = this.current();
     const status = current?.status;
@@ -381,17 +489,34 @@ export class InvoicePage {
     }
   }
 
-  protected async recordPayment(): Promise<void> {
+  /** Asked in a dialog rather than in a form at the foot of the page (design review finding 3). */
+  protected async openPayment(): Promise<void> {
+    const payment = this.payment();
+    if (payment === null || this.busy()) return;
+    const values = await firstValueFrom(
+      this.dialog.open(PaymentDialog, { data: payment, autoFocus: 'first-tabbable' }).afterClosed(),
+    );
+    if (values) await this.recordPayment(values);
+  }
+
+  protected async recordPayment(values: FormValues): Promise<void> {
     const companyId = this.company()?.id;
     const id = this.id();
-    const group = this.payment()?.group;
-    if (!companyId || id === null || group === undefined || this.busy()) return;
-    if (group.invalid) {
-      group.markAllAsTouched();
-      return;
-    }
-    if (await this.facade.recordPayment(companyId, id, paymentInput(group.getRawValue()))) {
+    if (!companyId || id === null || this.busy()) return;
+    if (await this.facade.recordPayment(companyId, id, paymentInput(values))) {
       this.feedback.success('invoices.payments.recorded');
+    }
+  }
+
+  /** A copy of this document as a new draft, which is where the person then continues. */
+  protected async duplicate(): Promise<void> {
+    const companyId = this.company()?.id;
+    const id = this.id();
+    if (!companyId || id === null || this.busy()) return;
+    const copy = await this.facade.duplicate(companyId, id);
+    if (copy !== null) {
+      this.feedback.success('invoices.duplicated');
+      await this.router.navigate(['/invoices', copy.id]);
     }
   }
 
