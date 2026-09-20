@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { Command } from '../shell/commands';
+import type { NavigateCommand } from '../shell/commands';
 import type { NavEntry } from '../shell/nav-manifest';
 import type { PageTab } from '../shared/ui/page-tabs';
 
@@ -31,7 +31,7 @@ export const PRODUCTS_TABS: readonly PageTab[] = [
 ];
 
 /** What the module adds to the command palette (Ctrl K): creating one, for whoever may. */
-export const PRODUCTS_COMMANDS: readonly Command[] = [
+export const PRODUCTS_COMMANDS: readonly NavigateCommand[] = [
   {
     key: 'new-product',
     labelKey: 'products.new_title',

@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import type { AbstractControl } from '@angular/forms';
 import type { Subscription } from 'rxjs';
+import { UnsavedChanges } from './unsaved-changes';
 
 /**
  * How many fields hold something other than what was last saved (docs/SPEC.md § 7, 2026-09-19 23:18, design review
@@ -81,9 +82,14 @@ export function unsavedChanges(
   });
   inject(DestroyRef).onDestroy(() => subscription?.unsubscribe());
 
-  return computed(() => {
+  const count = computed(() => {
     typed();
     const control = form();
     return control === null ? 0 : dirtyCount(control.getRawValue(), saved());
   });
+  // Declared here rather than on each page (row 45): a page that counts its unsaved fields at all is guarded
+  // against being left, and one added later cannot forget to take part.
+  inject(UnsavedChanges).declare(count);
+
+  return count;
 }

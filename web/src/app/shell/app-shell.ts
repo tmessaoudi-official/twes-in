@@ -31,6 +31,11 @@ import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
 import { CompanySwitcher } from '../company/company-switcher';
 import { NotificationBell } from '../notifications/notification-bell';
 import { Label } from '../shared/a11y/label';
+import { runAction } from '../shared/actions/run-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { isBareKeystroke, isTypingTarget, matchesShortcut } from '../shared/actions/shortcuts';
+import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { ActivityBar } from '../shared/feedback/activity-bar';
 import { LiveChanges } from '../shared/realtime/live-changes';
 import { RequestActivity } from '../shared/feedback/request-activity';
@@ -43,7 +48,7 @@ import { LanguageMenu } from '../shared/i18n/language-menu';
 import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
-import { type Command, MODULE_COMMANDS, navCommands } from './commands';
+import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
 import {
   CORE_NAV,
   DEV_NAV,
@@ -112,7 +117,9 @@ export class AppShell {
   private readonly auth = inject(AuthFacade);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
+  private readonly screen = inject(ScreenActions);
   private paletteOpen = false;
+  private shortcutsOpen = false;
   private readonly activity = inject(RequestActivity);
   protected readonly theme = inject(ThemeFacade);
   protected readonly language = inject(LanguageFacade);
@@ -136,13 +143,18 @@ export class AppShell {
     return first !== null && this.handset() ? SETTINGS_INDEX : first;
   });
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
-  /** What the command palette offers this user: the modules' commands, then a way to every screen they may see. */
-  protected readonly commands = computed((): readonly Command[] =>
-    this.visible([
+  /**
+   * What the command palette offers this user: what the screen on view can do, then the modules' commands, then a
+   * way to every screen they may see. The screen's own actions are not gated here — a screen that declared one has
+   * already decided the person may run it, and re-deciding from a permission name it never gave would drop it.
+   */
+  protected readonly commands = computed((): readonly Command[] => [
+    ...screenCommands(this.screen.actions()),
+    ...this.visible([
       ...MODULE_COMMANDS,
       ...navCommands([...CORE_NAV, ...MODULE_NAV, ...SETTINGS_NAV]),
     ]),
-  );
+  ]);
   /** The phone's bottom bar: the first destinations of the sidebar, in its order. */
   protected readonly bottomBar = computed(() =>
     this.sections()
@@ -214,17 +226,43 @@ export class AppShell {
       this.openCommands();
       return;
     }
-    if (event.key !== '[' || event.defaultPrevented || event.metaKey) return;
-    if ((event.ctrlKey && !event.altKey) || this.windowClass() !== 'expanded') return;
-    const target = event.target;
-    if (
-      target instanceof Element &&
-      target.closest('input, textarea, select, [contenteditable], .cdk-overlay-container')
-    ) {
+    // Everything below is a bare character, so it is a letter wherever a person is writing and while an overlay
+    // owns the keyboard. One check, before the keys themselves, rather than one per key.
+    if (isTypingTarget(event.target)) return;
+
+    if (matchesShortcut(event, '?')) {
+      event.preventDefault();
+      this.openShortcuts();
       return;
     }
+
+    if (matchesShortcut(event, '[')) {
+      // Only where labels fit: on a rail or a phone drawer there is nothing to fold.
+      if (this.windowClass() !== 'expanded') return;
+      event.preventDefault();
+      this.theme.toggleSidebar();
+      return;
+    }
+
+    // What the screen on view declared, run by the same rule its toolbar runs it by (row 45). The registry has
+    // already refused a key the browser or this method owns, so anything reaching here belongs to the screen.
+    if (!isBareKeystroke(event)) return;
+    const action = this.screen.forKey(event.key);
+    if (action === undefined) return;
     event.preventDefault();
-    this.theme.toggleSidebar();
+    runAction(action, (confirm) =>
+      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+    );
+  }
+
+  /** The "?" sheet: what this page's keys are, and the ones that work everywhere. */
+  protected openShortcuts(): void {
+    if (this.shortcutsOpen) return;
+    this.shortcutsOpen = true;
+    this.dialog
+      .open(ShortcutsSheet, { width: 'min(32rem, calc(100vw - 2rem))', autoFocus: 'dialog' })
+      .afterClosed()
+      .subscribe(() => (this.shortcutsOpen = false));
   }
 
   protected openCommands(): void {

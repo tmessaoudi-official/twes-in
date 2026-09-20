@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { Command } from '../shell/commands';
+import type { NavigateCommand } from '../shell/commands';
 import type { NavEntry } from '../shell/nav-manifest';
 
 /** The key the API's module registry knows the delivery notes module by. */
@@ -20,7 +20,7 @@ export const DELIVERY_NOTES_NAV: readonly NavEntry[] = [
 ];
 
 /** What the module adds to the command palette (Ctrl K): creating one, for whoever may. */
-export const DELIVERY_NOTES_COMMANDS: readonly Command[] = [
+export const DELIVERY_NOTES_COMMANDS: readonly NavigateCommand[] = [
   {
     key: 'new-delivery-note',
     labelKey: 'delivery_notes.new_title',

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import type { Command } from '../shell/commands';
+import type { NavigateCommand } from '../shell/commands';
 import type { HomePanel } from '../shell/home-manifest';
 import type { NavEntry } from '../shell/nav-manifest';
 
@@ -21,7 +21,7 @@ export const INVOICES_NAV: readonly NavEntry[] = [
 ];
 
 /** What the module adds to the command palette (Ctrl K): drafting an invoice, for whoever may. */
-export const INVOICES_COMMANDS: readonly Command[] = [
+export const INVOICES_COMMANDS: readonly NavigateCommand[] = [
   {
     key: 'new-invoice',
     labelKey: 'invoices.new_title',

@@ -16,6 +16,7 @@ import { EXPENSES_MODULE } from './expenses/expenses-nav';
 import { INVENTORY_MODULE } from './inventory/inventory-nav';
 import { PRODUCTS_MODULE } from './products/products-nav';
 import { VENDORS_MODULE } from './vendors/vendors-nav';
+import { guardUnsaved } from './shared/form/unsaved-changes';
 import { moduleGuard } from './shell/module-guard';
 
 export const routes: Routes = [
@@ -68,7 +69,9 @@ export const routes: Routes = [
     path: '',
     canActivate: [authGuard],
     loadComponent: () => import('./shell/app-shell').then((m) => m.AppShell),
-    children: [
+    // Guarded as one list, not one route at a time: a record page added below would otherwise be able to be
+    // left with unsaved changes, and nothing would say so (row 45).
+    children: guardUnsaved([
       {
         path: '',
         pathMatch: 'full',
@@ -289,7 +292,7 @@ export const routes: Routes = [
           },
         ],
       },
-    ],
+    ]),
   },
   { path: '**', redirectTo: '' },
 ];

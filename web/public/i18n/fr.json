@@ -487,11 +487,12 @@
       "open": "Rechercher",
       "title": "Commandes",
       "placeholder": "Aller à ou créer…",
-      "create": "Créer",
-      "goto": "Aller à",
       "empty": "Aucune commande ne correspond",
       "hint": "Chaque module ajoute ses propres commandes",
-      "find": "Rechercher un client, une facture, un produit…"
+      "find": "Rechercher un client, une facture, un produit…",
+      "screen": "Sur cette page",
+      "create": "Créer",
+      "goto": "Aller à"
     },
     "user_menu": "Compte",
     "language": "Langue",
@@ -505,7 +506,17 @@
     "settings_back": "Tous les paramètres",
     "settings_none": "Aucun réglage ne correspond.",
     "settings_pick": "Choisissez un réglage dans la liste.",
-    "scheme": "Thème"
+    "scheme": "Thème",
+    "shortcuts": {
+      "title": "Raccourcis clavier",
+      "page": "Sur cette page",
+      "everywhere": "Partout",
+      "none": "Cette page ne propose aucun raccourci.",
+      "palette": "Ouvrir les commandes",
+      "sidebar": "Réduire ou déployer le menu",
+      "help": "Afficher cette liste",
+      "close": "Fermer"
+    }
   },
   "notifications": {
     "bell": "Notifications, {{count}} non lue(s)",
@@ -603,6 +614,12 @@
       "max_length": "Au plus {{max}} caractères.",
       "min": "Au moins {{min}}.",
       "max": "Au plus {{max}}."
+    },
+    "leave": {
+      "title": "Quitter sans enregistrer ?",
+      "message": "Vos modifications seront perdues.",
+      "leave": "Quitter",
+      "stay": "Rester"
     }
   },
   "fiscal": {

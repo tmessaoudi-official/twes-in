@@ -51,7 +51,8 @@ import { Feedback } from '../shared/feedback/feedback';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
-import type { DocumentAction } from '../shared/ui/document-actions-types';
+import type { ScreenAction } from '../shared/actions/screen-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
 import { PaymentDialog } from './payment-dialog';
 import { RecordView } from '../shared/form/record-view';
 
@@ -253,12 +254,13 @@ export class InvoicePage {
    * next step is the primary: issuing a draft, recording a payment on an open invoice. Cancelling is destructive,
    * so it is in "⋮" and asks first; a credit note is rare rather than destructive, and sits there too.
    */
-  protected readonly actions = computed<DocumentAction[]>(() => {
+  protected readonly actions = computed<ScreenAction[]>(() => {
     const busy = this.busy();
     return [
       {
         id: 'save',
         label: 'invoices.actions.save',
+        shortcut: 's',
         icon: 'save',
         disabled: busy,
         run: () => void this.save(),
@@ -266,6 +268,7 @@ export class InvoicePage {
       },
       {
         id: 'issue',
+        shortcut: 'e',
         label: this.isCreditNote()
           ? 'invoices.actions.issue_credit_note'
           : 'invoices.actions.issue',
@@ -278,6 +281,7 @@ export class InvoicePage {
       {
         id: 'record-payment',
         label: 'invoices.payments.record',
+        shortcut: 'p',
         icon: 'payments',
         primary: true,
         disabled: busy,
@@ -369,6 +373,9 @@ export class InvoicePage {
   });
 
   constructor() {
+    // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
+    // declaration, so an action cannot be offered in one of them and missing from another.
+    inject(ScreenActions).declare(this.actions);
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();

@@ -20,6 +20,10 @@ import { RequestActivity } from '../shared/feedback/request-activity';
 import { LanguageFacade } from '../shared/i18n/language-facade';
 import { ThemeFacade } from '../shared/theme/theme-facade';
 import { AppShell } from './app-shell';
+import type { ScreenAction } from '../shared/actions/screen-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { CommandPalette } from './command-palette';
 import type { Command } from './commands';
 
@@ -104,6 +108,15 @@ function viewport(width: BehaviorSubject<number>) {
 
 @Component({ template: '' })
 class BlankPage {}
+
+/**
+ * Declares actions the way a screen does — a signal, from an injection context — so the shell reads them through
+ * the real registry rather than a stand-in that could agree with a broken one.
+ */
+function declareScreenActions(actions: readonly ScreenAction[]): void {
+  const source = signal(actions);
+  TestBed.runInInjectionContext(() => TestBed.inject(ScreenActions).declare(source));
+}
 
 describe('AppShell', () => {
   const width = new BehaviorSubject(1280);
@@ -548,6 +561,97 @@ describe('AppShell', () => {
     press({ ctrlKey: true, altKey: true });
     press({});
     expect(open).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens the shortcut sheet with ?, listing what this page and the shell answer', async () => {
+    await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: '?', bubbles: true, cancelable: true }),
+    );
+
+    expect(open).toHaveBeenCalledTimes(1);
+    expect(open.mock.calls[0][0]).toBe(ShortcutsSheet);
+  });
+
+  it('runs what the screen on view declared for a key, and ignores that key while typing', async () => {
+    const { el } = await render();
+    let ran = 0;
+    declareScreenActions([
+      { id: 'issue', label: 'invoices.issue', shortcut: 'e', run: () => (ran += 1) },
+    ]);
+    const press = (target: EventTarget) =>
+      target.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true }),
+      );
+
+    press(document.body);
+    expect(ran).toBe(1);
+
+    // The same key inside a field is the letter E, which is the reason this whole check exists.
+    const input = document.createElement('input');
+    el.appendChild(input);
+    press(input);
+    input.remove();
+    expect(ran).toBe(1);
+
+    // And a key no screen declared is nobody's: it must not be swallowed.
+    const other = new KeyboardEvent('keydown', { key: 'z', bubbles: true, cancelable: true });
+    document.body.dispatchEvent(other);
+    expect(other.defaultPrevented).toBe(false);
+  });
+
+  it('asks before a declared key runs something destructive, exactly as its button would', async () => {
+    await render();
+    let ran = 0;
+    declareScreenActions([
+      {
+        id: 'cancel',
+        label: 'invoices.cancel',
+        shortcut: 'x',
+        destructive: true,
+        confirm: { title: 't', message: 'm', confirmLabel: 'c', keepLabel: 'k' },
+        run: () => (ran += 1),
+      },
+    ]);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(false),
+    } as never);
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'x', bubbles: true, cancelable: true }),
+    );
+
+    expect(open.mock.calls[0][0]).toBe(ConfirmDialog);
+    expect(ran).toBe(0);
+  });
+
+  it('leads the palette with what the screen on view can do, before creating and going', async () => {
+    permissions.set(['customer.read', 'customer.write']);
+    await render();
+    declareScreenActions([
+      { id: 'issue', label: 'invoices.issue', run: () => undefined },
+      // Refused for now — offering a line that answers nothing when chosen reads as a broken palette.
+      { id: 'pay', label: 'invoices.pay', disabled: true, run: () => undefined },
+    ]);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    document.body.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'k', bubbles: true, cancelable: true, ctrlKey: true }),
+    );
+
+    const [, config] = open.mock.calls[0] as [unknown, { data: { commands: Command[] } }];
+    expect(config.data.commands.map((command) => command.key)).toEqual([
+      'screen-issue',
+      'new-customer',
+      'goto-home',
+      'goto-customers',
+    ]);
   });
 
   it('opens the command palette from the search button in the top bar', async () => {

@@ -4,7 +4,7 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { TranslatePipe } from '@ngx-translate/core';
-import type { DocumentConfirm } from './document-actions-types';
+import type { ActionConfirm } from '../actions/screen-action';
 
 /**
  * The question asked before something destructive runs. A dialog rather than a second button appearing in place of
@@ -31,5 +31,5 @@ import type { DocumentConfirm } from './document-actions-types';
 })
 export class ConfirmDialog {
   protected readonly ref = inject<MatDialogRef<ConfirmDialog, boolean>>(MatDialogRef);
-  protected readonly data = inject<DocumentConfirm>(MAT_DIALOG_DATA);
+  protected readonly data = inject<ActionConfirm>(MAT_DIALOG_DATA);
 }

@@ -44,7 +44,8 @@ import { Feedback } from '../shared/feedback/feedback';
 import { MatDialog } from '@angular/material/dialog';
 import { firstValueFrom } from 'rxjs';
 import { DocumentActions } from '../shared/ui/document-actions';
-import type { DocumentAction } from '../shared/ui/document-actions-types';
+import type { ScreenAction } from '../shared/actions/screen-action';
+import { ScreenActions } from '../shared/actions/screen-actions';
 import { DeliverDialog } from './deliver-dialog';
 import { RecordView } from '../shared/form/record-view';
 
@@ -214,11 +215,12 @@ export class DeliveryNotePage {
    * step is the primary one: validating a draft, delivering a validated note, invoicing a delivered one. Delivering
    * asks for its day in a dialog rather than keeping a date field in the bar, and cancelling asks before it runs.
    */
-  protected readonly actions = computed<DocumentAction[]>(() => {
+  protected readonly actions = computed<ScreenAction[]>(() => {
     const busy = this.busy();
     return [
       {
         id: 'save',
+        shortcut: 's',
         label: 'delivery_notes.actions.save',
         icon: 'save',
         disabled: busy,
@@ -227,6 +229,7 @@ export class DeliveryNotePage {
       },
       {
         id: 'validate',
+        shortcut: 'v',
         label: 'delivery_notes.actions.validate',
         icon: 'check',
         primary: true,
@@ -236,6 +239,7 @@ export class DeliveryNotePage {
       },
       {
         id: 'deliver',
+        shortcut: 'l',
         label: 'delivery_notes.actions.deliver',
         icon: 'local_shipping',
         primary: true,
@@ -303,6 +307,9 @@ export class DeliveryNotePage {
   });
 
   constructor() {
+    // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45): one
+    // declaration, so an action cannot be offered in one of them and missing from another.
+    inject(ScreenActions).declare(this.actions);
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();

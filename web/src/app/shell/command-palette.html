@@ -46,7 +46,7 @@
             [attr.data-testid]="'command-' + command.key"
           >
             <mat-icon aria-hidden="true">{{ command.icon }}</mat-icon
-            ><span>{{ command.labelKey | translate }}</span>
+            ><span>{{ command.labelKey | translate: command.labelParams }}</span>
           </div>
         }
       </div>

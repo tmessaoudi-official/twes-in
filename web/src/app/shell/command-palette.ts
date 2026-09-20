@@ -2,10 +2,12 @@
 
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
+import { MAT_DIALOG_DATA, MatDialog, MatDialogRef } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { Router } from '@angular/router';
 import { TranslatePipe, TranslateService } from '@ngx-translate/core';
+import { runAction } from '../shared/actions/run-action';
+import { ConfirmDialog } from '../shared/ui/confirm-dialog';
 import { COMMAND_GROUPS, type Command, matchCommands } from './commands';
 
 export interface CommandPaletteData {
@@ -25,6 +27,8 @@ export interface CommandPaletteData {
 export class CommandPalette {
   private readonly data = inject<CommandPaletteData>(MAT_DIALOG_DATA);
   private readonly dialog = inject(MatDialogRef<CommandPalette>);
+  /** The confirming dialog a destructive action opens; the palette's own ref closes before it. */
+  private readonly confirm = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly translate = inject(TranslateService);
   /** Re-reads the labels when the translations arrive or the language changes. */
@@ -36,7 +40,7 @@ export class CommandPalette {
     this.language();
     return matchCommands(
       this.data.commands,
-      (command) => this.translate.instant(command.labelKey) as string,
+      (command) => this.translate.instant(command.labelKey, command.labelParams) as string,
       this.query(),
     );
   });
@@ -74,8 +78,27 @@ export class CommandPalette {
     }
   }
 
+  /**
+   * A destination is navigated to; an action the screen declared is run by the same `runAction` the toolbar uses,
+   * so a destructive action reached from here asks exactly as it asks from the bar.
+   */
   protected run(command: Command): void {
     this.dialog.close();
-    void this.router.navigateByUrl(command.route);
+    if (command.group !== 'screen') {
+      void this.router.navigateByUrl(command.route);
+      return;
+    }
+    const action = command.action;
+    if (action.href !== undefined) {
+      window.open(action.href, '_blank', 'noopener');
+      return;
+    }
+    if (action.link !== undefined) {
+      void this.router.navigate(action.link);
+      return;
+    }
+    runAction(action, (confirm) =>
+      this.confirm.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+    );
   }
 }

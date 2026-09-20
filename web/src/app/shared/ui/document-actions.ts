@@ -8,8 +8,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
 import { Label } from '../a11y/label';
+import { runAction } from '../actions/run-action';
+import type { ScreenAction } from '../actions/screen-action';
 import { ConfirmDialog } from './confirm-dialog';
-import type { DocumentAction } from './document-actions-types';
 
 /**
  * The bar beside a document's title (design review finding 3). It stays in view while the page scrolls, because the
@@ -25,7 +26,7 @@ import type { DocumentAction } from './document-actions-types';
 export class DocumentActions {
   private readonly dialog = inject(MatDialog);
 
-  readonly actions = input.required<readonly DocumentAction[]>();
+  readonly actions = input.required<readonly ScreenAction[]>();
   /** Named for a screen reader, since several bars can exist on one page in principle. */
   readonly label = input('document.actions');
 
@@ -41,17 +42,13 @@ export class DocumentActions {
     this.offered().filter((action) => action.rare === true || action.destructive === true),
   );
 
-  protected run(action: DocumentAction): void {
-    if (action.disabled === true || action.run === undefined) return;
-    if (action.confirm === undefined) {
-      action.run();
-      return;
-    }
-    this.dialog
-      .open(ConfirmDialog, { data: action.confirm, autoFocus: 'dialog' })
-      .afterClosed()
-      .subscribe((confirmed) => {
-        if (confirmed === true) action.run?.();
-      });
+  /**
+   * Delegated rather than decided here, so the bar, the keyboard shortcut and the palette cannot come to different
+   * answers about the same action: this component only knows how to ASK — the rest is `runAction`.
+   */
+  protected run(action: ScreenAction): void {
+    runAction(action, (confirm) =>
+      this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+    );
   }
 }

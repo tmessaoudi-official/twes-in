@@ -6,27 +6,65 @@ import { EXPENSES_COMMANDS } from '../expenses/expenses-nav';
 import { INVOICES_COMMANDS } from '../invoices/invoices-nav';
 import { PRODUCTS_COMMANDS } from '../products/products-nav';
 import { VENDORS_COMMANDS } from '../vendors/vendors-nav';
+import type { ScreenAction } from '../shared/actions/screen-action';
 import type { Gated, NavEntry } from './nav-manifest';
 
-/** Where a command sits in the palette: what it creates, then where it goes. */
-export type CommandGroup = 'create' | 'goto';
-export const COMMAND_GROUPS: readonly CommandGroup[] = ['create', 'goto'];
+/**
+ * Where a command sits in the palette: what the screen on view can do, then what it creates, then where it goes.
+ * The screen's own actions come first because they are the half that changes — everything below is on every page.
+ */
+export type CommandGroup = 'screen' | 'create' | 'goto';
+export const COMMAND_GROUPS: readonly CommandGroup[] = ['screen', 'create', 'goto'];
 
 /**
  * One line of the command palette (Ctrl K). A module declares its own beside its navigation, gated like a navigation
  * entry, and the shell adds a "go to" command for every entry the user may see (docs/SPEC.md § 7, 2026-09-16).
  */
-export interface Command extends Gated {
+interface CommandBase extends Gated {
   readonly key: string;
   readonly labelKey: string;
+  readonly labelParams?: Record<string, string>;
   /** A Material Symbols ligature. */
   readonly icon: string;
-  readonly route: string;
   readonly group: CommandGroup;
 }
 
+/** A command that takes the person somewhere. */
+export interface NavigateCommand extends CommandBase {
+  readonly group: 'create' | 'goto';
+  readonly route: string;
+}
+
+/**
+ * A command that runs what the screen on view declared. It carries the declaration itself rather than a copy of
+ * its label and a callback, so the palette cannot offer an action the toolbar would refuse.
+ */
+export interface ScreenCommand extends CommandBase {
+  readonly group: 'screen';
+  readonly action: ScreenAction;
+}
+
+export type Command = NavigateCommand | ScreenCommand;
+
+/**
+ * The screen's declaration as palette lines. What it cannot run *for now* is left out rather than shown refused:
+ * the palette is a way to search for an action, and a line that answers nothing when chosen reads as a broken one.
+ */
+export function screenCommands(actions: readonly ScreenAction[]): readonly ScreenCommand[] {
+  return actions
+    .filter((action) => action.disabled !== true)
+    .map((action) => ({
+      key: `screen-${action.id}`,
+      labelKey: action.label,
+      icon: action.icon ?? 'bolt',
+      group: 'screen' as const,
+      action,
+      ...(action.labelParams === undefined ? {} : { labelParams: action.labelParams }),
+    }));
+}
+
 /** Every module's commands, each declared by its module's web feature. */
-export const MODULE_COMMANDS: readonly Command[] = [
+export const MODULE_COMMANDS: readonly NavigateCommand[] = [
   ...INVOICES_COMMANDS,
   ...CUSTOMERS_COMMANDS,
   ...PRODUCTS_COMMANDS,
@@ -35,13 +73,13 @@ export const MODULE_COMMANDS: readonly Command[] = [
   ...EXPENSES_COMMANDS,
 ];
 
-export function navCommands(entries: readonly NavEntry[]): readonly Command[] {
+export function navCommands(entries: readonly NavEntry[]): readonly NavigateCommand[] {
   return entries.map(({ key, labelKey, icon, route, permission, module, devOnly }) => ({
     key: `goto-${key}`,
     labelKey,
     icon,
     route,
-    group: 'goto',
+    group: 'goto' as const,
     ...(permission === undefined ? {} : { permission }),
     ...(module === undefined ? {} : { module }),
     ...(devOnly === undefined ? {} : { devOnly }),

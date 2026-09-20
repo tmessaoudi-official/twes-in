@@ -487,11 +487,12 @@
       "open": "Search",
       "title": "Commands",
       "placeholder": "Go to or create…",
-      "create": "Create",
-      "goto": "Go to",
       "empty": "No command matches",
       "hint": "Each module adds its own commands",
-      "find": "Search a customer, an invoice, a product…"
+      "find": "Search a customer, an invoice, a product…",
+      "screen": "On this page",
+      "create": "Create",
+      "goto": "Go to"
     },
     "user_menu": "Account",
     "language": "Language",
@@ -505,7 +506,17 @@
     "settings_back": "All settings",
     "settings_none": "No setting matches.",
     "settings_pick": "Pick a setting from the list.",
-    "scheme": "Theme"
+    "scheme": "Theme",
+    "shortcuts": {
+      "title": "Keyboard shortcuts",
+      "page": "On this page",
+      "everywhere": "Everywhere",
+      "none": "This page offers no shortcut.",
+      "palette": "Open the commands",
+      "sidebar": "Collapse or expand the menu",
+      "help": "Show this list",
+      "close": "Close"
+    }
   },
   "notifications": {
     "bell": "Notifications, {{count}} unread",
@@ -603,6 +614,12 @@
       "max_length": "At most {{max}} characters.",
       "min": "At least {{min}}.",
       "max": "At most {{max}}."
+    },
+    "leave": {
+      "title": "Leave without saving?",
+      "message": "Your changes will be lost.",
+      "leave": "Leave",
+      "stay": "Stay"
     }
   },
   "fiscal": {

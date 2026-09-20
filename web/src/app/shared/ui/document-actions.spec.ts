@@ -11,7 +11,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { DocumentActions } from './document-actions';
-import type { DocumentAction } from './document-actions-types';
+import type { ScreenAction } from '../actions/screen-action';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -36,7 +36,7 @@ class StaticLoader implements TranslateLoader {
   template: `<app-document-actions [actions]="actions()" />`,
 })
 class Host {
-  readonly actions = signal<DocumentAction[]>([]);
+  readonly actions = signal<ScreenAction[]>([]);
 }
 
 describe('DocumentActions', () => {
@@ -52,19 +52,19 @@ describe('DocumentActions', () => {
     fixture.detectChanges();
   }
 
-  const issue: DocumentAction = {
+  const issue: ScreenAction = {
     id: 'issue',
     label: 'd.issue',
     primary: true,
     run: () => ran.push('issue'),
   };
-  const pdf: DocumentAction = { id: 'pdf', label: 'd.pdf', href: '/api/invoices/1/pdf' };
-  const duplicate: DocumentAction = {
+  const pdf: ScreenAction = { id: 'pdf', label: 'd.pdf', href: '/api/invoices/1/pdf' };
+  const duplicate: ScreenAction = {
     id: 'duplicate',
     label: 'd.duplicate',
     run: () => ran.push('duplicate'),
   };
-  const cancel: DocumentAction = {
+  const cancel: ScreenAction = {
     id: 'cancel',
     label: 'd.cancel',
     destructive: true,
