@@ -4,6 +4,9 @@
       {{ 'vendors.title' | translate }}
     </h1>
     @if (mayWrite() && company()) {
+      <a mat-stroked-button routerLink="/imports/vendors" data-testid="vendors-import">
+        {{ 'import.action' | translate }}
+      </a>
       <a mat-flat-button routerLink="/vendors/new" data-testid="vendor-add">
         {{ 'vendors.add' | translate }}
       </a>

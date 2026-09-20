@@ -116,6 +116,7 @@ const WALK: readonly (readonly [string, RegExp])[] = [
   ['/fiscal/taxes', /\/fiscal\/taxes$/],
   ['/fiscal/units', /\/fiscal\/units$/],
   ['/settings', /\/settings$/],
+  ['/imports/customers', /\/imports\/customers$/],
 ];
 
 async function walk(page: Page, scheme: string): Promise<void> {

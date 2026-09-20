@@ -171,6 +171,12 @@ export const routes: Routes = [
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
       {
+        // One screen for every subject a module declares as importable: the API already answers 404 for a subject
+        // this company cannot import, or may not write, so no static module guard could say it here.
+        path: 'imports/:subject',
+        loadComponent: () => import('./import/import-page').then((m) => m.ImportPage),
+      },
+      {
         path: 'vendors',
         canActivate: [moduleGuard(VENDORS_MODULE)],
         loadComponent: () => import('./vendors/vendors-page').then((m) => m.VendorsPage),

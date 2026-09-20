@@ -6,6 +6,9 @@
       </h1>
       <div class="flex flex-wrap gap-2">
         @if (mayWrite() && company()) {
+          <a mat-stroked-button routerLink="/imports/products" data-testid="products-import">
+            {{ 'import.action' | translate }}
+          </a>
           <a mat-flat-button routerLink="/products/new" data-testid="product-add">
             {{ 'products.add' | translate }}
           </a>

@@ -1,0 +1,188 @@
+<section class="flex flex-col gap-6">
+  <header class="flex flex-col gap-1">
+    <h1 class="text-3xl font-semibold" data-testid="import-title">
+      {{ 'import.title' | translate: { subject: 'import.subjects.' + subjectKey() | translate } }}
+    </h1>
+    @if (guide(); as guide) {
+      <p class="text-on-surface-variant" data-testid="import-identity">
+        {{ 'import.identity' | translate: { columns: identity(), rows: guide.maxRows } }}
+      </p>
+    }
+  </header>
+
+  @if (!company()) {
+    <p data-testid="import-no-company">{{ 'import.no_company' | translate }}</p>
+  }
+  @if (error(); as code) {
+    <p role="alert" data-testid="import-error" class="text-error">
+      {{ 'import.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (guide(); as guide) {
+    <div class="flex flex-col gap-3">
+      <h2 class="text-xl font-semibold">{{ 'import.columns_title' | translate }}</h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <a
+          mat-stroked-button
+          [href]="templateUrl('csv')"
+          [download]="subject() + '.csv'"
+          data-testid="import-template-csv"
+        >
+          <mat-icon aria-hidden="true">download</mat-icon>
+          {{ 'import.template_csv' | translate }}
+        </a>
+        <a
+          mat-stroked-button
+          [href]="templateUrl('xlsx')"
+          [download]="subject() + '.xlsx'"
+          data-testid="import-template-xlsx"
+        >
+          <mat-icon aria-hidden="true">download</mat-icon>
+          {{ 'import.template_xlsx' | translate }}
+        </a>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm" data-testid="import-columns">
+          <thead class="text-left text-on-surface-variant">
+            <tr>
+              <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
+              <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.heading' | translate }}</th>
+              <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.example' | translate }}</th>
+              <th scope="col" class="py-2 font-medium">{{ 'import.note' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (column of guide.columns; track column.key) {
+              <tr class="border-t border-outline-variant align-top">
+                <th scope="row" class="py-2 pr-4 text-left font-mono font-normal">
+                  {{ column.key }}
+                  @if (column.required) {
+                    <span class="text-error" [attr.title]="'import.required' | translate">*</span>
+                  }
+                </th>
+                <td class="py-2 pr-4">
+                  {{ column.headingKey ? (column.headingKey | translate) : column.label }}
+                </td>
+                <td class="py-2 pr-4 font-mono text-on-surface-variant">{{ column.example }}</td>
+                <td class="py-2 text-on-surface-variant">
+                  {{ column.noteKey ? (column.noteKey | translate) : '' }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <p class="text-sm text-on-surface-variant">{{ 'import.required_note' | translate }}</p>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <h2 class="text-xl font-semibold">{{ 'import.file_title' | translate }}</h2>
+
+      <label class="flex flex-col gap-1 text-sm">
+        <span>{{ 'import.choose_file' | translate }}</span>
+        <input
+          type="file"
+          accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          (change)="chooseFile($event)"
+          [disabled]="busy()"
+          data-testid="import-file"
+        />
+      </label>
+
+      <mat-radio-group
+        class="flex flex-col gap-1"
+        [value]="mode()"
+        (change)="chooseMode($event.value)"
+        [attr.aria-label]="'import.mode' | translate"
+        data-testid="import-mode"
+      >
+        <mat-radio-button value="create">{{ 'import.mode_create' | translate }}</mat-radio-button>
+        <mat-radio-button value="upsert">{{ 'import.mode_upsert' | translate }}</mat-radio-button>
+      </mat-radio-group>
+
+      <div class="flex flex-wrap items-center gap-3">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="preview()"
+          [disabled]="busy() || !file()"
+          data-testid="import-preview"
+        >
+          {{ 'import.preview' | translate }}
+        </button>
+        <button
+          mat-flat-button
+          type="button"
+          (click)="store()"
+          [disabled]="busy() || !file() || !previewed()"
+          data-testid="import-store"
+        >
+          {{ 'import.store' | translate }}
+        </button>
+        @if (!previewed() && file()) {
+          <span class="text-sm text-on-surface-variant" data-testid="import-preview-first">
+            {{ 'import.preview_first' | translate }}
+          </span>
+        }
+      </div>
+    </div>
+  }
+
+  @if (refusal(); as refusal) {
+    <p role="alert" class="text-error" data-testid="import-refusal">
+      {{
+        'import.refusals.' + refusal.reason
+          | translate: { columns: refusal.columns.join(', '), limit: refusal.limit }
+      }}
+    </p>
+  }
+
+  @if (report(); as report) {
+    <div class="flex flex-col gap-3" data-testid="import-report">
+      <h2 class="text-xl font-semibold">
+        {{ (report.committed ? 'import.stored_title' : 'import.preview_title') | translate }}
+      </h2>
+      <div class="flex flex-wrap items-center gap-3">
+        <app-status-badge tone="success" data-testid="import-created">
+          {{ 'import.created' | translate: { count: report.created.length } }}
+        </app-status-badge>
+        <app-status-badge tone="info" data-testid="import-updated">
+          {{ 'import.updated' | translate: { count: report.updated.length } }}
+        </app-status-badge>
+        @if (report.rejected.length > 0) {
+          <app-status-badge tone="danger" data-testid="import-rejected-count">
+            {{ 'import.rejected' | translate: { count: report.rejected.length } }}
+          </app-status-badge>
+        }
+      </div>
+
+      @if (report.rejected.length > 0) {
+        <p role="alert" class="text-error" data-testid="import-nothing-stored">
+          {{ 'import.nothing_stored' | translate }}
+        </p>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm" data-testid="import-rejections">
+            <thead class="text-left text-on-surface-variant">
+              <tr>
+                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.line' | translate }}</th>
+                <th scope="col" class="py-2 pr-4 font-medium">{{ 'import.column' | translate }}</th>
+                <th scope="col" class="py-2 font-medium">{{ 'import.reason' | translate }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (rejection of report.rejected; track rejection.line + ':' + rejection.column) {
+                <tr class="border-t border-outline-variant align-top">
+                  <th scope="row" class="py-2 pr-4 text-left font-normal">{{ rejection.line }}</th>
+                  <td class="py-2 pr-4 font-mono">{{ rejection.column }}</td>
+                  <td class="py-2">{{ reasonOf(rejection) }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+  }
+</section>
