@@ -47,8 +47,7 @@ async function inACompany(page: Page): Promise<void> {
     const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } | null };
     if (me.company !== null) return;
     const answered = (await (await fetch('/api/me/companies')).json()) as
-      | { member: { companyId: string; name: string }[] }
-      | { companyId: string; name: string }[];
+      { member: { companyId: string; name: string }[] } | { companyId: string; name: string }[];
     const mine = Array.isArray(answered) ? answered : answered.member;
     const demo = mine.find((row) => row.name === 'Demo') ?? mine[0];
     if (demo === undefined) throw new Error('the operator belongs to no company at all');
@@ -57,7 +56,8 @@ async function inACompany(page: Page): Promise<void> {
       headers: { 'content-type': 'application/json', 'csrf-token': csrf },
       body: JSON.stringify({ companyId: demo.companyId }),
     });
-    if (!moved.ok) throw new Error(`choosing ${demo.name} answered ${moved.status}: ${await moved.text()}`);
+    if (!moved.ok)
+      throw new Error(`choosing ${demo.name} answered ${moved.status}: ${await moved.text()}`);
   }, CSRF);
 }
 
@@ -96,7 +96,11 @@ test('a file is previewed before it is imported, and a refused row says why', as
   await expect(page.getByTestId('import-store')).toBeDisabled();
 
   // The same file without the repeat: the preview is clean, and only then may it be imported.
-  await choose(page, 'clients.csv', `number,name,kind\n${NUMBER},Quincaillerie du Lac,individual\n`);
+  await choose(
+    page,
+    'clients.csv',
+    `number,name,kind\n${NUMBER},Quincaillerie du Lac,individual\n`,
+  );
   await page.getByTestId('import-preview').click();
   await expect(page.getByTestId('import-created')).toContainText('1');
   await expect(page.getByTestId('import-rejections')).toHaveCount(0);
