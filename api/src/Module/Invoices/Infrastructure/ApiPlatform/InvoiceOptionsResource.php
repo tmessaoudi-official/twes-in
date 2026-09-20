@@ -17,9 +17,12 @@ use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 
 /**
  * What the invoice form offers, read with invoice.read alone: the company's currency and its scale, its establishments,
- * its active customers with the tax families their regime leaves out, their default discount and their default taxes,
- * its active products with what a line starts from, its active units and its active taxes of every kind, the defaults
- * marked. Someone who writes invoices need not also read customers, products or the fiscal setup to fill one.
+ * its active units and its active taxes of every kind, the defaults marked. Someone who writes invoices need not also
+ * read the fiscal setup to fill one in.
+ *
+ * The customers and the products are NOT here: a company's book and catalogue are asked for a few at a time through
+ * the two pickers beside this (docs/SPEC.md § 7, 2026-09-17, ruling 3), because twenty thousand products is a payload
+ * nobody waits for. What is left is small, bounded and read whole because every bit of it is needed at once.
  */
 #[ApiResource(
     shortName: 'InvoiceOptions',
@@ -57,44 +60,6 @@ final class InvoiceOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $establishments = [];
-
-    /** @var list<array{id: string, number: string, name: string, excludedFamilies: list<string>, defaultDiscountRate: string|null, defaultTaxComponentIds: list<string>}> */
-    #[ApiProperty(schema: [
-        'type' => 'array',
-        'items' => [
-            'type' => 'object',
-            'required' => ['id', 'number', 'name', 'excludedFamilies', 'defaultDiscountRate', 'defaultTaxComponentIds'],
-            'properties' => [
-                'id' => ['type' => 'string'],
-                'number' => ['type' => 'string'],
-                'name' => ['type' => 'string'],
-                'excludedFamilies' => ['type' => 'array', 'items' => ['type' => 'string', 'enum' => ['vat', 'levy', 'stamp', 'withholding']]],
-                'defaultDiscountRate' => self::TEXT_OR_NULL,
-                'defaultTaxComponentIds' => ['type' => 'array', 'items' => ['type' => 'string']],
-            ],
-        ],
-    ])]
-    #[Groups([self::READ])]
-    public array $customers = [];
-
-    /** @var list<array{id: string, reference: string, name: string, unitId: string, unitPriceNet: string, defaultTaxComponentIds: list<string>}> */
-    #[ApiProperty(schema: [
-        'type' => 'array',
-        'items' => [
-            'type' => 'object',
-            'required' => ['id', 'reference', 'name', 'unitId', 'unitPriceNet', 'defaultTaxComponentIds'],
-            'properties' => [
-                'id' => ['type' => 'string'],
-                'reference' => ['type' => 'string'],
-                'name' => ['type' => 'string'],
-                'unitId' => ['type' => 'string'],
-                'unitPriceNet' => ['type' => 'string'],
-                'defaultTaxComponentIds' => ['type' => 'array', 'items' => ['type' => 'string']],
-            ],
-        ],
-    ])]
-    #[Groups([self::READ])]
-    public array $products = [];
 
     /** @var list<array{id: string, code: string, name: string, decimals: int}> */
     #[ApiProperty(schema: [

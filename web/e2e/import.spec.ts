@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, type Page, test } from '@playwright/test';
-import { signIn } from './session';
+import { inACompany, signIn } from './session';
 import { toast } from './toast';
 
 // Row 59 through the real stack: the owner opens the import screen for customers, takes the empty file, previews a
@@ -37,30 +37,6 @@ async function retire(page: Page, number: string): Promise<void> {
   );
 }
 
-/**
- * Makes sure the session is working in a company. A sign-in picks one only for a single membership
- * (ChooseWorkingCompany), so a seed where the operator belongs to several leaves none chosen and every company screen
- * reads "no company" — which is a state of the database, not of the screen under test.
- */
-async function inACompany(page: Page): Promise<void> {
-  await page.evaluate(async (csrf) => {
-    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } | null };
-    if (me.company !== null) return;
-    const answered = (await (await fetch('/api/me/companies')).json()) as
-      { member: { companyId: string; name: string }[] } | { companyId: string; name: string }[];
-    const mine = Array.isArray(answered) ? answered : answered.member;
-    const demo = mine.find((row) => row.name === 'Demo') ?? mine[0];
-    if (demo === undefined) throw new Error('the operator belongs to no company at all');
-    const moved = await fetch('/api/me/company', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': csrf },
-      body: JSON.stringify({ companyId: demo.companyId }),
-    });
-    if (!moved.ok)
-      throw new Error(`choosing ${demo.name} answered ${moved.status}: ${await moved.text()}`);
-  }, CSRF);
-}
-
 async function choose(page: Page, name: string, contents: string): Promise<void> {
   await page
     .getByTestId('import-file')
@@ -69,7 +45,7 @@ async function choose(page: Page, name: string, contents: string): Promise<void>
 
 test('a file is previewed before it is imported, and a refused row says why', async ({ page }) => {
   await signIn(page);
-  await inACompany(page);
+  await inACompany(page, CSRF);
   await page.goto('/imports/customers');
 
   // The screen is driven by the guide the API answers for this company.

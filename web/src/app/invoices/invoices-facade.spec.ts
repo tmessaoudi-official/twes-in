@@ -9,8 +9,6 @@ const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
   establishments: [],
-  customers: [],
-  products: [],
   units: [],
   taxes: [],
 };
@@ -21,7 +19,8 @@ const draft: InvoiceRow = {
   number: null,
   status: 'draft',
   customerId: 'k1',
-  customerName: null,
+  recordedCustomerName: null,
+  customerName: 'Carthage',
   establishmentId: 'e1',
   issueDate: null,
   dueDate: null,

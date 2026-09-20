@@ -777,7 +777,6 @@
     "open_short": "Ouvrir",
     "none": "Aucune facture pour l'instant.",
     "no_company": "Choisissez d'abord une société.",
-    "no_customers": "Une facture est établie pour un client : ajoutez d'abord un client.",
     "new_title": "Nouvelle facture",
     "draft_title": "Facture en brouillon",
     "credit_note_draft_title": "Avoir en brouillon",
@@ -831,7 +830,10 @@
       "terms_hint": "De 0 à 365 jours après l'émission. Laissé vide, le délai du client à l'émission.",
       "discount_hint": "Un montant hors taxes, réparti sur les lignes ; au plus ce que les lignes totalisent.",
       "printed_hint": "Imprimées sur la facture.",
-      "internal_hint": "Gardées dans la société, jamais imprimées."
+      "internal_hint": "Gardées dans la société, jamais imprimées.",
+      "customer_hint": "Tapez le numéro ou le nom du client ; les premiers trouvés vous sont proposés.",
+      "customer_required": "Nommez le client de cette facture.",
+      "no_customer_found": "Aucun client trouvé."
     },
     "lines": {
       "title": "Lignes",
@@ -857,7 +859,8 @@
         "unitId": "Choisissez une unité.",
         "unitPriceNet": "Un prix à partir de 0, avec au plus quatre décimales.",
         "discountRate": "Un pourcentage de 0 à 100, avec au plus trois décimales."
-      }
+      },
+      "no_product_found": "Aucun produit trouvé."
     },
     "document_taxes": {
       "title": "Droits et retenues du document",

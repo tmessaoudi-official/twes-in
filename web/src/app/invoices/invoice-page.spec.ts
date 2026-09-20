@@ -23,7 +23,14 @@ import {
 } from '../shared/settings/settings-facade';
 import { InvoicePage } from './invoice-page';
 import { InvoicesFacade } from './invoices-facade';
-import type { InvoiceOptions, InvoiceRow, InvoicesError } from './invoices-types';
+import type {
+  CustomerOption,
+  InvoiceOptions,
+  InvoiceRow,
+  InvoicesError,
+  ProductOption,
+} from './invoices-types';
+import type { PickAsked } from './invoices-api';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { announceSaved } from '../shared/testing/live';
 
@@ -49,34 +56,6 @@ const options: InvoiceOptions = {
   currency: 'TND',
   currencyScale: 3,
   establishments: [{ id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true }],
-  customers: [
-    {
-      id: 'k1',
-      number: 'CLI-1',
-      name: 'Carthage',
-      excludedFamilies: [],
-      defaultDiscountRate: null,
-      defaultTaxComponentIds: [],
-    },
-    {
-      id: 'k2',
-      number: 'CLI-2',
-      name: 'Méditerranée',
-      excludedFamilies: [],
-      defaultDiscountRate: '5',
-      defaultTaxComponentIds: ['w1'],
-    },
-  ],
-  products: [
-    {
-      id: 'p1',
-      reference: 'ART-1',
-      name: 'Conception',
-      unitId: 'u1',
-      unitPriceNet: '1800.0000',
-      defaultTaxComponentIds: ['t1'],
-    },
-  ],
   units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
   taxes: [
     {
@@ -114,6 +93,36 @@ const options: InvoiceOptions = {
     },
   ],
 };
+/** What the pickers answer; the page is never handed either list whole. */
+const customers: CustomerOption[] = [
+  {
+    id: 'k1',
+    number: 'CLI-1',
+    name: 'Carthage',
+    excludedFamilies: [],
+    defaultDiscountRate: null,
+    defaultTaxComponentIds: [],
+  },
+  {
+    id: 'k2',
+    number: 'CLI-2',
+    name: 'Méditerranée',
+    excludedFamilies: [],
+    defaultDiscountRate: '5',
+    defaultTaxComponentIds: ['w1'],
+  },
+];
+const products: ProductOption[] = [
+  {
+    id: 'p1',
+    reference: 'ART-1',
+    name: 'Conception',
+    unitId: 'u1',
+    unitPriceNet: '1800.0000',
+    defaultTaxComponentIds: ['t1'],
+  },
+];
+
 const draft: InvoiceRow = {
   id: 'i1',
   type: 'invoice',
@@ -121,7 +130,8 @@ const draft: InvoiceRow = {
   number: null,
   status: 'draft',
   customerId: 'k1',
-  customerName: null,
+  recordedCustomerName: null,
+  customerName: 'Carthage',
   establishmentId: 'e1',
   issueDate: null,
   dueDate: null,
@@ -142,6 +152,8 @@ const draft: InvoiceRow = {
       discountRate: null,
       taxComponentIds: ['t1'],
       sourceDeliveryNoteLineId: null,
+      productReference: 'ART-1',
+      productName: 'Conception',
       net: '1800.000',
     },
   ],
@@ -162,7 +174,7 @@ const issued: InvoiceRow = {
   ...draft,
   number: 'FAC-2026-00045',
   status: 'partially_paid',
-  customerName: 'Carthage SA',
+  recordedCustomerName: 'Carthage SA',
   issueDate: '2026-09-10',
   dueDate: '2999-10-10',
   amountPaid: '1000.000',
@@ -188,6 +200,12 @@ describe('InvoicePage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     loadInvoice: vi.fn(),
+    pickCustomers: vi.fn(async (_companyId: string, asked: PickAsked) =>
+      'ids' in asked ? customers.filter((each) => asked.ids.includes(each.id)) : customers,
+    ),
+    pickProducts: vi.fn(async (_companyId: string, asked: PickAsked) =>
+      'ids' in asked ? products.filter((each) => asked.ids.includes(each.id)) : products,
+    ),
     create: vi.fn(),
     revise: vi.fn(),
     reviseAndIssue: vi.fn(),
@@ -227,8 +245,12 @@ describe('InvoicePage', () => {
     input.dispatchEvent(new Event('input'));
   }
 
-  async function choose(testId: string, label: string): Promise<void> {
-    (q(testId)?.querySelector('.mat-mdc-select-trigger') as HTMLElement).click();
+  /**
+   * Picks a row in a picker. Nothing is typed: the field asks the API once as it opens, on no words at all, so what
+   * a person sees before typing is already there — which is exactly what the screen does.
+   */
+  async function pick(testId: string, label: string): Promise<void> {
+    (q(testId) as HTMLInputElement).dispatchEvent(new Event('focusin'));
     await settle();
     const option = Array.from(document.body.querySelectorAll<HTMLElement>('mat-option')).find(
       (each) => each.textContent?.trim() === label,
@@ -244,6 +266,8 @@ describe('InvoicePage', () => {
       fixture.componentRef.setInput('invoiceId', invoiceId);
     }
     await settle();
+    // The customer an open document names is resolved by id, one turn after the document itself.
+    await settle();
   }
 
   beforeEach(() => {
@@ -254,6 +278,8 @@ describe('InvoicePage', () => {
       granted.add(each),
     );
     facade.loadInvoice.mockReset().mockResolvedValue(undefined);
+    facade.pickCustomers.mockClear();
+    facade.pickProducts.mockClear();
     facade.create.mockReset().mockResolvedValue({ ...draft, id: 'i9' });
     facade.revise.mockReset().mockResolvedValue(draft);
     facade.reviseAndIssue.mockReset().mockResolvedValue(issued);
@@ -305,10 +331,10 @@ describe('InvoicePage', () => {
     expect(facade.loadInvoice).toHaveBeenCalledWith('c1', null);
     expect(q('invoice-issue')).toBeNull();
 
-    await choose('field-customerId', 'CLI-2 · Méditerranée');
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
     expect(checked('document-tax-TIMBRE')).toBe(true);
     expect(checked('document-tax-RS1')).toBe(true);
-    await choose('line-0-product', 'ART-1 · Conception');
+    await pick('line-0-product', 'ART-1 · Conception');
     expect((q('line-0-discount') as HTMLInputElement).value).toBe('5');
     q('invoice-save')!.click();
     await settle();
@@ -343,8 +369,8 @@ describe('InvoicePage', () => {
   it('shows a line’s figures with a decimal comma, and sends a typed comma as a point', async () => {
     vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
     await open(undefined);
-    await choose('field-customerId', 'CLI-2 · Méditerranée');
-    await choose('line-0-product', 'ART-1 · Conception');
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
+    await pick('line-0-product', 'ART-1 · Conception');
     expect((q('line-0-price') as HTMLInputElement).value).toBe('1800,000');
 
     type('line-0-quantity', '2,000');
@@ -373,7 +399,7 @@ describe('InvoicePage', () => {
     q('line-add')!.click();
     await settle();
     type('line-1-discount', '12');
-    await choose('field-customerId', 'CLI-2 · Méditerranée');
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
     expect((q('line-0-discount') as HTMLInputElement).value).toBe('5');
     expect((q('line-1-discount') as HTMLInputElement).value).toBe('12');
   });
@@ -383,7 +409,7 @@ describe('InvoicePage', () => {
     await open('i1');
     expect(checked('document-tax-TIMBRE')).toBe(false);
 
-    await choose('field-customerId', 'CLI-2 · Méditerranée');
+    await pick('invoice-customer', 'CLI-2 · Méditerranée');
     expect(checked('document-tax-TIMBRE')).toBe(true);
     expect(checked('document-tax-RS1')).toBe(true);
   });

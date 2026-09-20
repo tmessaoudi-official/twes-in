@@ -31,14 +31,21 @@ import {
   paymentForm,
   paymentInput,
   paymentValues,
+  pickedCustomer,
   shownStatus,
 } from './invoice-forms';
+import { PickField, type PickOption } from '../shared/form/pick-field';
 import { InvoiceLines } from './invoice-lines';
 import { liveRecord } from '../shared/form/live-record';
 import { PartConflict } from '../shared/form/part-conflict';
 import { RecordChanged } from '../shared/form/record-changed';
 import { InvoicesFacade } from './invoices-facade';
-import { INVOICE_STATUS_TONES, type InvoiceInput, type Payment } from './invoices-types';
+import {
+  INVOICE_STATUS_TONES,
+  type CustomerOption,
+  type InvoiceInput,
+  type Payment,
+} from './invoices-types';
 import { Feedback } from '../shared/feedback/feedback';
 
 /**
@@ -59,6 +66,7 @@ import { Feedback } from '../shared/feedback/feedback';
     DescriptorForm,
     InvoiceLines,
     PartConflict,
+    PickField,
     RecordChanged,
     StatusBadge,
   ],
@@ -104,14 +112,10 @@ export class InvoicePage {
     const current = this.current();
     return this.mayWrite() && (current === null || current?.status === 'draft');
   });
-  /** An invoice needs a customer: a company without one is told so rather than shown a form it cannot fill. */
-  protected readonly noCustomers = computed(
-    () => this.current() === null && this.options()?.customers.length === 0,
-  );
   protected readonly descriptor = computed(() => {
     const options = this.options();
     const current = this.current();
-    if (options === null || current === undefined || this.noCustomers()) return null;
+    if (options === null || current === undefined) return null;
     return invoiceForm(options, current);
   });
   /**
@@ -145,8 +149,7 @@ export class InvoicePage {
       const options = this.options();
       const current = this.current();
       if (options === null || current === undefined) return null;
-      const customer = options.customers.find((each) => each.id === current?.customerId) ?? null;
-      return linesArray(current?.lines ?? [], options, customer);
+      return linesArray(current?.lines ?? [], options, this.customer());
     });
   });
   /** The saved version the document stands on, and what another person's save changed in it. */
@@ -172,9 +175,8 @@ export class InvoicePage {
           const current = this.current();
           const options = this.options();
           if (!current || options === null) return null;
-          const customer = options.customers.find((each) => each.id === current.customerId) ?? null;
           return this.linesText(
-            linesArray(current.lines, options, customer).getRawValue(),
+            linesArray(current.lines, options, this.customer()).getRawValue(),
             this.savedDocumentTaxes(),
           );
         },
@@ -188,17 +190,30 @@ export class InvoicePage {
   });
   protected readonly nets = computed(() => (this.current()?.lines ?? []).map((line) => line.net));
 
-  private readonly customerId = signal('');
-  protected readonly customer = computed(
-    () => this.options()?.customers.find((each) => each.id === this.customerId()) ?? null,
-  );
+  /**
+   * Who the document is for, as the picker answered it: the whole row, so the taxes its regime refuses and its
+   * default discount are known without the company's book ever being read.
+   */
+  protected readonly customer = signal<CustomerOption | null>(null);
+  protected readonly customerShown = computed(() => pickedCustomer(this.customer()));
+  /** Every customer any picker here has answered, so what is chosen can be found again from the option's id. */
+  private readonly knownCustomers = new Map<string, CustomerOption>();
+  /** Set when saving was asked for with nobody named, since the customer is not a field the form can mark. */
+  protected readonly customerMissing = signal(false);
+  protected readonly searchCustomers = async (words: string): Promise<readonly PickOption[]> => {
+    const companyId = this.company()?.id;
+    if (!companyId) return [];
+    const found = await this.facade.pickCustomers(companyId, { words });
+    for (const customer of found) this.knownCustomers.set(customer.id, customer);
+    return found.map((customer) => pickedCustomer(customer) as PickOption);
+  };
   /** The fixed charges and withholdings chosen for the document, prefilled with what the API would charge. */
   protected readonly documentTaxes = signal<readonly string[]>([]);
   protected readonly documentTaxChoices = computed(() => {
     const options = this.options();
     return options === null
       ? []
-      : documentTaxOptions(options, this.customerId(), this.documentTaxes());
+      : documentTaxOptions(options, this.customer(), this.documentTaxes());
   });
 
   protected readonly payment = computed(() => {
@@ -263,28 +278,39 @@ export class InvoicePage {
       if (lines === null) return;
       untracked(() => (editable ? lines.enable() : lines.disable()));
     });
-    // The customer drives the line taxes offered and the document taxes; choosing another resets the latter.
-    effect((onCleanup) => {
-      const control = this.form()?.controls['customerId'];
-      if (control === undefined) return;
-      untracked(() => {
+    // An open document names its customer by id alone; the picker is shown the row that id resolves to.
+    effect(() => {
+      const companyId = this.company()?.id;
+      const current = this.current();
+      if (!companyId || current === undefined || current === null) return;
+      const customerId = current.customerId;
+      untracked(async () => {
+        if (this.customer()?.id !== customerId) {
+          const known = this.knownCustomers.get(customerId);
+          const [found] = known
+            ? [known]
+            : await this.facade.pickCustomers(companyId, { ids: [customerId] });
+          if (found) this.knownCustomers.set(found.id, found);
+          this.customer.set(found ?? null);
+        }
+        // What the document itself is charged, or — where it named nothing — what this customer would be.
         const options = this.options();
-        const customerId = String(control.value ?? '');
-        this.customerId.set(customerId);
-        const chosen = this.current()?.documentTaxComponentIds;
         this.documentTaxes.set(
-          chosen ?? (options === null ? [] : defaultDocumentTaxes(options, customerId)),
+          current.documentTaxComponentIds ??
+            (options === null ? [] : defaultDocumentTaxes(options, this.customer())),
         );
       });
-      const subscription = control.valueChanges.subscribe((value) => {
-        const customerId = String(value ?? '');
-        this.customerId.set(customerId);
-        const options = this.options();
-        this.documentTaxes.set(options === null ? [] : defaultDocumentTaxes(options, customerId));
-        this.applyCustomerDiscount();
-      });
-      onCleanup(() => subscription.unsubscribe());
     });
+  }
+
+  /** Naming another customer charges the document what that customer would be charged, and discounts its lines so. */
+  protected chooseCustomer(option: PickOption | null): void {
+    const customer = option === null ? null : (this.knownCustomers.get(option.id) ?? null);
+    this.customer.set(customer);
+    this.customerMissing.set(customer === null);
+    const options = this.options();
+    this.documentTaxes.set(options === null ? [] : defaultDocumentTaxes(options, customer));
+    this.applyCustomerDiscount();
   }
 
   /** Lines whose discount nobody typed take the customer's default, as a new line of theirs would. */
@@ -382,7 +408,7 @@ export class InvoicePage {
     const current = this.current();
     const options = this.options();
     if (!current || options === null) return [];
-    return current.documentTaxComponentIds ?? defaultDocumentTaxes(options, current.customerId);
+    return current.documentTaxComponentIds ?? defaultDocumentTaxes(options, this.customer());
   }
 
   private linesText(lines: unknown, documentTaxes: readonly string[]): string {
@@ -394,11 +420,13 @@ export class InvoicePage {
     const form = this.form();
     const lines = this.lines();
     if (form === null || lines === null || this.busy()) return null;
-    if (form.invalid || lines.invalid) {
+    const customerId = this.customer()?.id ?? '';
+    this.customerMissing.set(customerId === '');
+    if (form.invalid || lines.invalid || customerId === '') {
       form.markAllAsTouched();
       lines.markAllAsTouched();
       return null;
     }
-    return invoiceInput(form.getRawValue(), lines, this.documentTaxes());
+    return invoiceInput(form.getRawValue(), lines, this.documentTaxes(), customerId);
   }
 }

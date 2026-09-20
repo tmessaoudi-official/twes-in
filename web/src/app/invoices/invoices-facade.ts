@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
-import { InvoicesApi, InvoicesRefused } from './invoices-api';
+import { InvoicesApi, InvoicesRefused, type PickAsked } from './invoices-api';
 import type {
+  CustomerOption,
   InvoiceInput,
   InvoiceOptions,
   InvoiceRow,
@@ -10,6 +11,7 @@ import type {
   InvoicesError,
   InvoiceSummary,
   PaymentInput,
+  ProductOption,
 } from './invoices-types';
 
 /** The invoices and credit notes of the company being worked in, the document open on screen and what its form offers. */
@@ -72,6 +74,19 @@ export class InvoicesFacade {
     });
   }
 
+  /**
+   * The few customers or products a person means while typing, and — by id — exactly the records an open document
+   * names, still offered or not. A search that fails answers nothing and says so in `error`, rather than reading as
+   * "nothing found": what the picker could not ask for is not the same as what does not exist.
+   */
+  async pickCustomers(companyId: string, asked: PickAsked): Promise<CustomerOption[]> {
+    return this.pick(() => this.api.pickCustomers(companyId, asked));
+  }
+
+  async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
+    return this.pick(() => this.api.pickProducts(companyId, asked));
+  }
+
   /** The draft as the API kept it, or null with the reason in `error`. */
   async create(companyId: string, input: InvoiceInput): Promise<InvoiceRow | null> {
     return this.step(() => this.api.create(companyId, input));
@@ -117,6 +132,16 @@ export class InvoicesFacade {
 
   clearError(): void {
     this.errorSignal.set(null);
+  }
+
+  /** A picker's own call: it never marks the screen busy, because a person is typing while it runs. */
+  private async pick<T>(call: () => Promise<T[]>): Promise<T[]> {
+    try {
+      return await call();
+    } catch (error) {
+      this.errorSignal.set(codeOf(error));
+      return [];
+    }
   }
 
   private async read(load: () => Promise<void>): Promise<void> {

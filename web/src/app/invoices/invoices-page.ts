@@ -61,11 +61,7 @@ export class InvoicesPage implements OnInit {
     INVOICE_STATUS_TONES[status];
   protected readonly company = computed(() => this.auth.me()?.company ?? null);
   protected readonly rows = computed(() =>
-    invoiceListRows(
-      this.facade.invoices(),
-      this.facade.options(),
-      todayIn(this.company()?.timezone),
-    ),
+    invoiceListRows(this.facade.invoices(), todayIn(this.company()?.timezone)),
   );
   protected readonly scale = computed(() => this.facade.options()?.currencyScale ?? null);
   protected readonly total = this.facade.total;

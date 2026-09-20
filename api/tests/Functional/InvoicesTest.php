@@ -60,11 +60,9 @@ final class InvoicesTest extends ApiTestCase
         $options = $this->json();
         self::assertSame(['TND', 3], [$options['currency'], $options['currencyScale']]);
         self::assertSame(['000'], array_column($this->arrayAt($options, 'establishments'), 'code'));
-        $customers = $this->arrayAt($options, 'customers');
-        self::assertSame(['CLI-0001'], array_column($customers, 'number'));
-        self::assertSame(['5.000'], array_column($customers, 'defaultDiscountRate'));
-        self::assertSame([[$this->taxId('RS1')]], array_column($customers, 'defaultTaxComponentIds'));
-        self::assertSame(['ART-001'], array_column($this->arrayAt($options, 'products'), 'reference'));
+        // Neither the book of customers nor the catalogue is here: both are asked for a few at a time (InvoicePickTest).
+        self::assertArrayNotHasKey('customers', $options);
+        self::assertArrayNotHasKey('products', $options);
         $taxes = array_column($this->arrayAt($options, 'taxes'), null, 'code');
         self::assertIsArray($taxes['TVA19']);
         self::assertIsArray($taxes['TIMBRE']);

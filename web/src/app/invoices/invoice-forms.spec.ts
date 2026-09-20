@@ -11,12 +11,13 @@ import {
   invoiceValues,
   INVOICES_LIST,
   lineGroup,
+  pickedProduct,
   linesArray,
   paymentForm,
   paymentInput,
   shownStatus,
 } from './invoice-forms';
-import type { InvoiceOptions, InvoiceRow } from './invoices-types';
+import type { CustomerOption, InvoiceOptions, InvoiceRow, ProductOption } from './invoices-types';
 
 const options: InvoiceOptions = {
   currency: 'TND',
@@ -24,34 +25,6 @@ const options: InvoiceOptions = {
   establishments: [
     { id: 'e0', code: 'SFAX', name: 'Sfax', isDefault: false },
     { id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true },
-  ],
-  customers: [
-    {
-      id: 'k1',
-      number: 'CLI-1',
-      name: 'Carthage',
-      excludedFamilies: [],
-      defaultDiscountRate: '5',
-      defaultTaxComponentIds: ['w1'],
-    },
-    {
-      id: 'k2',
-      number: 'CLI-2',
-      name: 'Ambassade',
-      excludedFamilies: ['vat', 'stamp'],
-      defaultDiscountRate: null,
-      defaultTaxComponentIds: [],
-    },
-  ],
-  products: [
-    {
-      id: 'p1',
-      reference: 'ART-1',
-      name: 'Conception',
-      unitId: 'u2',
-      unitPriceNet: '1800.0000',
-      defaultTaxComponentIds: ['t1', 'f1'],
-    },
   ],
   units: [
     { id: 'u1', code: 'C62', name: 'Unité', decimals: 0 },
@@ -63,6 +36,32 @@ const options: InvoiceOptions = {
     tax('s1', 'TIMBRE', 'fixed_document', 'stamp', true),
     tax('w1', 'RS1', 'withholding_total', 'withholding', false),
   ],
+};
+
+/** What the picker answers, which is all the form ever knows about a customer or a product. */
+const carthage: CustomerOption = {
+  id: 'k1',
+  number: 'CLI-1',
+  name: 'Carthage',
+  excludedFamilies: [],
+  defaultDiscountRate: '5',
+  defaultTaxComponentIds: ['w1'],
+};
+const embassy: CustomerOption = {
+  id: 'k2',
+  number: 'CLI-2',
+  name: 'Ambassade',
+  excludedFamilies: ['vat', 'stamp'],
+  defaultDiscountRate: null,
+  defaultTaxComponentIds: [],
+};
+const design: ProductOption = {
+  id: 'p1',
+  reference: 'ART-1',
+  name: 'Conception',
+  unitId: 'u2',
+  unitPriceNet: '1800.0000',
+  defaultTaxComponentIds: ['t1', 'f1'],
 };
 
 function tax(
@@ -93,7 +92,8 @@ function invoice(overrides: Partial<InvoiceRow> = {}): InvoiceRow {
     number: 'FAC-2026-00043',
     status: 'issued',
     customerId: 'k1',
-    customerName: 'Carthage SA',
+    recordedCustomerName: 'Carthage SA',
+    customerName: 'Carthage',
     establishmentId: 'e1',
     issueDate: '2026-08-14',
     dueDate: '2026-09-13',
@@ -182,8 +182,10 @@ describe('invoice forms', () => {
 
   it('names each row by the issued name, else today’s customer, with its shown status', () => {
     const rows = invoiceListRows(
-      [invoice(), invoice({ id: 'i2', status: 'draft', customerName: null, dueDate: null })],
-      options,
+      [
+        invoice(),
+        invoice({ id: 'i2', status: 'draft', recordedCustomerName: null, dueDate: null }),
+      ],
       '2026-09-16',
     );
     expect(rows.map((row) => [row.customer, row.shown])).toEqual([
@@ -202,20 +204,25 @@ describe('invoice forms', () => {
       'paid',
       'cancelled',
     ]);
-    const [row] = invoiceListRows([invoice()], options, '2026-09-16');
+    const [row] = invoiceListRows([invoice()], '2026-09-16');
     expect(row && filter?.value(row)).toBe('overdue');
   });
 
-  it('offers the customers and establishments, keeping those a document already names', () => {
+  it('offers the establishments, keeping the one a document already names, and asks the customer elsewhere', () => {
     const form = invoiceForm(options, invoice({ customerId: 'gone', establishmentId: 'closed' }));
     const fields = form.sections.flatMap((section) => section.fields);
-    const customer = fields.find((field) => field.id === 'customerId');
-    expect(customer?.options?.map((option) => option.value)).toEqual(['k1', 'k2', 'gone']);
     const establishment = fields.find((field) => field.id === 'establishmentId');
     expect(establishment?.options?.map((option) => option.value)).toContain('closed');
+    // The customer is a picker on the page, never a field in this descriptor: a book is not a dropdown.
+    expect(fields.map((field) => field.id)).not.toContain('customerId');
     expect(fields.map((field) => field.id)).toEqual(
       expect.arrayContaining(['supplyDate', 'paymentTermsDays', 'discountAmount', 'notesPrinted']),
     );
+  });
+
+  it('is told apart from another form by what it is of, which a picker would have made impossible', () => {
+    // The descriptor is stringified to key the form; a search function in it could not be.
+    expect(() => JSON.stringify(invoiceForm(options, invoice()))).not.toThrow();
   });
 
   it('starts a new invoice at the default establishment and the customer’s terms', () => {
@@ -226,29 +233,48 @@ describe('invoice forms', () => {
   });
 
   it('prefills the document taxes: the company’s defaults and the customer’s, less what its regime refuses', () => {
-    expect(defaultDocumentTaxes(options, 'k1')).toEqual(['s1', 'w1']);
-    expect(defaultDocumentTaxes(options, 'k2')).toEqual([]);
-    expect(documentTaxOptions(options, 'k2', ['s1']).map((each) => each.id)).toEqual(['w1', 's1']);
+    expect(defaultDocumentTaxes(options, carthage)).toEqual(['s1', 'w1']);
+    expect(defaultDocumentTaxes(options, embassy)).toEqual([]);
+    expect(documentTaxOptions(options, embassy, ['s1']).map((each) => each.id)).toEqual([
+      'w1',
+      's1',
+    ]);
   });
 
   describe('lines', () => {
     it('discounts a new line by the customer’s default rate', () => {
-      expect(
-        lineGroup(null, options, options.customers[0] ?? null).controls.discountRate.value,
-      ).toBe('5');
+      expect(lineGroup(null, options, carthage).controls.discountRate.value).toBe('5');
       expect(lineGroup(null, options, null).controls.discountRate.value).toBe('');
     });
 
     it('fills a line from its product, less the taxes the customer’s regime refuses', () => {
       const line = lineGroup(null, options, null);
-      applyProduct(line, 'p1', options, ['vat']);
+      applyProduct(line, design, options, ['vat']);
       expect(line.getRawValue()).toMatchObject({
         productId: 'p1',
+        productReference: 'ART-1',
+        productName: 'Conception',
         description: 'Conception',
         unitId: 'u2',
         unitPriceNet: '1800.000',
         taxComponentIds: ['f1'],
       });
+      // The line carries the product's own words, which is what lets the picker show it without the catalogue.
+      expect(pickedProduct(line)).toEqual({ id: 'p1', code: 'ART-1', name: 'Conception' });
+    });
+
+    it('clears what a line named when no product is picked, leaving what was typed on it', () => {
+      const line = lineGroup(null, options, null);
+      applyProduct(line, design, options, []);
+      line.controls.description.setValue('Conception, revue');
+      applyProduct(line, null, options, []);
+      expect(line.getRawValue()).toMatchObject({
+        productId: '',
+        productReference: '',
+        productName: '',
+        description: 'Conception, revue',
+      });
+      expect(pickedProduct(line)).toBeNull();
     });
 
     it('refuses a quantity finer than the unit counts and a discount above 100', () => {
@@ -273,13 +299,15 @@ describe('invoice forms', () => {
             discountRate: null,
             taxComponentIds: [],
             sourceDeliveryNoteLineId: 'dl1',
+            productReference: null,
+            productName: null,
             net: '70.000',
           },
         ],
         options,
         null,
       );
-      const input = invoiceInput(invoiceValues(null, options), lines, ['s1']);
+      const input = invoiceInput(invoiceValues(null, options), lines, ['s1'], 'k1');
       expect(input.lines[0]).toMatchObject({
         quantity: '2',
         discountRate: null,
@@ -291,12 +319,11 @@ describe('invoice forms', () => {
   it('sends the header as the API takes it: trimmed, empty as no value, the terms as a number', () => {
     const values = {
       ...invoiceValues(null, options),
-      customerId: 'k1',
       paymentTermsDays: ' 45 ',
       discountAmount: ' ',
       customerReference: '  PO-9 ',
     };
-    const input = invoiceInput(values, linesArray([], options, null), ['s1', 'w1']);
+    const input = invoiceInput(values, linesArray([], options, null), ['s1', 'w1'], 'k1');
     expect(input).toMatchObject({
       customerId: 'k1',
       establishmentId: 'e1',
@@ -306,7 +333,7 @@ describe('invoice forms', () => {
       documentTaxComponentIds: ['s1', 'w1'],
     });
     expect(
-      invoiceInput({ ...values, paymentTermsDays: '' }, linesArray([], options, null), [])
+      invoiceInput({ ...values, paymentTermsDays: '' }, linesArray([], options, null), [], 'k1')
         .paymentTermsDays,
     ).toBeNull();
   });

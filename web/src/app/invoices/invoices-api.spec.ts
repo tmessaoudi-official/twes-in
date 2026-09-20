@@ -150,17 +150,6 @@ describe('InvoicesApi', () => {
       currency: 'TND',
       currencyScale: 3,
       establishments: [{ id: 'e1', code: 'SIEGE', name: 'Siège', isDefault: true }],
-      customers: [
-        {
-          id: 'k1',
-          number: 'CLI-1',
-          name: 'Carthage',
-          excludedFamilies: [],
-          defaultDiscountRate: '5',
-          defaultTaxComponentIds: ['w1'],
-        },
-      ],
-      products: [],
       units: [{ id: 'u1', code: 'C62', name: 'Unité', decimals: 0 }],
       taxes: [
         {
@@ -180,9 +169,57 @@ describe('InvoicesApi', () => {
 
     const options = await pending;
     expect(options.currencyScale).toBe(3);
-    expect(options.customers[0]?.defaultDiscountRate).toBe('5');
-    expect(options.customers[0]?.defaultTaxComponentIds).toEqual(['w1']);
+    expect(options.establishments[0]?.code).toBe('SIEGE');
     expect(options.taxes[0]).toMatchObject({ kind: 'fixed_document', amount: '1.000' });
+  });
+
+  it('asks a picker for the few a person means, and by id for the ones a document already names', async () => {
+    const searched = api.pickCustomers('c1', { words: '  carth ' });
+    const search = http.expectOne(
+      (request) => request.url === '/api/companies/c1/invoice-options/customers',
+    );
+    expect(search.request.params.get('q')).toBe('carth');
+    expect(search.request.params.has('ids[]')).toBe(false);
+    search.flush([
+      {
+        id: 'k1',
+        number: 'CLI-1',
+        name: 'Carthage',
+        excludedFamilies: ['stamp'],
+        defaultDiscountRate: '5',
+        defaultTaxComponentIds: ['w1'],
+      },
+    ]);
+    expect((await searched)[0]).toMatchObject({ number: 'CLI-1', defaultDiscountRate: '5' });
+
+    const named = api.pickProducts('c1', { ids: ['p1', 'p2'] });
+    const resolve = http.expectOne(
+      (request) => request.url === '/api/companies/c1/invoice-options/products',
+    );
+    // Asking for what a document names is not a search: the words are left out entirely.
+    expect(resolve.request.params.getAll('ids[]')).toEqual(['p1', 'p2']);
+    expect(resolve.request.params.has('q')).toBe(false);
+    resolve.flush([
+      {
+        id: 'p1',
+        reference: 'ART-1',
+        name: 'Conception',
+        unitId: 'u2',
+        unitPriceNet: '1800.0000',
+        defaultTaxComponentIds: [],
+      },
+    ]);
+    expect((await named)[0]?.reference).toBe('ART-1');
+  });
+
+  it('asks for nothing at all when a picker opens on no words, so the API answers its first few', async () => {
+    const pending = api.pickCustomers('c1', { words: '   ' });
+    const request = http.expectOne(
+      (each) => each.url === '/api/companies/c1/invoice-options/customers',
+    );
+    expect(request.request.params.keys()).toEqual([]);
+    request.flush([]);
+    expect(await pending).toEqual([]);
   });
 
   it('reads an issued invoice with its snapshot name, figures and payments', async () => {
@@ -190,7 +227,7 @@ describe('InvoicesApi', () => {
     http.expectOne('/api/companies/c1/invoices/i1').flush(issued);
 
     const invoice = await pending;
-    expect(invoice.customerName).toBe('Groupe Carthage Médias');
+    expect(invoice.recordedCustomerName).toBe('Groupe Carthage Médias');
     expect(invoice.status).toBe('partially_paid');
     expect(invoice.amountDue).toBe('5951.000');
     expect(invoice.fixedTaxes).toEqual([{ code: 'TIMBRE', amount: '1.000' }]);

@@ -76,9 +76,6 @@
       </p>
     }
   }
-  @if (noCustomers()) {
-    <p data-testid="invoice-no-customers">{{ 'invoices.no_customers' | translate }}</p>
-  }
   @if (error(); as code) {
     <p role="alert" data-testid="invoice-error" class="text-error">
       {{ 'invoices.errors.' + code | translate }}
@@ -125,7 +122,26 @@
     }
     @if (descriptor(); as descriptor) {
       <mat-card>
-        <mat-card-content>
+        <mat-card-content class="flex flex-col">
+          <app-pick-field
+            [label]="'invoices.fields.customerId' | translate"
+            testId="invoice-customer"
+            [search]="searchCustomers"
+            [value]="customerShown()"
+            [disabled]="!editable()"
+            [noneFoundLabel]="'invoices.form.no_customer_found' | translate"
+            [hint]="'invoices.form.customer_hint' | translate"
+            (picked)="chooseCustomer($event)"
+          />
+          @if (customerMissing()) {
+            <p
+              role="alert"
+              class="-mt-2 px-4 pb-2 text-xs text-error"
+              data-testid="invoice-customer-error"
+            >
+              {{ 'invoices.form.customer_required' | translate }}
+            </p>
+          }
           <app-descriptor-form
             [descriptor]="descriptor"
             [form]="form"
@@ -157,6 +173,7 @@
           <app-invoice-lines
             [lines]="lines"
             [options]="options"
+            [companyId]="company()?.id ?? ''"
             [customer]="customer()"
             [nets]="nets()"
             [readOnly]="!editable()"

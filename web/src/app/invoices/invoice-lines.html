@@ -18,21 +18,19 @@
         }
       </legend>
       <div class="grid gap-x-4 sm:grid-cols-6">
-        <mat-form-field class="sm:col-span-3">
-          <mat-label>{{ 'invoices.lines.product' | translate }}</mat-label>
-          <mat-select
-            formControlName="productId"
-            (selectionChange)="chooseProduct(line, $event.value)"
-            [attr.data-testid]="'line-' + i + '-product'"
-          >
-            <mat-option value="">{{ 'invoices.lines.no_product' | translate }}</mat-option>
-            @for (product of options().products; track product.id) {
-              <mat-option [value]="product.id"
-                >{{ product.reference }} · {{ product.name }}</mat-option
-              >
-            }
-          </mat-select>
-        </mat-form-field>
+        <div class="sm:col-span-3">
+          <app-pick-field
+            [label]="'invoices.lines.product' | translate"
+            [testId]="'line-' + i + '-product'"
+            [search]="searchProducts"
+            [value]="productOf(line)"
+            [disabled]="readOnly()"
+            [clearable]="true"
+            [noneLabel]="'invoices.lines.no_product' | translate"
+            [noneFoundLabel]="'invoices.lines.no_product_found' | translate"
+            (picked)="chooseProduct(line, $event)"
+          />
+        </div>
 
         <div class="flex flex-col sm:col-span-3">
           <mat-form-field>

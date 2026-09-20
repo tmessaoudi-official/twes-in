@@ -777,7 +777,6 @@
     "open_short": "Open",
     "none": "No invoices yet.",
     "no_company": "Choose a company first.",
-    "no_customers": "An invoice is made out to a customer: add a customer first.",
     "new_title": "New invoice",
     "draft_title": "Draft invoice",
     "credit_note_draft_title": "Draft credit note",
@@ -831,7 +830,10 @@
       "terms_hint": "0 to 365 days after issue. Left empty, the customer's terms at issue.",
       "discount_hint": "An amount before tax, spread over the lines; at most what the lines come to.",
       "printed_hint": "Printed on the invoice.",
-      "internal_hint": "Kept inside the company, never printed."
+      "internal_hint": "Kept inside the company, never printed.",
+      "customer_hint": "Type the customer's number or name; the first few found are offered.",
+      "customer_required": "Name the customer this invoice is for.",
+      "no_customer_found": "No customer found."
     },
     "lines": {
       "title": "Lines",
@@ -857,7 +859,8 @@
         "unitId": "Choose a unit.",
         "unitPriceNet": "A price from 0, with at most four decimals.",
         "discountRate": "A percentage from 0 to 100, with at most three decimals."
-      }
+      },
+      "no_product_found": "No product found."
     },
     "document_taxes": {
       "title": "Document charges and withholdings",

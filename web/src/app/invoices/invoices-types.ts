@@ -57,11 +57,18 @@ export interface InvoiceLine {
   taxComponentIds: string[];
   /** The delivery note line this line invoices; a revision may keep or drop it, never add one. */
   sourceDeliveryNoteLineId: string | null;
+  /**
+   * The product's reference and name as they read today, which is what lets the line be shown without the catalogue.
+   * Both null for a line naming no product, or one whose product has since been deleted. Read only: the API fills
+   * them from the product the line names and ignores them on the way back.
+   */
+  productReference: string | null;
+  productName: string | null;
   /** The line after its own discount, at the currency's scale, worked out by the API. */
   net: string;
 }
 
-export type InvoiceLineInput = Omit<InvoiceLine, 'net'>;
+export type InvoiceLineInput = Omit<InvoiceLine, 'net' | 'productReference' | 'productName'>;
 
 export interface TaxTotal {
   code: string;
@@ -127,8 +134,10 @@ export interface InvoiceRow {
   number: string | null;
   status: InvoiceStatus;
   customerId: string;
-  /** The customer's name as the document was issued to it; null for a draft, which names today's customer. */
-  customerName: string | null;
+  /** The customer's name as the document recorded it when issued; null for a draft, which has recorded nothing. */
+  recordedCustomerName: string | null;
+  /** The customer as it reads TODAY, so a form shows who the document is for without the company's whole book. */
+  customerName: string;
   establishmentId: string | null;
   issueDate: string | null;
   dueDate: string | null;
@@ -176,6 +185,7 @@ export interface EstablishmentOption {
   isDefault: boolean;
 }
 
+/** One customer as a picker answers it: what a document header starts from. */
 export interface CustomerOption {
   id: string;
   number: string;
@@ -188,6 +198,7 @@ export interface CustomerOption {
   defaultTaxComponentIds: string[];
 }
 
+/** One product as a picker answers it: what a line starts from. */
 export interface ProductOption {
   id: string;
   reference: string;
@@ -218,13 +229,15 @@ export interface TaxOption {
   isDefault: boolean;
 }
 
-/** What the invoice form offers: the company's currency and its establishments, customers, products, units and taxes. */
+/**
+ * What the invoice form offers: the company's currency, its establishments, its units and its taxes — what is small,
+ * bounded and needed all at once. The customers and the products are NOT here: they are asked for a few at a time
+ * through the two pickers (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+ */
 export interface InvoiceOptions {
   currency: string;
   currencyScale: number;
   establishments: EstablishmentOption[];
-  customers: CustomerOption[];
-  products: ProductOption[];
   units: UnitOption[];
   taxes: TaxOption[];
 }

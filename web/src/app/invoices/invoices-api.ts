@@ -8,7 +8,9 @@ import type {
   InvoiceInvoiceRead,
   InvoiceJsonldInvoiceRead,
   InvoiceInvoiceWrite,
+  InvoiceCustomerPickInvoiceCustomerPickRead,
   InvoiceOptionsInvoiceOptionsRead,
+  InvoiceProductPickInvoiceProductPickRead,
   InvoiceSummaryInvoiceSummaryRead,
   PaymentPaymentWrite,
 } from '../api/types.gen';
@@ -24,6 +26,8 @@ import {
   type InvoicesError,
   type InvoiceSummary,
   PAYMENT_METHODS,
+  type CustomerOption,
+  type ProductOption,
   type PaymentInput,
 } from './invoices-types';
 
@@ -50,6 +54,48 @@ export class InvoicesApi {
         ),
       ),
     );
+  }
+
+  /**
+   * The few customers or products a person means, or — given ids — exactly the records a document already names,
+   * whether or not they are still offered. The catalogue is never read whole (docs/SPEC.md § 7, 2026-09-17, ruling 3).
+   */
+  async pickCustomers(companyId: string, asked: PickAsked): Promise<CustomerOption[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<InvoiceCustomerPickInvoiceCustomerPickRead[]>(
+          `${companyPath(companyId)}/invoice-options/customers`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((customer) => ({
+        id: customer.id ?? '',
+        number: customer.number,
+        name: customer.name,
+        excludedFamilies: [...customer.excludedFamilies],
+        defaultDiscountRate: customer.defaultDiscountRate,
+        defaultTaxComponentIds: [...customer.defaultTaxComponentIds],
+      }));
+    });
+  }
+
+  async pickProducts(companyId: string, asked: PickAsked): Promise<ProductOption[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<InvoiceProductPickInvoiceProductPickRead[]>(
+          `${companyPath(companyId)}/invoice-options/products`,
+          { params: pickParams(asked) },
+        ),
+      );
+      return rows.map((product) => ({
+        id: product.id ?? '',
+        reference: product.reference,
+        name: product.name,
+        unitId: product.unitId,
+        unitPriceNet: product.unitPriceNet,
+        defaultTaxComponentIds: [...product.defaultTaxComponentIds],
+      }));
+    });
   }
 
   /** The home page's figures, worked out by the API on the company's day. */
@@ -192,6 +238,19 @@ const invoicePath = (companyId: string, id?: string): string =>
 const ids = (values: readonly (string | null | undefined)[] | null | undefined): string[] =>
   (values ?? []).filter((id): id is string => typeof id === 'string');
 
+/** What a picker asks for: words to search by, or the ids of the records a document already names. */
+export type PickAsked = { words: string } | { ids: readonly string[] };
+
+function pickParams(asked: PickAsked): HttpParams {
+  if ('ids' in asked) {
+    let params = new HttpParams();
+    for (const id of asked.ids) params = params.append('ids[]', id);
+    return params;
+  }
+  const words = asked.words.trim();
+  return words === '' ? new HttpParams() : new HttpParams().set('q', words);
+}
+
 function toSearchParams(search: InvoiceSearch): HttpParams {
   let params = new HttpParams().set('page', search.page).set('itemsPerPage', search.itemsPerPage);
   if (search.q.trim() !== '') params = params.set('q', search.q.trim());
@@ -211,7 +270,8 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
     number: raw.number ?? null,
     status: INVOICE_STATUSES.find((status) => status === raw.status) ?? 'draft',
     customerId: raw.customerId ?? '',
-    customerName: raw.customerSnapshot?.name ?? null,
+    recordedCustomerName: raw.customerSnapshot?.name ?? null,
+    customerName: raw.customerName ?? '',
     establishmentId: raw.establishmentId ?? null,
     issueDate: raw.issueDate ?? null,
     dueDate: raw.dueDate ?? null,
@@ -234,6 +294,8 @@ function toInvoice(raw: InvoiceInvoiceRead | InvoiceJsonldInvoiceRead): InvoiceR
       discountRate: line.discountRate ?? null,
       taxComponentIds: ids(line.taxComponentIds),
       sourceDeliveryNoteLineId: line.sourceDeliveryNoteLineId ?? null,
+      productReference: line.productReference ?? null,
+      productName: line.productName ?? null,
       net: line.net ?? '',
     })),
     subtotalNet: raw.subtotalNet ?? '0',
@@ -313,22 +375,6 @@ function toOptions(raw: InvoiceOptionsInvoiceOptionsRead): InvoiceOptions {
       code,
       name,
       isDefault,
-    })),
-    customers: (raw.customers ?? []).map((customer) => ({
-      id: customer.id,
-      number: customer.number,
-      name: customer.name,
-      excludedFamilies: [...customer.excludedFamilies],
-      defaultDiscountRate: customer.defaultDiscountRate,
-      defaultTaxComponentIds: [...customer.defaultTaxComponentIds],
-    })),
-    products: (raw.products ?? []).map((product) => ({
-      id: product.id,
-      reference: product.reference,
-      name: product.name,
-      unitId: product.unitId,
-      unitPriceNet: product.unitPriceNet,
-      defaultTaxComponentIds: [...product.defaultTaxComponentIds],
     })),
     units: (raw.units ?? []).map(({ id, code, name, decimals }) => ({ id, code, name, decimals })),
     taxes: (raw.taxes ?? []).map((tax) => ({

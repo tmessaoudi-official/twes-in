@@ -31,6 +31,31 @@ export async function signIn(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/$/);
 }
 
+/**
+ * Makes sure the session is working in a company. A sign-in picks one only for a single membership
+ * (ChooseWorkingCompany), so a seed where the operator belongs to several leaves none chosen and every company screen
+ * reads "no company" — which is a state of the database, not of the screen under test. CI seeds one company and this
+ * does nothing; locally, after `make fixtures`, it is what keeps a run about invoices about invoices.
+ */
+export async function inACompany(page: Page, csrf: string): Promise<void> {
+  await page.evaluate(async (token) => {
+    const me = (await (await fetch('/api/auth/me')).json()) as { company: { id: string } | null };
+    if (me.company !== null) return;
+    const answered = (await (await fetch('/api/me/companies')).json()) as
+      { member: { companyId: string; name: string }[] } | { companyId: string; name: string }[];
+    const mine = Array.isArray(answered) ? answered : answered.member;
+    const demo = mine.find((row) => row.name === 'Demo') ?? mine[0];
+    if (demo === undefined) throw new Error('the operator belongs to no company at all');
+    const moved = await fetch('/api/me/company', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token },
+      body: JSON.stringify({ companyId: demo.companyId }),
+    });
+    if (!moved.ok)
+      throw new Error(`choosing ${demo.name} answered ${moved.status}: ${await moved.text()}`);
+  }, csrf);
+}
+
 /** Signs the operator in from the login page, the password and then a code, on a session of its own. */
 export async function signInWithCode(page: Page): Promise<void> {
   await page.goto('/login');

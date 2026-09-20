@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { ChangeDetectionStrategy, Component, computed, effect, input, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  effect,
+  inject,
+  input,
+  signal,
+} from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCheckboxModule } from '@angular/material/checkbox';
@@ -16,13 +24,22 @@ import {
   lineGroup,
   type LinesArray,
   offeredLineTaxes,
+  pickedProduct,
 } from './invoice-forms';
-import type { CustomerOption, InvoiceOptions, TaxFamily, TaxOption } from './invoices-types';
+import type {
+  CustomerOption,
+  InvoiceOptions,
+  ProductOption,
+  TaxFamily,
+  TaxOption,
+} from './invoices-types';
 import { DecimalInput } from '../shared/form/decimal-input';
+import { PickField, type PickOption } from '../shared/form/pick-field';
+import { InvoicesFacade } from './invoices-facade';
 
 type CheckedField = keyof Omit<
   LineControls,
-  'productId' | 'taxComponentIds' | 'sourceDeliveryNoteLineId'
+  'productId' | 'productReference' | 'productName' | 'taxComponentIds' | 'sourceDeliveryNoteLineId'
 >;
 
 /**
@@ -45,13 +62,18 @@ type CheckedField = keyof Omit<
     MatSelectModule,
     TranslatePipe,
     DecimalInput,
+    PickField,
     AmountPipe,
   ],
   templateUrl: './invoice-lines.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class InvoiceLines {
+  private readonly facade = inject(InvoicesFacade);
+
   readonly lines = input.required<LinesArray>();
+  /** Whose company's catalogue the pickers ask; a line is never offered another company's products. */
+  readonly companyId = input.required<string>();
   readonly options = input.required<InvoiceOptions>();
   readonly customer = input<CustomerOption | null>(null);
   readonly readOnly = input(false);
@@ -60,6 +82,8 @@ export class InvoiceLines {
 
   /** Bumped on every value, status or touched change, so an OnPush template re-reads the lines. */
   private readonly revision = signal(0);
+  /** Every product the pickers have answered, so what is chosen on a line can be found again from its id. */
+  private readonly known = new Map<string, ProductOption>();
   private readonly excluded = computed<readonly TaxFamily[]>(
     () => this.customer()?.excludedFamilies ?? [],
   );
@@ -121,8 +145,26 @@ export class InvoiceLines {
     this.lines().removeAt(index);
   }
 
-  protected chooseProduct(line: LineGroup, productId: string): void {
-    applyProduct(line, productId, this.options(), this.excluded());
+  /** What the picker shows on a line: the product it names, in the words the line itself carries. */
+  protected productOf(line: LineGroup): PickOption | null {
+    this.revision();
+    return pickedProduct(line);
+  }
+
+  protected readonly searchProducts = async (words: string): Promise<readonly PickOption[]> => {
+    const found = await this.facade.pickProducts(this.companyId(), { words });
+    for (const product of found) this.known.set(product.id, product);
+    return found.map((product) => ({
+      id: product.id,
+      code: product.reference,
+      name: product.name,
+    }));
+  };
+
+  protected chooseProduct(line: LineGroup, option: PickOption | null): void {
+    const product = option === null ? null : (this.known.get(option.id) ?? null);
+    applyProduct(line, product, this.options(), this.excluded());
+    line.markAsDirty();
   }
 
   protected toggleTax(line: LineGroup, taxId: string, checked: boolean): void {

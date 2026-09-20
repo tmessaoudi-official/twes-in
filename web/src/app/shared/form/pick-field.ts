@@ -55,9 +55,12 @@ export const PICK_PAUSE_MS = 300;
         [formControl]="typed"
         [matAutocomplete]="list"
         [attr.data-testid]="testId()"
-        [attr.aria-describedby]="testId() + '-hint'"
+        [attr.aria-describedby]="hint() === '' ? null : testId() + '-hint'"
         autocomplete="off"
       />
+      @if (hint() !== '') {
+        <mat-hint [id]="testId() + '-hint'">{{ hint() }}</mat-hint>
+      }
       <mat-autocomplete
         #list="matAutocomplete"
         [displayWith]="shown"
@@ -95,6 +98,8 @@ export class PickField {
   readonly clearable = input(false);
   readonly noneLabel = input('—');
   readonly noneFoundLabel = input('—');
+  /** A line under the box saying what to type; left out, the input describes nothing, which is what axe asks. */
+  readonly hint = input('');
 
   readonly picked = output<PickOption | null>();
 

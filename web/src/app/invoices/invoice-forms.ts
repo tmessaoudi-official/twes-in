@@ -4,6 +4,7 @@ import { FormArray, FormControl, FormGroup, type ValidatorFn, Validators } from 
 import type { FieldValue, FormDescriptor, FormField, FormValues } from '../shared/form/form-types';
 import { atScale } from '../shared/i18n/format';
 import type { ListDescriptor, ListQuery } from '../shared/list/list-types';
+import type { PickOption } from '../shared/form/pick-field';
 import {
   type CustomerOption,
   INVOICE_SHOWN_STATUSES,
@@ -15,6 +16,7 @@ import {
   type InvoiceShownStatus,
   type InvoiceSortKey,
   PAYMENT_METHODS,
+  type ProductOption,
   type PaymentInput,
   type PaymentMethod,
   type TaxFamily,
@@ -81,18 +83,14 @@ export function invoiceSearch(query: ListQuery): InvoiceSearch {
 /** A document as the list shows it: with its customer's name and the status shown for it. */
 export type InvoiceListRow = InvoiceRow & { customer: string; shown: InvoiceShownStatus };
 
-/** An issued document names the customer it was issued to; a draft names the customer as the company has it today. */
-export function invoiceListRows(
-  invoices: readonly InvoiceRow[],
-  options: InvoiceOptions | null,
-  today: string,
-): InvoiceListRow[] {
-  const customers = new Map(
-    (options?.customers ?? []).map((customer) => [customer.id, customer.name]),
-  );
+/**
+ * An issued document names the customer it was issued to; a draft, which has recorded nobody yet, names the customer
+ * as the company has it today. Both come off the document itself, so a list never reads the book of customers.
+ */
+export function invoiceListRows(invoices: readonly InvoiceRow[], today: string): InvoiceListRow[] {
   return invoices.map((invoice) => ({
     ...invoice,
-    customer: invoice.customerName ?? customers.get(invoice.customerId) ?? '',
+    customer: invoice.recordedCustomerName ?? invoice.customerName,
     shown: shownStatus(invoice, today),
   }));
 }
@@ -185,24 +183,18 @@ const section = (id: string, fields: FormField[]): FormDescriptor['sections'][nu
 });
 
 /**
- * The document's header: its customer and establishment among what the company offers, keeping those a document
- * already names when the company no longer offers them, then its dates, terms, discount and what is printed. The
- * API checks it all again.
+ * The document's header: its establishment among what the company offers, keeping the one a document already names
+ * when the company no longer offers it, then its dates, terms, discount and what is printed. The API checks it all
+ * again.
+ *
+ * The CUSTOMER is not a field here: a company's book is not a dropdown, so the page asks for it through a picker
+ * beside this form (docs/SPEC.md § 7, 2026-09-17, ruling 3). A descriptor is data — it is stringified to tell one
+ * form from another — and a picker needs a function to search with, which is why it cannot live in one.
  */
 export function invoiceForm(
   options: InvoiceOptions,
   current: InvoiceRow | null = null,
 ): FormDescriptor {
-  const customers = options.customers.map((customer) => ({
-    value: customer.id,
-    label: `${customer.number} · ${customer.name}`,
-  }));
-  if (current !== null && !customers.some((option) => option.value === current.customerId)) {
-    customers.push({
-      value: current.customerId,
-      label: current.customerName ?? current.customerId,
-    });
-  }
   const establishments = options.establishments.map((establishment) => ({
     value: establishment.id,
     label: `${establishment.code} · ${establishment.name}`,
@@ -219,13 +211,6 @@ export function invoiceForm(
     id: 'invoice',
     sections: [
       section('parties', [
-        {
-          id: 'customerId',
-          label: `${FIELDS}.customerId`,
-          kind: 'select',
-          required: true,
-          options: customers,
-        },
         {
           id: 'establishmentId',
           label: `${FIELDS}.establishmentId`,
@@ -292,7 +277,6 @@ export function invoiceValues(row: InvoiceRow | null, options: InvoiceOptions): 
   const establishment =
     options.establishments.find((each) => each.isDefault) ?? options.establishments[0];
   return {
-    customerId: row?.customerId ?? '',
     establishmentId: row?.establishmentId ?? establishment?.id ?? '',
     customerReference: row?.customerReference ?? '',
     supplyDate: row?.supplyDate ?? '',
@@ -308,16 +292,19 @@ const DOCUMENT_KINDS: readonly TaxOption['kind'][] = ['fixed_document', 'withhol
 
 const isDocumentTax = (tax: TaxOption): boolean => DOCUMENT_KINDS.includes(tax.kind);
 
-const excludedFor = (options: InvoiceOptions, customerId: string): readonly TaxFamily[] =>
-  options.customers.find((customer) => customer.id === customerId)?.excludedFamilies ?? [];
+const excludedFor = (customer: CustomerOption | null): readonly TaxFamily[] =>
+  customer?.excludedFamilies ?? [];
 
 /**
  * What a new document is charged besides its lines, as the API would charge it when none are named: the company's
- * default fixed charges and withholdings with the customer's own, less the families its regime refuses.
+ * default fixed charges and withholdings with the customer's own, less the families its regime refuses. The customer
+ * is the row the picker answered, which carries both — nothing is looked up in a list here.
  */
-export function defaultDocumentTaxes(options: InvoiceOptions, customerId: string): string[] {
-  const excluded = excludedFor(options, customerId);
-  const customer = options.customers.find((each) => each.id === customerId);
+export function defaultDocumentTaxes(
+  options: InvoiceOptions,
+  customer: CustomerOption | null,
+): string[] {
+  const excluded = excludedFor(customer);
   const chosen = new Set([
     ...options.taxes.filter((tax) => isDocumentTax(tax) && tax.isDefault).map((tax) => tax.id),
     ...(customer?.defaultTaxComponentIds ?? []),
@@ -330,10 +317,10 @@ export function defaultDocumentTaxes(options: InvoiceOptions, customerId: string
 /** The fixed charges and withholdings a document may carry: those the customer's regime allows, and those it has. */
 export function documentTaxOptions(
   options: InvoiceOptions,
-  customerId: string,
+  customer: CustomerOption | null,
   chosen: readonly string[],
 ): TaxOption[] {
-  const excluded = excludedFor(options, customerId);
+  const excluded = excludedFor(customer);
   const documentTaxes = options.taxes.filter(isDocumentTax);
   return [
     ...documentTaxes.filter((tax) => !excluded.includes(tax.family)),
@@ -343,6 +330,9 @@ export function documentTaxOptions(
 
 export interface LineControls {
   productId: FormControl<string>;
+  /** The product's own words, carried on the line so the picker shows it without reading the catalogue. */
+  productReference: FormControl<string>;
+  productName: FormControl<string>;
   description: FormControl<string>;
   quantity: FormControl<string>;
   unitId: FormControl<string>;
@@ -393,6 +383,8 @@ export function lineGroup(
   return new FormGroup<LineControls>(
     {
       productId: new FormControl(line?.productId ?? '', { nonNullable: true }),
+      productReference: new FormControl(line?.productReference ?? '', { nonNullable: true }),
+      productName: new FormControl(line?.productName ?? '', { nonNullable: true }),
       description: new FormControl(line?.description ?? '', {
         nonNullable: true,
         validators: [notBlank, Validators.maxLength(DESCRIPTION_MAX)],
@@ -447,23 +439,27 @@ export function offeredLineTaxes(
 }
 
 /**
- * Fills a line from the product chosen on it: its name, unit, price and default line taxes, less those the customer's
- * regime refuses. The quantity and the discount stay; choosing no product leaves what was typed.
+ * Fills a line from the product picked on it: its name, unit, price and default line taxes, less those the customer's
+ * regime refuses. The quantity and the discount stay; picking no product clears what the line named and leaves the
+ * description, which someone may have typed themselves.
+ *
+ * The product is the row the picker answered, so this reads no catalogue.
  */
 export function applyProduct(
   line: LineGroup,
-  productId: string,
+  product: ProductOption | null,
   options: InvoiceOptions,
   excludedFamilies: readonly TaxFamily[],
 ): void {
-  const product = options.products.find((each) => each.id === productId);
-  if (product === undefined) {
-    line.controls.productId.setValue('');
+  if (product === null) {
+    line.patchValue({ productId: '', productReference: '', productName: '' });
     return;
   }
   const offered = new Set(offeredLineTaxes(options, excludedFamilies).map((tax) => tax.id));
   line.patchValue({
     productId: product.id,
+    productReference: product.reference,
+    productName: product.name,
     description: product.name,
     unitId: product.unitId,
     unitPriceNet: atScale(product.unitPriceNet, options.currencyScale),
@@ -471,15 +467,33 @@ export function applyProduct(
   });
 }
 
+/** What the picker shows on a line: the product it names, in its own words, or nothing. */
+export function pickedProduct(line: LineGroup): PickOption | null {
+  const id = line.controls.productId.value;
+  return id === ''
+    ? null
+    : {
+        id,
+        code: line.controls.productReference.value,
+        name: line.controls.productName.value,
+      };
+}
+
+/** What the picker shows in the header: the customer, in its own words. */
+export function pickedCustomer(customer: CustomerOption | null): PickOption | null {
+  return customer === null ? null : { id: customer.id, code: customer.number, name: customer.name };
+}
+
 /** The header, the lines and the document taxes as the API takes them: trimmed, an empty field as no value. */
 export function invoiceInput(
   values: FormValues,
   lines: LinesArray,
   documentTaxComponentIds: readonly string[],
+  customerId: string,
 ): InvoiceInput {
   const terms = text(values['paymentTermsDays']);
   return {
-    customerId: String(values['customerId'] ?? ''),
+    customerId,
     establishmentId: text(values['establishmentId']),
     supplyDate: text(values['supplyDate']),
     paymentTermsDays: terms === null ? null : Number(terms),
