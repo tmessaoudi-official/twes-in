@@ -16,6 +16,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { BrandMark } from '../shared/theme/brand-mark';
 import { MatDialog } from '@angular/material/dialog';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
@@ -91,6 +92,7 @@ export function initialsOf(displayName: string): string {
     MatToolbarModule,
     MatListModule,
     MatIconModule,
+    BrandMark,
     MatButtonModule,
     MatMenuModule,
     MatDividerModule,

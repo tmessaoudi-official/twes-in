@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="twes-in">
+  <!--
+    The "Angle" mark (docs/SPEC.md § 7, 2026-09-20): the initial in round, geometric lower case with a rising
+    arrow where the dot of an i would sit. Calm, with momentum.
+
+    Every stroke is a path rather than text on purpose. A favicon is rendered with no stylesheet and no webfont,
+    so a <text> element here would fall back to whatever sans-serif the platform happens to have and the mark
+    would differ on every machine — and at 16 px a mis-rendered letterform is a smudge, not a brand.
+
+    The accent is the installation's default (#1f6feb, DEFAULT_ACCENT). It is written literally because a
+    favicon is fetched outside the running app, where no CSS custom property exists; the sidebar mark, which
+    IS inside the app, follows the live accent instead.
+  -->
+  <rect width="32" height="32" rx="7.5" fill="#1f6feb"/>
+  <g fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- the t: a stem that hooks right at the foot, and its crossbar -->
+    <path d="M11.4 6.6V18.2c0 2.3 1.3 3.6 3.5 3.6"/>
+    <path d="M7.3 11.1h8.2"/>
+    <!-- the rising arrow, where the dot of an i would sit -->
+    <path d="M19.6 13.2 25.4 7.4"/>
+    <path d="M20.9 7.4h4.5v4.5"/>
+  </g>
+</svg>

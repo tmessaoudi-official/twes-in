@@ -227,6 +227,17 @@ describe('AppShell', () => {
   it('shows the navigation the user may see, with the product name', async () => {
     const { el, byTestId } = await render();
     expect(el.querySelector('[data-testid="brand"]')?.textContent).toContain('twes-in');
+    // The mark beside the name is ours, drawn from the theme, and not a stock Material glyph (invariant 5):
+    // nothing in the product may be another product's badge.
+    const mark = el.querySelector('[data-testid="brand-mark"] svg');
+    expect(mark).not.toBeNull();
+    expect(mark?.getAttribute('viewBox')).toBe('0 0 32 32');
+    expect(mark?.querySelector('rect')?.getAttribute('class')).toContain('fill-primary');
+    // It sits beside the name in text, so announcing it again would say the product's name twice.
+    expect(mark?.getAttribute('aria-hidden')).toBe('true');
+    expect(el.querySelector('[data-testid="brand"]')?.parentElement?.textContent).not.toContain(
+      'receipt_long',
+    );
     expect(byTestId('nav-home')?.textContent).toContain('Accueil');
     // Each settings page lives in the settings area, not in the sidebar, which has one way in to all of them.
     expect(byTestId('nav-members')).toBeNull();

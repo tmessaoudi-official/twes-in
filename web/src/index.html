@@ -5,7 +5,16 @@
     <title>twes-in</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      The "Angle" mark (docs/SPEC.md § 7, 2026-09-20). The SVG is what every current browser takes; the .ico
+      stays for the ones that ask for it by that name whatever the markup says, and apple-touch-icon is what
+      iOS uses when the app is added to a home screen. All four are rendered from the one SVG.
+    -->
+    <link rel="icon" type="image/svg+xml" href="icon.svg" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="theme-color" content="#1f6feb" />
   </head>
   <body>
     <!-- nginx replaces the placeholder with this response's CSP nonce (infra/web/nginx.conf). -->
