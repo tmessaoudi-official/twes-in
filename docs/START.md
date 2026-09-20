@@ -94,9 +94,18 @@ Open http://localhost:8090, enter the address and password, then the code on the
 carry a second factor. The seed enrolled a **known development secret** (`JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP`) so
 that scripts can compute codes. You can also add it to any authenticator app to get codes on your phone.
 
-- A code is valid for about 30 seconds. **Five wrong or reused codes in five minutes lock the second step** for the
-  rest of those five minutes. Playwright spends the same budget, so do not sign in by hand while `make e2e` runs.
-- The operator is also the **owner of the Demo company**, so after signing in you land in Demo's home page. Its
+- A code is valid for about 30 seconds, and **an expired code spends the budget exactly like a wrong one**:
+  `make operator-code` therefore waits for a fresh window rather than handing you a code with four seconds left, and
+  prints how long the one it gives you lives. **Five wrong, reused or expired codes in five minutes lock the second
+  step** for the rest of those five minutes — after which a perfectly correct code still fails, which is what the
+  lockout feels like from the login screen. Playwright spends the same budget, so do not sign in by hand while
+  `make e2e` runs, and if you are locked out, wait five minutes rather than trying again.
+- A code from a phone authenticator only works if you added **this** secret to it; a secret enrolled any other way
+  is not the one the seed stored.
+- The operator is also the **owner of the Demo company**, so after signing in you land in Demo's home page — unless
+  you have run `make fixtures`, which makes the operator a member of Demo, Carthage Conseil and Atelier Mercier.
+  A sign-in picks a working company only when there is exactly one, so with the fixtures loaded you land on a
+  company choice instead. Pick **Demo**; that is the state this file describes. Its
   **Manage the platform** link (*Gérer la plateforme*) opens **Platform** (http://localhost:8090/platform), where the
   operator runs the platform.
 

@@ -15,8 +15,8 @@ seed:          ## built-in roles, the operator (operator@twes.local) with a know
 fixtures:      ## the demo companies Carthage Conseil (TN) and Atelier Mercier (FR), five months of activity written through the use cases; after make seed; appends, never empties the database; a company already there is left as it is
 	docker compose exec -T api bin/console doctrine:fixtures:load --append --no-interaction
 
-operator-code: ## the seeded operator's authenticator code right now, for signing in by hand (a wrong or reused one spends the 5-per-5-minutes budget e2e also spends)
-	docker compose exec -T api php -r 'require "vendor/autoload.php"; echo (new App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", new DateTimeImmutable()), PHP_EOL;'
+operator-code: ## the seeded operator's authenticator code, with how long it lives (a wrong, reused or EXPIRED one spends the 5-per-5-minutes budget e2e also spends)
+	docker compose exec -T api php -r 'require "vendor/autoload.php"; $$left = 30 - (time() % 30); if ($$left < 12) { fwrite(STDERR, "waiting {$$left}s: the code now would expire while you type it\n"); sleep($$left); $$left = 30; } echo (new App\Identity\Infrastructure\Mfa\OtphpTotpCodes())->codeAt("JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP", new DateTimeImmutable()), "  (valid {$$left}s)", PHP_EOL;'
 
 api-openapi:   ## export the OpenAPI document the TypeScript types are generated from
 	cd api && bin/console api:openapi:export --output=var/openapi.json
