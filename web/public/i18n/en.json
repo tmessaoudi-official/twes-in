@@ -1728,6 +1728,14 @@
       "expense_category_note": "The name of an active category; create it before importing.",
       "notes": "Notes",
       "active": "Active"
+    },
+    "opening_stock": {
+      "reference": "Product reference",
+      "reference_note": "The reference of a product that already exists: import the products first.",
+      "location_code": "Location code",
+      "location_code_note": "The code of the location the goods were counted in, as it reads under Stock.",
+      "quantity": "Counted quantity",
+      "quantity_note": "What is there, not what arrives: the same file imported twice leaves the same stock. With a comma or a point, within the unit's decimals."
     }
   }
 }

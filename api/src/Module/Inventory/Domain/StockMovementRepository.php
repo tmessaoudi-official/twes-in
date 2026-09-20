@@ -54,4 +54,7 @@ interface StockMovementRepository
 
     /** How many movements a location has seen. */
     public function countAt(Uuid $locationId): int;
+
+    /** How many movements a product has seen at a location: none means its stock there was never opened. */
+    public function countOf(Uuid $productId, Uuid $locationId): int;
 }

@@ -30,6 +30,14 @@ interface StockLocationRepository
 
     public function ofCodeInEstablishment(string $code, Uuid $establishmentId): ?StockLocation;
 
+    /**
+     * The company's locations under one code. A code names one place per establishment, so this answers several only
+     * when two establishments use the same one — which a file naming a code alone cannot tell apart.
+     *
+     * @return list<StockLocation>
+     */
+    public function ofCodeInCompany(string $code, Uuid $companyId): array;
+
     /** How many locations sit directly under this one. */
     public function countChildren(Uuid $locationId): int;
 

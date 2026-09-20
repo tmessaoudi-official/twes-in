@@ -119,6 +119,14 @@ final class InMemoryStockMovements implements StockMovementRepository
         return \count(array_filter($this->movements, static fn (StockMovement $m) => $m->getLocation()->getId()->equals($locationId)));
     }
 
+    public function countOf(Uuid $productId, Uuid $locationId): int
+    {
+        return \count(array_filter(
+            $this->movements,
+            static fn (StockMovement $m) => $m->getProduct()->getId()->equals($productId) && $m->getLocation()->getId()->equals($locationId),
+        ));
+    }
+
     private function call(string $name, Uuid $productId, Uuid $locationId): string
     {
         return \sprintf('%s %s %s%s', $name, $productId->toRfc4122(), $locationId->toRfc4122(), true === $this->transactions?->active() ? ' in transaction' : '');

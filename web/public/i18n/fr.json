@@ -1728,6 +1728,14 @@
       "expense_category_note": "Le nom d'une rubrique active ; créez-la avant l'import.",
       "notes": "Notes",
       "active": "Actif"
+    },
+    "opening_stock": {
+      "reference": "Référence produit",
+      "reference_note": "La référence du produit tel qu'il existe déjà : importez les produits d'abord.",
+      "location_code": "Code emplacement",
+      "location_code_note": "Le code de l'emplacement où les articles ont été comptés, tel qu'il figure dans Stock.",
+      "quantity": "Quantité comptée",
+      "quantity_note": "Ce qui est là, pas ce qui arrive : le même fichier importé deux fois laisse le même stock. Avec une virgule ou un point, dans les décimales de l'unité."
     }
   }
 }

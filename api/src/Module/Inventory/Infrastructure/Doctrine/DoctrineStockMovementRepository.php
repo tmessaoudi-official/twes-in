@@ -177,6 +177,11 @@ final readonly class DoctrineStockMovementRepository implements StockMovementRep
         return $this->entityManager->getRepository(StockMovement::class)->count(['location' => $locationId]);
     }
 
+    public function countOf(Uuid $productId, Uuid $locationId): int
+    {
+        return $this->entityManager->getRepository(StockMovement::class)->count(['product' => $productId, 'location' => $locationId]);
+    }
+
     /**
      * The database's sum with three decimals; no row sums to nothing.
      *

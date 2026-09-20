@@ -47,6 +47,11 @@ final readonly class DoctrineStockLocationRepository implements StockLocationRep
         return $this->entityManager->getRepository(StockLocation::class)->findOneBy(['establishment' => $establishmentId, 'code' => $code]);
     }
 
+    public function ofCodeInCompany(string $code, Uuid $companyId): array
+    {
+        return $this->entityManager->getRepository(StockLocation::class)->findBy(['company' => $companyId, 'code' => $code], ['id' => 'ASC']);
+    }
+
     public function countChildren(Uuid $locationId): int
     {
         return $this->entityManager->getRepository(StockLocation::class)->count(['parent' => $locationId]);
