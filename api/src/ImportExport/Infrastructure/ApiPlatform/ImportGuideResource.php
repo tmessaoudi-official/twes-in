@@ -41,10 +41,15 @@ final class ImportGuideResource
     #[Groups([self::READ])]
     public string $subject = '';
 
-    /** The column a row is found again by on a second import. */
-    #[ApiProperty(required: true)]
+    /**
+     * The columns a row is found again by on a second import — usually one, a pair where one column cannot name a
+     * thing on its own, as a quantity of stock is named by its product AND the place it sits in.
+     *
+     * @var list<string>
+     */
+    #[ApiProperty(required: true, schema: ['type' => 'array', 'items' => ['type' => 'string']])]
     #[Groups([self::READ])]
-    public string $identity = '';
+    public array $identity = [];
 
     /** The most rows one file may hold, its header excluded; a longer file is refused whole. */
     #[ApiProperty(required: true)]

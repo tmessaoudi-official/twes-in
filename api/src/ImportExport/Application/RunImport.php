@@ -58,14 +58,14 @@ final readonly class RunImport
      */
     private function apply(DeclaresImport $declaration, Company $company, array $records, ImportMode $mode, ?Uuid $actorUserId): ImportReport
     {
-        $identity = $declaration->identityColumn();
+        $identity = $declaration->identityColumns();
         $created = $updated = $rejected = [];
         /** @var array<string, int> $firstLineOf the first line naming each identity */
         $firstLineOf = [];
         foreach ($records as $record) {
-            $key = $record->value($identity);
+            $key = self::identityOf($record, $identity);
             if (null !== $key && isset($firstLineOf[$key])) {
-                $rejected[] = ['line' => $record->line, 'column' => $identity, 'code' => 'duplicate_in_file', 'params' => ['line' => $firstLineOf[$key]], 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$key], $identity)];
+                $rejected[] = ['line' => $record->line, 'column' => $identity[0], 'code' => 'duplicate_in_file', 'params' => ['line' => $firstLineOf[$key]], 'message' => \sprintf('Line %d of the file already has this %s.', $firstLineOf[$key], implode(' and ', $identity))];
                 continue;
             }
             if (null !== $key) {
@@ -83,6 +83,30 @@ final readonly class RunImport
         }
 
         return new ImportReport(false, $created, $updated, $rejected);
+    }
+
+    /**
+     * What this row names itself by, for finding the SAME thing twice in one file. A row that leaves any of the
+     * identity's columns empty has no identity at all — it is rejected by the subject for the missing value, which
+     * says more than "a duplicate of the other row that is also empty" would.
+     *
+     * The parts are joined on a separator no cell can hold, so a pair like ("VIS-6", "A-12") can never collide with
+     * ("VIS", "6A-12").
+     *
+     * @param non-empty-list<string> $identity
+     */
+    private static function identityOf(ImportRecord $record, array $identity): ?string
+    {
+        $parts = [];
+        foreach ($identity as $column) {
+            $value = $record->value($column);
+            if (null === $value) {
+                return null;
+            }
+            $parts[] = $value;
+        }
+
+        return implode("\x1f", $parts);
     }
 
     /**

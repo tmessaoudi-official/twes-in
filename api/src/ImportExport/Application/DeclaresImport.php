@@ -35,10 +35,13 @@ interface DeclaresImport
     public function subjectFor(Company $company): ImportSubject;
 
     /**
-     * The column a row is found again by (a customer's number, a product's reference): two rows of one file naming the
-     * same value are one thing twice, and the second is rejected before it reaches import().
+     * The columns a row is found again by — a customer's number, a product's reference, or a PAIR, as a quantity of
+     * stock is found again by its product AND the place it sits in. Two rows of one file naming the same values are
+     * one thing twice, and the second is rejected before it reaches import().
+     *
+     * @return non-empty-list<string>
      */
-    public function identityColumn(): string;
+    public function identityColumns(): array;
 
     /**
      * Creates or, in upsert mode, updates what one row describes, through the same use case a person's form uses.

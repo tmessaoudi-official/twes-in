@@ -55,7 +55,7 @@ final readonly class ImportGuideProvider implements ProviderInterface
 
         $guide = new ImportGuideResource();
         $guide->subject = $subject->key;
-        $guide->identity = $declaration->identityColumn();
+        $guide->identity = $declaration->identityColumns();
         $guide->maxRows = $this->maxRows;
         $guide->columns = array_map(fn (ImportColumn $column): ImportGuideColumn => new ImportGuideColumn(
             $column->key,

@@ -171,9 +171,9 @@ final class RecordingSubject implements DeclaresImport
         return 'things';
     }
 
-    public function identityColumn(): string
+    public function identityColumns(): array
     {
-        return 'number';
+        return ['number'];
     }
 
     public function subjectFor(Company $company): ImportSubject

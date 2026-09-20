@@ -48,7 +48,7 @@ final class ImportColumnsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $guide = $this->json();
-        self::assertSame(['customers', 'number', 2000], [$guide['subject'] ?? null, $guide['identity'] ?? null, $guide['maxRows'] ?? null]);
+        self::assertSame(['customers', ['number'], 2000], [$guide['subject'] ?? null, $guide['identity'] ?? null, $guide['maxRows'] ?? null]);
         $columns = [];
         foreach ($this->arrayAt($guide, 'columns') as $column) {
             self::assertIsArray($column);

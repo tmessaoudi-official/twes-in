@@ -98,9 +98,9 @@ final readonly class ProductImport implements DeclaresImport
         return ProductsModule::KEY;
     }
 
-    public function identityColumn(): string
+    public function identityColumns(): array
     {
-        return 'reference';
+        return ['reference'];
     }
 
     public function subjectFor(Company $company): ImportSubject

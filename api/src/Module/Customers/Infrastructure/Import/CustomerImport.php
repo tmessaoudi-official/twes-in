@@ -100,9 +100,9 @@ final readonly class CustomerImport implements DeclaresImport
         return CustomersModule::KEY;
     }
 
-    public function identityColumn(): string
+    public function identityColumns(): array
     {
-        return 'number';
+        return ['number'];
     }
 
     public function subjectFor(Company $company): ImportSubject
