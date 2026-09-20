@@ -32,6 +32,14 @@ export abstract class SettingsFacade {
 
   /** Forgets the choice: the value returns to the declared default. */
   abstract reset<T>(setting: SettingDefinition<T>): void;
+
+  /**
+   * Reads the chain again. A change made through this facade is already live; this is for a change written by
+   * another route — the company settings screen writes whole rows through `SettingsApi` — which otherwise only
+   * reaches OTHER tabs, since a live change never comes back to the tab that caused it. Without it, changing the
+   * company's default colour changed nothing until the browser was refreshed (developer, 2026-09-20).
+   */
+  abstract refresh(): void;
 }
 
 export type SettingsStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;

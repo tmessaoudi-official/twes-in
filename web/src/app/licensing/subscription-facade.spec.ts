@@ -56,12 +56,13 @@ describe('SubscriptionFacade', () => {
     confirm: vi.fn(),
     reject: vi.fn(),
   };
-  const auth = { load: vi.fn() };
+  const auth = { load: vi.fn(), refresh: vi.fn() };
   let facade: SubscriptionFacade;
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     auth.load.mockReset();
+    auth.refresh.mockReset();
     TestBed.configureTestingModule({
       providers: [
         { provide: SubscriptionApi, useValue: api },
@@ -100,7 +101,7 @@ describe('SubscriptionFacade', () => {
     expect(await facade.declare('c1', { ...declared, currency: 'TND' })).toBe(true);
 
     expect(facade.subscription()?.stage).toBe('held');
-    expect(auth.load).toHaveBeenCalled();
+    expect(auth.refresh).toHaveBeenCalled();
   });
 
   it('keeps the refusal of a declaration and leaves the session alone', async () => {
@@ -109,7 +110,7 @@ describe('SubscriptionFacade', () => {
     expect(await facade.declare('c1', { ...declared, currency: 'TND' })).toBe(false);
 
     expect(facade.error()).toBe('already_declared');
-    expect(auth.load).not.toHaveBeenCalled();
+    expect(auth.refresh).not.toHaveBeenCalled();
   });
 
   it("reads the operator's queue again after each decision", async () => {

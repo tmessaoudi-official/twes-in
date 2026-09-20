@@ -74,6 +74,7 @@ describe('ProductCategoriesPage', () => {
     busy: signal(false).asReadonly(),
     error: signal(null).asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     save: vi.fn(),
     reset: vi.fn(),
     clearError: vi.fn(),

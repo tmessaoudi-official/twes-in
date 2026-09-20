@@ -117,6 +117,11 @@ export class ApiSettings extends SettingsFacade {
     });
   }
 
+  /** Reads the chain again, keeping what is known on screen meanwhile: a re-read must not blank the page. */
+  refresh(): void {
+    void this.load(this.scope(), false);
+  }
+
   private async load(scope: Scope | null, fresh = true): Promise<void> {
     if (fresh) {
       this.pending = new Map();

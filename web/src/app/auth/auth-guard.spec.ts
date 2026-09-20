@@ -35,6 +35,7 @@ function facade(
     isPlatformOperator: () => operator,
     me: () => (company === null ? null : { company }),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
   };
 }
 

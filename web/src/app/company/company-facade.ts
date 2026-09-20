@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, CompanyOption } from './company-types';
 
@@ -13,6 +15,7 @@ import type { CompanyError, CompanyOption } from './company-types';
 export class CompanyFacade {
   private readonly api = inject(CompanyApi);
   private readonly auth = inject(AuthFacade);
+  private readonly unsaved = inject(UnsavedChanges);
   private readonly companiesSignal = signal<readonly CompanyOption[]>([]);
   private readonly switchingSignal = signal(false);
   private readonly errorSignal = signal<CompanyError | null>(null);
@@ -45,10 +48,16 @@ export class CompanyFacade {
     if (companyId === this.current()?.id) {
       return true;
     }
+    // Switching rebuilds every open screen for the company chosen, so anything typed and not saved goes with it.
+    if (!(await firstValueFrom(this.unsaved.confirmLeave()))) {
+      return false;
+    }
     this.switchingSignal.set(true);
     this.errorSignal.set(null);
     try {
       await this.api.switchTo(companyId);
+      // `load` here and NOT `refresh`, deliberately: the server has already moved, so keeping the old session on
+      // a failed read would show one company while acting for another. Signing out is the safe end of that.
       await this.auth.load();
       return true;
     } catch (error) {

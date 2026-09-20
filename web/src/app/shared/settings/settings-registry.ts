@@ -61,6 +61,16 @@ export const PRESENTATION = {
     'expanded',
     oneOf('expanded', 'rail'),
   ),
+  /**
+   * The settings area keeps its own answer, and that is what lets the toggle work in BOTH menus while each opens
+   * the way it does today: the area is a rail plus a docked list, so it starts folded, but a person who expands it
+   * there is not overruled on the next visit — and is not forced to the same answer everywhere else.
+   */
+  settingsSidebar: defineSetting<SidebarState>(
+    'presentation.sidebar-settings',
+    'rail',
+    oneOf('expanded', 'rail'),
+  ),
   language: defineSetting<Language>(
     'presentation.language',
     SUPPORTED_LANGUAGES[0],

@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
+import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { CompanyApi, CompanyRefused } from './company-api';
 import { CompanyFacade } from './company-facade';
 import type { CompanyOption } from './company-types';
@@ -21,7 +23,10 @@ describe('CompanyFacade', () => {
   const auth = { me: vi.fn(), load: vi.fn() };
   let facade: CompanyFacade;
 
+  const unsaved = { confirmLeave: vi.fn(() => of(true)) };
+
   beforeEach(() => {
+    unsaved.confirmLeave.mockReturnValue(of(true));
     Object.values(api).forEach((fn) => fn.mockReset());
     auth.me.mockReset();
     auth.load.mockReset();
@@ -31,6 +36,7 @@ describe('CompanyFacade', () => {
         { provide: CompanyApi, useValue: api },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
+        { provide: UnsavedChanges, useValue: unsaved },
       ],
     });
     facade = TestBed.inject(CompanyFacade);
@@ -43,6 +49,16 @@ describe('CompanyFacade', () => {
 
     expect(facade.companies()).toEqual([acme, globex]);
     expect(facade.error()).toBeNull();
+  });
+
+  it('asks before switching away from unsaved work, and stays put on a no', async () => {
+    // A switch rebuilds every open screen for the company chosen, so a half-filled form goes with it.
+    unsaved.confirmLeave.mockReturnValue(of(false));
+    const facade = TestBed.inject(CompanyFacade);
+
+    expect(await facade.switchTo('c2')).toBe(false);
+    expect(api.switchTo).not.toHaveBeenCalled();
+    expect(auth.load).not.toHaveBeenCalled();
   });
 
   it('offers no switcher when there is only one company', async () => {

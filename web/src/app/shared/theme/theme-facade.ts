@@ -60,6 +60,8 @@ export class ThemeFacade {
   });
   readonly density = this.settings.value(PRESENTATION.density);
   readonly sidebar = this.settings.value(PRESENTATION.sidebar);
+  /** The settings area's own answer, so folding one menu does not fold the other. */
+  readonly settingsSidebar = this.settings.value(PRESENTATION.settingsSidebar);
 
   constructor() {
     const query = this.deviceQuery;
@@ -104,7 +106,10 @@ export class ThemeFacade {
     this.setDensity(this.density() === 'compact' ? 'comfortable' : 'compact');
   }
 
-  toggleSidebar(): void {
-    this.settings.set(PRESENTATION.sidebar, this.sidebar() === 'rail' ? 'expanded' : 'rail');
+  /** Folds or unfolds the menu of the area the person is in; each area remembers its own answer. */
+  toggleSidebar(inSettings = false): void {
+    const setting = inSettings ? PRESENTATION.settingsSidebar : PRESENTATION.sidebar;
+    const current = inSettings ? this.settingsSidebar() : this.sidebar();
+    this.settings.set(setting, current === 'rail' ? 'expanded' : 'rail');
   }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { AuthFacade } from '../auth/auth-facade';
 import { PlatformApi, PlatformRefused } from './platform-api';
 import {
   COMPANY_COUNTRIES,
@@ -19,6 +20,7 @@ import {
 @Injectable({ providedIn: 'root' })
 export class PlatformFacade {
   private readonly api = inject(PlatformApi);
+  private readonly auth = inject(AuthFacade);
   private readonly waitingSignal = signal<readonly PlatformCompanyRow[]>([]);
   private readonly signupSignal = signal<PlatformSignup | null>(null);
   private readonly busySignal = signal(false);
@@ -84,6 +86,7 @@ export class PlatformFacade {
     return this.write(async () => {
       this.subscriptionSignal.set(await this.api.setSubscription(companyId, terms));
       this.companiesSignal.set(await this.api.companies());
+      await this.auth.refresh();
 
       return true;
     });
@@ -94,6 +97,7 @@ export class PlatformFacade {
       await this.api.stopSubscription(companyId);
       this.subscriptionSignal.set(null);
       this.companiesSignal.set(await this.api.companies());
+      await this.auth.refresh();
 
       return true;
     });
@@ -234,6 +238,9 @@ export class PlatformFacade {
     try {
       await call();
       this.waitingSignal.set(await this.api.waitingCompanies());
+      // An operator can act on the company they are themselves working in, and its status, access and
+      // subscription are read from the session by the shell (developer sweep, 2026-09-20).
+      await this.auth.refresh();
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));

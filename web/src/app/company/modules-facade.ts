@@ -40,7 +40,9 @@ export class ModulesFacade {
     try {
       await this.api.switch(companyId, key, enabled);
       this.modulesSignal.set(await this.api.list(companyId));
-      await this.auth.load();
+      // `refresh`, never `load`: the write succeeded, so a moment without the API afterwards must not sign
+      // the person out of a session that is still perfectly valid (developer sweep, 2026-09-20).
+      await this.auth.refresh();
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));

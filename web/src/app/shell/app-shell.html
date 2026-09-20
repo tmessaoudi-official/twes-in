@@ -112,7 +112,7 @@
               <button
                 mat-icon-button
                 type="button"
-                (click)="theme.toggleSidebar()"
+                (click)="theme.toggleSidebar(inSettings())"
                 [appLabel]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
                 [attr.aria-keyshortcuts]="'['"
                 data-testid="sidebar-toggle"
@@ -286,7 +286,12 @@
       [attr.data-settings]="inSettings()"
       [class.pb-28]="handset()"
     >
-      <router-outlet />
+      <!-- Keyed on the company a person acts for: switching REBUILDS the page, because a screen loaded for the
+           previous company otherwise keeps showing its rows and its totals until the browser is refreshed
+           (developer, 2026-09-20). The person is asked first when something is unsaved. -->
+      @for (companyId of [workingCompany()]; track companyId) {
+        <router-outlet />
+      }
     </main>
 
     @if (handset()) {

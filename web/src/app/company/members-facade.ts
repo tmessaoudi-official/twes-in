@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { AuthFacade } from '../auth/auth-facade';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { CompanyError, MemberRole, MemberRow } from './company-types';
 
@@ -8,6 +9,7 @@ import type { CompanyError, MemberRole, MemberRow } from './company-types';
 @Injectable({ providedIn: 'root' })
 export class MembersFacade {
   private readonly api = inject(CompanyApi);
+  private readonly auth = inject(AuthFacade);
   private readonly membersSignal = signal<readonly MemberRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<CompanyError | null>(null);
@@ -47,6 +49,10 @@ export class MembersFacade {
     try {
       const result = await call();
       this.membersSignal.set(await this.api.members(companyId));
+      // What was just written can be this person's OWN rights: the session is read again so the menu, the
+      // permission-gated controls and the record bars follow at once (developer, 2026-09-20). `refresh`, never
+      // `load`: a moment without the API after a successful write is not a sign-out.
+      await this.auth.refresh();
       return result;
     } catch (error) {
       this.errorSignal.set(codeOf(error));

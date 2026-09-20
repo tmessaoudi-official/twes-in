@@ -143,6 +143,8 @@ export class AppShell {
     return first !== null && this.handset() ? SETTINGS_INDEX : first;
   });
   protected readonly initials = computed(() => initialsOf(this.me()?.user.displayName ?? ''));
+  /** Which company the open screen was built for; the outlet is keyed on it. */
+  protected readonly workingCompany = computed(() => this.me()?.company?.id ?? null);
   /**
    * What the command palette offers this user: what the screen on view can do, then the modules' commands, then a
    * way to every screen they may see. The screen's own actions are not gated here — a screen that declared one has
@@ -182,18 +184,21 @@ export class AppShell {
    * list took about 650 px of a 1440 px window and cut the tables beside it. A phone keeps the drawer, which is
    * over the page rather than beside it, so nothing is taken from the page there.
    */
-  protected readonly rail = computed(
-    () =>
-      this.windowClass() === 'medium' ||
-      (this.windowClass() === 'expanded' && (this.inSettings() || this.theme.sidebar() === 'rail')),
-  );
+  protected readonly rail = computed(() => {
+    if (this.windowClass() === 'medium') return true;
+    if (this.windowClass() !== 'expanded') return false;
+    return (this.inSettings() ? this.theme.settingsSidebar() : this.theme.sidebar()) === 'rail';
+  });
 
   constructor() {
     // A session that ended while the page was open (expired, or ended from another device) sends the person back to
     // sign in with a word of why, instead of leaving every screen failing one request at a time. A refusal that landed
     // after the last redirect, while no shell was open, belongs to that ended session and must not eject a new one.
     this.activity.acknowledgeExpiry();
-    // What another person changed about this session (a role, a module switched, the company's name) shows at once.
+    // What ANOTHER person changed about this session (a role, a module switched, the company approved, suspended
+    // or its subscription changed) shows at once. Not the company's name: nothing writes it — `reviseProfile`
+    // sets `legalName` and the name is constructor-only (sweep, 2026-09-20). A change made in THIS tab never
+    // arrives here at all, so each screen that writes something global refreshes the session itself.
     inject(LiveChanges).reloadOn(
       ['membership', 'role', 'module', 'company'],
       () => this.auth.refresh(),
@@ -240,7 +245,7 @@ export class AppShell {
       // Only where labels fit: on a rail or a phone drawer there is nothing to fold.
       if (this.windowClass() !== 'expanded') return;
       event.preventDefault();
-      this.theme.toggleSidebar();
+      this.theme.toggleSidebar(this.inSettings());
       return;
     }
 

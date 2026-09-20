@@ -49,6 +49,7 @@ describe('AcceptInvitationPage', () => {
     error: signal<InvitationError | null>(null).asReadonly(),
     accepted: signal(false).asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     accept: vi.fn(),
   };
   let fixture: ComponentFixture<AcceptInvitationPage>;

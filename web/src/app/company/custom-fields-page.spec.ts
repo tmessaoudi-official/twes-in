@@ -59,6 +59,7 @@ describe('CustomFieldsPage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     create: vi.fn(),
     revise: vi.fn(),
     clearError: vi.fn(),

@@ -89,6 +89,9 @@ export class SubscriptionFacade {
     try {
       await call();
       this.waitingSignal.set(await this.api.waiting());
+      // An operator can decide about the company they are themselves working in, and its status, access and
+      // subscription are all things the shell reads from the session (developer sweep, 2026-09-20).
+      await this.auth.refresh();
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));
@@ -101,7 +104,9 @@ export class SubscriptionFacade {
   /** What the company may do has just changed, so the session is read again with the subscription. */
   private async reread(companyId: string): Promise<void> {
     this.subscriptionSignal.set(await this.api.ofCompany(companyId));
-    await this.auth.load();
+    // `refresh`, never `load`: the write succeeded, so a moment without the API afterwards must not sign
+    // the person out of a session that is still perfectly valid (developer sweep, 2026-09-20).
+    await this.auth.refresh();
   }
 }
 

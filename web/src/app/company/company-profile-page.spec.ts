@@ -60,6 +60,7 @@ describe('CompanyProfilePage', () => {
     busy: signal(false).asReadonly(),
     error: signal<CompanyError | null>(null).asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     save: vi.fn(),
   };
   const auth = {

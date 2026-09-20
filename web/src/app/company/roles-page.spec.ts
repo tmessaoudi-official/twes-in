@@ -87,6 +87,7 @@ describe('RolesPage', () => {
     error: error.asReadonly(),
     detail: detail.asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     create: vi.fn(),
     revise: vi.fn(),
     remove: vi.fn(),

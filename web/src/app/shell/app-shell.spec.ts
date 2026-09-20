@@ -109,6 +109,15 @@ function viewport(width: BehaviorSubject<number>) {
 @Component({ template: '' })
 class BlankPage {}
 
+/** Counts how many times it was built, which is how a rebuilt screen is told from a kept one. */
+@Component({ template: '' })
+class CountingPage {
+  static built = 0;
+  constructor() {
+    CountingPage.built += 1;
+  }
+}
+
 /**
  * Declares actions the way a screen does — a signal, from an injection context — so the shell reads them through
  * the real registry rather than a stand-in that could agree with a broken one.
@@ -147,6 +156,7 @@ describe('AppShell', () => {
     density: signal<'comfortable' | 'compact'>('comfortable'),
     toggleDensity: vi.fn(),
     sidebar: signal<'expanded' | 'rail'>('expanded'),
+    settingsSidebar: signal<'expanded' | 'rail'>('rail'),
     toggleSidebar: vi.fn(),
   };
   const language = { current: signal('fr'), use: vi.fn(async () => undefined) };
@@ -167,6 +177,7 @@ describe('AppShell', () => {
     permissions.set(['user.read']);
     modules.set(['customers']);
     theme.sidebar.set('expanded');
+    theme.settingsSidebar.set('rail');
     sessionExpired.set(false);
     width.next(1280);
     vi.clearAllMocks();
@@ -177,6 +188,7 @@ describe('AppShell', () => {
         provideRouter([
           { path: 'members', component: BlankPage },
           { path: 'invoices', component: BlankPage },
+          { path: 'customers', component: CountingPage },
         ]),
         { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
@@ -335,6 +347,41 @@ describe('AppShell', () => {
     }
   });
 
+  it('rebuilds the open screen when the company changes, so it never shows the last one’s rows', async () => {
+    // The session refreshes on a switch, but a page that loaded its data in its constructor kept showing the
+    // previous company's until the browser was refreshed (developer, 2026-09-20).
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/customers');
+    const { fixture } = await render();
+    CountingPage.built = 0;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const before = CountingPage.built;
+
+    me.set({ ...owner, company: { ...owner.company!, id: 'c2', name: 'Autre' } });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(CountingPage.built).toBe(before + 1);
+  });
+
+  it('keeps the screen it has when the session refreshes without changing company', async () => {
+    // Rebuilding on every refresh would throw away a half-filled form each time the shell re-reads the session.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/customers');
+    const { fixture } = await render();
+    CountingPage.built = 0;
+    fixture.detectChanges();
+    await fixture.whenStable();
+    const before = CountingPage.built;
+
+    me.set({ ...owner, user: { ...owner.user, displayName: 'Amel B. Salah' } });
+    fixture.detectChanges();
+    await fixture.whenStable();
+
+    expect(CountingPage.built).toBe(before);
+  });
+
   it('opens the settings on the first settings page the user may see', async () => {
     const { fixture, byTestId } = await render();
     expect(byTestId('nav-settings')?.getAttribute('href')).toBe('/members');
@@ -365,6 +412,57 @@ describe('AppShell', () => {
     expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
     expect(el.querySelector('main')?.className).toContain('max-w-6xl');
     expect(el.querySelector('main')?.getAttribute('data-settings')).toBe('false');
+  });
+
+  it('lets the menu be unfolded inside settings too, where the toggle used to do nothing', async () => {
+    // It was drawn there and inert: the rail was forced for the whole area, so the button and the [ key both
+    // wrote a preference nothing then read (developer, 2026-09-20).
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/members');
+    const { byTestId, click, fixture } = await render();
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+    expect(byTestId('sidebar-toggle')).not.toBeNull();
+
+    await click('sidebar-toggle');
+    expect(theme.toggleSidebar).toHaveBeenCalledWith(true);
+
+    theme.settingsSidebar.set('expanded');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+  });
+
+  it('keeps each area’s answer apart, so folding one menu does not fold the other', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/members');
+    const { byTestId, fixture } = await render();
+
+    // The settings menu unfolded; the general one is untouched and still whatever it was.
+    theme.settingsSidebar.set('expanded');
+    theme.sidebar.set('rail');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+
+    await router.navigateByUrl('/invoices');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+  });
+
+  it('writes the [ key to the menu the person is looking at', async () => {
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/members');
+    const { fixture } = await render();
+
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
+    expect(theme.toggleSidebar).toHaveBeenLastCalledWith(true);
+
+    await router.navigateByUrl('/invoices');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
+    expect(theme.toggleSidebar).toHaveBeenLastCalledWith(false);
   });
 
   it('shows the working company where the wordmark is, on a phone', async () => {

@@ -8,12 +8,13 @@ import { CompanySecurityFacade } from './company-security-facade';
 
 describe('CompanySecurityFacade', () => {
   const api = { read: vi.fn(), requireSecondFactor: vi.fn() };
-  const auth = { load: vi.fn() };
+  const auth = { load: vi.fn(), refresh: vi.fn() };
   let facade: CompanySecurityFacade;
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
     auth.load.mockReset();
+    auth.refresh.mockReset();
     TestBed.configureTestingModule({
       providers: [
         { provide: CompanySecurityApi, useValue: api },
@@ -41,7 +42,7 @@ describe('CompanySecurityFacade', () => {
 
     expect(api.requireSecondFactor).toHaveBeenCalledWith('c1', true);
     expect(facade.security()).toEqual({ mfaRequired: true, writable: true });
-    expect(auth.load).toHaveBeenCalledTimes(1);
+    expect(auth.refresh).toHaveBeenCalledTimes(1);
   });
 
   it('keeps a refusal as the error and answers false, without reloading anything', async () => {
@@ -53,6 +54,6 @@ describe('CompanySecurityFacade', () => {
 
     expect(facade.error()).toBe('not_found');
     expect(facade.security()).toEqual({ mfaRequired: false, writable: true });
-    expect(auth.load).not.toHaveBeenCalled();
+    expect(auth.refresh).not.toHaveBeenCalled();
   });
 });

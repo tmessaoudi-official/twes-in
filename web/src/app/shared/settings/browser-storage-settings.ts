@@ -46,6 +46,11 @@ export class BrowserStorageSettings extends SettingsFacade {
     }
   }
 
+  /** Nothing to read again: this adapter's answer is already whatever the browser holds right now. */
+  refresh(): void {
+    return;
+  }
+
   reset<T>(setting: SettingDefinition<T>): void {
     this.assertRegistered(setting);
     const key = this.storageKey(setting);

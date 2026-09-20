@@ -62,6 +62,7 @@ describe('ModulesPage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     switch: vi.fn(),
     clearError: vi.fn(),
   };

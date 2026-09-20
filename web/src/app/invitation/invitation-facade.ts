@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { inject, Injectable, signal } from '@angular/core';
+import { AuthFacade } from '../auth/auth-facade';
 import { InvitationApi, InvitationRefused } from './invitation-api';
 import type { InvitationError, InvitationOffer } from './invitation-types';
 
@@ -8,6 +9,7 @@ import type { InvitationError, InvitationOffer } from './invitation-types';
 @Injectable({ providedIn: 'root' })
 export class InvitationFacade {
   private readonly api = inject(InvitationApi);
+  private readonly auth = inject(AuthFacade);
   private readonly offerSignal = signal<InvitationOffer | null>(null);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InvitationError | null>(null);
@@ -44,6 +46,9 @@ export class InvitationFacade {
     this.errorSignal.set(null);
     try {
       await this.api.accept(token, displayName, password);
+      // Accepting creates a membership: without this the new company is missing from the switcher, and a person
+      // already signed in lands on a shell that does not know they joined (developer sweep, 2026-09-20).
+      await this.auth.refresh();
       this.acceptedSignal.set(true);
       return true;
     } catch (error) {

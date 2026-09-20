@@ -139,6 +139,7 @@ describe('PlatformPage', () => {
     busy,
     error,
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     approve: vi.fn(),
     reject: vi.fn(),
     setSignup: vi.fn(),

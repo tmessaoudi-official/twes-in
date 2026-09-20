@@ -2,6 +2,7 @@
 
 import { TestBed } from '@angular/core/testing';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
+import { SettingsFacade } from '../shared/settings/settings-facade';
 import type { SettingChain, SettingRow } from '../shared/settings/settings-types';
 import { CompanySettings } from './company-settings-facade';
 
@@ -14,6 +15,7 @@ describe('CompanySettings', () => {
     reset: ReturnType<typeof vi.fn>;
   };
   let facade: CompanySettings;
+  let refreshed: number;
 
   beforeEach(() => {
     api = {
@@ -21,7 +23,21 @@ describe('CompanySettings', () => {
       change: vi.fn().mockResolvedValue(undefined),
       reset: vi.fn().mockResolvedValue(undefined),
     };
-    TestBed.configureTestingModule({ providers: [{ provide: SettingsApi, useValue: api }] });
+    refreshed = 0;
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: SettingsApi, useValue: api },
+        {
+          provide: SettingsFacade,
+          useValue: {
+            value: () => undefined,
+            set: () => undefined,
+            reset: () => undefined,
+            refresh: () => (refreshed += 1),
+          },
+        },
+      ],
+    });
     facade = TestBed.inject(CompanySettings);
   });
 
@@ -39,6 +55,23 @@ describe('CompanySettings', () => {
       'presentation',
     ]);
     expect(facade.error()).toBeNull();
+  });
+
+  it('makes what it wrote take effect at once, without a refresh of the browser', async () => {
+    // These ARE the application's own values — the accent, the density, the language. A live change never comes
+    // back to the tab that caused it, so this tab must read the chain again itself (developer, 2026-09-20).
+    await facade.save('c1', [{ key: 'presentation.accent', value: '#aa0000' }]);
+    expect(refreshed).toBe(1);
+
+    await facade.reset('c1', 'presentation.accent');
+    expect(refreshed).toBe(2);
+  });
+
+  it('does not claim a change took effect when the API refused it', async () => {
+    api.change.mockRejectedValue(new SettingsRefused('invalid'));
+
+    expect(await facade.save('c1', [{ key: 'presentation.accent', value: 'nope' }])).toBe(false);
+    expect(refreshed).toBe(0);
   });
 
   it('stores each change at the company level, then reads the settings again', async () => {

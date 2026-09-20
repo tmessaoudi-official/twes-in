@@ -82,6 +82,7 @@ describe('ImportPage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     run: vi.fn(),
     forget: vi.fn(),
   };

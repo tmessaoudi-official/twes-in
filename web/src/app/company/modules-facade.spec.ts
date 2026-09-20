@@ -17,13 +17,14 @@ const customers: ModuleRow = {
 
 describe('ModulesFacade', () => {
   const api = { list: vi.fn(), switch: vi.fn() };
-  const auth = { load: vi.fn() };
+  const auth = { load: vi.fn(), refresh: vi.fn() };
   let facade: ModulesFacade;
 
   beforeEach(() => {
     api.list.mockReset();
     api.switch.mockReset();
     auth.load.mockReset().mockResolvedValue(null);
+    auth.refresh.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       providers: [
         { provide: ModulesApi, useValue: api },
@@ -53,7 +54,10 @@ describe('ModulesFacade', () => {
 
     expect(api.switch).toHaveBeenCalledWith('c1', 'customers', false);
     expect(facade.modules()[0]?.enabled).toBe(false);
-    expect(auth.load).toHaveBeenCalled();
+    expect(auth.refresh).toHaveBeenCalled();
+    // And `refresh`, not `load`: load signs the person out when the API is unreachable, which after a switch that
+    // already SUCCEEDED means a blip costs them their session (developer sweep, 2026-09-20).
+    expect(auth.load).not.toHaveBeenCalled();
   });
 
   it('keeps the modules and says why when a switch is refused', async () => {
@@ -65,7 +69,7 @@ describe('ModulesFacade', () => {
 
     expect(facade.error()).toBe('still_needed');
     expect(facade.modules()).toEqual([customers]);
-    expect(auth.load).not.toHaveBeenCalled();
+    expect(auth.refresh).not.toHaveBeenCalled();
     facade.clearError();
     expect(facade.error()).toBeNull();
   });

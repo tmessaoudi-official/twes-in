@@ -2,6 +2,7 @@
 
 import { inject, Injectable, signal } from '@angular/core';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
+import { SettingsFacade } from '../shared/settings/settings-facade';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
 import { COMPANY_CHAINS, type SettingChange } from './settings-forms';
 
@@ -9,6 +10,7 @@ import { COMPANY_CHAINS, type SettingChange } from './settings-forms';
 @Injectable({ providedIn: 'root' })
 export class CompanySettings {
   private readonly api = inject(SettingsApi);
+  private readonly live = inject(SettingsFacade);
   private readonly rowsSignal = signal<readonly SettingRow[]>([]);
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<SettingsError | null>(null);
@@ -60,6 +62,10 @@ export class CompanySettings {
     try {
       await call();
       await this.fetch(companyId);
+      // What was just written is a value the whole application reads: the accent, the density, the language, the
+      // company's defaults. A live change never comes back to the tab that caused it, so this tab reads the chain
+      // again itself — otherwise the colour changed only after a refresh (developer, 2026-09-20).
+      this.live.refresh();
       return true;
     } catch (error) {
       this.errorSignal.set(codeOf(error));

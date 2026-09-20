@@ -67,6 +67,7 @@ describe('MembersPage', () => {
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     add: vi.fn(),
     remove: vi.fn(),
   };
@@ -90,6 +91,7 @@ describe('MembersPage', () => {
     error: signal(null).asReadonly(),
     detail: signal('').asReadonly(),
     load: vi.fn(),
+    refresh: vi.fn(async () => undefined),
     create: vi.fn(),
     revise: vi.fn(),
     remove: vi.fn(),

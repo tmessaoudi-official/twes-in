@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { TestBed } from '@angular/core/testing';
+import { AuthFacade } from '../auth/auth-facade';
 import { CompanyApi, CompanyRefused } from './company-api';
 import type { MemberRow } from './company-types';
 import { MembersFacade } from './members-facade';
@@ -22,12 +23,32 @@ describe('MembersFacade', () => {
     addMember: vi.fn(),
     removeMember: vi.fn(),
   };
+  const auth = { refresh: vi.fn(async () => undefined), load: vi.fn(async () => null) };
   let facade: MembersFacade;
 
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset());
-    TestBed.configureTestingModule({ providers: [{ provide: CompanyApi, useValue: api }] });
+    auth.refresh.mockClear();
+    auth.load.mockClear();
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: CompanyApi, useValue: api },
+        { provide: AuthFacade, useValue: auth },
+      ],
+    });
     facade = TestBed.inject(MembersFacade);
+  });
+
+  it('reads the signed-in state again after a membership changed, which can be your own', async () => {
+    // An admin who removes or re-roles themselves is changing what they may do; nothing else tells the shell,
+    // because a live change never comes back to the tab that made it (developer sweep, 2026-09-20).
+    api.members.mockResolvedValue([owner]);
+    api.removeMember.mockResolvedValue(undefined);
+
+    await facade.remove('c1', 'u1');
+
+    expect(auth.refresh).toHaveBeenCalledTimes(1);
+    expect(auth.load).not.toHaveBeenCalled();
   });
 
   it('lists the members of the company it was given', async () => {
