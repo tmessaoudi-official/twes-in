@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { BreakpointObserver } from '@angular/cdk/layout';
-import { computed, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { MatDialog } from '@angular/material/dialog';
 import { provideRouter, Router } from '@angular/router';
@@ -47,7 +47,7 @@ class StaticLoader implements TranslateLoader {
         collapse_menu: 'Réduire le menu',
         expand_menu: 'Déployer le menu',
         settings: 'Paramètres',
-        commands: { open: 'Rechercher' },
+        commands: { open: 'Rechercher', find: 'Rechercher un client, une facture, un produit…' },
       },
       appearance: {
         scheme_menu: 'Thème : {{current}}',
@@ -101,6 +101,9 @@ function viewport(width: BehaviorSubject<number>) {
     isMatched: (query: string) => matches(query, width.value),
   };
 }
+
+@Component({ template: '' })
+class BlankPage {}
 
 describe('AppShell', () => {
   const width = new BehaviorSubject(1280);
@@ -157,7 +160,11 @@ describe('AppShell', () => {
     await TestBed.configureTestingModule({
       imports: [AppShell],
       providers: [
-        provideRouter([]),
+        // Two addresses to move between: one inside the settings area and one outside it.
+        provideRouter([
+          { path: 'members', component: BlankPage },
+          { path: 'invoices', component: BlankPage },
+        ]),
         { provide: BreakpointObserver, useValue: viewport(width) },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
@@ -243,12 +250,15 @@ describe('AppShell', () => {
     expect(byTestId('nav-members')).toBeNull();
   });
 
-  it('reaches the settings from the sidebar as well as from the gear', async () => {
+  it('reaches the settings from the sidebar and from nowhere else', async () => {
+    // Design review finding 8: a gear in the top bar and an entry in the sidebar opened the same area. The rail is
+    // what shows you are in settings (finding 7), so the entry belongs there and the gear goes.
     const { byTestId } = await render();
     const entry = byTestId('nav-settings');
     expect(entry?.closest('[data-testid="shell-nav"]')).not.toBeNull();
     expect(entry?.getAttribute('href')).toBe('/members');
     expect(entry?.textContent).toContain('Paramètres');
+    expect(byTestId('settings-gear')).toBeNull();
   });
 
   it('puts the language and the scheme in the top bar, out of the account menu', async () => {
@@ -267,7 +277,7 @@ describe('AppShell', () => {
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
   });
 
-  it('folds the language, the scheme and the settings into the account menu on a phone', async () => {
+  it('folds the language and the scheme into the account menu on a phone', async () => {
     width.next(390);
     const { click, byTestId } = await render();
     expect(byTestId('language-menu')).toBeNull();
@@ -275,7 +285,6 @@ describe('AppShell', () => {
 
     await click('user-menu');
     expect(byTestId('account-scheme-auto')?.getAttribute('aria-checked')).toBe('true');
-    expect(byTestId('account-settings')?.getAttribute('href')).toBe('/company');
     await click('account-language-en');
     expect(language.use).toHaveBeenCalledWith('en');
 
@@ -284,44 +293,102 @@ describe('AppShell', () => {
     expect(theme.setScheme).toHaveBeenCalledWith('dark');
   });
 
-  it('centres a wide search from 1200 px, and shows only its icon below', async () => {
+  it('starts the search after the menu button and lets it fill the bar, capped', async () => {
+    // Design review finding 6, measured: 496 px centred in a 1184 px header at 1440, empty on both sides. It now
+    // starts where the reading does and grows to meet the right-hand controls; the cap only binds around 1920 px.
     const { fixture, byTestId } = await render();
-    expect(byTestId('command-open')?.closest('[data-testid="top-bar-centre"]')).not.toBeNull();
-    expect(byTestId('command-open')?.textContent).toContain('Rechercher');
+    const search = byTestId('top-bar-search');
+    expect(byTestId('command-open')?.closest('[data-testid="top-bar-search"]')).not.toBeNull();
+    expect(
+      search?.previousElementSibling?.querySelector('[data-testid="sidebar-toggle"]'),
+    ).not.toBeNull();
+    expect(search?.className).toContain('flex-1');
+    expect(search?.className).toMatch(/max-w-\[800px\]/);
+    // The placeholder says what it finds rather than only that it searches.
+    expect(byTestId('command-open')?.textContent).toContain('Rechercher un client');
 
     width.next(900);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('top-bar-centre')).toBeNull();
-    expect(byTestId('command-open')?.textContent).not.toContain('Rechercher');
+    expect(byTestId('top-bar-search')).toBeNull();
+    expect(byTestId('command-open')?.textContent).not.toContain('Rechercher un client');
     expect(byTestId('command-open')?.getAttribute('aria-label')).toBe('Rechercher');
   });
 
   it('gives every control in the top bar that shows no words a tooltip saying what it does', async () => {
     const { byTestId } = await render();
-    for (const id of ['sidebar-toggle', 'settings-gear', 'scheme-menu', 'language-menu']) {
+    for (const id of ['sidebar-toggle', 'scheme-menu', 'language-menu']) {
       expect(byTestId(id)?.classList.contains('mat-mdc-tooltip-trigger'), id).toBe(true);
     }
   });
 
-  it('opens the settings from a gear, on the first settings page the user may see', async () => {
+  it('opens the settings on the first settings page the user may see', async () => {
     const { fixture, byTestId } = await render();
-    expect(byTestId('settings-gear')?.getAttribute('aria-label')).toBe('Paramètres');
-    expect(byTestId('settings-gear')?.closest('header')).not.toBeNull();
-    expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/members');
+    expect(byTestId('nav-settings')?.getAttribute('href')).toBe('/members');
 
     permissions.set(['user.read', 'company.settings']);
     fixture.detectChanges();
     await fixture.whenStable();
-    expect(byTestId('settings-gear')?.getAttribute('href')).toBe('/company/profile');
+    expect(byTestId('nav-settings')?.getAttribute('href')).toBe('/company/profile');
   });
 
-  it('opens the list of settings from the account menu on a phone, where the list and a page do not fit side by side', async () => {
+  it('folds the menu to its rail while in settings, and gives the area the whole width', async () => {
+    // Design review finding 7, measured: the settings menu floated as a card beside a FULL app menu, about 650 px
+    // of a 1440 px window, and cut the tables beside it. In settings the app menu is the rail, so the settings list
+    // docks against it; main drops its own gutter and cap so the list can sit flush rather than inset.
+    const router = TestBed.inject(Router);
+    await router.navigateByUrl('/members');
+    const { el, byTestId, fixture } = await render();
+
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('rail');
+    const main = el.querySelector('main');
+    expect(main?.className).not.toContain('max-w-6xl');
+    expect(main?.getAttribute('data-settings')).toBe('true');
+
+    // Off a settings address the menu is whatever the person chose, and main is inset again.
+    await router.navigateByUrl('/invoices');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(byTestId('shell-nav')?.getAttribute('data-sidebar')).toBe('expanded');
+    expect(el.querySelector('main')?.className).toContain('max-w-6xl');
+    expect(el.querySelector('main')?.getAttribute('data-settings')).toBe('false');
+  });
+
+  it('shows the working company where the wordmark is, on a phone', async () => {
+    // Design review finding 5, measured: at 390 px the account button was cut off on every screen. The company a
+    // person acts for is what that space is worth; the wordmark stays on wider windows and the signed-out pages.
+    width.next(390);
+    const { byTestId, el } = await render();
+
+    const company = byTestId('company-name');
+    expect(company?.closest('header')).not.toBeNull();
+    const leading = el.querySelector('[data-testid="top-bar-leading"]');
+    expect(leading?.contains(company as Node)).toBe(true);
+    // Truncated rather than pushing the controls off the bar, which is the defect this replaced.
+    expect(company?.className).toContain('truncate');
+    // The wordmark is the sidebar's on a phone, not the header's.
+    expect(el.querySelector('header [data-testid="brand"]')).toBeNull();
+  });
+
+  it('keeps the wordmark in the menu above a phone, where there is room for both', async () => {
+    // The company still names the bar at every width; what the phone gives up is the wordmark, which stays in the
+    // menu on wider windows rather than being shown twice.
+    width.next(900);
+    const { el } = await render();
+    expect(el.querySelector('header [data-testid="company-name"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="shell-nav"] [data-testid="brand-mark"]')).not.toBeNull();
+  });
+
+  it('keeps the settings under Plus on a phone, not in the account menu as well', async () => {
+    // On a phone the drawer IS "Plus", so the sidebar entry is already the one way in; a second entry in the
+    // account menu is the pair of controls finding 8 removed, one window class down.
     width.next(390);
     const { click, byTestId } = await render();
     expect(byTestId('settings-gear')).toBeNull();
+    // The list rather than a page: at this width the two do not fit side by side.
+    expect(byTestId('nav-settings')?.getAttribute('href')).toBe('/company');
     await click('user-menu');
-    expect(byTestId('account-settings')?.getAttribute('href')).toBe('/company');
+    expect(byTestId('account-settings')).toBeNull();
   });
 
   it('keeps every part of the shell inside a landmark, each named once', async () => {

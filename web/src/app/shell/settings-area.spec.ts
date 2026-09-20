@@ -119,6 +119,25 @@ describe('SettingsArea', () => {
     expect(el.querySelector('router-outlet')).not.toBeNull();
   });
 
+  it('docks the list against the rail instead of floating it as a card', async () => {
+    // Design review finding 7, measured: the list floated as a bordered card beside a full app menu and cut the
+    // tables beside it. It is now one surface with the rail — a full-height column, no rounding, no gap — and the
+    // page beside it keeps its own gutter, which main no longer supplies here.
+    const { byTestId, el } = await render();
+
+    const nav = byTestId('settings-nav');
+    const classes = (nav?.className ?? '').split(/\s+/);
+    expect(classes).not.toContain('rounded-xl');
+    // A card is a box on all four sides; a dock is one edge. `border` alone is the box, `border-r` the edge.
+    expect(classes).not.toContain('border');
+    expect(classes).toContain('lg:border-r');
+    expect(nav?.className).toMatch(/min-h-/);
+
+    const row = el.querySelector('[data-testid="settings-area"]');
+    expect(row?.className).not.toMatch(/gap-8/);
+    expect(el.querySelector('[data-testid="settings-page"]')?.className).toMatch(/p-4|p-6/);
+  });
+
   it('filters the settings by name, whatever the accents and the case, leaving out empty groups', async () => {
     const { fixture, el, byTestId, groups } = await render();
     const filter = byTestId('settings-filter') as HTMLInputElement;

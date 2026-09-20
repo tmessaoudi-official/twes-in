@@ -21,7 +21,7 @@ test('a member joining reaches the open page live, and stays in the centre after
   const name = `Joiner ${Date.now()}`;
 
   await signIn(page);
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
   await expect(page.getByTestId('notification-bell')).toHaveAttribute('data-unread', /^\d+$/);

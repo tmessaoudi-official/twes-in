@@ -19,6 +19,7 @@ import {
   SETTINGS_SECTIONS,
   SIDEBAR_SECTIONS,
   visibleEntries,
+  isSettingsUrl,
 } from './nav-manifest';
 
 const entries: readonly NavEntry[] = [
@@ -200,6 +201,34 @@ describe('the navigation manifest', () => {
       ...EXPENSES_NAV,
     ]);
     expect(MODULE_NAV.filter((entry) => entry.module === undefined)).toEqual([]);
+  });
+
+  it('knows which addresses are inside the settings area, and which only look like it', () => {
+    // The shell reads this to fold itself to the rail while in settings (design review finding 7), so a wrong
+    // answer either leaves the full menu beside the settings list or folds the menu on an ordinary page.
+    for (const url of [
+      '/company',
+      '/company/profile',
+      '/company/roles',
+      '/members',
+      '/fiscal/taxes',
+      '/settings',
+      '/company/profile?tab=identity',
+      '/members#top',
+    ]) {
+      expect(isSettingsUrl(url), url).toBe(true);
+    }
+
+    for (const url of [
+      '/',
+      '/invoices',
+      '/customers',
+      '/companies',
+      '/settings-of-mine',
+      '/memberships',
+    ]) {
+      expect(isSettingsUrl(url), url).toBe(false);
+    }
   });
 
   it('offers the modules screen to whoever may change the company settings', () => {

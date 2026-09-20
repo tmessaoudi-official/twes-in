@@ -32,7 +32,7 @@ test('the shell, the home page and the members page are accessible in light and 
   await expect(page.getByTestId('greeting')).toBeVisible();
   await expectAccessible(page, 'home, light');
 
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await expect(page.getByTestId('members-title')).toBeVisible();
   await expectAccessible(page, 'members, light');
@@ -64,7 +64,7 @@ test('the shell keeps its content in landmarks, each named once', async ({ page 
   await expectLandmarks('home');
 
   // The settings area adds a second navigation beside the sidebar's.
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await expect(page.getByTestId('settings-nav')).toBeVisible();
   await expectLandmarks('settings');
 });
@@ -255,7 +255,7 @@ test('using the shell raises no Content Security Policy violation', async ({ pag
   });
 
   await signIn(page);
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await page.getByTestId('scheme-menu').click();
   await page.getByTestId('scheme-dark').click();

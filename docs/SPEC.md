@@ -826,6 +826,18 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   members and names them the same way, and accepting an invitation whose role is gone is refused rather than
   resolved to some other role, because joining at a role nobody chose is a silent grant.
 
+- [2026-09-20 16:50] AGREED: **row 70 built as ruled, with two details the code forced.** The four findings landed as
+  written: the search starts after the menu button and grows to meet the right-hand controls, capped at 800 px, its
+  placeholder naming what it finds; a phone shows the working company where the wordmark was, truncated, switching
+  company when tapped; settings fold the app menu to its 80 px rail with the settings list docked against it; and
+  the top bar's gear is gone. Two things the design did not say and the code decided. **`main` gives the settings
+  area its whole width**: the list cannot dock against the rail from inside a container with `mx-auto max-w-6xl`
+  and a gutter, so the shell drops both on a settings address and the area supplies the page's gutter itself.
+  **The account menu's settings entry went with the gear**, which finding 8 implies rather than states: on a phone
+  the drawer IS "Plus", so the sidebar entry is already the one way in and the account menu's was the second
+  control finding 8 exists to remove. `isSettingsUrl` answers which addresses are inside the area, and is
+  deliberately not a prefix test — `/settings-of-mine` is not `/settings` and `/companies` is not `/company`.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -901,7 +913,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 66 | Subscriptions, slice 2 (§ 7 2026-09-17): a company declares a cash payment with its method, date, reference and receipt; the operator is told in the app and by mail and confirms or rejects it from the platform page; a declaration holds the lock off for the configured days; the ledger is audited; the page a locked company reaches outside the shell is its only way back | L | done | 1daa4bb | api/src/Licensing/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 67 | Subscriptions, slice 3 (§ 7 2026-09-17): reminder mail before a period ends and while grace runs, on the row-56 scheduler worker; and operator hardening with owner-granted, time-boxed support access | M | todo | - | api/src/Licensing/** api/src/Identity/** api/tests/** web/src/app/** |
 | 64 | Import past invoices and delivery notes as a read-only archive keeping their original numbers, outside the gapless series (§ 7 2026-09-17) | L | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
-| 70 | The shell after the design review (§ 7 2026-09-19 23:19-23:22, findings 5-8): the header search left-aligned and filling to the right-hand controls, capped near 800 px, its placeholder naming what it finds; the phone header showing the working company in the wordmark's place; the settings area as the app's 80 px rail plus the settings menu docked against it; the top bar's gear removed, settings from the sidebar only | M | todo | - | web/src/app/shell/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
+| 70 | The shell after the design review (§ 7 2026-09-19 23:19-23:22, findings 5-8): the header search left-aligned and filling to the right-hand controls, capped near 800 px, its placeholder naming what it finds; the phone header showing the working company in the wordmark's place; the settings area as the app's 80 px rail plus the settings menu docked against it; the top bar's gear removed, settings from the sidebar only | M | done | - | web/src/app/shell/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | todo | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
 | 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | todo | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut); then the balance pass (finding 10) re-measured on the gallery | M | todo | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |

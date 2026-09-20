@@ -1,8 +1,11 @@
-<div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-8">
+<!-- One surface with the app rail: the list docks against it, the page sits beside it, and neither is a card
+     floating on the ground (design review finding 7). main gives this area the whole width, so the gutters the
+     page needs are supplied here rather than there. -->
+<div class="flex min-h-full flex-col lg:flex-row lg:items-stretch" data-testid="settings-area">
   @if (!atIndex()) {
     <a
       [routerLink]="index"
-      class="flex items-center gap-1 self-start text-sm font-medium text-primary lg:hidden"
+      class="m-4 flex items-center gap-1 self-start text-sm font-medium text-primary lg:hidden"
       data-testid="settings-back"
     >
       <mat-icon aria-hidden="true">arrow_back</mat-icon>
@@ -14,7 +17,7 @@
   <nav
     [attr.aria-label]="'shell.settings_navigation' | translate"
     [attr.data-at-index]="atIndex()"
-    class="shrink-0 rounded-xl border border-outline-variant py-2 data-[at-index=false]:max-lg:hidden lg:sticky lg:top-20 lg:w-80"
+    class="min-h-full shrink-0 py-2 data-[at-index=false]:max-lg:hidden lg:w-80 lg:border-r lg:border-outline-variant"
     data-testid="settings-nav"
   >
     <div class="flex flex-col gap-2 px-4 pb-1 pt-2">
@@ -65,7 +68,11 @@
     }
   </nav>
 
-  <div class="min-w-0 flex-1 data-[at-index=true]:max-lg:hidden" [attr.data-at-index]="atIndex()">
+  <div
+    class="min-w-0 flex-1 p-4 data-[at-index=true]:max-lg:hidden sm:p-6 lg:p-8"
+    [attr.data-at-index]="atIndex()"
+    data-testid="settings-page"
+  >
     <router-outlet />
   </div>
 </div>

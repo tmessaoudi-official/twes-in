@@ -130,7 +130,7 @@ test('an operator opens a company from the platform, and the switcher moves the 
 test('the members page lists the company members', async ({ page }) => {
   await signIn(page);
 
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await expect(page).toHaveURL(/\/members$/);
   await expect(page.getByTestId(`member-${EMAIL}`)).toContainText('Operator');

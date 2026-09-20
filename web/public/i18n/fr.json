@@ -490,7 +490,8 @@
       "create": "Créer",
       "goto": "Aller à",
       "empty": "Aucune commande ne correspond",
-      "hint": "Chaque module ajoute ses propres commandes"
+      "hint": "Chaque module ajoute ses propres commandes",
+      "find": "Rechercher un client, une facture, un produit…"
     },
     "user_menu": "Compte",
     "language": "Langue",

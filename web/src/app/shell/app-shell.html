@@ -99,41 +99,44 @@
   >
     <header class="sticky top-0 z-10">
       <mat-toolbar class="twes-shell-bar gap-2">
-        <!-- Three regions, the outer two of equal share, so the search is centred on the bar. Neither side shrinks below its
-             controls: when one needs more than half, the search gives way instead of lying under them. -->
-        <div class="flex min-w-max flex-1 basis-0 items-center gap-2">
+        <!-- Reading order, left to right: what names this place, then the search, then the controls used from
+             anywhere. The search starts where the reading starts rather than floating in the middle of the bar
+             (design review finding 6); the right-hand group never shrinks below its controls. -->
+        <div class="flex min-w-0 shrink items-center gap-2" data-testid="top-bar-leading">
           @if (handset()) {
-            <mat-icon class="text-primary" aria-hidden="true">receipt_long</mat-icon>
-            <span class="text-base font-semibold tracking-tight">{{ 'app.name' | translate }}</span>
-          } @else if (windowClass() === 'expanded') {
-            <button
-              mat-icon-button
-              type="button"
-              (click)="theme.toggleSidebar()"
-              [appLabel]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
-              [attr.aria-keyshortcuts]="'['"
-              data-testid="sidebar-toggle"
-            >
-              <mat-icon aria-hidden="true">{{ rail() ? 'menu' : 'menu_open' }}</mat-icon>
-            </button>
+            <!-- The company a person acts for takes the wordmark's place: at 390 px it is worth more than a logo,
+                 and tapping it switches company (design review finding 5). -->
+            <app-company-switcher class="min-w-0 truncate" />
+          } @else {
+            @if (windowClass() === 'expanded') {
+              <button
+                mat-icon-button
+                type="button"
+                (click)="theme.toggleSidebar()"
+                [appLabel]="(rail() ? 'shell.expand_menu' : 'shell.collapse_menu') | translate"
+                [attr.aria-keyshortcuts]="'['"
+                data-testid="sidebar-toggle"
+              >
+                <mat-icon aria-hidden="true">{{ rail() ? 'menu' : 'menu_open' }}</mat-icon>
+              </button>
+            }
+            <app-company-switcher class="min-w-0 truncate" />
           }
         </div>
         @if (windowClass() === 'expanded') {
-          <!-- From 1200 px the search is the bar's centre, wide enough to read as a field. -->
-          <div
-            class="flex min-w-0 flex-[0_1_26rem] min-[1440px]:flex-[0_1_32rem] justify-center px-2"
-            data-testid="top-bar-centre"
-          >
+          <!-- Grows to meet the controls on the right; the cap only binds from about 1920 px, where an uncapped
+               field would be a stripe across the window. -->
+          <div class="flex min-w-0 flex-1 max-w-[800px] items-center" data-testid="top-bar-search">
             <button
               type="button"
-              class="twes-command-open twes-command-open-wide"
+              class="twes-command-open twes-command-open-wide w-full"
               (click)="openCommands()"
               aria-keyshortcuts="Control+K Meta+K"
               [attr.aria-label]="'shell.commands.open' | translate"
               data-testid="command-open"
             >
               <mat-icon aria-hidden="true">search</mat-icon>
-              <span class="twes-command-open-label">{{ 'shell.commands.open' | translate }}</span>
+              <span class="twes-command-open-label">{{ 'shell.commands.find' | translate }}</span>
               <kbd aria-hidden="true">Ctrl K</kbd>
             </button>
           </div>
@@ -151,21 +154,10 @@
               <mat-icon aria-hidden="true">search</mat-icon>
             </button>
           }
-          <app-company-switcher />
           <app-notification-bell />
           @if (!handset()) {
             <app-language-menu />
             <app-scheme-menu />
-            @if (settingsRoute(); as route) {
-              <a
-                mat-icon-button
-                [routerLink]="route"
-                [appLabel]="'shell.settings' | translate"
-                data-testid="settings-gear"
-              >
-                <mat-icon aria-hidden="true">settings</mat-icon>
-              </a>
-            }
           }
 
           @if (me(); as me) {
@@ -240,13 +232,6 @@
                     <span>{{ 'appearance.schemes.' + scheme | translate }}</span>
                   </button>
                 }
-                <mat-divider />
-                @if (settingsRoute(); as route) {
-                  <a mat-menu-item [routerLink]="route" data-testid="account-settings">
-                    <mat-icon aria-hidden="true">settings</mat-icon>
-                    <span>{{ 'shell.settings' | translate }}</span>
-                  </a>
-                }
               }
               <button
                 mat-menu-item
@@ -287,10 +272,18 @@
 
     <app-subscription-notice />
 
+    <!-- In settings the area docks its own list against the rail, so main gives it the whole width with no gutter
+         and no cap; everywhere else the page keeps its reading measure (design review finding 7). -->
     <main
       id="main-content"
       tabindex="-1"
-      class="mx-auto w-full max-w-6xl flex-1 p-4 sm:p-6 lg:p-8"
+      class="w-full flex-1"
+      [class.mx-auto]="!inSettings()"
+      [class.max-w-6xl]="!inSettings()"
+      [class.p-4]="!inSettings()"
+      [class.sm:p-6]="!inSettings()"
+      [class.lg:p-8]="!inSettings()"
+      [attr.data-settings]="inSettings()"
       [class.pb-28]="handset()"
     >
       <router-outlet />

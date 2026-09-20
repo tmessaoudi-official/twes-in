@@ -6,7 +6,11 @@
     [disabled]="switching()"
     data-testid="company-switcher"
   >
-    <span data-testid="company-name">{{ current()?.name ?? ('company.choose' | translate) }}</span>
+    <!-- Truncated rather than pushing the bar's controls off the edge: at 390 px this sits where the wordmark
+         was, and a long company name would otherwise cut off the account button (design review finding 5). -->
+    <span class="block max-w-[45vw] truncate" data-testid="company-name">{{
+      current()?.name ?? ('company.choose' | translate)
+    }}</span>
   </button>
   <mat-menu #menu="matMenu">
     @for (company of companies(); track company.id) {
@@ -23,5 +27,7 @@
     }
   </mat-menu>
 } @else if (current(); as current) {
-  <span data-testid="company-name" class="text-sm opacity-90">{{ current.name }}</span>
+  <span data-testid="company-name" class="block max-w-[45vw] truncate text-sm opacity-90">{{
+    current.name
+  }}</span>
 }

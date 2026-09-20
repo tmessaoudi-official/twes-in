@@ -50,7 +50,7 @@ test('an account turns on two-step verification, replaces its recovery codes, th
 
   await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();
@@ -191,7 +191,7 @@ test('a company that requires two-step verification sends its owner to set it up
 
   await signIn(page, owner, NEW_PASSWORD);
   await expect(page.getByTestId('company-name')).toHaveText(name);
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-company-security').click();
   await expect(page).toHaveURL(/\/company\/security$/);
   const requirement = page.getByTestId('security-mfa-toggle').getByRole('switch');

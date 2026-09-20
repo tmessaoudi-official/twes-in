@@ -23,9 +23,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { TranslatePipe } from '@ngx-translate/core';
-import { map } from 'rxjs';
+import { filter, map } from 'rxjs';
 import { SETTINGS_INDEX } from './settings-area';
 import { AuthFacade } from '../auth/auth-facade';
 import { SubscriptionNoticeBar } from '../licensing/subscription-notice';
@@ -49,6 +49,7 @@ import {
   CORE_NAV,
   DEV_NAV,
   type Gated,
+  isSettingsUrl,
   MODULE_NAV,
   navSections,
   SETTINGS_NAV,
@@ -164,11 +165,31 @@ export class AppShell {
       .flatMap((group) => group.entries)
       .slice(0, BOTTOM_BAR_DESTINATIONS),
   );
-  /** A medium window always shows the rail; a wide one shows it when the person chose it; a phone the full drawer. */
+  /**
+   * Where the person is, so the shell can answer to it. Read from the router rather than from a child, because the
+   * shell folds itself before the settings area exists.
+   */
+  private readonly url = toSignal(
+    inject(Router).events.pipe(
+      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+      map((event) => event.urlAfterRedirects),
+    ),
+    { initialValue: this.router.url },
+  );
+
+  /** Whether the settings area is open, which changes both the menu and the room the page is given. */
+  protected readonly inSettings = computed(() => isSettingsUrl(this.url()));
+
+  /**
+   * A medium window always shows the rail; a wide one shows it when the person chose it; a phone the full drawer.
+   * Settings force it: the area is a rail plus a docked list (design review finding 7), and a full menu beside that
+   * list took about 650 px of a 1440 px window and cut the tables beside it. A phone keeps the drawer, which is
+   * over the page rather than beside it, so nothing is taken from the page there.
+   */
   protected readonly rail = computed(
     () =>
       this.windowClass() === 'medium' ||
-      (this.windowClass() === 'expanded' && this.theme.sidebar() === 'rail'),
+      (this.windowClass() === 'expanded' && (this.inSettings() || this.theme.sidebar() === 'rail')),
   );
 
   constructor() {

@@ -60,7 +60,7 @@ test('an account adds a passkey, signs in with it, and removes it', async ({ pag
 
   await signInAsOperator(page);
   await expect(page).toHaveURL(/\/$/);
-  await page.getByTestId('settings-gear').click();
+  await page.getByTestId('nav-settings').click();
   await page.getByTestId('nav-members').click();
   await page.getByTestId('member-email').fill(invited);
   await page.getByTestId('member-add').click();

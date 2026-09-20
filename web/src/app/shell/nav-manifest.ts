@@ -197,3 +197,23 @@ export function navSections(
     }))
     .filter((group) => group.entries.length > 0);
 }
+
+/**
+ * The settings area's own address: on a phone the list of settings stands alone here, and on a wider window this is
+ * where the area opens. Declared beside the routes it belongs with rather than imported from the component, so the
+ * shell can ask about a URL without loading the area.
+ */
+export const SETTINGS_AREA_INDEX = '/company';
+
+/**
+ * Whether an address is inside the settings area. The shell reads it to fold its menu to the rail while in settings
+ * (docs/SPEC.md § 7, 2026-09-19 23:21), so it must not answer yes to an address that merely starts with the same
+ * letters: `/settings-of-mine` is not `/settings`, and `/companies` is not `/company`. A query or a fragment is not
+ * part of the address for this purpose.
+ */
+export function isSettingsUrl(url: string): boolean {
+  const path = url.split(/[?#]/)[0].replace(/\/+$/, '') || '/';
+  return [SETTINGS_AREA_INDEX, ...SETTINGS_NAV.map((entry) => entry.route)].some(
+    (route) => path === route || path.startsWith(`${route}/`),
+  );
+}
