@@ -88,20 +88,25 @@ right-to-left with bilingual documents · retention (58).
 The review panel's fixes (§ 8 rows 17-23) · the invoice, payment and credit-note screens G7 still owes · sending a document to its customer by email, with the payment reminders that wait on it · a home page answering money owed and overdue, with the AGREED list upgrades (status tabs with counts, row actions, column totals, command palette, peek, live PDF preview) · per-type notification preferences (in-app, email, off) · plans and licensing module (plan gates modules) · self-service signup already
 built at G1d but off by default · editable role matrix · Postgres RLS as
 hardening · e-invoicing TRANSMISSION: the connectors behind the sending port (El Fatoora through TTN — dated work if a customer is on the régime réel, § 7 2026-09-20 — then Factur-X through a French platform) · foreign-currency documents (§ 7 2026-09-17: reference currency, per-document currency and rate, payments with exchange gain or loss, then the guided reference-currency change), carrying the per-customer default currency · workflow options per module ·
+the **customer portal** as a customer-account feature, serving a quincaillerie's trade client and a café's business
+account alike (§ 7 2026-09-20 19:20-19:35), with row 51's legal pages as its precondition ·
 mobile client · fiscal presets editable in the app (row 52), which is how a country is added without a release · composite products (unit conversion first, then made-to-order recipes and menus or kits, nested, with food cost) · the café and restaurant work, designed in full on 2026-09-20 (§ 7) and cut into the modules `Venue`, `Register`, `Menu`, `Service`, `Guest` and `Ratings`, after a legal check of cash-register rules — in Tunisia a homologated register is required for consumption on the premises.
 
 ### Out, with no date
 
-Payment gateways · customer portal · multi-country VAT beyond the presets that exist · the phorj
+Payment gateways · multi-country VAT beyond the presets that exist · the phorj
 side-track · dispensing medicines and anything touching reimbursement (CNAM *tiers payant*,
 SESAM-Vitale) · drug serialization · medical practice billing · payroll · factory planning and
 maintenance management · a general time-tracking product (hours on a job are in, § 7 2026-09-20)
 · a double-entry ledger and the French FEC.
 
-Two left this list on 2026-09-20 (§ 7): **purchase orders**, because a shop that never records
+Three left this list on 2026-09-20 (§ 7): **purchase orders**, because a shop that never records
 what it ordered from its suppliers cannot keep its stock true and both first customers restock
-constantly; and **recurring invoices**, folded into the document chain as a schedule that
-generates drafts.
+constantly; **recurring invoices**, folded into the document chain as a schedule that
+generates drafts; and the **customer portal**, once it was seen to be a customer-account feature
+rather than a shop one — the same thing serves a quincaillerie's trade client and a café's business
+account, and it is the one ordering channel that needs no fraud control, because the people who use
+it are people the business approved.
 
 ## 3. Architecture
 
@@ -760,7 +765,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-20 02:38] AGREED: a guest may **rate a menu item he actually ordered** (café review finding 5, the developer's idea, gated). The tab proves he was served it, so **only that guest may rate it**, once, within a window after service — a rule no review site can enforce, and the one that shuts out a competitor leaving one-star reviews, a bot, and anyone rating a dish they never ate. The **score publishes immediately** and feeds an average that stays hidden below a handful of ratings, so one bad evening does not brand a dish; a **written comment waits for the owner's approval**, so nothing insulting ever appears under a dish on an unauthenticated page carrying the business's name. The owner sees every rating and comment, published or not — the honest signal of which dish disappoints is his either way — and may hide any of them later. The whole feature is switchable per company, like any module.
 - [2026-09-20 02:50] AGREED: the café and restaurant work is **six modules, cut by who else would switch each one on alone** (café review finding 6, on the developer's standing requirement that everything be a module). Not an eighth module called `Restaurant`, which would bundle what other trades want separately. **`Venue`** — areas, spots and the drawn plan, the shared layout of 2026-09-14 that the stock map already stands on: a café's tables and a warehouse's racks are the same object seen twice. **`Register`** — the counter sale, the shift, the drawer counted by note and coin, the Z report (2026-09-20 01:10 and 02:20), which the quincaillerie switches on without ever meeting the café. **`Menu`** — the presentation over products (2026-09-20 02:30), wanted by a bakery with no tables. **`Service`** — table services, tabs, orders, courses, station routing, waiter assignment: the restaurant proper. **`Guest`** — the QR surface, table tokens, guest sessions, live status: its own module because it is **the only place in the app where an unsigned-in person writes**, with its own rate limits and its own switch, so an owner may close public ordering and keep the rest. **`Ratings`** (2026-09-20 02:38), on Guest and Service. This exposes a gap in what exists: **a module manifest declares no dependencies**, so nothing stops `Guest` being on while `Service` is off — a live public page ordering into nothing. Manifests gain declared dependencies and the registry refuses an impossible combination, which also makes a **business profile (2026-09-20 01:42) a list of modules**.
 - [2026-09-20 03:00] AGREED: four further pieces ship with the café and restaurant module (café review finding 7, all four chosen). **Table states on the drawn room** — free, occupied, ordered, served, to clean — so a waiter reads the floor at a glance and no one is seated at an unwiped table; nearly free, since `Venue` draws the room and `Service` knows each table's stage. **Take-away with a pickup number** and a "ready" notification on the guest's phone, **paid at the counter on collection**, since payment gateways are out and nothing can be paid online — which is also what prevents food made and never collected. **Station screens rather than kitchen printers**: each preparation point shows its queue on a cheap tablet with what is late highlighted and a ticket marked done — a thermal printer is the most fragile object in a café and paper cannot say a ticket is eight minutes late; it stays **one simple view**, never a configurable kitchen display system. And **reports** by table, waiter, shift, hour and item, which the model just ruled gives almost for free — their catalogue is ruled separately. Deliberately out: **reservations**, a product of its own that neither first customer needs, and **delivery platforms**, an integration and a commission model per platform, a business decision before a technical one.
-- [2026-09-20 03:20] AGREED: the first working version carries **two bets, WhatsApp and Arabic** (business review finding 10, re-asked). Compliance is an entry ticket and not a moat — Tunisian rivals are already El Fatoora-native — so the advantage has to come from elsewhere. **Sending a document over WhatsApp**: a signed, expiring link to one invoice, quote or delivery note with a ready-written message, opened from the phone; days of work for the gesture these businesses make every day, needing no business API and no per-conversation cost, and distinct from the customer portal that stays out — one document, one link, expiring. **Arabic, right-to-left and bilingual documents**, pulled forward from § 2: the thing a French or European competitor answers slowest, and the easiest argument at home. The two reinforce each other, a document sent over WhatsApp printed in the language its reader reads. Refused for now: the **Tunisia–France corridor** (an invoice becoming a bill in the other company — elegant, narrow, and it needs the foreign-currency work first) and **mobile money with offline mobile** (a reference field without a gateway; and offline mobile is the largest single item in this review).
+- [2026-09-20 03:20] AGREED: the first working version carries **two bets, WhatsApp and Arabic** (business review finding 10, re-asked). Compliance is an entry ticket and not a moat — Tunisian rivals are already El Fatoora-native — so the advantage has to come from elsewhere. **Sending a document over WhatsApp**: a signed, expiring link to one invoice, quote or delivery note with a ready-written message, opened from the phone; days of work for the gesture these businesses make every day, needing no business API and no per-conversation cost, and distinct from the customer portal, which at the time stayed out [AMENDED 2026-09-20 19:20: the portal left the Out list that evening, as a customer-account feature; the link remains the cheap answer for one document, and the two do not replace each other] — one document, one link, expiring. **Arabic, right-to-left and bilingual documents**, pulled forward from § 2: the thing a French or European competitor answers slowest, and the easiest argument at home. The two reinforce each other, a document sent over WhatsApp printed in the language its reader reads. Refused for now: the **Tunisia–France corridor** (an invoice becoming a bill in the other company — elegant, narrow, and it needs the foreign-currency work first) and **mobile money with offline mobile** (a reference field without a gateway; and offline mobile is the largest single item in this review).
 - [2026-09-20 03:20] AGREED: language and currency are configurable **per person, per customer and per document** (developer's addition to finding 10). Three things that "the app's language" hides are kept apart: the **interface language belongs to the person**, not the company, since two employees of one café may not read the same language; the **document language belongs to the customer**, with an override on each document, so an Arabic interface has nothing to do with sending a French invoice to a French client — which binds the country pack (2026-09-20 01:26): **its legal mentions must exist in every language a document can print in**, or an Arabic invoice loses its exemption sentence; and the **language of our own data** — product names, descriptions, terms — is deliberately *not* made fully translatable, because that touches search, the till, imports, exports and price lists: a product carries **one second-language name**, printed when the document is in that language, which is most of the value for a fraction of the work. Currency: per-document currency, rate and exchange gain or loss as already planned, plus a **default currency per customer** and a **counter that accepts a foreign note** at a manual rate with change given in local money. Invariant: **stock valuation and every report stay in the company's reference currency**.
 - [2026-09-20 03:40] AGREED: **a module declares its reports**, as it already declares its manifest, its settings and its imports (reports review, part one). `DeclaresReport` gives a key, a permission (the subject's own, never a separate reporting permission), its module, its parameters and its columns; one engine collects them into a single catalogue and gives every report the same period, the same comparison, the same filters, the same export and the same permission check — so a switched-off module's reports disappear with it and a new module brings its own without touching a reporting screen. The home page's hand-written `SummarizeInvoices` is the shape this replaces: fine for one screen, and at twenty it is twenty bespoke classes sharing nothing. Four properties are not negotiable. **Drill-down everywhere**: every figure opens the documents behind it, because a number that cannot be verified stops being trusted at the first surprise — and it is how a wrong total is diagnosed. **Comparison is a parameter**, not a separate report: any report reads against the previous period or the same period last year. **Figures are read, never recomputed**: a report sums stored line amounts and re-derives no tax and no rounding, so it can never disagree with the invoice it summarises. **Tax reports are declared by the country pack** (2026-09-20 01:26), not by a reports module, since a VAT recapitulation's shape belongs to its country. A user-built query builder is refused: it is a product of its own, and a query surface over a tenant's database is a performance and privacy risk for a feature small businesses rarely use.
 - [2026-09-20 03:55] AGREED: the first working version's **report catalogue**, on the engine of 03:40 (reports review, part two; research in `var/claude/biz/06-reports.md`). Sales: revenue for a period against the one before, **margin by product and by family**, sales by customer including who has gone quiet, discounts granted, credit notes. Money owed: aged balance, statement per customer, exposure against each credit limit. Till: X and Z per shift, takings by means of payment, drawer differences by shift and waiter, tips and cash movements. Stock: value by location and family, **dead stock** untouched for a period, what to reorder, losses by reason, count differences. Buying: purchases by supplier, **a supplier's price evolution per product**, late orders, bills to pay, match exceptions. Workshop: **profit per job**, quoted against material plus hours, and scrap rate. Plus the accountant's three journals (2026-09-20 01:33), which are the same objects exported. The café set — by hour, waiter, table and dish, food cost, voids — comes with its module. A **daily digest** carries the few figures that matter (yesterday's takings, what is overdue, what to reorder, what expires) by email or WhatsApp on the row-56 worker: the reports an owner reads are the ones that arrive. **Margin is the headline, not revenue** — of 289 owner-managers studied, three quarters watched cash but only 56% ever looked at gross profit by product line, and 31% among the less financially confident half [Inferred: Mazzarol, Reboud & Clark 2015, read in full] — so margin is surfaced in the flow, on a product and on a line, not only in a report. Deliberately out: balance sheet, cash-flow statement, forecasting and break-even (fewer than half of owners use the nearest equivalent), and any figure without a denominator — rates, not cumulative totals.
@@ -902,6 +907,140 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   per-screen actions of row 45, not a layout trick. The gallery itself was stale and is fixed in the same change —
   it opened a record through the "Ouvrir" link row 71 deleted, so every record page would have been reported
   missed; it now follows the row's own link, and all 41 screens were reached.
+
+- [2026-09-20 19:10] AGREED: **"validation before the kitchen starts" is three mechanisms, and only one of them is
+  a gate** (developer's question, researched in `var/claude/biz/order-acceptance-hospitality.md`). The developer's
+  reason was that only the barista or the chef knows whether a dish still exists, which is true and is not an
+  argument for a gate: per-order validation asks the kitchen **two hundred times a day to tell you three facts**,
+  it is slowest exactly at the rush when the pending queue is longest, it answers after the guest has committed and
+  the waiter has left the table, and after the two-hundredth "yes" the system has learned nothing. The three things
+  are separated instead. **Does it exist** — availability as state: sold out in one tap reaching every phone and
+  every open QR menu (02:30's ruling, now load-bearing), a morning count that reaches zero by itself, and — the
+  part that makes the list maintain itself — **a station's refusal of a line as `rupture` marks the item out
+  automatically**, so the knowledge is captured from the one act the kitchen will certainly perform. **Has the
+  kitchen seen it** — the ticket's own state, with an alarm on a ticket nobody has touched after N minutes; the
+  waiter's certainty comes from the ticket shouting, never from the order waiting. **Is it real** — acceptance,
+  and 02:05's rule stands unchanged: only an order from a channel with no member of staff present (QR, à emporter,
+  phone, portal) waits; a waiter's own order is created accepted, because the waiter at the table IS the
+  confirmation. No researched system gates a staff-taken order and neither do we.
+
+- [2026-09-20 19:12] AGREED: **one state vocabulary for the café table, the counter and the portal, carried on the
+  LINE.** `Commandé → En préparation → Prêt → Servi`, with `Prêt à retirer` / `Retiré` substituting for the last
+  two wherever the goods are collected rather than served. Three states appear only where they are true:
+  `En attente de validation` (never on a waiter's own order), `Refusé` (someone said no) and `Annulé` (it was
+  called off), which stay distinct because they are different events. The state belongs to the line and not to the
+  order, since a coffee is ready while the dish is still cooking and one state on the order could only lie about
+  one of them; **the order's state is derived** — "3 sur 5 servis" — plus its own `Réglée`. `En préparation` is
+  entered when the station opens the ticket, which collapses "seen" and "started" into one honest state rather
+  than asking a cook for two taps; a general "en attente" was refused because a guest cannot read what it waits
+  for.
+
+- [2026-09-20 19:15] AGREED: **the service floor's three controls, and who holds them.** *Marking an item
+  `en rupture`* is a permission in the catalogue row 104 already collects, **granted by default to every role that
+  takes or prepares an order** and removable by the owner from any of them — whoever finds the empty tray must be
+  able to say so without finding a manager, and the audit log records who said it. *A locked tab* — no new lines
+  on a table being settled — is set **automatically when settlement begins** and by hand by anyone serving, and
+  **never expires on a timer**: a tab that quietly reopens mid-bill is the very bug the lock prevents. It releases
+  when the bill is cancelled or when a human lifts it, and the floor shows who locked it and why; a guest whose QR
+  is still open is told the table is being settled rather than failing silently. **Both directions carry a
+  permission** — locking and lifting — both granted by default, either removable by the owner (developer's ruling,
+  against a first proposal that only lifting should carry the right). *A suspended table* accepts nothing from its
+  QR — it is being cleaned, or someone is sending nonsense from the pavement — **timed by default (30 minutes) so
+  no table is lost for an evening**, with an explicit "until I lift it" for a table out of service. It joins the
+  table states of 03:00 (free, occupied, ordered, served, to clean) rather than being a new concept.
+
+- [2026-09-20 19:20] AGREED: **the customer portal is re-opened, and it is a customer-account feature, not a shop
+  feature.** It leaves § 2's *Out, with no date* list, where it had sat since the first spec commit (G0,
+  2026-09-09) **with no reason ever recorded** — the only recorded reasoning is 03:20 today, which is about
+  keeping it out, not about putting it there. The four reasons that actually stood were: the signed expiring link
+  answers the document half for one point where a portal costs eight; the security model has **no third kind of
+  principal**; an outside person signing in is a data subject, which pulls row 51 (legal pages, RGPD) from "before
+  launch" to "precondition"; and the evidence says the ordering half asks a customer's staff to change a habit
+  that competes with a phone call that works. What changes the balance is the developer's own observation that the
+  same feature serves a **café giving a business account to a nearby company** — so the portal is designed
+  catalogue-shaped from the first line, never quincaillerie-shaped. It is scheduled **after the first working
+  version** and is not given § 8 rows yet, deliberately: § 2 orders it in prose with the café work, and the table
+  is the working queue.
+
+- [2026-09-20 19:22] AGREED: **a portal principal is a contact, never a `Membership`.** Route (i) — "a customer is
+  a user with a customer role" — is refused explicitly so nobody re-proposes it as a small change: permissions are
+  decided company-wide and not row-wide, `CompanyFilter` scopes to the company and not to the row's owner, and a
+  `company:` realtime channel would push every invoice, customer and role change in the company to that customer's
+  browser **by design**. Route (ii) is the ruling: a separate firewall, a separate session, a separate voter, and
+  its own resources — never the staff ones, which carry `notesInternal`. The one thing to pin with a sabotage
+  before anything ships: `CompanyFilter` is **off** until `CompanyGuard` switches it on, and a portal path does
+  not pass through that guard, so **a portal request that reaches a repository without both its company and its
+  customer scope must FAIL**, not quietly return rows. Two switches, **both off by default** — the module per
+  company, then access per contact — which the registry cannot express today (`ModuleStates`: an absent row means
+  enabled), so a `defaultEnabled` on the manifest is part of the work.
+
+- [2026-09-20 19:25] AGREED: **portal access is granted, never claimed, and the two keys are asymmetric.** There is
+  no sign-up page: the merchant opens a customer's record, picks a contact and invites him; that first person is
+  the customer's *responsable du compte*. **He may propose colleagues**, who land `en attente d'approbation` and
+  can do nothing until the merchant approves — so the set of people inside the merchant's data is always a list
+  the merchant approved. **Removal never waits for anyone**: either side may cut anyone, including the merchant
+  cutting the responsable, which is what makes a departed employee a one-tap problem rather than a phone call. The
+  merchant always sees the roster — who can sign in, who invited them, when they last did, revoke beside each —
+  and an approval nobody answers lapses. Two portal roles only: **may order**, or **documents only** (the
+  accountant who reads invoices and the balance and may never commit his company).
+
+- [2026-09-20 19:30] AGREED: **a customer orders from a basket, not from the invoice editor.** The invoice editor
+  asks questions only the merchant may answer — which tax, what discount, which series — and a customer answers
+  none of them. The first version has **two ways in**: search his catalogue, and **reorder from his history**,
+  which is where the value is and which works on the day the portal is switched on because his past orders and
+  delivery notes already exist. A **barcode scan** arrives with the barcode row and the basket takes it without
+  redesign; a **saved usual list** waits, because it is "history, pinned" and a customer cannot know his usual
+  list before he has ordered. Baskets are drafts, **several of them, each named** ("Chantier Menzah 6"), which is
+  free because a basket is an unsubmitted quote. A line carries the product, the quantity in **his** unit, **his
+  price from his price list** — not the shelf price, since prices that disagree with the counter are the first
+  reason a trade portal dies — and availability as a **band** (`en stock / dernières pièces / sur commande`):
+  **nothing is reserved**, the merchant's acceptance is what commits the goods, and no reservation machinery is
+  introduced. Submitting asks for his own reference or PO number (**offered, never blocking**), where and when he
+  wants it, and a comment. A portal order **is a customer-created quote** — 2026-09-20's rule that an accepted
+  quote is the commitment stands, there is no portal-order type — so it enters `En attente de validation` and runs
+  the same states; **accepting part of it is a counter-offer**, so he is told what dropped and what the new total
+  is. He never sees internal notes, cost, margin, exact stock, another customer or a document that is not his, and
+  he can never set a price, choose a tax or make a document exist. When it is ready he is notified and his screen
+  shows a short code; the counter reads the code and the order becomes a delivery note. **Payment stays out of the
+  portal** — gateways are out, and an account customer pays on his terms.
+
+- [2026-09-20 19:35] AGREED: **a café is a business whose catalogue is its menu, so the portal serves it unchanged**
+  (developer's idea, and it is the one that reframed the feature). An approved company orders coffees or meals, on
+  site or to go; the menu is already ruled a presentation over the same products, so nothing new is needed to show
+  it. Three differences: **time is the order** ("12 cafés pour 10h30"), so the café's equivalent of reorder-from-
+  history is a **standing order** — the same twelve coffees every weekday; the order **routes to the stations**
+  exactly like a QR order, because that is what it is, an order from an approved-but-remote channel that waits for
+  a human; and **payment leaves the till** — the café chooses **per customer** between on account invoiced monthly
+  and paid at collection (developer's ruling, over a recommendation of monthly only). That choice is recorded with
+  its cost: the same feature then has **two fiscal paths**, a till receipt and an invoice, and both must be right.
+  Whether an account order invoiced monthly sits outside Tunisia's homologated-register obligation is **[Unverified
+  — JORT n° 125 is still unread, § 9]** and is not a design assumption. The portal is also the one ordering channel
+  that needs no fraud control at all: the prank order, the fake table and the no-show cannot exist for a company
+  the business approved and invoices.
+
+- [2026-09-20 19:40] AGREED: **reservations are re-opened as a path, still built last** (developer's ruling,
+  amending 03:00's "deliberately out"). What makes a booking system a product of its own is **the stranger, not the
+  table**: no-shows, spam, confirmations, reminders and deposits all exist because anyone may book and nobody is
+  accountable. Three tiers, in this order. **Tier 2 first — the café books on the guest's behalf**: a waiter
+  records the table, the time, a name and a number on the room `Venue` draws. No public surface, no security model,
+  and it is most of a small café's real bookings. **Tier 1 with the portal** — an approved account attaches a table
+  and a time to its order, accountable by construction. **Tier 3 last** — a stranger books himself, behind a phone
+  number confirmed by a WhatsApp or SMS code, one live booking per confirmed number, repeat no-shows blocked by
+  number. Note what tier 3 cannot have: **a deposit is impossible while payment gateways are out**, so the phone
+  confirmation and the no-show history are the entire control — which is worth knowing before promising it.
+
+- [2026-09-20 19:45] AMENDED, correcting 02:50 in place: **module manifests DO declare dependencies and the
+  registry DOES refuse an impossible combination.** 02:50 says this is a gap to be filled; it was already built on
+  2026-09-14 (`ModuleManifest::$dependencies`, `ModuleCatalog` refusing an undeclared dependency or a cycle at
+  container build, `ManageModules` refusing to switch one off while a dependent is on), and 2026-09-14's own ruling
+  states it. Row 94's real remaining work is **profiles as data**, not the registry. Recorded because a session
+  reading 02:50 would rebuild what exists. Two further findings from the same study, kept here so they are not
+  lost: **`Venue` must live at `api/src/Module/Venue/`**, since `ModuleOwnership` maps a class to its module by the
+  `App\Module\<Name>\` prefix alone and a context outside `src/Module/` **owns nothing**, so a `Venue` placed at
+  `api/src/Venue/` would silently escape the switch that is supposed to govern it; and **`DisabledModuleGuard`
+  fires only on a path carrying `{companyId}`**, so a portal or guest API shaped `/api/portal/…` would not be 404'd
+  when its module is off — such a path must keep `{companyId}` or the guard must learn a second way to resolve the
+  company.
 
 ## 8. Status
 
