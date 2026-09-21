@@ -97,6 +97,13 @@ const options: StockOptions = {
     { shape: 'zone', width: 6, depth: 4 },
     { shape: 'aisle', width: 10, depth: 1.2 },
   ],
+  // Likewise the building's own measurements, so a tool posing the declared default would not pass by luck.
+  structureShapes: [
+    { kind: 'wall', width: 5, depth: 0.15, height: 2.8 },
+    { kind: 'door', width: 0.8, depth: 0.15, height: 2 },
+    { kind: 'post', width: 0.3, depth: 0.3, height: 2.8 },
+    { kind: 'dock', width: 2.6, depth: 0.15, height: 3.5 },
+  ],
 };
 
 describe('StockMapPage', () => {

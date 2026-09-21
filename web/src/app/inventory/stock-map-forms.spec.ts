@@ -24,6 +24,7 @@ const OPTIONS: StockOptions = {
     { id: 'e2', code: '001', name: 'La Marsa' },
   ],
   planShapes: [],
+  structureShapes: [],
 };
 
 const floor: StockFloorRow = {
@@ -81,9 +82,11 @@ describe('floorForm', () => {
 
   it('proposes the only establishment there is, so a one-place company types nothing', () => {
     expect(
-      floorValues(null, { establishments: [OPTIONS.establishments[0]!], planShapes: [] })[
-        'establishmentId'
-      ],
+      floorValues(null, {
+        establishments: [OPTIONS.establishments[0]!],
+        planShapes: [],
+        structureShapes: [],
+      })['establishmentId'],
     ).toBe('e1');
     expect(floorValues(null, OPTIONS)['establishmentId']).toBe('');
   });

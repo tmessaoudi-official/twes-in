@@ -31,6 +31,7 @@ const options: StockOptions = {
     { id: 'e2', code: '001', name: 'Dépôt' },
   ],
   planShapes: [],
+  structureShapes: [],
 };
 
 function location(

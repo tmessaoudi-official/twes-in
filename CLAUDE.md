@@ -296,3 +296,8 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `normalizationContext`. Without both, a POST that answers what it created answers `/api/.well-known/genid/…`.
 - Playwright's `evaluateAll` does NOT auto-wait: assert the count with `expect(locator).toHaveCount(n)` first, or a
   read straight after a reload returns `[]` and reads as "nothing was created".
+- PHPStan's result cache sits in the SHARED `/tmp/phpstan` on this box and goes stale across projects: a run
+  reported nine errors in delivery-note test files the change never touched, on the exact commit CI had just passed
+  green. `vendor/bin/phpstan clear-result-cache` and the same file came back clean. Clear it before believing a red
+  in a file you did not edit, and run PHPStan through `composer stan`, never bare — the script warms the test
+  container XML first, without which the Symfony extension resolves service types as `mixed` (2026-09-22).

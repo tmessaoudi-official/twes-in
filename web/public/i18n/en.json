@@ -781,6 +781,24 @@
           "width": "Dock — width (m)",
           "depth": "Dock — depth (m)"
         }
+      },
+      "structure": {
+        "wall": {
+          "length": "Wall — length (m)",
+          "thickness": "Wall — thickness (m)",
+          "height": "Wall — ceiling height (m)"
+        },
+        "door": {
+          "width": "Door — width (m)",
+          "height": "Door — height (m)"
+        },
+        "post": {
+          "side": "Post — side (m)"
+        },
+        "dock": {
+          "width": "Dock door — width (m)",
+          "height": "Dock door — height (m)"
+        }
       }
     }
   },

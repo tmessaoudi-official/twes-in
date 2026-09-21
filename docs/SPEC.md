@@ -1762,6 +1762,39 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   and does not exist is a picture rather than a place goods can be put; the count is capped at fifty as a typo
   guard, not as a rule about warehouses; and the panel lists the codes it will create before it creates them.
 
+- [2026-09-22 01:30] AGREED: **the building is its own table, and nothing in it is a place** (row 83, the canvas's
+  Structure board; API half). `venue_structure` (migration `Version20260922010000`) holds a `kind` and the same
+  `PlanRect` every other rectangle on the plan is measured in, on one `venue_area`, scoped to its company.
+  It is NOT a `venue_spot` and NOT a `stock_location`, for the reason the board gives in its own words: a spot
+  exists to be BOUND to — a stock location points at one, a dining room's table will point at one the same way —
+  and nothing ever binds itself to a wall. Drawn as stock locations, every wall would sit in every stock list,
+  every import and every movement's location picker, holding nothing for as long as the company exists.
+  **Four kinds, not three** — `wall`, `door`, `post`, `dock`, which are the board's own four tools. Nothing in § 7
+  had ruled the count; `VenuePlanSettings`'s docblock said three, which was that file's summary and not a ruling.
+  Note the plan calls two different things *quai*: this `dock` is the OPENING a lorry backs to, cut through the
+  building's envelope, while `venue.shape.dock.*` is the dock BAY posed in front of it, which is a stock location
+  and does hold goods.
+  **The kind is revisable, and is part of what counts as a change.** A doorway traced with the wall tool is right
+  in every measurement and wrong in exactly one field; a comparison reading the rectangle alone would answer
+  "nothing changed" and leave it a wall. Since an audit row is also the live-change signal, that would additionally
+  leave every other open plan showing the wall.
+  **Eight new settings under `venue.structure.*`, with their own floor.** The board's partition is 6,90 × **0,20**
+  m, and `VenuePlanSettings`'s palette floor (0,250 m) refuses a thickness that thin — so the structure keys carry
+  `MIN_BUILT` = 0,050 m instead. Two floors rather than one lowered to fit both: a single floor thin enough for a
+  wall would let a rack be posed five centimetres deep. A door and a dock are cut INTO a wall and declare no
+  thickness of their own, and a post runs floor to ceiling, so three measurements are taken from the wall rather
+  than declared again — a second key for a thickness could only ever disagree with the first.
+  **The HTTP surface sits in the module** (the ruling of 2026-09-21 06:10) while the use case is the venue's own:
+  `GET`/`POST /api/companies/{companyId}/stock-floors/{floorId}/structures`, `PUT`/`DELETE
+  .../stock-structures/{structureId}`, read with `stock.read` and built with `stock.write`. The processors call
+  `ArrangeVenue` directly rather than passing through `DrawStockMap`, because the inventory has nothing to say
+  about a wall and a pass-through that adds nothing is a layer that can only drift.
+  Removing a floor now takes its structure as well as its spots. `setting-labels.sh`'s floor rises to 23, which is
+  above what the other declarations plus the palette's eight alone produce, so losing either block of eight reds.
+  **Deliberately not in this half**: the demo fixtures draw no map at all — three slices of row 83 have shipped
+  without them — so no wall was added there either; and the "Fond de plan" layer of the board waits for the floor
+  image it would show, rather than shipping a control that can never do anything.
+
 ## 8. Status
 
 <!-- progress-block v1 -->

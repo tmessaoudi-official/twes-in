@@ -781,6 +781,24 @@
           "width": "Quai — largeur (m)",
           "depth": "Quai — profondeur (m)"
         }
+      },
+      "structure": {
+        "wall": {
+          "length": "Mur — longueur (m)",
+          "thickness": "Mur — épaisseur (m)",
+          "height": "Mur — hauteur sous plafond (m)"
+        },
+        "door": {
+          "width": "Porte — largeur (m)",
+          "height": "Porte — hauteur (m)"
+        },
+        "post": {
+          "side": "Poteau — côté (m)"
+        },
+        "dock": {
+          "width": "Porte de quai — largeur (m)",
+          "height": "Porte de quai — hauteur (m)"
+        }
       }
     }
   },

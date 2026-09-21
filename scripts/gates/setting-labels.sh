@@ -18,10 +18,14 @@
 set -uo pipefail
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 [[ "${1:-}" == "--root" && -n "${2:-}" ]] && root=$2
-# The floor sits ABOVE what the other declarations alone produce (eleven), so that losing one file's keys — an
-# interpolated key, a renamed class, a pattern that stops matching — reds instead of reading as a pass. That is not
-# hypothetical: it is how the venue settings' eight keys were found to be invisible to the first draft of this gate.
-floor=${SETTING_LABELS_FLOOR:-15}
+# The floor sits ABOVE what the other declarations alone produce, so that losing one file's keys — an interpolated
+# key, a renamed class, a pattern that stops matching — reds instead of reading as a pass. That is not hypothetical:
+# it is how the venue settings' eight keys were found to be invisible to the first draft of this gate.
+#
+# It is now above the venue file's own two HALVES as well, not just above the file: the eight palette-shape keys and
+# the eight structure keys are separate blocks of one `settings()`, and a floor that only cleared the other eleven
+# would let either block vanish silently. Other declarations 11 + palette 8 = 19, so 23 reds on losing either eight.
+floor=${SETTING_LABELS_FLOOR:-23}
 chains_floor=${SETTING_CHAINS_FLOOR:-4}
 
 # One key, one language: present, a string, and not blank. The dots are nesting, as ngx-translate reads them.

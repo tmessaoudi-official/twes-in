@@ -42,7 +42,23 @@ final class VenuePlanSettingsTest extends TestCase
             'venue.shape.zone.width', 'venue.shape.zone.depth',
             'venue.shape.aisle.width', 'venue.shape.aisle.depth',
             'venue.shape.dock.width', 'venue.shape.dock.depth',
+            'venue.structure.wall.length', 'venue.structure.wall.thickness', 'venue.structure.wall.height',
+            'venue.structure.door.width', 'venue.structure.door.height',
+            'venue.structure.post.side',
+            'venue.structure.dock.width', 'venue.structure.dock.height',
         ], $keys);
+    }
+
+    /**
+     * A door and a dock are cut INTO a wall, so neither declares a thickness of its own, and a post runs floor to
+     * ceiling: three measurements taken from the wall rather than repeated, because a second key for a thickness
+     * could only ever disagree with the first.
+     */
+    public function testWhatIsCutIntoAWallTakesTheWallsOwnMeasurements(): void
+    {
+        foreach (['venue.structure.door.thickness', 'venue.structure.dock.thickness', 'venue.structure.post.height'] as $key) {
+            self::assertNull($this->catalog->definitionOf($key), "$key is the wall's own measurement, not a second one");
+        }
     }
 
     public function testTheDefaultsAreTheOnesTheApprovedCanvasDraws(): void
@@ -55,6 +71,33 @@ final class VenuePlanSettingsTest extends TestCase
         self::assertSame('1.200', $this->definition('venue.shape.aisle.depth')->default);
         self::assertSame('3.000', $this->definition('venue.shape.dock.width')->default);
         self::assertSame('2.500', $this->definition('venue.shape.dock.depth')->default);
+        // The structure board's own labels: "Cloison · 6,90 × 0,20 m", "Porte 0,90 m", "Poteau 0,40 m".
+        self::assertSame('6.900', $this->definition('venue.structure.wall.length')->default);
+        self::assertSame('0.200', $this->definition('venue.structure.wall.thickness')->default);
+        self::assertSame('3.000', $this->definition('venue.structure.wall.height')->default);
+        self::assertSame('0.900', $this->definition('venue.structure.door.width')->default);
+        self::assertSame('2.100', $this->definition('venue.structure.door.height')->default);
+        self::assertSame('0.400', $this->definition('venue.structure.post.side')->default);
+        self::assertSame('3.000', $this->definition('venue.structure.dock.width')->default);
+        self::assertSame('4.000', $this->definition('venue.structure.dock.height')->default);
+    }
+
+    /**
+     * The building is measured far finer than the stock is, and the canvas proves it: its own partition is 0,20 m
+     * thick, which the palette's floor refuses outright. Two floors, not one lowered to fit both — a single floor
+     * thin enough for a wall would let a rack be posed five centimetres deep.
+     */
+    public function testAWallIsThinnerThanAnyShapeThePaletteWouldPose(): void
+    {
+        $thickness = $this->definition('venue.structure.wall.thickness');
+
+        self::assertNull($thickness->refusal('0.200'), "the canvas's own partition is 0,20 m thick");
+        self::assertNotNull(
+            $this->definition('venue.shape.rack.depth')->refusal('0.200'),
+            'while a rack that thin is refused, which is why the two floors are separate',
+        );
+        self::assertNotNull($thickness->refusal('0.049'), 'nothing real is built thinner than five centimetres');
+        self::assertNull($thickness->refusal('0.050'));
     }
 
     /** A side of no length is not a shape, and `PlanRect` would refuse it the moment the palette posed one. */

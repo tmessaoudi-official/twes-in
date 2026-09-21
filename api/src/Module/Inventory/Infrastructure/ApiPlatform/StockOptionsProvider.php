@@ -48,6 +48,19 @@ final readonly class StockOptionsProvider implements ProviderInterface
             $this->metres($context, "venue.shape.$shape.depth"),
         ), ['rack', 'zone', 'aisle', 'dock']);
 
+        // The structure layer's four tools, in the board's own order. A door and a dock are cut into a wall, so
+        // both are exactly as thick as it is, and a post runs floor to ceiling: three measurements taken from the
+        // wall rather than declared again, because a second key for a thickness could only ever disagree.
+        $thickness = $this->metres($context, 'venue.structure.wall.thickness');
+        $ceiling = $this->metres($context, 'venue.structure.wall.height');
+        $post = $this->metres($context, 'venue.structure.post.side');
+        $options->structureShapes = [
+            new StockStructureShapeOption('wall', $this->metres($context, 'venue.structure.wall.length'), $thickness, $ceiling),
+            new StockStructureShapeOption('door', $this->metres($context, 'venue.structure.door.width'), $thickness, $this->metres($context, 'venue.structure.door.height')),
+            new StockStructureShapeOption('post', $post, $post, $ceiling),
+            new StockStructureShapeOption('dock', $this->metres($context, 'venue.structure.dock.width'), $thickness, $this->metres($context, 'venue.structure.dock.height')),
+        ];
+
         return $options;
     }
 

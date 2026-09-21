@@ -217,6 +217,32 @@ export type StockDrawingInput = Pick<
   'locationId' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
 >;
 
+/** The structure layer's four tools, which are the four things the building is drawn out of. */
+export type StructureKind = 'wall' | 'door' | 'post' | 'dock';
+
+/**
+ * One piece of the building on a floor. It names no location and never will: nothing here holds goods, which is
+ * exactly why it is a layer of its own rather than a stock location that would sit in every list forever.
+ */
+export interface StockStructureRow {
+  id: string;
+  floorId: string;
+  kind: StructureKind;
+  x: string;
+  y: string;
+  /** How long it runs: a wall's length, a door's opening, a post's side. */
+  width: string;
+  /** How thick it is on the floor — the second side of the footprint, not a height. */
+  depth: string;
+  rotation: number;
+  height: string;
+}
+
+export type StockStructureInput = Pick<
+  StockStructureRow,
+  'kind' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
+>;
+
 /**
  * A repeat of one rectangle down an aisle: how many MORE of it, the free floor between two of them in metres, which
  * way across the FLOOR, and what the first copy is called — the rest count on from its number.
@@ -237,6 +263,20 @@ export interface StockOptions {
   establishments: StockEstablishmentOption[];
   /** The plan palette's ready-made shapes, at the sizes this company set for them. */
   planShapes: StockPlanShape[];
+  /** The structure layer's four tools, at the measurements this company builds at. */
+  structureShapes: StockStructureShape[];
+}
+
+/**
+ * One tool of the structure layer. It carries a height where a palette shape does not: a wall's height is the same
+ * for the whole building until the company says otherwise, while a rack's is a fact about that rack somebody went
+ * and measured.
+ */
+export interface StockStructureShape {
+  kind: StructureKind;
+  width: number;
+  depth: number;
+  height: number;
 }
 
 /**

@@ -17,12 +17,15 @@ use App\Tests\Support\InMemoryAuditTrail;
 use App\Tests\Support\InMemoryEstablishments;
 use App\Tests\Support\InMemoryVenueAreas;
 use App\Tests\Support\InMemoryVenueSpots;
+use App\Tests\Support\InMemoryVenueStructures;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Application\VenueAreaNotFound;
 use App\Venue\Application\VenueLevelTaken;
 use App\Venue\Application\VenueSpotNotFound;
+use App\Venue\Application\VenueStructureNotFound;
 use App\Venue\Domain\InvalidVenue;
 use App\Venue\Domain\PlanRect;
+use App\Venue\Domain\StructureKind;
 use PHPUnit\Framework\TestCase;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Clock\MockClock;
@@ -39,6 +42,7 @@ final class ArrangeVenueTest extends TestCase
     private Establishment $establishment;
     private InMemoryVenueAreas $areas;
     private InMemoryVenueSpots $spots;
+    private InMemoryVenueStructures $structures;
     private InMemoryAuditTrail $audit;
     private FakeTransactions $transactions;
     private ClockInterface $clock;
@@ -54,10 +58,11 @@ final class ArrangeVenueTest extends TestCase
         $establishments->save($this->establishment);
         $this->areas = new InMemoryVenueAreas();
         $this->spots = new InMemoryVenueSpots();
+        $this->structures = new InMemoryVenueStructures();
         $this->transactions = new FakeTransactions();
         $this->audit = new InMemoryAuditTrail($this->transactions);
         $this->actor = Uuid::v7();
-        $this->venue = new ArrangeVenue($this->areas, $this->spots, $establishments, $this->audit, $this->clock, $this->transactions);
+        $this->venue = new ArrangeVenue($this->areas, $this->spots, $this->structures, $establishments, $this->audit, $this->clock, $this->transactions);
     }
 
     public function testAFloorIsDrawnOncePerLevelAndIsListedFromTheGroundUp(): void
@@ -113,11 +118,68 @@ final class ArrangeVenueTest extends TestCase
         $upstairs = $this->venue->addArea($this->company, $this->establishment->getId(), 'Étage 1', 1, $this->actor);
         $this->venue->place($this->company, $ground->getId(), new PlanRect('1', '1', '2', '1', 0, '2'), $this->actor);
         $kept = $this->venue->place($this->company, $upstairs->getId(), new PlanRect('1', '1', '2', '1', 0, '2'), $this->actor);
+        // The building goes with the floor too, and is the half a cascade written for spots alone leaves orphaned.
+        $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, new PlanRect('0', '0', '9', '0.2', 0, '3'), $this->actor);
+        $keptWall = $this->venue->build($this->company, $upstairs->getId(), StructureKind::Wall, new PlanRect('0', '0', '9', '0.2', 0, '3'), $this->actor);
 
         $this->venue->removeArea($this->company, $ground->getId(), $this->actor);
 
         self::assertSame(['Étage 1'], array_map(static fn ($a) => $a->getName(), $this->venue->areas($this->company)));
         self::assertSame([$kept->getId()->toRfc4122()], array_map(static fn ($s) => $s->getId()->toRfc4122(), $this->venue->spotsOf($this->company, $upstairs->getId())));
+        self::assertSame([$keptWall->getId()->toRfc4122()], array_map(static fn ($s) => $s->getId()->toRfc4122(), $this->structures->structures));
+    }
+
+    public function testTheBuildingIsDrawnOnItsFloorAndListedWithIt(): void
+    {
+        $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
+
+        $wall = $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, new PlanRect('0', '0', '6.9', '0.2', 0, '3'), $this->actor);
+        $this->venue->build($this->company, $ground->getId(), StructureKind::Door, new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+
+        self::assertSame(
+            [StructureKind::Wall, StructureKind::Door],
+            array_map(static fn ($s) => $s->getKind(), $this->venue->structuresOf($this->company, $ground->getId())),
+        );
+        // A wall is not a spot: drawing the building leaves the stock drawing of that floor untouched.
+        self::assertSame([], $this->venue->spotsOf($this->company, $ground->getId()));
+        self::assertSame(ArrangeVenue::STRUCTURE_CREATED, $this->lastEntry()->action);
+        self::assertSame($wall->getCompany()->getId()->toRfc4122(), $this->company->getId()->toRfc4122());
+    }
+
+    public function testCorrectingAPieceRecordsItAndLeavingItAloneDoesNot(): void
+    {
+        $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
+        $piece = $this->venue->build($this->company, $ground->getId(), StructureKind::Wall, new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+        $recorded = \count($this->audit->entries);
+
+        // The same piece, in the same place, written to the same measurements: nothing to tell anyone about.
+        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Wall, new PlanRect('3.000', '0', '0.900', '0.2', 0, '2.100'), $this->actor);
+        self::assertCount($recorded, $this->audit->entries, 'an unchanged piece is not a revision');
+
+        // It was traced with the wall tool and is really the doorway: the rectangle is right, the kind is not.
+        $this->venue->reshapeStructure($this->company, $piece->getId(), StructureKind::Door, new PlanRect('3', '0', '0.9', '0.2', 0, '2.1'), $this->actor);
+        self::assertCount($recorded + 1, $this->audit->entries, 'a corrected kind is');
+        self::assertSame(ArrangeVenue::STRUCTURE_REVISED, $this->lastEntry()->action);
+    }
+
+    public function testAPieceIsErasedAndAnotherCompanysIsNotFound(): void
+    {
+        $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
+        $post = $this->venue->build($this->company, $ground->getId(), StructureKind::Post, new PlanRect('2', '2', '0.4', '0.4', 0, '3'), $this->actor);
+
+        $this->venue->removeStructure($this->company, $post->getId(), $this->actor);
+
+        self::assertSame([], $this->venue->structuresOf($this->company, $ground->getId()));
+        self::assertSame(ArrangeVenue::STRUCTURE_DELETED, $this->lastEntry()->action);
+        $this->expectException(VenueStructureNotFound::class);
+        $this->venue->removeStructure(new Company('Globex', 'TN', 'TND', 'fr', 'Africa/Tunis'), $post->getId(), $this->actor);
+    }
+
+    private function lastEntry(): AuditEntry
+    {
+        $entries = $this->audit->entries;
+
+        return array_pop($entries) ?? self::fail('nothing was audited at all');
     }
 
     public function testAnotherCompanysDrawingIsNotFound(): void

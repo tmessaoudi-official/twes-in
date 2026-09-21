@@ -283,6 +283,7 @@ export class StockMapPage implements OnInit {
               this.facade.options() ?? {
                 establishments: [],
                 planShapes: [],
+                structureShapes: [],
               },
             ),
           ),

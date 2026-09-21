@@ -65,17 +65,20 @@ describe('InventoryApi', () => {
     http.expectOne('/api/companies/c%201/stock-options').flush({
       establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
       planShapes: [{ shape: 'rack', width: '2.400', depth: '0.600' }],
+      structureShapes: [{ kind: 'wall', width: '5.000', depth: '0.150', height: '2.800' }],
     });
     expect(await options).toEqual({
       establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
       // The palette's shapes come from the API at THIS company's sizes, as metres the screen can work in.
       planShapes: [{ shape: 'rack', width: 2.4, depth: 0.6 }],
+      // The structure tools the same way, and with a height, which no palette shape carries.
+      structureShapes: [{ kind: 'wall', width: 5, depth: 0.15, height: 2.8 }],
     });
 
-    // An older API that does not send them yet leaves the palette empty rather than undefined.
+    // An older API that does not send them yet leaves both palettes empty rather than undefined.
     const bare = api.options('c2');
     http.expectOne('/api/companies/c2/stock-options').flush({ establishments: [] });
-    expect((await bare).planShapes).toEqual([]);
+    expect([(await bare).planShapes, (await bare).structureShapes]).toEqual([[], []]);
 
     const levels = api.levels('c1', SEARCH);
     const level = {

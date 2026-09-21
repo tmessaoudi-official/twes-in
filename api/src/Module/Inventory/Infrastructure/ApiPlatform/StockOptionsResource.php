@@ -64,4 +64,27 @@ final class StockOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $planShapes = [];
+
+    /**
+     * The structure layer's four tools, at this company's own measurements. They carry a height where the palette's
+     * shapes do not: a wall's height is the same for the whole building until the company says otherwise, while a
+     * rack's is a fact about that rack somebody went and measured.
+     *
+     * @var list<StockStructureShapeOption>
+     */
+    #[ApiProperty(identifier: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['kind', 'width', 'depth', 'height'],
+            'properties' => [
+                'kind' => ['type' => 'string'],
+                'width' => ['type' => 'string'],
+                'depth' => ['type' => 'string'],
+                'height' => ['type' => 'string'],
+            ],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $structureShapes = [];
 }

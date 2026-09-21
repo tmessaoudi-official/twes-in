@@ -261,6 +261,94 @@ final class StockMapTest extends ApiTestCase
         $this->rackId = $this->stringAt($this->json(), 'id');
     }
 
+    public function testTheBuildingIsDrawnBesideTheStockAndIsNoneOfIt(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $this->locations();
+        $ground = $this->floor();
+
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $wall = $this->stringAt($this->json(), 'id');
+        self::assertSame(['wall', '0.000', '0.000', '6.900', '0.200', 0, '3.000'], [
+            $this->json()['kind'], $this->json()['x'], $this->json()['y'],
+            $this->json()['width'], $this->json()['depth'], $this->json()['rotation'], $this->json()['height'],
+        ]);
+        self::assertSame($ground, $this->json()['floorId']);
+
+        // The whole reason it is its own layer: a wall is not a place, so nothing of it reaches the stock at all.
+        $this->getJson($this->path('stock-locations'));
+        self::assertNotContains('wall', array_column($this->jsonList(), 'kind'));
+        $this->getJson($this->path('stock-floors', $ground).'/drawings');
+        self::assertSame([], $this->jsonList(), 'the building is on no stock drawing');
+
+        // Traced with the wall tool and really the doorway: the rectangle is right, only the kind is wrong.
+        $this->sendJson('PUT', $this->path('stock-structures', $wall), $this->piece(['kind' => 'door', 'width' => '0.9', 'height' => '2.1']));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['door', '0.900', '2.100'], [$this->json()['kind'], $this->json()['width'], $this->json()['height']]);
+
+        $this->getJson($this->path('stock-floors', $ground).'/structures');
+        self::assertSame(['door'], array_column($this->jsonList(), 'kind'));
+
+        $this->sendJson('DELETE', $this->path('stock-structures', $wall));
+        self::assertResponseStatusCodeSame(Response::HTTP_NO_CONTENT);
+        $this->getJson($this->path('stock-floors', $ground).'/structures');
+        self::assertSame([], $this->jsonList());
+    }
+
+    public function testAPieceOfStructureIsRefusedWithItsFieldAndNeedsTheWritePermission(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $this->locations();
+        $ground = $this->floor();
+
+        // A tool the board has not got, and a piece with no surface: both name what is wrong rather than 500.
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['kind' => 'moat']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['depth' => '0']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('depth', (string) $this->client->getResponse()->getContent());
+
+        // A wall thinner than any rack the palette would pose is still a wall, and is accepted as measured.
+        $this->postJson($this->path('stock-floors', $ground).'/structures', $this->piece(['depth' => '0.05']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $thin = $this->stringAt($this->json(), 'id');
+
+        // A reader sees the building and builds none of it, and a piece of another company's is not found at all.
+        // The company is re-found: the test client reboots the kernel between requests, so the instance this case
+        // opened with is detached by now and persisting a membership through it would insert a second company.
+        $mineNow = $this->em()->find(Company::class, $this->company->getId()) ?? self::fail('the company vanished');
+        $this->createUser('reader@twes.local', 'password-1234', $mineNow, ['stock.read'], 'lecteur');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->getJson($this->path('stock-floors', $ground).'/structures');
+        self::assertSame(['wall'], array_column($this->jsonList(), 'kind'));
+        $this->sendJson('DELETE', $this->path('stock-structures', $thin));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+        $this->sendJson('PUT', $this->path('stock-structures', Uuid::v7()->toRfc4122()), $this->piece([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /** A floor to build on, which every structure case needs and none of them is about. */
+    private function floor(): string
+    {
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        return $this->stringAt($this->json(), 'id');
+    }
+
+    /**
+     * The canvas's own partition: 6,90 × 0,20 m.
+     *
+     * @param array<string, mixed> $changes
+     *
+     * @return array<string, mixed>
+     */
+    private function piece(array $changes): array
+    {
+        return [...['kind' => 'wall', 'x' => '0', 'y' => '0', 'width' => '6.9', 'depth' => '0.2', 'rotation' => 0, 'height' => '3'], ...$changes];
+    }
+
     /**
      * @param array<string, mixed> $changes
      *

@@ -24,6 +24,7 @@ use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\InMemoryVenueAreas;
 use App\Tests\Support\InMemoryVenueSpots;
+use App\Tests\Support\InMemoryVenueStructures;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Domain\PlanRect;
 use PHPUnit\Framework\TestCase;
@@ -59,7 +60,7 @@ final class DrawStockMapTest extends TestCase
         $establishments->save($this->establishment);
         $areas = new InMemoryVenueAreas();
         $this->spots = new InMemoryVenueSpots();
-        $venue = new ArrangeVenue($areas, $this->spots, $establishments, $audit, $clock, $transactions);
+        $venue = new ArrangeVenue($areas, $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions);
         $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions);
         $this->map = new DrawStockMap($venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();

@@ -25,6 +25,7 @@ use App\Tests\Support\InMemoryStockLocations;
 use App\Tests\Support\InMemoryStockMovements;
 use App\Tests\Support\InMemoryVenueAreas;
 use App\Tests\Support\InMemoryVenueSpots;
+use App\Tests\Support\InMemoryVenueStructures;
 use App\Venue\Application\ArrangeVenue;
 use App\Venue\Domain\InvalidVenue;
 use App\Venue\Domain\PlanRect;
@@ -65,7 +66,7 @@ final class RepeatStockDrawingTest extends TestCase
         $establishments = new InMemoryEstablishments();
         $establishments->save($this->establishment);
         $this->spots = new InMemoryVenueSpots();
-        $this->venue = new ArrangeVenue(new InMemoryVenueAreas(), $this->spots, $establishments, $audit, $clock, $transactions);
+        $this->venue = new ArrangeVenue(new InMemoryVenueAreas(), $this->spots, new InMemoryVenueStructures(), $establishments, $audit, $clock, $transactions);
         $this->locations = new ManageStockLocations(new InMemoryStockLocations(), new InMemoryStockMovements(), $establishments, $audit, $clock, $transactions);
         $this->map = new DrawStockMap($this->venue, $this->locations, $transactions);
         $this->actor = Uuid::v7();

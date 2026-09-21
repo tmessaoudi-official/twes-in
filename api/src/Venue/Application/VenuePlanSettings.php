@@ -21,8 +21,8 @@ use App\Settings\Domain\SettingType;
  * actually are, dragged where it goes, and only what differs is corrected afterwards.
  *
  * They are SETTINGS and not constants because a warehouse of pallets and a shop do not have the same racks — the
- * approved canvas says so in those words. The three structure shapes of that canvas (a wall, a door, a post) are
- * not here: the walls-and-doors layer was ruled to land after the drawing gestures, and they arrive with it.
+ * approved canvas says so in those words. The structure board's four tools (a wall, a door, a post, a dock) arrived
+ * with the walls-and-doors layer, which was ruled to land after the drawing gestures.
  */
 final readonly class VenuePlanSettings implements DeclaresSettings
 {
@@ -32,6 +32,14 @@ final readonly class VenuePlanSettings implements DeclaresSettings
     /** A side of no length could never be posed, and `PlanRect` holds every measurement under 10 000 m. */
     private const string MIN_SIDE = '0.250';
     private const string MAX_SIDE = '9999.999';
+
+    /**
+     * The building is measured far finer than the stock is. The canvas's own partition is 6,90 × **0,20** m, a
+     * thickness the palette's floor above would refuse outright — so a wall has its own, at the thinnest a real
+     * partition is built. The two floors are separate on purpose: lowering the palette's to fit a wall would let a
+     * rack be posed five centimetres deep.
+     */
+    private const string MIN_BUILT = '0.050';
 
     /**
      * Rayonnage, zone, allée, quai — with the canvas's own measurements as what a company starts from.
@@ -52,9 +60,32 @@ final readonly class VenuePlanSettings implements DeclaresSettings
         yield $this->side('venue.shape.aisle.depth', 'settings.venue.shape.aisle.depth', '1.200');
         yield $this->side('venue.shape.dock.width', 'settings.venue.shape.dock.width', '3.000');
         yield $this->side('venue.shape.dock.depth', 'settings.venue.shape.dock.depth', '2.500');
+
+        // The structure board's four tools, at the measurements the board itself draws. A door and a dock are cut
+        // INTO a wall, so neither declares a thickness: both are exactly as thick as the wall they pierce, and a
+        // second key for it could only ever disagree with the first. A post runs floor to ceiling for the same
+        // reason — its height is the wall's.
+        yield $this->built('venue.structure.wall.length', 'settings.venue.structure.wall.length', '6.900');
+        yield $this->built('venue.structure.wall.thickness', 'settings.venue.structure.wall.thickness', '0.200');
+        yield $this->built('venue.structure.wall.height', 'settings.venue.structure.wall.height', '3.000');
+        yield $this->built('venue.structure.door.width', 'settings.venue.structure.door.width', '0.900');
+        yield $this->built('venue.structure.door.height', 'settings.venue.structure.door.height', '2.100');
+        yield $this->built('venue.structure.post.side', 'settings.venue.structure.post.side', '0.400');
+        yield $this->built('venue.structure.dock.width', 'settings.venue.structure.dock.width', '3.000');
+        yield $this->built('venue.structure.dock.height', 'settings.venue.structure.dock.height', '4.000');
     }
 
     private function side(string $key, string $labelKey, string $metres): SettingDefinition
+    {
+        return $this->metres($key, $labelKey, $metres, self::MIN_SIDE);
+    }
+
+    private function built(string $key, string $labelKey, string $metres): SettingDefinition
+    {
+        return $this->metres($key, $labelKey, $metres, self::MIN_BUILT);
+    }
+
+    private function metres(string $key, string $labelKey, string $metres, string $min): SettingDefinition
     {
         return new SettingDefinition(
             $key,
@@ -64,7 +95,7 @@ final readonly class VenuePlanSettings implements DeclaresSettings
             [SettingLevel::Company],
             $labelKey,
             self::MODULE,
-            min: self::MIN_SIDE,
+            min: $min,
             max: self::MAX_SIDE,
         );
     }

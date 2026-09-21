@@ -16,10 +16,13 @@ use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\EstablishmentRepository;
 use App\Venue\Domain\InvalidVenue;
 use App\Venue\Domain\PlanRect;
+use App\Venue\Domain\StructureKind;
 use App\Venue\Domain\VenueArea;
 use App\Venue\Domain\VenueAreaRepository;
 use App\Venue\Domain\VenueSpot;
 use App\Venue\Domain\VenueSpotRepository;
+use App\Venue\Domain\VenueStructure;
+use App\Venue\Domain\VenueStructureRepository;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -41,10 +44,15 @@ final readonly class ArrangeVenue
     public const string SPOT_CREATED = 'venue_spot.created';
     public const string SPOT_REVISED = 'venue_spot.revised';
     public const string SPOT_DELETED = 'venue_spot.deleted';
+    public const string STRUCTURE_TYPE = 'venue_structure';
+    public const string STRUCTURE_CREATED = 'venue_structure.created';
+    public const string STRUCTURE_REVISED = 'venue_structure.revised';
+    public const string STRUCTURE_DELETED = 'venue_structure.deleted';
 
     public function __construct(
         private VenueAreaRepository $areas,
         private VenueSpotRepository $spots,
+        private VenueStructureRepository $structures,
         private EstablishmentRepository $establishments,
         private AuditTrail $audit,
         private ClockInterface $clock,
@@ -149,6 +157,11 @@ final readonly class ArrangeVenue
             foreach ($this->spots->ofArea($area->getId()) as $spot) {
                 $this->spots->remove($spot);
             }
+            // The building the floor carried goes with it. It is drawn on that floor and on no other, so leaving it
+            // behind would orphan every wall of a plan nobody can open again.
+            foreach ($this->structures->ofArea($area->getId()) as $structure) {
+                $this->structures->remove($structure);
+            }
             $this->areas->remove($area);
             $this->record(self::AREA_TYPE, $area->getId(), self::AREA_DELETED, $actorUserId, $company);
         });
@@ -201,6 +214,68 @@ final readonly class ArrangeVenue
     public function spot(Company $company, Uuid $spotId): VenueSpot
     {
         return $this->spots->ofIdInCompany($spotId, $company->getId()) ?? throw new VenueSpotNotFound();
+    }
+
+    /**
+     * The building drawn on one floor — walls, doors, posts, docks. It is listed apart from the spots because it
+     * IS apart: nothing binds itself to a wall, and the screen draws it under the stock, as its own layer.
+     *
+     * @return list<VenueStructure>
+     *
+     * @throws VenueAreaNotFound
+     */
+    public function structuresOf(Company $company, Uuid $areaId): array
+    {
+        return $this->structures->ofArea($this->area($company, $areaId)->getId());
+    }
+
+    /**
+     * @throws VenueAreaNotFound
+     * @throws InvalidVenue
+     */
+    public function build(Company $company, Uuid $areaId, StructureKind $kind, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
+    {
+        return $this->transactions->run(function () use ($company, $areaId, $kind, $rect, $actorUserId): VenueStructure {
+            $structure = VenueStructure::build($this->area($company, $areaId), $kind, $rect, $this->clock->now());
+            $this->structures->save($structure);
+            $this->record(self::STRUCTURE_TYPE, $structure->getId(), self::STRUCTURE_CREATED, $actorUserId, $company);
+
+            return $structure;
+        });
+    }
+
+    /**
+     * @throws VenueStructureNotFound
+     * @throws InvalidVenue
+     */
+    public function reshapeStructure(Company $company, Uuid $structureId, StructureKind $kind, PlanRect $rect, ?Uuid $actorUserId): VenueStructure
+    {
+        return $this->transactions->run(function () use ($company, $structureId, $kind, $rect, $actorUserId): VenueStructure {
+            $structure = $this->structure($company, $structureId);
+            // Left exactly as it stood: no row, so no other screen is told the building moved.
+            if ($structure->reshape($kind, $rect, $this->clock->now())) {
+                $this->structures->save($structure);
+                $this->record(self::STRUCTURE_TYPE, $structure->getId(), self::STRUCTURE_REVISED, $actorUserId, $company);
+            }
+
+            return $structure;
+        });
+    }
+
+    /** @throws VenueStructureNotFound */
+    public function removeStructure(Company $company, Uuid $structureId, ?Uuid $actorUserId): void
+    {
+        $this->transactions->run(function () use ($company, $structureId, $actorUserId): void {
+            $structure = $this->structure($company, $structureId);
+            $this->structures->remove($structure);
+            $this->record(self::STRUCTURE_TYPE, $structure->getId(), self::STRUCTURE_DELETED, $actorUserId, $company);
+        });
+    }
+
+    /** @throws VenueStructureNotFound */
+    public function structure(Company $company, Uuid $structureId): VenueStructure
+    {
+        return $this->structures->ofIdInCompany($structureId, $company->getId()) ?? throw new VenueStructureNotFound();
     }
 
     private function record(string $type, Uuid $id, string $action, ?Uuid $actorUserId, Company $company): void

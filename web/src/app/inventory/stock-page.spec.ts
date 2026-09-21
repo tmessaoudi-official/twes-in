@@ -70,6 +70,7 @@ const rack: StockLocationRow = {
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
   planShapes: [],
+  structureShapes: [],
 };
 const shortage: StockLevelRow = {
   id: 'p1:l1',

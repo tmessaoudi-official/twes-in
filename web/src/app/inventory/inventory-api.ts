@@ -27,6 +27,7 @@ import {
   type InventoryError,
   type StockDrawingInput,
   type StockDrawingRow,
+  type StructureKind,
   type StockRepeatInput,
   type StockFloorInput,
   type StockFloorRow,
@@ -367,6 +368,14 @@ function toOptions(raw: StockOptionsStockOptionsRead): StockOptions {
       shape: shape.shape,
       width: Number(shape.width),
       depth: Number(shape.depth),
+    })),
+    // The structure tools carry a height as well, which the palette's shapes have none of: a wall's height is the
+    // whole building's until the company says otherwise, while a rack's is a fact somebody measured about it.
+    structureShapes: (raw.structureShapes ?? []).map((shape) => ({
+      kind: shape.kind as StructureKind,
+      width: Number(shape.width),
+      depth: Number(shape.depth),
+      height: Number(shape.height),
     })),
   };
 }
