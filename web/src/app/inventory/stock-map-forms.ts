@@ -190,6 +190,24 @@ export function drawingInput(values: FormValues): StockDrawingInput {
   };
 }
 
+/**
+ * What a GESTURE writes into the open form — the one road from the plan back into the fields. It is shaped exactly
+ * like what the API answered, because the unsaved-change count compares the two: a `1300` written against a saved
+ * `1300.000` would read as a change and highlight a field nobody touched.
+ *
+ * The location is deliberately absent. Dragging a rectangle moves a rack; it never decides which rack it is.
+ */
+export function rectValues(rect: PlanRectangle): FormValues {
+  return {
+    x: metres(rect.x),
+    y: metres(rect.y),
+    width: metres(rect.width),
+    depth: metres(rect.depth),
+    rotation: rect.rotation,
+    height: metres(rect.height),
+  };
+}
+
 /** The rectangles of a floor as the drawing works in them: metres as numbers, never the API's strings. */
 export function planRectangles(drawings: readonly StockDrawingRow[]): PlanRectangle[] {
   return drawings.map((drawn) => ({

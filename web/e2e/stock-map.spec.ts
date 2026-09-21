@@ -18,6 +18,9 @@ interface Fixture {
   level: number;
 }
 
+/** A measurement as the screen shows it — the locale's comma — read back as a number. */
+const comma = (shown: string): number => Number(shown.replace(',', '.'));
+
 /** A rack under the default establishment's own location, through the API. */
 async function prepare(page: Page, code: string): Promise<Fixture> {
   return page.evaluate(
@@ -157,6 +160,29 @@ test.describe('the drawn stock map', () => {
       await expect(toast(page)).toContainText('Rectangle enregistré');
       await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveCount(1);
       await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveAttribute('x', '5');
+
+      // Dragged, not typed. The exact metre a pointer lands on depends on the window, so this asserts what the
+      // rule promises and not a number: it moved, and it came to rest on the quarter-metre grid.
+      const rect = page.locator('svg[data-testid="stock-map-svg"] rect').first();
+      const box = await rect.boundingBox();
+      if (box === null) throw new Error('the rectangle is not laid out');
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 12 });
+      await page.mouse.up();
+
+      await expect(page.getByTestId('stock-drawing-unsaved')).toBeVisible();
+      const dragged = comma(await page.getByTestId('field-x').inputValue());
+      expect(dragged).not.toBe(5);
+      expect(Math.round(dragged * 4)).toBeCloseTo(dragged * 4, 6);
+
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+
+      // It survives the round trip: what the drag wrote is what the API kept.
+      await page.reload();
+      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await expect(rect).toHaveAttribute('x', String(dragged));
 
       // Erased: the rectangle goes, the rack stays a rack.
       await page.getByTestId(`stock-drawing-${code}`).click();

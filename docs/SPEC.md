@@ -1692,6 +1692,39 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   magnet returns with dragging, in the next slice, where it belongs. If the developer meant decision 3 to round a
   typed size too, this is the line to reverse — but then the canvas's own rack cannot be drawn as it is drawn.
 
+- [2026-09-21 21:30] AGREED: **the stock map grows well past the eight decisions, and the whole of it is drawn
+  before any more of it is built** (row 83). The developer looked at the shipped slice and asked the right question —
+  *"no actual touch to draw or predefined shapes?"* — then asked for every screen and every interaction to be mocked
+  and validated first. The canvas is **"The Stock Map, End to End"**, eighteen artboards in five rows: reading (plan,
+  search, rack façade, movements, picking round), drawing (move and the eight handles, freehand tracing, the shape
+  palette, repeat-down-an-aisle, the structure layer, the floor scan and its calibration), volume (two 3D views),
+  devices (tablet, phone) and finally the three empty states, the default-size settings and a board naming what each
+  gesture writes to which table. Four rulings came out of it.
+  **(1) Four capabilities are ADDED to the eight decisions**, all approved: tracing a rectangle by hand on bare floor
+  then saying what it is; a palette of ready-made shapes whose sizes are COMPANY SETTINGS, never code constants;
+  repeating a rack down an aisle; and a walls-and-doors layer. Decision 8 is also **widened**: it said the phone reads
+  and does not draw, and that stands — but the **TABLET DRAWS**, with 44 px circular handles and the palette as a
+  drawer, because a ten-inch screen with a stylus is a drawing surface and a five-inch one is not.
+  **(2) The structure layer lands AFTER the drawing gestures.** Tracing, the palette and repeating are pure web work
+  over the API that already exists, so they ship quickly; structure needs a new table (it is deliberately NOT a
+  `stock_location` — a wall that were one would appear in every stock list, every import and every movement's
+  location picker, to hold nothing forever), a migration, an audit type and a 3D story. It gets its own slice.
+  **(3) Repeating CREATES STOCK LOCATIONS from the plan screen**, N locations and their N rectangles in one action,
+  and the panel lists the codes it will create (`R2 … R8`) before it is confirmed. The alternative — the plan may
+  only draw what another screen already created — was rejected: it would mean typing forty racks elsewhere first,
+  which is the work this feature exists to remove.
+  **(4) The drawable-kinds question of the 19:55 entry is SETTLED: only `bin` is refused, every other kind may be
+  drawn.** Decision 1 is read as being about the hierarchy's containers, not as a ban: if someone draws a site, they
+  meant a real place, and the approved plan's "Z6 · Préparation et expédition" — the establishment's own default
+  location, a `Site` by construction — is exactly that. `StockLocationKind::isDrawable()` already implements this;
+  the ruling is that it is right, not provisional. The `### Needs input` entry asking the question is therefore
+  answered and removed.
+  **Two rules hold the whole design together and are the ones to reverse if any of it is wrong.** The magnet touches
+  GESTURES ONLY — a dragged position, a dragged rotation and a dragged edge go to the quarter-metre and the
+  fifteen-degree step, a TYPED measurement is taken exactly as measured (the 20:40 entry, now general). And a gesture
+  writes into the FORM, never to the API — dragging fills x and y and stops there, so nothing reaches the server
+  before "Enregistrer", `Échap` and Annuler work everywhere, and a half-arranged plan can never save itself.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1832,7 +1865,6 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 
 ### Blocked
 ### Needs input
-- **Which location kinds may be drawn on a floor plan?** Decision 1 of the stock map (§ 7, 2026-09-21) says site, building and floor are not drawn because the floor IS the plan — but the establishment's own default location is a `StockLocation` of kind `Site` (`StockLocation.php:90`) and the approved canvas draws it as "Z6 · Préparation et expédition". Only `bin` is refused today (decision 2, unambiguous). Either decision 1 means the hierarchy's containers only, and this stands, or site/building/floor are refused and the default location is excepted by `isDefault` rather than by its kind.
 - Should an opening-stock row also carry what the goods **cost**? A count records a quantity only, so the stock it opens has no value: a stock-valuation report would have nothing to sum. Adding a `unit_cost` column later is additive, so this is not urgent — but it is cheaper to decide before people have imported their opening balances.
 - A location code is unique per **establishment**, so a company whose two sites both use "A-12" has a file that cannot say which. The import **refuses** it (`ambiguous_location`) rather than guessing. The alternative is an optional `establishment_code` column that disambiguates. Refusal was chosen because putting goods in the wrong building is worse than asking; say if a second column is preferred.
 - Must the import screen make a person **preview** before importing, or may they import straight away? A preview is the same run rolled back, so it costs one extra upload and catches every rejection before anything is stored.

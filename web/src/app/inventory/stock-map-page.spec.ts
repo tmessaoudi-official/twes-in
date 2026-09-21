@@ -31,6 +31,7 @@ import type {
   StockOptions,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
+import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
 
 class StaticLoader implements TranslateLoader {
   getTranslation() {
@@ -115,6 +116,7 @@ describe('StockMapPage', () => {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
   };
+  const windowClass = signal<WindowClass>('expanded');
   let fixture: ComponentFixture<StockMapPage>;
 
   const q = (testId: string): HTMLElement | null =>
@@ -151,6 +153,7 @@ describe('StockMapPage', () => {
     facade.draw.mockReset().mockResolvedValue(true);
     facade.eraseDrawing.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    windowClass.set('expanded');
     TestBed.configureTestingModule({
       imports: [StockMapPage],
       providers: [
@@ -169,6 +172,7 @@ describe('StockMapPage', () => {
         { provide: Session, useExisting: AuthFacade },
         { provide: SettingsFacade, useClass: BrowserStorageSettings },
         { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
+        { provide: WINDOW_CLASS, useValue: windowClass.asReadonly() },
       ],
     });
     fixture = TestBed.createComponent(StockMapPage);
@@ -330,5 +334,124 @@ describe('StockMapPage', () => {
     expect(q('stock-drawing-add')).toBeNull();
     expect(q('stock-floor-add')).toBeNull();
     expect(q('stock-map-svg')).not.toBeNull();
+  });
+  // ——— the plan as a drawing surface (docs/SPEC.md § 7, 2026-09-21 21:30) ———
+
+  /** jsdom lays nothing out, so every rect is 0×0 and a pointer would read the same metre everywhere. */
+  function surface(): Element {
+    const svg = q('stock-map-svg') as unknown as Element;
+    svg.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 400,
+        height: 400,
+        right: 400,
+        bottom: 400,
+        x: 0,
+        y: 0,
+      }) as DOMRect;
+
+    return svg;
+  }
+
+  const at = (x: number, y: number, target: Element): PointerEvent =>
+    ({
+      pointerId: 1,
+      button: 0,
+      clientX: x,
+      clientY: y,
+      target,
+      preventDefault: () => undefined,
+    }) as unknown as PointerEvent;
+
+  const plan = (): {
+    grab: (event: PointerEvent, drawing: StockDrawingRow, handle: unknown) => void;
+    drags: (event: PointerEvent) => void;
+    drops: (event: PointerEvent) => void;
+    abandon: () => void;
+    handles: () => readonly { handle: { hx: number; hy: number } }[];
+    mayDraw: () => boolean;
+  } => fixture.componentInstance as never;
+
+  it('moves a rectangle onto the grid and writes it into the form, sending nothing', async () => {
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, null);
+    plan().drags(at(200, 100, svg));
+    await settle();
+
+    // 100 px right, on a frame of 13,9 m drawn across 400 px, is 3,47 m: 2,50 + 3,47 lands on 6,00.
+    expect(drawingGroup().get('x')!.value).toBe('6.000');
+    expect(drawingGroup().get('y')!.value).toBe('4.000');
+    // A move carries the size through untouched, and nothing has been sent.
+    expect(drawingGroup().get('width')!.value).toBe('3.900');
+    expect(facade.draw).not.toHaveBeenCalled();
+  });
+
+  /** The plan must follow the form, or a dragged rectangle stays where the API last put it. */
+  it('draws the rectangle where it is being dragged, not where it was saved', async () => {
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, null);
+    plan().drags(at(200, 100, svg));
+    await settle();
+
+    expect(fixture.nativeElement.querySelector('svg rect')?.getAttribute('x')).toBe('6');
+  });
+
+  it('is a look, not a drag, until the pointer has really travelled', async () => {
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, null);
+    plan().drags(at(102, 100, svg));
+    await settle();
+
+    // No editor opened and nothing changed: pressing a rack to read it must not cost an unsaved change.
+    expect(drawingGroup()).toBeNull();
+    expect(q('stock-drawing-unsaved')).toBeNull();
+  });
+
+  it('pulls one handle and holds the opposite corner, changing the size and not the place', async () => {
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, { hx: 1, hy: 1 });
+    plan().drags(at(200, 100, svg));
+    await settle();
+
+    expect(drawingGroup().get('x')!.value).toBe('2.500');
+    expect(drawingGroup().get('width')!.value).toBe('2.000');
+  });
+
+  it('counts what a drag left unsaved, because nothing else on the plan says so', async () => {
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, null);
+    plan().drags(at(200, 100, svg));
+    await settle();
+
+    expect(q('stock-drawing-unsaved')?.getAttribute('data-count')).toBe('1');
+  });
+
+  it('gives the rectangle back exactly what it had when Échap is pressed', async () => {
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, null);
+    plan().drags(at(200, 100, svg));
+    await settle();
+    plan().abandon();
+    await settle();
+
+    expect(drawingGroup().get('x')!.value).toBe('2.500');
+    expect(q('stock-drawing-unsaved')).toBeNull();
+  });
+
+  /** Decision 8: the phone READS the map. A handle smaller than a fingertip is worse than no handle. */
+  it('offers no handle and no drag on a phone', async () => {
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+    const svg = surface();
+    plan().grab(at(100, 100, svg), drawn, null);
+    plan().drags(at(200, 100, svg));
+    await settle();
+
+    expect(plan().mayDraw()).toBe(false);
+    expect(plan().handles()).toEqual([]);
+    expect(drawingGroup()).toBeNull();
   });
 });

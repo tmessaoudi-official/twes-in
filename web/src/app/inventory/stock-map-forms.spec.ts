@@ -8,6 +8,7 @@ import {
   floorInput,
   floorValues,
   planRectangles,
+  rectValues,
 } from './stock-map-forms';
 import type {
   StockDrawingRow,
@@ -216,3 +217,24 @@ function fieldOf(form: ReturnType<typeof floorForm>, id: string) {
   if (field === undefined) throw new Error(`The form has no ${id} field.`);
   return field;
 }
+
+describe('rectValues', () => {
+  /**
+   * What a GESTURE writes into the form. It must be shaped exactly like what the API answered, or the unsaved-change
+   * count reads `1300` against `1300.000` as a change and says a field moved that nobody touched.
+   */
+  it('writes the rectangle the way the API writes it, so an untouched field reads as untouched', () => {
+    const { locationId, ...geometry } = drawingValues(drawing({ rotation: 90 }));
+
+    expect(locationId).toBe('l1');
+    expect(rectValues({ x: 2.5, y: 4, width: 3.9, depth: 0.6, rotation: 90, height: 2.1 })).toEqual(
+      geometry,
+    );
+  });
+
+  it('leaves out the location, which no gesture on the plan may change', () => {
+    expect(
+      Object.keys(rectValues({ x: 0, y: 0, width: 1, depth: 1, rotation: 0, height: 0 })),
+    ).not.toContain('locationId');
+  });
+});

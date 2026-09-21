@@ -182,12 +182,21 @@
           <div
             class="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
           >
+            <!--
+              The gestures live on the rectangles, never on the sheet: pointer events on the whole plan would fight
+              the page's own scrolling on a touch screen, and `touch-action: none` over a full-width drawing would
+              trap a finger trying to scroll past it.
+            -->
             <svg
               [attr.viewBox]="viewBox()"
               class="block h-[28rem] w-full"
               role="img"
               [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
               data-testid="stock-map-svg"
+              (document:pointermove)="drags($event)"
+              (document:pointerup)="drops($event)"
+              (document:pointercancel)="drops($event)"
+              (document:keydown.escape)="abandon()"
             >
               @for (shape of shapes(); track shape.drawing.id) {
                 <g
@@ -208,12 +217,13 @@
                     [attr.height]="shape.rect.depth"
                     [attr.rx]="0.1"
                     [attr.stroke-width]="shape.drawing.id === selectedId() ? 0.08 : 0.04"
-                    class="cursor-pointer"
+                    [class]="mayDraw() ? 'cursor-move touch-none' : 'cursor-pointer'"
                     [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
                     [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
                     [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
                     [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
                     [class.fill-secondary-container]="shape.drawing.id === selectedId()"
+                    (pointerdown)="grab($event, shape.drawing, null)"
                     (click)="select(shape.drawing)"
                   />
                   <text
@@ -224,6 +234,23 @@
                   >
                     {{ shape.drawing.locationCode }}
                   </text>
+
+                  <!--
+                    Drawn inside the group that turns the rectangle, so the handles turn with it: the one on a rack's
+                    end stays on its end whatever angle it stands at. Everything they do is also in the form.
+                  -->
+                  @if (shape.drawing.id === selectedId()) {
+                    @for (grip of handles(); track grip.key) {
+                      <circle
+                        [attr.cx]="grip.x"
+                        [attr.cy]="grip.y"
+                        [attr.r]="handleRadius()"
+                        [attr.stroke-width]="handleRadius() / 3"
+                        class="cursor-nwse-resize touch-none fill-surface stroke-primary"
+                        (pointerdown)="grab($event, shape.drawing, grip.handle)"
+                      />
+                    }
+                  }
                 </g>
               }
             </svg>
@@ -239,7 +266,21 @@
                     testId="stock-drawing-form"
                     (submitted)="saveDrawing($event)"
                   >
-                    <div class="flex flex-wrap justify-end gap-2">
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      @if (unsaved(); as changes) {
+                        <!-- Announced: nothing else on the plan says a rectangle was moved and not yet saved. -->
+                        <span
+                          role="status"
+                          class="grow text-sm text-on-surface-variant"
+                          data-testid="stock-drawing-unsaved"
+                          [attr.data-count]="changes"
+                        >
+                          {{
+                            (changes === 1 ? 'form.one_unsaved' : 'form.unsaved')
+                              | translate: { count: changes }
+                          }}
+                        </span>
+                      }
                       <button
                         mat-button
                         type="button"
