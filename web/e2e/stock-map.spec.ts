@@ -164,9 +164,15 @@ test.describe('the drawn stock map', () => {
       // Dragged, not typed. The exact metre a pointer lands on depends on the window, so this asserts what the
       // rule promises and not a number: it moved, and it came to rest on the quarter-metre grid.
       const rect = page.locator('svg[data-testid="stock-map-svg"] rect').first();
+
+      // The toast of the save above is an overlay, and `mouse.down()` runs NO actionability check — it presses
+      // whatever is topmost at those coordinates and says nothing. `hover()` does check, so a covered rectangle
+      // fails here naming what intercepted it, instead of silently pressing the toast and leaving the drag dead.
+      await expect(toast(page)).toBeHidden({ timeout: 15_000 });
+      await rect.scrollIntoViewIfNeeded();
+      await rect.hover();
       const box = await rect.boundingBox();
       if (box === null) throw new Error('the rectangle is not laid out');
-      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
       await page.mouse.down();
       await page.mouse.move(box.x + box.width / 2 + 120, box.y + box.height / 2, { steps: 12 });
       await page.mouse.up();
