@@ -148,6 +148,28 @@
               {{ 'inventory.plan.draw' | translate }}
             </button>
           }
+          @if (mayDraw()) {
+            <!--
+              The tool is armed before the floor becomes a drawing surface, and gives itself back after one box: an
+              armed sheet holds `touch-action: none` across a full-width block, which would otherwise trap a finger
+              trying to scroll past the plan.
+            -->
+            <button
+              mat-stroked-button
+              type="button"
+              [class.bg-secondary-container]="tracing()"
+              [attr.aria-pressed]="tracing()"
+              (click)="armTrace()"
+              data-testid="stock-map-trace"
+            >
+              {{ 'inventory.plan.trace' | translate }}
+            </button>
+            @if (tracing()) {
+              <p class="text-sm text-on-surface-variant" data-testid="stock-map-trace-hint">
+                {{ 'inventory.plan.trace_hint' | translate }}
+              </p>
+            }
+          }
 
           @if (selected(); as drawing) {
             <div class="mt-4 flex flex-col gap-2 rounded-lg border border-outline-variant p-3">
@@ -199,6 +221,9 @@
               role="img"
               [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
               data-testid="stock-map-svg"
+              [class.cursor-crosshair]="tracing()"
+              [class.touch-none]="tracing()"
+              (pointerdown)="trace($event)"
               (document:pointermove)="drags($event)"
               (document:pointerup)="drops($event)"
               (document:pointercancel)="drops($event)"

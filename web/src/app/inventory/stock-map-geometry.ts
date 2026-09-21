@@ -235,6 +235,32 @@ export function resizedTo(
   };
 }
 
+/**
+ * A rectangle traced on bare floor, from the corner a gesture started at to the corner it is at now — **decision 1
+ * of the approved canvas** (docs/SPEC.md § 7, 2026-09-21): a box is drawn where there is nothing yet, rather than
+ * added at a default size and then moved to where it belongs.
+ *
+ * It is a gesture, so both corners take the quarter-metre magnet. It reads the same box whichever corner the hand
+ * started at, because a person drawing up and to the left is drawing the same rack as one drawing down and to the
+ * right. It is born unturned and flat: an angle and a height are measurements, and decision 3 says a measurement is
+ * typed rather than dragged.
+ */
+export function tracedTo(from: PlanPoint, to: PlanPoint): PlanRectangle {
+  const [x, width] = spanned(from.x, to.x);
+  const [y, depth] = spanned(from.y, to.y);
+
+  return { x, y, width, depth, rotation: 0, height: 0 };
+}
+
+/** One side of a traced box: where it starts and how long it is, never shorter than one step of the grid. */
+function spanned(from: number, to: number): [number, number] {
+  const start = onFloor(snapMetres(from));
+  const end = onFloor(snapMetres(to));
+
+  // A press that barely moved is still a box: `PlanRect` refuses a side of no length, so it opens to one grid step.
+  return [Math.min(start, end), tidy(Math.max(Math.abs(end - start), SNAP_METRES))];
+}
+
 /** Where each handle sits on the rectangle's own unturned corners, which the group around it then turns. */
 export function handleAt(rect: PlanRectangle, handle: PlanHandle): PlanPoint {
   return { x: rect.x + rect.width * handle.hx, y: rect.y + rect.depth * handle.hy };

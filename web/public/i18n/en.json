@@ -1419,6 +1419,8 @@
       "nothing_drawn": "Nothing is drawn on this floor yet.",
       "plan_of": "Plan of {{floor}}: {{count}} rectangle(s) drawn",
       "draw": "Draw a location",
+      "trace": "Trace a rectangle",
+      "trace_hint": "Drag on the plan to trace the footprint, then choose the location.",
       "erase": "Erase the rectangle",
       "add_floor": "Add a floor",
       "edit_floor": "Edit the floor",

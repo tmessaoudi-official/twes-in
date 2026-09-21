@@ -396,6 +396,12 @@ describe('StockMapPage', () => {
   const firstRect = (): Element =>
     fixture.nativeElement.querySelector('svg[data-testid="stock-map-svg"] rect') as Element;
 
+  /** The rectangle drawn LAST, which is the one being traced: `shapes()` pushes the pending box after the saved. */
+  const lastRect = (): Element =>
+    [...fixture.nativeElement.querySelectorAll('svg[data-testid="stock-map-svg"] rect')].at(
+      -1,
+    ) as Element;
+
   it('moves a rectangle through the DOM bindings, not only through its methods', async () => {
     surface();
     fire(firstRect(), 'pointerdown', 100, 100);
@@ -522,5 +528,114 @@ describe('StockMapPage', () => {
     busy.set(false);
     await settle();
     expect((q('stock-drawing-erase') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // ——— tracing a box on bare floor (decision 1 of the approved canvas) ———
+
+  /**
+   * The tool has to be armed first. A sheet that traced a rectangle on any press would turn a finger scrolling past
+   * the plan into a new rack, and would have to hold `touch-action: none` over a full-width block to do it.
+   */
+  it('traces a box on bare floor once the tool is armed, and opens it as a new rectangle', async () => {
+    surface();
+    q('stock-map-trace')?.click();
+    await settle();
+
+    fire(surface(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 150);
+    fire(document, 'pointerup', 200, 150);
+    await settle();
+
+    // The two corners read 0,97 × 0,82 m and 4,45 × 2,56 m on this frame, each taken to the quarter.
+    expect(drawingGroup().get('x')!.value).toBe('1.000');
+    expect(drawingGroup().get('y')!.value).toBe('0.750');
+    expect(drawingGroup().get('width')!.value).toBe('3.500');
+    expect(drawingGroup().get('depth')!.value).toBe('1.750');
+    // It is a rectangle waiting for its location, and nothing has been sent.
+    expect(q('stock-drawing-form')).not.toBeNull();
+    expect(facade.draw).not.toHaveBeenCalled();
+  });
+
+  /** A trace decides an emprise, never an angle or a height: those are measurements, and decision 3 types them. */
+  it('leaves the new rectangle’s height and angle at what the form offers', async () => {
+    surface();
+    q('stock-map-trace')?.click();
+    await settle();
+    fire(surface(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 150);
+    await settle();
+
+    expect(drawingGroup().get('height')!.value).toBe('2.000');
+    expect(drawingGroup().get('rotation')!.value).toBe(0);
+  });
+
+  it('draws nothing on a press that never armed the tool', async () => {
+    fire(surface(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 150);
+    fire(document, 'pointerup', 200, 150);
+    await settle();
+
+    expect(drawingGroup()).toBeNull();
+  });
+
+  /** One box per arming: the sheet goes back to being something a finger can scroll past. */
+  it('disarms itself once a box has been traced', async () => {
+    surface();
+    q('stock-map-trace')?.click();
+    await settle();
+    fire(surface(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 150);
+    fire(document, 'pointerup', 200, 150);
+    await settle();
+
+    expect(q('stock-map-trace')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  /** A press that landed on a rectangle belongs to that rectangle, and it bubbles to the sheet on its way up. */
+  it('moves a rectangle rather than tracing over it when the tool is armed', async () => {
+    surface();
+    q('stock-map-trace')?.click();
+    await settle();
+    fire(firstRect(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 100);
+    await settle();
+
+    expect(drawingGroup().get('x')!.value).toBe('6.000');
+    expect(drawingGroup().get('width')!.value).toBe('3.900');
+  });
+
+  /**
+   * A box just traced has no id yet, so it is not among what the API answered. The gesture that moves it must still
+   * keep what the form held, or Échap gives it nothing back — and after a trace that is the common path, not a
+   * corner: the rectangle a person adjusts first is the one they have only just drawn.
+   */
+  it('gives a just-traced rectangle back what it had when Échap is pressed', async () => {
+    surface();
+    q('stock-map-trace')?.click();
+    await settle();
+    fire(surface(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 150);
+    fire(document, 'pointerup', 200, 150);
+    await settle();
+    const traced = drawingGroup().get('x')!.value;
+
+    // Now move the box that was traced, and take it back.
+    fire(lastRect(), 'pointerdown', 150, 120);
+    fire(document, 'pointermove', 250, 120);
+    await settle();
+    expect(drawingGroup().get('x')!.value).not.toBe(traced);
+
+    plan().abandon();
+    await settle();
+    expect(drawingGroup().get('x')!.value).toBe(traced);
+  });
+
+  /** Decision 8 again: the phone reads the map, so there is nothing to arm. */
+  it('offers no tracing tool on a phone', async () => {
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    expect(q('stock-map-trace')).toBeNull();
   });
 });

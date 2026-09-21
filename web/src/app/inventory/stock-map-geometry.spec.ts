@@ -11,6 +11,7 @@ import {
   planViewBox,
   pointerMetres,
   resizedTo,
+  tracedTo,
   SNAP_DEGREES,
   SNAP_METRES,
   snapAngle,
@@ -306,5 +307,37 @@ describe('handleAt', () => {
     expect(at).toContainEqual({ x: 6, y: 4 });
     expect(at).toContainEqual({ x: 4, y: 2 });
     expect(at).not.toContainEqual({ x: 4, y: 3 });
+  });
+});
+
+describe('tracedTo', () => {
+  /** The gesture of decision 1: a box drawn on bare floor by dragging one corner to the other. */
+  it('makes a rectangle between the two corners of the gesture, on the grid', () => {
+    const traced = tracedTo({ x: 2.1, y: 3.9 }, { x: 6.4, y: 5.1 });
+
+    expect(traced).toEqual({ x: 2, y: 4, width: 4.5, depth: 1, rotation: 0, height: 0 });
+  });
+
+  /** A box is drawn from whichever corner the hand started at: up and to the left is the same box. */
+  it('reads the same box whichever way the corners were dragged', () => {
+    const down = tracedTo({ x: 2, y: 4 }, { x: 6.5, y: 5 });
+    const up = tracedTo({ x: 6.5, y: 5 }, { x: 2, y: 4 });
+
+    expect(up).toEqual(down);
+  });
+
+  /** A press that barely moved is still a box: `PlanRect` refuses a side of no length. */
+  it('never traces a rectangle of no size', () => {
+    const traced = tracedTo({ x: 3, y: 3 }, { x: 3.02, y: 3.02 });
+
+    expect(traced.width).toBe(SNAP_METRES);
+    expect(traced.depth).toBe(SNAP_METRES);
+  });
+
+  /** A floor starts at its own corner, so a gesture that ran off the top-left stops there rather than being refused. */
+  it('keeps a traced box on the floor', () => {
+    const traced = tracedTo({ x: -4, y: -4 }, { x: 2, y: 1 });
+
+    expect(traced).toMatchObject({ x: 0, y: 0, width: 2, depth: 1 });
   });
 });

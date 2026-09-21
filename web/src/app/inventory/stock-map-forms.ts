@@ -198,13 +198,20 @@ export function drawingInput(values: FormValues): StockDrawingInput {
  * The location is deliberately absent. Dragging a rectangle moves a rack; it never decides which rack it is.
  */
 export function rectValues(rect: PlanRectangle): FormValues {
+  return { ...footprintValues(rect), rotation: rect.rotation, height: metres(rect.height) };
+}
+
+/**
+ * Where a rectangle sits and how much floor it takes — and nothing else. It is what a box traced on bare floor
+ * decides: an angle and a height are MEASUREMENTS, which decision 3 says are typed rather than dragged, so a trace
+ * leaves both at whatever the form offers instead of flattening a new rack to nothing.
+ */
+export function footprintValues(rect: PlanRectangle): FormValues {
   return {
     x: metres(rect.x),
     y: metres(rect.y),
     width: metres(rect.width),
     depth: metres(rect.depth),
-    rotation: rect.rotation,
-    height: metres(rect.height),
   };
 }
 

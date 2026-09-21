@@ -1419,6 +1419,8 @@
       "nothing_drawn": "Rien n'est encore dessiné sur cet étage.",
       "plan_of": "Plan de {{floor}} : {{count}} rectangle(s) dessiné(s)",
       "draw": "Dessiner un emplacement",
+      "trace": "Tracer un rectangle",
+      "trace_hint": "Faites glisser sur le plan pour tracer l’emprise au sol, puis choisissez l’emplacement.",
       "erase": "Effacer le rectangle",
       "add_floor": "Ajouter un étage",
       "edit_floor": "Modifier l'étage",

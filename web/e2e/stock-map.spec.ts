@@ -206,6 +206,42 @@ test.describe('the drawn stock map', () => {
       await expect(toast(page)).toContainText('Rectangle effacé');
       await expect(page.getByTestId('stock-map-empty')).toBeVisible();
 
+      // Traced, not typed: the floor is bare now, so any part of the sheet is floor to draw on. It is armed first —
+      // the sheet only becomes a drawing surface once the tool says so — and the box is abandoned rather than
+      // saved, so the run leaves no rectangle and no location behind it.
+      await expect(toast(page)).toBeHidden({ timeout: 15_000 });
+      await page.getByTestId('stock-map-trace').click();
+      await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'true');
+      const sheet = page.getByTestId('stock-map-svg');
+      await sheet.scrollIntoViewIfNeeded();
+      await sheet.hover();
+      const area = await sheet.boundingBox();
+      if (area === null) throw new Error('the plan is not laid out');
+
+      // Traced from the MIDDLE outwards. An SVG meets its box, so a wide sheet letterboxes the floor and a press
+      // near the left edge lands in the band beside it — where both corners clamp to the floor's own corner and
+      // the box comes out one grid step wide. That would pass every check below while proving nothing.
+      const middle = { x: area.x + area.width / 2, y: area.y + area.height / 2 };
+      await page.mouse.move(middle.x - 80, middle.y - 60);
+      await page.mouse.down();
+      await page.mouse.move(middle.x + 80, middle.y + 40, { steps: 12 });
+      await page.mouse.up();
+
+      await expect(page.getByTestId('stock-drawing-form')).toBeVisible();
+      const traced = {
+        width: comma(await page.getByTestId('field-width').inputValue()),
+        depth: comma(await page.getByTestId('field-depth').inputValue()),
+      };
+      // Metres, not merely more than nothing: 160 px across the middle of the sheet can only come out one grid step
+      // wide if the pointer never reached the floor's metres at all, which is the failure worth catching here.
+      expect(traced.width, 'a box traced across 160 px is metres wide').toBeGreaterThanOrEqual(1);
+      expect(traced.depth, 'and 100 px deep is not nothing either').toBeGreaterThanOrEqual(0.5);
+      expect(Math.round(traced.width * 4)).toBeCloseTo(traced.width * 4, 6);
+      expect(Math.round(traced.depth * 4)).toBeCloseTo(traced.depth * 4, 6);
+      // One box per arming, so the sheet is something a finger can scroll past again.
+      await expect(page.getByTestId('stock-map-trace')).toHaveAttribute('aria-pressed', 'false');
+      await page.getByTestId('stock-drawing-cancel').click();
+
       await page.goto('/stock/locations');
       await expect(page.getByTestId(`stock-location-${code}`)).toBeVisible();
     } finally {

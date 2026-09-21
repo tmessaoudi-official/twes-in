@@ -34,6 +34,7 @@ import {
   floorForm,
   floorInput,
   floorValues,
+  footprintValues,
   planRectangles,
   rectValues,
 } from './stock-map-forms';
@@ -44,6 +45,7 @@ import {
   planFrame,
   pointerMetres,
   resizedTo,
+  tracedTo,
   type PlanBox,
   type PlanFrame,
   type PlanHandle,
@@ -56,9 +58,9 @@ import { WINDOW_CLASS } from '../shared/ui/window-class';
 const PLAN_PADDING = 1;
 
 /**
- * How much more floor is shown once something is selected, in metres. The frame is frozen for as long as a
- * rectangle is being worked on — a plan that reframed itself under a moving pointer would take the rectangle out
- * from under it — so it has to be opened up first, or there would be nowhere to drag anything to.
+ * How much bare floor is kept around what is drawn, in metres, beyond the margin. The frame is measured from what
+ * is SAVED (see `frame` below), so it does not open up when a gesture begins: the room has to be there already, or
+ * there would be nowhere to drag a rectangle to and no bare floor to trace a new one on.
  */
 const EDIT_ROOM = 4;
 
@@ -76,8 +78,9 @@ interface Drag {
   pointerId: number;
   /** The handle being pulled, or `null` when the rectangle itself is being moved. */
   handle: PlanHandle | null;
-  drawingId: string;
-  origin: PlanRectangle;
+  /** The rectangle being worked on, and what it was when the gesture began — both `null` while one is traced. */
+  drawingId: string | null;
+  origin: PlanRectangle | null;
   from: PlanPoint;
   /** Frozen at the start: both must stay still, or the metres under the pointer change as it moves. */
   frame: PlanFrame;
@@ -401,25 +404,59 @@ export class StockMapPage implements OnInit {
     return dirtyCount(values, drawingValues(editing === 'new' ? null : editing));
   });
 
+  /** Whether the next gesture on bare floor traces a box. Armed by the tool beside the plan, for one box. */
+  protected readonly tracing = signal(false);
+
+  protected armTrace(): void {
+    this.tracing.update((armed) => !armed);
+  }
+
   private drag: Drag | null = null;
 
   protected grab(event: PointerEvent, drawing: StockDrawingRow, handle: PlanHandle | null): void {
     if (!this.mayDraw() || event.button !== 0) return;
-    const surface = (event.target as Element).closest('svg');
-    if (surface === null) return;
 
-    // Choosing it first is what freezes the frame, so the metres read below stay true for the whole gesture.
+    // Choosing it first is what the handles are drawn around, and what the gesture below then works on.
     this.select(drawing);
     const shape = this.shapes().find((one) => one.drawing.id === drawing.id);
     if (shape === undefined) return;
+
+    this.hold(event, drawing.id, shape.rect, handle);
+  }
+
+  /**
+   * A box traced on bare floor — **decision 1**. It is armed first, by the tool beside the plan, and never by the
+   * press alone: a sheet that drew a rack on any press would need `touch-action: none` across a full-width block to
+   * beat the page's own scrolling, which traps a finger trying to scroll past the plan. Armed, it takes that
+   * behaviour for one box and gives it straight back.
+   */
+  protected trace(event: PointerEvent): void {
+    if (!this.tracing()) return;
+
+    // The press bubbles here from whatever it landed on, so a press on a rectangle is that rectangle's, not a trace.
+    if ((event.target as Element).tagName.toLowerCase() !== 'svg') return;
+
+    this.hold(event, null, null, null);
+  }
+
+  /** What every gesture starts with: the frame and the viewport frozen, and the metre the pointer began on. */
+  private hold(
+    event: PointerEvent,
+    drawingId: string | null,
+    origin: PlanRectangle | null,
+    handle: PlanHandle | null,
+  ): void {
+    if (!this.mayDraw() || event.button !== 0) return;
+    const surface = (event.target as Element).closest('svg');
+    if (surface === null) return;
 
     const box = surface.getBoundingClientRect();
     const frame = this.frame();
     this.drag = {
       pointerId: event.pointerId,
       handle,
-      drawingId: drawing.id,
-      origin: shape.rect,
+      drawingId,
+      origin,
       from: pointerMetres({ x: event.clientX, y: event.clientY }, frame, box),
       frame,
       box,
@@ -441,29 +478,45 @@ export class StockMapPage implements OnInit {
 
       // Only now is it a drag: the editor opens, and what it held is kept so Échap can put it back.
       drag.past = true;
-      const drawing = this.facade.drawings().find((one) => one.id === drag.drawingId);
-      if (drawing === undefined) return;
-      if (this.editing() === null || this.editing() === 'new') this.draw(drawing);
+      // A box being traced opens the new-rectangle editor; one just traced has that editor open already and is not
+      // among what the API answered, so looking it up there would abandon the gesture before its form was kept —
+      // and Échap would then give a freshly traced rectangle nothing back.
+      if (drag.drawingId === null) this.draw('new');
+      else if (drag.drawingId !== PENDING_ID) {
+        const drawing = this.facade.drawings().find((one) => one.id === drag.drawingId);
+        if (drawing === undefined) return;
+        if (this.editing() === null || this.editing() === 'new') this.draw(drawing);
+      }
       drag.before = (this.drawingFormGroup()?.getRawValue() ?? {}) as FormValues;
     }
 
     const to = pointerMetres({ x: event.clientX, y: event.clientY }, drag.frame, drag.box);
+    const origin = drag.origin;
+    if (origin === null) {
+      this.drawingFormGroup()?.patchValue(footprintValues(tracedTo(drag.from, to)));
+
+      return;
+    }
+
     const next =
-      drag.handle === null
-        ? movedTo(drag.origin, drag.from, to)
-        : resizedTo(drag.origin, drag.handle, to);
+      drag.handle === null ? movedTo(origin, drag.from, to) : resizedTo(origin, drag.handle, to);
 
     this.drawingFormGroup()?.patchValue(rectValues(next));
   }
 
   protected drops(event: PointerEvent): void {
-    if (this.drag?.pointerId === event.pointerId) this.drag = null;
+    if (this.drag?.pointerId !== event.pointerId) return;
+
+    // One box per arming: the sheet goes back to being something a finger can scroll past.
+    if (this.drag.origin === null && this.drag.past) this.tracing.set(false);
+    this.drag = null;
   }
 
   /** Échap gives the rectangle back exactly what the form held before the gesture — never a guess at it. */
   protected abandon(): void {
     const drag = this.drag;
     this.drag = null;
+    this.tracing.set(false);
     if (drag?.past) this.drawingFormGroup()?.patchValue(drag.before);
   }
 
