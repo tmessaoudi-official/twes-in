@@ -173,6 +173,23 @@ final class InventoryTest extends ApiTestCase
         // The catalogue is not here: it is asked for a few at a time (testTheProductPickerOffersOnlyWhatStockIsKeptOf).
         self::assertArrayNotHasKey('products', $this->json());
         self::assertSame(['000'], array_column($this->arrayAt($this->json(), 'establishments'), 'code'));
+        // The plan's palette poses a shape at the size THIS company says a rack is, so the sizes travel with the
+        // context the plan screen already asks for rather than being constants the web carries of its own.
+        $shapes = $this->arrayAt($this->json(), 'planShapes');
+        self::assertSame(['rack', 'zone', 'aisle', 'dock'], array_column($shapes, 'shape'));
+        self::assertSame(['6.000', '4.000'], $this->sidesOf($shapes, 1), 'a zone, at the declared default');
+
+        // And it is RESOLVED, not recited: this company's racks are 2,40 m long, and the palette says so. Asserting
+        // only the declared default would pass just as well against sizes hardcoded in the provider.
+        // Re-found, never reused: the test client reboots the kernel between requests, so the company held since
+        // setUp belongs to an entity manager that is gone.
+        $mineNow = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($mineNow);
+        $this->em()->persist(new Setting(SettingAddress::company($mineNow), 'venue.shape.rack.width', '2.400', new \DateTimeImmutable()));
+        $this->em()->flush();
+        $this->getJson($this->path('stock-options'));
+        self::assertResponseIsSuccessful();
+        self::assertSame(['2.400', '0.600'], $this->sidesOf($this->arrayAt($this->json(), 'planShapes'), 0), 'the company’s own length, the declared depth');
 
         foreach ([
             'productId' => ['operation' => 'receive', 'productId' => $this->supportId, 'locationId' => $siteId, 'quantity' => '1'],
@@ -430,6 +447,26 @@ final class InventoryTest extends ApiTestCase
         // Refused means refused: nothing of either attempt was written.
         $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId.'&sourceType=move');
         self::assertSame(2, $this->jsonPage()['totalItems']);
+    }
+
+    /**
+     * The two sides of one palette shape, as the answer carries them: a `SettingType::Decimal` crosses the wire as
+     * a decimal string, so anything else is a contract the provider and this test no longer agree on.
+     *
+     * @param array<mixed> $shapes
+     *
+     * @return array{0: string, 1: string}
+     */
+    private function sidesOf(array $shapes, int $at): array
+    {
+        $shape = $shapes[$at] ?? null;
+        self::assertIsArray($shape, "the palette has a shape at $at");
+        $width = $shape['width'] ?? null;
+        $depth = $shape['depth'] ?? null;
+        self::assertIsString($width, 'a width');
+        self::assertIsString($depth, 'a depth');
+
+        return [$width, $depth];
     }
 
     private function defaultLocationId(): string

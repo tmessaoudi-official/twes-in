@@ -8,6 +8,8 @@ const CHAIN_LEVELS: Record<SettingChain, readonly SettingLevel[]> = {
   parties: ['platform', 'company', 'customer_group', 'customer', 'document'],
   articles: ['platform', 'company', 'product_category', 'product', 'document_line'],
   presentation: ['platform', 'company', 'role', 'user'],
+  // A floor belongs to a company, and nothing below one draws a plan, so the chain stops there.
+  venue: ['platform', 'company'],
 };
 
 /** A text allowed to be longer than this gets several lines across both columns. */

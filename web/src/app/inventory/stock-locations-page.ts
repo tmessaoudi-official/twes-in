@@ -135,7 +135,7 @@ export class StockLocationsPage implements OnInit {
           untracked(() =>
             locationValues(
               editing === 'new' ? null : editing,
-              this.facade.options() ?? { establishments: [] },
+              this.facade.options() ?? { establishments: [], planShapes: [] },
             ),
           ),
       );

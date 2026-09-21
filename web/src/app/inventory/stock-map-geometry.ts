@@ -261,6 +261,24 @@ function spanned(from: number, to: number): [number, number] {
   return [Math.min(start, end), tidy(Math.max(Math.abs(end - start), SNAP_METRES))];
 }
 
+/**
+ * A ready-made shape posed in the middle of the floor being shown — the palette's keyboard path, where there is no
+ * pointer to say where it goes ("l'activer pose le rectangle au centre du plan", the approved canvas).
+ *
+ * Where it LANDS takes the magnet, like every other placement; its SIZE is carried through exactly, because that
+ * size is what the company said a rack of theirs measures and posing it is not the moment to re-measure it.
+ */
+export function centredIn(frame: PlanFrame, width: number, depth: number): PlanRectangle {
+  return {
+    x: onFloor(snapMetres(frame.x + frame.width / 2 - width / 2)),
+    y: onFloor(snapMetres(frame.y + frame.height / 2 - depth / 2)),
+    width,
+    depth,
+    rotation: 0,
+    height: 0,
+  };
+}
+
 /** Where each handle sits on the rectangle's own unturned corners, which the group around it then turns. */
 export function handleAt(rect: PlanRectangle, handle: PlanHandle): PlanPoint {
   return { x: rect.x + rect.width * handle.hx, y: rect.y + rect.depth * handle.hy };

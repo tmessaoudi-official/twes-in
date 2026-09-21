@@ -224,4 +224,17 @@ export type StockDrawingInput = Pick<
  */
 export interface StockOptions {
   establishments: StockEstablishmentOption[];
+  /** The plan palette's ready-made shapes, at the sizes this company set for them. */
+  planShapes: StockPlanShape[];
+}
+
+/**
+ * One shape of the plan's palette. Its sizes are the company's settings and never constants here (the approved
+ * canvas: a warehouse of pallets and a shop do not have the same racks), so they arrive with the stock options.
+ */
+export interface StockPlanShape {
+  /** `rack`, `zone`, `aisle` or `dock` — which also names it on screen and gives it its colour. */
+  shape: string;
+  width: number;
+  depth: number;
 }

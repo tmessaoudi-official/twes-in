@@ -704,7 +704,8 @@
     "chains": {
       "parties": "Customers and documents",
       "articles": "Products",
-      "presentation": "Appearance"
+      "presentation": "Appearance",
+      "venue": "Stock plan"
     },
     "document": {
       "payment_terms_days": "Payment terms (days)",
@@ -761,6 +762,26 @@
       "invalid": "The values were refused. Check the limits shown.",
       "not_found": "Setting not found.",
       "network": "The server could not be reached."
+    },
+    "venue": {
+      "shape": {
+        "rack": {
+          "width": "Rack — width (m)",
+          "depth": "Rack — depth (m)"
+        },
+        "zone": {
+          "width": "Zone — width (m)",
+          "depth": "Zone — depth (m)"
+        },
+        "aisle": {
+          "width": "Aisle — width (m)",
+          "depth": "Aisle — depth (m)"
+        },
+        "dock": {
+          "width": "Dock — width (m)",
+          "depth": "Dock — depth (m)"
+        }
+      }
     }
   },
   "customers": {
@@ -1449,6 +1470,13 @@
         "depth": "Depth (m)",
         "height": "Height (m)",
         "rotation": "Rotation (°)"
+      },
+      "shapes": "Ready-made shapes",
+      "shape_names": {
+        "rack": "Rack",
+        "zone": "Zone",
+        "aisle": "Aisle",
+        "dock": "Dock"
       }
     }
   },

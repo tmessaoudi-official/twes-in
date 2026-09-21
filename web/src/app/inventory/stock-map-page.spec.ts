@@ -89,7 +89,14 @@ const drawn: StockDrawingRow = {
   height: '2.100',
 };
 
-const options: StockOptions = { establishments: [{ id: 'e1', code: '000', name: 'Bab Saadoun' }] };
+const options: StockOptions = {
+  establishments: [{ id: 'e1', code: '000', name: 'Bab Saadoun' }],
+  // This company's own sizes, not the declared defaults: a palette that posed 3,90 would pass either way.
+  planShapes: [
+    { shape: 'rack', width: 2.4, depth: 0.6 },
+    { shape: 'zone', width: 6, depth: 4 },
+  ],
+};
 
 describe('StockMapPage', () => {
   const error = signal<InventoryError | null>(null);
@@ -628,6 +635,53 @@ describe('StockMapPage', () => {
     plan().abandon();
     await settle();
     expect(drawingGroup().get('x')!.value).toBe(traced);
+  });
+
+  // ——— the palette of ready-made shapes ———
+
+  /**
+   * Nobody types 3,90 × 0,60 forty times. Each shape is a BUTTON, which is what makes the palette reachable without
+   * a pointer: activating it poses the rectangle at the centre of the plan, selected, with its form open.
+   */
+  it('poses a shape of the palette at the centre of the floor, at this company’s size', async () => {
+    q('stock-shape-rack')?.click();
+    await settle();
+
+    expect(drawingGroup().get('width')!.value).toBe('2.400');
+    expect(drawingGroup().get('depth')!.value).toBe('0.600');
+    // The frame is 13,9 × 10,6 m from -2,5, -1, so its middle is 4,45 by 4,30 and a 2,40 × 0,60 box is placed on
+    // the quarter-metre around it.
+    expect(drawingGroup().get('x')!.value).toBe('3.250');
+    expect(drawingGroup().get('y')!.value).toBe('4.000');
+    expect(facade.draw).not.toHaveBeenCalled();
+  });
+
+  /** A size is the COMPANY's, never the code's: the palette shows what it will pose, in metres. */
+  it('shows each shape at the size it will be posed at', async () => {
+    expect(q('stock-shape-rack')?.textContent).toContain('2.4');
+    expect(q('stock-shape-rack')?.textContent).toContain('0.6');
+    expect(q('stock-shape-zone')?.textContent).toContain('6');
+    // The four of the canvas, minus what this company has no size for: nothing is invented here.
+    expect(q('stock-shape-aisle')).toBeNull();
+  });
+
+  /** A shape posed is a rectangle being drawn, so the plan shows it before anything is saved. */
+  it('draws the posed shape on the plan straight away', async () => {
+    q('stock-shape-zone')?.click();
+    await settle();
+
+    const drawn = [...fixture.nativeElement.querySelectorAll('svg rect')].at(-1) as Element;
+    expect(drawn.getAttribute('width')).toBe('6');
+    expect(drawn.getAttribute('height')).toBe('4');
+  });
+
+  /** Decision 8: the phone reads the map. A palette that poses rectangles is not a reading tool. */
+  it('offers no palette on a phone', async () => {
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+
+    expect(q('stock-shape-rack')).toBeNull();
   });
 
   /** Decision 8 again: the phone reads the map, so there is nothing to arm. */

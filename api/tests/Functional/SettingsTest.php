@@ -166,7 +166,7 @@ final class SettingsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $chains = array_map(fn (array $row): string => $this->stringAt($row, 'chain'), $this->jsonList());
-        self::assertSame(['parties', 'articles', 'presentation'], array_values(array_unique($chains)));
+        self::assertSame(['parties', 'articles', 'presentation', 'venue'], array_values(array_unique($chains)));
     }
 
     public function testAnUnknownSettingIsNotFound(): void

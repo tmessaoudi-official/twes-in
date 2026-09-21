@@ -54,6 +54,7 @@ const site: StockLocationRow = {
 };
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
+  planShapes: [],
 };
 const delivered: StockMovementRow = {
   id: 'm1',

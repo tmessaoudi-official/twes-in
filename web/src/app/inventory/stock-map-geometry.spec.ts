@@ -10,6 +10,7 @@ import {
   planFrame,
   planViewBox,
   pointerMetres,
+  centredIn,
   resizedTo,
   tracedTo,
   SNAP_DEGREES,
@@ -339,5 +340,31 @@ describe('tracedTo', () => {
     const traced = tracedTo({ x: -4, y: -4 }, { x: 2, y: 1 });
 
     expect(traced).toMatchObject({ x: 0, y: 0, width: 2, depth: 1 });
+  });
+});
+
+describe('centredIn', () => {
+  const frame = { x: -2.5, y: -1, width: 13.9, height: 10.6 };
+
+  /** What the palette does without a pointer: the shape is posed in the middle of what is being looked at. */
+  it('puts a shape in the middle of the floor being shown, on the grid', () => {
+    expect(centredIn(frame, 2.4, 0.6)).toEqual({
+      x: 3.25,
+      y: 4,
+      width: 2.4,
+      depth: 0.6,
+      rotation: 0,
+      height: 0,
+    });
+  });
+
+  /** A floor has no negative corner, so a shape wider than what is shown starts at the floor's own edge. */
+  it('keeps a shape too big for the view on the floor', () => {
+    expect(centredIn(frame, 40, 40)).toMatchObject({ x: 0, y: 0, width: 40, depth: 40 });
+  });
+
+  /** It carries the size through exactly: a company's 3,90 m rack is posed at 3,90, never re-measured. */
+  it('never snaps the size it was given', () => {
+    expect(centredIn(frame, 3.9, 0.6)).toMatchObject({ width: 3.9, depth: 0.6 });
   });
 });

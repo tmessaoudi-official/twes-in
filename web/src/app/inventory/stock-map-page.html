@@ -148,6 +148,34 @@
               {{ 'inventory.plan.draw' | translate }}
             </button>
           }
+          @if (palette().length > 0) {
+            <!--
+              Ready-made shapes, at the sizes this company set for them. Each is a BUTTON and not something only a
+              pointer can take hold of: activating one poses the rectangle at the middle of the plan, so the palette
+              is as usable from a keyboard as from a hand.
+            -->
+            <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              {{ 'inventory.plan.shapes' | translate }}
+            </h2>
+            <div class="flex flex-wrap gap-2">
+              @for (shape of palette(); track shape.shape) {
+                <button
+                  type="button"
+                  class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
+                  (click)="pose(shape)"
+                  [attr.data-testid]="'stock-shape-' + shape.shape"
+                >
+                  <span class="font-medium">
+                    {{ 'inventory.plan.shape_names.' + shape.shape | translate }}
+                  </span>
+                  <span class="tabular-nums text-sm text-on-surface-variant">
+                    {{ shape.width }} × {{ shape.depth }} m
+                  </span>
+                </button>
+              }
+            </div>
+          }
+
           @if (mayDraw()) {
             <!--
               The tool is armed before the floor becomes a drawing surface, and gives itself back after one box: an

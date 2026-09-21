@@ -257,6 +257,10 @@ tables, essay gotchas) was retired with the reset. What applies here:
   enumerates (2026-09-20). Its floor is what then caught the follow-up — the gate read the `KnownPermissions` PORT,
   whose file exists and holds no groups, so three headings vanished silently; a discovery input that names a file must
   red when the file yields nothing, and the floor must sit ABOVE what the other half alone produces.
+- The other half of that: a key BUILT by interpolation is invisible to the gate that greps for it. `VenuePlanSettings`
+  first wrote `"settings.venue.shape.$shape.$side"` in a loop, so `setting-labels.sh` saw eleven keys where nineteen
+  were declared and passed — its floor was below what the other declarations alone make (2026-09-21). Write a key a
+  gate must find out in full, and set the floor so losing one file's worth reds.
 - `GROUPS` is a bash special variable (the current user's group ids): assigning to it is silently ignored and it
   expands to a number. A test fixture whose JSON came out as `{1000,...}` was that, not a quoting bug (2026-09-20).
 - `audit_log.at` is a `timestamp(0)`, so several writes inside one second tie: assert the SET of audit actions, never

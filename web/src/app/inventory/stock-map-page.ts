@@ -26,7 +26,7 @@ import { Label } from '../shared/a11y/label';
 import { InventoryFacade } from './inventory-facade';
 import { INVENTORY_TABS } from './inventory-nav';
 import { PageTabs } from '../shared/ui/page-tabs';
-import type { StockDrawingRow, StockFloorRow } from './inventory-types';
+import type { StockDrawingRow, StockFloorRow, StockPlanShape } from './inventory-types';
 import {
   drawingForm,
   drawingInput,
@@ -39,6 +39,7 @@ import {
   rectValues,
 } from './stock-map-forms';
 import {
+  centredIn,
   handleAt,
   movedTo,
   PLAN_HANDLES,
@@ -277,6 +278,7 @@ export class StockMapPage implements OnInit {
               editing === 'new' ? null : editing,
               this.facade.options() ?? {
                 establishments: [],
+                planShapes: [],
               },
             ),
           ),
@@ -403,6 +405,28 @@ export class StockMapPage implements OnInit {
 
     return dirtyCount(values, drawingValues(editing === 'new' ? null : editing));
   });
+
+  /**
+   * The palette's ready-made shapes, at the sizes THIS company set for them — nothing here invents a measurement,
+   * so a company whose settings answer nothing gets no palette rather than a made-up one. Only where drawing is
+   * possible at all: a palette that poses rectangles is not a reading tool (decision 8).
+   */
+  protected readonly palette = computed<readonly StockPlanShape[]>(() =>
+    this.mayDraw() ? (this.facade.options()?.planShapes ?? []) : [],
+  );
+
+  /**
+   * A shape posed in the middle of the floor, chosen, its form open. It is PLACED and not saved: the rectangle is
+   * then dragged where it goes and only what differs from the ready-made size is corrected, which is the whole
+   * reason the palette exists. Its height stays whatever the form offers — a size is an emprise, not a measurement
+   * of how tall a rack stands.
+   */
+  protected pose(shape: StockPlanShape): void {
+    this.draw('new');
+    this.drawingFormGroup()?.patchValue(
+      footprintValues(centredIn(this.frame(), shape.width, shape.depth)),
+    );
+  }
 
   /** Whether the next gesture on bare floor traces a box. Armed by the tool beside the plan, for one box. */
   protected readonly tracing = signal(false);

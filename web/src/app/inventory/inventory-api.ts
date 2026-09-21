@@ -332,6 +332,12 @@ const path = (companyId: string, collection: string, id?: string): string =>
 function toOptions(raw: StockOptionsStockOptionsRead): StockOptions {
   return {
     establishments: (raw.establishments ?? []).map((establishment) => ({ ...establishment })),
+    // Metres as numbers, as every other measurement on the plan is: the API holds them as decimal strings.
+    planShapes: (raw.planShapes ?? []).map((shape) => ({
+      shape: shape.shape,
+      width: Number(shape.width),
+      depth: Number(shape.depth),
+    })),
   };
 }
 

@@ -12,6 +12,12 @@ import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
 import { Session } from '../shared/session/session';
 import type { SettingRow, SettingsError } from '../shared/settings/settings-types';
+import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
+import {
+  PageMemoryStorage,
+  SETTINGS_STORAGE,
+  SettingsFacade,
+} from '../shared/settings/settings-facade';
 import { CompanySettings } from './company-settings-facade';
 import { SettingsPage } from './settings-page';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
@@ -42,8 +48,24 @@ const terms: SettingRow = {
   pattern: null,
 };
 
+/** A setting of the plan's own chain: a decimal the company sets and nothing below it overrides. */
+const rackWidth: SettingRow = {
+  ...terms,
+  key: 'venue.shape.rack.width',
+  chain: 'venue',
+  type: 'decimal',
+  labelKey: 'settings.venue.shape.rack.width',
+  module: 'inventory',
+  defaultValue: '3.900',
+  value: '2.400',
+  levels: [{ level: 'company', value: '2.400' }],
+  overridableLevels: ['company'],
+  min: '0.250',
+  max: '9999.999',
+};
+
 describe('SettingsPage', () => {
-  const rows = signal<readonly SettingRow[]>([terms]);
+  const rows = signal<readonly SettingRow[]>([terms, rackWidth]);
   const settings = {
     rows: rows.asReadonly(),
     busy: signal(false).asReadonly(),
@@ -81,6 +103,9 @@ describe('SettingsPage', () => {
         }),
         { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
         { provide: CompanySettings, useValue: settings },
+        // A decimal field reads the screen's own number format, which reaches it through the presentation chain.
+        { provide: SettingsFacade, useClass: BrowserStorageSettings },
+        { provide: SETTINGS_STORAGE, useValue: new PageMemoryStorage() },
         { provide: AuthFacade, useValue: auth },
         { provide: Session, useExisting: AuthFacade },
       ],
@@ -103,6 +128,22 @@ describe('SettingsPage', () => {
     expect(settings.load).toHaveBeenCalledWith('c1');
     expect(auth.hasPermission).toHaveBeenCalledWith('company.settings');
     expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('45');
+  });
+
+  /**
+   * The chain a company sets is a SECTION on this page, so a new one has to draw — its own heading and its own
+   * fields. A chain whose settings resolve but whose section never renders is the failure this catches.
+   */
+  it('draws a section for every chain, the plan’s own included', async () => {
+    rows.set([terms, rackWidth]);
+    await open();
+
+    // Both sections, each with its own field: a chain whose rows resolve but whose section never draws is a
+    // settings page that silently forgets a whole family of settings.
+    expect((q('field-document__payment_terms_days') as HTMLInputElement).value).toBe('45');
+    // A decimal is shown with the screen's own separator, the comma; the point is what the control keeps and what
+    // crosses the wire. Seeing '2,400' here is the field rendering as a measurement and not as plain text.
+    expect((q('field-venue__shape__rack__width') as HTMLInputElement).value).toBe('2,400');
   });
 
   it('saves only what changed, at the company level', async () => {

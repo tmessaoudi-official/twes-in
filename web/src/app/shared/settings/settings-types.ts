@@ -4,7 +4,7 @@
  * The settings engine seen from the web: one row per setting of a chain, as the API resolved it for the signed-in
  * person in their working company (docs/SPEC.md § 3 Settings). Built by settings-api.ts from the generated types.
  */
-export type SettingChain = 'presentation' | 'parties' | 'articles';
+export type SettingChain = 'presentation' | 'parties' | 'articles' | 'venue';
 
 export type SettingLevel =
   | 'platform'

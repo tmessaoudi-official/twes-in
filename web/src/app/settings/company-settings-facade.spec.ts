@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { SettingsApi, SettingsRefused } from '../shared/settings/settings-api';
 import { SettingsFacade } from '../shared/settings/settings-facade';
 import type { SettingChain, SettingRow } from '../shared/settings/settings-types';
+import { COMPANY_CHAINS } from './settings-forms';
 import { CompanySettings } from './company-settings-facade';
 
 const rowOf = (chain: SettingChain): SettingRow => ({ key: `${chain}.one`, chain }) as SettingRow;
@@ -41,18 +42,20 @@ describe('CompanySettings', () => {
     facade = TestBed.inject(CompanySettings);
   });
 
-  it('reads the three chains a company sets defaults in', async () => {
+  it('reads every chain a company sets defaults in', async () => {
     await facade.load('c1');
 
     expect(api.chain.mock.calls).toEqual([
       ['c1', 'parties'],
       ['c1', 'articles'],
       ['c1', 'presentation'],
+      ['c1', 'venue'],
     ]);
     expect(facade.rows().map((setting) => setting.chain)).toEqual([
       'parties',
       'articles',
       'presentation',
+      'venue',
     ]);
     expect(facade.error()).toBeNull();
   });
@@ -85,14 +88,14 @@ describe('CompanySettings', () => {
       ['c1', 'document.payment_terms_days', 'company', 45],
       ['c1', 'article.stock_tracking', 'company', true],
     ]);
-    expect(api.chain).toHaveBeenCalledTimes(3);
+    expect(api.chain).toHaveBeenCalledTimes(COMPANY_CHAINS.length);
   });
 
   it("forgets the company's value on reset", async () => {
     expect(await facade.reset('c1', 'document.payment_terms_days')).toBe(true);
 
     expect(api.reset).toHaveBeenCalledWith('c1', 'document.payment_terms_days', 'company');
-    expect(api.chain).toHaveBeenCalledTimes(3);
+    expect(api.chain).toHaveBeenCalledTimes(COMPANY_CHAINS.length);
   });
 
   it('names what the API refused', async () => {

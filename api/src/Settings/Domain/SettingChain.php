@@ -15,6 +15,8 @@ enum SettingChain: string
     case Parties = 'parties';
     case Articles = 'articles';
     case Presentation = 'presentation';
+    /** The floor plan's own: the sizes its palette poses a shape at, which are a company's and not the code's. */
+    case Venue = 'venue';
     /** The platform's own settings, such as whether anyone may sign up: its operators', and no company's. */
     case Platform = 'platform';
 
@@ -25,6 +27,8 @@ enum SettingChain: string
             self::Parties => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::CustomerGroup, SettingLevel::Customer, SettingLevel::Document],
             self::Articles => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::ProductCategory, SettingLevel::Product, SettingLevel::DocumentLine],
             self::Presentation => [SettingLevel::Platform, SettingLevel::Company, SettingLevel::Role, SettingLevel::User],
+            // A floor belongs to a company and nothing below one draws a plan, so the chain stops at the company.
+            self::Venue => [SettingLevel::Platform, SettingLevel::Company],
             self::Platform => [SettingLevel::Platform],
         };
     }
@@ -32,7 +36,7 @@ enum SettingChain: string
     /** @return list<self> the chains a company reads and sets, in the order they are answered */
     public static function ofCompanies(): array
     {
-        return [self::Parties, self::Articles, self::Presentation];
+        return [self::Parties, self::Articles, self::Presentation, self::Venue];
     }
 
     public function has(SettingLevel $level): bool

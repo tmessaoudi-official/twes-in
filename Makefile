@@ -54,6 +54,7 @@ gate-licences:
 	bash scripts/gates/tests/version-pins.test.sh
 	bash scripts/gates/tests/design-tokens.test.sh
 	bash scripts/gates/tests/permission-labels.test.sh
+	bash scripts/gates/tests/setting-labels.test.sh
 	bash infra/self-hosted/tests/logrotate.test.sh
 	php scripts/gates/dependency-licences.php
 	bash scripts/gates/spdx-headers.sh
@@ -64,6 +65,7 @@ gate-licences:
 	bash scripts/gates/version-pins.sh
 	bash scripts/gates/design-tokens.sh
 	bash scripts/gates/permission-labels.sh
+	bash scripts/gates/setting-labels.sh
 
 gate-api:      ## needs the postgres service up (make up, or docker compose up -d postgres)
 	cd api && composer gate

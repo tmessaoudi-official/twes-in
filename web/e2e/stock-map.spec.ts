@@ -131,6 +131,24 @@ test.describe('the drawn stock map', () => {
 
       await page.getByRole('button', { name: floorName, exact: true }).click();
 
+      // The palette, end to end: its sizes are settings the API resolves for this company, so what the button says
+      // and what the form is posed at must be the same measurement. Abandoned, not saved — this case's rack is
+      // drawn by the form below.
+      const rackShape = page.getByTestId('stock-shape-rack');
+      await expect(rackShape).toBeVisible();
+      const offered = ((await rackShape.textContent()) ?? '').match(/([\d.,]+)\s*×\s*([\d.,]+)/);
+      if (offered === null) throw new Error('the palette does not say what size it poses');
+      await rackShape.click();
+      await expect(page.getByTestId('stock-drawing-form')).toBeVisible();
+      expect(
+        [
+          comma(await page.getByTestId('field-width').inputValue()),
+          comma(await page.getByTestId('field-depth').inputValue()),
+        ],
+        'the form is posed at the size the palette offered',
+      ).toEqual([comma(offered[1] ?? ''), comma(offered[2] ?? '')]);
+      await page.getByTestId('stock-drawing-cancel').click();
+
       // The rack, drawn by the form rather than by dragging: the form is the way in, on every window.
       await page.getByTestId('stock-drawing-add').click();
       await page.getByTestId('field-locationId').click();

@@ -704,7 +704,8 @@
     "chains": {
       "parties": "Clients et documents",
       "articles": "Produits",
-      "presentation": "Apparence"
+      "presentation": "Apparence",
+      "venue": "Plan du stock"
     },
     "document": {
       "payment_terms_days": "Délai de paiement (jours)",
@@ -761,6 +762,26 @@
       "invalid": "Les valeurs ont été refusées. Vérifiez les limites indiquées.",
       "not_found": "Paramètre introuvable.",
       "network": "Le serveur est injoignable."
+    },
+    "venue": {
+      "shape": {
+        "rack": {
+          "width": "Rayonnage — largeur (m)",
+          "depth": "Rayonnage — profondeur (m)"
+        },
+        "zone": {
+          "width": "Zone — largeur (m)",
+          "depth": "Zone — profondeur (m)"
+        },
+        "aisle": {
+          "width": "Allée — largeur (m)",
+          "depth": "Allée — profondeur (m)"
+        },
+        "dock": {
+          "width": "Quai — largeur (m)",
+          "depth": "Quai — profondeur (m)"
+        }
+      }
     }
   },
   "customers": {
@@ -1449,6 +1470,13 @@
         "depth": "Profondeur (m)",
         "height": "Hauteur (m)",
         "rotation": "Rotation (°)"
+      },
+      "shapes": "Formes prêtes à poser",
+      "shape_names": {
+        "rack": "Rayonnage",
+        "zone": "Zone",
+        "aisle": "Allée",
+        "dock": "Quai"
       }
     }
   },

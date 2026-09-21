@@ -46,4 +46,22 @@ final class StockOptionsResource
     ])]
     #[Groups([self::READ])]
     public array $establishments = [];
+
+    /**
+     * The plan palette's ready-made shapes, at this company's own sizes. They travel with the context the plan
+     * screen already asks for, so the web never carries a measurement of its own: the approved canvas is explicit
+     * that a rack's size is a company's setting and not a constant of the code.
+     *
+     * @var list<StockPlanShapeOption>
+     */
+    #[ApiProperty(identifier: false, schema: [
+        'type' => 'array',
+        'items' => [
+            'type' => 'object',
+            'required' => ['shape', 'width', 'depth'],
+            'properties' => ['shape' => ['type' => 'string'], 'width' => ['type' => 'string'], 'depth' => ['type' => 'string']],
+        ],
+    ])]
+    #[Groups([self::READ])]
+    public array $planShapes = [];
 }

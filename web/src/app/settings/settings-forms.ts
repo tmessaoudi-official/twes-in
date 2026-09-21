@@ -13,7 +13,12 @@ import type { SettingChain, SettingRow } from '../shared/settings/settings-types
 export { fieldIdOf, type SettingChange } from '../shared/settings/setting-forms';
 
 /** The chains a company sets defaults in, in the order the page shows them. */
-export const COMPANY_CHAINS: readonly SettingChain[] = ['parties', 'articles', 'presentation'];
+export const COMPANY_CHAINS: readonly SettingChain[] = [
+  'parties',
+  'articles',
+  'presentation',
+  'venue',
+];
 
 /** The company's defaults as one form: one section per chain, one field per setting the person may set there. */
 export function companySettingsForm(rows: readonly SettingRow[]): FormDescriptor {
