@@ -1299,6 +1299,7 @@
       "intro": "A product’s stock is the sum of its movements. A validated delivery note takes the goods out of its establishment’s default location; cancelling it puts them back.",
       "receive": "Receive",
       "count": "Count",
+      "move": "Move",
       "recorded": "The movement was recorded.",
       "none": "No stock yet.",
       "negative": "Negative",
@@ -1306,6 +1307,8 @@
       "fields": {
         "reference": "Reference",
         "product": "Product",
+        "from_location": "From location",
+        "to_location": "To location",
         "location": "Location",
         "quantity": "Quantity",
         "unit": "Unit",
@@ -1320,9 +1323,11 @@
     "movement": {
       "receive": "Goods received",
       "count": "Stock count",
+      "move": "Moving goods",
       "quantity_hint": {
         "receive": "The quantity received, in the product’s unit.",
-        "count": "The quantity found; the difference from the stock is recorded, even when nil."
+        "count": "The quantity found; the difference from the stock is recorded, even when nil.",
+        "move": "How much to move; it cannot be more than what is at the location it leaves."
       }
     },
     "movements": {
@@ -1339,6 +1344,7 @@
     "sources": {
       "receipt": "Receipt",
       "count": "Count",
+      "move": "Move",
       "delivery_note": "Delivery note"
     },
     "kinds": {

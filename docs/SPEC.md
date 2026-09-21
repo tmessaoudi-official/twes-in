@@ -1046,6 +1046,16 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   when its module is off — such a path must keep `{companyId}` or the guard must learn a second way to resolve the
   company.
 
+- [2026-09-21 01:45] AGREED: **a stock move is one operation that writes two linked movements** (row 74, first half). `KeepStock::move`
+  locks the source stock the way a count does, reads what is on hand AFTER the lock, and saves what left and what arrived in one
+  transaction under one move id, staging a single `stock.moved` live change. `StockMovement::move` refuses the same location on
+  both sides, a destination in another establishment and a quantity of zero; the application layer refuses more than is at the
+  source. The HTTP surface is the existing `POST /stock-movements` with `operation: move` and `toLocationId`, answering the
+  movement that LEFT, whose `sourceId` names the pair. The screen offers it as a third button beside receive and count.
+  **Certified by execution: the domain, the use case and the HTTP surface** (`InventoryTest`, `KeepStockTest`, `StockMovementTest`,
+  two sabotages each red). **NOT certified by execution: no e2e** — a location that has seen a movement is kept (409), so a browser
+  scenario moving into the e2e location could not delete it and would leak one location per run into the shared company.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1125,7 +1135,8 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 71 | Lists after the design review (§ 7 2026-09-19, finding 1): the row a real link on its number or name, text selection and in-row controls never opening it; "Ouvrir" gone; a pinned right-edge column with each list's one or two frequent actions visible and the rare or destructive ones in "⋮"; phone rows as cards; the settings tables included (with row 45's declarations) | L | done | - | web/src/app/shared/list/** web/src/app/**/*-page.* web/public/i18n/** web/e2e/** |
 | 72 | Documents after the design review (§ 7 2026-09-19, finding 3): a sticky action bar beside the title (the state's next step primary, PDF and Dupliquer visible, rare in "⋮"), locked invoices and delivery notes as a read view with empty fields left out, recording a payment in a dialog | L | done | - | web/src/app/invoices/** web/src/app/delivery-notes/** web/src/app/shared/** web/public/i18n/** web/e2e/** |
 | 73 | Record pages after the design review (§ 7 2026-09-19, finding 4): the same title bar saving (Enregistrer active once changed, Annuler les modifications, the count of unsaved changes), long records in tabs with one save each (Fiche, Valeurs par défaut, plus Contacts on the customer page); then the balance pass (finding 10) re-measured on the gallery | M | done | - | web/src/app/customers/** web/src/app/products/** web/src/app/vendors/** web/src/app/expenses/** web/src/app/settings/** web/src/app/company/** web/src/app/shared/** web/e2e/** |
-| 74 | Stock moves and losses (§ 7 2026-09-19): a move inside an establishment (whole or partial, out and in linked), a write-off with a required reason, note and photo, a quarantine location kind, both in the movements list and reports; the VAT effect of a loss sourced in docs/fiscal first | L | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** web/public/i18n/** web/e2e/** |
+| 74 | Stock moves (§ 7 2026-09-19, 2026-09-21): a move inside an establishment, whole or partial, its out and in linked by one move id, offered on the stock screen and shown in the movements list | M | done | 0000000 | api/src/Module/Inventory/** api/tests/** web/src/app/inventory/** web/public/i18n/** |
+| 74 (b) | Stock losses (§ 7 2026-09-19): a write-off with a required reason, note and photo, a quarantine location kind, both in the movements list and reports; the VAT effect of a loss sourced in docs/fiscal first | L | todo | - | api/src/Module/Inventory/** api/migrations/** api/tests/** docs/fiscal/** web/src/app/inventory/** web/public/i18n/** web/e2e/** |
 | 75 | Country pack (§ 7 2026-09-20): taxes and levies, mentions per situation AND per language, identifiers with their named check strategies, numbering constraints, formats, rounding, archive duration; the strategy registry; a conformance test loading every pack; rows 44 and 46 folded in | L | todo | - | api/config/fiscal/** api/src/Fiscal/** api/tests/** docs/fiscal/** |
 | 76 | Catalogue (§ 7 2026-09-20): a family with axis values gathering variants that stay products; purchase, stock and sales units with conversion; one second-language name printed when the document is in that language | L | todo | - | api/src/Module/Products/** api/migrations/** api/tests/** web/src/app/products/** web/public/i18n/** |
 | 77 | Price lists (§ 7 2026-09-20): per customer or group, quantity breaks, validity dates, keyed to area and channel; they decide a line's unit price before any discount | M | todo | - | api/src/Module/Products/** api/src/Module/Customers/** api/migrations/** api/tests/** web/src/app/** |

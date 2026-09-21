@@ -292,9 +292,15 @@ describe('the movement form', () => {
     expect(movementValues([zone, depot, site])).toEqual({
       productId: '',
       locationId: 'l1',
+      toLocationId: '',
       quantity: '',
     });
-    expect(movementValues([])).toEqual({ productId: '', locationId: '', quantity: '' });
+    expect(movementValues([])).toEqual({
+      productId: '',
+      locationId: '',
+      toLocationId: '',
+      quantity: '',
+    });
     expect(
       movementInput('receive', { productId: 'p2', locationId: 'l2', quantity: ' 1.5 ' }),
     ).toEqual({
@@ -303,5 +309,46 @@ describe('the movement form', () => {
       locationId: 'l2',
       quantity: '1.5',
     });
+  });
+
+  it('asks a move where the goods go, and offers every location for it', () => {
+    const fields = fieldsOf(movementForm('move', [zone, site]));
+
+    expect(fields.map((field) => field.id)).toEqual([
+      'productId',
+      'locationId',
+      'toLocationId',
+      'quantity',
+    ]);
+    expect(fields[2]?.options?.map((option) => option.value)).toEqual(['l1', 'l2']);
+    expect(fields[2]?.required).toBe(true);
+  });
+
+  it('sends where a move goes, and nothing of the sort for the other two', () => {
+    // The field is on the body only for a move: sending an empty one on a receipt would be a claim about a
+    // location that was never chosen, which the API answers 422 to.
+    expect(
+      movementInput('move', {
+        productId: 'p2',
+        locationId: 'l1',
+        toLocationId: ' l2 ',
+        quantity: '3',
+      }),
+    ).toEqual({
+      operation: 'move',
+      productId: 'p2',
+      locationId: 'l1',
+      toLocationId: 'l2',
+      quantity: '3',
+    });
+    expect(
+      movementInput('count', {
+        productId: 'p2',
+        locationId: 'l1',
+        toLocationId: 'l2',
+        quantity: '3',
+      }),
+    ).not.toHaveProperty('toLocationId');
+    expect(movementValues([zone, depot, site])['toLocationId']).toBe('');
   });
 });

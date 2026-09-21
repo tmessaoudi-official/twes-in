@@ -21,8 +21,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * Stock movements, never changed once written. Listed newest first with stock.read, the latest of the company or, with
  * `?productId=`, of one product. Written with stock.write by a person: `receive` adds the quantity at the location,
- * `count` records the difference between the quantity found and the stock there, even none. Only goods whose stock is
- * kept move; a refusal answers 422 naming the field.
+ * `count` records the difference between the quantity found and the stock there, even none, and `move` takes goods to
+ * `toLocationId` inside the same establishment, writing the pair that left and arrived. Only goods whose stock is kept
+ * move; a refusal answers 422 naming the field.
  */
 #[ApiResource(
     shortName: 'StockMovement',
@@ -38,7 +39,7 @@ use Symfony\Component\Validator\Constraints as Assert;
                 'productId' => new QueryParameter(schema: self::ID, description: 'Only what moved this product.'),
                 'locationId' => new QueryParameter(schema: self::ID, description: 'Only what moved at this location.'),
                 'kind' => new QueryParameter(schema: ['type' => 'string', 'enum' => ['in', 'out', 'adjustment']], description: 'Only what moved this way.'),
-                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_DELIVERY_NOTE]], description: 'Only what this kind of document moved.'),
+                'sourceType' => new QueryParameter(schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_DELIVERY_NOTE]], description: 'Only what this kind of document moved.'),
                 'order[movedAt]' => new QueryParameter(schema: self::DIRECTION),
                 'order[product]' => new QueryParameter(schema: self::DIRECTION),
                 'order[location]' => new QueryParameter(schema: self::DIRECTION),
@@ -66,14 +67,15 @@ final class StockMovementResource
     public const string WRITE = 'stock_movement:write';
     public const string RECEIVE = 'receive';
     public const string COUNT = 'count';
+    public const string MOVE = 'move';
 
     #[ApiProperty(identifier: false, writable: false)]
     #[Groups([self::READ])]
     public ?string $id = null;
 
-    /** What a person records: goods received, or a count of what is there. */
-    #[ApiProperty(schema: ['type' => 'string', 'enum' => [self::RECEIVE, self::COUNT]])]
-    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT], groups: [self::WRITE])]
+    /** What a person records: goods received, a count of what is there, or a move to another location. */
+    #[ApiProperty(schema: ['type' => 'string', 'enum' => [self::RECEIVE, self::COUNT, self::MOVE]])]
+    #[Assert\Choice(choices: [self::RECEIVE, self::COUNT, self::MOVE], groups: [self::WRITE])]
     #[Groups([self::WRITE])]
     public string $operation = '';
 
@@ -86,6 +88,16 @@ final class StockMovementResource
     #[Assert\Uuid(groups: [self::WRITE])]
     #[Groups([self::READ, self::WRITE])]
     public string $locationId = '';
+
+    /**
+     * Where a move puts the goods; only a move has one. Read back as null, because a movement happens AT one location:
+     * the other half of the pair is the one that says where they arrived.
+     */
+    #[ApiProperty(schema: ['type' => 'string', 'format' => 'uuid', 'nullable' => true])]
+    #[Assert\Uuid(groups: [self::WRITE])]
+    #[Assert\When(expression: 'this.operation === "'.self::MOVE.'"', constraints: [new Assert\NotBlank()], groups: [self::WRITE])]
+    #[Groups([self::WRITE])]
+    public ?string $toLocationId = null;
 
     /**
      * What the movement moved, named here rather than looked up elsewhere: a product or a location the company has
@@ -128,7 +140,7 @@ final class StockMovementResource
     #[Groups([self::READ, self::WRITE])]
     public string $quantity = '';
 
-    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_DELIVERY_NOTE]])]
+    #[ApiProperty(writable: false, schema: ['type' => 'string', 'enum' => [StockMovement::SOURCE_RECEIPT, StockMovement::SOURCE_COUNT, StockMovement::SOURCE_MOVE, StockMovement::SOURCE_DELIVERY_NOTE]])]
     #[Groups([self::READ])]
     public string $sourceType = '';
 

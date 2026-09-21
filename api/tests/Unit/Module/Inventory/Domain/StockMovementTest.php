@@ -12,6 +12,7 @@ namespace App\Tests\Unit\Module\Inventory\Domain;
 use App\Fiscal\Domain\Unit;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Products\Domain\Product;
@@ -125,6 +126,50 @@ final class StockMovementTest extends TestCase
             } catch (InvalidStockMovement $refused) {
                 self::assertSame($field, $refused->field);
             }
+        }
+    }
+
+    public function testAMoveTakesGoodsOutOfOneLocationAndIntoAnotherAsOneLinkedPair(): void
+    {
+        $actor = Uuid::v7();
+        $rack = StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Rack, 'R1', 'Rack 1', $this->now);
+
+        [$out, $in] = StockMovement::move($this->laptop, $this->site, $rack, '4', $actor, $this->now);
+
+        // One move id on both halves: that link is what lets the list show them as one move rather than two.
+        self::assertNotNull($out->getSourceId());
+        self::assertTrue($out->getSourceId()->equals($in->getSourceId() ?? Uuid::v7()));
+        self::assertSame([StockMovementKind::Out, '-4.000', StockMovement::SOURCE_MOVE, $this->site, $actor], [$out->getKind(), $out->getQuantity(), $out->getSourceType(), $out->getLocation(), $out->getRecordedBy()]);
+        self::assertSame([StockMovementKind::In, '4.000', StockMovement::SOURCE_MOVE, $rack, $actor], [$in->getKind(), $in->getQuantity(), $in->getSourceType(), $in->getLocation(), $in->getRecordedBy()]);
+        self::assertSame([$this->now, $this->now], [$out->getAt(), $in->getAt()]);
+    }
+
+    public function testAMoveIsRefusedWhereItWouldMoveNothingOrLeaveItsEstablishment(): void
+    {
+        $rack = StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Rack, 'R1', 'Rack 1', $this->now);
+        $elsewhere = StockLocation::defaultOf(Establishment::create($this->company, '001', 'Dépôt', false, $this->now), $this->now);
+
+        $refused = [
+            // Goods already there have not moved, and a pair on one location would double-count on every level.
+            'toLocationId' => [$this->site, $this->site],
+            // "A move inside an establishment" (§ 7 2026-09-19 23:25); between them comes later, with a transport document.
+            'toLocationId2' => [$this->site, $elsewhere],
+        ];
+        foreach ($refused as [$from, $to]) {
+            try {
+                StockMovement::move($this->laptop, $from, $to, '1', null, $this->now);
+                self::fail('The move was allowed.');
+            } catch (InvalidStockMovement $caught) {
+                self::assertSame('toLocationId', $caught->field);
+            }
+        }
+
+        // And a quantity of none is not a move: a count is what records "nothing here".
+        try {
+            StockMovement::move($this->laptop, $this->site, $rack, '0', null, $this->now);
+            self::fail('Nothing moved, and it was allowed.');
+        } catch (InvalidStockMovement $caught) {
+            self::assertSame('quantity', $caught->field);
         }
     }
 }

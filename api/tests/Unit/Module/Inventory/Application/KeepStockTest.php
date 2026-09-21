@@ -15,6 +15,7 @@ use App\Module\Inventory\Application\ManageStockLocations;
 use App\Module\Inventory\Domain\InvalidStockMovement;
 use App\Module\Inventory\Domain\StockLevel;
 use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
 use App\Module\Inventory\Domain\StockMovement;
 use App\Module\Inventory\Domain\StockMovementKind;
 use App\Module\Inventory\Domain\StockMovementSearch;
@@ -28,6 +29,7 @@ use App\Settings\Application\ResolveSettings;
 use App\Settings\Application\SettingCatalog;
 use App\Settings\Domain\Setting;
 use App\Settings\Domain\SettingAddress;
+use App\Shared\Application\LiveChange;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
@@ -55,6 +57,7 @@ final class KeepStockTest extends TestCase
     private FakeTransactions $transactions;
     private RecordingLiveChanges $liveChanges;
     private KeepStock $keep;
+    private InMemoryStockLocations $locations;
     private Company $company;
     private StockLocation $site;
     private ProductCategory $accessories;
@@ -71,7 +74,7 @@ final class KeepStockTest extends TestCase
         $this->settings = new InMemorySettings();
         $this->transactions = new FakeTransactions();
         $this->movements->transactions = $this->transactions;
-        $locations = new InMemoryStockLocations();
+        $locations = $this->locations = new InMemoryStockLocations();
         $establishments = new InMemoryEstablishments();
         $this->company = new Company('Acme', 'TN', 'TND', 'fr', 'Africa/Tunis');
         $main = Establishment::create($this->company, '000', 'Siège', true, $now);
@@ -210,9 +213,71 @@ final class KeepStockTest extends TestCase
         $this->settings->save(new Setting($address, self::TRACKING, $on, $this->clock->now()));
     }
 
+    /** A rack under the site, in the same establishment: where a move puts the goods. */
+    private function rack(): StockLocation
+    {
+        $rack = StockLocation::create($this->site->getEstablishment(), $this->site, StockLocationKind::Rack, 'R1', 'Rack 1', $this->clock->now());
+        $this->locations->save($rack);
+
+        return $rack;
+    }
+
     /** @return list<array{string, string, string}> */
     private function levels(): array
     {
         return array_map(static fn (StockLevel $level) => [$level->productId->toRfc4122(), $level->locationId->toRfc4122(), $level->quantity], $this->keep->levels($this->company));
+    }
+
+    public function testAMoveTakesGoodsFromOneLocationToAnotherInOneTransaction(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $actor = Uuid::v7();
+        $rack = $this->rack();
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '10', $actor);
+
+        [$out, $in] = $this->keep->move($this->company, $this->laptop->getId(), $this->site->getId(), $rack->getId(), '4', $actor);
+
+        self::assertSame(['-4.000', '4.000'], [$out->getQuantity(), $in->getQuantity()]);
+        self::assertSame(
+            [[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '6.000'], [$this->laptop->getId()->toRfc4122(), $rack->getId()->toRfc4122(), '4.000']],
+            $this->levels(),
+            'the stock left one location and arrived at the other, and the total did not change',
+        );
+        // One transaction for the pair: half a move is stock invented or lost.
+        self::assertSame(2, $this->transactions->committed);
+    }
+
+    public function testAMoveIsRefusedForMoreThanIsAtTheLocationItLeaves(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $rack = $this->rack();
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '3', null);
+
+        try {
+            $this->keep->move($this->company, $this->laptop->getId(), $this->site->getId(), $rack->getId(), '4', null);
+            self::fail('Stock that is not there was moved.');
+        } catch (InvalidStockMovement $refused) {
+            self::assertSame('quantity', $refused->field);
+        }
+        self::assertSame([[$this->laptop->getId()->toRfc4122(), $this->site->getId()->toRfc4122(), '3.000']], $this->levels());
+    }
+
+    public function testAMoveIsSaidAsOneChangeToTheProductsStock(): void
+    {
+        $this->track(SettingAddress::company($this->company), true);
+        $actor = Uuid::v7();
+        $rack = $this->rack();
+        $this->keep->receive($this->company, $this->laptop->getId(), $this->site->getId(), '5', $actor);
+
+        $this->keep->move($this->company, $this->laptop->getId(), $this->site->getId(), $rack->getId(), '2', $actor);
+
+        // The receipt's change is kept in the list on purpose: clearing it would need an assignment to the recorder's
+        // own array, and what this asserts is that the move added ONE entry to whatever was there, not two.
+        $product = $this->laptop->getId()->toRfc4122();
+        self::assertSame(
+            [['stock', $product, 'stock.received'], ['stock', $product, 'stock.moved']],
+            array_map(static fn (LiveChange $change) => [$change->kind, $change->id?->toRfc4122(), $change->action], $this->liveChanges->staged),
+            'one move is one change, not two',
+        );
     }
 }

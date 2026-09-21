@@ -28,6 +28,7 @@ use App\Shared\Application\Transactions;
 use App\Shared\Domain\Page;
 use App\Shared\Domain\PageRequest;
 use App\Tenancy\Domain\Company;
+use BcMath\Number;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -84,6 +85,38 @@ final readonly class KeepStock
             $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.counted', $actorUserId, $company->getId()));
 
             return $movement;
+        });
+    }
+
+    /**
+     * Goods taken out of one location and into another, as one operation (§ 7 2026-09-19 23:25). The source stock is
+     * locked before it is read, as a count does, so two moves of the same goods cannot both find enough there and
+     * between them take out more than exists.
+     *
+     * @return array{StockMovement, StockMovement} what left, then what arrived
+     *
+     * @throws InvalidStockMovement
+     */
+    public function move(Company $company, Uuid $productId, Uuid $fromLocationId, Uuid $toLocationId, string $quantity, ?Uuid $actorUserId): array
+    {
+        return $this->transactions->run(function () use ($company, $productId, $fromLocationId, $toLocationId, $quantity, $actorUserId): array {
+            [$product, $from] = $this->trackedAt($company, $productId, $fromLocationId);
+            $to = $this->locations->ofIdInCompany($toLocationId, $company->getId())
+                ?? throw new InvalidStockMovement('toLocationId', 'No stock location of this company has this id.');
+            $this->movements->lockStockOf($product->getId(), $from->getId());
+            [$out, $in] = StockMovement::move($product, $from, $to, $quantity, $actorUserId, $this->clock->now());
+            // What arrives is the amount asked for, positive; what leaves is its negative. Read the source AFTER the
+            // lock, so what is compared is what no other transaction can be taking at the same time.
+            $onHand = $this->movements->onHand($productId, $fromLocationId);
+            if (1 === new Number($in->getQuantity())->compare(new Number($onHand))) {
+                throw new InvalidStockMovement('quantity', \sprintf('Only %s is at that location.', $onHand));
+            }
+            $this->movements->save($out);
+            $this->movements->save($in);
+            // One move is one change: the stock of this product moved, once.
+            $this->liveChanges->stage(new LiveChange('stock', $productId, 'stock.moved', $actorUserId, $company->getId()));
+
+            return [$out, $in];
         });
     }
 

@@ -448,7 +448,7 @@ export function locationInput(values: FormValues): StockLocationInput {
 }
 
 /**
- * Goods received, or what a count found: which product, where, and how much. The product is a `pick`, not a select:
+ * Goods received, what a count found, or goods moved: which product, where, and how much. The product is a `pick`, not a select:
  * a catalogue is not a dropdown, so the form asks the API for the few that match what is typed (docs/SPEC.md § 7,
  * 2026-09-17, ruling 3), and the page passes that search to `DescriptorForm` beside this descriptor.
  */
@@ -474,11 +474,26 @@ export function movementForm(
           },
           {
             id: 'locationId',
-            label: `${STOCK_FIELDS}.location`,
+            label: `${STOCK_FIELDS}.${'move' === operation ? 'from_location' : 'location'}`,
             kind: 'select',
             required: true,
             options: [...locationLabels(locations)].map(([id, label]) => ({ value: id, label })),
           },
+          // Only a move has somewhere to go, and it sits between the two so the form reads from where to where.
+          ...(operation === 'move'
+            ? [
+                {
+                  id: 'toLocationId',
+                  label: `${STOCK_FIELDS}.to_location`,
+                  kind: 'select' as const,
+                  required: true,
+                  options: [...locationLabels(locations)].map(([id, label]) => ({
+                    value: id,
+                    label,
+                  })),
+                },
+              ]
+            : []),
           {
             id: 'quantity',
             label: `${STOCK_FIELDS}.quantity`,
@@ -500,7 +515,9 @@ export function movementForm(
 export function movementValues(locations: readonly StockLocationRow[]): FormValues {
   const byId = new Map(locations.map((location) => [location.id, location]));
   const first = [...locationLabels(locations).keys()].find((id) => byId.get(id)?.isDefault);
-  return { productId: '', locationId: first ?? '', quantity: '' };
+  // Where a move goes is left empty on purpose: a default that happens to be where the goods already are would be
+  // refused, and any other guess would be this screen choosing a destination nobody asked for.
+  return { productId: '', locationId: first ?? '', toLocationId: '', quantity: '' };
 }
 
 export function movementInput(operation: StockOperation, values: FormValues): StockMovementInput {
@@ -508,6 +525,8 @@ export function movementInput(operation: StockOperation, values: FormValues): St
     operation,
     productId: text(values['productId']),
     locationId: text(values['locationId']),
+    // Named only by a move: an empty one on a receipt is a claim about a location nobody chose, answered 422.
+    ...(operation === 'move' ? { toLocationId: text(values['toLocationId']) } : {}),
     quantity: text(values['quantity']),
   };
 }

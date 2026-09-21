@@ -1299,6 +1299,7 @@
       "intro": "Le stock d’un produit est la somme de ses mouvements. Un bon de livraison validé sort les marchandises de l’emplacement par défaut de son établissement ; son annulation les y remet.",
       "receive": "Réceptionner",
       "count": "Inventorier",
+      "move": "Déplacer",
       "recorded": "Le mouvement a été enregistré.",
       "none": "Aucun stock pour l’instant.",
       "negative": "Négatif",
@@ -1306,6 +1307,8 @@
       "fields": {
         "reference": "Référence",
         "product": "Produit",
+        "from_location": "Emplacement d’origine",
+        "to_location": "Emplacement de destination",
         "location": "Emplacement",
         "quantity": "Quantité",
         "unit": "Unité",
@@ -1320,9 +1323,11 @@
     "movement": {
       "receive": "Réception de marchandises",
       "count": "Inventaire",
+      "move": "Déplacement de marchandises",
       "quantity_hint": {
         "receive": "La quantité reçue, dans l’unité du produit.",
-        "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul."
+        "count": "La quantité trouvée ; l’écart avec le stock est enregistré, même nul.",
+        "move": "La quantité à déplacer ; elle ne peut pas dépasser ce qui se trouve à l’emplacement d’origine."
       }
     },
     "movements": {
@@ -1339,6 +1344,7 @@
     "sources": {
       "receipt": "Réception",
       "count": "Inventaire",
+      "move": "Déplacement",
       "delivery_note": "Bon de livraison"
     },
     "kinds": {

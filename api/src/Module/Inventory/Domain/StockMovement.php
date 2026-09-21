@@ -36,6 +36,7 @@ class StockMovement implements CompanyOwned
     public const string SOURCE_RECEIPT = 'receipt';
     public const string SOURCE_COUNT = 'count';
     public const string SOURCE_DELIVERY_NOTE = 'delivery_note';
+    public const string SOURCE_MOVE = 'move';
     public const int QUANTITY_DECIMALS = 3;
     private const string QUANTITY = '/^(-?)(0|[1-9][0-9]{0,10})(?:\.([0-9]{1,3}))?$/';
 
@@ -125,6 +126,34 @@ class StockMovement implements CompanyOwned
         $out = new Number(self::quantity($quantity, $product, false))->mul(-1)->value;
 
         return new self($product, $location, StockMovementKind::Out, $out, self::SOURCE_DELIVERY_NOTE, $deliveryNoteId, null, $now);
+    }
+
+    /**
+     * Goods taken out of one location and into another inside the same establishment (§ 7 2026-09-19 23:25), as ONE
+     * operation: the two movements are made together and share a move id, so neither half can exist without the
+     * other and a list can show them as the single move they are.
+     *
+     * Between establishments comes later, with the transport document it needs.
+     *
+     * @return array{self, self} what left, then what arrived
+     *
+     * @throws InvalidStockMovement
+     */
+    public static function move(Product $product, StockLocation $from, StockLocation $to, string $quantity, ?Uuid $recordedBy, \DateTimeImmutable $now): array
+    {
+        if ($from->getId()->equals($to->getId())) {
+            throw new InvalidStockMovement('toLocationId', 'Goods already at a location have not moved: choose another one.');
+        }
+        if (!$from->getEstablishment()->getId()->equals($to->getEstablishment()->getId())) {
+            throw new InvalidStockMovement('toLocationId', 'A move stays inside one establishment.');
+        }
+        $moved = self::quantity($quantity, $product, false);
+        $moveId = Uuid::v7();
+
+        return [
+            new self($product, $from, StockMovementKind::Out, new Number($moved)->mul(-1)->value, self::SOURCE_MOVE, $moveId, $recordedBy, $now),
+            new self($product, $to, StockMovementKind::In, $moved, self::SOURCE_MOVE, $moveId, $recordedBy, $now),
+        ];
     }
 
     /** The goods a delivery took out, back where they were: its note was cancelled. */

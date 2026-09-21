@@ -25,6 +25,9 @@
           >
             {{ 'inventory.stock.count' | translate }}
           </button>
+          <button mat-stroked-button type="button" (click)="open('move')" data-testid="stock-move">
+            {{ 'inventory.stock.move' | translate }}
+          </button>
         </div>
       }
     </div>

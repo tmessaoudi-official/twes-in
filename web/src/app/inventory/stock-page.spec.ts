@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 import { provideHttpClient } from '@angular/common/http';
+import type { FormGroup } from '@angular/forms';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
@@ -54,6 +55,18 @@ const site: StockLocationRow = {
   childCount: 0,
   movementCount: 2,
 };
+/** A second location, so a move has somewhere to go. */
+const rack: StockLocationRow = {
+  id: 'l2',
+  establishmentId: 'e1',
+  parentId: 'l1',
+  kind: 'rack',
+  code: 'R1',
+  name: 'Rayonnage 1',
+  isDefault: false,
+  childCount: 0,
+  movementCount: 0,
+};
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Siège' }],
 };
@@ -81,7 +94,7 @@ describe('StockPage', () => {
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     levels: signal<readonly StockLevelRow[]>([shortage]).asReadonly(),
-    locations: signal<readonly StockLocationRow[]>([site]).asReadonly(),
+    locations: signal<readonly StockLocationRow[]>([site, rack]).asReadonly(),
     busy: signal(false).asReadonly(),
     error: error.asReadonly(),
     total: signal(1).asReadonly(),
@@ -101,6 +114,10 @@ describe('StockPage', () => {
 
   const q = (testId: string): HTMLElement | null =>
     fixture.nativeElement.querySelector(`[data-testid="${testId}"]`);
+
+  /** The movement form as the page holds it; a mat-select is set through its control. */
+  const form = (): FormGroup =>
+    (fixture.componentInstance as unknown as { form: () => FormGroup }).form();
 
   async function settle(): Promise<void> {
     fixture.detectChanges();
@@ -241,6 +258,40 @@ describe('StockPage', () => {
     });
   });
 
+  it('moves goods from where they are to another location, in one operation', async () => {
+    q('stock-move')!.click();
+    await settle();
+    await pick('field-productId', 'ART-1 · Portable');
+    // A mat-select is set through its control, as a person picking an option would.
+    form().get('toLocationId')!.setValue('l2');
+    type('field-quantity', '4');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).toHaveBeenCalledWith('c1', {
+      operation: 'move',
+      productId: 'p1',
+      locationId: 'l1',
+      toLocationId: 'l2',
+      quantity: '4',
+    });
+    expect(successToasts()).toContain('inventory.stock.recorded');
+  });
+
+  it('will not move goods until somewhere to put them has been chosen', async () => {
+    // The destination starts empty on purpose: a default would be this screen choosing one nobody asked for, and
+    // the only value it could guess is where the goods already are, which the API refuses.
+    q('stock-move')!.click();
+    await settle();
+    await pick('field-productId', 'ART-1 · Portable');
+    type('field-quantity', '4');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).not.toHaveBeenCalled();
+    expect(q('field-error-toLocationId')).not.toBeNull();
+  });
+
   it('offers no movement to a reader', async () => {
     auth.hasPermission.mockReturnValue(false);
     fixture = TestBed.createComponent(StockPage);
@@ -248,5 +299,6 @@ describe('StockPage', () => {
 
     expect(q('stock-receive')).toBeNull();
     expect(q('stock-count')).toBeNull();
+    expect(q('stock-move')).toBeNull();
   });
 });

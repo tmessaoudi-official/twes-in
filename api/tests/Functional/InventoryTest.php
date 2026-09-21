@@ -384,6 +384,51 @@ final class InventoryTest extends ApiTestCase
         return $company;
     }
 
+    /**
+     * A move is ONE operation that writes TWO movements (docs/SPEC.md § 5 G10, row 74): the goods leave one location
+     * and arrive at another in the same transaction, sharing a move id, so no reading of the stock ever sees half of it.
+     */
+    public function testGoodsAreMovedBetweenLocationsAsOneLinkedPair(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $site = $this->defaultLocationId();
+        $this->postJson($this->path('stock-locations'), $this->location(['kind' => 'rack', 'code' => 'R7', 'name' => 'Rayonnage 7']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $rack = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-movements'), ['operation' => 'receive', 'productId' => $this->laptopId, 'locationId' => $site, 'quantity' => '10']);
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+
+        $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $this->laptopId, 'locationId' => $site, 'toLocationId' => $rack, 'quantity' => '4']);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        // The answer is what LEFT: it is the location the person acted on, and its sourceId names the move both
+        // halves carry, so the pair is findable from it.
+        self::assertSame(['out', '-4.000', 'move', $site], [$this->json()['kind'], $this->json()['quantity'], $this->json()['sourceType'], $this->json()['locationId']]);
+        $moveId = $this->stringAt($this->json(), 'sourceId');
+
+        $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId.'&sourceType=move');
+        self::assertSame(['4.000', '-4.000'], array_column($this->jsonList(), 'quantity'));
+        self::assertSame([$moveId, $moveId], array_column($this->jsonList(), 'sourceId'), 'both halves name the same move');
+        self::assertSame([$rack, $site], array_column($this->jsonList(), 'locationId'));
+
+        $this->getJson($this->path('stock-levels'));
+        $levels = array_map(static fn (array $row) => [$row['locationId'], $row['quantity']], $this->jsonList());
+        usort($levels, static fn (array $a, array $b) => $a[1] <=> $b[1]);
+        self::assertSame([[$rack, '4.000'], [$site, '6.000']], $levels, 'ten are still there, in two places');
+
+        foreach ([
+            'toLocationId' => ['locationId' => $site, 'toLocationId' => $site, 'quantity' => '1'],
+            'quantity' => ['locationId' => $site, 'toLocationId' => $rack, 'quantity' => '7'],
+        ] as $field => $changes) {
+            $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $this->laptopId, ...$changes]);
+            self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
+            self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
+        }
+        // Refused means refused: nothing of either attempt was written.
+        $this->getJson($this->path('stock-movements').'?productId='.$this->laptopId.'&sourceType=move');
+        self::assertSame(2, $this->jsonPage()['totalItems']);
+    }
+
     private function defaultLocationId(): string
     {
         $this->getJson($this->path('stock-locations'));

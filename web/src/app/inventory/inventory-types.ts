@@ -17,11 +17,16 @@ export const STOCK_LOCATION_KINDS: readonly StockLocationKind[] = [
 export type StockMovementKind = 'in' | 'out' | 'adjustment';
 export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 'adjustment'];
 
-export type StockSourceType = 'receipt' | 'count' | 'delivery_note';
-export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = ['receipt', 'count', 'delivery_note'];
+export type StockSourceType = 'receipt' | 'count' | 'move' | 'delivery_note';
+export const STOCK_SOURCE_TYPES: readonly StockSourceType[] = [
+  'receipt',
+  'count',
+  'move',
+  'delivery_note',
+];
 
-/** What a person records: goods received, or what a count found on the shelf. */
-export type StockOperation = 'receive' | 'count';
+/** What a person records: goods received, what a count found on the shelf, or goods moved to another location. */
+export type StockOperation = 'receive' | 'count' | 'move';
 
 export interface StockLocationRow {
   id: string;
@@ -124,7 +129,10 @@ export interface StockMovementRow {
 export interface StockMovementInput {
   operation: StockOperation;
   productId: string;
+  /** Where the goods are; for a move, where they leave from. */
   locationId: string;
+  /** Where a move puts them; absent for anything else. */
+  toLocationId?: string;
   quantity: string;
 }
 
