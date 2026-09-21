@@ -1679,6 +1679,19 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   is decision 1 about the hierarchy's containers only, leaving the default location drawable as the canvas shows, or
   should site, building and floor be refused and the default location excepted by its flag rather than its kind?
 
+- [2026-09-21 20:40] AGREED: **the quarter-metre grid holds a rectangle's PLACE, never its SIZE** (row 83, a
+  refinement of decision 3 — flagged for the developer to confirm or reverse). Decision 3 reads "Metres, snapped to
+  the quarter-metre", and the first implementation applied that to everything a person typed. CI caught what that
+  means: a rack entered as **3,90 × 0,60 m** was stored as **4 × 0,5 m**. The approved canvas settles it the other
+  way — the Edit board draws that same rack as `3,90 × 0,60 m · x 2,50  y 4,00`, a size off the grid at a position
+  on it, and its scale bar reads *2 m · aimanté sur 0,25 m*. **Aimanté** is a magnet, which is what a grid is while
+  something is DRAGGED, not a rounding applied to a number somebody typed. So: **x and y are taken to the quarter**,
+  because where a rack stands is a decision about the plan; **width, depth and height are taken as measured**,
+  because how big the rack is, is a fact about the rack and rounding 3,90 up to 4,00 loses a measurement somebody
+  went and took; **rotation stays in fifteens**, because a rack stands square to a wall or at an angle off it. The
+  magnet returns with dragging, in the next slice, where it belongs. If the developer meant decision 3 to round a
+  typed size too, this is the line to reverse — but then the canvas's own rack cannot be drawn as it is drawn.
+
 ## 8. Status
 
 <!-- progress-block v1 -->

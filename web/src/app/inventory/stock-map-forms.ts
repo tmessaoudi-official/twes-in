@@ -169,19 +169,22 @@ export function drawingValues(row: StockDrawingRow | null): FormValues {
 }
 
 /**
- * What the rectangle form sends, on the grid. Snapping here and not only while dragging is what makes a typed 2,6
- * land where a dragged one would — the plan is drawn on quarter-metres however a measurement arrives.
+ * What the rectangle form sends. **The grid holds a rectangle's PLACE, never its SIZE** — the approved canvas draws
+ * a rack of `3,90 × 0,60 m` sitting at `x 2,50 y 4,00`, and its scale reads *aimanté sur 0,25 m*, a magnet, which is
+ * what a grid is while something is dragged.
  *
- * The height is left as it was typed: it is how tall the rack stands, not a measurement on the floor's grid, and a
- * 2,10 m rack is 2,10 m tall rather than 2,25.
+ * So where a rack stands is a decision about the plan and is taken to the quarter-metre; how wide and how deep it is
+ * is a fact about the rack, and rounding a real 3,90 m rack up to 4,00 m would be losing a measurement somebody took.
+ * The height is left alone for the same reason, and it is not on the floor's grid at all. The rotation IS a step: a
+ * rack stands square to a wall or at an angle off it, and decision 3 draws those in fifteens.
  */
 export function drawingInput(values: FormValues): StockDrawingInput {
   return {
     locationId: text(values['locationId']),
     x: onGrid(values['x']),
     y: onGrid(values['y']),
-    width: onGrid(values['width']),
-    depth: onGrid(values['depth']),
+    width: metres(Number(values['width'] ?? 0) || 0),
+    depth: metres(Number(values['depth'] ?? 0) || 0),
     rotation: snapAngle(Number(values['rotation'] ?? 0) || 0),
     height: metres(Number(values['height'] ?? 0) || 0),
   };

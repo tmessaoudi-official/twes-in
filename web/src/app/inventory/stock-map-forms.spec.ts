@@ -160,7 +160,11 @@ describe('drawingForm', () => {
     expect(Number(started['depth'])).toBeGreaterThan(0);
   });
 
-  it('snaps what was typed to the grid on its way to the API', () => {
+  /**
+   * The grid holds a rectangle's PLACE, never its SIZE, as the approved canvas draws it: a rack of 3,90 × 0,60 m
+   * sitting at x 2,50. Rounding a real 3,90 m rack up to 4,00 would be losing a measurement somebody took.
+   */
+  it('takes the place to the grid and leaves the measurements as they were typed', () => {
     expect(
       drawingInput({
         locationId: 'l1',
@@ -173,27 +177,29 @@ describe('drawingForm', () => {
       }),
     ).toEqual({
       locationId: 'l1',
+      // Where it stands: on the quarter.
       x: '2.500',
       y: '4.000',
-      width: '4.000',
-      depth: '0.500',
-      rotation: 90,
+      // How big it is: exactly what was measured.
+      width: '3.900',
+      depth: '0.600',
       height: '2.100',
+      // How it is turned: in fifteens, because a rack stands square to a wall or at an angle off it.
+      rotation: 90,
     });
   });
 
-  /** A height is not a measurement on the floor grid: a rack is 2.10 m tall, not 2.25. */
-  it('leaves the height alone, because it is not on the floor grid', () => {
+  it('keeps a size that is already on the grid, so the rule costs a round rack nothing', () => {
     const input = drawingInput({
       locationId: 'l1',
       x: '0',
       y: '0',
-      width: '1',
+      width: '2.5',
       depth: '1',
       rotation: '0',
-      height: '2.10',
+      height: '2',
     });
-    expect(input.height).toBe('2.100');
+    expect([input.width, input.depth, input.height]).toEqual(['2.500', '1.000', '2.000']);
   });
 });
 

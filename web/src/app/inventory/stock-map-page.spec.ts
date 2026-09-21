@@ -250,6 +250,7 @@ describe('StockMapPage', () => {
     expect(facade.draw).toHaveBeenCalledWith(
       'c1',
       'f1',
+      // The place goes to the grid (2,6 → 2,5); a measurement does not.
       expect.objectContaining({ locationId: 'l2', x: '2.500', y: '4.000' }),
       // Null: this is a new rectangle, not one being moved.
       null,
