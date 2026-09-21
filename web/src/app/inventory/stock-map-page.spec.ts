@@ -212,6 +212,17 @@ describe('StockMapPage', () => {
     expect(facade.loadDrawings).toHaveBeenLastCalledWith('c1', 'f2');
   });
 
+  /**
+   * The floor being looked at is MARKED, not disabled. A disabled control cannot be focused, so it would be the one
+   * tab a keyboard cannot reach and a screen reader skips — and, measurably, a click on it waits for ever.
+   */
+  it('marks the floor being looked at without taking it out of reach', () => {
+    const current = q('stock-floor-f1')!;
+    expect(current.getAttribute('aria-current')).toBe('true');
+    expect((current as HTMLButtonElement).disabled).toBe(false);
+    expect(q('stock-floor-f2')!.getAttribute('aria-current')).toBeNull();
+  });
+
   it('says so when a floor carries nothing yet, rather than showing an empty frame alone', async () => {
     drawings.set([]);
     await settle();

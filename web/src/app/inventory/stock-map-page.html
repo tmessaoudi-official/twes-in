@@ -88,11 +88,16 @@
       <p data-testid="stock-map-no-floor">{{ 'inventory.plan.no_floor' | translate }}</p>
     } @else {
       <nav class="flex flex-wrap gap-2" [appLabel]="'inventory.plan.floors' | translate">
+        <!--
+          The floor being looked at is marked, never disabled: a disabled control cannot be focused, so the current
+          floor would be the one tab a keyboard could not reach and a screen reader would skip.
+        -->
         @for (one of floors(); track one.id) {
           <button
             type="button"
             mat-button
-            [disabled]="one.id === floor()?.id"
+            [class.bg-secondary-container]="one.id === floor()?.id"
+            [attr.aria-current]="one.id === floor()?.id ? 'true' : null"
             (click)="showFloor(one.id)"
             [attr.data-testid]="'stock-floor-' + one.id"
           >

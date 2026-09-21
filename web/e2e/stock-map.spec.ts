@@ -167,7 +167,9 @@ test.describe('the drawn stock map', () => {
       await page.goto('/stock/locations');
       await expect(page.getByTestId(`stock-location-${code}`)).toBeVisible();
     } finally {
-      await clean(page, fixture, floorName);
+      // A timed-out case closes its page, and cleaning a closed page throws over the failure that caused it —
+      // which reads as a cleanup bug and hides the real one. Measured: it cost a whole CI round to see through.
+      if (!page.isClosed()) await clean(page, fixture, floorName);
     }
   });
 });
