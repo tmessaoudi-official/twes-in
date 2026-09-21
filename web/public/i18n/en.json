@@ -476,6 +476,7 @@
     "stock": "Stock",
     "stock_movements": "Stock movements",
     "stock_locations": "Locations",
+    "stock_plan": "Plan",
     "vendors": "Vendors",
     "expenses": "Expenses",
     "expense_categories": "Expense categories",
@@ -1318,7 +1319,8 @@
       "not_found": "Not found.",
       "code_taken": "Another location of this establishment already has this code.",
       "in_use": "This location cannot be deleted: it is the default location, or it still holds locations or movements.",
-      "invalid": "This was refused. Check the product, the location and the quantity."
+      "invalid": "This was refused. Check the product, the location and the quantity.",
+      "level_taken": "Another floor of this establishment is already at that level."
     },
     "stock": {
       "title": "Stock",
@@ -1407,7 +1409,46 @@
     "delete_title": "Delete this location?",
     "delete_message": "{{name}} will be deleted. A location that has seen a movement is kept.",
     "delete_confirm": "Delete",
-    "keep": "Keep"
+    "keep": "Keep",
+    "plan": {
+      "title": "Stock plan",
+      "intro": "Each floor is a plan: zones and racks are rectangles on it, in metres, snapped to the quarter-metre. A bin is not drawn here — it is placed in its rack’s front view.",
+      "floors": "Floors",
+      "no_floor": "No floor is drawn yet. Create one to start the plan.",
+      "drawn": "Drawn on this floor",
+      "nothing_drawn": "Nothing is drawn on this floor yet.",
+      "plan_of": "Plan of {{floor}}: {{count}} rectangle(s) drawn",
+      "draw": "Draw a location",
+      "erase": "Erase the rectangle",
+      "add_floor": "Add a floor",
+      "edit_floor": "Edit the floor",
+      "remove_floor": "Remove the floor",
+      "floor_saved": "Floor saved",
+      "floor_removed": "Floor removed",
+      "drawing_saved": "Rectangle saved",
+      "drawing_erased": "Rectangle erased",
+      "floor_section": "The floor",
+      "level_hint": "The ground floor is 0; a basement is negative.",
+      "drawing_section": "The location drawn",
+      "location_hint": "A location is in one place, so it is drawn once. Bins are not offered.",
+      "footprint_section": "The footprint",
+      "footprint_hint": "In metres from the floor’s top-left corner, snapped to the quarter-metre.",
+      "rotation_hint": "In steps of 15°, for a rack set against a wall at an angle.",
+      "floor_fields": {
+        "establishmentId": "Establishment",
+        "name": "Floor name",
+        "level": "Level"
+      },
+      "drawing_fields": {
+        "locationId": "Location",
+        "x": "x (m)",
+        "y": "y (m)",
+        "width": "Width (m)",
+        "depth": "Depth (m)",
+        "height": "Height (m)",
+        "rotation": "Rotation (°)"
+      }
+    }
   },
   "vendors": {
     "title": "Vendors",

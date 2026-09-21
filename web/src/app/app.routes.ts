@@ -174,6 +174,11 @@ export const routes: Routes = [
           import('./inventory/stock-locations-page').then((m) => m.StockLocationsPage),
       },
       {
+        path: 'stock/plan',
+        canActivate: [moduleGuard(INVENTORY_MODULE)],
+        loadComponent: () => import('./inventory/stock-map-page').then((m) => m.StockMapPage),
+      },
+      {
         // One screen for every subject a module declares as importable: the API already answers 404 for a subject
         // this company cannot import, or may not write, so no static module guard could say it here.
         path: 'imports/:subject',

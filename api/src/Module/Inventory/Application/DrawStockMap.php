@@ -131,7 +131,7 @@ final readonly class DrawStockMap
     {
         return $this->transactions->run(function () use ($company, $floorId, $locationId, $rect, $actorUserId): StockLocation {
             // A location is in one place, so it is drawn in one place: drawing it again erases where it was.
-            $previous = $this->locations->get($company, $locationId)->getSpot();
+            $previous = $this->drawable($company, $locationId)->getSpot();
             $spot = $this->venue->place($company, $floorId, $rect, $actorUserId);
             $drawn = $this->locations->drawAt($company, $locationId, $spot, $actorUserId);
             if (null !== $previous) {
@@ -154,8 +154,10 @@ final readonly class DrawStockMap
     public function moveDrawing(Company $company, Uuid $drawingId, Uuid $locationId, PlanRect $rect, ?Uuid $actorUserId): StockLocation
     {
         return $this->transactions->run(function () use ($company, $drawingId, $locationId, $rect, $actorUserId): StockLocation {
+            // Resolved and checked before the rectangle moves, for the reason draw() resolves first: a refusal must
+            // leave the plan as it was, not as it would have been.
+            $previous = $this->drawable($company, $locationId)->getSpot();
             $spot = $this->venue->moveSpot($company, $drawingId, $rect, $actorUserId);
-            $previous = $this->locations->get($company, $locationId)->getSpot();
             foreach ($this->drawnAt($company, $spot) as $drawn) {
                 if (!$drawn->getId()->equals($locationId)) {
                     $this->locations->drawAt($company, $drawn->getId(), null, $actorUserId);
@@ -185,6 +187,23 @@ final readonly class DrawStockMap
             }
             $this->venue->removeSpot($company, $drawingId, $actorUserId);
         });
+    }
+
+    /**
+     * The location a rectangle is about to be drawn for, refused when its kind is not one the plan carries
+     * (docs/SPEC.md § 7, 2026-09-21, decision 2). It names `locationId` because that is the field of what was sent.
+     *
+     * @throws StockLocationNotFound
+     * @throws InvalidStockLocation
+     */
+    private function drawable(Company $company, Uuid $locationId): StockLocation
+    {
+        $location = $this->locations->get($company, $locationId);
+        if (!$location->getKind()->isDrawable()) {
+            throw new InvalidStockLocation('locationId', 'A bin is placed in its rack rather than on the floor plan.');
+        }
+
+        return $location;
     }
 
     /**

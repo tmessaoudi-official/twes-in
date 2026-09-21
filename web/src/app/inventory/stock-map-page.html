@@ -1,0 +1,264 @@
+<app-page-tabs [tabs]="tabs" label="nav.stock">
+  <section class="flex flex-col gap-6">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <h1 class="text-3xl font-semibold" data-testid="stock-map-title">
+        {{ 'inventory.plan.title' | translate }}
+      </h1>
+      @if (mayWrite() && company()) {
+        <div class="flex flex-wrap gap-2">
+          @if (floor(); as current) {
+            <button
+              mat-button
+              type="button"
+              (click)="openFloor(current)"
+              data-testid="stock-floor-edit"
+            >
+              {{ 'inventory.plan.edit_floor' | translate }}
+            </button>
+          }
+          <button
+            mat-flat-button
+            type="button"
+            (click)="openFloor('new')"
+            data-testid="stock-floor-add"
+          >
+            {{ 'inventory.plan.add_floor' | translate }}
+          </button>
+        </div>
+      }
+    </div>
+    <p class="max-w-prose">{{ 'inventory.plan.intro' | translate }}</p>
+
+    @if (!company()) {
+      <p data-testid="stock-map-no-company">{{ 'inventory.no_company' | translate }}</p>
+    }
+    @if (error(); as code) {
+      <p role="alert" data-testid="stock-map-error" class="text-error">
+        {{ 'inventory.errors.' + code | translate }}
+      </p>
+    }
+
+    @if (floorFormGroup(); as group) {
+      @if (floorDescriptor(); as descriptor) {
+        <mat-card>
+          <mat-card-content>
+            <app-descriptor-form
+              [descriptor]="descriptor"
+              [form]="group"
+              testId="stock-floor-form"
+              (submitted)="saveFloor($event)"
+            >
+              <div class="flex flex-wrap justify-end gap-2">
+                @if (editingFloor(); as editing) {
+                  @if (editing !== 'new' && editing.drawingCount === 0) {
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="removeFloor(editing)"
+                      data-testid="stock-floor-remove"
+                    >
+                      {{ 'inventory.plan.remove_floor' | translate }}
+                    </button>
+                  }
+                }
+                <button
+                  mat-button
+                  type="button"
+                  (click)="cancelFloor()"
+                  data-testid="stock-floor-cancel"
+                >
+                  {{ 'inventory.cancel' | translate }}
+                </button>
+                <button
+                  mat-flat-button
+                  type="submit"
+                  [disabled]="busy()"
+                  data-testid="stock-floor-save"
+                >
+                  {{ 'inventory.save' | translate }}
+                </button>
+              </div>
+            </app-descriptor-form>
+          </mat-card-content>
+        </mat-card>
+      }
+    }
+
+    @if (floors().length === 0) {
+      <p data-testid="stock-map-no-floor">{{ 'inventory.plan.no_floor' | translate }}</p>
+    } @else {
+      <nav class="flex flex-wrap gap-2" [appLabel]="'inventory.plan.floors' | translate">
+        @for (one of floors(); track one.id) {
+          <button
+            type="button"
+            mat-button
+            [disabled]="one.id === floor()?.id"
+            (click)="showFloor(one.id)"
+            [attr.data-testid]="'stock-floor-' + one.id"
+          >
+            {{ one.name }}
+          </button>
+        }
+      </nav>
+
+      <div class="grid gap-6 lg:grid-cols-[18rem_1fr]">
+        <!--
+          The list is the plan's keyboard path and its phone view: decision 8 says the map is read on a phone and
+          drawn on a wide window, so nothing here may be reachable only by pointing at the drawing.
+        -->
+        <div class="flex flex-col gap-2">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            {{ 'inventory.plan.drawn' | translate }}
+          </h2>
+          @for (shape of shapes(); track shape.drawing.id) {
+            <button
+              type="button"
+              class="flex items-baseline gap-2 rounded-lg border border-outline-variant p-2 text-start"
+              [class.bg-secondary-container]="shape.drawing.id === selectedId()"
+              (click)="select(shape.drawing)"
+              [attr.aria-pressed]="shape.drawing.id === selectedId()"
+              [attr.data-testid]="'stock-drawing-' + shape.drawing.locationCode"
+            >
+              <span class="font-medium">{{ shape.drawing.locationCode }}</span>
+              <span class="grow truncate text-on-surface-variant">
+                {{ shape.drawing.locationName }}
+              </span>
+              <span class="tabular-nums text-on-surface-variant">
+                {{ shape.rect.width }} × {{ shape.rect.depth }} m
+              </span>
+            </button>
+          } @empty {
+            <p data-testid="stock-map-empty">{{ 'inventory.plan.nothing_drawn' | translate }}</p>
+          }
+
+          @if (mayWrite()) {
+            <button
+              mat-flat-button
+              type="button"
+              class="mt-2"
+              (click)="draw('new')"
+              data-testid="stock-drawing-add"
+            >
+              {{ 'inventory.plan.draw' | translate }}
+            </button>
+          }
+
+          @if (selected(); as drawing) {
+            <div class="mt-4 flex flex-col gap-2 rounded-lg border border-outline-variant p-3">
+              <p class="font-medium">{{ drawing.locationCode }} — {{ drawing.locationName }}</p>
+              <p class="text-on-surface-variant">
+                {{ 'inventory.kinds.' + drawing.locationKind | translate }}
+              </p>
+              @if (mayWrite()) {
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="draw(drawing)"
+                    data-testid="stock-drawing-edit"
+                  >
+                    {{ 'inventory.edit' | translate }}
+                  </button>
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="erase(drawing)"
+                    data-testid="stock-drawing-erase"
+                  >
+                    {{ 'inventory.plan.erase' | translate }}
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="flex flex-col gap-6">
+          <div
+            class="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest"
+          >
+            <svg
+              [attr.viewBox]="viewBox()"
+              class="block h-[28rem] w-full"
+              role="img"
+              [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
+              data-testid="stock-map-svg"
+            >
+              @for (shape of shapes(); track shape.drawing.id) {
+                <g
+                  [attr.transform]="
+                    'rotate(' +
+                    shape.rect.rotation +
+                    ' ' +
+                    shape.centreX +
+                    ' ' +
+                    shape.centreY +
+                    ')'
+                  "
+                >
+                  <rect
+                    [attr.x]="shape.rect.x"
+                    [attr.y]="shape.rect.y"
+                    [attr.width]="shape.rect.width"
+                    [attr.height]="shape.rect.depth"
+                    [attr.rx]="0.1"
+                    [attr.stroke-width]="shape.drawing.id === selectedId() ? 0.08 : 0.04"
+                    class="cursor-pointer"
+                    [class.fill-primary-container]="shape.drawing.locationKind === 'rack'"
+                    [class.stroke-primary]="shape.drawing.locationKind === 'rack'"
+                    [class.fill-surface-container-high]="shape.drawing.locationKind !== 'rack'"
+                    [class.stroke-outline]="shape.drawing.locationKind !== 'rack'"
+                    [class.fill-secondary-container]="shape.drawing.id === selectedId()"
+                    (click)="select(shape.drawing)"
+                  />
+                  <text
+                    [attr.x]="shape.labelX"
+                    [attr.y]="shape.labelY"
+                    [attr.font-size]="0.32"
+                    class="pointer-events-none fill-on-surface"
+                  >
+                    {{ shape.drawing.locationCode }}
+                  </text>
+                </g>
+              }
+            </svg>
+          </div>
+
+          @if (drawingFormGroup(); as group) {
+            @if (drawingDescriptor(); as descriptor) {
+              <mat-card>
+                <mat-card-content>
+                  <app-descriptor-form
+                    [descriptor]="descriptor"
+                    [form]="group"
+                    testId="stock-drawing-form"
+                    (submitted)="saveDrawing($event)"
+                  >
+                    <div class="flex flex-wrap justify-end gap-2">
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="cancelDrawing()"
+                        data-testid="stock-drawing-cancel"
+                      >
+                        {{ 'inventory.cancel' | translate }}
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="submit"
+                        [disabled]="busy()"
+                        data-testid="stock-drawing-save"
+                      >
+                        {{ 'inventory.save' | translate }}
+                      </button>
+                    </div>
+                  </app-descriptor-form>
+                </mat-card-content>
+              </mat-card>
+            }
+          }
+        </div>
+      </div>
+    }
+  </section>
+</app-page-tabs>

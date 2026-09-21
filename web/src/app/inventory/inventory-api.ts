@@ -6,6 +6,10 @@ import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdstockLevelsGetCollectionResponse,
   ApiCompaniesCompanyIdstockMovementsGetCollectionResponse,
+  StockDrawingStockDrawingRead,
+  StockDrawingStockDrawingWrite,
+  StockFloorStockFloorRead,
+  StockFloorStockFloorWrite,
   StockLevelJsonldStockLevelRead,
   StockMovementJsonldStockMovementRead,
   StockLocationStockLocationRead,
@@ -19,6 +23,10 @@ import type { ListPage } from '../shared/list/list-types';
 import { type PickAsked, pickParams } from '../shared/form/pick-api';
 import {
   type InventoryError,
+  type StockDrawingInput,
+  type StockDrawingRow,
+  type StockFloorInput,
+  type StockFloorRow,
   STOCK_LOCATION_KINDS,
   STOCK_MOVEMENT_KINDS,
   STOCK_SOURCE_TYPES,
@@ -167,6 +175,119 @@ export class InventoryApi {
     );
   }
 
+  /** Every floor the company's stock is drawn on, each carrying how many rectangles it already holds. */
+  async floors(companyId: string): Promise<StockFloorRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<StockFloorStockFloorRead[]>(path(companyId, 'stock-floors')),
+        )
+      ).map(toFloor),
+    );
+  }
+
+  /** 409 when another floor of the same establishment is already at that level. */
+  async createFloor(companyId: string, input: StockFloorInput): Promise<StockFloorRow> {
+    return this.guard(
+      async () =>
+        toFloor(
+          await firstValueFrom(
+            this.http.post<StockFloorStockFloorRead>(
+              path(companyId, 'stock-floors'),
+              floorBody(input),
+            ),
+          ),
+        ),
+      'level_taken',
+    );
+  }
+
+  /** A floor's name, its level and the plan behind it are one form, so they are one request. */
+  async reviseFloor(companyId: string, id: string, input: StockFloorInput): Promise<StockFloorRow> {
+    return this.guard(
+      async () =>
+        toFloor(
+          await firstValueFrom(
+            this.http.put<StockFloorStockFloorRead>(
+              path(companyId, 'stock-floors', id),
+              floorBody(input),
+            ),
+          ),
+        ),
+      'level_taken',
+    );
+  }
+
+  /** The rectangles go with the floor; what they were drawn for keeps its code, its tree and its stock. */
+  async deleteFloor(companyId: string, id: string): Promise<void> {
+    await this.guard(
+      async () => firstValueFrom(this.http.delete(path(companyId, 'stock-floors', id))),
+      'in_use',
+    );
+  }
+
+  /** What is drawn on one floor. Only bound rectangles come back: an unlabelled one is on no screen. */
+  async drawings(companyId: string, floorId: string): Promise<StockDrawingRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<StockDrawingStockDrawingRead[]>(
+            `${path(companyId, 'stock-floors', floorId)}/drawings`,
+          ),
+        )
+      ).map(toDrawing),
+    );
+  }
+
+  /**
+   * Draws a location on a floor. Drawing one that is already drawn moves it — a rack is in one place — and a
+   * location the plan does not carry, a bin, answers 422 naming `locationId`.
+   */
+  async draw(
+    companyId: string,
+    floorId: string,
+    input: StockDrawingInput,
+  ): Promise<StockDrawingRow> {
+    return this.guard(async () =>
+      toDrawing(
+        await firstValueFrom(
+          this.http.post<StockDrawingStockDrawingRead>(
+            `${path(companyId, 'stock-floors', floorId)}/drawings`,
+            drawingBody(input),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Moves or resizes a rectangle by its own address, and says which location it is drawn for: a rectangle never
+   * changes floor, because goods do not climb — that is another rectangle.
+   */
+  async moveDrawing(
+    companyId: string,
+    drawingId: string,
+    input: StockDrawingInput,
+  ): Promise<StockDrawingRow> {
+    return this.guard(async () =>
+      toDrawing(
+        await firstValueFrom(
+          this.http.put<StockDrawingStockDrawingRead>(
+            path(companyId, 'stock-drawings', drawingId),
+            drawingBody(input),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /** The rectangle is erased; the location it was drawn for is untouched. */
+  async eraseDrawing(companyId: string, drawingId: string): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(this.http.delete(path(companyId, 'stock-drawings', drawingId))),
+    );
+  }
+
   /** 422 naming the field refused: a product whose stock is not kept, a quantity finer than its unit. */
   async record(companyId: string, input: StockMovementInput): Promise<StockMovementRow> {
     const body: StockMovementStockMovementWrite = { ...input };
@@ -201,6 +322,9 @@ function codeOf(error: unknown, conflict: InventoryError): InventoryError {
       return 'invalid';
   }
 }
+
+/** What a floor shows a plan image at when it says nothing else, matching the API's own default. */
+const DEFAULT_PLAN_OPACITY = 35;
 
 const path = (companyId: string, collection: string, id?: string): string =>
   `/api/companies/${encodeURIComponent(companyId)}/${collection}${id === undefined ? '' : `/${encodeURIComponent(id)}`}`;
@@ -249,6 +373,45 @@ function toLevel(raw: StockLevelJsonldStockLevelRead): StockLevelRow {
     locationName: raw.locationName ?? '',
     establishmentId: raw.establishmentId ?? '',
     quantity: raw.quantity ?? '0.000',
+  };
+}
+
+/** A revision keeps the establishment it was created under; the API ignores the field, the generated type wants it. */
+function floorBody(input: StockFloorInput): StockFloorStockFloorWrite {
+  return { ...input };
+}
+
+function drawingBody(input: StockDrawingInput): StockDrawingStockDrawingWrite {
+  return { ...input };
+}
+
+function toFloor(raw: StockFloorStockFloorRead): StockFloorRow {
+  return {
+    id: raw.id ?? '',
+    establishmentId: raw.establishmentId ?? '',
+    name: raw.name ?? '',
+    level: raw.level ?? 0,
+    imageFileId: raw.imageFileId ?? null,
+    imageMetresWide: raw.imageMetresWide ?? null,
+    imageOpacity: raw.imageOpacity ?? DEFAULT_PLAN_OPACITY,
+    drawingCount: raw.drawingCount ?? 0,
+  };
+}
+
+function toDrawing(raw: StockDrawingStockDrawingRead): StockDrawingRow {
+  return {
+    id: raw.id ?? '',
+    floorId: raw.floorId ?? '',
+    locationId: raw.locationId ?? '',
+    locationCode: raw.locationCode ?? '',
+    locationName: raw.locationName ?? '',
+    locationKind: STOCK_LOCATION_KINDS.find((kind) => kind === raw.locationKind) ?? 'zone',
+    x: raw.x ?? '0.000',
+    y: raw.y ?? '0.000',
+    width: raw.width ?? '0.000',
+    depth: raw.depth ?? '0.000',
+    rotation: raw.rotation ?? 0,
+    height: raw.height ?? '0.000',
   };
 }
 

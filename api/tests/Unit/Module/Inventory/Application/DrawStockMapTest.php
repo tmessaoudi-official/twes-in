@@ -144,6 +144,47 @@ final class DrawStockMapTest extends TestCase
         $this->map->draw($this->company, $elsewhere, $foreign->getId(), $this->rect('1'), $this->actor);
     }
 
+    /**
+     * A bin is not on the top-down plan (docs/SPEC.md § 7, 2026-09-21, decision 2): it sits in its rack's front view,
+     * by column and level, and has no x, y on the ground. Refusing it here and not in the screen's picker is what
+     * makes it true of the surface rather than of one caller.
+     */
+    public function testABinIsRefusedBecauseItIsPlacedInItsRackRatherThanOnTheFloor(): void
+    {
+        $ground = $this->floor('Rez-de-chaussée', 0);
+        $bin = $this->locations->create($this->company, $this->establishment->getId(), $this->rack->getId(), StockLocationKind::Bin, 'R1-A1', 'Bac A1', $this->actor);
+
+        try {
+            $this->map->draw($this->company, $ground, $bin->getId(), $this->rect('1'), $this->actor);
+            self::fail('A bin was drawn on the floor plan.');
+        } catch (InvalidStockLocation $refused) {
+            self::assertSame('locationId', $refused->field);
+        }
+
+        // Refused before anything was placed: no rectangle is left behind for a binding that never happened.
+        self::assertCount(0, $this->spots->ofArea($ground));
+    }
+
+    /** The same rule on the other verb: a rectangle may not be handed to a bin either. */
+    public function testARectangleCannotBeGivenToABin(): void
+    {
+        $ground = $this->floor('Rez-de-chaussée', 0);
+        $drawing = $this->map->draw($this->company, $ground, $this->rack->getId(), $this->rect('1'), $this->actor)->getSpot();
+        self::assertNotNull($drawing);
+        $bin = $this->locations->create($this->company, $this->establishment->getId(), $this->rack->getId(), StockLocationKind::Bin, 'R1-A1', 'Bac A1', $this->actor);
+
+        try {
+            $this->map->moveDrawing($this->company, $drawing->getId(), $bin->getId(), $this->rect('2'), $this->actor);
+            self::fail('A rectangle was given to a bin.');
+        } catch (InvalidStockLocation $refused) {
+            self::assertSame('locationId', $refused->field);
+        }
+
+        // The rack keeps the rectangle it had, unmoved: a refusal leaves the plan as it was.
+        self::assertSame([$drawing->getId()->toRfc4122()], $this->drawnIds($ground));
+        self::assertSame('1.000', $this->spots->ofArea($ground)[0]->getRect()->x);
+    }
+
     private function floor(string $name, int $level): Uuid
     {
         return $this->map->addFloor($this->company, $this->establishment->getId(), $name, $level, $this->actor)->getId();

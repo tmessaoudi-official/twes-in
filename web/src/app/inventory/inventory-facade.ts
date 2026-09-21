@@ -5,6 +5,10 @@ import { InventoryApi, InventoryRefused } from './inventory-api';
 import type { PickAsked } from '../shared/form/pick-api';
 import type {
   InventoryError,
+  StockDrawingInput,
+  StockDrawingRow,
+  StockFloorInput,
+  StockFloorRow,
   StockLevelRow,
   StockLocationInput,
   StockLocationRow,
@@ -32,6 +36,11 @@ export class InventoryFacade {
   private movementsRequest = 0;
   /** What the movements list last asked for, so a movement arriving elsewhere reads that same page again. */
   private movementsSearch: StockMovementSearch | null = null;
+  private readonly floorsSignal = signal<readonly StockFloorRow[]>([]);
+  private readonly drawingsSignal = signal<readonly StockDrawingRow[]>([]);
+  private drawingsRequest = 0;
+  /** Which floor's rectangles are in hand, so a live change reads that same floor again. */
+  private drawingsFloorId: string | null = null;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InventoryError | null>(null);
 
@@ -43,6 +52,9 @@ export class InventoryFacade {
   readonly movements = this.movementsSignal.asReadonly();
   /** How many movements the last search found in all, the page shown being one part of them. */
   readonly movementsTotal = this.movementsTotalSignal.asReadonly();
+  readonly floors = this.floorsSignal.asReadonly();
+  /** What is drawn on the floor being looked at, never on all of them at once. */
+  readonly drawings = this.drawingsSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -154,8 +166,106 @@ export class InventoryFacade {
     );
   }
 
+  /**
+   * The plan screen's own context: the floors, the locations a rectangle can be drawn for, and the establishments
+   * the floors belong to. The rectangles of the floor being looked at are read separately, because a person moves
+   * between floors far more often than the company gains one.
+   */
+  async loadPlanContext(companyId: string): Promise<void> {
+    await this.read(async () => {
+      const [options, locations, floors] = await Promise.all([
+        this.api.options(companyId),
+        this.api.locations(companyId),
+        this.api.floors(companyId),
+      ]);
+      this.optionsSignal.set(options);
+      this.locationsSignal.set(locations);
+      this.floorsSignal.set(floors);
+    });
+  }
+
+  /** What is drawn on one floor. Only the latest floor asked for is shown, as the lists do it. */
+  async loadDrawings(companyId: string, floorId: string): Promise<void> {
+    const request = ++this.drawingsRequest;
+    this.drawingsFloorId = floorId;
+    await this.read(async () => {
+      const drawings = await this.api.drawings(companyId, floorId);
+      if (request !== this.drawingsRequest) return;
+      this.drawingsSignal.set(drawings);
+    });
+  }
+
+  /** The floor in hand, read again: what a live change brought belongs on it or does not. */
+  async reloadDrawings(companyId: string): Promise<void> {
+    const floorId = this.drawingsFloorId;
+    if (floorId !== null) await this.loadDrawings(companyId, floorId);
+  }
+
+  async createFloor(companyId: string, input: StockFloorInput): Promise<boolean> {
+    return this.write(
+      () => this.api.createFloor(companyId, input),
+      () => this.reloadFloors(companyId),
+    );
+  }
+
+  async reviseFloor(companyId: string, id: string, input: StockFloorInput): Promise<boolean> {
+    return this.write(
+      () => this.api.reviseFloor(companyId, id, input),
+      () => this.reloadFloors(companyId),
+    );
+  }
+
+  /** The floor goes and its rectangles with it; what they were drawn for stays. */
+  async deleteFloor(companyId: string, id: string): Promise<boolean> {
+    return this.write(
+      () => this.api.deleteFloor(companyId, id),
+      async () => {
+        await this.reloadFloors(companyId);
+        if (this.drawingsFloorId === id) {
+          this.drawingsFloorId = null;
+          this.drawingsSignal.set([]);
+        }
+      },
+    );
+  }
+
+  /**
+   * Draws a location on a floor, or moves the rectangle it already has. The floor's rectangles are read again and
+   * so are the floors, because a floor carries how many rectangles it holds.
+   */
+  async draw(
+    companyId: string,
+    floorId: string,
+    input: StockDrawingInput,
+    drawingId: string | null,
+  ): Promise<boolean> {
+    return this.write(
+      () =>
+        drawingId === null
+          ? this.api.draw(companyId, floorId, input)
+          : this.api.moveDrawing(companyId, drawingId, input),
+      () => this.afterDrawing(companyId, floorId),
+    );
+  }
+
+  async eraseDrawing(companyId: string, floorId: string, drawingId: string): Promise<boolean> {
+    return this.write(
+      () => this.api.eraseDrawing(companyId, drawingId),
+      () => this.afterDrawing(companyId, floorId),
+    );
+  }
+
   clearError(): void {
     this.errorSignal.set(null);
+  }
+
+  /** A rectangle written changes the floor's own count as well as what is on it, so both are read again. */
+  private async afterDrawing(companyId: string, floorId: string): Promise<void> {
+    await Promise.all([this.loadDrawings(companyId, floorId), this.reloadFloors(companyId)]);
+  }
+
+  private async reloadFloors(companyId: string): Promise<void> {
+    this.floorsSignal.set(await this.api.floors(companyId));
   }
 
   private async reloadLocations(companyId: string): Promise<void> {

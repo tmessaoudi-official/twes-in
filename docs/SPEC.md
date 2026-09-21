@@ -1652,6 +1652,33 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   for now on its own grounds — every required legal mention would then have to survive whatever a company does to the
   layout, which fights the 18:30 ruling that issuing is refused when a required mention cannot be filled.
 
+- [2026-09-21 19:55] AGREED: **the drawn map's screen is FORM-FIRST, and one of the eight decisions needs the
+  developer** (row 83, web half, slice 1). The approved canvas settles the shape: the Edit board's right panel IS a
+  form of x, y, width, depth, height and rotation, and its header carries "3 modifications non enregistrées" beside
+  Annuler and Enregistrer. So the rectangle is drawn and moved through a FORM beside the plan, and dragging is an
+  accelerator to be added on top of it — never the way in. That is not a concession to accessibility, it is what
+  decision 8 requires (the phone reads the map and does not draw it) and what makes every control reachable by
+  keyboard by construction. The list of drawn rectangles beside the plan is the same rule: nothing on this screen may
+  be reachable only by pointing at the drawing. **Shipped in this slice**: the floors (add, rename, level, remove),
+  the SVG plan in metres with each rectangle turned about its own centre and labelled by its location's code, the
+  rectangle form with the quarter-metre snap applied to what is TYPED as well as to what will be dragged, erasing,
+  and the live reload on `venue_area`, `venue_spot` and `stock_location` — the three audit types the composition
+  already records, checked rather than assumed. **Left inside row 83**: dragging, resizing and turning on the canvas;
+  the floor image and its two calibration points; the Three.js 3D view; and search-highlight. The per-person
+  `presentation.stock-map-view` key of decision 7 is deliberately NOT added yet — a preference between two views
+  while only one exists is the same can-never-fire shape as `presentation.sidebar-settings`, which is registered on
+  the web and declared nowhere in `api/src`. It ships with the 3D.
+  **One API gap closed**: `DrawStockMap` never read the location's kind, so the surface accepted a rectangle for a
+  BIN, which decision 2 says is placed in its rack's front view and has no x, y on the ground at all. It is refused
+  now, on both verbs, resolved before the rectangle is placed so a refusal leaves the plan as it was.
+  **And one decision the developer must settle.** Decision 1 says "site, building and floor are not drawn: the floor
+  IS the plan", but an establishment's own DEFAULT location is a `StockLocation` of kind `Site` by construction
+  (`StockLocation.php:90`), and the approved Main board DRAWS it — "Z6 · Préparation et expédition", labelled
+  *Emplacement par défaut de l'établissement*. The two disagree. Refusing `site` outright would make the approved
+  plan impossible to draw, so only `bin` is refused for now and every other kind is accepted. The question to settle:
+  is decision 1 about the hierarchy's containers only, leaving the default location drawable as the canvas shows, or
+  should site, building and floor be refused and the default location excepted by its flag rather than its kind?
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1741,7 +1768,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 80 | Job (§ 7 2026-09-20): from an accepted quote, material consumed through the generic transformation, hours at a cost rate, output as a product or a one-off, scrap consumed by the job, closing into a delivery note and an invoice, quoted price against real cost | L | todo | - | api/src/Module/Jobs/** api/migrations/** api/tests/** web/src/app/jobs/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |
 | 82 | Register, the counter sale (§ 7 2026-09-20): one full screen on scanner and keyboard, receipt or invoice from the same sale, cash with change, card, on account and mixed payments, returns writing a credit note and restocking; sales idempotent and queued in shape so offline can be added later | L | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** web/e2e/** |
-| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20; surface ruled 2026-09-21): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines' | L | doing | - | api/src/Venue/** api/src/Module/Inventory/** api/migrations/** api/tests/** web/src/app/inventory/** web/public/i18n/** |
+| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20; surface ruled 2026-09-21): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines'. DONE: the API half (the `Venue` context, `DrawStockMap`, the module's three endpoints) and the SCREEN'S first slice — floors with their levels, the SVG plan in metres with each rectangle turned about its own centre, and drawing, moving and erasing through a FORM beside the plan, which is what the approved canvas draws and what decision 8 requires. A bin is now refused by the surface, not only by the picker. LEFT: dragging, resizing and turning on the canvas; the floor image and its calibration; the Three.js 3D view and the `presentation.stock-map-view` key that only makes sense with it; search-highlight and the rack front view. One decision is back with the developer — see Needs input, which kinds may be drawn | L | doing | - | api/src/Venue/** api/src/Module/Inventory/** api/migrations/** api/tests/** web/src/app/inventory/** web/public/i18n/** |
 | 84 | Supplier bill and the three-way match (§ 7 2026-09-20): a bill with lines, matched automatically against order and receipt within a tolerance the settings engine holds, anything outside it waiting on an approval before the bill is payable | M | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** |
 | 85 | Statement of account and credit limit (§ 7 2026-09-20): a customer's documents and payments over a period, printed; a limit per customer or group warning when a delivery would pass what is already owed | M | todo | - | api/src/Module/Customers/** api/src/Module/Invoices/** api/tests/** web/src/app/customers/** |
 | 86 | Recurring invoices (§ 7 2026-09-20, off "out with no date"): a schedule generating drafts that an issue confirms, on the row-56 worker | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
@@ -1792,6 +1819,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 
 ### Blocked
 ### Needs input
+- **Which location kinds may be drawn on a floor plan?** Decision 1 of the stock map (§ 7, 2026-09-21) says site, building and floor are not drawn because the floor IS the plan — but the establishment's own default location is a `StockLocation` of kind `Site` (`StockLocation.php:90`) and the approved canvas draws it as "Z6 · Préparation et expédition". Only `bin` is refused today (decision 2, unambiguous). Either decision 1 means the hierarchy's containers only, and this stands, or site/building/floor are refused and the default location is excepted by `isDefault` rather than by its kind.
 - Should an opening-stock row also carry what the goods **cost**? A count records a quantity only, so the stock it opens has no value: a stock-valuation report would have nothing to sum. Adding a `unit_cost` column later is additive, so this is not urgent — but it is cheaper to decide before people have imported their opening balances.
 - A location code is unique per **establishment**, so a company whose two sites both use "A-12" has a file that cannot say which. The import **refuses** it (`ambiguous_location`) rather than guessing. The alternative is an optional `establishment_code` column that disambiguates. Refusal was chosen because putting goods in the wrong building is worse than asking; say if a second column is preferred.
 - Must the import screen make a person **preview** before importing, or may they import straight away? A preview is the same run rolled back, so it costs one extra upload and catches every rejection before anything is stored.

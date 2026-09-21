@@ -476,6 +476,7 @@
     "stock": "Stock",
     "stock_movements": "Mouvements de stock",
     "stock_locations": "Emplacements",
+    "stock_plan": "Plan",
     "vendors": "Fournisseurs",
     "expenses": "Dépenses",
     "expense_categories": "Catégories de dépenses",
@@ -1318,7 +1319,8 @@
       "not_found": "Introuvable.",
       "code_taken": "Un autre emplacement de cet établissement porte déjà ce code.",
       "in_use": "Cet emplacement ne peut pas être supprimé : c’est l’emplacement par défaut, ou il contient encore des emplacements ou des mouvements.",
-      "invalid": "La saisie a été refusée. Vérifiez le produit, l’emplacement et la quantité."
+      "invalid": "La saisie a été refusée. Vérifiez le produit, l’emplacement et la quantité.",
+      "level_taken": "Un autre étage de cet établissement occupe déjà ce niveau."
     },
     "stock": {
       "title": "Stock",
@@ -1407,7 +1409,46 @@
     "delete_title": "Supprimer cet emplacement ?",
     "delete_message": "{{name}} sera supprimé. Un emplacement ayant reçu un mouvement est conservé.",
     "delete_confirm": "Supprimer",
-    "keep": "Garder"
+    "keep": "Garder",
+    "plan": {
+      "title": "Plan du stock",
+      "intro": "Chaque étage est un plan : les zones et les rayonnages y sont des rectangles, en mètres, alignés sur le quart de mètre. Un bac ne se dessine pas ici — il se range dans la vue de face de son rayonnage.",
+      "floors": "Étages",
+      "no_floor": "Aucun étage n'est encore dessiné. Créez-en un pour commencer le plan.",
+      "drawn": "Dessiné sur cet étage",
+      "nothing_drawn": "Rien n'est encore dessiné sur cet étage.",
+      "plan_of": "Plan de {{floor}} : {{count}} rectangle(s) dessiné(s)",
+      "draw": "Dessiner un emplacement",
+      "erase": "Effacer le rectangle",
+      "add_floor": "Ajouter un étage",
+      "edit_floor": "Modifier l'étage",
+      "remove_floor": "Supprimer l'étage",
+      "floor_saved": "Étage enregistré",
+      "floor_removed": "Étage supprimé",
+      "drawing_saved": "Rectangle enregistré",
+      "drawing_erased": "Rectangle effacé",
+      "floor_section": "L'étage",
+      "level_hint": "Le rez-de-chaussée est 0 ; un sous-sol est négatif.",
+      "drawing_section": "L'emplacement dessiné",
+      "location_hint": "Un emplacement est à un seul endroit, donc il n'est dessiné qu'une fois. Les bacs ne sont pas proposés.",
+      "footprint_section": "L'emprise au sol",
+      "footprint_hint": "En mètres depuis le coin haut-gauche de l'étage, alignée sur le quart de mètre.",
+      "rotation_hint": "Par pas de 15°, pour un rayonnage posé de biais contre un mur.",
+      "floor_fields": {
+        "establishmentId": "Établissement",
+        "name": "Nom de l'étage",
+        "level": "Niveau"
+      },
+      "drawing_fields": {
+        "locationId": "Emplacement",
+        "x": "x (m)",
+        "y": "y (m)",
+        "width": "Largeur (m)",
+        "depth": "Profondeur (m)",
+        "height": "Hauteur (m)",
+        "rotation": "Rotation (°)"
+      }
+    }
   },
   "vendors": {
     "title": "Fournisseurs",

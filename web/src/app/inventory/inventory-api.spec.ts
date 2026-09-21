@@ -288,4 +288,131 @@ describe('InventoryApi', () => {
     request.flush({ member: [] });
     await expect(pending).rejects.toThrow();
   });
+
+  it('reads the floors the stock is drawn on', async () => {
+    const pending = api.floors('c1');
+    const request = http.expectOne('/api/companies/c1/stock-floors');
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      { id: 'f1', establishmentId: 'e1', name: 'Rez-de-chaussée', level: 0, drawingCount: 3 },
+    ]);
+
+    expect(await pending).toEqual([
+      {
+        id: 'f1',
+        establishmentId: 'e1',
+        name: 'Rez-de-chaussée',
+        level: 0,
+        imageFileId: null,
+        imageMetresWide: null,
+        imageOpacity: 35,
+        drawingCount: 3,
+      },
+    ]);
+  });
+
+  it('says the level is taken when another floor of the establishment already has it', async () => {
+    const pending = api.createFloor('c1', {
+      establishmentId: 'e1',
+      name: 'Étage 1',
+      level: 1,
+      imageFileId: null,
+      imageMetresWide: null,
+      imageOpacity: 35,
+    });
+    const request = http.expectOne('/api/companies/c1/stock-floors');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      establishmentId: 'e1',
+      name: 'Étage 1',
+      level: 1,
+      imageFileId: null,
+      imageMetresWide: null,
+      imageOpacity: 35,
+    });
+    request.flush('taken', { status: 409, statusText: 'Conflict' });
+
+    await expect(pending).rejects.toMatchObject({ code: 'level_taken' });
+  });
+
+  it('reads one floor’s rectangles, in metres as the API holds them', async () => {
+    const pending = api.drawings('c1', 'f1');
+    const request = http.expectOne('/api/companies/c1/stock-floors/f1/drawings');
+    expect(request.request.method).toBe('GET');
+    request.flush([
+      {
+        id: 'd1',
+        floorId: 'f1',
+        locationId: 'l2',
+        locationCode: 'R1',
+        locationName: 'Rayonnage 1',
+        locationKind: 'rack',
+        x: '2.500',
+        y: '4.000',
+        width: '3.900',
+        depth: '0.600',
+        rotation: 90,
+        height: '2.100',
+      },
+    ]);
+
+    expect(await pending).toEqual([
+      {
+        id: 'd1',
+        floorId: 'f1',
+        locationId: 'l2',
+        locationCode: 'R1',
+        locationName: 'Rayonnage 1',
+        locationKind: 'rack',
+        x: '2.500',
+        y: '4.000',
+        width: '3.900',
+        depth: '0.600',
+        rotation: 90,
+        height: '2.100',
+      },
+    ]);
+  });
+
+  /** Drawing goes to the floor; moving a rectangle already drawn goes to the rectangle, which never changes floor. */
+  it('draws on a floor and moves a rectangle by its own address', async () => {
+    const rect = {
+      locationId: 'l2',
+      x: '1.000',
+      y: '1.000',
+      width: '3.000',
+      depth: '1.000',
+      rotation: 0,
+      height: '2.000',
+    };
+
+    void api.draw('c1', 'f1', rect);
+    const drawn = http.expectOne('/api/companies/c1/stock-floors/f1/drawings');
+    expect(drawn.request.method).toBe('POST');
+    expect(drawn.request.body).toEqual(rect);
+    drawn.flush({ id: 'd1', floorId: 'f1', ...rect });
+
+    void api.moveDrawing('c1', 'd1', rect);
+    const moved = http.expectOne('/api/companies/c1/stock-drawings/d1');
+    expect(moved.request.method).toBe('PUT');
+    moved.flush({ id: 'd1', floorId: 'f1', ...rect });
+  });
+
+  it('erases a rectangle without touching what it was drawn for', async () => {
+    const pending = api.eraseDrawing('c1', 'd1');
+    const request = http.expectOne('/api/companies/c1/stock-drawings/d1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush(null, { status: 204, statusText: 'No Content' });
+
+    await expect(pending).resolves.toBeUndefined();
+  });
+
+  it('says a floor is in use when it still carries rectangles', async () => {
+    const pending = api.deleteFloor('c1', 'f1');
+    const request = http.expectOne('/api/companies/c1/stock-floors/f1');
+    expect(request.request.method).toBe('DELETE');
+    request.flush('drawn', { status: 409, statusText: 'Conflict' });
+
+    await expect(pending).rejects.toMatchObject({ code: 'in_use' });
+  });
 });

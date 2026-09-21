@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 /** Why the API refused, as the stock screens translate it. */
-export type InventoryError = 'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid';
+export type InventoryError =
+  'network' | 'not_found' | 'code_taken' | 'in_use' | 'invalid' | 'level_taken';
 
 /** Where stock is kept, from the whole site down to one bin (docs/SPEC.md § 7, 2026-09-14). */
 export type StockLocationKind = 'site' | 'building' | 'floor' | 'zone' | 'rack' | 'bin';
@@ -13,6 +14,14 @@ export const STOCK_LOCATION_KINDS: readonly StockLocationKind[] = [
   'rack',
   'bin',
 ];
+
+/**
+ * The kinds that can be a rectangle on a floor plan (docs/SPEC.md § 7, 2026-09-21, decision 2). A bin is not among
+ * them: it is placed in its rack's front view, by column and level, and has no x, y on the ground. The API refuses it
+ * too — this list is what the screen offers, not what makes it true.
+ */
+export const DRAWABLE_STOCK_LOCATION_KINDS: readonly StockLocationKind[] =
+  STOCK_LOCATION_KINDS.filter((kind) => kind !== 'bin');
 
 export type StockMovementKind = 'in' | 'out' | 'adjustment';
 export const STOCK_MOVEMENT_KINDS: readonly StockMovementKind[] = ['in', 'out', 'adjustment'];
@@ -156,6 +165,57 @@ export interface StockEstablishmentOption {
   code: string;
   name: string;
 }
+
+/**
+ * One floor a company's stock is drawn on (docs/SPEC.md row 83, decision 1): the floor IS the plan, so a site, a
+ * building and a storey are not rectangles on it — zones and racks are.
+ */
+export interface StockFloorRow {
+  id: string;
+  /** The establishment whose place this floor is; a revision keeps the same one. */
+  establishmentId: string;
+  name: string;
+  /** Which storey, the ground being 0; it orders the tabs. */
+  level: number;
+  imageFileId: string | null;
+  /** What the whole image spans on the ground, in metres; without it the image cannot be placed. */
+  imageMetresWide: string | null;
+  imageOpacity: number;
+  drawingCount: number;
+}
+
+export type StockFloorInput = Pick<
+  StockFloorRow,
+  'establishmentId' | 'name' | 'level' | 'imageFileId' | 'imageMetresWide' | 'imageOpacity'
+>;
+
+/**
+ * One rectangle on a floor and the location it is drawn for. The measurements are decimal strings as the API holds
+ * them, in METRES: a plan is rescanned and recropped over a building's life while the building does not move.
+ */
+export interface StockDrawingRow {
+  id: string;
+  floorId: string;
+  locationId: string;
+  /** What the screen writes on the rectangle; the rectangle itself knows none of it. */
+  locationCode: string;
+  locationName: string;
+  locationKind: StockLocationKind;
+  x: string;
+  y: string;
+  width: string;
+  /** The second side of the footprint, not a height. */
+  depth: string;
+  /** Whole degrees clockwise about the rectangle's own centre. */
+  rotation: number;
+  /** How tall it stands, for the 3D view; zero for a bay marked out on the floor. */
+  height: string;
+}
+
+export type StockDrawingInput = Pick<
+  StockDrawingRow,
+  'locationId' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
+>;
 
 /**
  * What the stock forms offer: the company's establishments. The products are asked for a few at a time through the
