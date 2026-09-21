@@ -272,3 +272,9 @@ tables, essay gotchas) was retired with the reset. What applies here:
   `refresh()`, never `load()`, after a write — `load()` signs the person out when the API is briefly unreachable.
 - Pushing again CANCELS the previous commit's in-progress CI run, so a commit can read `e2e cancelled` and its new
   specs never ran anywhere but locally. Check the run of the commit that actually carries them (2026-09-20).
+- Assigning to a typed public array property (`$recorder->staged = []`) narrows PHPStan's view of it to `array{}`, and
+  the next method call widens it back to the NATIVE `array` — the `@var list<X>` is gone, so every read after that is
+  `mixed` and a `$x->id?->toRfc4122()` on it errors while the identical line in a test that never reset reads fine.
+  Assert over what is there rather than clearing first (2026-09-21, `KeepStockTest`).
+- A stock location that has seen a movement is KEPT (409), so an e2e that moves goods into a location it created
+  cannot delete it and leaks one per run into the shared company. Say the dimension is uncertified instead.
