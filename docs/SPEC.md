@@ -1099,6 +1099,27 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   **NOT certified by execution: no screen** — the 2D and 3D views still wait on the canvas being approved (the rule of
   19/09), so row 83 stays `doing`.
 
+- [2026-09-21 07:05] AGREED: **a row's own destructive control asks, through the same rule everything else asks
+  through** (row 106, first half). Measured, not suspected: `RowAction` had no `confirm` field at all and
+  `DataList.runAction` was `action.run?.(row)`, so **five destructive row actions ran on the click with no question
+  anywhere on the page** — removing a member's access, deleting a customer group, a contact, a product category and
+  a stock location. `ScreenAction` had carried `confirm` since row 45 and the toolbar, the keyboard and the palette
+  all asked; the table was the one surface that did not, and nothing said so because nothing tested it.
+  The fix is the shared shape the row asks for, not a second rule beside the table: `runAction` now takes a
+  `RunnableAction` — `{ disabled, run, confirm }` — which `ScreenAction` satisfies structurally and a `RowAction`
+  bound to its row is built into, so the one rule (refused while disabled, asked before what is irreversible, run
+  otherwise) has exactly one implementation. Two consequences. **(1)** `RowAction.confirm` is a FUNCTION of the row,
+  because over a list the question has to name what is about to go: "Supprimer 000 › Z1 — Zone froide ?" is
+  answerable where eleven identical "Supprimer ?" are not. **(2)** `ActionConfirm` therefore gained `messageParams`,
+  which `ConfirmDialog` interpolates — the first thing here that needed a question to carry a value.
+  **Certified by execution** (`data-list.spec`, `members-page.spec`, `customer-page.spec`, `customer-groups-page.spec`,
+  `product-categories-page.spec`, `stock-locations-page.spec`; web gate 1248 tests; four sabotages red — the run
+  going straight through, the question losing its parameters, a dismissal counting as a yes, and one page's `confirm`
+  deleted). Worth recording about the fourth: it first read GREEN because the batch's include list left out the spec
+  that covers an Escape dismissal — **a sabotage is only evidence against the tests it actually ran**.
+  **NOT certified by execution: no e2e** — no browser scenario deletes a row through the "⋮" menu today, so the
+  dialog has not been driven in a real browser.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1211,7 +1232,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 103 | Fiscal journal (§ 7 2026-09-20 11:30): a `FiscalJournal` context — append-only entries carrying the previous hash and a per-company sequence, signed with a per-company key encrypted at rest; a `training` flag on every entry; reprints marked duplicates; invoices and credit notes journalled. **Design ruled, nothing built.** The till joins the same journal with the register module, its Z-closure split from an ordinary count. TN's adapter blocked on JORT n° 125 | L | todo | - | api/src/Fiscal/** api/migrations/** api/tests/** docs/fiscal/** |
 | 104 | Permission catalogue and the roles screen (§ 7 2026-09-20 11:30): each module declares its permission strings and labels beside its `DeclaresModule` declaration, the catalogue is collected not hand-written, and a company creates and edits its own roles in a matrix grouped by module; the members page offers the company's roles instead of three hardcoded names. `Role.company` is already nullable, so no migration for the roles themselves. The members page offers the company's roles, the API resolves a role name against the company acting, and an open invitation counts as holding its role | M | done | - | api/src/Tenancy/** api/src/ModuleRegistry/** api/src/Module/**/*Module*.php web/src/app/company/** api/tests/** web/src/app/**/*.spec.ts |
 | 105 | Generated operator credentials (§ 7 2026-09-20 13:10): `app:seed --generate-operator-password` mints a password and a TOTP secret, prints both once and stores only the hash and the encrypted secret; seeding refuses the published development password and TOTP secret when the environment is production. The fixed literals stay for the local stack and CI so tests keep a deterministic sign-in | S | todo | - | api/src/Tenancy/** api/tests/Functional/SeedCommandTest.php docs/START.md |
-| 106 | The four RecordBar pages (customer, product, expense, vendor) and `RowAction` read the row-45 declaration: today only the invoice and delivery-note pages declare, so on the others `s` saves nothing, Ctrl K shows no "Sur cette page" group and "?" says the page offers none (§ 7 2026-09-20 22:10) | M | todo | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
+| 106 | The RecordBar pages and `RowAction` read the row-45 declaration: `RowAction` done (§ 7 2026-09-21 07:05 — it asks now, through the shared rule); the record pages still do not declare, so on them `s` saves nothing, Ctrl K shows no "Sur cette page" group and "?" says the page offers none. FIVE of them, not four: `company-profile-page` uses `RecordBar` too (§ 7 2026-09-20 22:10) | M | doing | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
 | 107 | The server-side bin the `undo` action class needs: a deletion kept recoverable for a while, so "Annuler" on a toast can put it back. Row 45 shipped `plain` and `confirm` only and declared no field for `undo`, because a class nothing can produce is a promise (§ 7 2026-09-20 22:10) | L | todo | - | api/** web/src/app/shared/actions/** |
 <!-- /progress-block -->
 

@@ -27,6 +27,7 @@ import {
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -60,6 +61,8 @@ import {
   sortRows,
 } from './list-view';
 import { Label } from '../a11y/label';
+import { runAction } from '../actions/run-action';
+import { ConfirmDialog } from '../ui/confirm-dialog';
 import { WINDOW_CLASS } from '../ui/window-class';
 
 /** `<ng-template appDataListCell="columnId" let-row>`: how one column's cell renders instead of its plain value. */
@@ -127,6 +130,7 @@ export class DataList<Row> implements OnInit {
   private readonly route = inject(ActivatedRoute, { optional: true });
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly dialog = inject(MatDialog);
 
   readonly descriptor = input.required<ListDescriptor<Row>>();
   readonly rows = input.required<readonly Row[]>();
@@ -235,8 +239,20 @@ export class DataList<Row> implements OnInit {
     return actions.filter((action) => action.shown?.(row) ?? true);
   }
 
+  /**
+   * Delegated to the same `runAction` the toolbar, the keyboard and the palette use, so a row's own delete cannot
+   * be the one destructive control on the screen that never asks (row 106). This knows only how to ASK.
+   */
   protected runAction(action: RowAction<Row>, row: Row): void {
-    action.run?.(row);
+    runAction(
+      {
+        disabled: action.disabled?.(row),
+        run: () => action.run?.(row),
+        confirm: action.confirm?.(row),
+      },
+      (confirm) =>
+        this.dialog.open(ConfirmDialog, { data: confirm, autoFocus: 'dialog' }).afterClosed(),
+    );
   }
   protected readonly chooser = computed(() =>
     orderColumns(this.descriptor(), this.preferences()).map((column) => ({

@@ -120,6 +120,13 @@ export class MembersPage implements OnInit {
         run: (row) => void this.remove(row.userId),
         disabled: () => this.busy(),
         shown: (row) => this.mayManage() && row.status === 'joined',
+        confirm: (row) => ({
+          title: 'members.remove_title',
+          message: 'members.remove_message',
+          messageParams: { name: row.displayName },
+          confirmLabel: 'members.remove_confirm',
+          keepLabel: 'members.keep',
+        }),
       },
     ],
   }));

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+import type { ActionConfirm } from '../actions/screen-action';
+
 export type SortDirection = 'asc' | 'desc';
 
 export type CellValue = string | number | null;
@@ -59,6 +61,13 @@ export interface RowAction<Row> {
    * purpose — a control that disappears while something is saving is a control a person cannot learn.
    */
   disabled?: (row: Row) => boolean;
+  /**
+   * What to ask before it runs, or nothing to run it straight away — the same field `ScreenAction` carries, so a
+   * row's own delete follows the one rule the toolbar, the keyboard and the palette follow (row 45, row 106). A
+   * function of the row, so the question can NAME it: a list of eleven identical "Supprimer ?" says nothing about
+   * which one is about to go.
+   */
+  confirm?: (row: Row) => ActionConfirm;
 }
 
 export interface ListDescriptor<Row> {

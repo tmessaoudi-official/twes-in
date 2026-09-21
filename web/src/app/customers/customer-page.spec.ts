@@ -47,6 +47,7 @@ class StaticLoader implements TranslateLoader {
       customers: {
         errors: { number_taken: 'Un autre client porte déjà ce numéro.' },
         tabs: { record: 'Fiche', defaults: 'Valeurs par défaut', contacts: 'Contacts' },
+        contacts: { remove_message: '{{name}} sera retiré de ce client.' },
       },
       live: { changed_by: '{{name}} a modifié cette fiche pendant votre saisie.' },
     });
@@ -479,6 +480,12 @@ describe('CustomerPage', () => {
     q('row-more-p1')!.click();
     await settle();
     inMenu('row-menu-remove-p1')!.click();
+    await settle();
+    // Destructive, so it asks first, and the question names the row rather than asking about "it".
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Leila Ben Salah',
+    );
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     await vi.waitFor(() => expect(facade.removeContact).toHaveBeenCalledWith('c1', 'k1', 'p1'));
   });

@@ -203,7 +203,11 @@
     },
     "no_company": "Choisissez d'abord une entreprise.",
     "invited": "L'invitation a été envoyée par e-mail.",
-    "invited_row": "Invitation en attente"
+    "invited_row": "Invitation en attente",
+    "remove_title": "Retirer ce membre ?",
+    "remove_message": "{{name}} n'aura plus accès à cette entreprise. Vous pourrez l'inviter à nouveau.",
+    "remove_confirm": "Retirer",
+    "keep": "Garder"
   },
   "company": {
     "choose": "Choisir une entreprise",
@@ -851,7 +855,11 @@
         "in_use": "Des clients sont encore dans ce groupe. Déplacez-les d’abord dans un autre groupe.",
         "invalid": "Le groupe a été refusé. Vérifiez son nom.",
         "number_taken": "Le groupe a été refusé."
-      }
+      },
+      "delete_title": "Supprimer ce groupe ?",
+      "delete_message": "{{name}} sera supprimé. Les clients du groupe sont conservés.",
+      "delete_confirm": "Supprimer",
+      "keep": "Garder"
     },
     "contacts": {
       "title": "Contacts",
@@ -870,7 +878,11 @@
         "email": "E-mail",
         "phone": "Téléphone",
         "isPrimary": "Contact principal"
-      }
+      },
+      "remove_title": "Retirer ce contact ?",
+      "remove_message": "{{name}} sera retiré de ce client.",
+      "remove_confirm": "Retirer",
+      "keep": "Garder"
     },
     "defaults": {
       "title": "Valeurs par défaut",
@@ -1264,7 +1276,11 @@
         "name_taken": "Une autre catégorie porte déjà ce nom.",
         "in_use": "Cette catégorie contient encore des sous-catégories ou des produits. Déplacez-les d’abord.",
         "invalid": "La catégorie a été refusée. Une catégorie ne peut pas se ranger sous elle-même ni sous l’une de ses sous-catégories."
-      }
+      },
+      "delete_title": "Supprimer cette catégorie ?",
+      "delete_message": "{{name}} sera supprimée. Les articles de la catégorie sont conservés.",
+      "delete_confirm": "Supprimer",
+      "keep": "Garder"
     },
     "defaults": {
       "title": "Valeurs par défaut",
@@ -1377,7 +1393,11 @@
         "childCount": "Sous-emplacements",
         "movementCount": "Mouvements"
       }
-    }
+    },
+    "delete_title": "Supprimer cet emplacement ?",
+    "delete_message": "{{name}} sera supprimé. Un emplacement ayant reçu un mouvement est conservé.",
+    "delete_confirm": "Supprimer",
+    "keep": "Garder"
   },
   "vendors": {
     "title": "Fournisseurs",

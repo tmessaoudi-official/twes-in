@@ -31,6 +31,7 @@ class StaticLoader implements TranslateLoader {
       inventory: {
         locations: { default: 'Par défaut' },
         errors: { in_use: 'Cet emplacement ne peut pas être supprimé.' },
+        delete_message: '{{name}} sera supprimé.',
       },
     });
   }
@@ -199,6 +200,12 @@ describe('StockLocationsPage', () => {
     q('row-more-l2')!.click();
     await settle();
     inMenu('row-menu-delete-l2')!.click();
+    await settle();
+    // Destructive, so it asks first, and the question names the row rather than asking about "it".
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      '000 › Z1 — Zone froide',
+    );
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(facade.deleteLocation).toHaveBeenCalledWith('c1', 'l2');
   });

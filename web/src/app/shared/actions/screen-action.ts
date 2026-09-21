@@ -47,6 +47,11 @@ export interface ScreenAction {
 export interface ActionConfirm {
   title: string;
   message: string;
+  /**
+   * What the message interpolates, so the question can NAME what is about to go: asked over a row, "Supprimer
+   * Zone 1 ?" says which one where a bare "Supprimer ?" leaves a person counting rows (row 106).
+   */
+  messageParams?: Record<string, string>;
   confirmLabel: string;
   /** The word on the button that does nothing, which is the one a person reaches for by mistake. */
   keepLabel: string;

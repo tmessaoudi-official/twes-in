@@ -31,7 +31,10 @@ class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
       products: {
-        categories: { errors: { in_use: 'Cette catégorie contient encore des produits.' } },
+        categories: {
+          errors: { in_use: 'Cette catégorie contient encore des produits.' },
+          delete_message: '{{name}} sera supprimée.',
+        },
       },
     });
   }
@@ -191,6 +194,12 @@ describe('ProductCategoriesPage', () => {
     q('row-more-k2')!.click();
     await settle();
     inMenu('row-menu-delete-k2')!.click();
+    await settle();
+    // Destructive, so it asks first, and the question names the row rather than asking about "it".
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Portables',
+    );
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(facade.deleteCategory).toHaveBeenCalledWith('c1', 'k2');
   });

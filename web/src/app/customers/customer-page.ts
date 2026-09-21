@@ -166,6 +166,16 @@ export class CustomerPage {
         run: (row) => void this.removeContact(row),
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
+        confirm: (row) => ({
+          title: 'customers.contacts.remove_title',
+          message: 'customers.contacts.remove_message',
+          // The same name the list's own column shows, so the question and the row read alike.
+          messageParams: {
+            name: [row.firstName, row.lastName].filter((part) => part !== null).join(' '),
+          },
+          confirmLabel: 'customers.contacts.remove_confirm',
+          keepLabel: 'customers.contacts.keep',
+        }),
       },
     ],
   }));

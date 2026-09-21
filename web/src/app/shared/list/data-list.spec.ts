@@ -156,6 +156,15 @@ const declared: ListDescriptor<Customer> = {
       destructive: true,
       run: (row) => ran.push(`archive:${row.id}`),
       shown: (row) => row.status === 'active',
+      // A function of the row, so the question can name it: "Archiver Customer 01 ?" rather than a list of
+      // eleven identical questions.
+      confirm: (row) => ({
+        title: 'c.archive_title',
+        message: 'c.archive_message',
+        messageParams: { name: row.name },
+        confirmLabel: 'c.archive_confirm',
+        keepLabel: 'c.keep',
+      }),
     },
   ],
 };
@@ -199,6 +208,10 @@ class StaticLoader implements TranslateLoader {
         none: 'No customers.',
         active: 'Active',
         archived: 'Archived',
+        archive_title: 'Archive?',
+        archive_message: 'Archive {{name}}?',
+        archive_confirm: 'Archive',
+        keep: 'Keep',
       },
       list: {
         filter: 'Filter',
@@ -846,6 +859,46 @@ describe('DataList', () => {
       await host.whenStable();
       expect(q('row-menu-archive-2')).toBeNull();
       expect(q('row-menu-export-2')).not.toBeNull();
+    });
+
+    it('asks before running a row action that says to ask, and runs nothing when the answer is no', async () => {
+      // The same rule the toolbar, the keyboard and the palette follow (row 45): a row's own delete is not a
+      // lesser kind of destruction, and it used to happen on the click with no question at all.
+      (inRow('1', '[data-testid="row-more-1"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      (q('row-menu-archive-1') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+
+      // Named, not a bare "Archive?": over a list of rows that question is unanswerable.
+      expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+        'Archive Customer 01?',
+      );
+      expect(ran).toEqual([]);
+
+      (document.querySelector('[data-testid="confirm-keep"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      expect(ran).toEqual([]);
+
+      (inRow('1', '[data-testid="row-more-1"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      (q('row-menu-archive-1') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
+      host.detectChanges();
+      await host.whenStable();
+      expect(ran).toEqual(['archive:1']);
+    });
+
+    it('runs an action with no question straight away', async () => {
+      const call = inRow('1', '[data-testid="row-action-call-1"]') as HTMLElement;
+      call.click();
+      expect(ran).toEqual(['call:1']);
+      expect(document.querySelector('[data-testid="confirm-message"]')).toBeNull();
     });
 
     it('keeps a row control from opening the record', async () => {

@@ -17,7 +17,7 @@ import type { ActionConfirm } from '../actions/screen-action';
   template: `
     <h2 mat-dialog-title data-testid="confirm-title">{{ data.title | translate }}</h2>
     <mat-dialog-content>
-      <p data-testid="confirm-message">{{ data.message | translate }}</p>
+      <p data-testid="confirm-message">{{ data.message | translate: data.messageParams }}</p>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
       <button mat-button type="button" (click)="ref.close(false)" data-testid="confirm-keep">

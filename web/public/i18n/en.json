@@ -203,7 +203,11 @@
     },
     "no_company": "Choose a company first.",
     "invited": "The invitation was sent by email.",
-    "invited_row": "Invitation pending"
+    "invited_row": "Invitation pending",
+    "remove_title": "Remove this member?",
+    "remove_message": "{{name}} will lose access to this company. You can invite them again.",
+    "remove_confirm": "Remove",
+    "keep": "Keep"
   },
   "company": {
     "choose": "Choose a company",
@@ -851,7 +855,11 @@
         "in_use": "Customers are still in this group. Move them to another group first.",
         "invalid": "The group was refused. Check its name.",
         "number_taken": "The group was refused."
-      }
+      },
+      "delete_title": "Delete this group?",
+      "delete_message": "{{name}} will be deleted. Its customers are kept.",
+      "delete_confirm": "Delete",
+      "keep": "Keep"
     },
     "contacts": {
       "title": "Contacts",
@@ -870,7 +878,11 @@
         "email": "Email",
         "phone": "Phone",
         "isPrimary": "Primary contact"
-      }
+      },
+      "remove_title": "Remove this contact?",
+      "remove_message": "{{name}} will be removed from this customer.",
+      "remove_confirm": "Remove",
+      "keep": "Keep"
     },
     "defaults": {
       "title": "Defaults",
@@ -1264,7 +1276,11 @@
         "name_taken": "Another category already has this name.",
         "in_use": "This category still holds subcategories or products. Move them first.",
         "invalid": "The category was refused. A category cannot sit under itself or one of its subcategories."
-      }
+      },
+      "delete_title": "Delete this category?",
+      "delete_message": "{{name}} will be deleted. Its products are kept.",
+      "delete_confirm": "Delete",
+      "keep": "Keep"
     },
     "defaults": {
       "title": "Defaults",
@@ -1377,7 +1393,11 @@
         "childCount": "Locations under it",
         "movementCount": "Movements"
       }
-    }
+    },
+    "delete_title": "Delete this location?",
+    "delete_message": "{{name}} will be deleted. A location that has seen a movement is kept.",
+    "delete_confirm": "Delete",
+    "keep": "Keep"
   },
   "vendors": {
     "title": "Vendors",

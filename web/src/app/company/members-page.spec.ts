@@ -43,6 +43,7 @@ class StaticLoader implements TranslateLoader {
         invited_row: 'Invitation en attente',
         added: 'Membre ajouté.',
         remove: 'Retirer',
+        remove_message: "{{name}} n'aura plus accès à cette entreprise.",
         none: 'Aucun membre.',
         errors: { unknown_user: 'Aucun compte', last_owner: 'Au moins un propriétaire' },
       },
@@ -215,6 +216,38 @@ describe('MembersPage', () => {
       fixture.nativeElement.querySelector('[data-testid="row-more-invited:invited@example.test"]'),
     ).toBeNull();
     expect(fixture.nativeElement.querySelector('[data-testid="row-more-u1"]')).not.toBeNull();
+  });
+
+  it('asks before it removes a member, naming them, and removes nothing when the answer is no', async () => {
+    // Removing somebody's access used to happen on the click, with no question anywhere on the page.
+    const askToRemove = async (): Promise<void> => {
+      fixture.nativeElement.querySelector('[data-testid="row-more-u1"]').click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+      const entries = document.querySelectorAll('[data-testid^="row-menu-remove-"]');
+      (entries[entries.length - 1] as HTMLElement).click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+
+    await askToRemove();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      "Owner n'aura plus accès",
+    );
+    expect(members.remove).not.toHaveBeenCalled();
+
+    (document.querySelector('[data-testid="confirm-keep"]') as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(members.remove).not.toHaveBeenCalled();
+
+    await askToRemove();
+    // The last one: a dialog that has just closed can still be in the DOM for a frame.
+    const buttons = document.querySelectorAll('[data-testid="confirm-run"]');
+    (buttons[buttons.length - 1] as HTMLElement).click();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    await vi.waitFor(() => expect(members.remove).toHaveBeenCalledWith('c1', 'u1'));
   });
 
   it('says so when the API refused', async () => {

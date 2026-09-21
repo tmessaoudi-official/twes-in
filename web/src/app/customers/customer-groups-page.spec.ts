@@ -30,7 +30,12 @@ import { provideQuietFeedback } from '../shared/testing/feedback';
 class StaticLoader implements TranslateLoader {
   getTranslation() {
     return of({
-      customers: { groups: { errors: { in_use: 'Des clients sont encore dans ce groupe.' } } },
+      customers: {
+        groups: {
+          errors: { in_use: 'Des clients sont encore dans ce groupe.' },
+          delete_message: '{{name}} sera supprimé.',
+        },
+      },
     });
   }
 }
@@ -164,6 +169,12 @@ describe('CustomerGroupsPage', () => {
     q('row-more-g1')!.click();
     await settle();
     inMenu('row-menu-delete-g1')!.click();
+    await settle();
+    // Destructive, so it asks first, and the question names the row rather than asking about "it".
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Grossistes',
+    );
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
     await settle();
     expect(facade.deleteGroup).toHaveBeenCalledWith('c1', 'g1');
   });

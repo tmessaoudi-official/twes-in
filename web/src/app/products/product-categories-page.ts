@@ -82,6 +82,13 @@ export class ProductCategoriesPage implements OnInit {
         run: (row) => void this.remove(row),
         disabled: () => this.busy(),
         shown: () => this.mayWrite(),
+        confirm: (row) => ({
+          title: 'products.categories.delete_title',
+          message: 'products.categories.delete_message',
+          messageParams: { name: row.name },
+          confirmLabel: 'products.categories.delete_confirm',
+          keepLabel: 'products.categories.keep',
+        }),
       },
     ],
   }));
