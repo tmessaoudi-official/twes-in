@@ -1428,7 +1428,7 @@
       "drawing_saved": "Rectangle enregistré",
       "drawing_erased": "Rectangle effacé",
       "floor_section": "L'étage",
-      "level_hint": "Le rez-de-chaussée est 0 ; un sous-sol est négatif.",
+      "level_hint": "Le rez-de-chaussée est 0 ; un étage plus haut est un nombre plus grand, jusqu'à 200.",
       "drawing_section": "L'emplacement dessiné",
       "location_hint": "Un emplacement est à un seul endroit, donc il n'est dessiné qu'une fois. Les bacs ne sont pas proposés.",
       "footprint_section": "L'emprise au sol",

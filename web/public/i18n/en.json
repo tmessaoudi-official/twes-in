@@ -1428,7 +1428,7 @@
       "drawing_saved": "Rectangle saved",
       "drawing_erased": "Rectangle erased",
       "floor_section": "The floor",
-      "level_hint": "The ground floor is 0; a basement is negative.",
+      "level_hint": "The ground floor is 0; a storey above it is a larger number, up to 200.",
       "drawing_section": "The location drawn",
       "location_hint": "A location is in one place, so it is drawn once. Bins are not offered.",
       "footprint_section": "The footprint",

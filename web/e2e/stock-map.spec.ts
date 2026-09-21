@@ -14,6 +14,8 @@ interface Fixture {
   establishmentId: string;
   locationId: string;
   code: string;
+  /** The lowest level this establishment has free, so the run never clashes with an existing floor. */
+  level: number;
 }
 
 /** A rack under the default establishment's own location, through the API. */
@@ -44,11 +46,21 @@ async function prepare(page: Page, code: string): Promise<Fixture> {
         name: `Rayonnage ${locationCode}`,
       })) as { id: string };
 
+      // A level is a whole number from 0 to 200 and no two floors of an establishment share one, so the run takes
+      // the lowest free one rather than a number off the clock — which would be refused above 200 and would clash
+      // with whatever an earlier run left behind.
+      const floors = (await (await fetch(`${base}/stock-floors`)).json()) as { level: number }[];
+      const taken = new Set(floors.map((floor) => floor.level));
+      let level = 0;
+      while (taken.has(level) && level <= 200) level += 1;
+      if (level > 200) throw new Error('the establishment has no free floor level');
+
       return {
         companyId: me.company.id,
         establishmentId: establishment.id,
         locationId: location.id,
         code: locationCode,
+        level,
       };
     },
     [CSRF, code] as const,
@@ -110,7 +122,7 @@ test.describe('the drawn stock map', () => {
       // A floor of the establishment, at a level no other floor of this run occupies.
       await page.getByTestId('stock-floor-add').click();
       await page.getByTestId('field-name').fill(floorName);
-      await page.getByTestId('field-level').fill(String(Number(stamp.slice(-3))));
+      await page.getByTestId('field-level').fill(String(fixture.level));
       await page.getByTestId('stock-floor-save').click();
       await expect(toast(page)).toContainText('Étage enregistré');
 
