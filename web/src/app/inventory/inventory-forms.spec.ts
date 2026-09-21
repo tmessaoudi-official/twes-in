@@ -325,8 +325,9 @@ describe('the movement form', () => {
   });
 
   it('sends where a move goes, and nothing of the sort for the other two', () => {
-    // The field is on the body only for a move: sending an empty one on a receipt would be a claim about a
-    // location that was never chosen, which the API answers 422 to.
+    // The field is on the body only for a move: a receipt and a count have no destination, and a body naming an
+    // empty one would be saying something was chosen when nothing was. The API ignores it rather than refusing it,
+    // so nothing but this keeps the request honest.
     expect(
       movementInput('move', {
         productId: 'p2',

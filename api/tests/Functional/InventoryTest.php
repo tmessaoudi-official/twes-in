@@ -417,9 +417,12 @@ final class InventoryTest extends ApiTestCase
         self::assertSame([[$rack, '4.000'], [$site, '6.000']], $levels, 'ten are still there, in two places');
 
         foreach ([
-            'toLocationId' => ['locationId' => $site, 'toLocationId' => $site, 'quantity' => '1'],
-            'quantity' => ['locationId' => $site, 'toLocationId' => $rack, 'quantity' => '7'],
-        ] as $field => $changes) {
+            ['toLocationId', ['locationId' => $site, 'toLocationId' => $site, 'quantity' => '1']],
+            // A move with nowhere to go is REFUSED, not carried into the use case: without the validator firing here
+            // the processor would read a null destination and answer 500 to somebody who left the select blank.
+            ['toLocationId', ['locationId' => $site, 'quantity' => '1']],
+            ['quantity', ['locationId' => $site, 'toLocationId' => $rack, 'quantity' => '7']],
+        ] as [$field, $changes]) {
             $this->postJson($this->path('stock-movements'), ['operation' => 'move', 'productId' => $this->laptopId, ...$changes]);
             self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY, $field);
             self::assertStringContainsString($field, (string) $this->client->getResponse()->getContent());
