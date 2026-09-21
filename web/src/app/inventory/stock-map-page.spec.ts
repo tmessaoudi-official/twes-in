@@ -93,6 +93,7 @@ const options: StockOptions = { establishments: [{ id: 'e1', code: '000', name: 
 
 describe('StockMapPage', () => {
   const error = signal<InventoryError | null>(null);
+  const busy = signal(false);
   const floors = signal<readonly StockFloorRow[]>([upstairs, ground]);
   const drawings = signal<readonly StockDrawingRow[]>([drawn]);
   const facade = {
@@ -100,7 +101,7 @@ describe('StockMapPage', () => {
     locations: signal<readonly StockLocationRow[]>([rack, zone, bin]).asReadonly(),
     floors: floors.asReadonly(),
     drawings: drawings.asReadonly(),
-    busy: signal(false).asReadonly(),
+    busy: busy.asReadonly(),
     error: error.asReadonly(),
     loadPlanContext: vi.fn(),
     loadDrawings: vi.fn(),
@@ -142,6 +143,7 @@ describe('StockMapPage', () => {
 
   beforeEach(async () => {
     error.set(null);
+    busy.set(false);
     floors.set([upstairs, ground]);
     drawings.set([drawn]);
     facade.loadPlanContext.mockReset().mockResolvedValue(undefined);
@@ -503,5 +505,22 @@ describe('StockMapPage', () => {
     await settle();
 
     expect(drawingGroup().get('x')!.value).not.toBe('5.000');
+  });
+  /**
+   * A click that is swallowed because something else is in flight is the worst kind of dead control: the button is
+   * there, it depresses, and nothing happens — no toast, no error, no change. `erase` and `removeFloor` both guard
+   * on `busy()` and said nothing about it, which a reload in the e2e turned into a real swallowed click.
+   */
+  it('shows that erasing is unavailable while the plan is loading rather than swallowing the click', async () => {
+    q('stock-drawing-R1')?.click();
+    await settle();
+    busy.set(true);
+    await settle();
+
+    expect((q('stock-drawing-erase') as HTMLButtonElement).disabled).toBe(true);
+
+    busy.set(false);
+    await settle();
+    expect((q('stock-drawing-erase') as HTMLButtonElement).disabled).toBe(false);
   });
 });

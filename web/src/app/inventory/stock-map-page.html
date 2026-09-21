@@ -54,6 +54,7 @@
                     <button
                       mat-button
                       type="button"
+                      [disabled]="busy()"
                       (click)="removeFloor(editing)"
                       data-testid="stock-floor-remove"
                     >
@@ -164,9 +165,14 @@
                   >
                     {{ 'inventory.edit' | translate }}
                   </button>
+                  <!--
+                    Guarded visibly, never silently: `erase` returns early while something is in flight, so without
+                    this the button depresses and nothing at all happens — no toast, no error, no change.
+                  -->
                   <button
                     mat-button
                     type="button"
+                    [disabled]="busy()"
                     (click)="erase(drawing)"
                     data-testid="stock-drawing-erase"
                   >
