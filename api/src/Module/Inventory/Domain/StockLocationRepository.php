@@ -38,6 +38,15 @@ interface StockLocationRepository
      */
     public function ofCodeInCompany(string $code, Uuid $companyId): array;
 
+    /**
+     * Every location of the company that is drawn somewhere, by code, with its rectangle and that rectangle's floor
+     * loaded. The binding is this side's, so the map's reader comes from here rather than from the venue, which knows
+     * nothing about what a rectangle holds.
+     *
+     * @return list<StockLocation>
+     */
+    public function drawnInCompany(Uuid $companyId): array;
+
     /** How many locations sit directly under this one. */
     public function countChildren(Uuid $locationId): int;
 

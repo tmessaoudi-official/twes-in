@@ -127,9 +127,10 @@ final readonly class ArrangeVenue
     {
         return $this->transactions->run(function () use ($company, $areaId, $imageFileId, $metresWide, $opacity, $actorUserId): VenueArea {
             $area = $this->area($company, $areaId);
-            $area->showPlan($imageFileId, $metresWide, $opacity, $this->clock->now());
-            $this->areas->save($area);
-            $this->record(self::AREA_TYPE, $area->getId(), self::AREA_REVISED, $actorUserId, $company);
+            if ($area->showPlan($imageFileId, $metresWide, $opacity, $this->clock->now())) {
+                $this->areas->save($area);
+                $this->record(self::AREA_TYPE, $area->getId(), self::AREA_REVISED, $actorUserId, $company);
+            }
 
             return $area;
         });

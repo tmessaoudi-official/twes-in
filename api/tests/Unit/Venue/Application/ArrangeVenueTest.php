@@ -148,6 +148,21 @@ final class ArrangeVenueTest extends TestCase
         }
     }
 
+    public function testSavingTheSamePlanAgainTellsNobody(): void
+    {
+        $ground = $this->venue->addArea($this->company, $this->establishment->getId(), 'Rez-de-chaussée', 0, $this->actor);
+        $file = Uuid::v7();
+        // The scale is written differently and means the same 24 metres, so it is the same plan.
+        $this->venue->showPlan($this->company, $ground->getId(), $file, '24', 40, $this->actor);
+        $recorded = \count($this->audit->entries);
+
+        $this->venue->showPlan($this->company, $ground->getId(), $file, '24.000', 40, $this->actor);
+
+        self::assertCount($recorded, $this->audit->entries, 'an unchanged plan is not a revision, so no open plan is told to read itself again');
+        $this->venue->showPlan($this->company, $ground->getId(), $file, '24', 35, $this->actor);
+        self::assertCount($recorded + 1, $this->audit->entries, 'a changed opacity is');
+    }
+
     public function testAnAreaThatIsNotThisCompanysIsNotFound(): void
     {
         $this->expectException(VenueAreaNotFound::class);

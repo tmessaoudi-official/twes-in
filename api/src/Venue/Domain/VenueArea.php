@@ -115,31 +115,34 @@ class VenueArea implements CompanyOwned
      * The plan behind the drawing, or none. Its width in metres comes with it: without a scale an image cannot be
      * placed under rectangles measured in metres, so the two are set together or not at all.
      *
+     * @return bool whether anything changed
+     *
      * @throws InvalidVenue
      */
-    public function showPlan(?Uuid $imageFileId, ?string $metresWide, int $opacity, \DateTimeImmutable $now): void
+    public function showPlan(?Uuid $imageFileId, ?string $metresWide, int $opacity, \DateTimeImmutable $now): bool
     {
         if ($opacity < 0 || $opacity > 100) {
             throw new InvalidVenue('imageOpacity', 'An opacity is a whole number from 0 to 100.');
         }
-        if (null === $imageFileId) {
-            $this->imageFileId = null;
-            $this->imageMetresWide = null;
-            $this->imageOpacity = $opacity;
-            $this->updatedAt = $now;
-
-            return;
+        $width = null;
+        if (null !== $imageFileId) {
+            if (null === $metresWide) {
+                throw new InvalidVenue('imageMetresWide', 'A plan is placed by saying how many metres wide it really is.');
+            }
+            // A rectangle of that width is exactly what the scale means, so the same rule measures it.
+            $width = new PlanRect('0', '0', $metresWide, '0.001', 0, '0')->width;
         }
-        if (null === $metresWide) {
-            throw new InvalidVenue('imageMetresWide', 'A plan is placed by saying how many metres wide it really is.');
+        // Measured after normalizing, so re-saving an unchanged form says nothing: it is the same plan at the same
+        // scale, and an audit row for it would tell every other open plan to read itself again for nothing.
+        if ([$imageFileId?->toRfc4122(), $width, $opacity] === [$this->imageFileId?->toRfc4122(), $this->imageMetresWide, $this->imageOpacity]) {
+            return false;
         }
-        // A rectangle of that width is exactly what the scale means, so the same rule measures it.
-        $width = new PlanRect('0', '0', $metresWide, '0.001', 0, '0')->width;
-
         $this->imageFileId = $imageFileId;
         $this->imageMetresWide = $width;
         $this->imageOpacity = $opacity;
         $this->updatedAt = $now;
+
+        return true;
     }
 
     public function getId(): Uuid

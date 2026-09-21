@@ -1073,6 +1073,32 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   red). **NOT certified by execution: no HTTP surface and no screen yet** — the resources and the 2D/3D views wait on the canvas
   being approved (the rule of 19/09), which is why row 83 stays `doing`.
 
+- [2026-09-21 06:10] AGREED: **the map's HTTP surface belongs to the module, not to the venue** (row 83, second half).
+  `Venue` stays a LIBRARY context with no endpoints of its own, the way `Files` is: a permission belongs to a module
+  (`InventoryModule::manifest()`), and the venue is not one, so a floor plan of a warehouse is read by whoever may read
+  stock and drawn by whoever may arrange it. The endpoints are therefore the inventory's — `/companies/{id}/stock-floors`,
+  `.../stock-floors/{id}/drawings` and `/companies/{id}/stock-drawings/{id}`, behind `stock.read` / `stock.write`. A café
+  will add its own under its own permission, over the same two tables. `DrawStockMap` is where the rectangle and the
+  binding are written as ONE unit of work, and it carries the rules neither half can hold alone. Five of them.
+  **(1)** A drawing always names a location: the rectangle knows nothing, so an unbound one would be unlabelled on every
+  screen and reachable from none — the reader returns bound rectangles only. **(2)** The location is resolved BEFORE the
+  rectangle is placed, so a drawing refused for an unknown location leaves nothing behind. **(3)** A location is in one
+  place, so it is drawn in one place: drawing it again, or handing its rectangle to another location, ERASES the one it
+  had rather than leaving it unbound. **(4)** Removing a floor unbinds what was drawn on it and then takes the
+  rectangles; the locations keep their code, their tree and their stock. **(5)** An unknown `locationId` answers 422
+  naming the field, not 404 — it is a field of what was sent, not the thing being addressed — while a caller without
+  `stock.write` answers 404 like a stranger, which is `CompanyGuard`'s standing rule, not this surface's.
+  One path stays outside the composition and is accepted: deleting a stock location that is drawn leaves its rectangle
+  behind, bound to nothing, because the foreign key runs from the location to the rectangle. It is on no screen (the
+  reader skips it) and removing its floor sweeps it — a dead row, never a rectangle somebody sees and cannot label.
+  Also ruled here: `VenueArea::showPlan` returns whether anything changed, like `rename` and `moveTo`, so re-saving an
+  unchanged plan form records nothing and tells no other tab to reload.
+  **Certified by execution: the composition and the HTTP surface** (`DrawStockMapTest`, `StockMapTest`, `ArrangeVenueTest`;
+  six sabotages red — and a seventh, an inner join turned LEFT in `drawnInCompany`, stayed GREEN and is recorded as an
+  EQUIVALENT mutant: the join is not what filters undrawn locations, the reader's own null check is).
+  **NOT certified by execution: no screen** — the 2D and 3D views still wait on the canvas being approved (the rule of
+  19/09), so row 83 stays `doing`.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1162,7 +1188,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 80 | Job (§ 7 2026-09-20): from an accepted quote, material consumed through the generic transformation, hours at a cost rate, output as a product or a one-off, scrap consumed by the job, closing into a delivery note and an invoice, quoted price against real cost | L | todo | - | api/src/Module/Jobs/** api/migrations/** api/tests/** web/src/app/jobs/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |
 | 82 | Register, the counter sale (§ 7 2026-09-20): one full screen on scanner and keyboard, receipt or invoice from the same sale, cash with change, card, on account and mixed payments, returns writing a credit note and restocking; sales idempotent and queued in shape so offline can be added later | L | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** web/e2e/** |
-| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines' | L | doing | - | api/src/Venue/** api/migrations/** api/tests/** web/src/app/venue/** web/public/i18n/** |
+| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20; surface ruled 2026-09-21): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines' | L | doing | - | api/src/Venue/** api/src/Module/Inventory/** api/migrations/** api/tests/** web/src/app/inventory/** web/public/i18n/** |
 | 84 | Supplier bill and the three-way match (§ 7 2026-09-20): a bill with lines, matched automatically against order and receipt within a tolerance the settings engine holds, anything outside it waiting on an approval before the bill is payable | M | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** |
 | 85 | Statement of account and credit limit (§ 7 2026-09-20): a customer's documents and payments over a period, printed; a limit per customer or group warning when a delivery would pass what is already owed | M | todo | - | api/src/Module/Customers/** api/src/Module/Invoices/** api/tests/** web/src/app/customers/** |
 | 86 | Recurring invoices (§ 7 2026-09-20, off "out with no date"): a schedule generating drafts that an issue confirms, on the row-56 worker | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |

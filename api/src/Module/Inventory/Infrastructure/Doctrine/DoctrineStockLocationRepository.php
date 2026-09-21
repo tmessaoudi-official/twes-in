@@ -52,6 +52,24 @@ final readonly class DoctrineStockLocationRepository implements StockLocationRep
         return $this->entityManager->getRepository(StockLocation::class)->findBy(['company' => $companyId, 'code' => $code], ['id' => 'ASC']);
     }
 
+    public function drawnInCompany(Uuid $companyId): array
+    {
+        /** @var list<StockLocation> $drawn */
+        $drawn = $this->entityManager->createQueryBuilder()
+            ->select('l', 's', 'a')
+            ->from(StockLocation::class, 'l')
+            // An inner join is the filter: a location drawn nowhere has no rectangle to return.
+            ->join('l.spot', 's')
+            ->join('s.area', 'a')
+            ->where('l.company = :company')
+            ->setParameter('company', $companyId)
+            ->orderBy('l.code', 'ASC')
+            ->getQuery()
+            ->getResult();
+
+        return $drawn;
+    }
+
     public function countChildren(Uuid $locationId): int
     {
         return $this->entityManager->getRepository(StockLocation::class)->count(['parent' => $locationId]);

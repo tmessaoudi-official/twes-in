@@ -20,6 +20,7 @@ use App\Shared\Application\Transactions;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
 use App\Tenancy\Domain\EstablishmentRepository;
+use App\Venue\Domain\VenueSpot;
 use Psr\Clock\ClockInterface;
 use Symfony\Component\Uid\Uuid;
 
@@ -135,6 +136,37 @@ final readonly class ManageStockLocations
 
             return $changed;
         });
+    }
+
+    /**
+     * Where this location is drawn, or nowhere. The rectangle is the venue's; this is the binding, and it is audited
+     * as a revision so an open plan reads itself again (docs/SPEC.md § 7, 2026-09-21).
+     *
+     * @throws StockLocationNotFound
+     * @throws InvalidStockLocation
+     */
+    public function drawAt(Company $company, Uuid $locationId, ?VenueSpot $spot, ?Uuid $actorUserId): StockLocation
+    {
+        return $this->transactions->run(function () use ($company, $locationId, $spot, $actorUserId): StockLocation {
+            $location = $this->get($company, $locationId);
+            if ($location->drawAt($spot, $this->clock->now())) {
+                $this->locations->save($location);
+                $this->record($company, $location->getId(), self::REVISED, ['fields' => ['spotId']], $actorUserId);
+            }
+
+            return $location;
+        });
+    }
+
+    /**
+     * Every location of the company drawn somewhere, by code. A rectangle nothing is bound to is not among them and
+     * is drawn nowhere: what labels a rectangle on a plan is the location bound to it.
+     *
+     * @return list<StockLocation>
+     */
+    public function drawn(Company $company): array
+    {
+        return $this->locations->drawnInCompany($company->getId());
     }
 
     /**

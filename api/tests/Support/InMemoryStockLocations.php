@@ -53,6 +53,11 @@ final class InMemoryStockLocations implements StockLocationRepository
         return array_values(array_filter($this->ofCompany($companyId), static fn (StockLocation $l): bool => $l->getCode() === $code));
     }
 
+    public function drawnInCompany(Uuid $companyId): array
+    {
+        return array_values(array_filter($this->ofCompany($companyId), static fn (StockLocation $l): bool => null !== $l->getSpot()));
+    }
+
     public function countChildren(Uuid $locationId): int
     {
         return \count(array_filter($this->locations, static fn (StockLocation $l) => true === $l->getParent()?->getId()->equals($locationId)));
