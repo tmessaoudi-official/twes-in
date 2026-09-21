@@ -5,14 +5,7 @@
     <h1 class="text-3xl font-semibold" data-testid="profile-title">
       {{ 'company.profile.title' | translate }}
     </h1>
-    @if (mayManage()) {
-      <app-record-bar
-        [changes]="changes()"
-        [busy]="busy()"
-        (save)="saveFromBar()"
-        (revert)="revert()"
-      />
-    }
+    <app-record-bar [changes]="changes()" [actions]="recordActions()" />
   </div>
 
   @if (!company()) {

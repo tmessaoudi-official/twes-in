@@ -24,6 +24,8 @@ import { VendorsFacade } from './vendors-facade';
 import { Feedback } from '../shared/feedback/feedback';
 import { UnsavedChanges } from '../shared/form/unsaved-changes';
 import { revertToSaved, unsavedChanges } from '../shared/form/dirty-count';
+import { ScreenActions } from '../shared/actions/screen-actions';
+import type { ScreenAction } from '../shared/actions/screen-action';
 import { RecordBar } from '../shared/form/record-bar';
 
 /** One vendor: a new one to fill in, or an existing one to revise or deactivate. */
@@ -115,6 +117,8 @@ export class VendorPage {
   protected readonly changes = unsavedChanges(this.form, this.savedValues);
 
   constructor() {
+    // The same list the bar draws also answers the keyboard, the palette and the "?" sheet (row 45).
+    inject(ScreenActions).declare(this.recordActions);
     effect(() => {
       const companyId = this.company()?.id;
       const id = this.id();
@@ -125,6 +129,36 @@ export class VendorPage {
       });
     });
   }
+
+  /**
+   * What this page offers, declared once (row 45): the bar beside the title draws it, and the keyboard, the Ctrl K
+   * palette and the "?" sheet read the same list — so "s" saves here as it does on a document.
+   */
+  protected readonly recordActions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    const changes = this.changes();
+    const may = this.mayWrite();
+    return [
+      {
+        id: 'save',
+        label: 'form.save',
+        icon: 'save',
+        primary: true,
+        shortcut: 's',
+        // A save that is always available teaches nothing about whether there is anything to save.
+        disabled: busy || changes === 0,
+        run: () => this.saveFromBar(),
+        shown: may,
+      },
+      {
+        id: 'revert',
+        label: 'form.revert',
+        disabled: busy,
+        run: () => this.revert(),
+        shown: may && changes > 0,
+      },
+    ];
+  });
 
   /** From the bar beside the title, which holds no form of its own. */
   protected saveFromBar(): void {

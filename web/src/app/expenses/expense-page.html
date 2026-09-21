@@ -30,14 +30,7 @@
       }
     </div>
     <div class="flex flex-wrap items-center gap-2">
-      @if (mayWrite() && isDraft()) {
-        <app-record-bar
-          [changes]="changes()"
-          [busy]="busy()"
-          (save)="saveFromBar()"
-          (revert)="revert()"
-        />
-      }
+      <app-record-bar [changes]="changes()" [actions]="recordActions()" />
       <a mat-button routerLink="/expenses">{{ 'expenses.back' | translate }}</a>
     </div>
   </div>

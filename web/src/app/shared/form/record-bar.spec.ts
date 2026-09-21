@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-import { Component, signal } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { type ComponentFixture, TestBed } from '@angular/core/testing';
+import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import {
   provideTranslateLoader,
   provideTranslateService,
   TranslateLoader,
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
+import type { ScreenAction } from '../actions/screen-action';
 import { RecordBar } from './record-bar';
 
 class StaticLoader implements TranslateLoader {
@@ -19,23 +21,63 @@ class StaticLoader implements TranslateLoader {
         unsaved: '{{count}} unsaved changes',
         one_unsaved: '1 unsaved change',
       },
+      danger: {
+        title: 'Sure?',
+        message: 'Really?',
+        run: 'Do it',
+        keep: 'Keep',
+      },
     });
   }
 }
 
+/**
+ * The host declares what the bar draws, exactly as a record page does: one list, which also reaches the keyboard,
+ * the palette and the "?" sheet. The bar decides only where each one is drawn.
+ */
 @Component({
   imports: [RecordBar],
-  template: `<app-record-bar
-    [changes]="changes()"
-    [busy]="busy()"
-    (save)="did.push('save')"
-    (revert)="did.push('revert')"
-  />`,
+  template: `<app-record-bar [changes]="changes()" [actions]="actions()" />`,
 })
 class Host {
   readonly changes = signal(0);
   readonly busy = signal(false);
   readonly did: string[] = [];
+  readonly actions = computed<ScreenAction[]>(() => {
+    const busy = this.busy();
+    const changes = this.changes();
+    return [
+      {
+        id: 'save',
+        label: 'form.save',
+        icon: 'save',
+        primary: true,
+        shortcut: 's',
+        disabled: busy || changes === 0,
+        run: () => this.did.push('save'),
+      },
+      {
+        id: 'revert',
+        label: 'form.revert',
+        disabled: busy,
+        shown: changes > 0,
+        run: () => this.did.push('revert'),
+      },
+      {
+        id: 'danger',
+        label: 'form.revert',
+        shown: this.dangerous(),
+        run: () => this.did.push('danger'),
+        confirm: {
+          title: 'danger.title',
+          message: 'danger.message',
+          confirmLabel: 'danger.run',
+          keepLabel: 'danger.keep',
+        },
+      },
+    ];
+  });
+  readonly dangerous = signal(false);
 }
 
 describe('RecordBar', () => {
@@ -58,6 +100,7 @@ describe('RecordBar', () => {
           lang: 'en',
           loader: provideTranslateLoader(() => new StaticLoader()),
         }),
+        { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       ],
     });
     fixture = TestBed.createComponent(Host);
@@ -92,7 +135,7 @@ describe('RecordBar', () => {
     expect(q('record-changes')?.getAttribute('role')).toBe('status');
   });
 
-  it('saves and discards through the page, which owns the form', async () => {
+  it('saves and discards through what the page declared, which owns the form', async () => {
     fixture.componentInstance.changes.set(1);
     await settle();
 
@@ -109,5 +152,41 @@ describe('RecordBar', () => {
     expect((q('record-save') as HTMLButtonElement).disabled).toBe(true);
     expect((q('record-revert') as HTMLButtonElement).disabled).toBe(true);
     expect(q('record-changes')).not.toBeNull();
+  });
+
+  it('draws the next step last, where the hand ends up, and reads its label from the declaration', async () => {
+    fixture.componentInstance.changes.set(1);
+    await settle();
+
+    const ids = [...fixture.nativeElement.querySelectorAll('button[data-testid^="record-"]')].map(
+      (button: HTMLElement) => button.getAttribute('data-testid'),
+    );
+    expect(ids).toEqual(['record-revert', 'record-save']);
+    expect(q('record-save')?.textContent).toContain('Save');
+    expect(q('record-revert')?.textContent).toContain('Discard changes');
+  });
+
+  it('draws whatever the page declared, not a fixed pair', async () => {
+    // The bar is not a save button with a count beside it: it is where a record page's declaration is drawn, so a
+    // page that offers a third thing gets it here as well as in the palette.
+    fixture.componentInstance.dangerous.set(true);
+    await settle();
+    expect(q('record-danger')).not.toBeNull();
+  });
+
+  it('asks before running what the declaration says to ask about', async () => {
+    fixture.componentInstance.dangerous.set(true);
+    await settle();
+
+    q('record-danger')!.click();
+    await settle();
+    expect(document.querySelector('[data-testid="confirm-message"]')?.textContent).toContain(
+      'Really?',
+    );
+    expect(fixture.componentInstance.did).toEqual([]);
+
+    (document.querySelector('[data-testid="confirm-run"]') as HTMLElement).click();
+    await settle();
+    expect(fixture.componentInstance.did).toEqual(['danger']);
   });
 });

@@ -15,6 +15,7 @@ import {
 } from '@ngx-translate/core';
 import { of } from 'rxjs';
 import { AuthFacade } from '../auth/auth-facade';
+import { ScreenActions } from '../shared/actions/screen-actions';
 import { Session } from '../shared/session/session';
 import { BrowserStorageSettings } from '../shared/settings/browser-storage-settings';
 import {
@@ -414,6 +415,38 @@ describe('CustomerPage', () => {
     await settle();
     expect(q('record-changes')).toBeNull();
     expect((q('record-save') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('offers the same save to the keyboard, the palette and the "?" sheet, and nothing to a reader', async () => {
+    // Row 106: this page declared nothing, so "s" saved nothing here, Ctrl K showed no "Sur cette page" group and
+    // "?" said the page offered none — while the bar beside the title had a save button all along.
+    customer.set(carthage);
+    await open('k1');
+    const screen = TestBed.inject(ScreenActions);
+
+    const save = screen.forKey('s');
+    expect(save?.id).toBe('save');
+    expect(save?.disabled).toBe(true);
+    expect(screen.actions().map((action) => action.id)).toEqual(['save']);
+
+    type('field-email', 'compta@carthage.tn');
+    await settle();
+    expect(screen.forKey('s')?.disabled).toBe(false);
+    expect(screen.actions().map((action) => action.id)).toEqual(['save', 'revert']);
+
+    // The one declaration, so the keystroke saves exactly what the button saves.
+    screen.forKey('s')?.run?.();
+    await settle();
+    expect(facade.reviseCustomer).toHaveBeenCalled();
+  });
+
+  it('offers a reader no save at all, by the same declaration the bar reads', async () => {
+    auth.hasPermission.mockReturnValue(false);
+    customer.set(carthage);
+    await open('k1');
+
+    expect(TestBed.inject(ScreenActions).forKey('s')).toBeUndefined();
+    expect(q('record-save')).toBeNull();
   });
 
   it('puts every field back to what was saved, and nothing is left to save', async () => {

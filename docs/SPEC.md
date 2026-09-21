@@ -1120,6 +1120,29 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   **NOT certified by execution: no e2e** — no browser scenario deletes a row through the "⋮" menu today, so the
   dialog has not been driven in a real browser.
 
+- [2026-09-21 07:50] AGREED: **the bar beside a record's title draws the page's declaration, it does not carry its
+  own** (row 106, second half; row 106 closes). `RecordBar` had `busy`, `saveLabel` and `(save)`/`(revert)` outputs,
+  so the five record pages — customer, product, expense, vendor AND `company-profile`, which the row's own scope
+  line missed — offered a save the KEYBOARD knew nothing about: "s" saved nothing there, Ctrl K showed no
+  "Sur cette page" group and "?" said the page offered none, while a save button sat beside the title all along.
+  It now takes `actions: readonly ScreenAction[]` and renders **every** one whose `shown` is not false, keyed
+  `record-<id>`, running each through the same `runAction` + `ConfirmDialog` as the toolbar. Three consequences.
+  **(1)** Nothing is looked up by a hardcoded id: `record-save` and `record-revert` fall out of the ids the page
+  declares, so the ~50 test-id references and the nine e2e that click `record-save` are untouched, and a page that
+  declares a third thing gets it in the bar as well as in the palette. **(2)** The gate moved OUT of the template:
+  the `@if (mayWrite())` around the bar was the same rule as the declaration's `shown`, written twice, and the
+  declaration is now the only one — which is also what makes a reader's "s" reach nothing. **(3)** The next step is
+  drawn last, where a hand ends up, so `primary` decides position rather than each page's markup.
+  No `confirm` on revert: `guardUnsaved` already asks when leaving a page with unsaved work, and the only behaviour
+  this changed is that "s", Ctrl K and "?" now work here.
+  **Certified by execution** (`record-bar.spec` rewritten against a declaration, `customer-page.spec` asserting
+  `ScreenActions.forKey('s')` tracks `changes` and is absent for a reader; web gate 1253 tests; four sabotages red
+  — the declaration never reaching `ScreenActions`, the bar ignoring `disabled`, the page claiming another key, and
+  nothing drawn as the next step).
+  **NOT certified by execution: no e2e presses "s"** — and worth knowing before writing one: `isTypingTarget`
+  refuses a shortcut while focus is in an input, which on a record page is nearly always, so "s" saves only after
+  the field is left. That is the same on the invoice page and is the ruling's own rule, not a defect here.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1232,7 +1255,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 103 | Fiscal journal (§ 7 2026-09-20 11:30): a `FiscalJournal` context — append-only entries carrying the previous hash and a per-company sequence, signed with a per-company key encrypted at rest; a `training` flag on every entry; reprints marked duplicates; invoices and credit notes journalled. **Design ruled, nothing built.** The till joins the same journal with the register module, its Z-closure split from an ordinary count. TN's adapter blocked on JORT n° 125 | L | todo | - | api/src/Fiscal/** api/migrations/** api/tests/** docs/fiscal/** |
 | 104 | Permission catalogue and the roles screen (§ 7 2026-09-20 11:30): each module declares its permission strings and labels beside its `DeclaresModule` declaration, the catalogue is collected not hand-written, and a company creates and edits its own roles in a matrix grouped by module; the members page offers the company's roles instead of three hardcoded names. `Role.company` is already nullable, so no migration for the roles themselves. The members page offers the company's roles, the API resolves a role name against the company acting, and an open invitation counts as holding its role | M | done | - | api/src/Tenancy/** api/src/ModuleRegistry/** api/src/Module/**/*Module*.php web/src/app/company/** api/tests/** web/src/app/**/*.spec.ts |
 | 105 | Generated operator credentials (§ 7 2026-09-20 13:10): `app:seed --generate-operator-password` mints a password and a TOTP secret, prints both once and stores only the hash and the encrypted secret; seeding refuses the published development password and TOTP secret when the environment is production. The fixed literals stay for the local stack and CI so tests keep a deterministic sign-in | S | todo | - | api/src/Tenancy/** api/tests/Functional/SeedCommandTest.php docs/START.md |
-| 106 | The RecordBar pages and `RowAction` read the row-45 declaration: `RowAction` done (§ 7 2026-09-21 07:05 — it asks now, through the shared rule); the record pages still do not declare, so on them `s` saves nothing, Ctrl K shows no "Sur cette page" group and "?" says the page offers none. FIVE of them, not four: `company-profile-page` uses `RecordBar` too (§ 7 2026-09-20 22:10) | M | doing | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
+| 106 | The five RecordBar pages (customer, product, expense, vendor, company profile — five, not the four the row named) and `RowAction` read the row-45 declaration: "s", Ctrl K and "?" work on a record page, and a row's own destructive control asks (§ 7 2026-09-20 22:10, 2026-09-21 07:05 and 07:50) | M | done | - | web/src/app/customers/** web/src/app/products/** web/src/app/expenses/** web/src/app/vendors/** web/src/app/shared/list/** |
 | 107 | The server-side bin the `undo` action class needs: a deletion kept recoverable for a while, so "Annuler" on a toast can put it back. Row 45 shipped `plain` and `confirm` only and declared no field for `undo`, because a class nothing can produce is a promise (§ 7 2026-09-20 22:10) | L | todo | - | api/** web/src/app/shared/actions/** |
 <!-- /progress-block -->
 
