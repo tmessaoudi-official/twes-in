@@ -95,6 +95,7 @@ const options: StockOptions = {
   planShapes: [
     { shape: 'rack', width: 2.4, depth: 0.6 },
     { shape: 'zone', width: 6, depth: 4 },
+    { shape: 'aisle', width: 10, depth: 1.2 },
   ],
 };
 
@@ -118,6 +119,7 @@ describe('StockMapPage', () => {
     deleteFloor: vi.fn(),
     draw: vi.fn(),
     eraseDrawing: vi.fn(),
+    repeatDrawing: vi.fn(),
     clearError: vi.fn(),
   };
   const auth = {
@@ -161,6 +163,7 @@ describe('StockMapPage', () => {
     facade.deleteFloor.mockReset().mockResolvedValue(true);
     facade.draw.mockReset().mockResolvedValue(true);
     facade.eraseDrawing.mockReset().mockResolvedValue(true);
+    facade.repeatDrawing.mockReset().mockResolvedValue(true);
     auth.hasPermission.mockReset().mockReturnValue(true);
     windowClass.set('expanded');
     TestBed.configureTestingModule({
@@ -661,8 +664,9 @@ describe('StockMapPage', () => {
     expect(q('stock-shape-rack')?.textContent).toContain('2.4');
     expect(q('stock-shape-rack')?.textContent).toContain('0.6');
     expect(q('stock-shape-zone')?.textContent).toContain('6');
-    // The four of the canvas, minus what this company has no size for: nothing is invented here.
-    expect(q('stock-shape-aisle')).toBeNull();
+    // The four of the canvas, minus what this company has no size for: nothing is invented here. The dock is the
+    // one this fixture leaves out — the aisle joined it when the repeat panel began reading its width.
+    expect(q('stock-shape-dock')).toBeNull();
   });
 
   /** A shape posed is a rectangle being drawn, so the plan shows it before anything is saved. */
@@ -691,5 +695,137 @@ describe('StockMapPage', () => {
     await settle();
 
     expect(q('stock-map-trace')).toBeNull();
+  });
+
+  /**
+   * Repeating a rack down an aisle. The panel opens with what a person would have typed anyway — the next code and
+   * this company's own aisle width — so the common repeat needs no typing at all.
+   */
+  async function openRepeat(): Promise<void> {
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+    (q('stock-drawing-R1') as HTMLElement).click();
+    await settle();
+    (q('stock-drawing-repeat') as HTMLElement).click();
+    await settle();
+  }
+
+  it('opens the repeat panel on the next code and the company’s own aisle width', async () => {
+    await openRepeat();
+
+    expect((q('stock-repeat-code') as HTMLInputElement).value).toBe('R2');
+    expect((q('stock-repeat-spacing') as HTMLInputElement).value).toBe('1.2');
+    expect((q('stock-repeat-count') as HTMLInputElement).value).toBe('1');
+  });
+
+  /** What will be created is said BEFORE it is created, codes and all: these are stock locations, not only shapes. */
+  it('lists the codes it will create before creating them', async () => {
+    await openRepeat();
+    type('stock-repeat-count', '3');
+    await settle();
+
+    expect(q('stock-repeat-codes')?.textContent?.trim()).toBe('R2, R3, R4');
+    expect(facade.repeatDrawing).not.toHaveBeenCalled();
+  });
+
+  /** The preview is drawn dotted, one rectangle per copy, from the same arithmetic the API will run. */
+  it('draws one dotted rectangle per copy, where each will land', async () => {
+    await openRepeat();
+    type('stock-repeat-count', '2');
+    await settle();
+
+    expect(q('stock-repeat-preview-0')?.getAttribute('y')).toBe('5.8');
+    expect(q('stock-repeat-preview-1')?.getAttribute('y')).toBe('7.6');
+    expect(q('stock-repeat-preview-2')).toBeNull();
+  });
+
+  /**
+   * "Une copie qui sortirait du sol est refusée AVANT, pas après" (the approved canvas): the button is disabled and
+   * the reason is on the screen, rather than a refusal arriving from the API once the person has pressed it.
+   */
+  it('refuses a copy that would leave the floor before anything is sent', async () => {
+    await openRepeat();
+    (q('stock-repeat-way-up') as HTMLElement).click();
+    type('stock-repeat-count', '4');
+    await settle();
+
+    expect((q('stock-repeat-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(q('stock-repeat-summary')?.textContent).toContain('repeat_off_floor');
+
+    (q('stock-repeat-save') as HTMLElement).click();
+    await settle();
+    expect(facade.repeatDrawing).not.toHaveBeenCalled();
+  });
+
+  /**
+   * A spacing that is not a measurement must DISABLE the repeat, never quietly become zero. A lenient `Number()`
+   * would have read `1,2,3` as nothing, shown a preview of racks back to back, and sent `"0"` — a plan the person
+   * never asked for, accepted by an API that has no way to know it was a typo.
+   */
+  it('refuses a spacing that is not a measurement rather than reading it as zero', async () => {
+    await openRepeat();
+    type('stock-repeat-spacing', '1,2,3');
+    await settle();
+
+    expect((q('stock-repeat-save') as HTMLButtonElement).disabled).toBe(true);
+    expect(q('stock-repeat-preview-0')).toBeNull();
+
+    // And a real measurement, comma or point, is taken.
+    type('stock-repeat-spacing', '0,6');
+    await settle();
+    expect((q('stock-repeat-save') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  /** The API caps a repeat at fifty; the panel says so here rather than letting the person press and get a 422. */
+  it('refuses a count past the cap before it is sent', async () => {
+    await openRepeat();
+    type('stock-repeat-count', '51');
+    await settle();
+
+    expect((q('stock-repeat-save') as HTMLButtonElement).disabled).toBe(true);
+
+    type('stock-repeat-count', '50');
+    await settle();
+    expect((q('stock-repeat-save') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  /** A code with no number to count on from is the other way a repeat cannot be made, and is refused the same way. */
+  it('refuses a first code with no number in it', async () => {
+    await openRepeat();
+    type('stock-repeat-code', 'RAYONNAGE');
+    await settle();
+
+    expect((q('stock-repeat-save') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('sends the repeat as it was set, and says so once it is made', async () => {
+    await openRepeat();
+    type('stock-repeat-count', '3');
+    type('stock-repeat-spacing', '0,6');
+    (q('stock-repeat-way-right') as HTMLElement).click();
+    await settle();
+    (q('stock-repeat-save') as HTMLElement).click();
+    await settle();
+
+    // The comma a French keyboard types reaches the API as the point it expects.
+    expect(facade.repeatDrawing).toHaveBeenCalledWith('c1', 'f1', 'd1', {
+      count: 3,
+      spacing: '0.6',
+      way: 'right',
+      firstCode: 'R2',
+    });
+    expect(successToasts()).toContain('inventory.plan.repeated');
+    expect(q('stock-repeat-panel')).toBeNull();
+  });
+
+  /** Decision 8 once more: a phone reads the map, so there is nothing on it to repeat. */
+  it('offers no repeat on a phone', async () => {
+    windowClass.set('compact');
+    fixture = TestBed.createComponent(StockMapPage);
+    await settle();
+    (q('stock-drawing-R1') as HTMLElement).click();
+    await settle();
+
+    expect(q('stock-drawing-repeat')).toBeNull();
   });
 });

@@ -282,3 +282,17 @@ tables, essay gotchas) was retired with the reset. What applies here:
   Assert over what is there rather than clearing first (2026-09-21, `KeepStockTest`).
 - A stock location that has seen a movement is KEPT (409), so an e2e that moves goods into a location it created
   cannot delete it and leaks one per run into the shared company. Say the dimension is uncertified instead.
+- Playwright's browsers DO install here, and running e2e locally is worth the ten minutes: `npx playwright install
+  chromium --dry-run` prints the exact `cdn.playwright.dev/builds/cft/<version>/linux64/*.zip` URLs, which `curl -4`
+  fetches (the installer itself hangs on IPv6); unzip each into `~/.cache/ms-playwright/<name>-<rev>/` and `touch
+  INSTALLATION_COMPLETE`. Both containers build from the working tree, so `docker compose up -d --build web api`
+  first, or the browser tests the last image. This caught two defects in one run that CI would have taken 28 minutes
+  to report, one of them in the test itself (2026-09-21).
+- A promoted `public readonly ?string $code` on an `\Exception` subclass is a FATAL redeclaration at class-load time
+  (`\Exception::$code` is not readonly), reported nowhere near where it is written — and rtk condensed that fatal to
+  `PHPUnit: ok`. Name it anything else, and read a suite's own tally through `rtk proxy` before believing a pass.
+- A nested API Platform resource serializes as an IRI, not as an object: a property holding other resources needs
+  `#[ApiProperty(readableLink: true)]` AND the nested resource's own read group in the operation's
+  `normalizationContext`. Without both, a POST that answers what it created answers `/api/.well-known/genid/…`.
+- Playwright's `evaluateAll` does NOT auto-wait: assert the count with `expect(locator).toHaveCount(n)` first, or a
+  read straight after a reload returns `[]` and reads as "nothing was created".

@@ -218,6 +218,17 @@ export type StockDrawingInput = Pick<
 >;
 
 /**
+ * A repeat of one rectangle down an aisle: how many MORE of it, the free floor between two of them in metres, which
+ * way across the FLOOR, and what the first copy is called — the rest count on from its number.
+ */
+export interface StockRepeatInput {
+  count: number;
+  spacing: string;
+  way: 'up' | 'down' | 'left' | 'right';
+  firstCode: string;
+}
+
+/**
  * What the stock forms offer: the company's establishments. The products are asked for a few at a time through the
  * picker (docs/SPEC.md § 7, 2026-09-17, ruling 3) — holding them here meant the API walked the settings chain once
  * per product in the company before a screen had drawn anything.

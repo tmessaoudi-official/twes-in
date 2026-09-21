@@ -7,6 +7,7 @@ import {
   floorForm,
   floorInput,
   floorValues,
+  nextCodes,
   planRectangles,
   rectValues,
 } from './stock-map-forms';
@@ -239,5 +240,28 @@ describe('rectValues', () => {
     expect(
       Object.keys(rectValues({ x: 0, y: 0, width: 1, depth: 1, rotation: 0, height: 0 })),
     ).not.toContain('locationId');
+  });
+});
+
+describe('nextCodes', () => {
+  it('counts on from the first code', () => {
+    expect(nextCodes('R2', 3)).toEqual(['R2', 'R3', 'R4']);
+  });
+
+  /** The same rule the API applies, so what the panel lists is what will actually be created. */
+  it('keeps the width the number was written with, and never truncates it', () => {
+    expect(nextCodes('R01', 3)).toEqual(['R01', 'R02', 'R03']);
+    expect(nextCodes('R99', 2)).toEqual(['R99', 'R100']);
+  });
+
+  it('handles a stem that has its own digits in it', () => {
+    expect(nextCodes('A1-R7', 2)).toEqual(['A1-R7', 'A1-R8']);
+  });
+
+  /** Nothing to count on from, or nothing to make: the panel refuses rather than offering a doomed call. */
+  it('gives nothing back when there is no number or no count', () => {
+    expect(nextCodes('RAYONNAGE', 3)).toEqual([]);
+    expect(nextCodes('R2', 0)).toEqual([]);
+    expect(nextCodes('  ', 3)).toEqual([]);
   });
 });

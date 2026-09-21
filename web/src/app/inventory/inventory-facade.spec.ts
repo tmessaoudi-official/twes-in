@@ -74,6 +74,9 @@ describe('InventoryFacade', () => {
     reviseLocation: vi.fn(),
     deleteLocation: vi.fn(),
     record: vi.fn(),
+    repeatDrawing: vi.fn(),
+    drawings: vi.fn(),
+    floors: vi.fn(),
   };
   let facade: InventoryFacade;
 
@@ -86,6 +89,9 @@ describe('InventoryFacade', () => {
     api.reviseLocation.mockReset().mockResolvedValue(site);
     api.deleteLocation.mockReset().mockResolvedValue(undefined);
     api.record.mockReset().mockResolvedValue({});
+    api.repeatDrawing.mockReset().mockResolvedValue([]);
+    api.drawings.mockReset().mockResolvedValue([]);
+    api.floors.mockReset().mockResolvedValue([]);
     TestBed.configureTestingModule({ providers: [{ provide: InventoryApi, useValue: api }] });
     facade = TestBed.inject(InventoryFacade);
   });
@@ -168,5 +174,33 @@ describe('InventoryFacade', () => {
     expect(api.reviseLocation).toHaveBeenCalledWith('c1', 'l2', zone);
     expect(api.deleteLocation).toHaveBeenCalledWith('c1', 'l2');
     expect(api.locations).toHaveBeenCalledTimes(3);
+  });
+
+  /**
+   * A repeat creates stock LOCATIONS as well as rectangles, so the locations are read again with the floor —
+   * otherwise the racks it had just made would be missing from every picker on the screen that made them,
+   * including the one the next rectangle is drawn for.
+   */
+  it('reads the locations again after a repeat, not only the floor', async () => {
+    await facade.loadStockContext('c1');
+    api.locations.mockClear();
+
+    await expect(
+      facade.repeatDrawing('c1', 'f1', 'd1', {
+        count: 2,
+        spacing: '0.6',
+        way: 'down',
+        firstCode: 'R2',
+      }),
+    ).resolves.toBe(true);
+
+    expect(api.repeatDrawing).toHaveBeenCalledWith('c1', 'd1', {
+      count: 2,
+      spacing: '0.6',
+      way: 'down',
+      firstCode: 'R2',
+    });
+    expect(api.locations).toHaveBeenCalledWith('c1');
+    expect(api.drawings).toHaveBeenCalledWith('c1', 'f1');
   });
 });

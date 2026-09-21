@@ -406,6 +406,54 @@ describe('InventoryApi', () => {
     moved.flush({ id: 'd1', floorId: 'f1', ...rect });
   });
 
+  /**
+   * A repeat answers what it created, so the screen never reads the floor back to learn what it had just asked for
+   * — a read that would race anyone else drawing on the same plan.
+   */
+  it('repeats a rectangle and gives back the copies it made', async () => {
+    const pending = api.repeatDrawing('c1', 'd1', {
+      count: 2,
+      spacing: '0.6',
+      way: 'down',
+      firstCode: 'R2',
+    });
+    const request = http.expectOne('/api/companies/c1/stock-drawings/d1/repeat');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({
+      count: 2,
+      spacing: '0.6',
+      way: 'down',
+      firstCode: 'R2',
+    });
+    request.flush({
+      count: 2,
+      spacing: '0.6',
+      way: 'down',
+      firstCode: 'R2',
+      drawings: [
+        { id: 'd2', floorId: 'f1', locationId: 'l2', locationCode: 'R2', locationKind: 'rack' },
+        { id: 'd3', floorId: 'f1', locationId: 'l3', locationCode: 'R3', locationKind: 'rack' },
+      ],
+    });
+
+    await expect(pending).resolves.toMatchObject([{ id: 'd2' }, { id: 'd3' }]);
+  });
+
+  /** A code already taken is the repeat's own refusal, and it names the code so the panel can say which. */
+  it('passes a taken code through as a refusal', async () => {
+    const pending = api.repeatDrawing('c1', 'd1', {
+      count: 2,
+      spacing: '0.6',
+      way: 'down',
+      firstCode: 'R2',
+    });
+    http
+      .expectOne('/api/companies/c1/stock-drawings/d1/repeat')
+      .flush('the code R3', { status: 409, statusText: 'Conflict' });
+
+    await expect(pending).rejects.toBeInstanceOf(Error);
+  });
+
   it('erases a rectangle without touching what it was drawn for', async () => {
     const pending = api.eraseDrawing('c1', 'd1');
     const request = http.expectOne('/api/companies/c1/stock-drawings/d1');

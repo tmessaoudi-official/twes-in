@@ -228,9 +228,136 @@
                   >
                     {{ 'inventory.plan.erase' | translate }}
                   </button>
+                  @if (mayDraw()) {
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="openRepeat(drawing)"
+                      data-testid="stock-drawing-repeat"
+                    >
+                      {{ 'inventory.plan.repeat' | translate }}
+                    </button>
+                  }
                 </div>
               }
             </div>
+
+            <!--
+              Repeating it down an aisle. Every box is a control a keyboard reaches, the four ways included: the
+              plan is drawn with a pointer but nothing here is reachable ONLY by pointing, which is what decision 8
+              asks of every part of this screen.
+            -->
+            @if (repeating()) {
+              <div
+                class="mt-2 flex flex-col gap-3 rounded-lg border border-outline-variant p-3"
+                data-testid="stock-repeat-panel"
+              >
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                  {{ 'inventory.plan.repeat_of' | translate: { code: drawing.locationCode } }}
+                </h2>
+
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="flex flex-col gap-1 text-sm">
+                    {{ 'inventory.plan.repeat_count' | translate }}
+                    <input
+                      class="rounded-lg border border-outline-variant p-2 tabular-nums"
+                      type="number"
+                      min="1"
+                      [attr.max]="REPEAT_LIMIT"
+                      [value]="repeatCount()"
+                      (input)="setRepeatCount($event)"
+                      data-testid="stock-repeat-count"
+                    />
+                  </label>
+                  <label class="flex flex-col gap-1 text-sm">
+                    {{ 'inventory.plan.repeat_spacing' | translate }}
+                    <input
+                      class="rounded-lg border border-outline-variant p-2 tabular-nums"
+                      inputmode="decimal"
+                      [value]="repeatSpacing()"
+                      (input)="setRepeatSpacing($event)"
+                      data-testid="stock-repeat-spacing"
+                    />
+                  </label>
+                </div>
+                <p class="text-sm text-on-surface-variant">
+                  {{ 'inventory.plan.repeat_spacing_hint' | translate }}
+                </p>
+
+                <div class="flex flex-col gap-1 text-sm">
+                  {{ 'inventory.plan.repeat_way' | translate }}
+                  <div class="flex gap-2">
+                    @for (way of ways; track way) {
+                      <button
+                        type="button"
+                        class="grow rounded-lg border border-outline-variant p-2"
+                        [class.bg-secondary-container]="repeatWay() === way"
+                        [attr.aria-pressed]="repeatWay() === way"
+                        [appLabel]="'inventory.plan.ways.' + way | translate"
+                        (click)="repeatWay.set(way)"
+                        [attr.data-testid]="'stock-repeat-way-' + way"
+                      >
+                        {{ 'inventory.plan.way_glyphs.' + way | translate }}
+                      </button>
+                    }
+                  </div>
+                </div>
+
+                <label class="flex flex-col gap-1 text-sm">
+                  {{ 'inventory.plan.repeat_first_code' | translate }}
+                  <input
+                    class="rounded-lg border border-outline-variant p-2"
+                    [value]="repeatCode()"
+                    (input)="setRepeatCode($event)"
+                    data-testid="stock-repeat-code"
+                  />
+                </label>
+
+                <!--
+                  What will be created, said before it is: these are stock LOCATIONS as well as rectangles, and a
+                  person who thought they were only drawing would find sixteen new racks in every picker.
+                -->
+                <p role="status" class="text-sm" data-testid="stock-repeat-summary">
+                  @if (repeatOffFloor()) {
+                    {{ 'inventory.plan.repeat_off_floor' | translate }}
+                  } @else if (repeatReady()) {
+                    {{
+                      'inventory.plan.repeat_will_create'
+                        | translate: { count: repeatCodes().length }
+                    }}
+                    <!--
+                      The codes themselves, written out rather than passed as a parameter: they are the content of
+                      this sentence, not a decoration of it, and the person is about to accept them.
+                    -->
+                    <span class="font-medium" data-testid="stock-repeat-codes">
+                      {{ repeatCodes().join(', ') }}
+                    </span>
+                  } @else {
+                    {{ 'inventory.plan.repeat_incomplete' | translate }}
+                  }
+                </p>
+
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    mat-flat-button
+                    type="button"
+                    [disabled]="busy() || !repeatReady()"
+                    (click)="saveRepeat()"
+                    data-testid="stock-repeat-save"
+                  >
+                    {{ 'inventory.plan.repeat_create' | translate: { count: repeatCount() } }}
+                  </button>
+                  <button
+                    mat-button
+                    type="button"
+                    (click)="cancelRepeat()"
+                    data-testid="stock-repeat-cancel"
+                  >
+                    {{ 'cancel' | translate }}
+                  </button>
+                </div>
+              </div>
+            }
           }
         </div>
 
@@ -257,6 +384,33 @@
               (document:pointercancel)="drops($event)"
               (document:keydown.escape)="abandon()"
             >
+              <!--
+                The repeat's preview, dotted because nothing is created yet, and drawn UNDER what is already there
+                so a copy landing on an existing rack does not hide it.
+              -->
+              @for (copy of repeatPreview(); track $index) {
+                <rect
+                  [attr.x]="copy.x"
+                  [attr.y]="copy.y"
+                  [attr.width]="copy.width"
+                  [attr.height]="copy.depth"
+                  [attr.transform]="
+                    'rotate(' +
+                    copy.rotation +
+                    ' ' +
+                    (copy.x + copy.width / 2) +
+                    ' ' +
+                    (copy.y + copy.depth / 2) +
+                    ')'
+                  "
+                  [attr.rx]="0.1"
+                  [attr.stroke-width]="0.05"
+                  stroke-dasharray="0.3 0.2"
+                  class="fill-primary-container/40 stroke-primary"
+                  [class.stroke-error]="repeatOffFloor()"
+                  [attr.data-testid]="'stock-repeat-preview-' + $index"
+                />
+              }
               @for (shape of shapes(); track shape.drawing.id) {
                 <g
                   [attr.transform]="

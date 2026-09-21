@@ -6,6 +6,8 @@ import { firstValueFrom } from 'rxjs';
 import type {
   ApiCompaniesCompanyIdstockLevelsGetCollectionResponse,
   ApiCompaniesCompanyIdstockMovementsGetCollectionResponse,
+  RepeatStockDrawingRepeatStockDrawingReadStockDrawingRead,
+  RepeatStockDrawingRepeatStockDrawingWrite,
   StockDrawingStockDrawingRead,
   StockDrawingStockDrawingWrite,
   StockFloorStockFloorRead,
@@ -25,6 +27,7 @@ import {
   type InventoryError,
   type StockDrawingInput,
   type StockDrawingRow,
+  type StockRepeatInput,
   type StockFloorInput,
   type StockFloorRow,
   STOCK_LOCATION_KINDS,
@@ -278,6 +281,33 @@ export class InventoryApi {
           ),
         ),
       ),
+    );
+  }
+
+  /**
+   * Repeats a rectangle down an aisle: N more of it AND the stock locations they are, in one call, because it is one
+   * decision. It answers what it created, so the screen never has to read the floor back to learn what it had just
+   * asked for — a read that would race anyone else drawing on the same plan.
+   *
+   * A code already taken answers 409 naming it; a copy stepping off the floor 422 naming the side it left by.
+   */
+  async repeatDrawing(
+    companyId: string,
+    drawingId: string,
+    input: StockRepeatInput,
+  ): Promise<StockDrawingRow[]> {
+    const body: RepeatStockDrawingRepeatStockDrawingWrite = { ...input };
+
+    return this.guard(
+      async () =>
+        (
+          await firstValueFrom(
+            this.http.post<RepeatStockDrawingRepeatStockDrawingReadStockDrawingRead>(
+              `${path(companyId, 'stock-drawings', drawingId)}/repeat`,
+              body,
+            ),
+          )
+        ).drawings?.map(toDrawing) ?? [],
     );
   }
 

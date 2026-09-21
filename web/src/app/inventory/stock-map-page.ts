@@ -35,6 +35,7 @@ import {
   floorInput,
   floorValues,
   footprintValues,
+  nextCodes,
   planRectangles,
   rectValues,
 } from './stock-map-forms';
@@ -45,6 +46,7 @@ import {
   PLAN_HANDLES,
   planFrame,
   pointerMetres,
+  repeatedFrom,
   resizedTo,
   tracedTo,
   type PlanBox,
@@ -52,6 +54,8 @@ import {
   type PlanHandle,
   type PlanPoint,
   type PlanRectangle,
+  type PlanWay,
+  PLAN_WAYS,
 } from './stock-map-geometry';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
@@ -433,6 +437,124 @@ export class StockMapPage implements OnInit {
 
   protected armTrace(): void {
     this.tracing.update((armed) => !armed);
+  }
+
+  // ——— repeating a rectangle down an aisle ———
+
+  /**
+   * Repeating what is selected (docs/SPEC.md row 83; the approved canvas's Repeat board). Nobody draws sixteen
+   * identical racks one at a time, and a copy is a STOCK LOCATION as well as a rectangle — so this panel says so in
+   * those words before it creates anything.
+   */
+  protected readonly repeating = signal(false);
+  protected readonly repeatCount = signal(1);
+  protected readonly repeatSpacing = signal('');
+  protected readonly repeatWay = signal<PlanWay>('down');
+  protected readonly repeatCode = signal('');
+  protected readonly ways = PLAN_WAYS;
+
+  /**
+   * Opens the panel with what a person would most likely have typed anyway: the next code after the one being
+   * copied, and the company's own aisle width as the free floor between two racks. Both are theirs to change — the
+   * point is that the common repeat needs no typing at all.
+   */
+  protected openRepeat(drawing: StockDrawingRow): void {
+    this.facade.clearError();
+    this.select(drawing);
+    this.editing.set(null);
+    this.repeatCount.set(1);
+    this.repeatWay.set('down');
+    this.repeatSpacing.set(
+      String(this.palette().find((one) => one.shape === 'aisle')?.depth ?? 1.2),
+    );
+    this.repeatCode.set(nextCodes(drawing.locationCode, 2)[1] ?? '');
+    this.repeating.set(true);
+  }
+
+  protected cancelRepeat(): void {
+    this.repeating.set(false);
+    this.facade.clearError();
+  }
+
+  /**
+   * The spacing as typed, a comma taken as a point — and `null` when what is there is not a measurement at all.
+   *
+   * `null` and not zero: `metres()` answers 0 for anything it cannot read, which would show a preview of racks back
+   * to back and let `1,2,3` be sent as `"0"`. The panel's whole premise is that an impossible repeat is refused
+   * before it is sent, and a spacing that did not parse is exactly that.
+   */
+  private readonly repeatGap = computed<number | null>(() => {
+    const typed = this.repeatSpacing().trim();
+    if (!/^\d+([.,]\d{1,3})?$/.test(typed)) return null;
+
+    return Number(typed.replace(',', '.'));
+  });
+
+  /** Where each copy would land — the same arithmetic the API will run, so the preview is not an approximation. */
+  protected readonly repeatPreview = computed<PlanRectangle[]>(() => {
+    const shape = this.shapes().find((one) => one.drawing.id === this.selectedId());
+    const gap = this.repeatGap();
+    if (shape === undefined || gap === null || !this.repeating()) return [];
+
+    return repeatedFrom(shape.rect, this.repeatCount(), gap, this.repeatWay());
+  });
+
+  /** What the copies will be called, listed before anything is made. */
+  protected readonly repeatCodes = computed(() => nextCodes(this.repeatCode(), this.repeatCount()));
+
+  /**
+   * Whether the repeat can be made at all — "une copie qui sortirait du sol est refusée AVANT, pas après" (the
+   * approved canvas). The button is disabled and the reason is on screen, rather than a refusal arriving from the
+   * API after the person has pressed it.
+   */
+  protected readonly repeatOffFloor = computed(
+    () =>
+      this.repeatPreview().length > 0 &&
+      this.repeatPreview().some((rect) => rect.x < 0 || rect.y < 0),
+  );
+
+  protected readonly repeatReady = computed(
+    () =>
+      this.repeatCount() >= 1 &&
+      this.repeatCount() <= this.REPEAT_LIMIT &&
+      this.repeatPreview().length === this.repeatCount() &&
+      this.repeatCodes().length === this.repeatCount() &&
+      !this.repeatOffFloor() &&
+      this.repeatGap() !== null,
+  );
+
+  /** The three boxes write into signals, so the preview follows what is typed rather than what was last saved. */
+  protected setRepeatCount(event: Event): void {
+    this.repeatCount.set(Math.trunc(metres((event.target as HTMLInputElement).value)));
+  }
+
+  protected setRepeatSpacing(event: Event): void {
+    this.repeatSpacing.set((event.target as HTMLInputElement).value);
+  }
+
+  protected setRepeatCode(event: Event): void {
+    this.repeatCode.set((event.target as HTMLInputElement).value);
+  }
+
+  /** What the count box may hold, which is the API's own cap — a typo guard, not a rule about warehouses. */
+  protected readonly REPEAT_LIMIT = 50;
+
+  protected async saveRepeat(): Promise<void> {
+    const companyId = this.company()?.id;
+    const floorId = this.floor()?.id;
+    const drawingId = this.selectedId();
+    if (!companyId || !floorId || drawingId === null || !this.repeatReady() || this.busy()) return;
+
+    const made = await this.facade.repeatDrawing(companyId, floorId, drawingId, {
+      count: this.repeatCount(),
+      spacing: String(this.repeatGap() ?? 0),
+      way: this.repeatWay(),
+      firstCode: this.repeatCode().trim(),
+    });
+    if (made) {
+      this.repeating.set(false);
+      this.feedback.success('inventory.plan.repeated');
+    }
   }
 
   private drag: Drag | null = null;

@@ -23,10 +23,21 @@ final readonly class PlanRect
     /** Far larger than any single floor a company draws, and small enough that a typo cannot break the view. */
     public const string LIMIT = '10000';
 
+    /**
+     * Numeric by CONSTRUCTION: `distance()` below builds each one from its own regex captures and refuses anything
+     * else, so bcmath may take them as they are rather than every caller re-proving what this constructor already
+     * guarantees.
+     *
+     * @var numeric-string
+     */
     public string $x;
+    /** @var numeric-string */
     public string $y;
+    /** @var numeric-string */
     public string $width;
+    /** @var numeric-string */
     public string $depth;
+    /** @var numeric-string */
     public string $height;
 
     /** @throws InvalidVenue */
@@ -49,8 +60,16 @@ final readonly class PlanRect
             === [$other->x, $other->y, $other->width, $other->depth, $other->rotation, $other->height];
     }
 
-    /** @throws InvalidVenue */
-    private static function distance(string $field, string $value, bool $positive): string
+    /**
+     * One measurement in metres, normalized to three decimals or refused by name. Public because a repeat's spacing
+     * is the same kind of number as a side and must be refused the same way — a gap typed `1,2,3` cannot be allowed
+     * to reach bcmath just because it arrives through another field.
+     *
+     * @return numeric-string
+     *
+     * @throws InvalidVenue
+     */
+    public static function distance(string $field, string $value, bool $positive): string
     {
         if (1 !== preg_match('/^(0|[1-9][0-9]{0,4})(?:\.([0-9]{1,3}))?$/', trim($value), $found)) {
             throw new InvalidVenue($field, \sprintf('%s is a distance in metres, zero or more, with at most %d decimals.', $field, self::SCALE));

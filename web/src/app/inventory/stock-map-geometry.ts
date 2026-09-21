@@ -279,6 +279,46 @@ export function centredIn(frame: PlanFrame, width: number, depth: number): PlanR
   };
 }
 
+/** Which way a rectangle is repeated across the FLOOR — never across the rectangle, whatever angle it is set at. */
+export type PlanWay = 'up' | 'down' | 'left' | 'right';
+
+export const PLAN_WAYS: readonly PlanWay[] = ['up', 'down', 'left', 'right'];
+
+/**
+ * Where each copy of a repeat lands — the screen's mirror of `DrawStockMap::repeat()`, so the dotted preview shows
+ * exactly what the API will create rather than an approximation of it. Two plans, one accepted and another made,
+ * would be worse than no preview at all.
+ *
+ * The step runs along the floor's own axis and its size is the side the rectangle actually covers along that axis:
+ * a rack turned a quarter turn is as wide across the floor's y as it is deep across its x. Only the four right
+ * angles are allowed — their sines and cosines are whole numbers, so this arithmetic and the API's bcmath agree
+ * exactly — and any other angle gives nothing back, which is how the screen knows to refuse the gesture rather than
+ * offer one the API would reject.
+ *
+ * The spacing is TYPED and not dragged, so the magnet does not touch it (docs/SPEC.md § 7, 2026-09-21, 20:40): a
+ * spacing of 0,1 m is taken as 0,1. Millimetres are counted as whole numbers throughout so a run of copies cannot
+ * drift into 5.800000000000001.
+ */
+export function repeatedFrom(
+  rect: PlanRectangle,
+  count: number,
+  spacing: number,
+  way: PlanWay,
+): PlanRectangle[] {
+  if (count < 1 || rect.rotation % 90 !== 0) return [];
+  const vertical = way === 'up' || way === 'down';
+  const turned = (rect.rotation / 90) % 2 !== 0;
+  const pitch = Math.round(((vertical === turned ? rect.width : rect.depth) + spacing) * 1000);
+  const back = way === 'up' || way === 'left' ? -1 : 1;
+  const from = Math.round((vertical ? rect.y : rect.x) * 1000);
+
+  return Array.from({ length: count }, (_, made) => {
+    const moved = (from + back * pitch * (made + 1)) / 1000;
+
+    return vertical ? { ...rect, y: moved } : { ...rect, x: moved };
+  });
+}
+
 /** Where each handle sits on the rectangle's own unturned corners, which the group around it then turns. */
 export function handleAt(rect: PlanRectangle, handle: PlanHandle): PlanPoint {
   return { x: rect.x + rect.width * handle.hx, y: rect.y + rect.depth * handle.hy };

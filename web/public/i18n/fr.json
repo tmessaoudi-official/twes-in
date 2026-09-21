@@ -1477,6 +1477,30 @@
         "zone": "Zone",
         "aisle": "Allée",
         "dock": "Quai"
+      },
+      "repeat": "Répéter",
+      "repeat_of": "Répéter {{code}}",
+      "repeat_count": "Combien de plus",
+      "repeat_spacing": "Espacement (m)",
+      "repeat_spacing_hint": "L'espace libre entre deux rectangles. Zéro les met dos à dos.",
+      "repeat_way": "Direction",
+      "repeat_first_code": "Code de la première copie",
+      "repeat_will_create": "{{count}} emplacements de stock et leurs rectangles :",
+      "repeat_off_floor": "Une copie sortirait du sol. Changez la direction, l’espacement ou le nombre.",
+      "repeat_incomplete": "Indiquez un nombre, un espacement et un code se terminant par un numéro.",
+      "repeat_create": "Créer les {{count}}",
+      "repeated": "Rayonnages créés",
+      "ways": {
+        "up": "vers le haut",
+        "down": "vers le bas",
+        "left": "vers la gauche",
+        "right": "vers la droite"
+      },
+      "way_glyphs": {
+        "up": "↑",
+        "down": "↓",
+        "left": "←",
+        "right": "→"
       }
     }
   },

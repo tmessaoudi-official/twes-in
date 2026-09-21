@@ -238,3 +238,24 @@ function metres(value: number): string {
 function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
+
+/**
+ * The codes a repeat will create: the first as it was typed, then its number counted on, keeping the width it was
+ * written with so `R01` is followed by `R02` and not by `R2`. It mirrors `DrawStockMap::codes()` so the panel can
+ * list what will be made BEFORE it is made — the approved canvas's "Codes à créer" and "Ce qui sera créé".
+ *
+ * A code with no number to count on from gives nothing back, which is how the panel knows to refuse the gesture
+ * rather than offer one the API would answer 422 to.
+ */
+export function nextCodes(firstCode: string, count: number): string[] {
+  const found = /^(.*?)(\d+)$/.exec(firstCode.trim());
+  if (found === null || count < 1) return [];
+  const [, stem, number] = found;
+
+  return Array.from(
+    { length: count },
+    (_, made) =>
+      // Padded back to the width it was typed with, and never truncated: R99 is followed by R100.
+      `${stem}${String(Number(number) + made).padStart(number.length, '0')}`,
+  );
+}

@@ -156,6 +156,94 @@ final class StockMapTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
     }
 
+    /**
+     * Repeating a rack down an aisle (the approved canvas's Repeat board): one call makes the copies AND the stock
+     * locations they are, because a rack that is drawn and does not exist is a picture rather than a place.
+     *
+     * The three refusals are checked on the surface and not only in the use case, because each names a different box
+     * of the same four-box form and a person given a bare "invalid" has to guess which one to change.
+     */
+    public function testARackIsRepeatedDownTheAisleAsLocationsAndRectanglesAtOnce(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $this->locations();
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $ground = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => $this->rackId]));
+        $drawing = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path('stock-drawings', $drawing).'/repeat', $this->repeat([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $made = $this->arrayAt($this->json(), 'drawings');
+        self::assertSame(['R2', 'R3', 'R4'], array_column($made, 'locationCode'));
+        // Down the floor by the rack's own depth plus the free floor between two of them: 0,6 + 0,6.
+        self::assertSame(['5.200', '6.400', '7.600'], array_column($made, 'y'));
+        self::assertSame(['2.500', '2.500', '2.500'], array_column($made, 'x'));
+
+        // Each copy is a stock location of its own, under the same parent, ready for goods.
+        $this->getJson($this->path('stock-locations'));
+        self::assertSame(['R2', 'R3', 'R4'], array_values(array_filter(
+            array_column($this->jsonList(), 'code'),
+            static fn (mixed $code): bool => \in_array($code, ['R2', 'R3', 'R4'], true),
+        )));
+
+        // Four rectangles on the floor now: the one repeated and the three made from it.
+        $this->getJson($this->path('stock-floors', $ground).'/drawings');
+        self::assertCount(4, $this->jsonList());
+
+        // A code already taken stops the whole run and says WHICH one, so the person knows what to change.
+        $this->postJson($this->path('stock-drawings', $drawing).'/repeat', $this->repeat(['firstCode' => 'R3']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
+        self::assertStringContainsString('R3', (string) $this->client->getResponse()->getContent());
+
+        // A copy stepping off the floor is refused BEFORE anything is written, naming the side it left by.
+        $this->postJson($this->path('stock-drawings', $drawing).'/repeat', $this->repeat(['way' => 'up', 'count' => 9, 'firstCode' => 'R9']));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('y', (string) $this->client->getResponse()->getContent());
+
+        $this->postJson($this->path('stock-drawings', $drawing).'/repeat', $this->repeat(['firstCode' => 'RAYONNAGE', 'count' => 1]));
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+
+        // Nothing of any of the three refusals reached the floor.
+        $this->getJson($this->path('stock-floors', $ground).'/drawings');
+        self::assertCount(4, $this->jsonList());
+    }
+
+    public function testRepeatingNeedsTheWritePermissionAndARectangleOfThisCompany(): void
+    {
+        $this->signedIn(['stock.read', 'stock.write']);
+        $this->locations();
+        $this->postJson($this->path('stock-floors'), ['establishmentId' => $this->establishmentId, 'name' => 'Rez-de-chaussée', 'level' => 0]);
+        $ground = $this->stringAt($this->json(), 'id');
+        $this->postJson($this->path('stock-floors', $ground).'/drawings', $this->drawing(['locationId' => $this->rackId]));
+        $drawing = $this->stringAt($this->json(), 'id');
+
+        // A rectangle of nobody: not found rather than an empty repeat that reads as success.
+        $this->postJson($this->path('stock-drawings', Uuid::v7()->toRfc4122()).'/repeat', $this->repeat([]));
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+
+        // Re-found, never reused: the test client reboots the kernel between requests, so the company held since
+        // setUp is detached by the time a second member is created for it.
+        $mineNow = $this->em()->find(Company::class, $this->company->getId());
+        self::assertNotNull($mineNow);
+        $this->createUser('reader@twes.local', 'password-1234', $mineNow, ['stock.read'], 'lecteur');
+        $this->login('reader@twes.local', 'password-1234');
+        $this->postJson($this->path('stock-drawings', $drawing).'/repeat', $this->repeat(['firstCode' => 'R8']));
+        // 404 and not 403, as every other company-scoped surface here: a member without the permission is told the
+        // company is not theirs to act for rather than that it exists and is closed to them.
+        self::assertResponseStatusCodeSame(Response::HTTP_NOT_FOUND);
+    }
+
+    /**
+     * @param array<string, mixed> $changes
+     *
+     * @return array<string, mixed>
+     */
+    private function repeat(array $changes): array
+    {
+        return [...['count' => 3, 'spacing' => '0.6', 'way' => 'down', 'firstCode' => 'R2'], ...$changes];
+    }
+
     /** The default site and a rack under it, so a rectangle has something real to name. */
     private function locations(): void
     {

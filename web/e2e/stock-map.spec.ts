@@ -70,10 +70,22 @@ async function prepare(page: Page, code: string): Promise<Fixture> {
   );
 }
 
-/** Takes the run's own rows away: the rectangle first, then the location, then the floor it was drawn on. */
-async function clean(page: Page, fixture: Fixture, floorName: string): Promise<void> {
+/**
+ * Takes the run's own rows away: the rectangles first, then the locations, then the floor they were drawn on.
+ *
+ * `sweep` is the prefix of the codes a case CREATED beyond the one `prepare()` made — a repeat makes locations as
+ * well as rectangles, and one left behind is a row leaked into a database the whole suite shares. It is passed in
+ * rather than derived from the fixture's code: stripping the trailing digits off `REP123456781` gives `REP`, which
+ * would sweep every location of every past run and, one day, a real one.
+ */
+async function clean(
+  page: Page,
+  fixture: Fixture,
+  floorName: string,
+  sweep?: string,
+): Promise<void> {
   await page.evaluate(
-    async ([csrf, { companyId, locationId }, name]) => {
+    async ([csrf, { companyId, locationId }, name, prefix]) => {
       const base = `/api/companies/${companyId}`;
       const drop = async (url: string): Promise<void> => {
         const response = await fetch(url, { method: 'DELETE', headers: { 'csrf-token': csrf } });
@@ -99,12 +111,21 @@ async function clean(page: Page, fixture: Fixture, floorName: string): Promise<v
         )
       ).flat();
       for (const drawing of drawings) await drop(`${base}/stock-drawings/${drawing.id}`);
+      if (prefix !== undefined && prefix !== '') {
+        const locations = (await (await fetch(`${base}/stock-locations`)).json()) as {
+          id: string;
+          code: string;
+        }[];
+        for (const one of locations.filter((row) => row.code.startsWith(prefix))) {
+          await drop(`${base}/stock-locations/${one.id}`);
+        }
+      }
       await drop(`${base}/stock-locations/${locationId}`);
       for (const floor of floors.filter((one) => one.name === name)) {
         await drop(`${base}/stock-floors/${floor.id}`);
       }
     },
-    [CSRF, fixture, floorName] as const,
+    [CSRF, fixture, floorName, sweep] as const,
   );
 }
 
@@ -266,6 +287,118 @@ test.describe('the drawn stock map', () => {
       // A timed-out case closes its page, and cleaning a closed page throws over the failure that caused it —
       // which reads as a cleanup bug and hides the real one. Measured: it cost a whole CI round to see through.
       if (!page.isClosed()) await clean(page, fixture, floorName);
+    }
+  });
+
+  /**
+   * Repeating a rack down an aisle, through the real stack. What this case is for is the one thing no unit test can
+   * check: that the dotted preview the person accepts and the rectangles the API creates are the SAME rectangles.
+   * The screen computes the preview itself, in JavaScript, and the API computes the copies in bcmath — two pieces
+   * of arithmetic that must agree exactly or a person accepts one plan and gets another.
+   *
+   * The source rack carries the run's own number, so the copies' codes are the run's too and a second run does not
+   * meet its own leftovers as a taken code.
+   */
+  test('repeats a rack down the aisle, creating the locations as well as the rectangles', async ({
+    page,
+  }) => {
+    const stamp = Date.now().toString().slice(-8);
+    // `X` between the stamp and the counter: without it the stem would be `REP` and the number the whole
+    // eight-digit stamp, so the sweep below would reach every past run's rows and an increment could carry.
+    const stem = `REP${stamp}X`;
+    const code = `${stem}1`;
+    const floorName = `Allée ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.goto('/stock/plan');
+      await page.getByTestId('stock-floor-add').click();
+      await page.getByTestId('field-name').fill(floorName);
+      await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('stock-floor-save').click();
+      await expect(toast(page)).toContainText('Étage enregistré');
+      await page.getByRole('button', { name: floorName, exact: true }).click();
+
+      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('field-locationId').click();
+      await page.getByRole('option', { name: new RegExp(code) }).click();
+      await page.getByTestId('field-x').fill('2,5');
+      await page.getByTestId('field-y').fill('4');
+      await page.getByTestId('field-width').fill('3,9');
+      await page.getByTestId('field-depth').fill('0,6');
+      await page.getByTestId('field-height').fill('2,1');
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+
+      await page.getByTestId(`stock-drawing-${code}`).click();
+      await page.getByTestId('stock-drawing-repeat').click();
+      await expect(page.getByTestId('stock-repeat-panel')).toBeVisible();
+
+      // Opened on the next code and this company's own aisle width, both of which the person may change.
+      await expect(page.getByTestId('stock-repeat-code')).toHaveValue(`${stem}2`);
+      await page.getByTestId('stock-repeat-count').fill('3');
+      await page.getByTestId('stock-repeat-spacing').fill('0,6');
+
+      // What will be created, said before it is created — these are stock locations and not only shapes.
+      await expect(page.getByTestId('stock-repeat-codes')).toHaveText(
+        `${stem}2, ${stem}3, ${stem}4`,
+      );
+
+      // Refused HERE and not by the API: three metres of free floor between each copy, going up from y = 4, puts
+      // the second one past the floor's own edge. The canvas asks for exactly this — "refusée avant, pas après" —
+      // so the button is disabled and the reason is on the screen before anything is sent.
+      await page.getByTestId('stock-repeat-way-up').click();
+      await page.getByTestId('stock-repeat-spacing').fill('3');
+      await expect(page.getByTestId('stock-repeat-save')).toBeDisabled();
+      await expect(page.getByTestId('stock-repeat-summary')).toContainText('sol');
+
+      await page.getByTestId('stock-repeat-way-down').click();
+      await page.getByTestId('stock-repeat-spacing').fill('0,6');
+      await expect(page.getByTestId('stock-repeat-save')).toBeEnabled();
+
+      // The preview the person is about to accept, read straight off the plan as it now stands.
+      const previewed = await page
+        .locator('[data-testid^="stock-repeat-preview-"]')
+        .evaluateAll((nodes) =>
+          nodes.map((node) => ({ x: node.getAttribute('x'), y: node.getAttribute('y') })),
+        );
+      expect(previewed).toHaveLength(3);
+
+      await page.getByTestId('stock-repeat-save').click();
+      await expect(toast(page)).toContainText('Rayonnages créés');
+
+      // The three copies are on the plan's list, each under its own code.
+      for (const at of [2, 3, 4]) {
+        await expect(page.getByTestId(`stock-drawing-${stem}${at}`)).toBeVisible();
+      }
+
+      // Read back off the plan itself, by the rectangles' own metres, and compared with the preview.
+      await page.reload();
+      await page.getByRole('button', { name: floorName, exact: true }).click();
+      // `evaluateAll` does not wait, so the count is asserted first: the source rectangle and the three copies.
+      await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveCount(4);
+      const drawnNow = await page
+        .locator('svg[data-testid="stock-map-svg"] rect')
+        .evaluateAll((nodes) =>
+          nodes.map((node) => ({ x: node.getAttribute('x'), y: node.getAttribute('y') })),
+        );
+      for (const copy of previewed) {
+        expect(
+          drawnNow,
+          'every rectangle the preview showed was created exactly where it was shown',
+        ).toContainEqual(copy);
+      }
+
+      // And each copy is a stock location of its own, ready for goods rather than a picture of one.
+      await page.goto('/stock/locations');
+      for (const at of [2, 3, 4]) {
+        await expect(page.getByTestId(`stock-location-${stem}${at}`)).toBeVisible();
+      }
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName, stem);
     }
   });
 });

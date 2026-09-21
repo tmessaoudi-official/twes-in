@@ -17,6 +17,7 @@ import type {
   StockMovementSearch,
   StockOptions,
   StockProductOption,
+  StockRepeatInput,
   StockSearch,
 } from './inventory-types';
 
@@ -252,6 +253,25 @@ export class InventoryFacade {
     return this.write(
       () => this.api.eraseDrawing(companyId, drawingId),
       () => this.afterDrawing(companyId, floorId),
+    );
+  }
+
+  /**
+   * Repeats a rectangle down an aisle. It creates stock LOCATIONS as well as rectangles, so the locations are read
+   * again with the floor — otherwise the new racks would be missing from every picker on the screen that just made
+   * them, including the one the next rectangle would be drawn for.
+   */
+  async repeatDrawing(
+    companyId: string,
+    floorId: string,
+    drawingId: string,
+    input: StockRepeatInput,
+  ): Promise<boolean> {
+    return this.write(
+      () => this.api.repeatDrawing(companyId, drawingId, input),
+      async () => {
+        await Promise.all([this.afterDrawing(companyId, floorId), this.reloadLocations(companyId)]);
+      },
     );
   }
 

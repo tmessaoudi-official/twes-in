@@ -19,6 +19,7 @@ use App\Venue\Application\VenueLevelTaken;
 use App\Venue\Application\VenueSpotNotFound;
 use App\Venue\Domain\InvalidVenue;
 use App\Venue\Domain\PlanRect;
+use App\Venue\Domain\PlanWay;
 use App\Venue\Domain\VenueArea;
 use App\Venue\Domain\VenueSpot;
 use Symfony\Component\Uid\Uuid;
@@ -38,6 +39,13 @@ use Symfony\Component\Uid\Uuid;
  */
 final readonly class DrawStockMap
 {
+    /**
+     * How many copies one repeat may make. A typo guard, not a rule about warehouses: fifty racks in a single gesture
+     * is already far more than anyone draws deliberately, and a mistyped count would otherwise write hundreds of
+     * stock locations that then have to be deleted one at a time.
+     */
+    public const int REPEAT_LIMIT = 50;
+
     public function __construct(
         private ArrangeVenue $venue,
         private ManageStockLocations $locations,
@@ -171,6 +179,141 @@ final readonly class DrawStockMap
 
             return $bound;
         });
+    }
+
+    /**
+     * Repeats a rectangle down an aisle: N more of it, each one spacing further than the last, and each one a STOCK
+     * LOCATION as well as a rectangle (docs/SPEC.md row 83; the approved canvas's Repeat board). Nobody draws sixteen
+     * identical racks one at a time, and a rack that is drawn but does not exist is a picture, not a place.
+     *
+     * Everything is checked BEFORE the first write — the canvas says so in its own words, "une copie qui sortirait du
+     * sol est refusée avant, pas après" — so a repeat that cannot finish leaves the plan exactly as it was. The three
+     * things that can stop it are the count, a copy that would step off the floor, and a code already taken; all are
+     * decided from the plan as it stands, before a single location exists.
+     *
+     * `$spacing` is the FREE FLOOR between two rectangles, not the distance between their near edges: zero means back
+     * to back, and no value a person can type makes two copies overlap. The approved canvas's own arrow measures the
+     * pitch instead; this is the one departure from it, recorded in docs/SPEC.md § 7 with its reason.
+     *
+     * @return list<StockLocation> the copies, in the order they were placed, each with its rectangle
+     *
+     * @throws VenueSpotNotFound
+     * @throws StockLocationNotFound
+     * @throws StockLocationCodeTaken
+     * @throws InvalidVenue
+     * @throws InvalidStockLocation
+     */
+    public function repeat(Company $company, Uuid $drawingId, int $count, string $spacing, PlanWay $way, string $firstCode, ?Uuid $actorUserId): array
+    {
+        if ($count < 1 || $count > self::REPEAT_LIMIT) {
+            throw new InvalidVenue('count', \sprintf('A repeat makes between 1 and %d more of a rectangle.', self::REPEAT_LIMIT));
+        }
+        $gap = PlanRect::distance('spacing', $spacing, false);
+        $spot = $this->venue->spot($company, $drawingId);
+        $source = $this->drawnAt($company, $spot)[0]
+            ?? throw new StockLocationNotFound('This rectangle is drawn for no location, so there is nothing to repeat.');
+
+        // Resolved in full before anything is written: the rectangles first, because a step off the floor is refused
+        // by PlanRect itself, then the codes, which are the other way a repeat can turn out to be impossible.
+        $rects = $this->steps($spot->getRect(), $count, $gap, $way);
+        $codes = $this->codes($company, $source, $firstCode, $count);
+
+        $floorId = $spot->getArea()->getId();
+
+        return $this->transactions->run(function () use ($company, $source, $floorId, $rects, $codes, $actorUserId): array {
+            $copies = [];
+            foreach ($rects as $at => $rect) {
+                $copy = $this->locations->create(
+                    $company,
+                    $source->getEstablishment()->getId(),
+                    $source->getParent()?->getId(),
+                    $source->getKind(),
+                    $codes[$at],
+                    $source->getName(),
+                    $actorUserId,
+                );
+                $copies[] = $this->draw($company, $floorId, $copy->getId(), $rect, $actorUserId);
+            }
+
+            return $copies;
+        });
+    }
+
+    /**
+     * Where each copy lands. The step runs along the FLOOR's axis, and its size is the side the rectangle actually
+     * covers along that axis — a rack turned a quarter turn is as wide across the floor's y as it is deep across x.
+     *
+     * Only the four right angles are allowed, and that is not squeamishness: their sines and cosines are whole
+     * numbers, so bcmath here and the screen's preview agree exactly. At any other angle the two would part company
+     * in the third decimal, and a preview that does not show what will be created is worse than none.
+     *
+     * @param numeric-string $gap the free floor between two copies, as `PlanRect::distance()` normalized it — the
+     *                            signature says so because a plain `string` reaching bcmath is how a value that was
+     *                            never validated gets there
+     *
+     * @return list<PlanRect>
+     *
+     * @throws InvalidVenue when a copy would step off the floor, naming the side it left by
+     */
+    private function steps(PlanRect $rect, int $count, string $gap, PlanWay $way): array
+    {
+        if (0 !== $rect->rotation % 90) {
+            throw new InvalidVenue('rotation', 'A rectangle is repeated from a quarter turn: 0, 90, 180 or 270 degrees.');
+        }
+        $turned = 0 !== ($rect->rotation / 90) % 2;
+        $across = $way->isVertical() === $turned ? $rect->width : $rect->depth;
+        $pitch = bcadd($across, $gap, PlanRect::SCALE);
+
+        $steps = [];
+        for ($made = 1; $made <= $count; ++$made) {
+            $away = bcmul($pitch, (string) $made, PlanRect::SCALE);
+            $moved = $way->isBackwards() ? bcsub($way->isVertical() ? $rect->y : $rect->x, $away, PlanRect::SCALE) : bcadd($way->isVertical() ? $rect->y : $rect->x, $away, PlanRect::SCALE);
+            // A copy stepped past the floor's own corner is refused here, by the side it left by: PlanRect knows no
+            // distance below zero, so `-0.800` never becomes a rectangle in the first place.
+            $steps[] = $way->isVertical()
+                ? new PlanRect($rect->x, $moved, $rect->width, $rect->depth, $rect->rotation, $rect->height)
+                : new PlanRect($moved, $rect->y, $rect->width, $rect->depth, $rect->rotation, $rect->height);
+        }
+
+        return $steps;
+    }
+
+    /**
+     * The codes the copies will carry: the first as it was typed, then its number counted on, keeping the width it
+     * was written with so `R01` is followed by `R02` and not by `R2`.
+     *
+     * @return list<string>
+     *
+     * @throws InvalidStockLocation   when the first code has no number to count on from
+     * @throws StockLocationCodeTaken naming the code that is already in use
+     */
+    private function codes(Company $company, StockLocation $source, string $firstCode, int $count): array
+    {
+        $first = trim($firstCode);
+        if (1 !== preg_match('/^(.*?)([0-9]+)$/', $first, $found)) {
+            throw new InvalidStockLocation('firstCode', 'A repeat counts on from a code ending in a number, such as R2.');
+        }
+        [, $stem, $number] = $found;
+        $width = \strlen($number);
+
+        $codes = [];
+        $taken = [];
+        foreach ($this->locations->list($company) as $location) {
+            if ($location->getEstablishment()->getId()->equals($source->getEstablishment()->getId())) {
+                $taken[$location->getCode()] = true;
+            }
+        }
+        for ($made = 0; $made < $count; ++$made) {
+            // Padded back to the width it was typed with, and never truncated: R99 is followed by R100.
+            $code = $stem.str_pad((string) ((int) $number + $made), $width, '0', \STR_PAD_LEFT);
+            if (isset($taken[$code])) {
+                throw new StockLocationCodeTaken($code);
+            }
+            $taken[$code] = true;
+            $codes[] = $code;
+        }
+
+        return $codes;
     }
 
     /**

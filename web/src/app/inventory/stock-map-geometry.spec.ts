@@ -11,6 +11,7 @@ import {
   planViewBox,
   pointerMetres,
   centredIn,
+  repeatedFrom,
   resizedTo,
   tracedTo,
   SNAP_DEGREES,
@@ -366,5 +367,62 @@ describe('centredIn', () => {
   /** It carries the size through exactly: a company's 3,90 m rack is posed at 3,90, never re-measured. */
   it('never snaps the size it was given', () => {
     expect(centredIn(frame, 3.9, 0.6)).toMatchObject({ width: 3.9, depth: 0.6 });
+  });
+});
+
+describe('repeatedFrom', () => {
+  const rack: PlanRectangle = { x: 1, y: 4, width: 3.9, depth: 0.6, rotation: 0, height: 2.1 };
+
+  /**
+   * The screen's mirror of what the API will create. It exists so the dotted preview shows what is about to be
+   * made rather than an approximation of it: if these two ever disagreed, the person would accept one plan and get
+   * another. The spacing is the FREE FLOOR between two rectangles, so the pitch is the rack's own depth plus it.
+   */
+  it('steps down the floor by the rectangle’s depth plus the free floor between', () => {
+    expect(repeatedFrom(rack, 3, 0.6, 'down').map((one) => one.y)).toEqual([5.2, 6.4, 7.6]);
+    expect(repeatedFrom(rack, 3, 0.6, 'down').map((one) => one.x)).toEqual([1, 1, 1]);
+  });
+
+  it('steps sideways by the width instead, and backwards for up and left', () => {
+    expect(repeatedFrom(rack, 1, 0.6, 'right')[0]?.x).toBe(5.5);
+    expect(repeatedFrom(rack, 1, 0.6, 'left')[0]?.x).toBe(-3.5);
+    expect(repeatedFrom(rack, 1, 0.6, 'up')[0]?.y).toBe(2.8);
+  });
+
+  /** A quarter turn swaps which side the rectangle covers along each axis, exactly as the API's own step does. */
+  it('steps a turned rectangle by the side it actually covers', () => {
+    const turned = { ...rack, rotation: 90 };
+
+    expect(repeatedFrom(turned, 1, 0.6, 'down')[0]?.y).toBe(8.5);
+    expect(repeatedFrom(turned, 1, 0.6, 'right')[0]?.x).toBe(2.2);
+    expect(repeatedFrom(turned, 1, 0.6, 'down')[0]?.rotation).toBe(90);
+  });
+
+  /**
+   * Only the four right angles. The API refuses anything else because their sines and cosines are whole numbers and
+   * bcmath and JavaScript then agree exactly; here that refusal shows as no preview at all, which is what the
+   * screen needs to disable the button rather than offer a repeat that would be refused.
+   */
+  it('gives nothing back for an angle that is not a quarter turn', () => {
+    expect(repeatedFrom({ ...rack, rotation: 30 }, 3, 0.6, 'down')).toEqual([]);
+    expect(repeatedFrom(rack, 0, 0.6, 'down')).toEqual([]);
+    expect(repeatedFrom(rack, -2, 0.6, 'down')).toEqual([]);
+  });
+
+  /** Typed and not dragged, so no magnet: a spacing of 0,1 m is taken as 0,1 and never rounded to the quarter. */
+  it('takes the spacing exactly as it was typed', () => {
+    expect(repeatedFrom(rack, 2, 0.1, 'down').map((one) => one.y)).toEqual([4.7, 5.4]);
+  });
+
+  /** Every copy is the size of what it was copied from: a repeat arranges racks, it does not re-measure them. */
+  it('carries the size and the height through unchanged', () => {
+    expect(repeatedFrom(rack, 1, 0.6, 'down')[0]).toEqual({
+      x: 1,
+      y: 5.2,
+      width: 3.9,
+      depth: 0.6,
+      rotation: 0,
+      height: 2.1,
+    });
   });
 });

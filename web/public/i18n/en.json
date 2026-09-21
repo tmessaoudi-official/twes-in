@@ -1477,6 +1477,30 @@
         "zone": "Zone",
         "aisle": "Aisle",
         "dock": "Dock"
+      },
+      "repeat": "Repeat",
+      "repeat_of": "Repeat {{code}}",
+      "repeat_count": "How many more",
+      "repeat_spacing": "Spacing (m)",
+      "repeat_spacing_hint": "The free floor between two rectangles. Zero puts them back to back.",
+      "repeat_way": "Direction",
+      "repeat_first_code": "Code of the first copy",
+      "repeat_will_create": "{{count}} stock locations and their rectangles:",
+      "repeat_off_floor": "A copy would leave the floor. Change the direction, the spacing or the count.",
+      "repeat_incomplete": "Give a count, a spacing and a code ending in a number.",
+      "repeat_create": "Create the {{count}}",
+      "repeated": "Racks created",
+      "ways": {
+        "up": "up",
+        "down": "down",
+        "left": "left",
+        "right": "right"
+      },
+      "way_glyphs": {
+        "up": "↑",
+        "down": "↓",
+        "left": "←",
+        "right": "→"
       }
     }
   },
