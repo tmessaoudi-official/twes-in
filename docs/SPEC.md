@@ -1189,6 +1189,469 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   proposal in a real browser — the pristine/dirty rule is asserted against the form control, not against a click on
   a `mat-select`.
 
+- [2026-09-21 10:40] AGREED: **the drawn map's eight decisions, approved on the canvas** (row 83, web half; the
+  canvas is "The Drawn Stock Map", seven artboards, its `Model.dc.html` board holding these verbatim). The rule of
+  19/09 is that a design is drawn and approved before it is written, and this is that approval.
+  **(1) A floor is the canvas.** Site, building and floor are not drawn: the floor IS the plan, and zones and racks
+  are rectangles on it. **(2) A bin is not on the plan** — it is placed in its rack's FRONT view, by column and
+  level, and has no x, y on the ground. **(3) Metres, snapped to the quarter-metre**, rotation in 15° steps: a plan
+  holds metres and never pixels, because a photo is rescanned and recropped over a building's life while the
+  building does not move. **(4) The floor image is a `Files` record** per floor, with its opacity and two
+  calibration points that give the scale — calibration rather than a fixed scale, because no two scans agree.
+  **(5) Height and level sit on the rectangle**: height feeds the 3D and answers whether a pallet truck clears it,
+  level orders the floor. **(6) The 3D only LOOKS** — Three.js, MIT, recorded in `THIRD-PARTY-NOTICES.md` in the
+  same commit, loaded only when the view is opened; everything the map does is doable in 2D, so the 3D is never the
+  only way to reach anything. **(7) 2D or 3D is a per-person PREFERENCE**, `presentation.stock-map-view`, through
+  the settings chain like the folded menu. **(8) The phone reads, it does not draw**: search, highlight and opening
+  a rack work on it; editing the plan asks for a wide window.
+  Out of this row on purpose: an optimised picking route, a plan spanning several establishments, drawing an
+  individual bin on the top-down view, and editing the plan on a phone. Row 74 (stock moves) is delivered and the
+  map needs it; rows 57 (running totals) and 63 (scanner) are not, and the map reads without them — it joins them
+  later for a live quantity and for scanning.
+
+- [2026-09-21 13:44] AGREED: **a line moves stock the first time a document claims the goods left, and a later
+  document naming the same goods moves nothing.** One rule in both directions, per LINE, not per document. Today
+  only a validated delivery note moves stock, so an invoice billed over the counter with no note behind it leaves
+  the goods on the shelf forever, and a credit note refunds money while nothing in the inventory module references
+  credit notes at all — both verified in the code, both live defects rather than missing features. Four consequences.
+  **(1)** Issuing an invoice moves stock for the lines no note covers — `InvoiceLine::$sourceDeliveryNoteLineId` is
+  null — out of the product's home location falling back to the establishment default, and a credit note reverses
+  what its invoice moved. **(2)** `StockMovement` already carries `sourceType` + `sourceId`, so the movement names
+  the invoice or the credit note as its cause and the stock screen links straight to it: the auditability wanted
+  from "only a delivery note moves stock" comes from ATTRIBUTION, not from forcing every movement through one
+  document type. Two constants, not a new column. **(3)** An issued invoice can generate a delivery note ON DEMAND,
+  in `draft`, for the case the flow does not cover — the bill was raised first and the goods are going out now, so
+  the driver needs something to carry and get signed. It is generated from an ISSUED invoice only, because a draft
+  invoice's lines still change and a hand-over document drawn from one goes stale; it lands in draft so a human
+  fills in who received the goods, and under the rule above its already-moved lines move nothing. **(4)** A TASK or
+  time line needs NO exception: the rule is that a stock-tracked product's line moves stock, and a time line has no
+  such product, so it moves nothing by itself; a job that consumed materials carries those as ordinary lines, which
+  move like any other. Rejected: the invoice AUTO-creating a delivery note. It fabricates the assertion a note
+  exists to make — that goods were handed over, soon with a receiver's name and a delivery instant, which § "never
+  invent a receiver" forbids — it does not avoid the uncovered-lines computation, which is the whole of the work and
+  already exists, there is no honest status for it to land in, and crediting the invoice would have to unwind a
+  numbered document that should never have been written. The same conclusion the developer's own earlier fork
+  reached: rejected, then re-adopted opt-in only, with the original reasons standing. An opt-in per-company auto-draft
+  remains additive and is not in this ruling.
+
+- [2026-09-21 14:20] AGREED: **a global discount is a ROW of its own, never a reduction of a line's net.** Today
+  a line's frozen net is before the document discount while its frozen tax is charged on the base after it, so
+  `lineGross = lineNet + lineTax` mixes two levels: two lines of 100.000 at 19 % with a 20.000 document discount
+  freeze 117.100 each, summing to 234.200 against a correct document total of 214.200 — overstated by exactly the
+  discount — and each line's share of that discount is computed by `DocumentCalculator` and then DROPPED by
+  `InvoiceFigures::of`, so it cannot be recovered from an issued row. Anchored on EN 16931 / Peppol BIS 3.0
+  [Verified 2026-09-21 against docs.peppol.eu]: **BT-116** (VAT category taxable amount) = Σ **BT-131** (line net
+  amounts) + **BT-99** − **BT-92**, and a document-level allowance carries **its own VAT category code (BT-95) and
+  rate** — so line nets are never touched and the discount is one entry per category. Six parts. **(1)** A LINE
+  discount stays inside the line, shown on its row as `remise`, and is what BT-131 means; the global discount never
+  sees it. **(2)** The global discount is allocated across **LINES** in proportion to their nets AFTER their own
+  line discounts — one share per line, so a line carrying several tax components is never counted twice — which is
+  what `allocateDocumentDiscount` already does. **(3)** Presentation groups the rows by each line's **full SET of
+  tax components**, not by individual component: grouping by component double-counts a line carrying VAT plus a levy
+  that enters the VAT base, measured at 0.002 off on a three-combination invoice. A group whose share is zero prints
+  no row. **(4)** Line tax is the line's part of its group's tax computed on the UNDISCOUNTED base, allocated by
+  largest remainder so line taxes sum to it exactly; the true VAT is authoritative and the rows carry the whole
+  difference, allocated **ONCE at document level** — nested per-component roundings drift, a single allocation is
+  exact by construction. **(5)** Every column reconciles: Σ line HT + Σ row HT = total HT, same for TVA and TTC, and
+  the rows sum to the amount typed. Verified numerically over 14 cases (single/two/three rates, exempt-only, line
+  discount together with global, an indivisible 7.000 over three lines, overlapping tax groups, nasty remainders, a
+  discount equal to the subtotal, no discount) — the model script lives only in the session scratchpad, so the
+  fixtures are rebuilt as real tests. **(6)** Frozen AT ISSUE: per line (net, tax on its own base, TTC) and per
+  group (the allowance's HT and tax), alongside the totals, so no issued document is re-derived by a later
+  calculator. Blast radius: the shared `Fiscal/Domain/Calculation` calculator, so delivery notes and credit notes
+  freeze the same way; pre-production rows are recomputed in the migration. **UNCERTIFIED-BY-EXECUTION**: the
+  tax-INCLUSIVE entry path and the Tunisian withholding interaction were not exercised numerically and get failing
+  tests of their own before the calculator is touched. This makes the partial-credit-note discount defect FIXABLE —
+  a credit note can prorate each group's allowance by the credited fraction of that group's base — it does not fix it.
+
+- [2026-09-21 14:35] AGREED: **the rows-per-page chooser is always reachable, and the chosen size is remembered per
+  person through the settings chain, one key for every list.** The chooser already EXISTS — `ListDescriptor.pageSizes`,
+  `DataList.pageSize`, the `size` URL parameter — and was reported missing by a first research pass and by the
+  developer alike, because `data-list.ts`'s `paged` is `total > pageSizes[0]`, so the whole footer renders only once
+  a list exceeds its SMALLEST page: a list offering 25/50/100 shows nothing at 25 rows and the chooser can never be
+  reached to ask for more. The footer therefore shows whenever a list can be paged at all. The size becomes a
+  `presentation.*` key on the settings chain, declared in the registry like `presentation.stock-map-view`, so it
+  follows a person across devices rather than living in one URL. Rejected: one key per list — a single habit and a
+  single place to change it beat per-screen memory here; the URL parameter stays, so a shared link still carries the
+  size it was taken with.
+
+- [2026-09-21 14:55] AGREED: **three order documents, because a bon de commande is issued by whoever BUYS.** A quote
+  to a client is a **devis**, our offer, binding our price until a validity date — the biggest hole in the product
+  today and ranked first by the documents pass independently. A client committing to buy signs a **commande client**:
+  we print the form because we hold the specs and the price, but the signature that makes it an order is HIS, and it
+  is the contract rather than an estimate — it carries his own order reference, the agreed delivery date and the
+  acompte. A **bon de commande fournisseur** is what WE issue to a vendor, with PARTIAL receipts so a half-delivered
+  order stays open. Chain: devis → commande client → bon de livraison → facture for selling; bon de commande →
+  receipt → dépense for buying. Four consequences. **(1)** A devis converts WHOLLY OR PARTLY into a commande, and
+  more than once — a kitchen quoted together is ordered as units now and a worktop in March. **(2)** Devis and
+  commande are therefore SEPARATE records with separate numbering, not one record with two faces: one record cannot
+  split, and a devis that never became an order would burn numbers in the order series. Independently required by
+  the repo's own sourced rule that invoices run in an uninterrupted series (art. 18-II, `docs/fiscal/TN.md` § 11)
+  with one series per document type. **(3)** An **acompte** is money received before any invoice exists, which
+  twes-in cannot hold today — payments attach to invoices only. It takes one of two forms and **the fiscal preset
+  decides which**, never hardcoded: a `reçu d'acompte` where VAT is not yet due, or a `facture d'acompte` — a real
+  numbered invoice carrying VAT on the deposit — where it is. The final invoice deducts whichever was issued, net
+  AND tax, or the VAT is charged twice. **(4)** A commande client for the counter case is never raised: a shop
+  selling across a counter goes straight to the invoice, and the earlier "no commande client" recommendation was
+  reasoning from that shape alone — the car-dealer case (goods ordered, deposit taken, delivered later) is the
+  ordinary shape for a kitchen, tiles or a machine to bring in, and is what overturned it.
+  **UNCERTIFIED — LEGAL**: this session's web-search budget was spent, and `docs/fiscal/TN.md` carries nothing on
+  devis, bon de commande or acompte. Recalled and UNVERIFIED, to be confirmed with citations added to that file
+  BEFORE the acompte ships: that the taxable event is delivery for goods and collection for services (so an acompte
+  on a service makes VAT due at once), the arrhes/acompte distinction under the Code des obligations et des contrats,
+  and any mandatory mentions a signed bon de commande must carry. The design is preset-driven precisely so the
+  answer is data rather than code.
+
+- [2026-09-21 15:20] AGREED: **the sidebar is four groups in the order the business runs — Stock · Ventes · Achats ·
+  Travail — with lifecycle order inside each.** Signed off against a drawn design, not prose
+  (`https://claude.ai/artifact/DyhxgaUad8vDCA97r1DyLH`, four artboards: libellée ≥ 1200 px, rail 600–1199,
+  téléphone, feuille Plus). Entries: Accueil, then **Stock** (Produits, Stock — a product exists before there is
+  stock of it), **Ventes** (Clients, Devis, Commandes, Bons de livraison, Factures), **Achats** (Fournisseurs, Bons
+  de commande, Dépenses), **Travail** (Tâches). Today's `MODULE_NAV` order is Invoices, Customers, Products,
+  DeliveryNotes, Inventory, Vendors, Expenses — a flat list in no stated order. Four consequences. **(1)** The
+  grouping is what makes the developer's lifecycle order survive the new documents: flat, it would be THIRTEEN
+  entries, and the rail collapses to unlabelled icons below 1200 px where thirteen stop being scannable. **(2)**
+  `NavSection` gains the four sidebar sections; `SIDEBAR_SECTIONS` is `['main']` today, so the shell renders one
+  group and the manifest's section machinery already exists. **(3)** **Récurrentes are a TAB inside Factures and
+  Dépenses, never a menu entry** — a recurring invoice is a template that emits invoices, so it belongs beside them,
+  and that is what holds the count at eleven. **(4)** On the phone the bottom bar carries FOUR tabs plus Plus, chosen
+  by FREQUENCY — Accueil, Stock, Factures, Clients — and the Plus sheet repeats the same four groups. This is the one
+  place the lifecycle rule is deliberately broken: eleven entries cannot fit a bottom bar, and standing in the shop
+  what matters is what is opened most. The group named Stock containing an entry named Stock is accepted as drawn;
+  `Catalogue` was offered and declined.
+
+- [2026-09-21 15:45] AGREED: **who received the goods is recorded on the delivery note, and who received the invoice
+  on the invoice, both behind their own setting.** The note already records a delivery DATE (`DeliveryNote::$deliveryDate`,
+  set by `DeliveryNoteWorkflow::deliver()`); what is missing is the PERSON, and the printed note carries a dashed
+  empty box waiting for one (`api/templates/pdf/delivery_note.html.twig:154`). Four parts. **(1)** The receiver is a
+  SEARCHABLE list of the customer's contacts with a free-text fallback for a name that is not one — a driver or a
+  storeman at a loading dock usually is not on file, and forcing a contact would mean inventing one; preferring a
+  real contact where there is one keeps a repeat receiver consistent and makes "everything this person signed for"
+  answerable. **(2)** The stored value is a SNAPSHOT of the name, not only a link: a contact renamed or deleted later
+  must not change what a signed document says, which is the pattern the customer snapshot already follows.
+  **(3)** A TIME is added beside the existing day, so "delivered" says when. **(4)** Printing is a setting, and so is
+  the invoice's — the invoice's receiver is a SEPARATE fact with its own wording (`remis à … le …`), never the same
+  field: a delivery note proves GOODS changed hands, an invoice arriving is a DOCUMENT reaching someone, and one
+  field for both leaves no way to tell later which a name meant. Both follow `delivery_note.show_prices`'s shape —
+  `SettingChain::Parties`, overridable at Company, CustomerGroup, Customer and Document. Tracking which contact an
+  invoice was SENT to and when it was opened stays a separate, still-wanted thing, not an alternative to this.
+  **AMENDED 16:40**: the Document level named above does not work yet — see the 16:40 ruling. These two settings
+  are declared with it, and land only once that level exists.
+
+- [2026-09-21 16:40] AGREED: **the `Document` and `DocumentLine` setting levels are implemented, not withdrawn.**
+  Both exist as `SettingLevel` cases and both are unreachable: `SettingAddress` has no factory for them and
+  `SettingContext::addressOf()` has no arm, so they fall to `default => null` — skipped on every read and refused
+  on every write, silently. FOUR definitions already advertise them, `delivery_note.show_prices` among them, so the
+  "four levels" that setting is credited with have always been three, and the two receiver settings agreed at 15:45
+  were about to be declared the same way. Implementing them means a `documentId` and `documentLineId` on
+  `SettingContext` and the matching addresses, so ONE invoice or ONE delivery note can answer differently from its
+  customer's default — this note hides prices, that one prints the receiver box — which is what "per document"
+  was always meant to mean. Withdrawing them was offered and declined. This also closes a class of silent refusal:
+  a level that cannot be addressed must never be declarable, so the catalogue should refuse a definition naming a
+  level no context can reach, rather than accepting it and failing at write time.
+
+- [2026-09-21 15:55] AGREED: **settings are configurable by default, and each one is decided together when it comes
+  up** — the developer's posture, taken over the author's proposed earn-its-place gate. The risks were put and
+  accepted: combinations that cannot all be tested (ten switches are 1,024 states); branches nobody exercises until
+  a customer finally flips one; support questions unanswerable without a customer's whole settings state; and
+  Hyrum's Law, a shipped switch being permanent. PERFORMANCE IS NOT among them for catalogue SIZE — `ResolveSettings::stored()`
+  fetches every setting on a chain's addresses in ONE repository call and resolves in memory, so 200 keys cost the
+  same query shape as 4. Four additions to the engine, which is otherwise kept as it is (typed definitions that
+  refuse their own bad default, four ordered chains, per-level write restriction, modules declaring their own keys
+  via `DeclaresSettings`, duplicate keys throwing at boot, `ResolvedSetting` already answering where a value comes
+  from). **(A) `requires`** — a definition applies only when another setting holds a given value: the screen hides
+  the control, the resolver returns the declared default when the requirement is unmet so code never meets an
+  impossible state, and the test matrix enumerates only REACHABLE combinations. This is what makes the chosen
+  posture survivable. **(B) Lifecycle, `deprecated` + `replacedBy`** — a retired key still resolves so stored data
+  keeps working, writes are refused, the screen hides it, and a migration maps old values onto the replacement. This
+  is what keeps the posture from being a one-way door, and it is cheap on 4 keys and brutal across 200.
+  **(C) The fiscal preset as a SOURCE of defaults**, consulted before the definition's PHP literal, so a country
+  changes a default while an untouched company still reads "unset" and reset-to-default lands on the country's
+  answer. A source, not a fifth level: a preset stores nothing of its own. **This is a gap the acompte ruling of
+  14:55 already depends on** — nothing in `api/src/Fiscal` declares or reads a setting today, so "the fiscal preset
+  decides which form" has no mechanism. **(D) Request-scoped memoisation** — measured, not theoretical:
+  `PrintDeliveryNote` issues THREE queries for three keys over identical addresses (`:94`, `:95`, `:102`) with four
+  keys in the catalogue. Request-scoped only, never process-scoped: a write must be visible at once, and § 7 names
+  FrankenPHP worker mode as a later step. Order: A, B and D before any new key; C when the acompte lands.
+  Catalogue metadata and screens at 200 keys — groups, ordering, help text, search, starting profiles per trade,
+  export and import — are real but change no engine shape and are not in this ruling. One rule that is not code:
+  **never let one function answer both "show it?" and "show what?"** — that is precisely the defect that printed a
+  labelled empty row for a company with the setting off. Still owed: an enumerated review of every existing key and
+  every hardcoded presentation choice, config or hardcoded, as its own pass now that the model is settled.
+
+- [2026-09-21 16:10] AGREED: **the settings list gets its own fold trigger, docked on the list and available below
+  1200 px.** The fold itself is NOT missing and was nearly reported as such: `presentation.sidebar-settings` exists,
+  defaults to `rail`, is read by `ThemeFacade` (`:64`, `:111`) and `app-shell.ts:190`, and each area remembers its own
+  answer so folding the settings list does not overrule the main menu. What is missing is DISCOVERABILITY and reach:
+  the only trigger is the shared top-bar menu button, which renders `@if (windowClass() === 'expanded')`
+  (`app-shell.html:111`), so a 1100 px laptop can fold nothing and the button never looks like it belongs to the
+  settings list. A small fold button goes on the list's own top edge and the fold works at the rail width too; the
+  top-bar button and the `[` shortcut keep working, and the remembered per-area state is unchanged.
+  **AMENDED 16:35, and the amendment is the substance:** the fold state is NOT remembered.
+  `presentation.sidebar-settings` is registered in the WEB registry (`settings-registry.ts:69`) and declared
+  NOWHERE in `api/src` — `PresentationSettings` yields `presentation.sidebar` and no twin — so `ChangeSettings`
+  throws `UnknownSetting` and `api-settings.ts:102` swallows it under a comment saying the page keeps the choice
+  until it is reloaded, which for this one key is what happens every time. The toggle works within a session; the
+  preference dies on reload. The fix is one `SettingDefinition` beside `presentation.sidebar`. (The author reported
+  this key as dead, then corrected that to "already built"; both were wrong, and only the enumerated review settled
+  it — a reminder that a grep over the web alone cannot tell whether a setting PERSISTS.)
+
+- [2026-09-21 16:10] AGREED: **the platform page becomes tabs, with the chosen tab in the URL.** It is one 461-line
+  template stacking five sections — signup, companies awaiting approval, companies, payments, accounts. They become
+  tabs, and the tab is written to the address so a reload, a bookmark and a link all land where the person was:
+  acting on a company and being returned to the first tab is the annoyance tabs usually introduce, and the URL is
+  what prevents it. A route per section was offered and declined as changing the area's shape rather than its
+  presentation.
+
+- [2026-09-21 16:20] AGREED: **delivery notes may be added to a DRAFT invoice, and an issued one refuses them.**
+  Consolidating many notes into a NEW invoice already works — `InvoiceDeliveryNotes::draftInvoice()` takes a list of
+  note ids and returns one draft, each invoice line keeping `sourceDeliveryNoteLineId`. What is added is the other
+  half: merging notes into an invoice that already exists. A draft has no number and nothing fixed, so the lines
+  merge in; an issued invoice is a numbered document in an uninterrupted series (`docs/fiscal/TN.md` § 11) and is
+  refused with a reason naming the alternative — consolidate the remaining notes into a new invoice. Offered and
+  declined for now: adding to an issued invoice through the correction path, and treating "unpaid" as "still open".
+  The developer noted they may revisit this, so the rule lives in ONE place that names its reason rather than being
+  spread across the merge path — relaxing it later must be a change to that rule, not a hunt.
+
+- [2026-09-21 16:55] AGREED: **a setting may never be able to take an illegal value — so where the law fixes the
+  answer it is CODE, where the law differs by country it is a PRESET default, and only where the law is silent is it
+  a COMPANY setting.** This refines the 15:55 posture rather than replacing it: "configurable by default" still
+  governs the third tier, which is most decisions. It exists because the developer's two requirements — everything
+  configurable, everything compliant — cannot both be unconditional: a switch that can be set to a non-compliant
+  value IS the compliance hole. A legal answer carries its citation in `docs/fiscal/<CC>.md`; a country difference
+  is addition (C) of the 15:55 ruling, the preset as a source of defaults. Offered and declined: making the tier a
+  declared field on every `SettingDefinition` with a gate refusing a mis-tiered one — worth revisiting if the
+  catalogue drifts. Applied at once to three lock points, which are NOT the same kind of thing. **A task is an
+  internal record of work with no law over it**: locking it once invoiced is a SETTING, defaulting to locked,
+  because an edited task silently desynchronises the invoice from the record of work. **An issued invoice is fixed
+  and that is not a preference**: invoices carry a number from an uninterrupted series (art. 18-II,
+  `docs/fiscal/TN.md` § 11), so no switch may make an issued invoice editable — a correction is a credit note or a
+  corrective invoice, which leaves a trail. What IS configurable is the run-up: approval before issue, who may
+  issue, whether issuing asks for confirmation. **A delivery note is in between**: its number is allocated at
+  `validated`, so its identity is fixed from then on, but it is a commercial and transport document rather than a
+  fiscal declaration — the setting there is whether validating also means the goods left, or whether `delivered`
+  stays a separate step; not an unlock of a numbered document.
+  **UNCERTIFIED — LEGAL**: only the numbering rule is sourced. Everything said here about Tunisian delivery-note
+  obligations is structural reasoning, and this session's web-search budget is spent; citations go into
+  `docs/fiscal/TN.md` before any of it ships.
+
+- [2026-09-21 16:55] AGREED: **a task's rate carries a UNIT — hour, minute, day or fixed — and "month" is not one
+  of them.** The developer asked for hour/minute/day/month. Hour is the default. Minute is a display and entry unit
+  storing the hourly equivalent — it is an hourly rate with a one-minute rounding step. Day converts through a
+  company setting, billable hours per day, default 8, which is how installation and field work is sold here. Fixed
+  prices a task as a lump sum while time is still tracked, so profitability stays visible. **Month is refused as a
+  task rate**: a monthly amount is a RETAINER, paid whether or not anyone logged time, so a month unit invites
+  logging three hours against a monthly rate and printing a line that is simply wrong. It is routed to a RECURRING
+  INVOICE, and the UI says so where someone looks for it; "a monthly retainer including N hours" is a recurring
+  invoice plus a task budget, two features rather than one unit. The rate resolves task → project → customer →
+  company, first one set wins, with the UNIT inherited alongside the amount so a customer billed by the day stays
+  billed by the day. A per-member rate is a real need for a services business and is deferred, as a fifth link
+  between task and project.
+
+- [2026-09-21 17:10] AGREED: **bank details print on an invoice whenever the company has them, with a setting to
+  suppress.** `Company::$iban` and `$bic` are captured, editable and NEVER rendered — `api/templates/pdf/invoice.html.twig`
+  has no block for them — so a company paid by transfer cannot be paid from its own invoice. Printed by default
+  because an invoice a customer cannot pay is the failure mode and forgetting to switch it on is the likely mistake;
+  a company paid only in cash or by cheque turns it off. `invoice.show_bank_details`, Parties chain, company /
+  customer group / customer, default true. A payment-instructions text block beside the numbers was offered and not
+  taken in this ruling; it remains additive.
+  Context: this came out of the enumerated settings review (`var/claude/settings-review.md`, 2026-09-21) — 18
+  declared settings, all read, plus 56 hardcoded candidates: 26 recommended SETTING, 22 HARDCODED, 3 part-and-part,
+  3 PRESET, 2 already settings whose default should come from the preset. The remaining candidates are published for
+  the developer to read and flag rather than walked one by one (`https://claude.ai/artifact/RryBa2hrQY1youjXXxYZWp`).
+  Two findings from it are already ruled above (the dead `presentation.sidebar-settings`, the unreachable document
+  levels). One claim was CHECKED AND WITHDRAWN rather than shipped: `decimal(0, locale)` on a rate is not a rounding
+  defect — `DecimalExtension::format()` treats the argument as a MINIMUM applied with `str_pad` and never rounds.
+
+- [2026-09-21 17:25] AGREED: **the delivery note's state machine stays fixed, and the step people want to skip is
+  collapsed into an ACTION instead — "Valider et livrer", one transaction, both transitions recorded.** Asked
+  whether the chain should become configurable, the developer leaned toward letting a draft be delivered directly;
+  examining it showed the question was mis-framed. `validated` is not a step that can be bypassed: it is where the
+  number is allocated from the series AND where the stock moves. So "draft → delivered" can only mean doing both at
+  once, which is a compound action, not a relaxed machine. The two separate actions stay for shops that want them.
+  This is the shape to prefer whenever a request looks like a state-machine setting: **an action that performs two
+  transitions costs one button; a setting that makes a transition optional costs every downstream rule a branch for
+  the state that was skipped, forever.** Accepted cost, unchanged either way: one click both numbers the note and
+  moves stock, so a mistake is already numbered — recoverable by cancelling, which correctly leaves a cancelled
+  number visible in the series. The counter-sale case that would otherwise justify skipping validation is already
+  served by the 13:44 ruling, where an invoice moves stock for the lines no note covers.
+
+- [2026-09-21 17:35] AGREED: **over- and under-payment are handled by ACTIONS that give the difference a home, not
+  by parameters that let a number past a guard — plus one tolerance setting.** Underpayment is ALREADY accepted and
+  always was: nothing guards it, `amountPaid`/`amountDue` are exactly that, and the chase feature exists to track
+  it. What the developer meant is CLOSING a short-paid invoice, which is not "accepting underpayment" but
+  **writing off** the difference — a loss being recognised, and in a VAT system the difference lands on a document
+  rather than on a status. So: overpaid → an action moves the excess to the customer's CREDIT BALANCE, visible on
+  their statement and applied to the next invoice (a gap the parties pass had already flagged independently);
+  short-paid → an action closes the invoice and records the difference on a CREDIT NOTE. `Invoice.php:450` keeps
+  refusing a payment larger than what is due. The one genuine parameter is a **tolerance**: the shortfall under
+  which the system offers to close without asking — a number, per company, that decides when settlement is OFFERED
+  and never whether the difference is recorded.
+  **The pattern, now twice in a row and worth applying generally: when a guard feels too strict, ask WHERE THE
+  DIFFERENCE GOES. If there is no answer, the guard is protecting a missing feature, and a parameter would only
+  hide it.** A setting lets a number past; an action gives it somewhere to live.
+  **UNCERTIFIED — LEGAL**: that a post-invoice commercial discount must be documented by a facture d'avoir is
+  recalled, not sourced; it goes into `docs/fiscal/TN.md` with a citation before the write-off action ships.
+
+- [2026-09-21 17:45] AGREED: **the delivery moment becomes a TIMESTAMP, auto-filled with now, correctable within
+  the existing window, shown to the minute.** `DeliveryNote::$deliveryDate` is a `Types::DATE_IMMUTABLE` today and
+  becomes a datetime — a migration reading existing rows as midnight, harmless pre-production — stored UTC and
+  rendered in the company's time zone, which matters for a timestamp and did not for a date. Marking a note
+  delivered stamps the current moment; `DeliveryNoteWorkflow::deliver()` already takes an optional `deliveredOn`
+  and falls back to today, so this is a granularity change rather than a new mechanism. **Auto-fill, not auto-lock**:
+  a driver doing five deliveries at 09:00, 11:00 and 14:00 records them all at 18:00, and an uneditable stamp would
+  put all five at 18:00 — destroying exactly the value that motivated the precision. Correction stays inside the
+  guard of `DeliveryNote.php:237,240`: never before the issue day, never in the future. Seconds are STORED and not
+  printed: `14:32:07` on a document a human signs claims an accuracy nobody observed. Note the developer's stated
+  reason — telling apart several notes to one customer on one day — is already served by the note's NUMBER; what a
+  timestamp actually buys is ordering within a day and proof of arrival in a dispute. Same conclusion, sounder
+  reason. This is the "time beside the date" half of the 15:45 receiver ruling, now specified.
+
+- [2026-09-21 17:55] AGREED: **stored precision stays fixed — quantity 3 decimals, unit price 4 — and a display
+  setting is added for price decimals.** The price scale is deliberately FINER than the currency's (TND
+  `minor_unit: 3`), so a unit price can be 0.0125 per screw while the line total rounds to the millime; that
+  relationship is right and the money side is already preset-driven. Storage stays one answer for everyone because
+  the scale is what makes figures comparable and what the 14:20 discount arithmetic is built on: per-company scales
+  would make every allocation ask whose scale it is in, and raising one later silently changes what old rows meant.
+  Quantity DISPLAY already varies per unit (`line.unit.decimals`), which is the correct axis — grams and pallets
+  genuinely differ — and prices gain the same, as presentation only. Raising the fixed numbers instead was offered
+  and not taken.
+
+- [2026-09-21 18:05] AGREED: **the 2,000-row import cap becomes a PLATFORM setting with a declared maximum, and the
+  async tier is built with the import as its first consumer.** The author had recommended HARDCODED and reversed it
+  on evidence: `RunImport.php:43` wraps the whole import in ONE transaction, so a timeout rolls everything back —
+  the cap protects the user's TIME, not their data, which is a much weaker reason to make it immovable. The person
+  who knows whether a server can take 5,000 rows is the OPERATOR, not the shop, so it belongs on the Platform chain
+  beside the session TTLs, with the definition's own `max:` stopping an absurd value. **It is not a reason to skip
+  the real fix.** There is NO async tier at all — no Messenger, no Scheduler, no transport, no worker, nothing in
+  `composer.json` or `api/config/packages/` — so a background import is infrastructure, not a feature: Messenger, a
+  transport and its migration, a worker container in compose (which must carry the `*logging` anchor the gate
+  enforces), retry and failure policy, and somewhere a person sees the result. **At least four agreed or leaning
+  features need that same tier**: recurring invoices (today's tab ruling), recurring expenses, reminders, and the
+  scheduled "bill all outstanding work" run for tasks. The import is therefore the RIGHT first consumer, not an
+  afterthought: user-initiated, bounded, already one transaction, and its failure means nothing happened. Standing
+  the tier up with recurring invoices first would mean debugging a new worker while it generates numbered financial
+  documents unattended — the wrong place to discover a retry policy is wrong.
+
+- [2026-09-21 18:15] AGREED: **the seven "how many to show" constants stay fixed, and `article.stock_tracking` is
+  RESOLVED onto the product row.** Six of them are dropdown lengths — 20 picker matches, 5 role holders, 200
+  companies, 50 accounts — where twenty is what fits a picker on a phone and typing another word narrows faster
+  than a longer list helps; seven switches would be combination cost spent on nothing. The seventh is different and
+  the code already says so honestly (`StockProductPickProvider:32–36`): `SCANNED = 200` exists because
+  `article.stock_tracking` is a settings CHAIN walked per product and therefore cannot be a `WHERE` clause, so the
+  provider takes a bounded window of goods and applies the setting inside it — the answer is "these, among the first
+  few hundred that match", never "these are all there are". Raising 200 only moves the edge. The fix is to maintain
+  the resolved value as a COLUMN on the product, updated when the setting changes at any level, which turns the
+  chain into a `WHERE` clause and deletes the window. **That shape generalises: any setting we ever want to FILTER
+  by needs its resolved value materialised, because a chain cannot be queried.**
+
+- [2026-09-21 18:20] AGREED: **destructive actions keep confirming with no switch, and the unsaved-work guard gains
+  the BROWSER level.** The confirmation ruling of 07:05 stands: a confirmation switched off once, long ago, by
+  someone since gone is indistinguishable from no confirmation, and what it guards is deletion; a prompt that feels
+  excessive is an argument about WHICH actions are destructive, which is tuned in code where it can be reviewed.
+  Leaving a page with unsaved work ALREADY confirms — `UnsavedChanges` (row 45) is wired as a `canDeactivate` guard
+  onto every route automatically (`unsaved-changes.ts:79`), across eight record pages, and its own docblock carries
+  the principle: asking on a page nobody changed is how a person learns to dismiss the question without reading it.
+  What is missing is the browser level: no `beforeunload` exists anywhere, so closing the tab or refreshing loses a
+  half-typed invoice silently. It is added, **registered only while the existing unsaved count is above zero** — one
+  source of truth, and a clean page never prompts, which is the same principle the file already states. Two costs
+  accepted: the message is the browser's own and cannot be written by us, and the e2e suite must be taught to expect
+  it or a run can hang. A setting to disable it was offered and declined for the same reason as the confirmation.
+
+- [2026-09-21 18:30] AGREED: **issuing an invoice is REFUSED when a legal mention the customer's regime requires
+  cannot be filled, naming the missing datum.** Found while confirming a HARDCODED verdict, and it is a live
+  compliance defect rather than a preference. `invoice.html.twig:149–155` drops any mention still containing a `%`
+  placeholder — correct in itself, since `Exonéré en vertu de %article%` helps nobody — but **nothing checks
+  mentions before issue**: `InvoiceWorkflow` does not look at them at all. So the order of events is issue (numbered,
+  fixed, declared) → render → silently drop, and the shop believes it sent a compliant invoice. The repo's own
+  fiscal file puts the exposure at 250–10,000 TND per invoice for missing mentions (`docs/fiscal/TN.md:113`, marked
+  unvalidated there). Tier one under the 16:55 rule — the law fixes it, so it is not a setting — and the check moves
+  UPSTREAM to issue, where it can still be acted on. **Refuse rather than warn**: an issued invoice is immutable, so
+  a warning clicked through produces precisely the outcome that can only be undone by crediting and reissuing. The
+  twig guard stays as the last resort.
+
+- [2026-09-21 18:40] AGREED: **a payment stays something that HAPPENED — the future-date guard stays — and a
+  cheque/traite portfolio is built for instruments received.** `Invoice.php:454,457` refuses a payment dated in the
+  future, which refuses a post-dated cheque or a traite: dated ahead by design, and ordinary in Tunisian B2B. The
+  guard is still right, because recording a traite as a PAYMENT would say you had been paid when you are holding an
+  instrument that may bounce — the invoice would read settled, receivables would show nothing owed, and a dishonour
+  in November would have no trace to undo. An instrument received is therefore its own record: amount, due date,
+  bank, and a state — en portefeuille → remise à l'encaissement → encaissé or impayé — becoming a PAYMENT only when
+  it clears. The client-facing pass recommended exactly this independently. **Fourth instance of the same pattern in
+  this walkthrough**: the guard was right and was pointing at a missing feature. Over-payment → credit balance;
+  short-payment → write-off on a credit note; future delivery date → expected-delivery date; future payment date →
+  instruments portfolio. In every case a setting would have let the number past and recorded nothing.
+
+- [2026-09-21 18:50] AGREED, three at once from the hardcoded walkthrough. **(1) Stock stays GOODS-ONLY**
+  (`KeepStock.php:36–38`): a service with an on-hand quantity is a number nobody can explain. The case the rule does
+  not cover is a **kit** — a boxed or pre-assembled item sold as one line that consumes several stocked components,
+  which today is either a good (the box is counted, the components silently do not move) or a service (nothing
+  moves). That is an argument for a COMPOSITION — a product declaring what it is made of — recorded as wanted and
+  built when it earns its place, never for loosening the guard to approximate it. **(2) `presentation.list.<id>`
+  widens from `user` only to Company, Role and User** (`PresentationSettings.php:39`): per-person layouts already
+  work, but a shop cannot say "this is how our invoice list looks", so every new employee starts from the
+  developer's default. A one-word change to the level list; the chain resolves it like everything else and a person
+  still overrides their own. Locking a layout against override was offered and declined. **(3) The seeded
+  `BUILT_IN_ROLES` stay seed data** (`SeedPlatform.php:37`) — roles are editable per company afterwards and a
+  settings row cannot express a role with its permissions.
+
+- [2026-09-21 18:50] AGREED: **a company picks its TRADE at provisioning, and that seeds a coherent set of
+  defaults.** Three separate items today ended in "the right default depends on what kind of business this is":
+  `article.stock_tracking` defaults false while a quincaillerie wants it on for everything from day one; payment
+  terms default to 30 while the habit differs by country and by trade; and the seeded roles. A trade — quincaillerie,
+  atelier, services — is chosen once when the company is created and seeds stock tracking, payment terms, the chase
+  window, list layouts, which modules start on and which roles exist. Everything stays editable afterwards: it
+  decides where a shop STARTS, not what it may do. **Two axes feed defaults and neither is a company switch: the
+  COUNTRY preset says what the law requires, the TRADE says what the business habitually does.** The trade seeds
+  roles as well as settings, since a workshop starting with a cashier role is the same wrong-default problem one
+  level up.
+
+- [2026-09-21 19:05] AGREED: **passkeys stay a second factor; step-up re-authentication is built; passwordless
+  waits.** `company.mfa_required` stays a column and not a setting — `RequireSecondFactor` reads it on every request,
+  it owns the audit action `company.mfa_required_changed`, and a security control does not belong on a screen of two
+  hundred switches. Its real limitation is that it is all-or-nothing per company: requiring a second factor of the
+  owner and the accountant but not of counter staff belongs **on the role**, beside the permissions it already
+  carries, and is noted for when roles are next opened. On the login itself, three findings, verified rather than
+  recalled: **passkeys already exist** (`api/src/Identity/Application/Mfa/`, `web-auth/webauthn-lib ^5.3.8`,
+  `Version20260915170000`), and `PasskeyCeremonies::creationOptions` already requires user verification, so a passkey
+  here is possession plus PIN or biometric in one gesture and the phishing-resistant factor is in place; **step-up
+  re-authentication does not exist anywhere** (`git grep` over `api/src` and `web/src` finds no step-up, re-auth or
+  sudo-mode), and it is what defends the attack this product actually attracts — a stolen session changing the
+  company's IBAN so customers pay the attacker, which the ruling of 17:10 to print bank details makes more valuable,
+  not less. So a short fixed list of actions re-authenticates at the moment they happen: changing bank details,
+  adding or removing a member, changing a role's permissions, exporting customer or document data. The list is code,
+  not a setting — a company that could switch it off would switch off the only guard against the attack it exists
+  for, and the three-way rule of 16:55 puts it under "law silent, but the answer is not the company's to get wrong".
+  **Passwordless is refused for now, and the reason is not difficulty.** `BeginPasskeyAssertion` names
+  `allowCredentials` from the account's own passkeys, so the server must already know who is signing in, so the
+  password comes first — deliberate, and its docblock says why. Passwordless needs discoverable credentials, which
+  the library supports; what it also needs is an answer for device loss, because a discoverable passkey is then the
+  only thing between a person and their company's books and the recovery codes stop being a backstop and become the
+  front door. It returns as an **opt-in per person** once a second registered device is the norm, never as a default.
+  And the instinct it came from is worth recording as refused: **authenticator-only login is weaker, not stronger** —
+  a TOTP secret is shared, sits in our database, and a convincing fake page replays a code inside thirty seconds,
+  where a password at least survives a breach as a hash.
+
+- [2026-09-21 19:20] AGREED: **the company's logo and a document accent colour become configurable; the font, the
+  paper size and the DRAFT watermark stay code.** Verified first: `git grep logo` over `api/src`, `api/templates` and
+  `web/src` matches only `login`, so **this product has no company logo at all** and nothing a company prints carries
+  its mark. That is a missing feature, not a settings question, and it is the plainest reading of invariant 5 — the
+  logo is an upload on the company through the existing `Files` context and `FileStorage`, printed on the invoice and
+  the delivery note. A **document accent colour** becomes a company setting: `invoice.html.twig` and
+  `delivery_note.html.twig` hardcode `#1f2328` for text, `#57606a` for labels and the watermark's red, and a shop
+  putting its name on a document expects its colour with it. The **font stays Inter**: a company choosing an
+  arbitrary face means either a face Gotenberg's Chromium does not have and silently falls back from, or a licence
+  question per face, and OFL-1.1 vendored fonts are a narrow exception in LICENSING.md rather than an open door — a
+  short list we ship and licence is a later feature, not a setting. **A4 stays code, and when it moves it is a
+  PRESET, not a company switch**: paper size is decided by where a company is, not by taste, so it belongs beside the
+  country under the three-way rule of 16:55. It is currently written twice — `@page { size: A4 }` in both templates
+  and `paperWidth`/`paperHeight` in `GotenbergPdfRenderer.php:34-35` — which must be single-sourced before it becomes
+  variable, since two values that must agree and cannot check each other is the shape that printed every document
+  flush to the paper's edge. The **DRAFT watermark stays code**: a draft that prints looking like an issued invoice
+  is how a document is paid twice, which is a safety property and not a preference. A full template editor is refused
+  for now on its own grounds — every required legal mention would then have to survive whatever a company does to the
+  layout, which fights the 18:30 ruling that issuing is refused when a required mention cannot be filled.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
