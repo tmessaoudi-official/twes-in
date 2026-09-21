@@ -143,6 +143,12 @@ export interface StockProductOption {
   name: string;
   unitCode: string;
   unitDecimals: number;
+  /**
+   * Where this product normally lives (docs/SPEC.md row 101), when one establishment's home is the only one it has.
+   * A product at home in two buildings comes without it: a picker knows which product was chosen, not which site the
+   * goods are arriving at, and a wrong shelf proposed is worse than none because it is accepted without being read.
+   */
+  homeLocationId: string | null;
 }
 
 export interface StockEstablishmentOption {

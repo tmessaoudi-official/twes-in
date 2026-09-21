@@ -8,6 +8,7 @@ import type {
   ProductCategoryProductCategoryRead,
   ProductJsonldProductRead,
   ProductCategoryProductCategoryWrite,
+  ProductHomeProductHomeRead,
   ProductOptionsProductOptionsRead,
   ProductProductRead,
   ProductProductWrite,
@@ -18,6 +19,7 @@ import {
   type LineTaxFamily,
   type ProductCategoryInput,
   type ProductCategoryRow,
+  type ProductHomeRow,
   type ProductInput,
   type ProductOptions,
   type ProductRow,
@@ -157,6 +159,43 @@ export class ProductsApi {
     );
   }
 
+  /** Where this product normally lives, one entry per establishment that has one (docs/SPEC.md row 101). */
+  async homes(companyId: string, productId: string): Promise<ProductHomeRow[]> {
+    return this.guard(async () => {
+      const rows = await firstValueFrom(
+        this.http.get<ProductHomeProductHomeRead[]>(homesPath(companyId, productId)),
+      );
+      return rows.map(toHome);
+    });
+  }
+
+  /**
+   * Gives the product a home there. The establishment is never sent: the location already knows where it is, and a
+   * product that had a home in that establishment has it moved rather than doubled.
+   */
+  async setHome(companyId: string, productId: string, locationId: string): Promise<ProductHomeRow> {
+    return this.guard(async () =>
+      toHome(
+        await firstValueFrom(
+          this.http.put<ProductHomeProductHomeRead>(homesPath(companyId, productId), {
+            locationId,
+          }),
+        ),
+      ),
+    );
+  }
+
+  /** Takes the home away in that establishment; one the product never had is not an error. */
+  async clearHome(companyId: string, productId: string, establishmentId: string): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(
+        this.http.delete(
+          `${homesPath(companyId, productId)}/${encodeURIComponent(establishmentId)}`,
+        ),
+      ),
+    );
+  }
+
   /** A 409 means what the endpoint makes it mean: a reference or a name another row has, or a category in use. */
   private async guard<T>(
     call: () => Promise<T>,
@@ -182,6 +221,21 @@ function codeOf(error: unknown, conflict: ProductsError): ProductsError {
     default:
       return 'invalid';
   }
+}
+
+const homesPath = (companyId: string, productId: string): string =>
+  `${path(companyId, 'products', productId)}/home-locations`;
+
+function toHome(raw: ProductHomeProductHomeRead): ProductHomeRow {
+  return {
+    id: raw.id ?? '',
+    establishmentId: raw.establishmentId ?? '',
+    establishmentCode: raw.establishmentCode ?? '',
+    establishmentName: raw.establishmentName ?? '',
+    locationId: raw.locationId ?? '',
+    locationCode: raw.locationCode ?? '',
+    locationName: raw.locationName ?? '',
+  };
 }
 
 const path = (companyId: string, collection: string, id?: string): string =>

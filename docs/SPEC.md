@@ -1143,6 +1143,52 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   refuses a shortcut while focus is in an input, which on a record page is nearly always, so "s" saves only after
   the field is left. That is the same on the invoice page and is the ruling's own rule, not a defect here.
 
+- [2026-09-21 09:30] AGREED: **a home is an attribute of the PRODUCT, and it proposes rather than rules** (row 101;
+  row 101 closes). `product_home_location` holds one location per product per establishment, unique on the pair, so
+  setting a home where the product already had one MOVES it instead of adding a second. The establishment is never
+  sent: a location already knows where it is, and two sources for one fact drift. Five consequences.
+  **(1) The permissions are `product.read` / `product.write`, not the stock ones.** It sits on the product screen
+  and in the product file beside the rest of a product's attributes, and it authorizes nothing — stock may still be
+  put anywhere. Keying it on `stock.write` would have meant a product file could set a home only for somebody who
+  also arranges the warehouse, which is not who fills that file in. The SCREEN browses locations, so its tab is
+  shown with `stock.read` and the module on — nobody points at a shelf they are not allowed to see — and
+  `product.write` decides whether that tab is editable: a reader sees where the product lives and changes nothing.
+  **(2) A proposal is offered only where it is unambiguous.** `KeepProductHomes::proposed` answers a location only
+  where the product has exactly ONE home; a product at home in two establishments comes back without one, because a
+  picker knows which product was chosen and not which site the goods are arriving at — a wrong shelf proposed is
+  worse than none, since it is accepted without being read.
+  **(3) It fills the box and never overwrites a choice.** The stock page proposes into `locationId` only while the
+  control is pristine; a move is left out entirely, because its location is where the goods are NOW, which a home
+  does not say, and proposing the home as a destination would be refused whenever the goods are already there.
+  **(4) Products reaches the warehouse through a PORT it declares**, `Products\Application\ProductHomes`, answered
+  by `Inventory\Infrastructure\Products\InventoryProductHomes` — the `ProductStockHistory` shape. The import column
+  needed a location looked up by code and a home set, which written directly would have inverted the module
+  dependency; what a product file needs OF the inventory is declared in the catalogue and implemented in stock.
+  **(5) The `home_location` column exists only for a company that holds stock.** The port's `offered()` reads the
+  module switch, so a company without it is not asked for a shelf — and because `RunImport` refuses an unknown
+  header outright, a file naming the column is rejected BY NAME rather than having the cell quietly dropped. A
+  blank cell keeps whatever home the product has, like every other cell in upsert mode.
+  **One defect this found, which would have shipped**: `KeepProductHomes::set` left the home MANAGED while the
+  import detached its product, so the next row's flush walked `ProductHomeLocation#product`, found an object
+  Doctrine no longer knew and took it for a new entity — every product file with TWO `home_location` cells would
+  have answered 500. Caught by writing the three-row test before believing the one-row one; the adapter now drops
+  the home from the unit of work, and says why it does so there rather than in the use case the HTTP surface
+  shares. The row's home is also RESOLVED before anything is written, where every other cell's refusal is resolved:
+  it fired after the product was created, and only the whole import being rolled back kept that from showing.
+  **Certified by execution** (44 tests / 2162 assertions over the six import, inventory and home suites, PHPStan
+  clean; `ProductHomeTest` 5 cases including "two homes propose neither"; `ProductImportTest` 12, covering the
+  column, the blank cell, three rows each getting their home, `unknown_location` / `ambiguous_location`, a rejected
+  row leaving no product behind, and the module-off refusal; `product-homes.spec` 7, `product-homes-facade.spec` 5,
+  `product-page.spec` 13, `stock-page.spec` 10 — two PRE-EXISTING cases went red on `l1` → `l2` the moment the
+  proposal landed, which is what proves it fires).
+  **Six sabotages, six red**: two homes proposing one anyway; an ambiguous code silently taking the first location;
+  the column offered whatever the module says; the home left managed (the defect above, re-armed); the proposal
+  overwriting a location the person chose; and a move proposing the home as its source — that last one caught by a
+  test that already existed, so the move guard was pinned before it was written.
+  **NOT certified by execution: no e2e sets a home or receives goods into a proposed one**, and nothing proves the
+  proposal in a real browser — the pristine/dirty rule is asserted against the form control, not against a click on
+  a `mat-select`.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1250,7 +1296,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 98 | A foreign note at the counter (§ 7 2026-09-20): a payment taken in another currency at a manual rate with change given in local money; the per-customer default currency waits for the foreign-currency milestone | S | todo | - | api/src/Module/Register/** api/tests/** web/src/app/register/** |
 | 99 | The brand mark (§ 7 2026-09-20 09:30): the treatment chosen from the four on the Look canvas, shipped as the favicon, the sidebar mark and the app icon, drawn from vendored OFL type and recoloured by the installation's accent — ahead of row 36, which makes it configurable | S | todo | - | web/src/app/shell/** web/public/** web/src/index.html |
 | 100 | Role accounts and an empty start (§ 7 2026-09-20 09:30): `make up` leaves an installation with one operator and no companies; `make fixtures` adds one owner, admin and member to each demo company, written through the invitation use cases | M | todo | - | api/src/DataFixtures/** api/tests/** docs/START.md |
-| 101 | A product's home location (§ 7 2026-09-20 09:45): one nullable location per product per establishment, proposed when receiving, with a picker on the product screen and a `home_location` import column; the map door ships with row 83 | M | todo | - | api/src/Module/Products/** api/src/Module/Inventory/** api/migrations/** web/src/app/products/** api/tests/** |
+| 101 | A product's home location (§ 7 2026-09-20 09:45, ruled 2026-09-21 09:30): one location per product per establishment, proposed when receiving and counting, with its own tab on the product screen and a `home_location` import column offered only to a company that holds stock; the map door ships with row 83 | M | done | - | api/src/Module/Products/** api/src/Module/Inventory/** api/migrations/** web/src/app/products/** web/src/app/inventory/** web/public/i18n/** api/tests/** |
 | 102 | TTN connector (§ 7 2026-09-20 09:30): **unestimated — blocked on TTN's interface specification, signing and certificate requirements, and a test account.** Row 93's fields are built regardless, so no invoice waits on this | L | blocked | - | api/src/Module/** docs/fiscal/TN.md |
 | 103 | Fiscal journal (§ 7 2026-09-20 11:30): a `FiscalJournal` context — append-only entries carrying the previous hash and a per-company sequence, signed with a per-company key encrypted at rest; a `training` flag on every entry; reprints marked duplicates; invoices and credit notes journalled. **Design ruled, nothing built.** The till joins the same journal with the register module, its Z-closure split from an ordinary count. TN's adapter blocked on JORT n° 125 | L | todo | - | api/src/Fiscal/** api/migrations/** api/tests/** docs/fiscal/** |
 | 104 | Permission catalogue and the roles screen (§ 7 2026-09-20 11:30): each module declares its permission strings and labels beside its `DeclaresModule` declaration, the catalogue is collected not hand-written, and a company creates and edits its own roles in a matrix grouped by module; the members page offers the company's roles instead of three hardcoded names. `Role.company` is already nullable, so no migration for the roles themselves. The members page offers the company's roles, the API resolves a role name against the company acting, and an open invitation counts as holding its role | M | done | - | api/src/Tenancy/** api/src/ModuleRegistry/** api/src/Module/**/*Module*.php web/src/app/company/** api/tests/** web/src/app/**/*.spec.ts |

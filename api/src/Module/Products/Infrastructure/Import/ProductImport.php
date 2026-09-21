@@ -24,6 +24,7 @@ use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductHomes;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\InvalidProduct;
@@ -80,6 +81,7 @@ final readonly class ProductImport implements DeclaresImport
         private UnitRepository $units,
         private TaxComponentRepository $taxes,
         private EntityManagerInterface $entityManager,
+        private ProductHomes $homes,
     ) {
     }
 
@@ -105,7 +107,7 @@ final readonly class ProductImport implements DeclaresImport
 
     public function subjectFor(Company $company): ImportSubject
     {
-        return new ImportSubject(self::KEY, [...$this->fixed(), ...$this->custom($company)]);
+        return new ImportSubject(self::KEY, [...$this->fixed($company), ...$this->custom($company)]);
     }
 
     public function import(Company $company, ImportRecord $record, ImportMode $mode, ?Uuid $actorUserId): RowImported
@@ -116,14 +118,21 @@ final readonly class ProductImport implements DeclaresImport
             throw new RowRejected('reference', 'A product already has this reference. Import in "create and update" mode to update it.', 'already_exists');
         }
 
+        // Resolved BEFORE anything is written, where every other cell this row could be refused for is resolved: a
+        // refusal that fires after the product is created is a rule the file is held to in a different order from
+        // the rest, and only the whole import being rolled back keeps that from showing.
+        $home = $this->homeOf($company, $record);
+
         $written = null;
         try {
             if (null === $existing) {
                 $written = $this->manage->create($company, $this->input($company, $record, null), $actorUserId);
+                $this->settleHome($company, $written, $home, $actorUserId);
 
                 return RowImported::Created;
             }
             $written = $this->manage->revise($company, $existing->getId(), $this->input($company, $record, $existing), $actorUserId);
+            $this->settleHome($company, $written, $home, $actorUserId);
 
             return RowImported::Updated;
         } catch (InvalidProduct $refused) {
@@ -140,6 +149,42 @@ final readonly class ProductImport implements DeclaresImport
                     $this->entityManager->detach($product);
                 }
             }
+        }
+    }
+
+    /**
+     * Where the row says this product normally lives (docs/SPEC.md row 101), as a location the company has. A blank
+     * cell keeps whatever home the product has, like every other cell in upsert mode: a file that does not mention
+     * homes does not clear them.
+     *
+     * The location is named by its CODE, which is one place per establishment — so the establishment falls out of
+     * it and is never a column of its own. A code two establishments both use cannot say which, and guessing would
+     * point the product at the wrong building, so the row is rejected naming the cell.
+     *
+     * @throws RowRejected
+     */
+    private function homeOf(Company $company, ImportRecord $record): ?Uuid
+    {
+        $code = $record->value('home_location');
+        if (null === $code || '' === trim($code)) {
+            return null;
+        }
+        $found = $this->homes->locationsCoded($company, trim($code));
+        if ([] === $found) {
+            throw new RowRejected('home_location', \sprintf('The company has no stock location coded "%s". Create it first, under Stock.', $code), 'unknown_location', ['code' => $code]);
+        }
+        if (1 !== \count($found)) {
+            throw new RowRejected('home_location', \sprintf('Several establishments have a location coded "%s", so this file cannot say which one. Rename one of them, or import one establishment at a time.', $code), 'ambiguous_location', ['code' => $code]);
+        }
+
+        return $found[0];
+    }
+
+    /** Gives the written product the home the row named, once there is a product to give it to. */
+    private function settleHome(Company $company, Product $product, ?Uuid $locationId, ?Uuid $actorUserId): void
+    {
+        if (null !== $locationId) {
+            $this->homes->setHome($company, $product->getId(), $locationId, $actorUserId);
         }
     }
 
@@ -244,9 +289,13 @@ final readonly class ProductImport implements DeclaresImport
      * import. A unit and a price are what a product cannot be CREATED without, which is a rule on the row and not on
      * the file: a file updating nothing but a name carries neither column, and requiring them here would refuse it.
      *
+     * `home_location` is offered only to a company that holds stock, since a company without it has nowhere to put a
+     * product: its file is not asked for a shelf, and a file naming one is refused for the column rather than having
+     * the cell quietly dropped.
+     *
      * @return list<ImportColumn>
      */
-    private function fixed(): array
+    private function fixed(Company $company): array
     {
         return [
             new ImportColumn('reference', 'import.products.reference', true, 'VIS-6X40', 'import.products.reference_note'),
@@ -260,6 +309,9 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('barcode', 'import.products.barcode', false, '6191234567890', 'import.products.barcode_note'),
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),
+            ...$this->homes->offered($company)
+                ? [new ImportColumn('home_location', 'import.products.home_location', false, 'A-12', 'import.products.home_location_note')]
+                : [],
         ];
     }
 

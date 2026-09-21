@@ -74,6 +74,7 @@ export class InventoryApi {
         name: product.name,
         unitCode: product.unitCode,
         unitDecimals: product.unitDecimals,
+        homeLocationId: product.homeLocationId ?? null,
       }));
     });
   }

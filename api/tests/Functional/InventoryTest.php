@@ -199,7 +199,7 @@ final class InventoryTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $picks = $this->jsonList();
-        self::assertSame(['id', 'reference', 'name', 'unitCode', 'unitDecimals'], array_keys($picks[0]));
+        self::assertSame(['id', 'reference', 'name', 'unitCode', 'unitDecimals', 'homeLocationId'], array_keys($picks[0]));
         self::assertSame(['ART-001'], array_column($picks, 'reference'), 'neither a service nor untracked goods');
         self::assertSame([['C62'], [0]], [array_column($picks, 'unitCode'), array_column($picks, 'unitDecimals')]);
 

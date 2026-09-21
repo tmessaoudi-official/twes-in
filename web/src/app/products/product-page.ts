@@ -20,6 +20,8 @@ import { RecordChanged } from '../shared/form/record-changed';
 import { buildFormGroup } from '../shared/form/form-builder';
 import type { FormValues } from '../shared/form/form-types';
 import { ArticleDefaults } from './article-defaults';
+import { ProductHomes } from './product-homes-facade';
+import { ProductHomesSection } from './product-homes';
 import { productForm, productInput, productValues } from './product-forms';
 import { ProductsFacade } from './products-facade';
 import { Feedback } from '../shared/feedback/feedback';
@@ -43,9 +45,12 @@ import { MatTabsModule } from '@angular/material/tabs';
     RecordBar,
     RecordChanged,
     ArticleDefaults,
+    ProductHomesSection,
   ],
   templateUrl: './product-page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Its own instance per product screen: what one product's homes are is not shared state.
+  providers: [ProductHomes],
 })
 export class ProductPage {
   private readonly facade = inject(ProductsFacade);
@@ -128,6 +133,20 @@ export class ProductPage {
       : null;
   });
   protected readonly changes = unsavedChanges(this.form, this.savedValues);
+
+  /**
+   * Where the product normally lives, offered once it exists and to anybody who may see the warehouse
+   * (docs/SPEC.md row 101): choosing a home means reading a list of locations, and nobody points at a shelf they
+   * are not allowed to see. Setting one is the PRODUCT's own permission, so `product.write` decides whether the
+   * tab is editable — a reader sees where the product lives and changes nothing.
+   */
+  protected readonly homesOf = computed(() => {
+    const current = this.current();
+    if (!current || !this.auth.hasModule('inventory') || !this.auth.hasPermission('stock.read')) {
+      return null;
+    }
+    return current.id;
+  });
 
   /** The subject of the defaults panel: the product once it exists. */
   protected readonly defaultsSubject = computed(() => {

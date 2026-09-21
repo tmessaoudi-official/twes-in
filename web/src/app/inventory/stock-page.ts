@@ -151,12 +151,33 @@ export class StockPage implements OnInit {
       const form = this.form();
       if (form === null) return;
       const subscription = form.get('productId')?.valueChanges.subscribe((productId) => {
-        this.product.set(
-          typeof productId === 'string' ? (this.known.get(productId) ?? null) : null,
-        );
+        const product = typeof productId === 'string' ? (this.known.get(productId) ?? null) : null;
+        this.product.set(product);
+        this.proposeHome(form, product);
       });
       onCleanup(() => subscription?.unsubscribe());
     });
+  }
+
+  /**
+   * Where the chosen product normally lives, offered as the location (docs/SPEC.md row 101), so a person putting
+   * goods away answers that question once rather than on every receipt.
+   *
+   * It is a proposal and behaves like one. It fills the box only while nobody has chosen a location themselves — a
+   * touched control is left alone, because a screen that overwrites what a person typed teaches them to distrust it —
+   * and a product without a single home, or one whose home this company no longer has, leaves whatever is there.
+   *
+   * A move is left out on purpose: its location is where the goods are now, which a home does not say, and proposing
+   * the home as a destination would be refused whenever the goods are already there.
+   */
+  private proposeHome(form: DescriptorFormGroup, product: StockProductOption | null): void {
+    if (this.operation() === 'move') return;
+    const home = product?.homeLocationId ?? null;
+    const control = form.get('locationId');
+    if (home === null || control === null || control.dirty) return;
+    if (!this.facade.locations().some((location) => location.id === home)) return;
+    control.setValue(home);
+    control.markAsPristine();
   }
 
   /** What the list last asked the API for; the page is not read until the list has said what it wants. */

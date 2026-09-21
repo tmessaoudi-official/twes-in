@@ -1195,7 +1195,8 @@
   "products": {
     "tabs": {
       "record": "Fiche",
-      "defaults": "Valeurs par défaut"
+      "defaults": "Valeurs par défaut",
+      "homes": "Où il est rangé"
     },
     "title": "Produits",
     "add": "Nouveau produit",
@@ -1295,6 +1296,15 @@
         "not_found": "Introuvable.",
         "network": "Le serveur est injoignable."
       }
+    },
+    "homes": {
+      "intro": "L’emplacement que la réception proposera pour cet article, un par établissement. Ce n’est qu’une proposition : le stock peut être mis ailleurs.",
+      "none": "Aucun emplacement habituel pour l’instant.",
+      "location": "Emplacement",
+      "set": "Définir",
+      "clear": "Retirer cet emplacement habituel",
+      "saved": "Emplacement habituel enregistré.",
+      "cleared": "Emplacement habituel retiré."
     }
   },
   "inventory": {
@@ -1855,7 +1865,9 @@
       "barcode_note": "Sans espace ; c'est ce que lit la douchette.",
       "default_taxes": "Taxes par défaut",
       "default_taxes_note": "Codes de taxes séparés par des virgules (TVA19).",
-      "active": "Actif"
+      "active": "Actif",
+      "home_location": "Emplacement habituel",
+      "home_location_note": "Le code d'un emplacement de stock : c'est celui que la réception proposera."
     },
     "vendors": {
       "number": "Numéro fournisseur",

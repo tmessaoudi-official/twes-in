@@ -79,3 +79,17 @@ export interface ProductOptions {
   units: UnitOption[];
   taxes: LineTaxOption[];
 }
+
+/**
+ * Where a product normally lives, one entry per establishment that has one (docs/SPEC.md row 101). It is what a
+ * receipt proposes, never a rule: stock may still be put anywhere.
+ */
+export interface ProductHomeRow {
+  id: string;
+  establishmentId: string;
+  establishmentCode: string;
+  establishmentName: string;
+  locationId: string;
+  locationCode: string;
+  locationName: string;
+}

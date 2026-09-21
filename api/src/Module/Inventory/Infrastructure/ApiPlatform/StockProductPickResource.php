@@ -15,6 +15,7 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\QueryParameter;
 use App\Module\Products\Domain\Product;
 use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Uid\Uuid;
 
 /**
  * The products a stock screen offers while a person types (docs/SPEC.md § 7, 2026-09-17, ruling 3). The same shape
@@ -73,7 +74,16 @@ final class StockProductPickResource
     #[Groups([self::READ])]
     public int $unitDecimals = 3;
 
-    public static function of(Product $product): self
+    /**
+     * Where this product normally lives, so a receipt proposes it rather than asking the same question every time
+     * (docs/SPEC.md row 101). Null where the product has no home, and also where it has one in each of several
+     * establishments: this picker knows which product was chosen, not where the goods are arriving.
+     */
+    #[ApiProperty(schema: ['type' => 'string', 'format' => 'uuid', 'nullable' => true])]
+    #[Groups([self::READ])]
+    public ?string $homeLocationId = null;
+
+    public static function of(Product $product, ?Uuid $homeLocationId = null): self
     {
         $resource = new self();
         $resource->id = $product->getId()->toRfc4122();
@@ -81,6 +91,7 @@ final class StockProductPickResource
         $resource->name = $product->getDetails()->name;
         $resource->unitCode = $product->getUnit()->getCode();
         $resource->unitDecimals = $product->getUnit()->getDecimals();
+        $resource->homeLocationId = $homeLocationId?->toRfc4122();
 
         return $resource;
     }

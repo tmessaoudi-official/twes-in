@@ -16,9 +16,16 @@ use App\CustomFields\Domain\CustomFieldType;
 use App\Fiscal\Application\Company\ProvisionCompany;
 use App\Fiscal\Application\Regime\SyncCustomerTaxRegimes;
 use App\Fiscal\Domain\TaxComponentRepository;
+use App\Module\Inventory\Application\ManageStockLocations;
+use App\Module\Inventory\Domain\ProductHomeLocation;
+use App\Module\Inventory\Domain\StockLocation;
+use App\Module\Inventory\Domain\StockLocationKind;
+use App\Module\Inventory\Domain\StockLocationRepository;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductCategory;
 use App\Tenancy\Domain\Company;
+use App\Tenancy\Domain\Establishment;
+use App\Tenancy\Domain\EstablishmentRepository;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -162,6 +169,162 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame('Visserie', $updated->getCategory()?->getName(), 'a column the file lacks keeps what is there');
         self::assertSame(['shelf' => 'A12'], $updated->getCustomFields());
         self::assertSame('6191234567890', $updated->getDetails()->barcode);
+    }
+
+    /**
+     * Where a product normally lives, named by the code of a stock location (docs/SPEC.md row 101). The
+     * establishment falls out of the location, so the file never carries one.
+     */
+    public function testARowNamesWhereTheProductNormallyLivesByTheLocationsCode(): void
+    {
+        $this->aZoneCoded('Z1');
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['committed' => true, 'created' => [2], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(1, $this->numberOf(
+            'SELECT COUNT(*) FROM product_home_location h JOIN product p ON p.id = h.product_id'
+            .' JOIN stock_location l ON l.id = h.location_id WHERE p.reference = ? AND l.code = ?',
+            ['VIS-6X40', 'Z1'],
+        ));
+    }
+
+    /**
+     * A file is many rows, and a row's home must leave the unit of work as its product does. A home persisted and
+     * left managed still points at the product the row detached after writing it, and the NEXT row's flush walks
+     * that association, finds an object it no longer knows, and takes it for a new entity — so the second row of a
+     * two-row file dies where the first passed. The same class as `Establishment#company`, one association along.
+     */
+    public function testEveryRowOfAFileGetsItsHome(): void
+    {
+        $this->aZoneCoded('Z1');
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import(
+            self::HEADER.",home_location\n"
+            ."VIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n"
+            ."VIS-8X60,Vis 8x60 zinguée,goods,H87,,2.000,,,,,,Z1\n"
+            ."ECR-M8,Écrou M8,goods,H87,,0.300,,,,,,Z1\n",
+        );
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['committed' => true, 'created' => [2, 3, 4], 'updated' => [], 'rejected' => []], $this->json());
+        self::assertSame(3, $this->numberOf(
+            'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
+            .' WHERE l.code = ?',
+            ['Z1'],
+        ));
+        $managed = $this->em()->getUnitOfWork()->getIdentityMap();
+        self::assertSame([], $managed[ProductHomeLocation::class] ?? [], 'no home a row wrote is still managed');
+    }
+
+    /** A blank cell keeps what is there, like every other cell: a file that does not mention homes does not clear them. */
+    public function testAnUpsertLeavingTheHomeBlankKeepsIt(): void
+    {
+        $this->aZoneCoded('Z1');
+        $this->signedIn(['product.read', 'product.write']);
+        $this->import(self::HEADER.",home_location\nVIS-6X40,Vis 6x40 zinguée,goods,H87,,1.000,,,,,,Z1\n");
+        self::assertResponseIsSuccessful();
+
+        $this->import("reference,name,home_location\nVIS-6X40,Vis 6x40 inox,\n", mode: 'upsert');
+
+        self::assertResponseIsSuccessful();
+        self::assertSame(['committed' => true, 'created' => [], 'updated' => [2], 'rejected' => []], $this->json());
+        self::assertSame(1, $this->numberOf(
+            'SELECT COUNT(*) FROM product_home_location h JOIN stock_location l ON l.id = h.location_id'
+            .' JOIN product p ON p.id = h.product_id WHERE p.reference = ? AND l.code = ?',
+            ['VIS-6X40', 'Z1'],
+        ));
+    }
+
+    /** A code no location has, and a code two establishments share: named, never guessed at. */
+    public function testAHomeThatCannotBeResolvedRejectsTheRowNamingTheCell(): void
+    {
+        $now = new \DateTimeImmutable();
+        $this->aZoneCoded('Z1');
+        $second = Establishment::create($this->company, 'LYON', 'Lyon', false, $now);
+        $this->em()->persist($second);
+        $this->em()->flush();
+        $this->locations()->save(StockLocation::create($second, $this->manageLocations()->defaultOf($second), StockLocationKind::Zone, 'Z1', 'Zone froide', $now));
+        $this->em()->flush();
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->import(
+            "reference,name,unit_code,unit_price_net,home_location\n"
+            ."ART-1,Inconnu,H87,1.000,ZZZ\n"
+            ."ART-2,Partagé,H87,1.000,Z1\n",
+            dryRun: true,
+        );
+
+        self::assertResponseIsSuccessful();
+        $rejected = array_map(
+            static fn (mixed $row): array => \is_array($row) ? [$row['line'] ?? null, $row['column'] ?? null, $row['code'] ?? null, $row['params'] ?? null] : [],
+            $this->arrayAt($this->json(), 'rejected'),
+        );
+        self::assertSame([
+            [2, 'home_location', 'unknown_location', ['code' => 'ZZZ']],
+            [3, 'home_location', 'ambiguous_location', ['code' => 'Z1']],
+        ], $rejected);
+
+        // Not a dry run this time: a rejected row leaves NO product behind. The home is resolved before anything is
+        // written, and a file with any rejection is rolled back whole — so neither half can land on its own.
+        $this->import(
+            "reference,name,unit_code,unit_price_net,home_location\nART-1,Inconnu,H87,1.000,ZZZ\n",
+        );
+
+        // A real import that rejects a row answers 422, where a preview of the same file answers 200.
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertFalse($this->json()['committed'] ?? null);
+        self::assertSame(0, $this->products());
+    }
+
+    /**
+     * A company that keeps no stock has nowhere to put a product, so its file is not asked for a shelf — and one
+     * naming the column is refused for it, rather than having the cell quietly dropped.
+     */
+    public function testACompanyWithoutStockIsNeverAskedWhereAProductLives(): void
+    {
+        $this->signedIn(['product.read', 'product.write', 'company.read', 'company.settings']);
+        $this->sendJson('PUT', $this->companyPath().'/modules/inventory', ['enabled' => false]);
+        self::assertResponseIsSuccessful();
+
+        $this->getJson($this->companyPath().'/imports/products');
+
+        self::assertResponseIsSuccessful();
+        $columns = $this->arrayAt($this->json(), 'columns');
+        $keys = array_map(static fn (mixed $column): mixed => \is_array($column) ? ($column['key'] ?? null) : null, $columns);
+        self::assertNotContains('home_location', $keys);
+
+        $this->import(self::HEADER.",home_location\nVIS-6X40,Vis,goods,H87,,1.000,,,,,,Z1\n", dryRun: true);
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('home_location', (string) $this->client->getResponse()->getContent());
+    }
+
+    private function aZoneCoded(string $code): void
+    {
+        $now = new \DateTimeImmutable();
+        $establishment = static::getContainer()->get(EstablishmentRepository::class)->ofCompany($this->company->getId())[0];
+        $this->locations()->save(StockLocation::create($establishment, $this->manageLocations()->defaultOf($establishment), StockLocationKind::Zone, $code, 'Zone froide', $now));
+        $this->em()->flush();
+    }
+
+    private function manageLocations(): ManageStockLocations
+    {
+        $manage = static::getContainer()->get(ManageStockLocations::class);
+        self::assertInstanceOf(ManageStockLocations::class, $manage);
+
+        return $manage;
+    }
+
+    private function locations(): StockLocationRepository
+    {
+        $locations = static::getContainer()->get(StockLocationRepository::class);
+        self::assertInstanceOf(StockLocationRepository::class, $locations);
+
+        return $locations;
     }
 
     public function testSomebodyWhoCannotWriteProductsIsAnsweredAsAStranger(): void

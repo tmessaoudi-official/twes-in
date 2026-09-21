@@ -1195,7 +1195,8 @@
   "products": {
     "tabs": {
       "record": "Record",
-      "defaults": "Defaults"
+      "defaults": "Defaults",
+      "homes": "Where it lives"
     },
     "title": "Products",
     "add": "New product",
@@ -1295,6 +1296,15 @@
         "not_found": "Not found.",
         "network": "The server could not be reached."
       }
+    },
+    "homes": {
+      "intro": "The location a receipt will propose for this product, one per establishment. It is only a proposal: stock may be put anywhere.",
+      "none": "No home location yet.",
+      "location": "Location",
+      "set": "Set",
+      "clear": "Remove this home location",
+      "saved": "Home location saved.",
+      "cleared": "Home location removed."
     }
   },
   "inventory": {
@@ -1855,7 +1865,9 @@
       "barcode_note": "Without spaces; this is what the scanner reads.",
       "default_taxes": "Default taxes",
       "default_taxes_note": "Tax codes separated by commas (TVA19).",
-      "active": "Active"
+      "active": "Active",
+      "home_location": "Home location",
+      "home_location_note": "The code of a stock location: it is what a receipt will propose."
     },
     "vendors": {
       "number": "Vendor number",

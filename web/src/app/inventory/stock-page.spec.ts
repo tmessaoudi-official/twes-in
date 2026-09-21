@@ -85,8 +85,23 @@ const shortage: StockLevelRow = {
 };
 /** What the picker answers: the page holds no catalogue, so a product only exists here once it is picked. */
 const products: StockProductOption[] = [
-  { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
-  { id: 'p2', reference: 'ART-2', name: 'Écran', unitCode: 'C62', unitDecimals: 0 },
+  // ART-1 lives at l2: a receipt proposes it. ART-2 is at home nowhere, or in two places at once.
+  {
+    id: 'p1',
+    reference: 'ART-1',
+    name: 'Portable',
+    unitCode: 'C62',
+    unitDecimals: 0,
+    homeLocationId: 'l2',
+  },
+  {
+    id: 'p2',
+    reference: 'ART-2',
+    name: 'Écran',
+    unitCode: 'C62',
+    unitDecimals: 0,
+    homeLocationId: null,
+  },
 ];
 
 describe('StockPage', () => {
@@ -194,7 +209,8 @@ describe('StockPage', () => {
     expect(q('stock-locations-tab')?.getAttribute('href')).toBe('/stock/locations');
   });
 
-  it('records goods received at the default location, of the product that was picked', async () => {
+  /** ART-1 lives at the rack, so that is what the receipt offers (docs/SPEC.md row 101). */
+  it('records goods received where the product picked normally lives', async () => {
     q('stock-receive')!.click();
     await settle();
     await pick('field-productId', 'ART-1 · Portable');
@@ -205,7 +221,7 @@ describe('StockPage', () => {
     expect(facade.record).toHaveBeenCalledWith('c1', {
       operation: 'receive',
       productId: 'p1',
-      locationId: 'l1',
+      locationId: 'l2',
       quantity: '10',
     });
     expect(successToasts()).toContain('inventory.stock.recorded');
@@ -225,7 +241,7 @@ describe('StockPage', () => {
     expect(facade.record).toHaveBeenCalledWith('c1', {
       operation: 'count',
       productId: 'p1',
-      locationId: 'l1',
+      locationId: 'l2',
       quantity: '7',
     });
     expect(q('stock-error')?.textContent).toContain('refusée');
@@ -278,6 +294,34 @@ describe('StockPage', () => {
     expect(successToasts()).toContain('inventory.stock.recorded');
   });
 
+  /**
+   * A home is a proposal, so it fills the box and never overwrites a choice: a screen that replaces what a person
+   * chose teaches them to distrust it (docs/SPEC.md row 101).
+   */
+  it('leaves the location alone once somebody has chosen one themselves', async () => {
+    q('stock-receive')!.click();
+    await settle();
+    // What a mat-select does when an option is clicked: it sets the value AND marks the control touched by a person.
+    form().get('locationId')!.setValue('l1');
+    form().get('locationId')!.markAsDirty();
+    await pick('field-productId', 'ART-1 · Portable');
+    type('field-quantity', '3');
+    q('stock-movement-save')!.click();
+    await settle();
+
+    expect(facade.record).toHaveBeenCalledWith('c1', {
+      operation: 'receive',
+      productId: 'p1',
+      locationId: 'l1',
+      quantity: '3',
+    });
+  });
+
+  /**
+   * A move's location is where the goods are NOW, which a home does not say; and proposing the home as a
+   * destination would be refused whenever the goods are already there. ART-1 lives at l2 and the move still starts
+   * at l1.
+   */
   it('will not move goods until somewhere to put them has been chosen', async () => {
     // The destination starts empty on purpose: a default would be this screen choosing one nobody asked for, and
     // the only value it could guess is where the goods already are, which the API refuses.

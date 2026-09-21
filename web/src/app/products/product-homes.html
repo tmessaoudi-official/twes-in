@@ -1,0 +1,63 @@
+<section class="flex flex-col gap-4" data-testid="product-homes">
+  <p class="text-sm opacity-80">{{ 'products.homes.intro' | translate }}</p>
+
+  @if (error(); as code) {
+    <p role="alert" data-testid="product-homes-error" class="text-error">
+      {{ 'products.errors.' + code | translate }}
+    </p>
+  }
+
+  @if (rows().length === 0) {
+    <p data-testid="product-homes-none">{{ 'products.homes.none' | translate }}</p>
+  } @else {
+    <ul class="flex flex-col gap-2" data-testid="product-homes-list">
+      @for (home of rows(); track home.id) {
+        <li class="flex flex-wrap items-center justify-between gap-3 rounded border p-3">
+          <span class="flex flex-col">
+            <span class="text-sm opacity-80">{{ home.establishmentName }}</span>
+            <span class="font-medium">{{ home.locationCode }} — {{ home.locationName }}</span>
+          </span>
+          @if (!readOnly()) {
+            <button
+              mat-icon-button
+              type="button"
+              [disabled]="busy()"
+              [appLabel]="'products.homes.clear' | translate"
+              [attr.data-testid]="'product-home-clear-' + home.establishmentId"
+              (click)="clear(home.establishmentId)"
+            >
+              <mat-icon>close</mat-icon>
+            </button>
+          }
+        </li>
+      }
+    </ul>
+  }
+
+  @if (!readOnly()) {
+    <div class="flex flex-wrap items-end gap-3">
+      <mat-form-field class="min-w-64 flex-1">
+        <mat-label>{{ 'products.homes.location' | translate }}</mat-label>
+        <mat-select
+          [ngModel]="chosen()"
+          (ngModelChange)="chosen.set($event)"
+          data-testid="product-home-location"
+        >
+          @for (choice of choices(); track choice.value) {
+            <mat-option [value]="choice.value">{{ choice.label }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <button
+        mat-flat-button
+        type="button"
+        class="mb-5"
+        [disabled]="busy() || chosen() === ''"
+        data-testid="product-home-set"
+        (click)="set()"
+      >
+        {{ 'products.homes.set' | translate }}
+      </button>
+    </div>
+  }
+</section>

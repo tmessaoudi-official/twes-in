@@ -86,6 +86,7 @@ describe('ProductPage', () => {
   const auth = {
     me: () => ({ user: { id: 'u1' }, company: { id: 'c1', name: 'Acme' } }),
     hasPermission: vi.fn(),
+    hasModule: vi.fn(),
   };
   const articleSettings = {
     rows: signal<readonly SettingRow[]>([]).asReadonly(),
@@ -139,6 +140,7 @@ describe('ProductPage', () => {
     facade.createProduct.mockReset().mockResolvedValue({ ...laptop, id: 'p9' });
     facade.reviseProduct.mockReset().mockResolvedValue(laptop);
     auth.hasPermission.mockReset().mockReturnValue(true);
+    auth.hasModule.mockReset().mockReturnValue(true);
     articleSettings.load.mockReset().mockResolvedValue(undefined);
     TestBed.configureTestingModule({
       imports: [ProductPage],
@@ -261,6 +263,34 @@ describe('ProductPage', () => {
     // The defaults are their own panel, in their own tab, with their own save.
     await openTab('products.tabs.defaults');
     expect(q('article-defaults')).not.toBeNull();
+  });
+
+  /**
+   * Where the product lives is its own tab, offered only for a product that exists and only to somebody who may
+   * both write products and see the warehouse (docs/SPEC.md row 101): choosing a home means reading a list of
+   * locations, and nobody points at a shelf they are not allowed to see.
+   */
+  it('offers where the product lives once it exists, to somebody who may see the warehouse', async () => {
+    product.set(laptop);
+    await open('p1');
+
+    await openTab('products.tabs.homes');
+    expect(q('product-homes')).not.toBeNull();
+  });
+
+  it('offers it on no new product, without stock, and to nobody who may not read stock', async () => {
+    await open(undefined);
+    expect(q('product-tab-homes')).toBeNull();
+
+    auth.hasModule.mockReturnValue(false);
+    product.set(laptop);
+    await open('p1');
+    expect(q('product-tab-homes')).toBeNull();
+
+    auth.hasModule.mockReturnValue(true);
+    auth.hasPermission.mockImplementation((name: string) => name !== 'stock.read');
+    await open('p1');
+    expect(q('product-tab-homes')).toBeNull();
   });
 
   it('keeps what was typed when the product and its options are read again', async () => {

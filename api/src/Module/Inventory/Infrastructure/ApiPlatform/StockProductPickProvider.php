@@ -11,12 +11,14 @@ namespace App\Module\Inventory\Infrastructure\ApiPlatform;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProviderInterface;
+use App\Module\Inventory\Application\KeepProductHomes;
 use App\Module\Inventory\Application\KeepStock;
 use App\Module\Products\Application\PickProducts;
 use App\Module\Products\Domain\Product;
 use App\Module\Products\Domain\ProductKind;
 use App\Module\Products\Domain\ProductRepository;
 use App\Shared\Infrastructure\ApiPlatform\Paging;
+use App\Tenancy\Domain\Company;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyPath;
 
@@ -44,6 +46,7 @@ final readonly class StockProductPickProvider implements ProviderInterface
         private CompanyGuard $guard,
         private ProductRepository $products,
         private KeepStock $stock,
+        private KeepProductHomes $homes,
     ) {
     }
 
@@ -55,12 +58,29 @@ final readonly class StockProductPickProvider implements ProviderInterface
         $ids = Paging::uuids($operation, 'ids');
         if ([] !== $ids) {
             // What a movement names is answered whether or not stock is still kept of it: the movement happened.
-            return array_map(StockProductPickResource::of(...), $this->products->ofIdsInCompany($ids, $company->getId()));
+            return $this->picks($company, $this->products->ofIdsInCompany($ids, $company->getId()));
         }
 
         $matching = $this->products->pick($company->getId(), Paging::text($operation) ?? '', self::SCANNED, ProductKind::Goods);
         $kept = array_filter($matching, fn (Product $product): bool => $this->stock->tracked($product));
 
-        return array_map(StockProductPickResource::of(...), \array_slice(array_values($kept), 0, PickProducts::SHOWN));
+        return $this->picks($company, \array_slice(array_values($kept), 0, PickProducts::SHOWN));
+    }
+
+    /**
+     * The answer, with each product's proposed home. One read for the whole page rather than one per row.
+     *
+     * @param list<Product> $products
+     *
+     * @return list<StockProductPickResource>
+     */
+    private function picks(Company $company, array $products): array
+    {
+        $homes = $this->homes->proposed($company, array_map(static fn (Product $product) => $product->getId(), $products));
+
+        return array_map(
+            static fn (Product $product): StockProductPickResource => StockProductPickResource::of($product, $homes[$product->getId()->toRfc4122()] ?? null),
+            $products,
+        );
     }
 }

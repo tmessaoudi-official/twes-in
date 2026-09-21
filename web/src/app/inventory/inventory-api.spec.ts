@@ -101,9 +101,34 @@ describe('InventoryApi', () => {
     expect(search.request.params.get('q')).toBe('port');
     search.flush([
       { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
+      {
+        id: 'p2',
+        reference: 'ART-2',
+        name: 'Écran',
+        unitCode: 'C62',
+        unitDecimals: 0,
+        homeLocationId: 'l2',
+      },
     ]);
+    // A product at home nowhere in particular — or in two places at once — comes without the field at all, and
+    // reads here as null rather than undefined, so the form asks "is there a home" of one value only.
     expect(await searched).toEqual([
-      { id: 'p1', reference: 'ART-1', name: 'Portable', unitCode: 'C62', unitDecimals: 0 },
+      {
+        id: 'p1',
+        reference: 'ART-1',
+        name: 'Portable',
+        unitCode: 'C62',
+        unitDecimals: 0,
+        homeLocationId: null,
+      },
+      {
+        id: 'p2',
+        reference: 'ART-2',
+        name: 'Écran',
+        unitCode: 'C62',
+        unitDecimals: 0,
+        homeLocationId: 'l2',
+      },
     ]);
 
     const named = api.pickProducts('c1', { ids: ['p1', 'p2'] });
