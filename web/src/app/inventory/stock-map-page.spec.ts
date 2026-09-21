@@ -374,6 +374,36 @@ describe('StockMapPage', () => {
     mayDraw: () => boolean;
   } => fixture.componentInstance as never;
 
+  /**
+   * Dispatched at the DOM, never at the methods: the bindings are half of what a drag IS, and a test that calls
+   * `grab` by hand proves the arithmetic while leaving `(pointerdown)` and `(document:pointermove)` unexercised.
+   * jsdom has no PointerEvent, so a MouseEvent carries the one field the handlers read.
+   */
+  function fire(target: EventTarget, type: string, x: number, y: number): void {
+    const event = new MouseEvent(type, {
+      clientX: x,
+      clientY: y,
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+    });
+    Object.defineProperty(event, 'pointerId', { value: 1 });
+    target.dispatchEvent(event);
+  }
+
+  const firstRect = (): Element =>
+    fixture.nativeElement.querySelector('svg[data-testid="stock-map-svg"] rect') as Element;
+
+  it('moves a rectangle through the DOM bindings, not only through its methods', async () => {
+    surface();
+    fire(firstRect(), 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 100);
+    fire(document, 'pointerup', 200, 100);
+    await settle();
+
+    expect(drawingGroup()?.get('x')?.value).toBe('6.000');
+  });
+
   it('moves a rectangle onto the grid and writes it into the form, sending nothing', async () => {
     const svg = surface();
     plan().grab(at(100, 100, svg), drawn, null);
@@ -453,5 +483,25 @@ describe('StockMapPage', () => {
     expect(plan().mayDraw()).toBe(false);
     expect(plan().handles()).toEqual([]);
     expect(drawingGroup()).toBeNull();
+  });
+
+  /**
+   * The e2e's own sequence, which CI red on: a rectangle saved through the FORM, then dragged. Saving used to thaw
+   * the frame while leaving the rectangle chosen, so the plan changed size under a pointer that was already on it.
+   */
+  it('drags a rectangle that was just saved through the form', async () => {
+    const svg = surface();
+    (fixture.componentInstance as never as { draw: (t: StockDrawingRow) => void }).draw(drawn);
+    await settle();
+    drawingGroup().get('x')!.setValue('5.000');
+    await settle();
+    drawings.set([{ ...drawn, x: '5.000' }]);
+    const saved = { ...drawn, x: '5.000' };
+
+    plan().grab(at(100, 100, svg), saved, null);
+    plan().drags(at(200, 100, svg));
+    await settle();
+
+    expect(drawingGroup().get('x')!.value).not.toBe('5.000');
   });
 });

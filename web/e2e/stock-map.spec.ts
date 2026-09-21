@@ -172,8 +172,18 @@ test.describe('the drawn stock map', () => {
       await page.mouse.up();
 
       await expect(page.getByTestId('stock-drawing-unsaved')).toBeVisible();
-      const dragged = comma(await page.getByTestId('field-x').inputValue());
-      expect(dragged).not.toBe(5);
+
+      // Both halves are read and reported together: a failure that prints only "not 5" cannot say whether the form
+      // never took the drag or the plan never drew it, which cost a CI round to work out once already.
+      const after = {
+        form: await page.getByTestId('field-x').inputValue(),
+        plan: await rect.getAttribute('x'),
+      };
+      expect(
+        after,
+        'a drag of 120 px must move the rectangle off 5 m in the form AND on the plan',
+      ).not.toEqual({ form: '5', plan: '5' });
+      const dragged = comma(after.form);
       expect(Math.round(dragged * 4)).toBeCloseTo(dragged * 4, 6);
 
       await page.getByTestId('stock-drawing-save').click();

@@ -183,20 +183,16 @@ export class StockMapPage implements OnInit {
   });
 
   /**
-   * The part of the floor being shown. It FREEZES while a rectangle is selected and thaws when nothing is: a frame
-   * that recomputed itself from the rectangle being dragged would move the floor under the pointer, and the metres
-   * the pointer reads would change as it travelled. Frozen with room around it, or there would be nowhere to drag
-   * anything to.
+   * The part of the floor being shown, measured from what is SAVED and never from what is being edited — so it
+   * changes only when something is saved, and never while a rectangle is being dragged or typed.
+   *
+   * An earlier version froze it on selection and thawed it on saving. That was worse than the problem it solved: the
+   * plan changed scale between a save and the next gesture, so a pointer already resting on a rectangle found it
+   * somewhere else the moment it was pressed [measured in CI, 2026-09-21: the frame went from 13,9 m wide to 5,9 m
+   * between one step and the next]. The working margin is simply always there instead.
    */
-  private readonly frozenFrame = signal<PlanFrame | null>(null);
-
-  protected readonly frame = computed<PlanFrame>(
-    () =>
-      this.frozenFrame() ??
-      planFrame(
-        this.shapes().map((shape) => shape.rect),
-        PLAN_PADDING,
-      ),
+  protected readonly frame = computed<PlanFrame>(() =>
+    planFrame(planRectangles(this.facade.drawings()), PLAN_PADDING + EDIT_ROOM),
   );
 
   protected readonly viewBox = computed(() => {
@@ -347,47 +343,24 @@ export class StockMapPage implements OnInit {
     this.selectedId.set(null);
     this.editing.set(null);
     this.drag = null;
-    this.frozenFrame.set(null);
     if (companyId && floorId) await this.facade.loadDrawings(companyId, floorId);
   }
 
   protected select(drawing: StockDrawingRow): void {
     this.selectedId.set(drawing.id);
-    // Freeze the frame the moment something is chosen, not when a gesture starts: by then it is already moving.
-    this.frozenFrame.set(
-      planFrame(
-        this.shapes().map((shape) => shape.rect),
-        PLAN_PADDING + EDIT_ROOM,
-      ),
-    );
-  }
-
-  protected deselect(): void {
-    this.selectedId.set(null);
-    if (this.editing() === null) this.frozenFrame.set(null);
   }
 
   protected draw(target: StockDrawingRow | 'new'): void {
     this.facade.clearError();
     this.editingFloor.set(null);
-    if (target === 'new') {
-      this.selectedId.set(null);
-      this.frozenFrame.set(
-        planFrame(
-          this.shapes().map((shape) => shape.rect),
-          PLAN_PADDING + EDIT_ROOM,
-        ),
-      );
-    } else {
-      this.select(target);
-    }
+    if (target === 'new') this.selectedId.set(null);
+    else this.select(target);
     this.editing.set(target);
   }
 
   protected cancelDrawing(): void {
     this.editing.set(null);
     this.drag = null;
-    this.frozenFrame.set(this.selectedId() === null ? null : this.frozenFrame());
     this.facade.clearError();
   }
 
@@ -509,7 +482,6 @@ export class StockMapPage implements OnInit {
     if (accepted) {
       this.editing.set(null);
       this.drag = null;
-      this.frozenFrame.set(null);
       this.feedback.success('inventory.plan.drawing_saved');
     }
   }
@@ -524,7 +496,6 @@ export class StockMapPage implements OnInit {
     if (erased) {
       if (this.selectedId() === drawing.id) this.selectedId.set(null);
       this.editing.set(null);
-      this.frozenFrame.set(null);
       this.feedback.success('inventory.plan.drawing_erased');
     }
   }
