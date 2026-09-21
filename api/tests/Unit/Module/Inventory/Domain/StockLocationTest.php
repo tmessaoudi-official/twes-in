@@ -14,6 +14,9 @@ use App\Module\Inventory\Domain\StockLocation;
 use App\Module\Inventory\Domain\StockLocationKind;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
+use App\Venue\Domain\PlanRect;
+use App\Venue\Domain\VenueArea;
+use App\Venue\Domain\VenueSpot;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
@@ -129,5 +132,33 @@ final class StockLocationTest extends TestCase
             self::assertSame('parentId', $refused->field);
         }
         self::assertNull($site->getParent());
+    }
+
+    public function testALocationIsDrawnOnItsOwnEstablishmentsFloorOrNotAtAll(): void
+    {
+        // The rectangle is the map's; the binding is the inventory's (docs/SPEC.md § 7, 2026-09-14). A location drawn
+        // on another establishment's floor would put a Sfax rack in the Tunis warehouse, which no screen could show.
+        $elsewhere = Establishment::create($this->company, '001', 'Dépôt de Sfax', false, $this->now);
+        $here = VenueArea::create($this->main, 'Rez-de-chaussée', 0, $this->now);
+        $there = VenueArea::create($elsewhere, 'Rez-de-chaussée', 0, $this->now);
+        $rect = new PlanRect('2.5', '4', '3.9', '0.6', 0, '2.1');
+        $site = StockLocation::defaultOf($this->main, $this->now);
+        $rack = StockLocation::create($this->main, $site, StockLocationKind::Rack, 'R1', 'Rayonnage 1', $this->now);
+
+        self::assertNull($rack->getSpot());
+        self::assertTrue($rack->drawAt(VenueSpot::place($here, $rect, $this->now), $this->now));
+        self::assertNotNull($rack->getSpot());
+        // Undrawing is a change like any other, and leaves the location itself untouched.
+        self::assertTrue($rack->drawAt(null, $this->now));
+        self::assertNull($rack->getSpot());
+        self::assertFalse($rack->drawAt(null, $this->now));
+
+        try {
+            $rack->drawAt(VenueSpot::place($there, $rect, $this->now), $this->now);
+            self::fail('A location was drawn on another establishment\'s floor.');
+        } catch (InvalidStockLocation $refused) {
+            self::assertSame('spotId', $refused->field);
+        }
+        self::assertNull($rack->getSpot());
     }
 }

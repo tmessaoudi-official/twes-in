@@ -12,6 +12,7 @@ namespace App\Module\Inventory\Domain;
 use App\Shared\Domain\CompanyOwned;
 use App\Tenancy\Domain\Company;
 use App\Tenancy\Domain\Establishment;
+use App\Venue\Domain\VenueSpot;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
@@ -25,6 +26,7 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Table(name: 'stock_location')]
 #[ORM\Index(name: 'idx_stock_location_company', columns: ['company_id'])]
 #[ORM\Index(name: 'idx_stock_location_parent', columns: ['parent_id'])]
+#[ORM\Index(name: 'idx_stock_location_spot', columns: ['spot_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_location_establishment_code', columns: ['establishment_id', 'code'])]
 #[ORM\UniqueConstraint(name: 'uniq_stock_location_default', columns: ['establishment_id'], options: ['where' => 'is_default'])]
 class StockLocation implements CompanyOwned
@@ -48,6 +50,11 @@ class StockLocation implements CompanyOwned
     #[ORM\ManyToOne(targetEntity: self::class)]
     #[ORM\JoinColumn(name: 'parent_id', nullable: true)]
     private ?StockLocation $parent = null;
+
+    /** Where it sits on a plan, if anyone has drawn it: the venue owns the rectangle, this owns the binding. */
+    #[ORM\ManyToOne(targetEntity: VenueSpot::class)]
+    #[ORM\JoinColumn(name: 'spot_id', nullable: true, onDelete: 'SET NULL')]
+    private ?VenueSpot $spot = null;
 
     #[ORM\Column(length: 16, enumType: StockLocationKind::class)]
     private StockLocationKind $kind;
@@ -193,6 +200,34 @@ class StockLocation implements CompanyOwned
     public function getParent(): ?self
     {
         return $this->parent;
+    }
+
+    /**
+     * Where this location is drawn on a plan, or nowhere (docs/SPEC.md § 7, 2026-09-14). The rectangle belongs to the
+     * venue; only the binding is the inventory's, which is what lets a dining room be drawn by a module that knows
+     * nothing about stock. A location that is not drawn is still a location, so null is an ordinary answer.
+     *
+     * @return bool whether anything changed
+     *
+     * @throws InvalidStockLocation
+     */
+    public function drawAt(?VenueSpot $spot, \DateTimeImmutable $now): bool
+    {
+        if ($spot?->getId()->toRfc4122() === $this->spot?->getId()->toRfc4122()) {
+            return false;
+        }
+        if (null !== $spot && !$spot->getArea()->getEstablishment()->getId()->equals($this->establishment->getId())) {
+            throw new InvalidStockLocation('spotId', 'A location is drawn on a floor of its own establishment.');
+        }
+        $this->spot = $spot;
+        $this->updatedAt = $now;
+
+        return true;
+    }
+
+    public function getSpot(): ?VenueSpot
+    {
+        return $this->spot;
     }
 
     public function getKind(): StockLocationKind

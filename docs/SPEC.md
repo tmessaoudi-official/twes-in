@@ -1056,6 +1056,23 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   two sabotages each red). **NOT certified by execution: no e2e** — a location that has seen a movement is kept (409), so a browser
   scenario moving into the e2e location could not delete it and would leak one location per run into the shared company.
 
+- [2026-09-21 03:20] AGREED: **the drawing is its own context, and the consumer owns the binding** (row 83, API half; the seam
+  of 2026-09-14 made real). `Venue` holds `venue_area` — one floor of an establishment, at most one per level, with an optional
+  floor image kept beside HOW MANY METRES WIDE that image really is — and `venue_spot`, a rectangle on it in METRES (x, y, width,
+  depth, whole-degree rotation, height). Metres and not pixels: a floor plan is rescanned and recropped over a building's life
+  while the building does not move, so a drawing stored in the image's own units would shift every rectangle the day somebody
+  uploads a better scan. A spot carries no code, name or kind — `stock_location.spot_id` (nullable, `ON DELETE SET NULL`) is the
+  binding, and a café table will point at a spot the same way, so neither domain owns the drawing. Four consequences. **(1)** A
+  location not drawn is still a location: removing a rectangle undraws it, never deletes it. **(2)** A location is drawn only on
+  a floor of its OWN establishment, refused in the entity — otherwise a Sfax rack lands in the Tunis warehouse and no screen can
+  show it. **(3)** Every change is audited (`venue_area.*`, `venue_spot.*`), which is also the signal open plans reload on: a use
+  case recording nothing would leave every other screen on yesterday's drawing with no error anywhere. **(4)** Dropping a
+  rectangle where it already was records nothing, so a drag that went nowhere does not tell every other tab the plan moved.
+  **Certified by execution: the domain, the use case, the binding and the migration both ways** (`VenueSpotTest`,
+  `ArrangeVenueTest`, `StockLocationTest`, `migrate prev` then `latest` then a clean `schema:update --dump-sql`; three sabotages
+  red). **NOT certified by execution: no HTTP surface and no screen yet** — the resources and the 2D/3D views wait on the canvas
+  being approved (the rule of 19/09), which is why row 83 stays `doing`.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1145,7 +1162,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 80 | Job (§ 7 2026-09-20): from an accepted quote, material consumed through the generic transformation, hours at a cost rate, output as a product or a one-off, scrap consumed by the job, closing into a delivery note and an invoice, quoted price against real cost | L | todo | - | api/src/Module/Jobs/** api/migrations/** api/tests/** web/src/app/jobs/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |
 | 82 | Register, the counter sale (§ 7 2026-09-20): one full screen on scanner and keyboard, receipt or invoice from the same sale, cash with change, card, on account and mixed payments, returns writing a credit note and restocking; sales idempotent and queued in shape so offline can be added later | L | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** web/e2e/** |
-| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines' | L | todo | - | api/src/Venue/** api/migrations/** api/tests/** web/src/app/venue/** web/public/i18n/** |
+| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines' | L | doing | - | api/src/Venue/** api/migrations/** api/tests/** web/src/app/venue/** web/public/i18n/** |
 | 84 | Supplier bill and the three-way match (§ 7 2026-09-20): a bill with lines, matched automatically against order and receipt within a tolerance the settings engine holds, anything outside it waiting on an approval before the bill is payable | M | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** |
 | 85 | Statement of account and credit limit (§ 7 2026-09-20): a customer's documents and payments over a period, printed; a limit per customer or group warning when a delivery would pass what is already owed | M | todo | - | api/src/Module/Customers/** api/src/Module/Invoices/** api/tests/** web/src/app/customers/** |
 | 86 | Recurring invoices (§ 7 2026-09-20, off "out with no date"): a schedule generating drafts that an issue confirms, on the row-56 worker | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
