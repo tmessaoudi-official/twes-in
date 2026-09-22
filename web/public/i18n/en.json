@@ -1548,7 +1548,12 @@
         "down": "↓",
         "left": "←",
         "right": "→"
-      }
+      },
+      "view": "View",
+      "zoom_in": "Come nearer",
+      "zoom_out": "Step back",
+      "fit": "Fit",
+      "view_hint": "Wheel to come nearer, drag to move"
     }
   },
   "vendors": {

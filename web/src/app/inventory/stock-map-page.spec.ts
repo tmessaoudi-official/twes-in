@@ -452,6 +452,74 @@ describe('StockMapPage', () => {
       -1,
     ) as Element;
 
+  // ——— coming nearer, and moving what is shown (docs/SPEC.md § 7, 2026-09-22) ———
+
+  const viewBox = (): string => q('stock-map-svg')!.getAttribute('viewBox')!;
+  const partOf = (box: string, at: number): number => Number(box.split(' ')[at]);
+  const press = (testId: string): void => (q(testId) as HTMLButtonElement).click();
+
+  /**
+   * The plan showed the whole floor in a fixed window and offered nothing else: a 24-metre depot could be neither
+   * approached to aim at a rack nor stepped back from to find one's bearings.
+   */
+  it('shows the whole floor until someone comes nearer, with nowhere to go back to', async () => {
+    expect(q('stock-map-zoom')?.textContent?.trim()).toBe('100 %');
+    expect((q('stock-map-zoom-out') as HTMLButtonElement).disabled).toBe(true);
+    expect((q('stock-map-fit') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('comes nearer on the button, and the plan follows', async () => {
+    const before = viewBox();
+    press('stock-map-zoom-in');
+    await settle();
+
+    expect(partOf(viewBox(), 2)).toBeLessThan(partOf(before, 2));
+    expect(q('stock-map-zoom')?.textContent?.trim()).toBe('140 %');
+    expect((q('stock-map-fit') as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  it('gives the whole floor back on fit, exactly as it was', async () => {
+    const before = viewBox();
+    press('stock-map-zoom-in');
+    await settle();
+    press('stock-map-fit');
+    await settle();
+
+    expect(viewBox()).toBe(before);
+    expect(q('stock-map-zoom')?.textContent?.trim()).toBe('100 %');
+  });
+
+  /** The floor follows the hand: dragging it right brings what is on the left into view. */
+  it('moves the floor under the hand once one is near enough', async () => {
+    const svg = surface();
+    press('stock-map-zoom-in');
+    press('stock-map-zoom-in');
+    await settle();
+    const before = viewBox();
+
+    fire(svg, 'pointerdown', 200, 200);
+    fire(document, 'pointermove', 260, 200);
+    fire(document, 'pointerup', 260, 200);
+    await settle();
+
+    expect(partOf(viewBox(), 0)).toBeLessThan(partOf(before, 0));
+    // Coming nearer is not resizing: the window keeps its size while it travels.
+    expect(partOf(viewBox(), 2)).toBe(partOf(before, 2));
+  });
+
+  /** Showing the whole floor leaves nowhere to move it to, so the same press must do nothing at all. */
+  it('leaves the floor alone while the whole of it is shown', async () => {
+    const svg = surface();
+    const before = viewBox();
+
+    fire(svg, 'pointerdown', 200, 200);
+    fire(document, 'pointermove', 300, 200);
+    fire(document, 'pointerup', 300, 200);
+    await settle();
+
+    expect(viewBox()).toBe(before);
+  });
+
   it('moves a rectangle through the DOM bindings, not only through its methods', async () => {
     surface();
     fire(firstRect(), 'pointerdown', 100, 100);

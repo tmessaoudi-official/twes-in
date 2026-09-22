@@ -165,6 +165,79 @@ export function planViewBox(rects: readonly PlanRectangle[], padding: number): s
 }
 
 /**
+ * What part of the floor is being looked at: `scale` 1 is the whole of it, above that the window closes in on the
+ * point `cx`,`cy` names. Until 2026-09-22 the plan had none of this — a 24-metre depot sat in a fixed window, so
+ * one could neither come near enough to aim at a rack nor step back to find one's bearings (docs/SPEC.md § 7).
+ */
+export interface PlanView {
+  scale: number;
+  cx: number;
+  cy: number;
+}
+
+/** Nearer than the whole floor only: there is nothing outside it worth showing. */
+export const PLAN_ZOOM_MIN = 1;
+export const PLAN_ZOOM_MAX = 8;
+/** One press of a zoom button, chosen so four presses roughly quadruple. */
+export const PLAN_ZOOM_STEP = 1.4;
+
+/** The view that shows the whole of a floor, which is where the plan starts and what "fit" goes back to. */
+export function fitView(fit: PlanFrame): PlanView {
+  return { scale: 1, cx: fit.x + fit.width / 2, cy: fit.y + fit.height / 2 };
+}
+
+/**
+ * The box to draw, from the floor's own frame and what is being looked at.
+ *
+ * Panning is held inside the floor: past its edge there is nothing to see and finding the way back is work, so the
+ * centre may only travel by half of what the window does not cover.
+ */
+export function shownFrame(fit: PlanFrame, view: PlanView): PlanFrame {
+  const scale = held(view.scale, PLAN_ZOOM_MIN, PLAN_ZOOM_MAX);
+  const width = fit.width / scale;
+  const height = fit.height / scale;
+  const midX = fit.x + fit.width / 2;
+  const midY = fit.y + fit.height / 2;
+  const roomX = Math.max(0, (fit.width - width) / 2);
+  const roomY = Math.max(0, (fit.height - height) / 2);
+
+  return {
+    x: tidy(held(view.cx, midX - roomX, midX + roomX) - width / 2),
+    y: tidy(held(view.cy, midY - roomY, midY + roomY) - height / 2),
+    width: tidy(width),
+    height: tidy(height),
+  };
+}
+
+/**
+ * Closing in on a point while leaving that point where it is. Zooming towards the middle of the window instead
+ * walks whatever one was aiming at off the screen, which is what makes a plan feel broken under the hand.
+ */
+export function zoomedAt(fit: PlanFrame, view: PlanView, scale: number, at: PlanPoint): PlanView {
+  const shown = shownFrame(fit, view);
+  const next = held(scale, PLAN_ZOOM_MIN, PLAN_ZOOM_MAX);
+  const width = fit.width / next;
+  const height = fit.height / next;
+  const acrossX = shown.width === 0 ? 0.5 : (at.x - shown.x) / shown.width;
+  const acrossY = shown.height === 0 ? 0.5 : (at.y - shown.y) / shown.height;
+
+  return {
+    scale: next,
+    cx: at.x - acrossX * width + width / 2,
+    cy: at.y - acrossY * height + height / 2,
+  };
+}
+
+/** Dragging the floor: it follows the hand, so what is shown travels the other way. */
+export function pannedBy(view: PlanView, dx: number, dy: number): PlanView {
+  return { scale: view.scale, cx: view.cx - dx, cy: view.cy - dy };
+}
+
+function held(value: number, least: number, most: number): number {
+  return Math.min(most, Math.max(least, value));
+}
+
+/**
  * Where a pointer is, in metres on the floor.
  *
  * An SVG with no `preserveAspectRatio` of its own MEETS its box: it scales both sides by the same factor — the

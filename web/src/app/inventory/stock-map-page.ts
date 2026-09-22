@@ -53,11 +53,17 @@ import {
 } from './stock-map-forms';
 import {
   centredIn,
+  fitView,
   handleAt,
   movedTo,
+  pannedBy,
   PLAN_HANDLES,
+  PLAN_ZOOM_MIN,
+  PLAN_ZOOM_STEP,
   planFrame,
   pointerMetres,
+  shownFrame,
+  zoomedAt,
   repeatedFrom,
   resizedTo,
   tracedTo,
@@ -66,6 +72,7 @@ import {
   type PlanHandle,
   type PlanPoint,
   type PlanRectangle,
+  type PlanView,
   type PlanWay,
   PLAN_WAYS,
 } from './stock-map-geometry';
@@ -242,8 +249,25 @@ export class StockMapPage implements OnInit {
     planFrame(planRectangles(this.facade.drawings()), PLAN_PADDING + EDIT_ROOM),
   );
 
+  /**
+   * What part of the floor is being looked at: nothing while the whole of it is shown, which is where the plan
+   * starts and what the "fit" button goes back to (docs/SPEC.md § 7, 2026-09-22).
+   */
+  protected readonly view = signal<PlanView | null>(null);
+
+  /** The frame actually drawn — the floor's own until someone comes nearer. */
+  protected readonly viewed = computed(() => {
+    const fit = this.frame();
+    const view = this.view();
+
+    return view === null ? fit : shownFrame(fit, view);
+  });
+
+  protected readonly zoom = computed(() => this.view()?.scale ?? PLAN_ZOOM_MIN);
+  protected readonly zoomLabel = computed(() => `${Math.round(this.zoom() * 100)} %`);
+
   protected readonly viewBox = computed(() => {
-    const frame = this.frame();
+    const frame = this.viewed();
 
     return [frame.x, frame.y, frame.width, frame.height].join(' ');
   });
@@ -458,7 +482,7 @@ export class StockMapPage implements OnInit {
   });
 
   /** The radius a handle is drawn at, in METRES, so it stays the same size on the screen whatever the floor's size. */
-  protected readonly handleRadius = computed(() => this.frame().width / 110);
+  protected readonly handleRadius = computed(() => this.viewed().width / 110);
 
   /**
    * How many fields hold something other than what was last saved. Without it a drag is illegible: the rectangle
@@ -490,7 +514,7 @@ export class StockMapPage implements OnInit {
   protected pose(shape: StockPlanShape): void {
     this.draw('new');
     this.drawingFormGroup()?.patchValue(
-      footprintValues(centredIn(this.frame(), shape.width, shape.depth)),
+      footprintValues(centredIn(this.viewed(), shape.width, shape.depth)),
     );
   }
 
@@ -647,6 +671,98 @@ export class StockMapPage implements OnInit {
     this.hold(event, null, null, null);
   }
 
+  // ——— coming nearer, and moving what is shown ———
+
+  private pan: {
+    pointerId: number;
+    from: PlanPoint;
+    view: PlanView;
+    frame: PlanFrame;
+    box: PlanBox;
+  } | null = null;
+
+  /**
+   * A press on bare floor. Armed to trace it draws a box, as it always did; otherwise it takes hold of the floor
+   * and moves it — but only once someone has come nearer, since showing the whole of it leaves nowhere to move to.
+   *
+   * A finger cannot do this: without `touch-action: none` the browser claims the drag for its own scrolling, and
+   * laying that across a full-width plan traps a finger trying to scroll past it. The tablet's pinch is its own
+   * piece of work.
+   */
+  protected press(event: PointerEvent): void {
+    if (this.tracing()) {
+      this.trace(event);
+
+      return;
+    }
+    const view = this.view();
+    if (view === null || event.button !== 0) return;
+    if ((event.target as Element).tagName.toLowerCase() !== 'svg') return;
+
+    const surface = event.currentTarget as SVGSVGElement;
+    const box = surface.getBoundingClientRect();
+    const frame = this.viewed();
+    this.pan = {
+      pointerId: event.pointerId,
+      from: pointerMetres({ x: event.clientX, y: event.clientY }, frame, box),
+      view,
+      frame,
+      box,
+    };
+    event.preventDefault();
+  }
+
+  /**
+   * The wheel comes nearer where the pointer is, leaving that spot where it was. Coming nearer the middle of the
+   * window instead walks whatever one was aiming at off the screen, which is what makes a plan feel broken.
+   */
+  protected wheel(event: WheelEvent): void {
+    const surface = event.currentTarget as SVGSVGElement | null;
+    if (surface === null) return;
+    event.preventDefault();
+
+    const fit = this.frame();
+    const view = this.view() ?? fitView(fit);
+    const at = pointerMetres(
+      { x: event.clientX, y: event.clientY },
+      this.viewed(),
+      surface.getBoundingClientRect(),
+    );
+
+    this.look(
+      zoomedAt(
+        fit,
+        view,
+        view.scale * (event.deltaY < 0 ? PLAN_ZOOM_STEP : 1 / PLAN_ZOOM_STEP),
+        at,
+      ),
+    );
+  }
+
+  /** The buttons come nearer the middle of what is already shown, which is what a button can mean. */
+  protected zoomBy(factor: number): void {
+    const fit = this.frame();
+    const view = this.view() ?? fitView(fit);
+    const frame = this.viewed();
+
+    this.look(
+      zoomedAt(fit, view, view.scale * factor, {
+        x: frame.x + frame.width / 2,
+        y: frame.y + frame.height / 2,
+      }),
+    );
+  }
+
+  /** The whole floor again. */
+  protected fitAll(): void {
+    this.view.set(null);
+  }
+
+  /** Showing the whole floor is held as "no view at all", so the two ways of saying it cannot disagree. */
+  private look(view: PlanView): void {
+    this.view.set(view.scale <= PLAN_ZOOM_MIN ? null : view);
+  }
+
   /** What every gesture starts with: the frame and the viewport frozen, and the metre the pointer began on. */
   private hold(
     event: PointerEvent,
@@ -659,7 +775,7 @@ export class StockMapPage implements OnInit {
     if (surface === null) return;
 
     const box = surface.getBoundingClientRect();
-    const frame = this.frame();
+    const frame = this.viewed();
     this.drag = {
       pointerId: event.pointerId,
       handle,
@@ -676,6 +792,14 @@ export class StockMapPage implements OnInit {
   }
 
   protected drags(event: PointerEvent): void {
+    const pan = this.pan;
+    if (pan !== null && pan.pointerId === event.pointerId) {
+      const to = pointerMetres({ x: event.clientX, y: event.clientY }, pan.frame, pan.box);
+      this.view.set(pannedBy(pan.view, to.x - pan.from.x, to.y - pan.from.y));
+
+      return;
+    }
+
     const drag = this.drag;
     if (drag === null || drag.pointerId !== event.pointerId) return;
 
@@ -713,6 +837,7 @@ export class StockMapPage implements OnInit {
   }
 
   protected drops(event: PointerEvent): void {
+    if (this.pan?.pointerId === event.pointerId) this.pan = null;
     if (this.drag?.pointerId !== event.pointerId) return;
 
     // One box per arming: the sheet goes back to being something a finger can scroll past.
@@ -724,6 +849,7 @@ export class StockMapPage implements OnInit {
   protected abandon(): void {
     const drag = this.drag;
     this.drag = null;
+    this.pan = null;
     this.tracing.set(false);
     if (drag?.past) this.drawingFormGroup()?.patchValue(drag.before);
   }
@@ -903,7 +1029,7 @@ export class StockMapPage implements OnInit {
     this.openStructure('new');
     this.structureFormGroup()?.patchValue({
       ...structureValues(null, this.structureTools(), tool.kind),
-      ...footprintValues(centredIn(this.frame(), tool.width, tool.depth)),
+      ...footprintValues(centredIn(this.viewed(), tool.width, tool.depth)),
     });
   }
 

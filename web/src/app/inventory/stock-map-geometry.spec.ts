@@ -10,6 +10,12 @@ import {
   planFrame,
   planViewBox,
   pointerMetres,
+  fitView,
+  pannedBy,
+  shownFrame,
+  zoomedAt,
+  PLAN_ZOOM_MAX,
+  type PlanFrame,
   centredIn,
   repeatedFrom,
   resizedTo,
@@ -424,5 +430,62 @@ describe('repeatedFrom', () => {
       rotation: 0,
       height: 2.1,
     });
+  });
+});
+
+/**
+ * Looking closer, and moving what is looked at. Until now the plan always showed the whole floor at once: a
+ * 24-metre depot in a fixed window, with no way to come near enough to aim at a rack nor to step back and find
+ * one's bearings (docs/SPEC.md § 7, 2026-09-22).
+ */
+describe('zoom and pan', () => {
+  const floor: PlanFrame = { x: 0, y: 0, width: 24, height: 14 };
+
+  it('shows the whole floor at scale 1, whatever centre it is given', () => {
+    expect(shownFrame(floor, { scale: 1, cx: 3, cy: 2 })).toEqual(floor);
+  });
+
+  it('shows a quarter of the floor at scale 2, around the centre asked for', () => {
+    expect(shownFrame(floor, { scale: 2, cx: 12, cy: 7 })).toEqual({
+      x: 6,
+      y: 3.5,
+      width: 12,
+      height: 7,
+    });
+  });
+
+  /** Panning may not leave the floor: there is nothing out there to look at, and finding it again is work. */
+  it('keeps what is shown inside the floor, however far the centre is pushed', () => {
+    expect(shownFrame(floor, { scale: 2, cx: -100, cy: 900 })).toEqual({
+      x: 0,
+      y: 7,
+      width: 12,
+      height: 7,
+    });
+  });
+
+  it('refuses to go nearer or further than it is worth', () => {
+    expect(shownFrame(floor, { scale: 99, cx: 12, cy: 7 }).width).toBe(24 / PLAN_ZOOM_MAX);
+    expect(shownFrame(floor, { scale: 0.01, cx: 12, cy: 7 })).toEqual(floor);
+  });
+
+  /**
+   * The point under the pointer stays under the pointer. Zooming towards the middle of the window instead would
+   * walk whatever one was aiming at off the screen, which is the thing that makes a plan feel broken.
+   */
+  it('leaves the point it is aimed at where it was', () => {
+    const view = zoomedAt(floor, { scale: 1, cx: 12, cy: 7 }, 2, { x: 6, y: 3.5 });
+    const shown = shownFrame(floor, view);
+
+    expect((6 - shown.x) / shown.width).toBeCloseTo(0.25, 6);
+    expect((3.5 - shown.y) / shown.height).toBeCloseTo(0.25, 6);
+  });
+
+  it('moves what is shown the other way from the hand, so the floor follows the finger', () => {
+    expect(pannedBy({ scale: 2, cx: 12, cy: 7 }, 3, -1)).toEqual({ scale: 2, cx: 9, cy: 8 });
+  });
+
+  it('fits the whole floor again from its own frame', () => {
+    expect(fitView(floor)).toEqual({ scale: 1, cx: 12, cy: 7 });
   });
 });

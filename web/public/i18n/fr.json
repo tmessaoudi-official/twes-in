@@ -1548,7 +1548,12 @@
         "down": "↓",
         "left": "←",
         "right": "→"
-      }
+      },
+      "view": "Vue",
+      "zoom_in": "Voir de plus près",
+      "zoom_out": "Voir de plus loin",
+      "fit": "Ajuster",
+      "view_hint": "Molette pour approcher, glisser pour déplacer"
     }
   },
   "vendors": {

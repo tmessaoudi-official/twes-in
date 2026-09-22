@@ -452,6 +452,52 @@
               the page's own scrolling on a touch screen, and `touch-action: none` over a full-width drawing would
               trap a finger trying to scroll past it.
             -->
+            <!--
+              Coming nearer, and finding the way back. The plan showed the whole floor in a fixed window and
+              nothing else: one could neither aim at a rack nor step back (docs/SPEC.md § 7, 2026-09-22).
+            -->
+            <div
+              class="flex items-center gap-2 border-b border-outline-variant px-3 py-2"
+              role="group"
+              [attr.aria-label]="'inventory.plan.view' | translate"
+            >
+              <button
+                type="button"
+                class="rounded-md border border-outline-variant px-3 py-1 text-sm"
+                (click)="zoomBy(1 / 1.4)"
+                [disabled]="zoom() <= 1"
+                [appLabel]="'inventory.plan.zoom_out' | translate"
+                data-testid="stock-map-zoom-out"
+              >
+                −
+              </button>
+              <span
+                class="min-w-14 text-center text-sm tabular-nums text-on-surface-variant"
+                data-testid="stock-map-zoom"
+                >{{ zoomLabel() }}</span
+              >
+              <button
+                type="button"
+                class="rounded-md border border-outline-variant px-3 py-1 text-sm"
+                (click)="zoomBy(1.4)"
+                [appLabel]="'inventory.plan.zoom_in' | translate"
+                data-testid="stock-map-zoom-in"
+              >
+                +
+              </button>
+              <button
+                type="button"
+                class="rounded-md border border-outline-variant px-3 py-1 text-sm"
+                (click)="fitAll()"
+                [disabled]="zoom() <= 1"
+                data-testid="stock-map-fit"
+              >
+                {{ 'inventory.plan.fit' | translate }}
+              </button>
+              <span class="ml-auto text-xs text-on-surface-variant">{{
+                'inventory.plan.view_hint' | translate
+              }}</span>
+            </div>
             <svg
               [attr.viewBox]="viewBox()"
               class="block h-[28rem] w-full"
@@ -459,8 +505,10 @@
               [attr.aria-label]="'inventory.plan.plan_of' | translate: planLabel()"
               data-testid="stock-map-svg"
               [class.cursor-crosshair]="tracing()"
+              [class.cursor-grab]="!tracing() && zoom() > 1"
               [class.touch-none]="tracing()"
-              (pointerdown)="trace($event)"
+              (wheel)="wheel($event)"
+              (pointerdown)="press($event)"
               (document:pointermove)="drags($event)"
               (document:pointerup)="drops($event)"
               (document:pointercancel)="drops($event)"
