@@ -1376,6 +1376,23 @@
         "pack_many": "Un colis compte plus d’une pièce ; pour une pièce, choisissez Unité.",
         "supplier_required": "Choisissez le fournisseur qui imprime ce code."
       }
+    },
+    "scan": {
+      "title": "Code scanné",
+      "loading": "Recherche de l’article…",
+      "none": "Aucun article de l’entreprise ne répond à ce code.",
+      "retired": "Article retiré de la vente",
+      "enters": "{{role}} : une lecture compte {{quantity}} pièce(s).",
+      "lot": "Lot",
+      "use_by": "À utiliser avant le",
+      "serial": "Numéro de série",
+      "hint": "Une touche suffit : Entrée pour la première action, la lettre indiquée pour les autres, Échap pour fermer.",
+      "actions": {
+        "sheet": "Fiche",
+        "codes": "Codes-barres",
+        "movements": "Mouvements",
+        "search": "Chercher dans le catalogue"
+      }
     }
   },
   "inventory": {

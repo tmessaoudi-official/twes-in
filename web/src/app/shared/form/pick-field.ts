@@ -20,6 +20,7 @@ import {
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { debounceTime } from 'rxjs';
+import { SCAN_GAP_MS } from '../scan/scan-wedge';
 
 /** One thing a person may pick: what they type to find it, and what they read to recognise it. */
 export interface PickOption {
@@ -31,12 +32,6 @@ export interface PickOption {
 
 /** How long a person stops typing before the API is asked (docs/SPEC.md § 7, 2026-09-17, ruling 3). */
 export const PICK_PAUSE_MS = 300;
-
-/**
- * Under this many milliseconds between two characters, nobody is typing: it is a keyboard wedge emptying a whole
- * code at once (docs/SPEC.md § 7, 2026-09-22). Above it the field waits for `PICK_PAUSE_MS` as it always has.
- */
-export const SCAN_GAP_MS = 30;
 
 /**
  * A field that asks the API for the few things a person means, instead of being handed every one of them

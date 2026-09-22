@@ -32,7 +32,12 @@
   }
 
   <!-- A long record splits into tabs, each saving its own (design review finding 4). -->
-  <mat-tab-group data-testid="product-tabs" [preserveContent]="true">
+  <mat-tab-group
+    data-testid="product-tabs"
+    [preserveContent]="true"
+    [selectedIndex]="selectedTab()"
+    (selectedIndexChange)="selectedTab.set($event)"
+  >
     <mat-tab [label]="'products.tabs.record' | translate">
       <div class="flex flex-col gap-6 pt-4" data-testid="product-tab-record">
         @if (form(); as form) {

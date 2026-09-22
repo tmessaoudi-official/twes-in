@@ -47,6 +47,9 @@ import {
 import { LanguageMenu } from '../shared/i18n/language-menu';
 import { SchemeMenu } from '../shared/theme/scheme-menu';
 import { type SchemePreference, ThemeFacade } from '../shared/theme/theme-facade';
+import { ProductScanCard, type ProductScanCardData } from '../products/product-scan-card';
+import { PRODUCTS_MODULE } from '../products/products-nav';
+import { ScanWedge } from '../shared/scan/scan-wedge';
 import { CommandPalette, type CommandPaletteData } from './command-palette';
 import { type Command, MODULE_COMMANDS, navCommands, screenCommands } from './commands';
 import {
@@ -120,6 +123,8 @@ export class AppShell {
   private readonly screen = inject(ScreenActions);
   private paletteOpen = false;
   private shortcutsOpen = false;
+  private scanOpen = false;
+  private readonly wedge = new ScanWedge();
   private readonly activity = inject(RequestActivity);
   protected readonly theme = inject(ThemeFacade);
   protected readonly language = inject(LanguageFacade);
@@ -231,6 +236,25 @@ export class AppShell {
       this.openCommands();
       return;
     }
+    // A scanner typing a code with no field focused opens what the code names (docs/SPEC.md § 7, 2026-09-23 01:10).
+    // Read before any screen key, so a letter inside a code never runs the screen's shortcut; in a field, or under
+    // an overlay, the scan is the field's and the wedge only forgets what it had.
+    const reading = this.wedge.read({
+      key: event.key,
+      at: event.timeStamp,
+      editable: isTypingTarget(event.target),
+      modified: event.ctrlKey || event.metaKey || event.altKey,
+    });
+    if (reading.code !== null) {
+      event.preventDefault();
+      this.openScan(reading.code);
+      return;
+    }
+    if (reading.claimed) {
+      event.preventDefault();
+      return;
+    }
+
     // Everything below is a bare character, so it is a letter wherever a person is writing and while an overlay
     // owns the keyboard. One check, before the keys themselves, rather than one per key.
     if (isTypingTarget(event.target)) return;
@@ -268,6 +292,28 @@ export class AppShell {
       .open(ShortcutsSheet, { width: 'min(32rem, calc(100vw - 2rem))', autoFocus: 'dialog' })
       .afterClosed()
       .subscribe(() => (this.shortcutsOpen = false));
+  }
+
+  /** The card of what a scan names, for somebody who may read the products; one at a time. */
+  private openScan(code: string): void {
+    if (
+      this.scanOpen ||
+      !this.auth.hasModule(PRODUCTS_MODULE) ||
+      !this.auth.hasPermission('product.read')
+    ) {
+      return;
+    }
+    this.scanOpen = true;
+    this.dialog
+      .open<ProductScanCard, ProductScanCardData>(ProductScanCard, {
+        data: { code },
+        width: 'min(36rem, calc(100vw - 2rem))',
+        position: { top: '12vh' },
+        // The card itself, where its keys are read: the dialog's own container sits above it.
+        autoFocus: '[data-testid="product-scan-card"]',
+      })
+      .afterClosed()
+      .subscribe(() => (this.scanOpen = false));
   }
 
   protected openCommands(): void {

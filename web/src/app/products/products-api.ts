@@ -17,6 +17,7 @@ import type {
   ProductBarcodesProductBarcodesWrite,
   ProductProductRead,
   ProductProductWrite,
+  ProductScanProductScanRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
 import {
@@ -31,6 +32,7 @@ import {
   type ProductInput,
   type ProductOptions,
   type ProductRow,
+  type ProductScan,
   type ProductSearch,
   type ProductsError,
 } from './products-types';
@@ -137,6 +139,32 @@ export class ProductsApi {
       return (saved.barcodes ?? []).map(toBarcode);
     } catch (error) {
       throw new BarcodesRefused(barcodesRefusal(error));
+    }
+  }
+
+  /** What one scan names, sent as it came; null when no product of the company answers to it. */
+  async scan(companyId: string, code: string): Promise<ProductScan | null> {
+    try {
+      const raw = await firstValueFrom(
+        this.http.get<ProductScanProductScanRead>(path(companyId, 'product-scan'), {
+          params: new HttpParams().set('code', code),
+        }),
+      );
+      return {
+        productId: raw.productId,
+        reference: raw.reference,
+        name: raw.name,
+        isActive: raw.isActive,
+        code: raw.code,
+        role: raw.role,
+        quantity: raw.quantity,
+        lot: raw.lot ?? null,
+        useBy: raw.useBy ?? null,
+        serial: raw.serial ?? null,
+      };
+    } catch (error) {
+      if (error instanceof HttpErrorResponse && error.status === 404) return null;
+      throw new ProductsRefused(codeOf(error, 'invalid'));
     }
   }
 

@@ -2236,6 +2236,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   learns why it is refused. **(3) Scanning into a document line will use that lookup**, not a quantity added to the
   three pickers' rows: the pickers answer "which products match these words", the lookup answers "what did this scan
   mean", and a pack's count belongs only to the second. The search and the pickers read a GS1 scan by its GTIN too.
+- [2026-09-23 01:10] TAKEN OVERNIGHT, to confirm (the recommended option, under the developer's 2026-09-22 instruction
+  to keep going and record each choice; listed in `var/claude/overnight-questions.md`): **a scan on a page with no
+  field focused opens a card of what it names.** The shell reads every keydown through `ScanWedge`: characters each
+  within 30 ms of the one before (`SCAN_GAP_MS`, the threshold `PickField` already used), at least four, closed by an
+  Enter as quick, are a scan. The card (`ProductScanCard`) shows the product, the code's role and the pieces one scan
+  enters, the lot, use-by and serial a GS1 scan carried, and a retired product as retired; one key goes on — Enter
+  the sheet, C its codes (`/products/{id}?tab=codes`), M its movements for somebody who may read the stock. A code
+  nobody holds offers the catalogue searched for it; attaching it to a product from the card is left for later. In a
+  field, or under an open dialog, the scan stays where it was typed. From the second character of a burst on, the
+  keys are swallowed so a letter inside a code never runs a screen's shortcut; the FIRST cannot be told from a hand's
+  and runs whatever the screen binds to it — accepted, since GTINs are digits and no screen binds a digit.
 
 ## 8. Status
 

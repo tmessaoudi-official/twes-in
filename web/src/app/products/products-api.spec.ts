@@ -107,6 +107,49 @@ describe('ProductsApi', () => {
     expect(await saved).toEqual(codes);
   });
 
+  it('reads what one scan names, sending the scan as it came, and answers null when no product holds it', async () => {
+    const scanned = api.scan('c1', ']C10113017620422000\x1d10LOT 7');
+    const get = http.expectOne(
+      (req) =>
+        req.url === '/api/companies/c1/product-scan' &&
+        req.params.get('code') === ']C10113017620422000\x1d10LOT 7',
+    );
+    get.flush({
+      productId: 'p1',
+      reference: 'ART-001',
+      name: 'Pâte',
+      isActive: true,
+      code: '13017620422000',
+      role: 'pack',
+      quantity: 12,
+      lot: 'LOT 7',
+    });
+    expect(await scanned).toEqual({
+      productId: 'p1',
+      reference: 'ART-001',
+      name: 'Pâte',
+      isActive: true,
+      code: '13017620422000',
+      role: 'pack',
+      quantity: 12,
+      lot: 'LOT 7',
+      useBy: null,
+      serial: null,
+    });
+
+    const none = api.scan('c1', '999');
+    http
+      .expectOne((req) => req.url === '/api/companies/c1/product-scan')
+      .flush(null, { status: 404, statusText: 'Not Found' });
+    expect(await none).toBeNull();
+
+    const down = api.scan('c1', '999');
+    http
+      .expectOne((req) => req.url === '/api/companies/c1/product-scan')
+      .flush(null, { status: 500, statusText: 'Error' });
+    await expect(down).rejects.toEqual(new ProductsRefused('invalid'));
+  });
+
   it('names the row a refusal is about, and whose code it is when another product holds it', async () => {
     const taken = api.replaceBarcodes('c1', 'p1', []);
     http

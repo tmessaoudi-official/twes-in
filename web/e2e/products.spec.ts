@@ -243,6 +243,27 @@ test('a product is given its codes by scanning them, and a code finds it', async
     await page.getByTestId('list-filter').fill(pack);
     await expect(page.getByTestId(`product-SCAN-${run}`)).toBeVisible();
     await expect(page.getByTestId(`product-SCAN2-${run}`)).toHaveCount(0);
+
+    // Scanned with no field focused, a GS1 carton label opens what it names; one key goes on from there.
+    await page.goto('/products');
+    // The shell reads a scan once the person is signed in and the page is up, as a person would scan.
+    await expect(page.getByTestId('list-filter')).toBeVisible();
+    await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+    await page.keyboard.type(`]C101${pack}10LOT-${run}`);
+    await page.keyboard.press('Enter');
+    const card = page.getByTestId('product-scan-card');
+    await expect(card).toContainText(`SCAN-${run}`);
+    await expect(page.getByTestId('product-scan-enters')).toContainText('Colis');
+    await expect(page.getByTestId('product-scan-enters')).toContainText('12');
+    await expect(page.getByTestId('product-scan-lot')).toContainText(`LOT-${run}`);
+    expect(await wcagViolations(page)).toEqual([]);
+    await page.keyboard.press('c');
+    await expect(page).toHaveURL(new RegExp(`/products/${ids[0]}\\?tab=codes$`));
+    await expect(page.getByRole('tab', { name: 'Codes-barres' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(page.getByTestId('product-barcode-code-1')).toHaveValue(pack);
   } finally {
     await forget(page, ids);
   }

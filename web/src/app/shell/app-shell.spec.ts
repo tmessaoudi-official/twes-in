@@ -24,6 +24,8 @@ import type { ScreenAction } from '../shared/actions/screen-action';
 import { ScreenActions } from '../shared/actions/screen-actions';
 import { ShortcutsSheet } from '../shared/actions/shortcuts-sheet';
 import { ConfirmDialog } from '../shared/ui/confirm-dialog';
+import { ProductScanCard } from '../products/product-scan-card';
+import { SCAN_GAP_MS } from '../shared/scan/scan-wedge';
 import { CommandPalette } from './command-palette';
 import type { Command } from './commands';
 
@@ -461,6 +463,8 @@ describe('AppShell', () => {
     await router.navigateByUrl('/invoices');
     fixture.detectChanges();
     await fixture.whenStable();
+    // A hand needs far longer than a scanner between two keys; two presses within SCAN_GAP_MS read as a scan.
+    await new Promise((resolve) => setTimeout(resolve, SCAN_GAP_MS + 10));
     document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '[', bubbles: true }));
     expect(theme.toggleSidebar).toHaveBeenLastCalledWith(false);
   });
@@ -700,6 +704,59 @@ describe('AppShell', () => {
     const other = new KeyboardEvent('keydown', { key: 'z', bubbles: true, cancelable: true });
     document.body.dispatchEvent(other);
     expect(other.defaultPrevented).toBe(false);
+  });
+
+  it('opens what a scan names when a scanner types a code with no field focused', async () => {
+    permissions.set(['product.read']);
+    modules.set(['products']);
+    const { el } = await render();
+    let saved = 0;
+    declareScreenActions([
+      { id: 'save', label: 'products.save', shortcut: 's', run: () => (saved += 1) },
+    ]);
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+    // A wedge types the whole code and Enter within a millisecond or two of each other.
+    const scan = (target: EventTarget, code: string) =>
+      [...code, 'Enter'].forEach((key) =>
+        target.dispatchEvent(
+          new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+        ),
+      );
+
+    scan(document.body, '0s123');
+
+    expect(open).toHaveBeenCalledTimes(1);
+    const [component, config] = open.mock.calls[0] as [unknown, { data: { code: string } }];
+    expect(component).toBe(ProductScanCard);
+    expect(config.data.code).toBe('0s123');
+    // The s inside the code is part of the scan, not the screen's save.
+    expect(saved).toBe(0);
+
+    // Inside a field the scan is the field's.
+    const input = document.createElement('input');
+    el.appendChild(input);
+    scan(input, '3017620422003');
+    input.remove();
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens nothing on a scan for somebody who may not read the products', async () => {
+    permissions.set(['customer.read']);
+    modules.set(['products', 'customers']);
+    await render();
+    const open = vi.spyOn(TestBed.inject(MatDialog), 'open').mockReturnValue({
+      afterClosed: () => of(undefined),
+    } as never);
+
+    [...'3017620422003', 'Enter'].forEach((key) =>
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }),
+      ),
+    );
+
+    expect(open).not.toHaveBeenCalled();
   });
 
   it('asks before a declared key runs something destructive, exactly as its button would', async () => {

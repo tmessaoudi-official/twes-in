@@ -1,0 +1,79 @@
+<section class="flex flex-col gap-4 p-6" data-testid="product-scan-card" tabindex="-1">
+  <header class="flex items-center gap-3">
+    <mat-icon aria-hidden="true">barcode_scanner</mat-icon>
+    <h2 class="m-0 text-lg font-medium">{{ 'products.scan.title' | translate }}</h2>
+    <span class="ml-auto font-mono text-sm opacity-80" data-testid="product-scan-code">{{
+      code
+    }}</span>
+  </header>
+
+  @if (failed(); as error) {
+    <p role="alert" class="text-error" data-testid="product-scan-failed">
+      {{ 'products.errors.' + error | translate }}
+    </p>
+  } @else if (scan() === undefined) {
+    <p role="status" data-testid="product-scan-loading">
+      {{ 'products.scan.loading' | translate }}
+    </p>
+  } @else if (scan(); as found) {
+    <div class="flex flex-col gap-2 rounded border border-outline-variant p-4" role="status">
+      <p class="m-0 flex flex-wrap items-baseline gap-2">
+        <span class="font-mono">{{ found.reference }}</span>
+        <span class="text-lg font-medium">{{ found.name }}</span>
+        @if (!found.isActive) {
+          <span class="text-sm text-error" data-testid="product-scan-retired">{{
+            'products.scan.retired' | translate
+          }}</span>
+        }
+      </p>
+      <p class="m-0 text-sm" data-testid="product-scan-enters">
+        {{
+          'products.scan.enters'
+            | translate
+              : {
+                  role: 'products.barcodes.roles.' + found.role | translate,
+                  quantity: found.quantity,
+                }
+        }}
+      </p>
+      @if (found.lot !== null) {
+        <p class="m-0 text-sm" data-testid="product-scan-lot">
+          {{ 'products.scan.lot' | translate }} <span class="font-mono">{{ found.lot }}</span>
+        </p>
+      }
+      @if (found.useBy !== null) {
+        <p class="m-0 text-sm" data-testid="product-scan-use-by">
+          {{ 'products.scan.use_by' | translate }} {{ format.day(found.useBy) }}
+        </p>
+      }
+      @if (found.serial !== null) {
+        <p class="m-0 text-sm" data-testid="product-scan-serial">
+          {{ 'products.scan.serial' | translate }}
+          <span class="font-mono">{{ found.serial }}</span>
+        </p>
+      }
+    </div>
+  } @else {
+    <p role="status" data-testid="product-scan-none">{{ 'products.scan.none' | translate }}</p>
+  }
+
+  @if (actions().length > 0) {
+    <div class="flex flex-wrap gap-2">
+      @for (action of actions(); track action.id; let first = $first) {
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="run(action)"
+          [attr.data-testid]="'product-scan-action-' + action.id"
+        >
+          <mat-icon aria-hidden="true">{{ action.icon }}</mat-icon>
+          {{ 'products.scan.actions.' + action.id | translate }}
+          <kbd class="ml-1 text-xs opacity-80" aria-hidden="true">{{
+            first ? '↵' : action.key.toUpperCase()
+          }}</kbd>
+        </button>
+      }
+    </div>
+    <p class="m-0 text-xs opacity-80">{{ 'products.scan.hint' | translate }}</p>
+  }
+</section>

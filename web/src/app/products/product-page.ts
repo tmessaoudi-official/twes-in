@@ -7,6 +7,7 @@ import {
   effect,
   inject,
   input,
+  linkedSignal,
   untracked,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
@@ -63,6 +64,8 @@ export class ProductPage {
 
   /** Bound from the route parameter by withComponentInputBinding(); absent on `products/new`. */
   readonly productId = input<string | undefined>(undefined);
+  /** `?tab=codes` opens the product on its codes: where a scan's card sends a person. */
+  readonly tab = input<string | undefined>(undefined);
 
   protected readonly id = computed(() => this.productId() ?? null);
   protected readonly busy = this.facade.busy;
@@ -76,6 +79,14 @@ export class ProductPage {
     if (id === null) return null;
     const product = this.facade.product();
     return product?.id === id ? product : undefined;
+  });
+  /**
+   * The tab on view. It starts on the one the address names once that tab exists — the codes tab only appears when
+   * the product has been read — and a reload of the same product leaves the person's own choice alone.
+   */
+  protected readonly selectedTab = linkedSignal<string, number>({
+    source: () => `${this.tab() ?? ''}|${this.current() != null}`,
+    computation: (key: string) => (key === 'codes|true' ? 1 : 0),
   });
   protected readonly descriptor = computed(() => {
     const options = this.facade.options();

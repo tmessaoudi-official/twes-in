@@ -278,6 +278,19 @@ describe('ProductPage', () => {
     expect(q('product-homes')).not.toBeNull();
   });
 
+  it('opens on the codes when the address asks for them, as a scan does', async () => {
+    product.set(laptop);
+    fixture = TestBed.createComponent(ProductPage);
+    fixture.componentRef.setInput('productId', 'p1');
+    fixture.componentRef.setInput('tab', 'codes');
+    await settle();
+
+    const selected = fixture.nativeElement.querySelector(
+      '[role="tab"][aria-selected="true"]',
+    ) as HTMLElement;
+    expect(selected.textContent).toContain('products.tabs.barcodes');
+  });
+
   it('offers it on no new product, without stock, and to nobody who may not read stock', async () => {
     await open(undefined);
     expect(q('product-tab-homes')).toBeNull();

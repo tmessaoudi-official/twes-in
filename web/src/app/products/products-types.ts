@@ -82,6 +82,23 @@ export interface BarcodesRefusal {
   heldBy: string | null;
 }
 
+/**
+ * What one scan names (docs/SPEC.md § 7, 2026-09-23 00:40): the product, the code it holds and its role, how many
+ * pieces the scan enters, and for a GS1 scan the lot, use-by date (ISO) and serial it carried.
+ */
+export interface ProductScan {
+  productId: string;
+  reference: string;
+  name: string;
+  isActive: boolean;
+  code: string;
+  role: BarcodeRole;
+  quantity: number;
+  lot: string | null;
+  useBy: string | null;
+  serial: string | null;
+}
+
 export interface ProductCategoryRow {
   id: string;
   name: string;

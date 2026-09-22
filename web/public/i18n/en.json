@@ -1376,6 +1376,23 @@
         "pack_many": "A pack counts more than one piece; for one piece, choose Unit.",
         "supplier_required": "Choose the supplier who prints this code."
       }
+    },
+    "scan": {
+      "title": "Scanned code",
+      "loading": "Looking up the product…",
+      "none": "No product of the company answers to this code.",
+      "retired": "Product withdrawn from sale",
+      "enters": "{{role}}: one scan counts {{quantity}} piece(s).",
+      "lot": "Lot",
+      "use_by": "Use by",
+      "serial": "Serial number",
+      "hint": "One key is enough: Enter for the first action, the letter shown for the others, Esc to close.",
+      "actions": {
+        "sheet": "Record",
+        "codes": "Barcodes",
+        "movements": "Movements",
+        "search": "Search the catalogue"
+      }
     }
   },
   "inventory": {
