@@ -1811,9 +1811,17 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   **Naming the stock's own rectangles was the blast radius.** Adding a `<rect>` under the spots broke four specs
   that had been selecting `svg rect` and `svg g` by position — a real consequence, not a test artefact, since the
   first rectangle in the plan is now the building. Both elements carry `stock-drawing-rect-<code>` /
-  `stock-drawing-group-<code>`, and nothing on this board is selected by document position again.
+  `stock-drawing-group-<code>`, and nothing on this board is selected by document position again. The same
+  sweep was owed to `web/e2e`, where six selectors read `svg[data-testid="stock-map-svg"] rect`: they counted the
+  stock and would have counted a wall, so they read the named prefix too. A Playwright scenario poses a door with
+  its own tool against the real stack, reads it back off the plan, proves it is on no list of what is drawn and on
+  no location list, locks it, hides it and erases it; a mutation that builds every piece as a wall reds it.
 - [2026-09-22 04:35] AGREED: **the map is finished before the barcode, and the barcode field before any scanner**
-  (developer ruling, asked and answered: *"Option 1 then 2"*). The order is: the rest of row 83's board, then the
+  (developer ruling, asked and answered: *"Option 1 then 2"*, where option 1 was finishing the walls-and-doors
+  layer then in flight). The barcode comes before row 63's scanner; where exactly it falls against row 83's four
+  REMAINING slices — the floor image and its two calibration points, the Three.js 3D view with
+  `presentation.stock-map-view`, search-highlight and the rack front view — was not what the question asked, so it
+  is not recorded here as ruled. What is ruled is the pair: the
   product's own `barcode` field on the terms already ruled on 2026-09-17 § 7 (optional, unique per company,
   EAN-13/EAN-8/UPC check digit verified only when the shape matches one, matched on by import), then row 63's
   camera scanner as its own goal. The reason the field goes first is that it is what the scanner would write into:

@@ -186,7 +186,7 @@ test.describe('the drawn stock map', () => {
       const drawn = page.getByTestId(`stock-drawing-${code}`);
       await expect(drawn).toBeVisible();
       await expect(drawn).toContainText('3.9 × 0.6 m');
-      await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveAttribute(
+      await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveAttribute(
         'x',
         '2.5',
       );
@@ -197,12 +197,12 @@ test.describe('the drawn stock map', () => {
       await page.getByTestId('field-x').fill('5');
       await page.getByTestId('stock-drawing-save').click();
       await expect(toast(page)).toContainText('Rectangle enregistré');
-      await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveCount(1);
-      await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveAttribute('x', '5');
+      await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveCount(1);
+      await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveAttribute('x', '5');
 
       // Dragged, not typed. The exact metre a pointer lands on depends on the window, so this asserts what the
       // rule promises and not a number: it moved, and it came to rest on the quarter-metre grid.
-      const rect = page.locator('svg[data-testid="stock-map-svg"] rect').first();
+      const rect = page.locator('[data-testid^="stock-drawing-rect-"]').first();
 
       // The toast of the save above is an overlay, and `mouse.down()` runs NO actionability check — it presses
       // whatever is topmost at those coordinates and says nothing. `hover()` does check, so a covered rectangle
@@ -379,9 +379,9 @@ test.describe('the drawn stock map', () => {
       await page.reload();
       await page.getByRole('button', { name: floorName, exact: true }).click();
       // `evaluateAll` does not wait, so the count is asserted first: the source rectangle and the three copies.
-      await expect(page.locator('svg[data-testid="stock-map-svg"] rect')).toHaveCount(4);
+      await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveCount(4);
       const drawnNow = await page
-        .locator('svg[data-testid="stock-map-svg"] rect')
+        .locator('[data-testid^="stock-drawing-rect-"]')
         .evaluateAll((nodes) =>
           nodes.map((node) => ({ x: node.getAttribute('x'), y: node.getAttribute('y') })),
         );
@@ -399,6 +399,83 @@ test.describe('the drawn stock map', () => {
       }
     } finally {
       if (!page.isClosed()) await clean(page, fixture, floorName, stem);
+    }
+  });
+
+  /**
+   * The Structure board through the real stack: a door posed with its own tool at the measurements this company
+   * builds at, read back off the plan, then locked and hidden, then taken away. Nothing posed here is a stock
+   * location, which the case proves by looking: the door appears on no list of what is drawn and on no location
+   * list. The floor is the run's own and is removed at the end, which takes any structure left on it with it.
+   */
+  test('poses a door on the building, reads it off the plan, locks and hides it, then erases it', async ({
+    page,
+  }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `BLD${stamp}`;
+    const floorName = `Bâti ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.goto('/stock/plan');
+      await page.getByTestId('stock-floor-add').click();
+      await page.getByTestId('field-name').fill(floorName);
+      await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('stock-floor-save').click();
+      await expect(toast(page)).toContainText('Étage enregistré');
+      await page.getByRole('button', { name: floorName, exact: true }).click();
+
+      // The tool says what it poses, and the form opens at exactly that: both come from `venue.structure.*`, so a
+      // tool posing a constant instead of the company's own door would disagree with its own label here.
+      const doorTool = page.getByTestId('stock-structure-tool-door');
+      await expect(doorTool).toBeVisible();
+      const offered = ((await doorTool.textContent()) ?? '').match(/([\d.,]+)\s*×\s*([\d.,]+)/);
+      if (offered === null) throw new Error('the door tool does not say what size it poses');
+      await doorTool.click();
+      expect(
+        [
+          comma(await page.getByTestId('field-width').inputValue()),
+          comma(await page.getByTestId('field-depth').inputValue()),
+        ],
+        'the form is posed at the size the tool offered',
+      ).toEqual([comma(offered[1] ?? ''), comma(offered[2] ?? '')]);
+
+      await page.getByTestId('field-x').fill('1');
+      await page.getByTestId('field-y').fill('0');
+      await page.getByTestId('stock-structure-save').click();
+      await expect(toast(page)).toContainText('Élément de structure enregistré');
+
+      // Read back off the plan by its own metres, and counted on its own layer.
+      const door = page.locator('[data-testid="stock-structure-door"]');
+      await expect(door).toHaveCount(1);
+      await expect(door).toHaveAttribute('x', '1');
+      await expect(page.getByTestId('stock-layer-count-structure')).toHaveText('1');
+
+      // It is none of the stock: no rectangle is drawn, and the door is on no list of places.
+      await expect(page.locator('[data-testid^="stock-drawing-rect-"]')).toHaveCount(0);
+      await expect(page.getByTestId('stock-map-empty')).toBeVisible();
+
+      // Locked keeps it drawn and stops it answering the pointer; hidden takes it off the plan.
+      await page.getByTestId('stock-layer-locked-structure').click();
+      await expect(page.getByTestId('stock-structure-layer')).toHaveClass(/pointer-events-none/);
+      await expect(door).toHaveCount(1);
+      await page.getByTestId('stock-layer-shown-structure').click();
+      await expect(page.getByTestId('stock-structure-layer')).toHaveCount(0);
+
+      // Shown again so the form can be opened from it, then taken away.
+      await page.getByTestId('stock-layer-shown-structure').click();
+      await expect(toast(page)).toBeHidden({ timeout: 15_000 });
+      await page.getByTestId('stock-layer-locked-structure').click();
+      await door.click();
+      await page.getByTestId('stock-structure-erase').click();
+      await expect(toast(page)).toContainText('Élément de structure supprimé');
+      await expect(door).toHaveCount(0);
+      await expect(page.getByTestId('stock-layer-count-structure')).toHaveText('0');
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName);
     }
   });
 });
