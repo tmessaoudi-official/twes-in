@@ -1897,6 +1897,103 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   session's certifications was of behaviour, never of whether the thing is usable, which is exactly the blind spot
   named in § "Certification" as the one a lens cannot see.
 
+- [2026-09-22 09:10] AGREED: **the way in stops being the password — passkeys become a FIRST factor, and the session
+  stops expiring under you** (developer ruling, asked and answered). The ask was *"a PIN so I don't write my long
+  password each time"*; the audit answered it differently. `web-auth/webauthn-lib`, a `passkey` table, the
+  ceremonies and eight endpoints ALREADY EXIST — wired as a second factor only: both public login routes open with
+  `$this->pending->waiting()` and 401 `mfa_not_pending`, and that marker is written by `SecondFactorListener` at
+  priority **-100**, i.e. after the password is verified. The ceremony also always sends `allowCredentials` and asks
+  `RESIDENT_KEY_REQUIREMENT_PREFERRED`, so no discoverable credential exists. Promoting it is a ceremony change
+  (resident key required, usernameless assertion) plus listener ordering — not a new subsystem.
+  **A server-checked PIN is refused, and the reason is written here so it is not re-proposed.** Everything that
+  makes a Windows Hello PIN safe is device-bound: *"the PIN never leaves the device"*, it unlocks a private key in
+  the security module, and the hardware rate-limits guessing. Send a 4-6 digit PIN to an API and none of that
+  holds: a ~10⁴–10⁶ secret grants what a ~10²⁰ one did, portable to any device and stealable from the database.
+  That is a downgrade wearing an upgrade's clothes. A PIN keeps ONE legitimate home here — the counter sale
+  (row 82), as a fast user switch on a shared, already-authenticated terminal — and is not built before it.
+  **The real cause of the pain was the session, not the password**: `idle_ttl` 1800 s and `absolute_ttl` 43200 s
+  with NO remember-device anywhere, so a working day re-authenticates repeatedly. A trusted-device grant lands with
+  this. Note it needs the `sessions` table to gain a `user_id` — today the user id lives only inside the
+  serialized `sess_data`, so per-user session listing or revocation is a schema change, not a screen.
+- [2026-09-22 09:12] AGREED: **every second factor is manageable, and the last one cannot be removed** (developer
+  ruling; they were blocked in testing and were right). `User::disableTotp()` exists at `User.php:283` with **zero
+  callers** — an enrolled authenticator can never be removed or re-enrolled, while `MfaEnrolmentListener` answers
+  403 on every `/api` route until enrolment, so a company with `mfa_required` on has no way back. Passkeys can
+  already be added and deleted and recovery codes regenerated; TOTP is the hole. One security screen covers all
+  three, under two rules: **never remove the last factor while the company requires MFA**, and removing one asks
+  for a fresh factor or the password first.
+- [2026-09-22 09:14] AGREED: **password policy — 12 characters, the breach list, no composition rules, and history
+  only as a knob** (developer ruling, asked and answered; the ask included symbols/capitals/digits and a minimum of
+  10). **Composition rules are refused on the standard's own words** — NIST SP 800-63B §5.1.1.2: *"Verifiers SHOULD
+  NOT impose other composition rules (e.g., requiring mixtures of different character types or prohibiting
+  consecutively repeated characters) for memorized secrets."* They produce `Passe2026!`, which satisfies every rule
+  and sits in every breach corpus; **min-12 plus the breach list is strictly stronger than min-10 plus
+  composition**, because it refuses what attackers actually try. **The minimum stays 12, not 10** — NIST's floor is
+  8 and this codebase is already stricter; that number is not lowered. The compromised-password scan the developer
+  asked for **already exists** (`HibpBreachedPasswordCheck`, k-anonymity, `Add-Padding`, 3 s) and keeps **failing
+  open** by explicit choice: a third party being down must not block onboarding, and the skip is audited
+  (`breach_check_skipped`). **Password history** is a per-company setting, default OFF, capped at 5 — NIST says
+  nothing about it, it only means anything when rotation is on, and each comparison is an argon2id verification at
+  64 MiB. Expiry is likewise a knob defaulted to **never** (entry of 09:08 below). Both read the existing
+  `password_changed_at`, written since 2026-09-14 and read by nothing.
+  **The prerequisite both share: there is no way to change a password in this application** — no change endpoint,
+  no forgot/reset; the only three `setPasswordHash()` callers are accepting an invitation, completing signup and
+  the CLI seed. That flow is built first, because an expiry policy would otherwise demand something the product
+  cannot do, and because a user who suspects compromise currently cannot act — the one case NIST says a verifier
+  SHALL force a change for.
+- [2026-09-22 09:08] AGREED: **password expiry ships as a per-company knob, defaulted to never** (developer ruling).
+  NIST §5.1.1.2: *"Verifiers SHOULD NOT require memorized secrets to be changed arbitrarily (e.g., periodically).
+  However, verifiers SHALL force a change if there is evidence of compromise of the authenticator."* The knob
+  exists because PCI-DSS, ISO 27001 auditors and enterprise procurement still ask for it and this is a product
+  sold to businesses; the default follows the standard. This needs a `security` settings chain, which does not
+  exist — the five today are `parties`, `articles`, `presentation`, `venue`, `platform`, and `company.mfa_required`
+  is a plain column rather than a setting.
+- [2026-09-22 09:20] AGREED: **the scanner starts with the keyboard wedge, not the camera** (developer ruling).
+  § 7 of 2026-09-17 says *"USB and Bluetooth scanners already work as keyboards"*; they do at the OS level and
+  **do not work in this application**. `pick-field.ts` debounces `typed.valueChanges` by `PICK_PAUSE_MS = 300`,
+  declares no `autoActiveFirstOption` (zero hits for it anywhere in `web/src`) and carries no Enter handler, so a
+  scanner that emits its code and Enter in tens of milliseconds gets Enter before the request is even issued.
+  Nothing anywhere implements the 2026-09-20 04:15 ruling that one scan *"adds the line when exactly one product
+  matches, and offers the choice when several do"*. The wedge path — exact-match-wins ranking, a scanner-speed
+  burst not debounced, Enter taking a single hit — needs no camera, no decoder licence and no HTTPS, and is what a
+  shop counter actually uses. Row 63's three research gates stand unchanged in front of the camera half.
+- [2026-09-22 09:24] AGREED: **the map is made usable before it is made bigger** (developer ruling, answering the
+  06:30 OPEN item with the mockup in hand). In order: zoom, pan and fit with a scale bar; the **Consulter /
+  Aménager** split; one drawing model instead of three; structure gaining the same gestures, list rows and
+  keyboard path as stock; the permission hole; confirmations on erase. Then the floor image, then the 3D, then
+  search-highlight and the rack façade.
+  **What the audit found, all of it uncovered by the test suites.** (a) There is **no zoom, pan or fit at all** — a
+  24 m depot in a fixed viewport, no way to approach or step back; the most likely reason the board could not be
+  worked with. (b) **Three drawing models coexist** — the form, the palette and an armed `Tracer` tool that sits
+  BELOW three other blocks and is the only thing needing arming — and no text on screen ranks or explains them.
+  (c) `openStructure` has **no permission guard whatsoever**: `stock.read` alone opens a wall's form with
+  Enregistrer and Effacer live, and only the API refuses. (d) A hidden or locked structure layer leaves **no path
+  to the piece at all** — no list row, no keyboard route — which makes the comment shipped beside it, claiming a
+  locked layer stays keyboard-reachable, **false**. (e) No erase anywhere asks for confirmation. (f) The tablet's
+  handles are `frame().width / 110`, a metre value scaled by the floor, never the ruled 44 px target.
+  **And the floor image is already built in the API**: `VenueArea` carries `imageFileId`, `imageOpacity` and
+  `imageMetresWide`, refused coherently by `showPlan()`, writable through `ArrangeVenue` → `DrawStockMap` →
+  `WriteStockFloorProcessor`, exposed on `StockFloorResource` and typed in `StockFloorRow`. Only the UI is absent.
+  One mismatch to settle when it is built: decision 4 rules **two calibration points**; the column is a single
+  `imageMetresWide`.
+- [2026-09-22 09:30] AGREED: **the palette of ready-made shapes becomes DATA, and a shape may be round** (developer
+  ruling, asked and answered: more shapes were wanted, *"a round étagère?"* among them). Each palette shape today
+  costs two keys in `VenuePlanSettings` — eight shapes, sixteen keys — plus a branch in code, so twenty shapes
+  would be forty keys and a release per trade. Instead a **`venue_shape` row per company** carries its name,
+  family, default width/depth/height and colour, seeded per trade (quincaillerie, atelier, café) and editable by
+  the owner. Same reasoning as the fiscal presets: a trade is data, not a release.
+  Shapes named as wanted, none of them the whole list: palettier, rayonnage léger, **cantilever / rack à barres**
+  (tubes and profilés — both launch customers hold long goods), gondole, tête de gondole, comptoir/caisse,
+  vitrine, emplacement palette au sol, chambre froide, zone de retours, zone de quarantaine, établi, machine,
+  armoire à outils, zone de matière première, zone de pièces finies; and for the structure, fenêtre, escalier,
+  monte-charge, rideau métallique.
+  **`form: rect | round` joins the rectangle**: a round shape draws as an ellipse inscribed in its bounding box and
+  extrudes as a cylinder, so the quarter-metre snap, the rotation and every gesture keep working and the migration
+  is one column. It is not only for shelving — the Venue context already promises that *"a dining room's table
+  will point at one the same way"*, and a café without round tables is not a café. Polygons are deliberately NOT
+  taken: arbitrary outlines change hit-testing, the editor and the 3D all at once, and no concrete need names them
+  yet.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1986,7 +2083,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 80 | Job (§ 7 2026-09-20): from an accepted quote, material consumed through the generic transformation, hours at a cost rate, output as a product or a one-off, scrap consumed by the job, closing into a delivery note and an invoice, quoted price against real cost | L | todo | - | api/src/Module/Jobs/** api/migrations/** api/tests/** web/src/app/jobs/** web/e2e/** |
 | 81 | Purchase order and goods receipt (§ 7 2026-09-20): an order sent to a vendor with expected dates, receipts against it (partial allowed) moving stock into a location and recording unit cost | L | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** web/e2e/** |
 | 82 | Register, the counter sale (§ 7 2026-09-20): one full screen on scanner and keyboard, receipt or invoice from the same sale, cash with change, card, on account and mixed payments, returns writing a credit note and restocking; sales idempotent and queued in shape so offline can be added later | L | todo | - | api/src/Module/Register/** api/migrations/** api/tests/** web/src/app/register/** web/e2e/** |
-| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20; surface ruled 2026-09-21): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines'. DONE: the API half (the `Venue` context, `DrawStockMap`, the module's three endpoints); the SCREEN — floors with their levels, the SVG plan in metres with each rectangle turned about its own centre, drawing and erasing through a FORM beside the plan; and the GESTURES of the approved canvas so far — a rectangle moved by dragging it, resized by its eight handles, a new one traced on bare floor once the `Tracer` tool is armed, and the PALETTE of ready-made shapes, whose sizes are the company's own settings in the new `venue` chain and reach the screen through `stock-options` — every gesture writing into the form and never to the API. A bin is refused by the surface, not only by the picker. and REPEAT-DOWN-AN-AISLE, which creates the stock locations as well as the rectangles, in one transaction, listing their codes and refusing a copy off the floor before anything is written. LEFT, in the ruled order: the walls-and-doors structure layer; after those the floor image with its two calibration points, the Three.js 3D view and the `presentation.stock-map-view` key that only makes sense with it, search-highlight, and the rack front view | L | doing | - | api/src/Venue/** api/src/Module/Inventory/** api/migrations/** api/tests/** web/src/app/inventory/** web/public/i18n/** api/src/Settings/** web/src/app/settings/** web/src/app/shared/settings/** scripts/gates/** |
+| 83 | Venue and the drawn map (§ 7 2026-09-19 23:40, brought forward 2026-09-20; surface ruled 2026-09-21): areas and spots with their plan rectangle, height and level; a 2D SVG plan per floor with rack front views, edited grid-snapped over an optional floor image, and a Three.js 3D view for looking; search or scan highlights every location holding a product, a delivery note highlights its lines'. DONE: the API half (the `Venue` context, `DrawStockMap`, the module's three endpoints); the SCREEN — floors with their levels, the SVG plan in metres with each rectangle turned about its own centre, drawing and erasing through a FORM beside the plan; and the GESTURES of the approved canvas so far — a rectangle moved by dragging it, resized by its eight handles, a new one traced on bare floor once the `Tracer` tool is armed, and the PALETTE of ready-made shapes, whose sizes are the company's own settings in the new `venue` chain and reach the screen through `stock-options` — every gesture writing into the form and never to the API. A bin is refused by the surface, not only by the picker. and REPEAT-DOWN-AN-AISLE, which creates the stock locations as well as the rectangles, in one transaction, listing their codes and refusing a copy off the floor before anything is written. The walls-and-doors structure layer shipped 2026-09-22 (`5b9918b`, `ba79e5c`). LEFT, in the ruled order: the usability pass of the 09:24 ruling (zoom/pan/fit, the Consulter/Aménager split, one drawing model, structure's gestures and keyboard path, the permission hole, erase confirmations), the data-driven palette and `form: rect|round` of the 09:30 ruling; after those the floor image with its two calibration points, the Three.js 3D view and the `presentation.stock-map-view` key that only makes sense with it, search-highlight, and the rack front view | L | doing | - | api/src/Venue/** api/src/Module/Inventory/** api/migrations/** api/tests/** web/src/app/inventory/** web/public/i18n/** api/src/Settings/** web/src/app/settings/** web/src/app/shared/settings/** scripts/gates/** |
 | 84 | Supplier bill and the three-way match (§ 7 2026-09-20): a bill with lines, matched automatically against order and receipt within a tolerance the settings engine holds, anything outside it waiting on an approval before the bill is payable | M | todo | - | api/src/Module/Purchasing/** api/migrations/** api/tests/** web/src/app/purchasing/** |
 | 85 | Statement of account and credit limit (§ 7 2026-09-20): a customer's documents and payments over a period, printed; a limit per customer or group warning when a delivery would pass what is already owed | M | todo | - | api/src/Module/Customers/** api/src/Module/Invoices/** api/tests/** web/src/app/customers/** |
 | 86 | Recurring invoices (§ 7 2026-09-20, off "out with no date"): a schedule generating drafts that an issue confirms, on the row-56 worker | M | todo | - | api/src/Module/Invoices/** api/migrations/** api/tests/** web/src/app/invoices/** |
