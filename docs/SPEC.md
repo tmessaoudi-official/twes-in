@@ -1873,6 +1873,30 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   noted in the 05:05 entry. A scanner that fills the barcode field will hit that refusal constantly, so the wrong
   sentence stops being cosmetic the moment the scanner exists.
 
+- [2026-09-22 06:30] OPEN — developer feedback on the stock map, to go over together before more is built on it.
+  Recorded verbatim in substance: *"i could not use it properly, i don't know if it's not complete or i did not
+  understand; where is the 3d view; for walls/doors i can't move them"*. Three items, of which two are answered
+  and one is not:
+  1. **The 3D view is NOT BUILT.** It is one of row 83's four remaining slices, with the floor image and its two
+     calibration points, search-highlight and the rack front view. The 2026-09-19 23:40 ruling promised two views
+     from the start over one set of data; only the 2D half exists. Nothing in the screen says so, which is its own
+     defect: a person looking for a promised view finds no view and no explanation.
+  2. **A wall or a door genuinely CANNOT be dragged, and that is a gap, not a misunderstanding** [Verified by
+     reading the template: a stock rectangle carries `(pointerdown)="grab(…)"` plus eight `grip` handles, while a
+     structure rectangle carries only `(click)="openStructure(…)"`]. A piece of structure can therefore be moved
+     only by typing x and y into its form. The gestures shipped for stock in earlier slices were never extended to
+     the structure layer, and the board gives no sign of the difference — the piece even shows `cursor-pointer`,
+     which promises a direct manipulation that is not there. **This is the first thing to fix.**
+  3. **"Could not use it properly" is NOT diagnosed and must not be guessed at.** Two candidates are visible from
+     here — the asymmetry in (2) makes half the board feel inert, and nothing anywhere explains the arming model
+     (a tool is armed, then the floor becomes a drawing surface for one box) — but which of those, or something
+     else entirely, is what the developer met is unknown. It is to be walked through together at the office, on
+     the running stack, before anything else is built on this board.
+  **Consequence for the order**: this comes before row 63's scanner and before the four remaining map slices. A
+  board whose own author could not use it is not a finished board, whatever its tests say — and every one of this
+  session's certifications was of behaviour, never of whether the thing is usable, which is exactly the blind spot
+  named in § "Certification" as the one a lens cannot see.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
