@@ -1048,6 +1048,51 @@ describe('StockMapPage', () => {
     expect(q('field-width')).toBeNull();
   });
 
+  /**
+   * The walkthrough's finding A (docs/SPEC.md § 7, 2026-09-22): a posed piece is drawn by the saved pieces' template,
+   * and pressing it used to open the zeroed placeholder as if it were a saved row — the form fell to 0, the piece
+   * vanished and an erase button appeared for something that did not exist.
+   */
+  it('keeps a posed piece when it is pressed, instead of opening its placeholder as a saved one', async () => {
+    (q('stock-structure-tool-door') as HTMLElement).click();
+    await settle();
+    const posed = q('stock-structure-door') as unknown as SVGRectElement;
+    expect(posed).not.toBeNull();
+
+    posed.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }));
+    posed.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await settle();
+
+    expect((q('field-width') as HTMLInputElement).value).toBe('0,800');
+    expect(q('stock-structure-door')).not.toBeNull();
+    expect(q('stock-structure-erase')).toBeNull();
+  });
+
+  it('moves a posed piece by dragging it, and saves it as a NEW piece', async () => {
+    surface();
+    (q('stock-structure-tool-door') as HTMLElement).click();
+    await settle();
+    const before = (q('field-x') as HTMLInputElement).value;
+
+    fire(q('stock-structure-door') as unknown as Element, 'pointerdown', 100, 100);
+    fire(document, 'pointermove', 200, 100);
+    fire(document, 'pointerup', 200, 100);
+    await settle();
+
+    expect((q('field-x') as HTMLInputElement).value).not.toBe(before);
+    expect((q('field-width') as HTMLInputElement).value).toBe('0,800');
+
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+
+    expect(facade.buildStructure).toHaveBeenCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ kind: 'door', width: '0.800' }),
+      null,
+    );
+  });
+
   /** Correcting the kind is the common repair: a doorway traced with the wall tool is wrong in exactly one field. */
   it('opens a piece from the plan and revises the one it already is', async () => {
     (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(

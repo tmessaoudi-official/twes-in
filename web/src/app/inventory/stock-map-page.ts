@@ -1126,6 +1126,10 @@ export class StockMapPage implements OnInit {
    */
   protected openStructure(target: StockStructureRow | 'new'): void {
     if (!this.mayDraw()) return;
+    // The posed piece is drawn by the saved pieces' template, so a press on it arrives here too. It is already the
+    // piece being edited: opening its zeroed placeholder as a saved row reset the form and made it vanish (§ 7,
+    // 2026-09-22, finding A).
+    if (target !== 'new' && target.id === PENDING_ID) return;
     this.facade.clearError();
     this.editing.set(null);
     this.editingFloor.set(null);
