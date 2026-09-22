@@ -724,6 +724,8 @@
       "scheme": "Colour scheme",
       "density": "Density",
       "sidebar": "Sidebar",
+      "sidebar_settings": "Settings menu",
+      "plan_labels": "Plan labels",
       "language": "Language"
     },
     "choices": {
@@ -1515,6 +1517,12 @@
       },
       "structure_saved": "Piece of structure saved.",
       "structure_erased": "Piece of structure removed.",
+      "labels": "Labels",
+      "label_modes": {
+        "code": "Code",
+        "name": "Name",
+        "both": "Both"
+      },
       "layers": "Layers",
       "layer_names": {
         "structure": "Structure",

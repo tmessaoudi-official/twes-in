@@ -33,6 +33,7 @@ jobs:
       - run: bash scripts/gates/tests/design-tokens.test.sh
       - run: bash scripts/gates/tests/permission-labels.test.sh
       - run: bash scripts/gates/tests/setting-labels.test.sh
+      - run: bash scripts/gates/tests/presentation-settings-parity.test.sh
       # The self-hosted logrotate configuration, rotated for real (docs/SPEC.md § 7, 2026-09-17).
       - run: command -v logrotate || (sudo apt-get update && sudo apt-get install -y logrotate)
       - run: bash infra/self-hosted/tests/logrotate.test.sh
@@ -48,6 +49,8 @@ jobs:
       # Every permission a role may be given has a label a person can read, in both languages (row 104).
       - run: bash scripts/gates/permission-labels.sh
       - run: bash scripts/gates/setting-labels.sh
+      # A preference the SPA writes but the API never declares is silently lost on reload (docs/SPEC.md § 7, 2026-09-22).
+      - run: bash scripts/gates/presentation-settings-parity.sh
 
   # WHY: the API tier's gate — code style, PHPStan at level max, PHPUnit against a REAL PostgreSQL 18,
   # because money and tenancy bugs live in SQL and a mocked database cannot show them.

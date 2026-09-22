@@ -35,6 +35,8 @@ final readonly class PresentationSettings implements DeclaresSettings
         yield new SettingDefinition('presentation.scheme', SettingType::Enum, 'auto', $chain, $shared, 'settings.presentation.scheme', self::MODULE, choices: ['auto', 'light', 'dark']);
         yield new SettingDefinition('presentation.density', SettingType::Enum, 'comfortable', $chain, $shared, 'settings.presentation.density', self::MODULE, choices: ['comfortable', 'compact']);
         yield new SettingDefinition('presentation.sidebar', SettingType::Enum, 'expanded', $chain, $shared, 'settings.presentation.sidebar', self::MODULE, choices: ['expanded', 'rail']);
+        yield new SettingDefinition('presentation.sidebar-settings', SettingType::Enum, 'rail', $chain, $shared, 'settings.presentation.sidebar_settings', self::MODULE, choices: ['expanded', 'rail']);
+        yield new SettingDefinition('presentation.plan-labels', SettingType::Enum, 'code', $chain, $shared, 'settings.presentation.plan_labels', self::MODULE, choices: ['code', 'name', 'both']);
         yield new SettingDefinition('presentation.language', SettingType::Enum, 'fr', $chain, $shared, 'settings.presentation.language', self::MODULE, choices: ['fr', 'en']);
         yield new SettingDefinition('presentation.list.<id>', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list', self::MODULE, keyPattern: self::LIST);
         yield new SettingDefinition('presentation.list.<id>.views', SettingType::Json, null, $chain, [SettingLevel::User], 'settings.presentation.list_views', self::MODULE, keyPattern: self::LIST_VIEWS);

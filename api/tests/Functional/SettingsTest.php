@@ -35,14 +35,21 @@ final class SettingsTest extends ApiTestCase
 
         self::assertResponseIsSuccessful();
         $rows = $this->jsonList();
-        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.language'], array_column($rows, 'key'));
-        self::assertSame('expanded', $rows[3]['value']);
+        $keys = array_column($rows, 'key');
+        self::assertSame(['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language'], $keys);
+        // Read by key and not by position: what each case below is about is one setting's own default, and an
+        // ordinal makes every future presentation setting shift assertions that have nothing to do with it.
+        $row = static fn (string $key) => $rows[array_search($key, $keys, true)];
+        self::assertSame('expanded', $row('presentation.sidebar')['value']);
         // The scheme follows the device until someone chooses (docs/SPEC.md § 7, 2026-09-16 review).
-        self::assertSame('auto', $rows[1]['value']);
-        self::assertSame(['auto', 'light', 'dark'], $rows[1]['choices']);
+        self::assertSame('auto', $row('presentation.scheme')['value']);
+        self::assertSame(['auto', 'light', 'dark'], $row('presentation.scheme')['choices']);
+        // The plan writes the location's code until a reader asks for its name (docs/SPEC.md § 7, 2026-09-22).
+        self::assertSame('code', $row('presentation.plan-labels')['value']);
+        self::assertSame(['code', 'name', 'both'], $row('presentation.plan-labels')['choices']);
         // The interface language is remembered like any presentation choice, French until one is made.
-        self::assertSame('fr', $rows[4]['value']);
-        self::assertSame(['fr', 'en'], $rows[4]['choices']);
+        self::assertSame('fr', $row('presentation.language')['value']);
+        self::assertSame(['fr', 'en'], $row('presentation.language')['choices']);
         $accent = $rows[0];
         self::assertSame('#1f6feb', $accent['value']);
         self::assertSame('#1f6feb', $accent['default']);

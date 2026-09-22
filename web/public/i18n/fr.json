@@ -724,6 +724,8 @@
       "scheme": "Thème",
       "density": "Densité",
       "sidebar": "Menu latéral",
+      "sidebar_settings": "Menu des réglages",
+      "plan_labels": "Étiquettes du plan",
       "language": "Langue"
     },
     "choices": {
@@ -1515,6 +1517,12 @@
       },
       "structure_saved": "Élément de structure enregistré.",
       "structure_erased": "Élément de structure supprimé.",
+      "labels": "Étiquettes",
+      "label_modes": {
+        "code": "Code",
+        "name": "Nom",
+        "both": "Les deux"
+      },
       "layers": "Calques",
       "layer_names": {
         "structure": "Structure",

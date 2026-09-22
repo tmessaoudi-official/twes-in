@@ -13,6 +13,12 @@ export const SUPPORTED_LANGUAGES = ['fr', 'en'] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 /** The sidebar on a wide screen: icons and labels, or icons alone with the labels as tooltips. */
 export type SidebarState = 'expanded' | 'rail';
+/**
+ * What the stock plan writes on a rectangle. Declared here and not beside the plan because `shared/` imports no
+ * feature: the registry owns the value a key may hold, exactly as it owns `SidebarState` and `SUPPORTED_LANGUAGES`.
+ */
+export const PLAN_LABEL_MODES = ['code', 'name', 'both'] as const;
+export type PlanLabelMode = (typeof PLAN_LABEL_MODES)[number];
 
 /**
  * The accent used until someone chooses one; the platform → company → role → user chain takes over at G3b
@@ -70,6 +76,16 @@ export const PRESENTATION = {
     'presentation.sidebar-settings',
     'rail',
     oneOf('expanded', 'rail'),
+  ),
+  /**
+   * What the stock plan writes on a rectangle: its code, its name, or both. Registered here with the other
+   * application-wide preferences although one screen reads it, exactly as `sidebar-settings` is — the registry is
+   * the list of keys that may exist, not a list of screens.
+   */
+  planLabels: defineSetting<PlanLabelMode>(
+    'presentation.plan-labels',
+    'code',
+    oneOf<PlanLabelMode>(...PLAN_LABEL_MODES),
   ),
   language: defineSetting<Language>(
     'presentation.language',

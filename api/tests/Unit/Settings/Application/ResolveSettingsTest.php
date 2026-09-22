@@ -104,11 +104,14 @@ final class ResolveSettingsTest extends TestCase
 
         $resolved = $this->resolve->handle(SettingChain::Presentation, $this->context());
 
+        $keys = array_map(static fn (ResolvedSetting $setting) => $setting->key, $resolved);
         self::assertSame(
-            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.language', 'presentation.list.members', 'presentation.list.members.views'],
-            array_map(static fn (ResolvedSetting $setting) => $setting->key, $resolved),
+            ['presentation.accent', 'presentation.scheme', 'presentation.density', 'presentation.sidebar', 'presentation.sidebar-settings', 'presentation.plan-labels', 'presentation.language', 'presentation.list.members', 'presentation.list.members.views'],
+            $keys,
         );
-        self::assertSame($layout, $resolved[5]->value);
+        // Read by key and not by position: what this case is about is the layout arriving under its own key, and an
+        // ordinal would make every future presentation setting shift an assertion that has nothing to do with it.
+        self::assertSame($layout, $resolved[array_search('presentation.list.members', $keys, true)]->value);
     }
 
     public function testASettingOutsideTheCatalogueCannotBeResolved(): void

@@ -478,4 +478,94 @@ test.describe('the drawn stock map', () => {
       if (!page.isClosed()) await clean(page, fixture, floorName);
     }
   });
+
+  /**
+   * What the plan writes on a rectangle, through the real stack (docs/SPEC.md § 7, 2026-09-22). A store arrives
+   * with its building already numbered, or already named, or moving from one to the other.
+   *
+   * It screenshots each of the three, because a label is a rendered thing: an assertion on `textContent` passes on
+   * a label drawn outside its own rectangle, behind another, or in a colour nobody can read.
+   */
+  test('writes the code, the name or both on the plan, and remembers which', async ({ page }) => {
+    const stamp = Date.now().toString().slice(-8);
+    const code = `LBL${stamp}`;
+    const floorName = `Libellé ${stamp}`;
+
+    await signIn(page);
+    await inACompany(page, CSRF);
+    const fixture = await prepare(page, code);
+
+    try {
+      await page.goto('/stock/plan');
+      await page.getByTestId('stock-floor-add').click();
+      await page.getByTestId('field-name').fill(floorName);
+      await page.getByTestId('field-level').fill(String(fixture.level));
+      await page.getByTestId('stock-floor-save').click();
+      await expect(toast(page)).toContainText('Étage enregistré');
+      await page.getByRole('button', { name: floorName, exact: true }).click();
+
+      // One rack, and one wall to prove the building keeps its name under every choice.
+      await page.getByTestId('stock-drawing-add').click();
+      await page.getByTestId('field-locationId').click();
+      await page.getByRole('option', { name: new RegExp(code) }).click();
+      await page.getByTestId('field-x').fill('1');
+      await page.getByTestId('field-y').fill('2');
+      await page.getByTestId('field-width').fill('4');
+      await page.getByTestId('field-depth').fill('1');
+      await page.getByTestId('stock-drawing-save').click();
+      await expect(toast(page)).toContainText('Rectangle enregistré');
+
+      await page.getByTestId('stock-structure-tool-wall').click();
+      await page.getByTestId('field-name').fill('Mur nord');
+      await page.getByTestId('field-x').fill('0');
+      await page.getByTestId('field-y').fill('0');
+      await page.getByTestId('stock-structure-save').click();
+      await expect(toast(page)).toContainText('Élément de structure enregistré');
+      await expect(toast(page)).toBeHidden({ timeout: 15_000 });
+
+      const label = page.locator('[data-testid^="stock-drawing-label-"]');
+      const wall = page.locator('[data-testid^="stock-structure-name-"]');
+
+      // Chosen, never assumed. This is a PREFERENCE persisted on the operator account, which every scenario and
+      // every run of this suite shares: a run that fails before its own reset leaves it set, and the next run then
+      // opens on whatever that was. An earlier draft asserted the declared default here and failed on its second
+      // run for that reason alone. What the default is belongs to the unit spec, which owns its own storage.
+      await page.getByTestId('stock-map-label-code').click();
+      await expect(label).toHaveText(code);
+      await expect(wall).toHaveText('Mur nord');
+      await page.screenshot({ path: 'var/claude/plan-labels-code.png' });
+
+      // Both halves are longer than a 4 m rack can carry at this type size, so the label is CUT — found by looking
+      // at the rendered plan, where it ran 6,1 m across a 3,9 m rack and onto the empty floor beside it.
+      await page.getByTestId('stock-map-label-both').click();
+      // `toHaveText` normalizes whitespace for a string and NOT for a pattern, and an SVG text node carries the
+      // template's own indentation, so the pattern allows it rather than pretending it is not there.
+      await expect(label).toHaveText(new RegExp(`^\\s*${code} · Rayonn.*…\\s*$`));
+      // Nothing is hidden by cutting it: the whole label rides on the rectangle, which is what a person points at.
+      await expect(page.locator('[data-testid^="stock-drawing-rect-"] title')).toHaveText(
+        `${code} · Rayonnage ${code}`,
+      );
+      await expect(wall).toHaveText('Mur nord', { timeout: 5_000 });
+      await page.screenshot({ path: 'var/claude/plan-labels-both.png' });
+
+      await page.getByTestId('stock-map-label-name').click();
+      await expect(label).toHaveText(`Rayonnage ${code}`);
+      await page.screenshot({ path: 'var/claude/plan-labels-name.png' });
+
+      // A preference, not a moment: the next visit opens on the numbering this store actually reads.
+      await page.reload();
+      await page.getByRole('button', { name: floorName, exact: true }).click();
+      await expect(label).toHaveText(`Rayonnage ${code}`);
+      await expect(page.getByTestId('stock-map-label-name')).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      );
+
+      // Put back, so the next scenario in this shared database opens on codes as it expects to.
+      await page.getByTestId('stock-map-label-code').click();
+      await expect(label).toHaveText(code);
+    } finally {
+      if (!page.isClosed()) await clean(page, fixture, floorName);
+    }
+  });
 });

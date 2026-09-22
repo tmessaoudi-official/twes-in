@@ -76,6 +76,13 @@ import {
   type PlanWay,
   PLAN_WAYS,
 } from './stock-map-geometry';
+import { SettingsFacade } from '../shared/settings/settings-facade';
+import {
+  PLAN_LABEL_MODES,
+  PRESENTATION,
+  type PlanLabelMode,
+} from '../shared/settings/settings-registry';
+import { LABEL_FONT, STRUCTURE_LABEL_FONT, fitLabel, planLabel } from './stock-map-labels';
 import { WINDOW_CLASS } from '../shared/ui/window-class';
 
 /** How much floor is left around what is drawn, in metres, so nothing touches the frame. */
@@ -127,9 +134,13 @@ interface PlanShape {
   /** Degrees about the rectangle's own centre, as the SVG's rotate() takes them. */
   centreX: number;
   centreY: number;
-  /** Where the code is written: inside the rectangle, turned with it. */
+  /** Where the label is written: inside the rectangle, turned with it. */
   labelX: number;
   labelY: number;
+  /** What is written there: the code, the name, or both, as the reader asked, cut to the rectangle's own width. */
+  label: string;
+  /** The whole of it, carried as the drawn element's title so cutting the label hides nothing from the reader. */
+  labelTitle: string;
 }
 
 /**
@@ -144,6 +155,9 @@ interface StructureShape {
   /** Where the name is written: inside the footprint, turned with it, exactly as a rack's code is. */
   labelX: number;
   labelY: number;
+  /** A piece has no code, so this is its name — under every choice, or the building vanishes under "codes". */
+  label: string;
+  labelTitle: string;
 }
 
 /** One row of the layers panel: what it is, and how many things are on it right now. */
@@ -186,7 +200,18 @@ export class StockMapPage implements OnInit {
   private readonly facade = inject(InventoryFacade);
   private readonly feedback = inject(Feedback);
   private readonly auth = inject(AuthFacade);
+  private readonly settings = inject(SettingsFacade);
   protected readonly tabs = INVENTORY_TABS;
+
+  /**
+   * What the plan writes on its rectangles. A preference and not a moment: a store reads its own numbering every
+   * day and should not re-choose it on every visit (docs/SPEC.md § 7, 2026-09-22).
+   */
+  protected readonly labelMode = this.settings.value(PRESENTATION.planLabels);
+  protected readonly labelModes = PLAN_LABEL_MODES;
+  /** Bound rather than written in the template, so what is drawn and what is measured cannot drift apart. */
+  protected readonly labelFont = LABEL_FONT;
+  protected readonly structureLabelFont = STRUCTURE_LABEL_FONT;
 
   protected readonly busy = this.facade.busy;
   protected readonly error = this.facade.error;
@@ -240,10 +265,11 @@ export class StockMapPage implements OnInit {
           ? preview
           : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 });
 
-      return shapeOf(drawing, shown);
+      return shapeOf(drawing, shown, this.labelMode());
     });
 
-    if (editing === 'new' && preview !== null) shapes.push(shapeOf(this.pendingRow(), preview));
+    if (editing === 'new' && preview !== null)
+      shapes.push(shapeOf(this.pendingRow(), preview, this.labelMode()));
 
     return shapes;
   });
@@ -1019,11 +1045,12 @@ export class StockMapPage implements OnInit {
           ? { ...piece, kind: kindOf(kindNow) }
           : piece,
         shown,
+        this.labelMode(),
       );
     });
 
     if (editing === 'new' && preview !== null) {
-      shapes.push(builtOf({ ...PENDING_PIECE, kind: kindOf(kindNow) }, preview));
+      shapes.push(builtOf({ ...PENDING_PIECE, kind: kindOf(kindNow) }, preview, this.labelMode()));
     }
 
     return shapes;
@@ -1061,6 +1088,11 @@ export class StockMapPage implements OnInit {
    */
   protected isLocked(layer: string): boolean {
     return this.locked().includes(layer);
+  }
+
+  /** Writing it down is the whole point: the next visit opens on the numbering this store actually reads. */
+  protected chooseLabels(mode: PlanLabelMode): void {
+    this.settings.set(PRESENTATION.planLabels, mode);
   }
 
   protected toggleShown(layer: string): void {
@@ -1190,7 +1222,11 @@ function kindOf(value: string): StructureKind {
 }
 
 /** One piece of the building as the SVG needs it: where it turns about, what it is, and where its name goes. */
-function builtOf(piece: StockStructureRow, rect: PlanRectangle): StructureShape {
+function builtOf(
+  piece: StockStructureRow,
+  rect: PlanRectangle,
+  mode: PlanLabelMode,
+): StructureShape {
   return {
     piece,
     rect,
@@ -1199,11 +1235,14 @@ function builtOf(piece: StockStructureRow, rect: PlanRectangle): StructureShape 
     // A wall is a thin rectangle, so its name sits above the line rather than inside a 0,20 m band nothing fits in.
     labelX: rect.x + 0.15,
     labelY: rect.depth < 0.6 ? rect.y - 0.12 : rect.y + Math.min(0.45, rect.depth * 0.7),
+    // A piece carries no code, so `planLabel` answers its name whatever the mode — that is the point of passing it.
+    label: fitLabel(planLabel('', piece.name, mode), rect.width, STRUCTURE_LABEL_FONT),
+    labelTitle: planLabel('', piece.name, mode),
   };
 }
 
 /** One rectangle as the SVG needs it: where it turns about, and where its code is written inside it. */
-function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle): PlanShape {
+function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle, mode: PlanLabelMode): PlanShape {
   return {
     drawing,
     rect,
@@ -1212,5 +1251,11 @@ function shapeOf(drawing: StockDrawingRow, rect: PlanRectangle): PlanShape {
     // Written inside the rectangle and turned with it, so a label never floats off its own rack.
     labelX: rect.x + 0.15,
     labelY: rect.y + Math.min(0.45, rect.depth * 0.7),
+    label: fitLabel(
+      planLabel(drawing.locationCode, drawing.locationName, mode),
+      rect.width,
+      LABEL_FONT,
+    ),
+    labelTitle: planLabel(drawing.locationCode, drawing.locationName, mode),
   };
 }

@@ -21,6 +21,7 @@ import {
   SETTINGS_STORAGE,
   SettingsFacade,
 } from '../shared/settings/settings-facade';
+import { PRESENTATION } from '../shared/settings/settings-registry';
 import { provideQuietFeedback, successToasts } from '../shared/testing/feedback';
 import { InventoryFacade } from './inventory-facade';
 import type {
@@ -981,6 +982,48 @@ describe('StockMapPage', () => {
     expect(q('stock-structure-name-s1')).toBeNull();
     // The piece itself is still drawn: it is the label that is absent, not the wall.
     expect(q('stock-structure-wall')).not.toBeNull();
+  });
+
+  /**
+   * A store arrives with its building already numbered, or already named, or changing from one to the other. The
+   * plan writes what its reader asked for, and remembers the answer (docs/SPEC.md § 7, 2026-09-22).
+   */
+  it('writes on the plan what the reader chose, and keeps that choice', async () => {
+    const drawn = (): string | undefined =>
+      (
+        fixture.nativeElement.querySelector(
+          '[data-testid="stock-drawing-label-d1"]',
+        ) as SVGTextElement | null
+      )?.textContent?.trim();
+
+    // Codes to begin with: a plan nobody has an opinion about reads the way it always did.
+    expect(drawn()).toBe('R1');
+    expect(q('stock-map-label-code')?.getAttribute('aria-pressed')).toBe('true');
+
+    (q('stock-map-label-both') as HTMLElement).click();
+    await settle();
+    expect(drawn()).toBe('R1 · Rayonnage 1');
+    expect(q('stock-map-label-both')?.getAttribute('aria-pressed')).toBe('true');
+
+    (q('stock-map-label-name') as HTMLElement).click();
+    await settle();
+    expect(drawn()).toBe('Rayonnage 1');
+
+    // The choice is a preference, not a moment: it is written down and read back.
+    expect(TestBed.inject(SettingsFacade).value(PRESENTATION.planLabels)()).toBe('name');
+  });
+
+  /**
+   * A piece of the building has no code and never will, so it keeps its name whatever the reader asked for —
+   * choosing "codes" must not empty the building off the plan.
+   */
+  it('keeps a piece of the building named under every choice', async () => {
+    expect(q('stock-structure-name-s1')?.textContent?.trim()).toBe('Mur nord');
+
+    (q('stock-map-label-code') as HTMLElement).click();
+    await settle();
+
+    expect(q('stock-structure-name-s1')?.textContent?.trim()).toBe('Mur nord');
   });
 
   /** The tool poses at THIS company's measurements — 0,80 × 0,15 × 2,00 for a door — not at a constant. */

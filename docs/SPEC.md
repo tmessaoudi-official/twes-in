@@ -2063,6 +2063,57 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   wrong file under the right content type still reds. Production is unaffected: it sets `enable_docs: false`.
   One inline style Swagger applies at runtime stays blocked by the CSP and the page is whole without it; the
   application's `style-src` is not weakened for a development page.
+- [2026-09-22 13:40] AGREED: **the plan writes what its reader chose** — the location's code, its name, or both —
+  as the presentation preference `presentation.plan-labels`, `code` by default. A store arrives with its building
+  already numbered, already named, or moving from one to the other; that is a property of the reader and not of the
+  data. Three rules make it honest. A stock location always has a code and may have no name worth reading, so asking
+  for the name falls back to the code — a blank rectangle reads as data loss. A piece of the building has no code
+  and never will, so it is labelled by its name under EVERY choice rather than vanishing under "codes". And a label
+  is drawn in METRES on a scale plan, so one too long for its own rectangle is CUT with an ellipsis: found by
+  looking at the rendered plan, where `LBL77640633 · Rayonnage LBL77640633` ran 6,1 m across a 3,9 m rack and onto
+  the floor beside it, where it read as belonging to nothing. Nothing is hidden by the cut — the whole label is the
+  rectangle's own `<title>`, on the shape a person points at and not on the text, which takes no pointer and whose
+  title would therefore never be shown to anyone.
+- [2026-09-22 13:45] AGREED: **a presentation key the SPA writes is a key the API declares**, both ways, checked by
+  `scripts/gates/presentation-settings-parity.sh`. The defect is silent on both sides: `ApiSettings.set` posts the
+  choice and swallows the answer (`.catch(() => {})`), so for a signed-in person an undeclared key works perfectly
+  until the page is reloaded and is then simply gone, while the unit specs use the browser-storage adapter where
+  every key persists. `presentation.sidebar-settings` had shipped that way and nobody had noticed; the settings
+  area's fold state did not survive a reload. Both it and `presentation.plan-labels` are now declared, labelled in
+  both languages, and the gate carries floors so a pattern that stops matching reds — which it did, on its own
+  first real run, catching a grep that read one key where seven were declared.
+- [2026-09-22 14:05] AGREED: **signing in without a password means a PASSKEY as the first factor, never a password
+  field that accepts anything.** The proposal on the table was a per-person checkbox making any password pass, with
+  the second factor still asked. It is refused on three grounds. It does not remove the password, it removes the
+  CHECK: the field, the form and the code path all remain, so the screen, the audit trail and the code keep saying
+  "authenticated by password" about something never verified. Its blast radius is not the login screen — a password
+  check also guards re-authentication, a password change and recovery, and the first of those that forgets to read
+  the flag is a universal bypass. And TOTP is not a first factor: it is a shared secret, phishable in real time, so
+  "any password + TOTP" is strictly weaker than "password + TOTP".
+  What ships instead is genuinely STRONGER than today: a discoverable-credential WebAuthn ceremony with
+  `userVerification: 'required'`, where the authenticator checks a biometric or a PIN locally and never transmits
+  it, origin-bound by the protocol. NIST SP 800-63B calls that a multi-factor cryptographic authenticator — AAL2 in
+  one ceremony, AAL3 with a hardware authenticator, where password + TOTP plateaus at AAL2. Passkeys exist here
+  today but are strictly a SECOND factor: `BeginPasskeyAssertion` names the account's own credentials and its own
+  docblock says it runs after the password step. Off by default, as `presentation`'s sibling in the security chain:
+  company → role → user, and a company may pin it so members cannot change it. The password stays, as the recourse
+  when no authenticator is at hand and as what re-authorises a sensitive change.
+- [2026-09-22 14:05] AGREED: **the account lockout is carried by the PASSWORD factor, not by the account.** Five
+  consecutive failures lock for fifteen minutes (`app.auth.lock_after_failures`, `app.auth.lock_duration`), beside
+  Symfony's `login_throttling` (10 per account+IP per 15 minutes) and the `mfa_verify` limiter (5 per 5 minutes).
+  Those numbers stand — NIST SP 800-63B asks for rate limiting or lockout and warns specifically against a
+  PERMANENT one, which is a denial of service wearing a security badge. What changes is what the lock blocks: a
+  passkey must pass while the account is locked, because a lock exists to stop GUESSING and a signature cannot be
+  guessed. Left on the whole account, anyone who knows an address locks its owner out by failing five passwords —
+  including accounts that never sign in with one. Two consequences: the screen says how many minutes remain rather
+  than refusing indistinguishably from a wrong password, an owner may lift a lock, and a first-factor ceremony must
+  never reveal whether an address exists (`BeginPasskeyAssertion` raises `PasskeyRefused` for an account with no
+  passkey today, which its comment justifies only because the password step already proved the account exists).
+- [2026-09-22 14:05] AGREED: build order for passwordless sign-in — the ceremony first, the policy after:
+  (1) a discoverable-credential assertion that begins with no known user and reveals nothing about an address,
+  (2) the listener that accepts that assertion as the whole login, (3) the lock moved onto the password factor,
+  (4) the company → role → user setting, (5) the button and its e2e. Each step is certifiable on its own, which a
+  single commit over this surface would not be.
 
 ## 8. Status
 

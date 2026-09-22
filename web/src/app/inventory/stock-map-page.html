@@ -212,6 +212,32 @@
             drawn and still reachable by keyboard, it simply stops answering the pointer, which is what keeps a wall
             from being picked up while a rack is being moved.
           -->
+          <!--
+            What the plan writes on its rectangles. A store arrives with its building already numbered, or already
+            named, or moving from one to the other — so this is the reader's choice, remembered, and not a column.
+          -->
+          <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            {{ 'inventory.plan.labels' | translate }}
+          </h2>
+          <div
+            class="flex flex-wrap gap-1"
+            role="group"
+            [attr.aria-label]="'inventory.plan.labels' | translate"
+          >
+            @for (mode of labelModes; track mode) {
+              <button
+                type="button"
+                class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                [class.bg-secondary-container]="labelMode() === mode"
+                [attr.aria-pressed]="labelMode() === mode"
+                (click)="chooseLabels(mode)"
+                [attr.data-testid]="'stock-map-label-' + mode"
+              >
+                {{ 'inventory.plan.label_modes.' + mode | translate }}
+              </button>
+            }
+          </div>
+
           <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
             {{ 'inventory.plan.layers' | translate }}
           </h2>
@@ -578,16 +604,18 @@
                       (pointerdown)="grabStructure($event, built.piece, null)"
                       (click)="openStructure(built.piece)"
                       [attr.data-testid]="'stock-structure-' + built.piece.kind"
-                    />
+                    >
+                      <title>{{ built.labelTitle }}</title>
+                    </rect>
                     <!--
                       Only where the store named it. A wall named nothing writes nothing: an empty label would put
                       a blank box on every partition of the building, which is most of them.
                     -->
-                    @if (built.piece.name !== '') {
+                    @if (built.label !== '') {
                       <text
                         [attr.x]="built.labelX"
                         [attr.y]="built.labelY"
-                        [attr.font-size]="0.28"
+                        [attr.font-size]="structureLabelFont"
                         [attr.transform]="
                           'rotate(' +
                           built.rect.rotation +
@@ -600,7 +628,7 @@
                         class="pointer-events-none fill-on-surface-variant"
                         [attr.data-testid]="'stock-structure-name-' + built.piece.id"
                       >
-                        {{ built.piece.name }}
+                        {{ built.label }}
                       </text>
                     }
                   }
@@ -654,14 +682,21 @@
                     (pointerdown)="grab($event, shape.drawing, null)"
                     (click)="select(shape.drawing)"
                     [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
-                  />
+                  >
+                    <!--
+                      The WHOLE label, on the rectangle and not on the text: a label cut to fit hides nothing this
+                      way, and the text itself takes no pointer, so a title there would never be shown to anyone.
+                    -->
+                    <title>{{ shape.labelTitle }}</title>
+                  </rect>
                   <text
                     [attr.x]="shape.labelX"
                     [attr.y]="shape.labelY"
-                    [attr.font-size]="0.32"
+                    [attr.font-size]="labelFont"
                     class="pointer-events-none fill-on-surface"
+                    [attr.data-testid]="'stock-drawing-label-' + shape.drawing.id"
                   >
-                    {{ shape.drawing.locationCode }}
+                    {{ shape.label }}
                   </text>
 
                   <!--
