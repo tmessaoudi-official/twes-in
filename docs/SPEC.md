@@ -2182,6 +2182,21 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   arc; a post goes anywhere), then a minimal I (the rack's card lists what it holds). The dev database still carries
   walkthrough data in Carthage Conseil RC (a RAYON-A drawing, one wall, its floor measured 24 × 15).
 
+- [2026-09-22 22:26] AGREED: **the barcode table first, the lot model right after**, amending the 11:30 build order
+  (developer ruling, chosen so the scan is seen working first). In order: (1) a product carries several barcodes
+  (`unit | pack | supplier | internal`, the 11:05 ruling) and a scan finds a product by any of them, a pack row
+  entering its quantity; (2) the search workbench, opened by a scan from any screen; (3) scanning into a document's
+  lines; then lots, serials and expiry, before reception, picking and counting, which are the screens that need them.
+  Safe because nothing built in (1)–(3) records a stock movement per lot, so the lot migration rewrites no data.
+
+- [2026-09-22 22:28] AGREED: **the camera scanner is in this goal**, alongside the table, the workbench and document
+  lines (developer ruling, after the three open questions of the 06:00 entry were explained). Its three answers are
+  therefore taken now: the decoder library's real LICENSE file is read at the version the lock installs and brought
+  to the developer before it is added (an LGPL or any non-permissive result stops the work, invariant 6); the local
+  stack gains a development certificate so `getUserMedia` can be tried from a phone; and whether iPhone Safari
+  scans for itself decides whether QR pairing is built now. What the camera reads enters the same path a handheld
+  scanner's keystrokes do.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
