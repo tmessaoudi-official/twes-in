@@ -2133,6 +2133,31 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   12 characters plus the breach list, no composition rules (09:14); history as a knob off by default (09:14);
   expiry as a per-company knob defaulted to never (09:08). They are additive to `Identity`, need no groundwork
   row, and are built right after the map walkthrough, in the five steps of the 14:05 entry.
+- [2026-09-22 20:45] NOTED (answers the 06:30 OPEN entry): **the map walkthrough, run by Claude in a real browser
+  on the running stack at the developer's request** ("i could not even place a wall ! when i select it it
+  disappears"). Screenshots in `var/claude/map-walk/`. Blockers: **(A)** pressing a posed, UNSAVED wall, door or
+  post erases it — the pending piece is drawn by the saved pieces' own template, so its `pointerdown` runs
+  `grabStructure` → `openStructure(PENDING_PIECE)`, which edits the zeroed placeholder as if it were a saved row:
+  the form resets to 0, the preview is dropped and "Effacer le rectangle" appears; **(B)** the form holding
+  Enregistrer opens under the board, off-screen at 900 px, with nothing on the board saying a save is owed;
+  **(C)** a door is posed at the floor's centre, under whatever is there, white on white, and snaps to nothing —
+  saved and invisible; **(D)** the Rayonnage and Zone tools draw an EXISTING location only, and the save refuses
+  "Ce champ est obligatoire" with no hint of why. In the way: **(E)** the board refits after every save, so
+  what was just placed jumps; **(F)** tracing a rectangle selects the page's text; **(G)** a piece keeps its
+  handles while another is worked on; **(H)** a bare white board, no floor outline, grid or size; **(I)** a rack
+  shows nothing of what it holds, so a product cannot be found from the plan; **(J)** "Dessiné sur cet étage"
+  ignores the building and lists an unsaved rack as "—"; **(K)** resizing by the right edge moves the left one a
+  quarter metre. Works: moving and resizing saved pieces, posing and saving a rack, tracing, the zoom buttons.
+  Not exercised: wheel zoom and pan, Répéter, layer locks, floors, the label modes, the phone.
+- [2026-09-22 20:50] AGREED: **the Rayonnage and Zone tools create the location with its drawing** (developer
+  ruling, finding D): the form asks a code and a name, or picks an existing location, and one save creates both,
+  so a store is drawn without leaving the plan.
+- [2026-09-22 20:50] AGREED: **a door and a dock door follow the pointer and snap onto the nearest wall, turned
+  with it; a click puts them down; a post goes anywhere** (developer ruling, finding C). Each is drawn so it can be
+  seen — an outline, and a door's swing — never a white fill on a white floor.
+- [2026-09-22 20:50] AGREED: **findings A–K are one goal, "the map is usable", taken now, before the sign-in
+  work** (developer ruling), each with its failing test first and an e2e for A, B, C and D; the developer checks it
+  on the running stack before the sign-in work starts.
 
 ## 8. Status
 
