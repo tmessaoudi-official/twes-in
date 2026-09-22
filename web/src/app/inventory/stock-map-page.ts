@@ -1056,6 +1056,25 @@ export class StockMapPage implements OnInit {
     return shapes;
   });
 
+  /** A form is open — a rectangle of stock's or a piece of the building's — and so it stands where the tools were. */
+  protected readonly inspecting = computed(
+    () => this.drawingFormGroup() !== null || this.structureFormGroup() !== null,
+  );
+
+  /**
+   * Whether the board must say a save is owed: anything new is, and anything saved is once a field differs from
+   * what the API holds. The form beside the board carries the count; the board carries the fact, where the eye is.
+   */
+  protected readonly owesSave = computed(() => {
+    if (this.editing() === 'new' || this.editingStructure() === 'new') return true;
+    if (this.unsaved() > 0) return true;
+    const piece = this.editingStructure();
+    const values = this.structureValuesNow();
+    if (piece === null || piece === 'new' || values === null) return false;
+
+    return dirtyCount(values, structureValues(piece, this.structureTools())) > 0;
+  });
+
   /**
    * The layers panel of the board. Counts are derived and never stored: a layer showing a number nobody maintains
    * is a number that goes wrong the first time something is erased somewhere else.

@@ -2158,6 +2158,12 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 - [2026-09-22 20:32] AGREED: **findings A–K are one goal, "the map is usable", taken now, before the sign-in
   work** (developer ruling), each with its failing test first and an e2e for A, B, C and D; the developer checks it
   on the running stack before the sign-in work starts.
+- [2026-09-22 20:44] AGREED: **while a piece is placed or changed, its form stands where the tools were**
+  (developer ruling, finding B, chosen over a card floating on the board and a bar pinned under it). The panel is
+  as tall as the board beside it and scrolls inside, Annuler and Enregistrer pinned at its foot, so both are on the
+  screen while the piece is dragged; the tools come back on save or cancel, and the board's toolbar says "Pas encore
+  enregistré" while a save is owed. Forms in that column stack their section titles above the fields
+  (`.twes-form-stacked`), leaving every other form's layout untouched.
 
 ## 8. Status
 

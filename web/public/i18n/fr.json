@@ -1563,6 +1563,7 @@
       "zoom_in": "Voir de plus près",
       "zoom_out": "Voir de plus loin",
       "fit": "Ajuster",
+      "not_saved": "Pas encore enregistré — Enregistrer est à gauche",
       "view_hint": "Molette pour approcher, glisser pour déplacer"
     }
   },

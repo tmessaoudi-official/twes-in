@@ -112,362 +112,482 @@
           The list is the plan's keyboard path and its phone view: decision 8 says the map is read on a phone and
           drawn on a wide window, so nothing here may be reachable only by pointing at the drawing.
         -->
-        <div class="flex flex-col gap-2">
-          <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-            {{ 'inventory.plan.drawn' | translate }}
-          </h2>
-          @for (shape of shapes(); track shape.drawing.id) {
-            <button
-              type="button"
-              class="flex items-baseline gap-2 rounded-lg border border-outline-variant p-2 text-start"
-              [class.bg-secondary-container]="shape.drawing.id === selectedId()"
-              (click)="select(shape.drawing)"
-              [attr.aria-pressed]="shape.drawing.id === selectedId()"
-              [attr.data-testid]="'stock-drawing-' + shape.drawing.locationCode"
-            >
-              <span class="font-medium">{{ shape.drawing.locationCode }}</span>
-              <span class="grow truncate text-on-surface-variant">
-                {{ shape.drawing.locationName }}
-              </span>
-              <span class="tabular-nums text-on-surface-variant">
-                {{ shape.rect.width }} × {{ shape.rect.depth }} m
-              </span>
-            </button>
-          } @empty {
-            <p data-testid="stock-map-empty">{{ 'inventory.plan.nothing_drawn' | translate }}</p>
-          }
-
-          @if (mayWrite()) {
-            <button
-              mat-flat-button
-              type="button"
-              class="mt-2"
-              (click)="draw('new')"
-              data-testid="stock-drawing-add"
-            >
-              {{ 'inventory.plan.draw' | translate }}
-            </button>
-          }
-          @if (palette().length > 0) {
-            <!--
-              Ready-made shapes, at the sizes this company set for them. Each is a BUTTON and not something only a
-              pointer can take hold of: activating one poses the rectangle at the middle of the plan, so the palette
-              is as usable from a keyboard as from a hand.
-            -->
-            <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-              {{ 'inventory.plan.shapes' | translate }}
-            </h2>
-            <div class="flex flex-wrap gap-2">
-              @for (shape of palette(); track shape.shape) {
-                <button
-                  type="button"
-                  class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
-                  (click)="pose(shape)"
-                  [attr.data-testid]="'stock-shape-' + shape.shape"
-                >
-                  <span class="font-medium">
-                    {{ 'inventory.plan.shape_names.' + shape.shape | translate }}
-                  </span>
-                  <span class="tabular-nums text-sm text-on-surface-variant">
-                    {{ shape.width }} × {{ shape.depth }} m
-                  </span>
-                </button>
-              }
-            </div>
-          }
-
-          @if (structureTools().length > 0) {
-            <!--
-              The structure layer's four tools. Nothing posed here is a stock location and none of it ever will be:
-              a wall holds no goods, so it appears in no list, no import and no movement's location picker. Buttons
-              for the same reason the palette uses them — reachable from a keyboard, not only from a hand.
-            -->
-            <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-              {{ 'inventory.plan.structure' | translate }}
-            </h2>
-            <p class="text-sm text-on-surface-variant" data-testid="stock-structure-hint">
-              {{ 'inventory.plan.structure_note' | translate }}
-            </p>
-            <div class="flex flex-wrap gap-2">
-              @for (tool of structureTools(); track tool.kind) {
-                <button
-                  type="button"
-                  class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
-                  (click)="poseStructure(tool)"
-                  [attr.data-testid]="'stock-structure-tool-' + tool.kind"
-                >
-                  <span class="font-medium">
-                    {{ 'inventory.plan.structure_kinds.' + tool.kind | translate }}
-                  </span>
-                  <span class="tabular-nums text-sm text-on-surface-variant">
-                    {{ tool.width }} × {{ tool.depth }} m
-                  </span>
-                </button>
-              }
-            </div>
-          }
-
+        @if (inspecting()) {
           <!--
-            The layers panel of the approved board. Each row shows and locks its own layer: a locked layer is still
-            drawn and still reachable by keyboard, it simply stops answering the pointer, which is what keeps a wall
-            from being picked up while a rack is being moved.
+            The form of whatever is being placed or changed takes the tools' place, beside the board and level with it, so
+            Enregistrer is on the screen while the piece is dragged. Below the board it sat off-screen at 900 px and nothing
+            said a save was owed (§ 7, 2026-09-22, finding B). The tools come back on save or cancel.
           -->
           <!--
-            What the plan writes on its rectangles. A store arrives with its building already numbered, or already
-            named, or moving from one to the other — so this is the reader's choice, remembered, and not a column.
+            Sized by the board beside it, never by its own content: the grid cell is as tall as the board, and the
+            panel fills it and scrolls inside, so Enregistrer (pinned at its foot) is level with the board's bottom
+            edge. A sticky column as tall as the window started 400 px down the page and put it off-screen again.
           -->
-          <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-            {{ 'inventory.plan.labels' | translate }}
-          </h2>
-          <div
-            class="flex flex-wrap gap-1"
-            role="group"
-            [attr.aria-label]="'inventory.plan.labels' | translate"
-          >
-            @for (mode of labelModes; track mode) {
+          <div class="relative min-h-[20rem]">
+            <div
+              class="twes-form-stacked flex flex-col gap-4 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-4 lg:absolute lg:inset-0"
+              data-testid="stock-map-inspector"
+            >
+              @if (drawingFormGroup(); as group) {
+                @if (drawingDescriptor(); as descriptor) {
+                  <app-descriptor-form
+                    [descriptor]="descriptor"
+                    [form]="group"
+                    testId="stock-drawing-form"
+                    (submitted)="saveDrawing($event)"
+                  >
+                    <div
+                      class="sticky bottom-0 -mx-1 flex flex-wrap items-center justify-end gap-2 bg-surface px-1 py-2"
+                    >
+                      @if (unsaved(); as changes) {
+                        <!-- Announced: nothing else on the plan says a rectangle was moved and not yet saved. -->
+                        <span
+                          role="status"
+                          class="grow text-sm text-on-surface-variant"
+                          data-testid="stock-drawing-unsaved"
+                          [attr.data-count]="changes"
+                        >
+                          {{
+                            (changes === 1 ? 'form.one_unsaved' : 'form.unsaved')
+                              | translate: { count: changes }
+                          }}
+                        </span>
+                      }
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="cancelDrawing()"
+                        data-testid="stock-drawing-cancel"
+                      >
+                        {{ 'inventory.cancel' | translate }}
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="submit"
+                        [disabled]="busy()"
+                        data-testid="stock-drawing-save"
+                      >
+                        {{ 'inventory.save' | translate }}
+                      </button>
+                    </div>
+                  </app-descriptor-form>
+                }
+              }
+
+              <!--
+        The building's own form. Its kind is a field like any other, because correcting it is the common
+        repair: a doorway traced with the wall tool is right in every measurement and wrong in exactly one.
+      -->
+              @if (structureFormGroup(); as group) {
+                @if (structureDescriptor(); as descriptor) {
+                  <app-descriptor-form
+                    [descriptor]="descriptor"
+                    [form]="group"
+                    testId="stock-structure-form"
+                    (submitted)="saveStructure($event)"
+                  >
+                    <div
+                      class="sticky bottom-0 -mx-1 flex flex-wrap items-center justify-end gap-2 bg-surface px-1 py-2"
+                    >
+                      @if (editingStructure(); as editing) {
+                        @if (editing !== 'new') {
+                          <button
+                            mat-button
+                            type="button"
+                            class="grow-0 text-error"
+                            [disabled]="busy()"
+                            (click)="eraseStructure(editing)"
+                            data-testid="stock-structure-erase"
+                          >
+                            {{ 'inventory.plan.erase' | translate }}
+                          </button>
+                        }
+                      }
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="cancelStructure()"
+                        data-testid="stock-structure-cancel"
+                      >
+                        {{ 'inventory.cancel' | translate }}
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="submit"
+                        [disabled]="busy()"
+                        data-testid="stock-structure-save"
+                      >
+                        {{ 'inventory.save' | translate }}
+                      </button>
+                    </div>
+                  </app-descriptor-form>
+                }
+              }
+            </div>
+          </div>
+        } @else {
+          <div class="flex flex-col gap-2">
+            <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              {{ 'inventory.plan.drawn' | translate }}
+            </h2>
+            @for (shape of shapes(); track shape.drawing.id) {
               <button
                 type="button"
-                class="rounded-md border border-outline-variant px-2 py-1 text-sm"
-                [class.bg-secondary-container]="labelMode() === mode"
-                [attr.aria-pressed]="labelMode() === mode"
-                (click)="chooseLabels(mode)"
-                [attr.data-testid]="'stock-map-label-' + mode"
+                class="flex items-baseline gap-2 rounded-lg border border-outline-variant p-2 text-start"
+                [class.bg-secondary-container]="shape.drawing.id === selectedId()"
+                (click)="select(shape.drawing)"
+                [attr.aria-pressed]="shape.drawing.id === selectedId()"
+                [attr.data-testid]="'stock-drawing-' + shape.drawing.locationCode"
               >
-                {{ 'inventory.plan.label_modes.' + mode | translate }}
+                <span class="font-medium">{{ shape.drawing.locationCode }}</span>
+                <span class="grow truncate text-on-surface-variant">
+                  {{ shape.drawing.locationName }}
+                </span>
+                <span class="tabular-nums text-on-surface-variant">
+                  {{ shape.rect.width }} × {{ shape.rect.depth }} m
+                </span>
+              </button>
+            } @empty {
+              <p data-testid="stock-map-empty">{{ 'inventory.plan.nothing_drawn' | translate }}</p>
+            }
+
+            @if (mayWrite()) {
+              <button
+                mat-flat-button
+                type="button"
+                class="mt-2"
+                (click)="draw('new')"
+                data-testid="stock-drawing-add"
+              >
+                {{ 'inventory.plan.draw' | translate }}
               </button>
             }
-          </div>
-
-          <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-            {{ 'inventory.plan.layers' | translate }}
-          </h2>
-          <ul class="flex flex-col gap-1" data-testid="stock-map-layers">
-            @for (layer of layers(); track layer.id) {
-              <li class="flex items-center gap-2">
-                <span class="grow text-sm">
-                  {{ 'inventory.plan.layer_names.' + layer.id | translate }}
-                </span>
-                <span
-                  class="tabular-nums text-sm text-on-surface-variant"
-                  [attr.data-testid]="'stock-layer-count-' + layer.id"
-                >
-                  {{ layer.count }}
-                </span>
-                <button
-                  type="button"
-                  class="rounded-md border border-outline-variant px-2 py-1 text-sm"
-                  [class.bg-secondary-container]="!shown(layer.id)"
-                  [attr.aria-pressed]="!shown(layer.id)"
-                  (click)="toggleShown(layer.id)"
-                  [appLabel]="'inventory.plan.layer_shown' | translate"
-                  [attr.data-testid]="'stock-layer-shown-' + layer.id"
-                >
-                  {{
-                    (shown(layer.id) ? 'inventory.plan.shown' : 'inventory.plan.hidden') | translate
-                  }}
-                </button>
-                <button
-                  type="button"
-                  class="rounded-md border border-outline-variant px-2 py-1 text-sm"
-                  [class.bg-secondary-container]="isLocked(layer.id)"
-                  [attr.aria-pressed]="isLocked(layer.id)"
-                  (click)="toggleLocked(layer.id)"
-                  [appLabel]="'inventory.plan.layer_locked' | translate"
-                  [attr.data-testid]="'stock-layer-locked-' + layer.id"
-                >
-                  {{
-                    (isLocked(layer.id) ? 'inventory.plan.locked' : 'inventory.plan.unlocked')
-                      | translate
-                  }}
-                </button>
-              </li>
+            @if (palette().length > 0) {
+              <!--
+                Ready-made shapes, at the sizes this company set for them. Each is a BUTTON and not something only a
+                pointer can take hold of: activating one poses the rectangle at the middle of the plan, so the palette
+                is as usable from a keyboard as from a hand.
+              -->
+              <h2
+                class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant"
+              >
+                {{ 'inventory.plan.shapes' | translate }}
+              </h2>
+              <div class="flex flex-wrap gap-2">
+                @for (shape of palette(); track shape.shape) {
+                  <button
+                    type="button"
+                    class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
+                    (click)="pose(shape)"
+                    [attr.data-testid]="'stock-shape-' + shape.shape"
+                  >
+                    <span class="font-medium">
+                      {{ 'inventory.plan.shape_names.' + shape.shape | translate }}
+                    </span>
+                    <span class="tabular-nums text-sm text-on-surface-variant">
+                      {{ shape.width }} × {{ shape.depth }} m
+                    </span>
+                  </button>
+                }
+              </div>
             }
-          </ul>
 
-          @if (mayDraw()) {
+            @if (structureTools().length > 0) {
+              <!--
+                The structure layer's four tools. Nothing posed here is a stock location and none of it ever will be:
+                a wall holds no goods, so it appears in no list, no import and no movement's location picker. Buttons
+                for the same reason the palette uses them — reachable from a keyboard, not only from a hand.
+              -->
+              <h2
+                class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant"
+              >
+                {{ 'inventory.plan.structure' | translate }}
+              </h2>
+              <p class="text-sm text-on-surface-variant" data-testid="stock-structure-hint">
+                {{ 'inventory.plan.structure_note' | translate }}
+              </p>
+              <div class="flex flex-wrap gap-2">
+                @for (tool of structureTools(); track tool.kind) {
+                  <button
+                    type="button"
+                    class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
+                    (click)="poseStructure(tool)"
+                    [attr.data-testid]="'stock-structure-tool-' + tool.kind"
+                  >
+                    <span class="font-medium">
+                      {{ 'inventory.plan.structure_kinds.' + tool.kind | translate }}
+                    </span>
+                    <span class="tabular-nums text-sm text-on-surface-variant">
+                      {{ tool.width }} × {{ tool.depth }} m
+                    </span>
+                  </button>
+                }
+              </div>
+            }
+
             <!--
-              The tool is armed before the floor becomes a drawing surface, and gives itself back after one box: an
-              armed sheet holds `touch-action: none` across a full-width block, which would otherwise trap a finger
-              trying to scroll past the plan.
+              The layers panel of the approved board. Each row shows and locks its own layer: a locked layer is still
+              drawn and still reachable by keyboard, it simply stops answering the pointer, which is what keeps a wall
+              from being picked up while a rack is being moved.
             -->
-            <button
-              mat-stroked-button
-              type="button"
-              [class.bg-secondary-container]="tracing()"
-              [attr.aria-pressed]="tracing()"
-              (click)="armTrace()"
-              data-testid="stock-map-trace"
+            <!--
+              What the plan writes on its rectangles. A store arrives with its building already numbered, or already
+              named, or moving from one to the other — so this is the reader's choice, remembered, and not a column.
+            -->
+            <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              {{ 'inventory.plan.labels' | translate }}
+            </h2>
+            <div
+              class="flex flex-wrap gap-1"
+              role="group"
+              [attr.aria-label]="'inventory.plan.labels' | translate"
             >
-              {{ 'inventory.plan.trace' | translate }}
-            </button>
-            @if (tracing()) {
-              <p class="text-sm text-on-surface-variant" data-testid="stock-map-trace-hint">
-                {{ 'inventory.plan.trace_hint' | translate }}
-              </p>
-            }
-          }
+              @for (mode of labelModes; track mode) {
+                <button
+                  type="button"
+                  class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                  [class.bg-secondary-container]="labelMode() === mode"
+                  [attr.aria-pressed]="labelMode() === mode"
+                  (click)="chooseLabels(mode)"
+                  [attr.data-testid]="'stock-map-label-' + mode"
+                >
+                  {{ 'inventory.plan.label_modes.' + mode | translate }}
+                </button>
+              }
+            </div>
 
-          @if (selected(); as drawing) {
-            <div class="mt-4 flex flex-col gap-2 rounded-lg border border-outline-variant p-3">
-              <p class="font-medium">{{ drawing.locationCode }} — {{ drawing.locationName }}</p>
-              <p class="text-on-surface-variant">
-                {{ 'inventory.kinds.' + drawing.locationKind | translate }}
-              </p>
-              @if (mayWrite()) {
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    mat-button
-                    type="button"
-                    (click)="draw(drawing)"
-                    data-testid="stock-drawing-edit"
+            <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              {{ 'inventory.plan.layers' | translate }}
+            </h2>
+            <ul class="flex flex-col gap-1" data-testid="stock-map-layers">
+              @for (layer of layers(); track layer.id) {
+                <li class="flex items-center gap-2">
+                  <span class="grow text-sm">
+                    {{ 'inventory.plan.layer_names.' + layer.id | translate }}
+                  </span>
+                  <span
+                    class="tabular-nums text-sm text-on-surface-variant"
+                    [attr.data-testid]="'stock-layer-count-' + layer.id"
                   >
-                    {{ 'inventory.edit' | translate }}
-                  </button>
-                  <!--
-                    Guarded visibly, never silently: `erase` returns early while something is in flight, so without
-                    this the button depresses and nothing at all happens — no toast, no error, no change.
-                  -->
+                    {{ layer.count }}
+                  </span>
                   <button
-                    mat-button
                     type="button"
-                    [disabled]="busy()"
-                    (click)="erase(drawing)"
-                    data-testid="stock-drawing-erase"
+                    class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                    [class.bg-secondary-container]="!shown(layer.id)"
+                    [attr.aria-pressed]="!shown(layer.id)"
+                    (click)="toggleShown(layer.id)"
+                    [appLabel]="'inventory.plan.layer_shown' | translate"
+                    [attr.data-testid]="'stock-layer-shown-' + layer.id"
                   >
-                    {{ 'inventory.plan.erase' | translate }}
+                    {{
+                      (shown(layer.id) ? 'inventory.plan.shown' : 'inventory.plan.hidden')
+                        | translate
+                    }}
                   </button>
-                  @if (mayDraw()) {
+                  <button
+                    type="button"
+                    class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                    [class.bg-secondary-container]="isLocked(layer.id)"
+                    [attr.aria-pressed]="isLocked(layer.id)"
+                    (click)="toggleLocked(layer.id)"
+                    [appLabel]="'inventory.plan.layer_locked' | translate"
+                    [attr.data-testid]="'stock-layer-locked-' + layer.id"
+                  >
+                    {{
+                      (isLocked(layer.id) ? 'inventory.plan.locked' : 'inventory.plan.unlocked')
+                        | translate
+                    }}
+                  </button>
+                </li>
+              }
+            </ul>
+
+            @if (mayDraw()) {
+              <!--
+                The tool is armed before the floor becomes a drawing surface, and gives itself back after one box: an
+                armed sheet holds `touch-action: none` across a full-width block, which would otherwise trap a finger
+                trying to scroll past the plan.
+              -->
+              <button
+                mat-stroked-button
+                type="button"
+                [class.bg-secondary-container]="tracing()"
+                [attr.aria-pressed]="tracing()"
+                (click)="armTrace()"
+                data-testid="stock-map-trace"
+              >
+                {{ 'inventory.plan.trace' | translate }}
+              </button>
+              @if (tracing()) {
+                <p class="text-sm text-on-surface-variant" data-testid="stock-map-trace-hint">
+                  {{ 'inventory.plan.trace_hint' | translate }}
+                </p>
+              }
+            }
+
+            @if (selected(); as drawing) {
+              <div class="mt-4 flex flex-col gap-2 rounded-lg border border-outline-variant p-3">
+                <p class="font-medium">{{ drawing.locationCode }} — {{ drawing.locationName }}</p>
+                <p class="text-on-surface-variant">
+                  {{ 'inventory.kinds.' + drawing.locationKind | translate }}
+                </p>
+                @if (mayWrite()) {
+                  <div class="flex flex-wrap gap-2">
                     <button
                       mat-button
                       type="button"
-                      (click)="openRepeat(drawing)"
-                      data-testid="stock-drawing-repeat"
+                      (click)="draw(drawing)"
+                      data-testid="stock-drawing-edit"
                     >
-                      {{ 'inventory.plan.repeat' | translate }}
+                      {{ 'inventory.edit' | translate }}
                     </button>
-                  }
-                </div>
-              }
-            </div>
-
-            <!--
-              Repeating it down an aisle. Every box is a control a keyboard reaches, the four ways included: the
-              plan is drawn with a pointer but nothing here is reachable ONLY by pointing, which is what decision 8
-              asks of every part of this screen.
-            -->
-            @if (repeating()) {
-              <div
-                class="mt-2 flex flex-col gap-3 rounded-lg border border-outline-variant p-3"
-                data-testid="stock-repeat-panel"
-              >
-                <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
-                  {{ 'inventory.plan.repeat_of' | translate: { code: drawing.locationCode } }}
-                </h2>
-
-                <div class="grid grid-cols-2 gap-3">
-                  <label class="flex flex-col gap-1 text-sm">
-                    {{ 'inventory.plan.repeat_count' | translate }}
-                    <input
-                      class="rounded-lg border border-outline-variant p-2 tabular-nums"
-                      type="number"
-                      min="1"
-                      [attr.max]="REPEAT_LIMIT"
-                      [value]="repeatCount()"
-                      (input)="setRepeatCount($event)"
-                      data-testid="stock-repeat-count"
-                    />
-                  </label>
-                  <label class="flex flex-col gap-1 text-sm">
-                    {{ 'inventory.plan.repeat_spacing' | translate }}
-                    <input
-                      class="rounded-lg border border-outline-variant p-2 tabular-nums"
-                      inputmode="decimal"
-                      [value]="repeatSpacing()"
-                      (input)="setRepeatSpacing($event)"
-                      data-testid="stock-repeat-spacing"
-                    />
-                  </label>
-                </div>
-                <p class="text-sm text-on-surface-variant">
-                  {{ 'inventory.plan.repeat_spacing_hint' | translate }}
-                </p>
-
-                <div class="flex flex-col gap-1 text-sm">
-                  {{ 'inventory.plan.repeat_way' | translate }}
-                  <div class="flex gap-2">
-                    @for (way of ways; track way) {
+                    <!--
+                      Guarded visibly, never silently: `erase` returns early while something is in flight, so without
+                      this the button depresses and nothing at all happens — no toast, no error, no change.
+                    -->
+                    <button
+                      mat-button
+                      type="button"
+                      [disabled]="busy()"
+                      (click)="erase(drawing)"
+                      data-testid="stock-drawing-erase"
+                    >
+                      {{ 'inventory.plan.erase' | translate }}
+                    </button>
+                    @if (mayDraw()) {
                       <button
+                        mat-button
                         type="button"
-                        class="grow rounded-lg border border-outline-variant p-2"
-                        [class.bg-secondary-container]="repeatWay() === way"
-                        [attr.aria-pressed]="repeatWay() === way"
-                        [appLabel]="'inventory.plan.ways.' + way | translate"
-                        (click)="repeatWay.set(way)"
-                        [attr.data-testid]="'stock-repeat-way-' + way"
+                        (click)="openRepeat(drawing)"
+                        data-testid="stock-drawing-repeat"
                       >
-                        {{ 'inventory.plan.way_glyphs.' + way | translate }}
+                        {{ 'inventory.plan.repeat' | translate }}
                       </button>
                     }
                   </div>
-                </div>
-
-                <label class="flex flex-col gap-1 text-sm">
-                  {{ 'inventory.plan.repeat_first_code' | translate }}
-                  <input
-                    class="rounded-lg border border-outline-variant p-2"
-                    [value]="repeatCode()"
-                    (input)="setRepeatCode($event)"
-                    data-testid="stock-repeat-code"
-                  />
-                </label>
-
-                <!--
-                  What will be created, said before it is: these are stock LOCATIONS as well as rectangles, and a
-                  person who thought they were only drawing would find sixteen new racks in every picker.
-                -->
-                <p role="status" class="text-sm" data-testid="stock-repeat-summary">
-                  @if (repeatOffFloor()) {
-                    {{ 'inventory.plan.repeat_off_floor' | translate }}
-                  } @else if (repeatReady()) {
-                    {{
-                      'inventory.plan.repeat_will_create'
-                        | translate: { count: repeatCodes().length }
-                    }}
-                    <!--
-                      The codes themselves, written out rather than passed as a parameter: they are the content of
-                      this sentence, not a decoration of it, and the person is about to accept them.
-                    -->
-                    <span class="font-medium" data-testid="stock-repeat-codes">
-                      {{ repeatCodes().join(', ') }}
-                    </span>
-                  } @else {
-                    {{ 'inventory.plan.repeat_incomplete' | translate }}
-                  }
-                </p>
-
-                <div class="flex flex-wrap gap-2">
-                  <button
-                    mat-flat-button
-                    type="button"
-                    [disabled]="busy() || !repeatReady()"
-                    (click)="saveRepeat()"
-                    data-testid="stock-repeat-save"
-                  >
-                    {{ 'inventory.plan.repeat_create' | translate: { count: repeatCount() } }}
-                  </button>
-                  <button
-                    mat-button
-                    type="button"
-                    (click)="cancelRepeat()"
-                    data-testid="stock-repeat-cancel"
-                  >
-                    {{ 'cancel' | translate }}
-                  </button>
-                </div>
+                }
               </div>
+
+              <!--
+                Repeating it down an aisle. Every box is a control a keyboard reaches, the four ways included: the
+                plan is drawn with a pointer but nothing here is reachable ONLY by pointing, which is what decision 8
+                asks of every part of this screen.
+              -->
+              @if (repeating()) {
+                <div
+                  class="mt-2 flex flex-col gap-3 rounded-lg border border-outline-variant p-3"
+                  data-testid="stock-repeat-panel"
+                >
+                  <h2 class="text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+                    {{ 'inventory.plan.repeat_of' | translate: { code: drawing.locationCode } }}
+                  </h2>
+
+                  <div class="grid grid-cols-2 gap-3">
+                    <label class="flex flex-col gap-1 text-sm">
+                      {{ 'inventory.plan.repeat_count' | translate }}
+                      <input
+                        class="rounded-lg border border-outline-variant p-2 tabular-nums"
+                        type="number"
+                        min="1"
+                        [attr.max]="REPEAT_LIMIT"
+                        [value]="repeatCount()"
+                        (input)="setRepeatCount($event)"
+                        data-testid="stock-repeat-count"
+                      />
+                    </label>
+                    <label class="flex flex-col gap-1 text-sm">
+                      {{ 'inventory.plan.repeat_spacing' | translate }}
+                      <input
+                        class="rounded-lg border border-outline-variant p-2 tabular-nums"
+                        inputmode="decimal"
+                        [value]="repeatSpacing()"
+                        (input)="setRepeatSpacing($event)"
+                        data-testid="stock-repeat-spacing"
+                      />
+                    </label>
+                  </div>
+                  <p class="text-sm text-on-surface-variant">
+                    {{ 'inventory.plan.repeat_spacing_hint' | translate }}
+                  </p>
+
+                  <div class="flex flex-col gap-1 text-sm">
+                    {{ 'inventory.plan.repeat_way' | translate }}
+                    <div class="flex gap-2">
+                      @for (way of ways; track way) {
+                        <button
+                          type="button"
+                          class="grow rounded-lg border border-outline-variant p-2"
+                          [class.bg-secondary-container]="repeatWay() === way"
+                          [attr.aria-pressed]="repeatWay() === way"
+                          [appLabel]="'inventory.plan.ways.' + way | translate"
+                          (click)="repeatWay.set(way)"
+                          [attr.data-testid]="'stock-repeat-way-' + way"
+                        >
+                          {{ 'inventory.plan.way_glyphs.' + way | translate }}
+                        </button>
+                      }
+                    </div>
+                  </div>
+
+                  <label class="flex flex-col gap-1 text-sm">
+                    {{ 'inventory.plan.repeat_first_code' | translate }}
+                    <input
+                      class="rounded-lg border border-outline-variant p-2"
+                      [value]="repeatCode()"
+                      (input)="setRepeatCode($event)"
+                      data-testid="stock-repeat-code"
+                    />
+                  </label>
+
+                  <!--
+                    What will be created, said before it is: these are stock LOCATIONS as well as rectangles, and a
+                    person who thought they were only drawing would find sixteen new racks in every picker.
+                  -->
+                  <p role="status" class="text-sm" data-testid="stock-repeat-summary">
+                    @if (repeatOffFloor()) {
+                      {{ 'inventory.plan.repeat_off_floor' | translate }}
+                    } @else if (repeatReady()) {
+                      {{
+                        'inventory.plan.repeat_will_create'
+                          | translate: { count: repeatCodes().length }
+                      }}
+                      <!--
+                        The codes themselves, written out rather than passed as a parameter: they are the content of
+                        this sentence, not a decoration of it, and the person is about to accept them.
+                      -->
+                      <span class="font-medium" data-testid="stock-repeat-codes">
+                        {{ repeatCodes().join(', ') }}
+                      </span>
+                    } @else {
+                      {{ 'inventory.plan.repeat_incomplete' | translate }}
+                    }
+                  </p>
+
+                  <div class="flex flex-wrap gap-2">
+                    <button
+                      mat-flat-button
+                      type="button"
+                      [disabled]="busy() || !repeatReady()"
+                      (click)="saveRepeat()"
+                      data-testid="stock-repeat-save"
+                    >
+                      {{ 'inventory.plan.repeat_create' | translate: { count: repeatCount() } }}
+                    </button>
+                    <button
+                      mat-button
+                      type="button"
+                      (click)="cancelRepeat()"
+                      data-testid="stock-repeat-cancel"
+                    >
+                      {{ 'cancel' | translate }}
+                    </button>
+                  </div>
+                </div>
+              }
             }
-          }
-        </div>
+          </div>
+        }
 
         <div class="flex flex-col gap-6">
           <div
@@ -520,9 +640,19 @@
               >
                 {{ 'inventory.plan.fit' | translate }}
               </button>
-              <span class="ml-auto text-xs text-on-surface-variant">{{
-                'inventory.plan.view_hint' | translate
-              }}</span>
+              @if (owesSave()) {
+                <span
+                  role="status"
+                  class="ml-auto rounded-full bg-primary-container px-3 py-1 text-xs font-medium text-on-primary-container"
+                  data-testid="stock-map-not-saved"
+                >
+                  {{ 'inventory.plan.not_saved' | translate }}
+                </span>
+              } @else {
+                <span class="ml-auto text-xs text-on-surface-variant">{{
+                  'inventory.plan.view_hint' | translate
+                }}</span>
+              }
             </div>
             <svg
               [attr.viewBox]="viewBox()"
@@ -719,106 +849,6 @@
               }
             </svg>
           </div>
-
-          @if (drawingFormGroup(); as group) {
-            @if (drawingDescriptor(); as descriptor) {
-              <mat-card>
-                <mat-card-content>
-                  <app-descriptor-form
-                    [descriptor]="descriptor"
-                    [form]="group"
-                    testId="stock-drawing-form"
-                    (submitted)="saveDrawing($event)"
-                  >
-                    <div class="flex flex-wrap items-center justify-end gap-2">
-                      @if (unsaved(); as changes) {
-                        <!-- Announced: nothing else on the plan says a rectangle was moved and not yet saved. -->
-                        <span
-                          role="status"
-                          class="grow text-sm text-on-surface-variant"
-                          data-testid="stock-drawing-unsaved"
-                          [attr.data-count]="changes"
-                        >
-                          {{
-                            (changes === 1 ? 'form.one_unsaved' : 'form.unsaved')
-                              | translate: { count: changes }
-                          }}
-                        </span>
-                      }
-                      <button
-                        mat-button
-                        type="button"
-                        (click)="cancelDrawing()"
-                        data-testid="stock-drawing-cancel"
-                      >
-                        {{ 'inventory.cancel' | translate }}
-                      </button>
-                      <button
-                        mat-flat-button
-                        type="submit"
-                        [disabled]="busy()"
-                        data-testid="stock-drawing-save"
-                      >
-                        {{ 'inventory.save' | translate }}
-                      </button>
-                    </div>
-                  </app-descriptor-form>
-                </mat-card-content>
-              </mat-card>
-            }
-          }
-
-          <!--
-            The building's own form. Its kind is a field like any other, because correcting it is the common
-            repair: a doorway traced with the wall tool is right in every measurement and wrong in exactly one.
-          -->
-          @if (structureFormGroup(); as group) {
-            @if (structureDescriptor(); as descriptor) {
-              <mat-card>
-                <mat-card-content>
-                  <app-descriptor-form
-                    [descriptor]="descriptor"
-                    [form]="group"
-                    testId="stock-structure-form"
-                    (submitted)="saveStructure($event)"
-                  >
-                    <div class="flex flex-wrap items-center justify-end gap-2">
-                      @if (editingStructure(); as editing) {
-                        @if (editing !== 'new') {
-                          <button
-                            mat-button
-                            type="button"
-                            class="grow-0 text-error"
-                            [disabled]="busy()"
-                            (click)="eraseStructure(editing)"
-                            data-testid="stock-structure-erase"
-                          >
-                            {{ 'inventory.plan.erase' | translate }}
-                          </button>
-                        }
-                      }
-                      <button
-                        mat-button
-                        type="button"
-                        (click)="cancelStructure()"
-                        data-testid="stock-structure-cancel"
-                      >
-                        {{ 'inventory.cancel' | translate }}
-                      </button>
-                      <button
-                        mat-flat-button
-                        type="submit"
-                        [disabled]="busy()"
-                        data-testid="stock-structure-save"
-                      >
-                        {{ 'inventory.save' | translate }}
-                      </button>
-                    </div>
-                  </app-descriptor-form>
-                </mat-card-content>
-              </mat-card>
-            }
-          }
         </div>
       </div>
     }

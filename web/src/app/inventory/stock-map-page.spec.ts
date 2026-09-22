@@ -712,6 +712,11 @@ describe('StockMapPage', () => {
     fire(document, 'pointerup', 200, 150);
     await settle();
 
+    // The traced box's form now stands where the tools were (finding B), so the sheet says it first, then the tool
+    // once it comes back.
+    expect(surface().classList.contains('cursor-crosshair')).toBe(false);
+    q('stock-drawing-cancel')?.click();
+    await settle();
     expect(q('stock-map-trace')?.getAttribute('aria-pressed')).toBe('false');
   });
 
@@ -1066,6 +1071,38 @@ describe('StockMapPage', () => {
     expect((q('field-width') as HTMLInputElement).value).toBe('0,800');
     expect(q('stock-structure-door')).not.toBeNull();
     expect(q('stock-structure-erase')).toBeNull();
+  });
+
+  /**
+   * Finding B (§ 7, 2026-09-22): the form holding Enregistrer opened UNDER the board, off-screen at 900 px, and nothing
+   * on the board said a save was owed. It now takes the tool column's place beside the board, and gives it back.
+   */
+  it('opens the form in place of the tools, beside the board, and gives the tools back on cancel', async () => {
+    (q('stock-structure-tool-door') as HTMLElement).click();
+    await settle();
+
+    const inspector = q('stock-map-inspector') as HTMLElement;
+    expect(inspector).not.toBeNull();
+    expect(inspector.querySelector('[data-testid="stock-structure-form"]')).not.toBeNull();
+    expect(q('stock-structure-tool-door')).toBeNull();
+    expect(q('stock-map-not-saved')).not.toBeNull();
+
+    (q('stock-structure-cancel') as HTMLElement).click();
+    await settle();
+
+    expect(q('stock-map-inspector')).toBeNull();
+    expect(q('stock-structure-tool-door')).not.toBeNull();
+    expect(q('stock-map-not-saved')).toBeNull();
+  });
+
+  it('opens a rectangle of stock in the same place, and says so on the board', async () => {
+    (q('stock-drawing-add') as HTMLElement).click();
+    await settle();
+
+    expect(
+      (q('stock-map-inspector') as HTMLElement).querySelector('[data-testid="stock-drawing-form"]'),
+    ).not.toBeNull();
+    expect(q('stock-map-not-saved')).not.toBeNull();
   });
 
   it('moves a posed piece by dragging it, and saves it as a NEW piece', async () => {

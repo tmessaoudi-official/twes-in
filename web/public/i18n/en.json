@@ -1563,6 +1563,7 @@
       "zoom_in": "Come nearer",
       "zoom_out": "Step back",
       "fit": "Fit",
+      "not_saved": "Not saved yet — Save is on the left",
       "view_hint": "Wheel to come nearer, drag to move"
     }
   },

@@ -1356,3 +1356,18 @@ li.twes-row-new.twes-list-card {
     transform: scaleX(1);
   }
 }
+
+// A form in a narrow column (the stock map's inspector, beside the board): the section's title and explanation sit
+// above its fields at every window width, since the 15rem label column above 1024 px assumes a full-width page.
+.twes-form-stacked .twes-form-section {
+  @media (min-width: 1024px) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+
+    > .twes-form-fields {
+      grid-column: auto;
+      grid-row: auto;
+      margin-top: 0.75rem;
+    }
+  }
+}
