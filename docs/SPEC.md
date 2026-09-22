@@ -2114,6 +2114,25 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   (2) the listener that accepts that assertion as the whole login, (3) the lock moved onto the password factor,
   (4) the company → role → user setting, (5) the button and its e2e. Each step is certifiable on its own, which a
   single commit over this surface would not be.
+- [2026-09-22 20:15] AGREED: **the first working version carries the distinctive features, and the groundwork
+  still comes first** (developer ruling, asked and answered). The developer counts as distinctive, all to ship in
+  the first working version: the two bets (WhatsApp link, row 95; Arabic, right-to-left and bilingual documents,
+  row 96); the map in full with the scanner, the search workbench and lots, serials and expiry (rows 83, 63);
+  the café module (QR orders routed to stations, rating what one was served), which moves in from "after the first
+  working version"; the customer portal, the daily digest and alerts (rows 90, 97, the portal with row 51); and
+  the sign-in work below. **"No compromise" is ruled as: a feature that only adds on top moves up freely; one
+  that rests on the data model waits for rows 75, 76, 56 and 57**, so nothing is migrated twice — bilingual
+  documents wait for row 76's second-language name, anything carried on a document line (a lot, a frozen cost, a
+  purchase unit, a price list) for row 76's units, the digest and alerts for the worker (56), and the counter
+  sale and the café module for JORT n° 125, still unread (§ 8 "Needs research"). Order: the map walkthrough owed
+  by the 06:30 entry first, then the sign-in work, then the reorder of § 2, ruled with what the walkthrough shows.
+- [2026-09-22 20:15] AGREED: **today's sign-in and password rulings are confirmed for the first working version**
+  (developer re-asked and confirmed each): a passkey as the first factor (09:10, 14:05); every second factor
+  manageable, never the last one while the company requires it (09:12); the lock on the password factor only
+  (14:05); sessions that do not expire mid-work, the connected devices, change and forgot password (row 50);
+  12 characters plus the breach list, no composition rules (09:14); history as a knob off by default (09:14);
+  expiry as a per-company knob defaulted to never (09:08). They are additive to `Identity`, need no groundwork
+  row, and are built right after the map walkthrough, in the five steps of the 14:05 entry.
 
 ## 8. Status
 
