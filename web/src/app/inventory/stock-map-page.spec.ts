@@ -29,6 +29,7 @@ import type {
   StockFloorRow,
   StockLocationRow,
   StockOptions,
+  StockStructureRow,
 } from './inventory-types';
 import { StockMapPage } from './stock-map-page';
 import { WINDOW_CLASS, type WindowClass } from '../shared/ui/window-class';
@@ -89,6 +90,19 @@ const drawn: StockDrawingRow = {
   height: '2.100',
 };
 
+/** The canvas's own partition: 6,90 × 0,20 m, a thickness the stock palette would refuse outright. */
+const wall: StockStructureRow = {
+  id: 's1',
+  floorId: 'f1',
+  kind: 'wall',
+  x: '0.000',
+  y: '0.000',
+  width: '6.900',
+  depth: '0.200',
+  rotation: 0,
+  height: '3.000',
+};
+
 const options: StockOptions = {
   establishments: [{ id: 'e1', code: '000', name: 'Bab Saadoun' }],
   // This company's own sizes, not the declared defaults: a palette that posed 3,90 would pass either way.
@@ -111,16 +125,22 @@ describe('StockMapPage', () => {
   const busy = signal(false);
   const floors = signal<readonly StockFloorRow[]>([upstairs, ground]);
   const drawings = signal<readonly StockDrawingRow[]>([drawn]);
+  const structures = signal<readonly StockStructureRow[]>([wall]);
   const facade = {
     options: signal<StockOptions | null>(options).asReadonly(),
     locations: signal<readonly StockLocationRow[]>([rack, zone, bin]).asReadonly(),
     floors: floors.asReadonly(),
     drawings: drawings.asReadonly(),
+    structures: structures.asReadonly(),
     busy: busy.asReadonly(),
     error: error.asReadonly(),
     loadPlanContext: vi.fn(),
     loadDrawings: vi.fn(),
     reloadDrawings: vi.fn(),
+    loadStructures: vi.fn(),
+    reloadStructures: vi.fn(),
+    buildStructure: vi.fn(),
+    eraseStructure: vi.fn(),
     createFloor: vi.fn(),
     reviseFloor: vi.fn(),
     deleteFloor: vi.fn(),
@@ -162,9 +182,14 @@ describe('StockMapPage', () => {
     busy.set(false);
     floors.set([upstairs, ground]);
     drawings.set([drawn]);
+    structures.set([wall]);
     facade.loadPlanContext.mockReset().mockResolvedValue(undefined);
     facade.loadDrawings.mockReset().mockResolvedValue(undefined);
     facade.reloadDrawings.mockReset().mockResolvedValue(undefined);
+    facade.loadStructures.mockReset().mockResolvedValue(undefined);
+    facade.reloadStructures.mockReset().mockResolvedValue(undefined);
+    facade.buildStructure.mockReset().mockResolvedValue(true);
+    facade.eraseStructure.mockReset().mockResolvedValue(true);
     facade.createFloor.mockReset().mockResolvedValue(true);
     facade.reviseFloor.mockReset().mockResolvedValue(true);
     facade.deleteFloor.mockReset().mockResolvedValue(true);
@@ -212,14 +237,18 @@ describe('StockMapPage', () => {
   });
 
   it('draws each rectangle in metres, turned about its own centre', () => {
-    const rectangle = fixture.nativeElement.querySelector('svg rect') as SVGRectElement;
+    const rectangle = fixture.nativeElement.querySelector(
+      '[data-testid^="stock-drawing-rect-"]',
+    ) as SVGRectElement;
     expect(rectangle.getAttribute('x')).toBe('2.5');
     expect(rectangle.getAttribute('y')).toBe('4');
     expect(rectangle.getAttribute('width')).toBe('3.9');
     // The footprint's second side is the SVG's height: a plan is seen from above.
     expect(rectangle.getAttribute('height')).toBe('0.6');
 
-    const group = fixture.nativeElement.querySelector('svg g') as SVGGElement;
+    const group = fixture.nativeElement.querySelector(
+      '[data-testid^="stock-drawing-group-"]',
+    ) as SVGGElement;
     expect(group.getAttribute('transform')).toBe('rotate(0 4.45 4.3)');
   });
 
@@ -410,12 +439,16 @@ describe('StockMapPage', () => {
     target.dispatchEvent(event);
   }
 
+  /**
+   * A rectangle of STOCK, named rather than taken by position: the structure layer is drawn first so that a wall
+   * sits under a rack, which makes `svg rect` the building rather than the stock.
+   */
   const firstRect = (): Element =>
-    fixture.nativeElement.querySelector('svg[data-testid="stock-map-svg"] rect') as Element;
+    fixture.nativeElement.querySelector('[data-testid^="stock-drawing-rect-"]') as Element;
 
   /** The rectangle drawn LAST, which is the one being traced: `shapes()` pushes the pending box after the saved. */
   const lastRect = (): Element =>
-    [...fixture.nativeElement.querySelectorAll('svg[data-testid="stock-map-svg"] rect')].at(
+    [...fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-rect-"]')].at(
       -1,
     ) as Element;
 
@@ -450,7 +483,11 @@ describe('StockMapPage', () => {
     plan().drags(at(200, 100, svg));
     await settle();
 
-    expect(fixture.nativeElement.querySelector('svg rect')?.getAttribute('x')).toBe('6');
+    expect(
+      fixture.nativeElement
+        .querySelector('[data-testid^="stock-drawing-rect-"]')
+        ?.getAttribute('x'),
+    ).toBe('6');
   });
 
   it('is a look, not a drag, until the pointer has really travelled', async () => {
@@ -681,7 +718,9 @@ describe('StockMapPage', () => {
     q('stock-shape-zone')?.click();
     await settle();
 
-    const drawn = [...fixture.nativeElement.querySelectorAll('svg rect')].at(-1) as Element;
+    const drawn = [
+      ...fixture.nativeElement.querySelectorAll('[data-testid^="stock-drawing-rect-"]'),
+    ].at(-1) as Element;
     expect(drawn.getAttribute('width')).toBe('6');
     expect(drawn.getAttribute('height')).toBe('4');
   });
@@ -834,5 +873,105 @@ describe('StockMapPage', () => {
     await settle();
 
     expect(q('stock-drawing-repeat')).toBeNull();
+  });
+  /**
+   * The building is drawn and is none of the stock: it carries no location code, so it appears in no list, and it
+   * sits UNDER the rectangles, which is what makes a rack against a wall readable.
+   */
+  it('draws the building beneath the stock and lists none of it', () => {
+    const piece = fixture.nativeElement.querySelector(
+      '[data-testid="stock-structure-wall"]',
+    ) as SVGRectElement;
+    expect(piece.getAttribute('x')).toBe('0');
+    expect(piece.getAttribute('y')).toBe('0');
+    expect(piece.getAttribute('width')).toBe('6.9');
+    expect(piece.getAttribute('height')).toBe('0.2');
+
+    // Document order, which is what the eye and the pointer both follow: structure first, stock after.
+    const drawn = fixture.nativeElement.querySelector(
+      '[data-testid^="stock-drawing-rect-"]',
+    ) as SVGRectElement;
+    expect(piece.compareDocumentPosition(drawn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+    // And it is on no list of what is drawn: a wall is not a place, so it has no code to show.
+    expect(q('stock-drawing-s1')).toBeNull();
+    expect(q('stock-map-layers')).not.toBeNull();
+    expect(q('stock-layer-count-structure')?.textContent?.trim()).toBe('1');
+  });
+
+  /** The tool poses at THIS company's measurements — 0,80 × 0,15 × 2,00 for a door — not at a constant. */
+  it('poses a piece at the size this company builds at, and saves it as a piece of structure', async () => {
+    (q('stock-structure-tool-door') as HTMLElement).click();
+    await settle();
+
+    expect((q('field-width') as HTMLInputElement).value).toBe('0,800');
+    expect((q('field-depth') as HTMLInputElement).value).toBe('0,150');
+    expect((q('field-height') as HTMLInputElement).value).toBe('2,000');
+
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+
+    expect(facade.buildStructure).toHaveBeenCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ kind: 'door', width: '0.800', depth: '0.150', height: '2.000' }),
+      null,
+    );
+    expect(successToasts()).toContain('inventory.plan.structure_saved');
+    expect(q('field-width')).toBeNull();
+  });
+
+  /** Correcting the kind is the common repair: a doorway traced with the wall tool is wrong in exactly one field. */
+  it('opens a piece from the plan and revises the one it already is', async () => {
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+
+    expect((q('field-width') as HTMLInputElement).value).toBe('6,900');
+
+    (q('stock-structure-save') as HTMLElement).click();
+    await settle();
+
+    expect(facade.buildStructure).toHaveBeenCalledWith(
+      'c1',
+      'f1',
+      expect.objectContaining({ kind: 'wall', width: '6.900' }),
+      's1',
+    );
+  });
+
+  it('erases a piece of structure from its own form', async () => {
+    (q('stock-structure-wall') as unknown as SVGRectElement).dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    await settle();
+    (q('stock-structure-erase') as HTMLElement).click();
+    await settle();
+
+    expect(facade.eraseStructure).toHaveBeenCalledWith('c1', 'f1', 's1');
+    expect(successToasts()).toContain('inventory.plan.structure_erased');
+  });
+
+  /**
+   * The layers panel's two promises, in its own words: locked stops answering the pointer while staying drawn and
+   * keyboard-reachable, hidden takes the layer off the plan altogether.
+   */
+  it('locks a layer against the pointer and hides it altogether', async () => {
+    (q('stock-layer-locked-structure') as HTMLElement).click();
+    await settle();
+
+    const layer = q('stock-structure-layer') as unknown as SVGGElement;
+    expect(layer.classList.contains('pointer-events-none')).toBe(true);
+    expect(q('stock-structure-wall')).not.toBeNull();
+
+    (q('stock-layer-shown-structure') as HTMLElement).click();
+    await settle();
+
+    expect(q('stock-structure-layer')).toBeNull();
+    // Hiding the building leaves the stock exactly where it was.
+    expect(
+      fixture.nativeElement.querySelector('[data-testid^="stock-drawing-rect-"]'),
+    ).not.toBeNull();
   });
 });

@@ -26,7 +26,15 @@ import { Label } from '../shared/a11y/label';
 import { InventoryFacade } from './inventory-facade';
 import { INVENTORY_TABS } from './inventory-nav';
 import { PageTabs } from '../shared/ui/page-tabs';
-import type { StockDrawingRow, StockFloorRow, StockPlanShape } from './inventory-types';
+import {
+  STRUCTURE_KINDS,
+  type StockDrawingRow,
+  type StockFloorRow,
+  type StockPlanShape,
+  type StockStructureRow,
+  type StockStructureShape,
+  type StructureKind,
+} from './inventory-types';
 import {
   drawingForm,
   drawingInput,
@@ -38,6 +46,10 @@ import {
   nextCodes,
   planRectangles,
   rectValues,
+  structureForm,
+  structureInput,
+  structureRectangles,
+  structureValues,
 } from './stock-map-forms';
 import {
   centredIn,
@@ -107,6 +119,33 @@ interface PlanShape {
   labelX: number;
   labelY: number;
 }
+
+/** One piece of the building as the plan draws it. It carries no label: a wall has no code to write on it. */
+interface StructureShape {
+  piece: StockStructureRow;
+  rect: PlanRectangle;
+  centreX: number;
+  centreY: number;
+}
+
+/** One row of the layers panel: what it is, and how many things are on it right now. */
+interface PlanLayer {
+  id: string;
+  count: number;
+}
+
+/** A piece being drawn and not yet saved — enough of a row for the plan to show it taking shape. */
+const PENDING_PIECE: StockStructureRow = {
+  id: PENDING_ID,
+  floorId: '',
+  kind: 'wall',
+  x: '0',
+  y: '0',
+  width: '0',
+  depth: '0',
+  rotation: 0,
+  height: '0',
+};
 
 /**
  * The drawn stock map (docs/SPEC.md row 83; § 7, 2026-09-21, the eight decisions): a floor is the canvas, and each
@@ -307,6 +346,22 @@ export class StockMapPage implements OnInit {
       );
       onCleanup(() => watching.unsubscribe());
     });
+
+    // The same wire for the building's form. Two effects rather than one over both, so a piece being typed and a
+    // rectangle being dragged cannot end up reading each other's values.
+    effect((onCleanup) => {
+      const group = this.structureFormGroup();
+      if (group === null) {
+        this.structureValuesNow.set(null);
+
+        return;
+      }
+      this.structureValuesNow.set(group.getRawValue() as FormValues);
+      const watching = group.valueChanges.subscribe(() =>
+        this.structureValuesNow.set(group.getRawValue() as FormValues),
+      );
+      onCleanup(() => watching.unsubscribe());
+    });
   }
 
   /** A rectangle being drawn for a location not yet chosen: enough of a row for the plan to show it taking shape. */
@@ -336,10 +391,11 @@ export class StockMapPage implements OnInit {
 
     // A rectangle, the floor it is on and the location it is drawn for each change what this screen shows.
     this.live.reloadOn(
-      ['venue_area', 'venue_spot', 'stock_location'],
+      ['venue_area', 'venue_spot', 'venue_structure', 'stock_location'],
       async () => {
         await this.facade.loadPlanContext(companyId);
         await this.facade.reloadDrawings(companyId);
+        await this.facade.reloadStructures(companyId);
       },
       this.destroyRef,
     );
@@ -353,7 +409,12 @@ export class StockMapPage implements OnInit {
     this.selectedId.set(null);
     this.editing.set(null);
     this.drag = null;
-    if (companyId && floorId) await this.facade.loadDrawings(companyId, floorId);
+    this.editingStructure.set(null);
+    this.selectedStructureId.set(null);
+    if (companyId && floorId) {
+      await this.facade.loadDrawings(companyId, floorId);
+      await this.facade.loadStructures(companyId, floorId);
+    }
   }
 
   protected select(drawing: StockDrawingRow): void {
@@ -700,9 +761,201 @@ export class StockMapPage implements OnInit {
     }
   }
 
+  // ——— the structure layer: the building, which is none of the stock ———
+
+  /**
+   * The structure layer (docs/SPEC.md row 83; the approved canvas's Structure board). A wall, a door, a post and a
+   * dock are drawn on the same floor in the same metres, and NOTHING here is a place: a wall holds no goods, so it
+   * appears in no stock list, no import and no movement's location picker. That is why it is a layer apart.
+   *
+   * It is drawn UNDER the stock, and its layer locks, so a wall is not picked up while a rack is being moved.
+   */
+  protected readonly structureTools = computed<readonly StockStructureShape[]>(() =>
+    this.mayDraw() ? (this.facade.options()?.structureShapes ?? []) : [],
+  );
+
+  protected readonly editingStructure = signal<StockStructureRow | 'new' | null>(null);
+  protected readonly selectedStructureId = signal<string | null>(null);
+
+  /** What the open structure form holds, so a piece follows the keyboard exactly as a rectangle of stock does. */
+  private readonly structureValuesNow = signal<FormValues | null>(null);
+
+  protected readonly structureDescriptor = computed(() =>
+    this.editingStructure() === null ? null : structureForm(),
+  );
+
+  protected readonly structureFormGroup = linkedSignal<
+    { editing: StockStructureRow | 'new' | null; descriptor: FormDescriptor | null },
+    DescriptorFormGroup | null
+  >({
+    source: () => ({ editing: this.editingStructure(), descriptor: this.structureDescriptor() }),
+    computation: ({ editing, descriptor }, previous) => {
+      if (editing === null || descriptor === null) return null;
+      const typed =
+        previous?.value && previous.source.editing === editing
+          ? previous.value.getRawValue()
+          : null;
+
+      return buildFormGroup(
+        descriptor,
+        typed ??
+          untracked(() =>
+            structureValues(editing === 'new' ? null : editing, this.structureTools()),
+          ),
+      );
+    },
+  });
+
+  /**
+   * The building as the plan draws it — what was saved, with the piece being edited shown as it now stands, the
+   * same one mechanism the stock rectangles use.
+   */
+  protected readonly builtShapes = computed<StructureShape[]>(() => {
+    const editing = this.editingStructure();
+    const values = this.structureValuesNow();
+    const preview: PlanRectangle | null =
+      editing === null || values === null
+        ? null
+        : {
+            x: metres(values['x']),
+            y: metres(values['y']),
+            width: metres(values['width']),
+            depth: metres(values['depth']),
+            rotation: metres(values['rotation']),
+            height: metres(values['height']),
+          };
+    const kindNow = String(values?.['kind'] ?? 'wall');
+
+    const shapes = this.facade.structures().map((piece) => {
+      const [saved] = structureRectangles([piece]);
+      const shown =
+        preview !== null && editing !== null && editing !== 'new' && editing.id === piece.id
+          ? preview
+          : (saved ?? { x: 0, y: 0, width: 0, depth: 0, rotation: 0, height: 0 });
+
+      return builtOf(
+        editing !== null && editing !== 'new' && editing.id === piece.id
+          ? { ...piece, kind: kindOf(kindNow) }
+          : piece,
+        shown,
+      );
+    });
+
+    if (editing === 'new' && preview !== null) {
+      shapes.push(builtOf({ ...PENDING_PIECE, kind: kindOf(kindNow) }, preview));
+    }
+
+    return shapes;
+  });
+
+  /**
+   * The layers panel of the board. Counts are derived and never stored: a layer showing a number nobody maintains
+   * is a number that goes wrong the first time something is erased somewhere else.
+   *
+   * The board draws a fourth layer, "Fond de plan". It is deliberately absent until the floor image exists to put
+   * on it — a control that cannot do anything is the same can-never-fire shape as a preference between two views
+   * while only one is built.
+   */
+  protected readonly layers = computed<PlanLayer[]>(() => {
+    const drawings = this.facade.drawings();
+
+    return [
+      { id: 'structure', count: this.facade.structures().length },
+      { id: 'racks', count: drawings.filter((one) => one.locationKind === 'rack').length },
+      { id: 'zones', count: drawings.filter((one) => one.locationKind !== 'rack').length },
+    ];
+  });
+
+  private readonly hidden = signal<readonly string[]>([]);
+  private readonly locked = signal<readonly string[]>([]);
+
+  protected shown(layer: string): boolean {
+    return !this.hidden().includes(layer);
+  }
+
+  /**
+   * A locked layer is still drawn and still read; it simply stops answering the pointer, which is the board's own
+   * promise — "elle se verrouille d'un clic pour ne plus l'attraper en déplaçant un rayonnage". Its form is
+   * untouched, so everything on a locked layer stays reachable by keyboard.
+   */
+  protected isLocked(layer: string): boolean {
+    return this.locked().includes(layer);
+  }
+
+  protected toggleShown(layer: string): void {
+    this.hidden.update((hidden) =>
+      hidden.includes(layer) ? hidden.filter((one) => one !== layer) : [...hidden, layer],
+    );
+  }
+
+  protected toggleLocked(layer: string): void {
+    this.locked.update((locked) =>
+      locked.includes(layer) ? locked.filter((one) => one !== layer) : [...locked, layer],
+    );
+  }
+
+  /**
+   * A tool posed in the middle of the floor at this company's own measurements, chosen, its form open — PLACED and
+   * not saved, exactly as the stock palette poses a rack. Its height comes with it, which a stock shape has none
+   * of: a wall's height is the building's, not a fact about that one wall.
+   */
+  protected poseStructure(tool: StockStructureShape): void {
+    this.openStructure('new');
+    this.structureFormGroup()?.patchValue({
+      ...structureValues(null, this.structureTools(), tool.kind),
+      ...footprintValues(centredIn(this.frame(), tool.width, tool.depth)),
+    });
+  }
+
+  protected openStructure(target: StockStructureRow | 'new'): void {
+    this.facade.clearError();
+    this.editing.set(null);
+    this.editingFloor.set(null);
+    this.repeating.set(false);
+    this.editingStructure.set(target);
+    this.selectedStructureId.set(target === 'new' ? null : target.id);
+  }
+
+  protected cancelStructure(): void {
+    this.editingStructure.set(null);
+    this.facade.clearError();
+  }
+
+  protected async saveStructure(values: FormValues): Promise<void> {
+    const companyId = this.company()?.id;
+    const floorId = this.floor()?.id;
+    const editing = this.editingStructure();
+    if (!companyId || !floorId || editing === null || this.busy()) return;
+
+    const accepted = await this.facade.buildStructure(
+      companyId,
+      floorId,
+      structureInput(values),
+      editing === 'new' ? null : editing.id,
+    );
+    if (accepted) {
+      this.editingStructure.set(null);
+      this.feedback.success('inventory.plan.structure_saved');
+    }
+  }
+
+  protected async eraseStructure(piece: StockStructureRow): Promise<void> {
+    const companyId = this.company()?.id;
+    const floorId = this.floor()?.id;
+    if (!companyId || !floorId || this.busy()) return;
+
+    const erased = await this.facade.eraseStructure(companyId, floorId, piece.id);
+    if (erased) {
+      if (this.selectedStructureId() === piece.id) this.selectedStructureId.set(null);
+      this.editingStructure.set(null);
+      this.feedback.success('inventory.plan.structure_erased');
+    }
+  }
+
   protected openFloor(target: StockFloorRow | 'new'): void {
     this.facade.clearError();
     this.editing.set(null);
+    this.editingStructure.set(null);
     this.editingFloor.set(target);
   }
 
@@ -743,6 +996,21 @@ export class StockMapPage implements OnInit {
 /** A measurement out of a form control, as a number: what was typed, empty or half-typed reading as nothing yet. */
 function metres(value: unknown): number {
   return Number(value ?? 0) || 0;
+}
+
+/** A kind out of a form control, falling back to the one piece of building that is always drawable. */
+function kindOf(value: string): StructureKind {
+  return STRUCTURE_KINDS.find((kind) => kind === value) ?? 'wall';
+}
+
+/** One piece of the building as the SVG needs it: where it turns about, and what it is. */
+function builtOf(piece: StockStructureRow, rect: PlanRectangle): StructureShape {
+  return {
+    piece,
+    rect,
+    centreX: rect.x + rect.width / 2,
+    centreY: rect.y + rect.depth / 2,
+  };
 }
 
 /** One rectangle as the SVG needs it: where it turns about, and where its code is written inside it. */

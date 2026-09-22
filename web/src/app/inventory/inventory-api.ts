@@ -19,6 +19,8 @@ import type {
   StockMovementStockMovementRead,
   StockMovementStockMovementWrite,
   StockOptionsStockOptionsRead,
+  StockStructureStockStructureRead,
+  StockStructureStockStructureWrite,
   StockProductPickStockProductPickRead,
 } from '../api/types.gen';
 import type { ListPage } from '../shared/list/list-types';
@@ -28,10 +30,13 @@ import {
   type StockDrawingInput,
   type StockDrawingRow,
   type StructureKind,
+  type StockStructureInput,
+  type StockStructureRow,
   type StockRepeatInput,
   type StockFloorInput,
   type StockFloorRow,
   STOCK_LOCATION_KINDS,
+  STRUCTURE_KINDS,
   STOCK_MOVEMENT_KINDS,
   STOCK_SOURCE_TYPES,
   type StockLevelRow,
@@ -319,6 +324,64 @@ export class InventoryApi {
     );
   }
 
+  /** The building drawn on one floor. It names no location: nothing on this layer holds goods. */
+  async structures(companyId: string, floorId: string): Promise<StockStructureRow[]> {
+    return this.guard(async () =>
+      (
+        await firstValueFrom(
+          this.http.get<StockStructureStockStructureRead[]>(
+            `${path(companyId, 'stock-floors', floorId)}/structures`,
+          ),
+        )
+      ).map(toStructure),
+    );
+  }
+
+  /** Draws a piece of the building on a floor. A measurement out of bounds answers 422 naming the field. */
+  async buildStructure(
+    companyId: string,
+    floorId: string,
+    input: StockStructureInput,
+  ): Promise<StockStructureRow> {
+    return this.guard(async () =>
+      toStructure(
+        await firstValueFrom(
+          this.http.post<StockStructureStockStructureRead>(
+            `${path(companyId, 'stock-floors', floorId)}/structures`,
+            structureBody(input),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Corrects a piece by its own address — what it IS as well as where it stands, because a doorway traced with
+   * the wall tool is right in every measurement and wrong in exactly one field.
+   */
+  async reshapeStructure(
+    companyId: string,
+    structureId: string,
+    input: StockStructureInput,
+  ): Promise<StockStructureRow> {
+    return this.guard(async () =>
+      toStructure(
+        await firstValueFrom(
+          this.http.put<StockStructureStockStructureRead>(
+            path(companyId, 'stock-structures', structureId),
+            structureBody(input),
+          ),
+        ),
+      ),
+    );
+  }
+
+  async eraseStructure(companyId: string, structureId: string): Promise<void> {
+    await this.guard(async () =>
+      firstValueFrom(this.http.delete(path(companyId, 'stock-structures', structureId))),
+    );
+  }
+
   /** 422 naming the field refused: a product whose stock is not kept, a quantity finer than its unit. */
   async record(companyId: string, input: StockMovementInput): Promise<StockMovementRow> {
     const body: StockMovementStockMovementWrite = { ...input };
@@ -440,6 +503,28 @@ function toFloor(raw: StockFloorStockFloorRead): StockFloorRow {
     imageMetresWide: raw.imageMetresWide ?? null,
     imageOpacity: raw.imageOpacity ?? DEFAULT_PLAN_OPACITY,
     drawingCount: raw.drawingCount ?? 0,
+  };
+}
+
+function structureBody(input: StockStructureInput): StockStructureStockStructureWrite {
+  return { ...input };
+}
+
+/**
+ * A piece of the building, as the screen works in it. An unknown kind falls back to `wall`, the only one that is
+ * always drawable: a piece the screen could not name would otherwise disappear off a plan it is really on.
+ */
+function toStructure(raw: StockStructureStockStructureRead): StockStructureRow {
+  return {
+    id: raw.id ?? '',
+    floorId: raw.floorId ?? '',
+    kind: STRUCTURE_KINDS.find((kind) => kind === raw.kind) ?? 'wall',
+    x: raw.x ?? '0.000',
+    y: raw.y ?? '0.000',
+    width: raw.width ?? '0.000',
+    depth: raw.depth ?? '0.000',
+    rotation: raw.rotation ?? 0,
+    height: raw.height ?? '0.000',
   };
 }
 

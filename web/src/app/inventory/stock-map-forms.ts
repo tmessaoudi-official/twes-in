@@ -10,10 +10,16 @@ import {
   type StockFloorRow,
   type StockLocationRow,
   type StockOptions,
+  STRUCTURE_KINDS,
+  type StockStructureInput,
+  type StockStructureRow,
+  type StockStructureShape,
+  type StructureKind,
 } from './inventory-types';
 
 const FLOOR_FIELDS = 'inventory.plan.floor_fields';
 const DRAWING_FIELDS = 'inventory.plan.drawing_fields';
+const STRUCTURE_FIELDS = 'inventory.plan.structure_fields';
 
 /** How many decimals a measurement crosses the wire with, as the API's columns hold them. */
 const METRE_DECIMALS = 3;
@@ -258,4 +264,128 @@ export function nextCodes(firstCode: string, count: number): string[] {
       // Padded back to the width it was typed with, and never truncated: R99 is followed by R100.
       `${stem}${String(Number(number) + made).padStart(number.length, '0')}`,
   );
+}
+
+/**
+ * A piece of the building: which of the four tools it is, and its footprint. There is deliberately NO location
+ * field and never will be — nothing on this layer holds goods, which is the whole reason it is a layer apart.
+ *
+ * The kind sits in its own section and comes first, because it is the one field that changes what the rectangle
+ * MEANS rather than where it is, and because correcting it is the common repair: a doorway traced with the wall
+ * tool is right in every measurement and wrong in exactly this one.
+ */
+export function structureForm(): FormDescriptor {
+  return {
+    id: 'stock-structure',
+    sections: [
+      {
+        id: 'built-as',
+        title: 'inventory.plan.structure_section',
+        description: 'inventory.plan.structure_hint',
+        fields: [
+          {
+            id: 'kind',
+            label: `${STRUCTURE_FIELDS}.kind`,
+            kind: 'select',
+            required: true,
+            span: 2,
+            options: STRUCTURE_KINDS.map((kind) => ({
+              value: kind,
+              label: `inventory.plan.structure_kinds.${kind}`,
+            })),
+          },
+        ],
+      },
+      {
+        id: 'footprint',
+        title: 'inventory.plan.footprint_section',
+        description: 'inventory.plan.footprint_hint',
+        fields: [
+          { id: 'x', label: `${DRAWING_FIELDS}.x`, kind: 'decimal', required: true },
+          { id: 'y', label: `${DRAWING_FIELDS}.y`, kind: 'decimal', required: true },
+          { id: 'width', label: `${STRUCTURE_FIELDS}.width`, kind: 'decimal', required: true },
+          { id: 'depth', label: `${STRUCTURE_FIELDS}.depth`, kind: 'decimal', required: true },
+          { id: 'height', label: `${DRAWING_FIELDS}.height`, kind: 'decimal', required: true },
+          {
+            id: 'rotation',
+            label: `${DRAWING_FIELDS}.rotation`,
+            kind: 'number',
+            required: true,
+            min: 0,
+            max: MAX_ROTATION,
+            hint: 'inventory.plan.rotation_hint',
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * A piece as it was saved, or a new one at the size THIS company builds at. Nothing here invents a measurement:
+ * a tool the company's settings say nothing about opens at zero rather than at a constant written in this file,
+ * so a palette that could not be read is visibly empty instead of quietly wrong.
+ */
+export function structureValues(
+  row: StockStructureRow | null,
+  tools: readonly StockStructureShape[],
+  kind: StructureKind = 'wall',
+): FormValues {
+  if (row !== null) {
+    return {
+      kind: row.kind,
+      x: row.x,
+      y: row.y,
+      width: row.width,
+      depth: row.depth,
+      rotation: row.rotation,
+      height: row.height,
+    };
+  }
+  const tool = tools.find((one) => one.kind === kind);
+
+  return {
+    kind,
+    x: metres(0),
+    y: metres(0),
+    width: metres(tool?.width ?? 0),
+    depth: metres(tool?.depth ?? 0),
+    rotation: 0,
+    height: metres(tool?.height ?? 0),
+  };
+}
+
+/**
+ * What the structure form sends. The same rule as a rectangle of stock, for the same reason: the grid holds a
+ * PLACE and never a measurement somebody went and took, so x and y are taken to the quarter-metre while a wall's
+ * length and thickness are kept exactly as typed — the canvas's own partition is 0,20 m thick and a grid would
+ * make it 0,25.
+ *
+ * An unknown kind becomes a wall rather than travelling on. The select is the only way in, so this is a guard
+ * against a future caller rather than against a person: it fails to the one kind that is always drawable.
+ */
+export function structureInput(values: FormValues): StockStructureInput {
+  const asked = text(values['kind']);
+
+  return {
+    kind: STRUCTURE_KINDS.find((kind) => kind === asked) ?? 'wall',
+    x: onGrid(values['x']),
+    y: onGrid(values['y']),
+    width: metres(Number(values['width'] ?? 0) || 0),
+    depth: metres(Number(values['depth'] ?? 0) || 0),
+    rotation: snapAngle(Number(values['rotation'] ?? 0) || 0),
+    height: metres(Number(values['height'] ?? 0) || 0),
+  };
+}
+
+/** The building of a floor as the drawing works in it: metres as numbers, never the API's strings. */
+export function structureRectangles(structures: readonly StockStructureRow[]): PlanRectangle[] {
+  return structures.map((piece) => ({
+    x: Number(piece.x),
+    y: Number(piece.y),
+    width: Number(piece.width),
+    depth: Number(piece.depth),
+    rotation: piece.rotation,
+    height: Number(piece.height),
+  }));
 }

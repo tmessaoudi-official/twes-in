@@ -1496,6 +1496,35 @@
         "aisle": "Allée",
         "dock": "Quai"
       },
+      "structure": "Murs et portes",
+      "structure_note": "Rien ici n’est un emplacement de stock : un mur ne contient pas de marchandise et n’apparaît sur aucune liste.",
+      "structure_section": "Élément de structure",
+      "structure_hint": "Ce que dessine cet élément. Une porte et un quai se découpent dans un mur : leur épaisseur est celle du mur.",
+      "structure_fields": {
+        "kind": "Type d’élément",
+        "width": "Longueur (m)",
+        "depth": "Épaisseur (m)"
+      },
+      "structure_kinds": {
+        "wall": "Mur",
+        "door": "Porte",
+        "post": "Poteau",
+        "dock": "Porte de quai"
+      },
+      "structure_saved": "Élément de structure enregistré.",
+      "structure_erased": "Élément de structure supprimé.",
+      "layers": "Calques",
+      "layer_names": {
+        "structure": "Structure",
+        "racks": "Rayonnages",
+        "zones": "Zones"
+      },
+      "layer_shown": "Afficher ou masquer ce calque",
+      "layer_locked": "Verrouiller ce calque pour ne plus l’attraper au pointeur",
+      "shown": "Visible",
+      "hidden": "Masqué",
+      "locked": "Verrouillé",
+      "unlocked": "Libre",
       "repeat": "Répéter",
       "repeat_of": "Répéter {{code}}",
       "repeat_count": "Combien de plus",

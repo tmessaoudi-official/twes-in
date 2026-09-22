@@ -1496,6 +1496,35 @@
         "aisle": "Aisle",
         "dock": "Dock"
       },
+      "structure": "Walls and doors",
+      "structure_note": "Nothing here is a stock location: a wall holds no goods and appears on no list.",
+      "structure_section": "Piece of structure",
+      "structure_hint": "What this piece draws. A door and a dock are cut into a wall: their thickness is the wall's.",
+      "structure_fields": {
+        "kind": "Kind of piece",
+        "width": "Length (m)",
+        "depth": "Thickness (m)"
+      },
+      "structure_kinds": {
+        "wall": "Wall",
+        "door": "Door",
+        "post": "Post",
+        "dock": "Dock door"
+      },
+      "structure_saved": "Piece of structure saved.",
+      "structure_erased": "Piece of structure removed.",
+      "layers": "Layers",
+      "layer_names": {
+        "structure": "Structure",
+        "racks": "Racks",
+        "zones": "Zones"
+      },
+      "layer_shown": "Show or hide this layer",
+      "layer_locked": "Lock this layer so the pointer no longer catches it",
+      "shown": "Shown",
+      "hidden": "Hidden",
+      "locked": "Locked",
+      "unlocked": "Unlocked",
       "repeat": "Repeat",
       "repeat_of": "Repeat {{code}}",
       "repeat_count": "How many more",

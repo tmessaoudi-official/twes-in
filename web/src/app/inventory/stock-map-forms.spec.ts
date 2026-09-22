@@ -10,12 +10,18 @@ import {
   nextCodes,
   planRectangles,
   rectValues,
+  structureForm,
+  structureInput,
+  structureRectangles,
+  structureValues,
 } from './stock-map-forms';
 import type {
   StockDrawingRow,
   StockFloorRow,
   StockLocationRow,
   StockOptions,
+  StockStructureRow,
+  StockStructureShape,
 } from './inventory-types';
 
 const OPTIONS: StockOptions = {
@@ -266,5 +272,105 @@ describe('nextCodes', () => {
     expect(nextCodes('RAYONNAGE', 3)).toEqual([]);
     expect(nextCodes('R2', 0)).toEqual([]);
     expect(nextCodes('  ', 3)).toEqual([]);
+  });
+});
+
+describe('the structure layer', () => {
+  const wall: StockStructureRow = {
+    id: 's1',
+    floorId: 'f1',
+    kind: 'wall',
+    x: '0.000',
+    y: '0.000',
+    width: '6.900',
+    depth: '0.200',
+    rotation: 0,
+    height: '3.000',
+  };
+
+  /** The tools the palette poses, at the sizes the company builds at rather than any constant here. */
+  const tools: StockStructureShape[] = [
+    { kind: 'wall', width: 5, depth: 0.15, height: 2.8 },
+    { kind: 'door', width: 0.8, depth: 0.15, height: 2 },
+  ];
+
+  it('offers the four tools and the footprint, and nothing about a location', () => {
+    const form = structureForm();
+    const fields = form.sections.flatMap((section) => section.fields.map((field) => field.id));
+
+    expect(fields).toEqual(['kind', 'x', 'y', 'width', 'depth', 'height', 'rotation']);
+    // Nothing on this layer holds goods, so no field here may ever name one.
+    expect(fields).not.toContain('locationId');
+    const kind = form.sections[0]?.fields[0];
+    expect(kind?.options?.map((option) => option.value)).toEqual(['wall', 'door', 'post', 'dock']);
+  });
+
+  it('opens on a piece as it was saved, byte for byte', () => {
+    expect(structureValues(wall, tools)).toEqual({
+      kind: 'wall',
+      x: '0.000',
+      y: '0.000',
+      width: '6.900',
+      depth: '0.200',
+      rotation: 0,
+      height: '3.000',
+    });
+  });
+
+  /** A new piece starts at the company's own measurements for that tool, never at a constant written here. */
+  it('starts a new piece at this company size for the tool chosen', () => {
+    expect(structureValues(null, tools, 'door')).toEqual({
+      kind: 'door',
+      x: '0.000',
+      y: '0.000',
+      width: '0.800',
+      depth: '0.150',
+      rotation: 0,
+      height: '2.000',
+    });
+  });
+
+  /** The same rule as a rectangle of stock: the grid holds a PLACE, never a measurement somebody took. */
+  it('puts the place on the quarter-metre and leaves the measurements alone', () => {
+    expect(
+      structureInput({
+        kind: 'door',
+        x: '2.6',
+        y: '4.1',
+        width: '0.9',
+        depth: '0.2',
+        rotation: 7,
+        height: '2.1',
+      }),
+    ).toEqual({
+      kind: 'door',
+      x: '2.500',
+      y: '4.000',
+      width: '0.900',
+      depth: '0.200',
+      rotation: 0,
+      height: '2.100',
+    });
+  });
+
+  /** An unknown kind cannot reach the API: the select is the only way in, and a bad one falls back to a wall. */
+  it('never sends a kind the building is not made of', () => {
+    expect(
+      structureInput({
+        kind: 'moat',
+        x: '0',
+        y: '0',
+        width: '1',
+        depth: '1',
+        rotation: 0,
+        height: '1',
+      }).kind,
+    ).toBe('wall');
+  });
+
+  it('reads a piece as metres the drawing can work in', () => {
+    expect(structureRectangles([wall])).toEqual([
+      { x: 0, y: 0, width: 6.9, depth: 0.2, rotation: 0, height: 3 },
+    ]);
   });
 });

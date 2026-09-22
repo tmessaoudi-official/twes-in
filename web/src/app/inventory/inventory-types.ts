@@ -217,8 +217,13 @@ export type StockDrawingInput = Pick<
   'locationId' | 'x' | 'y' | 'width' | 'depth' | 'rotation' | 'height'
 >;
 
-/** The structure layer's four tools, which are the four things the building is drawn out of. */
-export type StructureKind = 'wall' | 'door' | 'post' | 'dock';
+/**
+ * The structure layer's four tools, which are the four things the building is drawn out of. The order is the
+ * approved canvas's own: mur, porte, poteau, quai.
+ */
+export const STRUCTURE_KINDS = ['wall', 'door', 'post', 'dock'] as const;
+
+export type StructureKind = (typeof STRUCTURE_KINDS)[number];
 
 /**
  * One piece of the building on a floor. It names no location and never will: nothing here holds goods, which is

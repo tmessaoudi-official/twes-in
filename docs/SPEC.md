@@ -1794,6 +1794,31 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   **Deliberately not in this half**: the demo fixtures draw no map at all — three slices of row 83 have shipped
   without them — so no wall was added there either; and the "Fond de plan" layer of the board waits for the floor
   image it would show, rather than shipping a control that can never do anything.
+- [2026-09-22 04:30] AGREED: **the structure layer is drawn UNDER the stock, and the board carries a layers panel**
+  (row 83, the Structure board; web half). The building's rectangles are emitted before the spots in the same
+  `<svg>`, because SVG has no z-index and document order is the whole of the answer: a rack standing against a
+  wall is then what both the eye and the pointer find. A test asserts that order through
+  `compareDocumentPosition`, and the mutation that moves the block to the end of the drawing reds it.
+  **Each layer shows and locks itself** — structure, racks, zones — with the counts derived from what is loaded
+  rather than stored, so no number needs maintaining. Locked means the layer keeps `pointer-events: none` while
+  staying drawn and reachable by keyboard: it stops being something caught by accident while a rayonnage is being
+  moved, and it does not become unreadable to do it. Hidden takes the layer off the plan altogether. Both are
+  per-person view state and are deliberately NOT settings: nothing about which layer this person has folded away
+  belongs to the company.
+  **A tool poses at the company's own measurements, never at a constant.** `structureValues` reads the four shapes
+  the API resolves from `venue.structure.*`; a kind the settings say nothing about opens at zero, so a palette
+  that could not be read is visibly empty rather than quietly wrong.
+  **Naming the stock's own rectangles was the blast radius.** Adding a `<rect>` under the spots broke four specs
+  that had been selecting `svg rect` and `svg g` by position — a real consequence, not a test artefact, since the
+  first rectangle in the plan is now the building. Both elements carry `stock-drawing-rect-<code>` /
+  `stock-drawing-group-<code>`, and nothing on this board is selected by document position again.
+- [2026-09-22 04:35] AGREED: **the map is finished before the barcode, and the barcode field before any scanner**
+  (developer ruling, asked and answered: *"Option 1 then 2"*). The order is: the rest of row 83's board, then the
+  product's own `barcode` field on the terms already ruled on 2026-09-17 § 7 (optional, unique per company,
+  EAN-13/EAN-8/UPC check digit verified only when the shape matches one, matched on by import), then row 63's
+  camera scanner as its own goal. The reason the field goes first is that it is what the scanner would write into:
+  a scanner shipped against no field has nowhere to put what it reads, and the field is useful on its own the day
+  it lands — typed, imported and searched — while the scanner is not useful without it.
 
 ## 8. Status
 

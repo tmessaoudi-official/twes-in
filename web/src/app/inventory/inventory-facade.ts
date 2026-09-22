@@ -18,6 +18,8 @@ import type {
   StockOptions,
   StockProductOption,
   StockRepeatInput,
+  StockStructureInput,
+  StockStructureRow,
   StockSearch,
 } from './inventory-types';
 
@@ -42,6 +44,10 @@ export class InventoryFacade {
   private drawingsRequest = 0;
   /** Which floor's rectangles are in hand, so a live change reads that same floor again. */
   private drawingsFloorId: string | null = null;
+  private readonly structuresSignal = signal<readonly StockStructureRow[]>([]);
+  private structuresRequest = 0;
+  /** Which floor's building is in hand, so a live change reads that same floor again. */
+  private structuresFloorId: string | null = null;
   private readonly busySignal = signal(false);
   private readonly errorSignal = signal<InventoryError | null>(null);
 
@@ -56,6 +62,8 @@ export class InventoryFacade {
   readonly floors = this.floorsSignal.asReadonly();
   /** What is drawn on the floor being looked at, never on all of them at once. */
   readonly drawings = this.drawingsSignal.asReadonly();
+  /** The building on that same floor: its own layer, because nothing on it holds goods. */
+  readonly structures = this.structuresSignal.asReadonly();
   readonly busy = this.busySignal.asReadonly();
   readonly error = this.errorSignal.asReadonly();
 
@@ -226,6 +234,11 @@ export class InventoryFacade {
           this.drawingsFloorId = null;
           this.drawingsSignal.set([]);
         }
+        // The building went with the floor, as the API's own cascade does it.
+        if (this.structuresFloorId === id) {
+          this.structuresFloorId = null;
+          this.structuresSignal.set([]);
+        }
       },
     );
   }
@@ -272,6 +285,52 @@ export class InventoryFacade {
       async () => {
         await Promise.all([this.afterDrawing(companyId, floorId), this.reloadLocations(companyId)]);
       },
+    );
+  }
+
+  /**
+   * The building on one floor. Only the latest floor asked for is shown, as the drawings do it: a person moves
+   * between floors faster than two reads come back.
+   */
+  async loadStructures(companyId: string, floorId: string): Promise<void> {
+    const request = ++this.structuresRequest;
+    this.structuresFloorId = floorId;
+    await this.read(async () => {
+      const structures = await this.api.structures(companyId, floorId);
+      if (request !== this.structuresRequest) return;
+      this.structuresSignal.set(structures);
+    });
+  }
+
+  /** The floor in hand, read again: what a live change brought belongs on it or does not. */
+  async reloadStructures(companyId: string): Promise<void> {
+    const floorId = this.structuresFloorId;
+    if (floorId !== null) await this.loadStructures(companyId, floorId);
+  }
+
+  /**
+   * Draws a piece of the building, or corrects one. Only the structure is read again: a wall changes no floor's
+   * rectangle count, because a wall is not a rectangle of stock.
+   */
+  async buildStructure(
+    companyId: string,
+    floorId: string,
+    input: StockStructureInput,
+    structureId: string | null,
+  ): Promise<boolean> {
+    return this.write(
+      () =>
+        structureId === null
+          ? this.api.buildStructure(companyId, floorId, input)
+          : this.api.reshapeStructure(companyId, structureId, input),
+      () => this.loadStructures(companyId, floorId),
+    );
+  }
+
+  async eraseStructure(companyId: string, floorId: string, structureId: string): Promise<boolean> {
+    return this.write(
+      () => this.api.eraseStructure(companyId, structureId),
+      () => this.loadStructures(companyId, floorId),
     );
   }
 

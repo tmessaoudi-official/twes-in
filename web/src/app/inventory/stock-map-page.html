@@ -176,6 +176,88 @@
             </div>
           }
 
+          @if (structureTools().length > 0) {
+            <!--
+              The structure layer's four tools. Nothing posed here is a stock location and none of it ever will be:
+              a wall holds no goods, so it appears in no list, no import and no movement's location picker. Buttons
+              for the same reason the palette uses them — reachable from a keyboard, not only from a hand.
+            -->
+            <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+              {{ 'inventory.plan.structure' | translate }}
+            </h2>
+            <p class="text-sm text-on-surface-variant" data-testid="stock-structure-hint">
+              {{ 'inventory.plan.structure_note' | translate }}
+            </p>
+            <div class="flex flex-wrap gap-2">
+              @for (tool of structureTools(); track tool.kind) {
+                <button
+                  type="button"
+                  class="flex flex-col items-start rounded-lg border border-outline-variant px-3 py-2 text-start"
+                  (click)="poseStructure(tool)"
+                  [attr.data-testid]="'stock-structure-tool-' + tool.kind"
+                >
+                  <span class="font-medium">
+                    {{ 'inventory.plan.structure_kinds.' + tool.kind | translate }}
+                  </span>
+                  <span class="tabular-nums text-sm text-on-surface-variant">
+                    {{ tool.width }} × {{ tool.depth }} m
+                  </span>
+                </button>
+              }
+            </div>
+          }
+
+          <!--
+            The layers panel of the approved board. Each row shows and locks its own layer: a locked layer is still
+            drawn and still reachable by keyboard, it simply stops answering the pointer, which is what keeps a wall
+            from being picked up while a rack is being moved.
+          -->
+          <h2 class="mt-4 text-sm font-semibold uppercase tracking-wide text-on-surface-variant">
+            {{ 'inventory.plan.layers' | translate }}
+          </h2>
+          <ul class="flex flex-col gap-1" data-testid="stock-map-layers">
+            @for (layer of layers(); track layer.id) {
+              <li class="flex items-center gap-2">
+                <span class="grow text-sm">
+                  {{ 'inventory.plan.layer_names.' + layer.id | translate }}
+                </span>
+                <span
+                  class="tabular-nums text-sm text-on-surface-variant"
+                  [attr.data-testid]="'stock-layer-count-' + layer.id"
+                >
+                  {{ layer.count }}
+                </span>
+                <button
+                  type="button"
+                  class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                  [class.bg-secondary-container]="!shown(layer.id)"
+                  [attr.aria-pressed]="!shown(layer.id)"
+                  (click)="toggleShown(layer.id)"
+                  [appLabel]="'inventory.plan.layer_shown' | translate"
+                  [attr.data-testid]="'stock-layer-shown-' + layer.id"
+                >
+                  {{
+                    (shown(layer.id) ? 'inventory.plan.shown' : 'inventory.plan.hidden') | translate
+                  }}
+                </button>
+                <button
+                  type="button"
+                  class="rounded-md border border-outline-variant px-2 py-1 text-sm"
+                  [class.bg-secondary-container]="isLocked(layer.id)"
+                  [attr.aria-pressed]="isLocked(layer.id)"
+                  (click)="toggleLocked(layer.id)"
+                  [appLabel]="'inventory.plan.layer_locked' | translate"
+                  [attr.data-testid]="'stock-layer-locked-' + layer.id"
+                >
+                  {{
+                    (isLocked(layer.id) ? 'inventory.plan.locked' : 'inventory.plan.unlocked')
+                      | translate
+                  }}
+                </button>
+              </li>
+            }
+          </ul>
+
           @if (mayDraw()) {
             <!--
               The tool is armed before the floor becomes a drawing surface, and gives itself back after one box: an
@@ -411,8 +493,53 @@
                   [attr.data-testid]="'stock-repeat-preview-' + $index"
                 />
               }
+              <!--
+                The building, drawn FIRST so it sits under the stock: a rack against a wall is what the eye and the
+                pointer both find. A locked layer keeps `pointer-events: none`, which is the board's promise in its
+                own words — it stops being something you catch while moving a rayonnage.
+              -->
+              @if (shown('structure')) {
+                <g
+                  [class.pointer-events-none]="isLocked('structure')"
+                  data-testid="stock-structure-layer"
+                >
+                  @for (built of builtShapes(); track built.piece.id) {
+                    <rect
+                      [attr.x]="built.rect.x"
+                      [attr.y]="built.rect.y"
+                      [attr.width]="built.rect.width"
+                      [attr.height]="built.rect.depth"
+                      [attr.transform]="
+                        'rotate(' +
+                        built.rect.rotation +
+                        ' ' +
+                        built.centreX +
+                        ' ' +
+                        built.centreY +
+                        ')'
+                      "
+                      [attr.stroke-width]="built.piece.id === selectedStructureId() ? 0.08 : 0.04"
+                      [class]="mayDraw() ? 'cursor-pointer' : ''"
+                      class="stroke-on-surface-variant"
+                      [class.fill-on-surface-variant]="
+                        built.piece.kind === 'wall' || built.piece.kind === 'post'
+                      "
+                      [class.fill-surface]="built.piece.kind === 'door'"
+                      [class.fill-surface-container-highest]="built.piece.kind === 'dock'"
+                      [class.fill-secondary-container]="built.piece.id === selectedStructureId()"
+                      (click)="openStructure(built.piece)"
+                      [attr.data-testid]="'stock-structure-' + built.piece.kind"
+                    />
+                  }
+                </g>
+              }
               @for (shape of shapes(); track shape.drawing.id) {
                 <g
+                  [attr.data-testid]="'stock-drawing-group-' + shape.drawing.locationCode"
+                  [class.hidden]="!shown(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')"
+                  [class.pointer-events-none]="
+                    isLocked(shape.drawing.locationKind === 'rack' ? 'racks' : 'zones')
+                  "
                   [attr.transform]="
                     'rotate(' +
                     shape.rect.rotation +
@@ -438,6 +565,7 @@
                     [class.fill-secondary-container]="shape.drawing.id === selectedId()"
                     (pointerdown)="grab($event, shape.drawing, null)"
                     (click)="select(shape.drawing)"
+                    [attr.data-testid]="'stock-drawing-rect-' + shape.drawing.locationCode"
                   />
                   <text
                     [attr.x]="shape.labelX"
@@ -507,6 +635,58 @@
                         type="submit"
                         [disabled]="busy()"
                         data-testid="stock-drawing-save"
+                      >
+                        {{ 'inventory.save' | translate }}
+                      </button>
+                    </div>
+                  </app-descriptor-form>
+                </mat-card-content>
+              </mat-card>
+            }
+          }
+
+          <!--
+            The building's own form. Its kind is a field like any other, because correcting it is the common
+            repair: a doorway traced with the wall tool is right in every measurement and wrong in exactly one.
+          -->
+          @if (structureFormGroup(); as group) {
+            @if (structureDescriptor(); as descriptor) {
+              <mat-card>
+                <mat-card-content>
+                  <app-descriptor-form
+                    [descriptor]="descriptor"
+                    [form]="group"
+                    testId="stock-structure-form"
+                    (submitted)="saveStructure($event)"
+                  >
+                    <div class="flex flex-wrap items-center justify-end gap-2">
+                      @if (editingStructure(); as editing) {
+                        @if (editing !== 'new') {
+                          <button
+                            mat-button
+                            type="button"
+                            class="grow-0 text-error"
+                            [disabled]="busy()"
+                            (click)="eraseStructure(editing)"
+                            data-testid="stock-structure-erase"
+                          >
+                            {{ 'inventory.plan.erase' | translate }}
+                          </button>
+                        }
+                      }
+                      <button
+                        mat-button
+                        type="button"
+                        (click)="cancelStructure()"
+                        data-testid="stock-structure-cancel"
+                      >
+                        {{ 'inventory.cancel' | translate }}
+                      </button>
+                      <button
+                        mat-flat-button
+                        type="submit"
+                        [disabled]="busy()"
+                        data-testid="stock-structure-save"
                       >
                         {{ 'inventory.save' | translate }}
                       </button>
