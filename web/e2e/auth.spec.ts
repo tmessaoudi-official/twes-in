@@ -63,6 +63,23 @@ test('the responses carry the security headers', async ({ request }) => {
   expect(response.headers()['x-content-type-options']).toBe('nosniff');
 });
 
+/**
+ * A translation file carried no Cache-Control, so a browser kept the one it had by its own guess and showed a new key
+ * raw after a deploy ("inventory.plan.not_saved" on the board, 2026-09-22). It is revalidated on every load now; its
+ * ETag keeps that to a 304 when nothing changed.
+ */
+test('a translation file is revalidated on every load, and the API keeps its own caching', async ({
+  request,
+}) => {
+  const translations = await request.get('/i18n/fr.json');
+  expect(translations.ok()).toBe(true);
+  expect(translations.headers()['cache-control'] ?? '').toBe('no-cache');
+
+  // The API's own header passes through alone: Symfony's, not a second one added on the way.
+  const health = await request.get('/api/health');
+  expect(health.headers()['cache-control']).toBe('no-cache, private');
+});
+
 test('every page load carries a fresh CSP nonce, shared by the header and the document', async ({
   request,
 }) => {
