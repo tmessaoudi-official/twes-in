@@ -56,7 +56,39 @@ final readonly class ProductDetails
         if ('' !== $barcode && 1 !== preg_match(self::BARCODE, $barcode)) {
             throw new InvalidProduct('barcode', \sprintf('A barcode is 1 to %d printable characters without spaces.', self::BARCODE_MAX));
         }
+        if ('' !== $barcode && !self::gtinCheckDigitHolds($barcode)) {
+            throw new InvalidProduct('barcode', 'This barcode has the shape of an EAN-13, EAN-8 or UPC code and its check digit does not match.');
+        }
         $this->barcode = '' === $barcode ? null : $barcode;
+    }
+
+    /**
+     * True unless the code CLAIMS a GTIN shape and fails it (docs/SPEC.md § 7, 2026-09-17). A code that claims
+     * nothing — an internal reference, a Code 128 string, any length but 8, 12 or 13 digits — is kept as typed,
+     * so this answers true for it.
+     *
+     * One algorithm covers all three lengths, because EAN-13, UPC-A and EAN-8 share it: weights of 3 and 1
+     * alternating from the digit immediately left of the check digit, and the check digit is what brings the
+     * total to a multiple of ten. Writing three of these would be three chances to get one wrong.
+     *
+     * Knowingly not detected: UPC-E is eight digits under a different rule, so a UPC-E code fails the EAN-8 check
+     * and is refused rather than kept. That is recorded as a decision in § 7, not left as a surprise.
+     */
+    private static function gtinCheckDigitHolds(string $barcode): bool
+    {
+        if (!\in_array(\strlen($barcode), [8, 12, 13], true) || 1 !== preg_match('/^[0-9]+$/', $barcode)) {
+            return true;
+        }
+
+        $digits = array_map(intval(...), str_split($barcode));
+        $check = array_pop($digits);
+        $sum = 0;
+        // Right-aligned: the weight depends on the distance from the check digit, never on the code's length.
+        foreach (array_reverse($digits) as $place => $digit) {
+            $sum += $digit * (0 === $place % 2 ? 3 : 1);
+        }
+
+        return $check === (10 - $sum % 10) % 10;
     }
 
     /** @return list<string> the fields whose values differ from the other's, in the order a form shows them */

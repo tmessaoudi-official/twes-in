@@ -24,6 +24,7 @@ use App\ImportExport\Application\ImportSubject;
 use App\ImportExport\Application\RowImported;
 use App\ImportExport\Application\RowRejected;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductHomes;
 use App\Module\Products\Application\ProductInput;
 use App\Module\Products\Application\ProductReferenceTaken;
@@ -141,6 +142,10 @@ final readonly class ProductImport implements DeclaresImport
             throw new RowRejected($column, $refused->getMessage(), $code);
         } catch (ProductReferenceTaken) {
             throw new RowRejected('reference', 'A product already has this reference.', 'already_exists');
+        } catch (ProductBarcodeTaken $taken) {
+            // Named, not merely refused: the file's author needs to know which of their products already carries
+            // the code, and the row they are looking at does not say it.
+            throw new RowRejected('barcode', $taken->getMessage(), 'already_exists', ['reference' => $taken->heldBy]);
         } finally {
             // Doctrine's batch processing: every flush walks every managed entity, so a row's product stays out of the
             // unit of work once written, or a file costs the square of its length. Nothing reads it back here.
@@ -306,7 +311,7 @@ final readonly class ProductImport implements DeclaresImport
             new ImportColumn('category', 'import.products.category', false, null, 'import.products.category_note'),
             new ImportColumn('unit_price_net', 'import.products.unit_price_net', false, '0.4500', 'import.products.price_note'),
             new ImportColumn('cost_price', 'import.products.cost_price', false, '0.2200', 'import.products.cost_note'),
-            new ImportColumn('barcode', 'import.products.barcode', false, '6191234567890', 'import.products.barcode_note'),
+            new ImportColumn('barcode', 'import.products.barcode', false, '6191234567897', 'import.products.barcode_note'),
             new ImportColumn('default_tax_codes', 'import.products.default_taxes', false, null, 'import.products.default_taxes_note'),
             new ImportColumn('active', 'import.products.active', false, 'yes', 'import.boolean_note'),
             ...$this->homes->offered($company)

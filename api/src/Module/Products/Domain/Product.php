@@ -27,6 +27,8 @@ use Symfony\Component\Uid\Uuid;
 #[ORM\Index(name: 'idx_product_unit', columns: ['unit_id'])]
 #[ORM\Index(name: 'idx_product_category', columns: ['category_id'])]
 #[ORM\UniqueConstraint(name: 'uniq_product_company_reference', columns: ['company_id', 'reference'])]
+// Partial, because many products have no barcode: a plain unique index would let exactly one of them exist.
+#[ORM\UniqueConstraint(name: 'uniq_product_barcode', columns: ['company_id', 'barcode'], options: ['where' => '(barcode IS NOT NULL)'])]
 class Product implements CompanyOwned
 {
     public const string REFERENCE = '/^[A-Za-z0-9][A-Za-z0-9._\/-]{0,31}$/';

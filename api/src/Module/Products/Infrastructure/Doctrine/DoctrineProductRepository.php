@@ -103,6 +103,11 @@ final readonly class DoctrineProductRepository implements ProductRepository
         return $this->entityManager->getRepository(Product::class)->findOneBy(['company' => $companyId, 'reference' => $reference]);
     }
 
+    public function ofBarcodeInCompany(string $barcode, Uuid $companyId): ?Product
+    {
+        return $this->entityManager->getRepository(Product::class)->findOneBy(['company' => $companyId, 'barcode' => $barcode]);
+    }
+
     public function countInCategory(Uuid $categoryId): int
     {
         return $this->entityManager->getRepository(Product::class)->count(['category' => $categoryId]);

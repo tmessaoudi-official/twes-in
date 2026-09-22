@@ -87,6 +87,17 @@ final class InMemoryProducts implements ProductRepository
         return null;
     }
 
+    public function ofBarcodeInCompany(string $barcode, Uuid $companyId): ?Product
+    {
+        foreach ($this->ofCompany($companyId) as $product) {
+            if ($product->getDetails()->barcode === $barcode) {
+                return $product;
+            }
+        }
+
+        return null;
+    }
+
     public function countInCategory(Uuid $categoryId): int
     {
         return \count(array_filter($this->products, static fn (Product $p) => true === $p->getCategory()?->getId()->equals($categoryId)));

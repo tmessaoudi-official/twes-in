@@ -80,6 +80,7 @@ final readonly class ManageProducts
 
     /**
      * @throws ProductReferenceTaken
+     * @throws ProductBarcodeTaken
      * @throws InvalidProduct
      */
     public function create(Company $company, ProductInput $input, ?Uuid $actorUserId): Product
@@ -88,6 +89,7 @@ final readonly class ManageProducts
             if (null !== $this->products->ofReferenceInCompany(trim($input->reference), $company->getId())) {
                 throw new ProductReferenceTaken();
             }
+            $this->assertBarcodeIsFree($company, $input, null);
             [$unit, $category] = $this->checked($company, $input, null);
             $values = $this->customFieldValues($company, $input, null);
             $now = $this->clock->now();
@@ -106,6 +108,7 @@ final readonly class ManageProducts
     /**
      * @throws ProductNotFound
      * @throws ProductReferenceTaken
+     * @throws ProductBarcodeTaken
      * @throws InvalidProduct
      */
     public function revise(Company $company, Uuid $id, ProductInput $input, ?Uuid $actorUserId): Product
@@ -116,6 +119,7 @@ final readonly class ManageProducts
             if (null !== $holder && !$holder->getId()->equals($product->getId())) {
                 throw new ProductReferenceTaken();
             }
+            $this->assertBarcodeIsFree($company, $input, $product);
             [$unit, $category] = $this->checked($company, $input, $product);
             $this->assertStockKeepsItsMeaning($company, $product, $unit, $input->details->kind);
             $values = $this->customFieldValues($company, $input, $product);
@@ -184,6 +188,26 @@ final readonly class ManageProducts
         }
 
         throw new InvalidProduct('kind', \sprintf('Stock of %s was moved, so it stays goods.', $product->getReference()));
+    }
+
+    /**
+     * docs/SPEC.md § 7, 2026-09-17: a barcode is unique within the company WHEN SET. A product without one is
+     * not holding a value, so any number of them coexist — which matters, since many products have no barcode.
+     *
+     * @throws ProductBarcodeTaken
+     */
+    private function assertBarcodeIsFree(Company $company, ProductInput $input, ?Product $revising): void
+    {
+        $barcode = $input->details->barcode;
+        if (null === $barcode) {
+            return;
+        }
+        $holder = $this->products->ofBarcodeInCompany($barcode, $company->getId());
+        if (null === $holder || (null !== $revising && $holder->getId()->equals($revising->getId()))) {
+            return;
+        }
+
+        throw new ProductBarcodeTaken($holder->getReference());
     }
 
     /** @return array<string, string|int|float|bool> */

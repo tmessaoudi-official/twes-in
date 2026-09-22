@@ -12,6 +12,7 @@ namespace App\Module\Products\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\InvalidProduct;
 use App\Tenancy\Infrastructure\ApiPlatform\CompanyGuard;
@@ -32,7 +33,7 @@ final readonly class CreateProductProcessor implements ProcessorInterface
 
         try {
             $product = $this->manage->create($company, $data->input(), $this->guard->account()->getId());
-        } catch (ProductReferenceTaken $taken) {
+        } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);

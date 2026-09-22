@@ -118,6 +118,40 @@ final class ProductsTest extends ApiTestCase
         self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT);
     }
 
+    /**
+     * docs/SPEC.md § 7, 2026-09-17: a barcode is unique within the company when set, so a scan finds exactly one
+     * product. This supersedes the 2026-09-14 line that it is not unique.
+     */
+    public function testABarcodeAnotherProductHasAnswersConflictWhileRevisingWithItsOwnDoesNot(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+        $this->postJson($this->path(), $this->product(['barcode' => '3017620422003']));
+        $id = $this->stringAt($this->json(), 'id');
+
+        $this->postJson($this->path(), $this->product(['reference' => 'ART-002', 'barcode' => '3017620422003']));
+        self::assertResponseStatusCodeSame(Response::HTTP_CONFLICT, 'a second product cannot take the same barcode');
+
+        // Its own barcode is not "taken" by anyone else, so a revision that keeps it goes through.
+        $this->sendJson('PUT', $this->path($id), $this->product(['barcode' => '3017620422003', 'name' => 'Renommé']));
+        self::assertResponseIsSuccessful();
+
+        // And an empty barcode is not a value that can collide: many products have none.
+        $this->postJson($this->path(), $this->product(['reference' => 'ART-003', 'barcode' => null]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED);
+        $this->postJson($this->path(), $this->product(['reference' => 'ART-004', 'barcode' => null]));
+        self::assertResponseStatusCodeSame(Response::HTTP_CREATED, 'two products without a barcode do not collide');
+    }
+
+    public function testABarcodeWhoseCheckDigitIsWrongIsRefusedNamingTheField(): void
+    {
+        $this->signedIn(['product.read', 'product.write']);
+
+        $this->postJson($this->path(), $this->product(['barcode' => '3017620422004']));
+
+        self::assertResponseStatusCodeSame(Response::HTTP_UNPROCESSABLE_ENTITY);
+        self::assertStringContainsString('barcode', (string) $this->client->getResponse()->getContent());
+    }
+
     public function testARevisionIsAuditedWithTheNamesOfTheFieldsItChanged(): void
     {
         $this->signedIn(['product.read', 'product.write']);
@@ -196,7 +230,7 @@ final class ProductsTest extends ApiTestCase
         }
         $grocery = ProductCategory::create($this->company, 'Épicerie', null, $now);
         $this->em()->persist($grocery);
-        $this->em()->persist(Product::create($this->company, 'ART-0100', new ProductDetails('Café moulu Carthage', null, ProductKind::Service, '12.5', barcode: '6191234567890'), $piece, $grocery, [], $now));
+        $this->em()->persist(Product::create($this->company, 'ART-0100', new ProductDetails('Café moulu Carthage', null, ProductKind::Service, '12.5', barcode: '6191234567897'), $piece, $grocery, [], $now));
         $retired = Product::create($this->company, 'ART-0101', new ProductDetails('Zitouna thé vert', null, ProductKind::Goods, '4'), $piece, null, [], $now);
         $retired->revise('ART-0101', new ProductDetails('Zitouna thé vert', null, ProductKind::Goods, '4'), $piece, null, [], false, $now);
         $this->em()->persist($retired);

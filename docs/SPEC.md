@@ -1828,6 +1828,31 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
   a scanner shipped against no field has nowhere to put what it reads, and the field is useful on its own the day
   it lands — typed, imported and searched — while the scanner is not useful without it.
 
+- [2026-09-22 05:05] AGREED: **the barcode field and row 63's scanner are ONE goal**, taken next (developer ruling,
+  asked and answered: *"Option 3"*), which settles the boundary the 04:35 entry left open: the remaining four
+  slices of row 83's board — the floor image and its two calibration points, the Three.js 3D view with
+  `presentation.stock-map-view`, search-highlight and the rack front view — come AFTER it.
+  **The field itself has existed since 2026-09-14** (`product.barcode`, migration `Version20260914160000`, shape
+  rule in `ProductDetails`, in the search index, in the import, on the form). What row 61 rules and nothing
+  implements is the pair the 2026-09-17 entry added: **unique within the company when set**, and an **EAN-13,
+  EAN-8 or UPC check digit verified when the code has that shape**.
+  **This supersedes the 2026-09-14 line** that a barcode "is not unique (one EAN can be sold under two
+  references)". The later ruling is the one that holds: a scan must find exactly one product, which is the whole
+  reason the scanner can add a line without asking. A business that genuinely sells one EAN under two references
+  expresses that through a family or a substitution group, not by two products answering one scan.
+  **One shape is knowingly not detected**: UPC-E is eight digits with its own check rule, and an eight-digit code
+  is read here as EAN-8. Tunisia is EAN territory and UPC-E is a North-American retail compression, so a UPC-E
+  code fails the EAN-8 check and is refused rather than kept as typed. Named here so it is a decision and not a
+  bug report.
+  **Row 61's other half stays out of scope**: the reference generated from a numbering series is still marked
+  "proposal to confirm" in the 2026-09-17 entry and has not been ruled on.
+  **Known and deliberately not fixed in the API half**: `products-api.ts` maps EVERY product 409 to
+  `reference_taken`, so a duplicate barcode currently toasts the wrong sentence. The web cannot tell the two
+  apart, because a 409 carries prose and no machine-readable code — and matching on an English message is the
+  kind of guess that breaks the day a translation lands. Giving the refusal a code is an API-surface decision
+  (it changes the error payload and the OpenAPI document), so it is the next slice rather than an improvisation.
+  Until it lands, the refusal is correct and its label is not.
+
 ## 8. Status
 
 <!-- progress-block v1 -->
@@ -1896,7 +1921,7 @@ functional tests run from the host against that PostgreSQL (`twes_test`, created
 | 60 | Export every list as CSV and .xlsx with the filters, search and sort it shows (§ 7 2026-09-17) | M | todo | - | api/src/** api/tests/** web/src/app/** web/e2e/** |
 | 68 | Operating guides (§ 7 2026-09-19): `docs/START.md` (bring-up, users, seed, clean start, checks) and `docs/UPDATE.md` (every pin, its copies, how to bump it), `make versions`, `make reset`, and the version-pins gate | M | done | 2d70b43 | docs/START.md docs/UPDATE.md scripts/versions.sh scripts/gates/version-pins.sh scripts/gates/tests/version-pins.test.sh Makefile |
 | 69 | Demo fixtures (§ 7 2026-09-19): DoctrineFixturesBundle alone, every row written through the use cases, a fixed dataset of two companies (Carthage Conseil, TN; Atelier Mercier, FR) with five months of activity, loaded by `make fixtures` (append only) and described in `docs/START.md` § 4; `make gallery` shows Carthage Conseil | M | done | 9389371 | api/src/DataFixtures/** api/tests/Functional/DemoFixturesTest.php api/composer.json api/composer.lock api/symfony.lock api/config/bundles.php THIRD-PARTY-NOTICES.md Makefile docs/START.md |
-| 61 | Product identity (§ 7 2026-09-17): an optional reference generated from a numbering series when left empty (previewed in the form, proposal to confirm), a barcode unique within the company when set, an EAN/UPC check digit verified | M | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
+| 61 | Product identity (§ 7 2026-09-17): an optional reference generated from a numbering series when left empty (previewed in the form, proposal to confirm), a barcode unique within the company when set, an EAN/UPC check digit verified | M | doing | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 62 | Substitution groups (§ 7 2026-09-17): the business groups products that replace each other; the product page and a document line short of stock show the in-stock substitutes and swap in one click | M | todo | - | api/src/** api/migrations/** api/tests/** web/src/app/** web/e2e/** |
 | 63 | Scanner (§ 7 2026-09-17): a camera scan for the barcode field, a list's search and a document's lines; a phone paired to a laptop tab by a single-use, scan-only QR code, codes sent over the tab's realtime channel; iPhone Safari, HTTPS and the decoder's licence researched first | L | todo | - | api/src/** api/tests/** web/src/app/** web/e2e/** docs/** |
 | 65 | Subscriptions, slice 1 (§ 7 2026-09-17): the `Licensing` context, a subscription per company with its trial, billing period, price and paid-through date, the standing computed from those dates, the operator's platform endpoints and panel, an unpaid company read-only or locked in both access checks, the notice above every page | L | done | 50d5494 | api/src/Licensing/** api/src/Tenancy/Infrastructure/** api/src/Identity/Infrastructure/ApiPlatform/** api/migrations/** api/tests/** web/src/app/** |

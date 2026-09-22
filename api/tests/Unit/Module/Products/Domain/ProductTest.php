@@ -77,6 +77,38 @@ final class ProductTest extends TestCase
         yield 'exponent' => ['costPrice', ['costPrice' => '1e3']];
         yield 'barcode with a space' => ['barcode', ['barcode' => '3017 620422003']];
         yield 'long barcode' => ['barcode', ['barcode' => str_repeat('1', 65)]];
+        // One digit off a real code of each GTIN length. The check digit exists to catch exactly this — a
+        // mistyped or misread digit — so each of these is the last digit of a published code, plus one.
+        yield 'EAN-13 whose check digit is wrong' => ['barcode', ['barcode' => '3017620422004']];
+        yield 'EAN-8 whose check digit is wrong' => ['barcode', ['barcode' => '96385075']];
+        yield 'UPC whose check digit is wrong' => ['barcode', ['barcode' => '036000291453']];
+    }
+
+    /**
+     * The three GTIN lengths, and everything else kept as typed (docs/SPEC.md § 7, 2026-09-17: the check digit is
+     * verified WHEN the code has that shape). The valid codes are published examples — Nutella's EAN-13, the
+     * EAN-8 and UPC-A of the standards' own documentation — and NOT this code's own output, which would only
+     * prove the rule agrees with itself.
+     *
+     * @return iterable<string, array{string}>
+     */
+    public static function keptBarcodes(): iterable
+    {
+        yield 'a real EAN-13' => ['3017620422003'];
+        yield 'a real EAN-8' => ['96385074'];
+        yield 'a real UPC' => ['036000291452'];
+        // Not a GTIN length, so no check digit is claimed and none is verified.
+        yield 'eleven digits' => ['12345678901'];
+        yield 'fourteen digits' => ['30176204220031'];
+        // Thirteen characters, but not thirteen DIGITS: an internal code, kept exactly as it was typed.
+        yield 'thirteen with a letter' => ['301762042200A'];
+        yield 'a Code 128 reference' => ['ABC-123/X'];
+    }
+
+    #[DataProvider('keptBarcodes')]
+    public function testABarcodeIsKeptAsTypedUnlessItClaimsAGtinShapeAndFailsIt(string $barcode): void
+    {
+        self::assertSame($barcode, self::details(barcode: $barcode)->barcode);
     }
 
     /** @param array<string, string> $change */

@@ -12,6 +12,7 @@ namespace App\Module\Products\Infrastructure\ApiPlatform;
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
 use App\Module\Products\Application\ManageProducts;
+use App\Module\Products\Application\ProductBarcodeTaken;
 use App\Module\Products\Application\ProductNotFound;
 use App\Module\Products\Application\ProductReferenceTaken;
 use App\Module\Products\Domain\InvalidProduct;
@@ -36,7 +37,7 @@ final readonly class ReviseProductProcessor implements ProcessorInterface
             $product = $this->manage->revise($company, CompanyPath::identifier($uriVariables, 'productId'), $data->input(), $this->guard->account()->getId());
         } catch (ProductNotFound $absent) {
             throw new NotFoundHttpException('No such product.', $absent);
-        } catch (ProductReferenceTaken $taken) {
+        } catch (ProductReferenceTaken|ProductBarcodeTaken $taken) {
             throw new ConflictHttpException($taken->getMessage(), $taken);
         } catch (InvalidProduct $refused) {
             throw new UnprocessableEntityHttpException(\sprintf('%s: %s', $refused->field, $refused->getMessage()), $refused);

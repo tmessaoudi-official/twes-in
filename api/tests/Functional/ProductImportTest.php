@@ -76,7 +76,7 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame('Visserie', $screw->getCategory()?->getName());
         self::assertSame('0.4500', $screw->getDetails()->unitPriceNet, 'a decimal comma is read as a point');
         self::assertSame('0.2200', $screw->getDetails()->costPrice);
-        self::assertSame('6191234567890', $screw->getDetails()->barcode);
+        self::assertSame('6191234567897', $screw->getDetails()->barcode);
         self::assertSame([$this->taxId('TVA19')], $screw->getDefaultTaxComponentIds());
         self::assertSame(['shelf' => 'A12'], $screw->getCustomFields());
         self::assertFalse($screw->isActive());
@@ -168,7 +168,7 @@ final class ProductImportTest extends ApiTestCase
         self::assertSame('0.4500', $updated->getDetails()->unitPriceNet, 'a blank cell keeps what is there');
         self::assertSame('Visserie', $updated->getCategory()?->getName(), 'a column the file lacks keeps what is there');
         self::assertSame(['shelf' => 'A12'], $updated->getCustomFields());
-        self::assertSame('6191234567890', $updated->getDetails()->barcode);
+        self::assertSame('6191234567897', $updated->getDetails()->barcode);
     }
 
     /**
@@ -339,7 +339,7 @@ final class ProductImportTest extends ApiTestCase
     private function twoProducts(): string
     {
         return self::HEADER
-            ."\nVIS-6X40,Vis 6x40 zinguée,goods,H87,Visserie,\"0,45\",\"0,22\",6191234567890,TVA19,non,A12"
+            ."\nVIS-6X40,Vis 6x40 zinguée,goods,H87,Visserie,\"0,45\",\"0,22\",6191234567897,TVA19,non,A12"
             ."\nMO-TOUR,Tournage à l'heure,service,HUR,,45.000,,,,,\n";
     }
 
